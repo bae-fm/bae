@@ -150,9 +150,10 @@ fn unreadable_child_directory_fails_scan() {
     std::fs::create_dir(&blocked).unwrap();
     std::fs::set_permissions(&blocked, std::fs::Permissions::from_mode(0o000)).unwrap();
 
-    let err = scan_for_candidates_with_callback(
+    let err = scan_for_candidates_with_decisions(
         root.to_path_buf(),
         &StoredCandidateEdits::none(),
+        &FolderReleaseDecisions::default(),
         |_| {},
     )
     .expect_err("unreadable directory should fail the scan");

@@ -187,6 +187,22 @@ pub enum ImportError {
     Internal { detail: String },
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl ImportError {
+    /// A file-tag read that failed at the file itself, named by what was being
+    /// done to it: `file_tags("open", path, error)` reads "failed to open
+    /// <path>: <error>".
+    pub(crate) fn file_tags(
+        action: &str,
+        path: &std::path::Path,
+        error: impl std::fmt::Display,
+    ) -> Self {
+        Self::FileTags {
+            detail: format!("failed to {action} {}: {error}", path.display()),
+        }
+    }
+}
+
 #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
 mod tests {
     use super::*;

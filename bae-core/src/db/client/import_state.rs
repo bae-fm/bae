@@ -80,15 +80,6 @@ pub(super) fn next_folder_scan_generation(sql: &SqlContext<'_, '_>) -> Result<i6
 }
 
 impl Database {
-    /// The spelling the watched-folder tables key `path`'s folder by. Every
-    /// entry point that names a root goes through this, so a caller never has
-    /// to know what spelling this host stores — and two spellings of one
-    /// folder can never become two rows.
-    fn canonical_watched_root(path: &str) -> Result<String, DbError> {
-        crate::import::watched_folder::canonical_absolute_root(path)
-            .map_err(|error| DbError::Message(error.to_string()))
-    }
-
     /// Every watched folder, in the order they were added.
     ///
     /// A stored root is canonical by construction and no two overlap, so a
@@ -99,8 +90,7 @@ impl Database {
     ) -> Result<Vec<crate::import::WatchedFolder>, DbError> {
         let roots = self.watched_import_roots().await?;
         for (index, root) in roots.iter().enumerate() {
-            crate::import::watched_folder::validate_absolute_root(root)
-                .map_err(|error| DbError::Message(error.to_string()))?;
+            crate::import::watched_folder::validate_absolute_root(root)?;
             if let Some(conflict) = roots[index + 1..].iter().find(|other| {
                 crate::import::watched_folder::paths_overlap(
                     std::path::Path::new(root),
@@ -138,8 +128,7 @@ impl Database {
             })
             .await?;
         for path in &paths {
-            crate::import::watched_folder::validate_relative_path(path)
-                .map_err(|error| DbError::Message(error.to_string()))?;
+            crate::import::watched_folder::validate_relative_path(path)?;
         }
         Ok(paths.into_iter().collect())
     }
@@ -161,7 +150,9 @@ impl Database {
     /// Watch the folder `path` names, keyed by its canonical spelling. `false`
     /// when that folder is already watched, however it was spelled this time.
     pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
-        let path = Self::canonical_watched_root(path)?;
+        // Keyed by the one spelling this host stores, so two spellings of one
+        // folder can never become two rows.
+        let path = crate::import::watched_folder::canonical_absolute_root(path)?;
         let roots = self.watched_import_roots().await?;
         if roots.iter().any(|root| root == &path) {
             return Ok(false);
@@ -196,8 +187,7 @@ impl Database {
         relative_candidate_path: &str,
         skipped: bool,
     ) -> Result<bool, DbError> {
-        crate::import::watched_folder::validate_relative_path(relative_candidate_path)
-            .map_err(|error| DbError::Message(error.to_string()))?;
+        crate::import::watched_folder::validate_relative_path(relative_candidate_path)?;
         let watched_folder_path = watched_folder_path.to_string();
         let relative_candidate_path = relative_candidate_path.to_string();
         // Restating what the row already says writes nothing, so it must not
@@ -279,8 +269,7 @@ impl Database {
             ));
         }
         for (key, _) in decisions {
-            crate::import::watched_folder::validate_relative_path(&key.relative_folder_path)
-                .map_err(|error| DbError::Message(error.to_string()))?;
+            crate::import::watched_folder::validate_relative_path(&key.relative_folder_path)?;
         }
         let decisions = decisions.to_vec();
         let author_column = match author {
@@ -361,8 +350,7 @@ impl Database {
         key: &FolderReleaseDecisionKey,
         decision: FolderReleaseDecision,
     ) -> Result<(), DbError> {
-        crate::import::watched_folder::validate_relative_path(&key.relative_folder_path)
-            .map_err(|error| DbError::Message(error.to_string()))?;
+        crate::import::watched_folder::validate_relative_path(&key.relative_folder_path)?;
         let key = key.clone();
         let decision = match decision {
             FolderReleaseDecision::CombineAsOneRelease => "combine_as_one_release",

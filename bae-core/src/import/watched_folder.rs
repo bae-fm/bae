@@ -26,6 +26,26 @@ impl WatchedFolder {
     }
 }
 
+/// A watched root or a candidate path under one is spelled in a way the store
+/// refuses to key by: relative, climbing out of itself, or not the one
+/// canonical spelling. The only way the rules below fail, so the callers that
+/// hold a path to them convert it with `?` rather than restating it.
+#[derive(Debug, thiserror::Error)]
+#[error("watched folder: {0}")]
+pub(crate) struct WatchedPathError(String);
+
+impl From<WatchedPathError> for crate::import::ImportError {
+    fn from(error: WatchedPathError) -> Self {
+        Self::WatchedFolder { detail: error.0 }
+    }
+}
+
+impl From<WatchedPathError> for coven::DbError {
+    fn from(error: WatchedPathError) -> Self {
+        Self::Message(error.to_string())
+    }
+}
+
 /// The one spelling of `path` this device stores for the folder it names.
 ///
 /// A watched root is a durable key: it addresses rows in three tables and is
@@ -47,12 +67,8 @@ impl WatchedFolder {
 ///   a drive or UNC prefix. `\music` is rooted but drive-relative: the same
 ///   text names a different folder depending on the process's current drive,
 ///   so nothing durable can be keyed by it.
-pub(crate) fn canonical_absolute_root(path: &str) -> Result<String, crate::import::ImportError> {
-    let refuse = |reason: &str| {
-        Err(crate::import::ImportError::WatchedFolder {
-            detail: format!("watched folder {reason}: {path}"),
-        })
-    };
+pub(crate) fn canonical_absolute_root(path: &str) -> Result<String, WatchedPathError> {
+    let refuse = |reason: &str| Err(WatchedPathError(format!("watched folder {reason}: {path}")));
     if Path::new(path)
         .components()
         .any(|component| matches!(component, Component::ParentDir))
@@ -72,19 +88,17 @@ pub(crate) fn canonical_absolute_root(path: &str) -> Result<String, crate::impor
 /// durable state — read it loudly rather than quietly rewriting it, which
 /// would hide however it got written and leave its dependent rows keyed by the
 /// spelling this device no longer uses.
-pub(crate) fn validate_absolute_root(path: &str) -> Result<(), crate::import::ImportError> {
+pub(crate) fn validate_absolute_root(path: &str) -> Result<(), WatchedPathError> {
     let canonical = canonical_absolute_root(path)?;
     if canonical != path {
-        return Err(crate::import::ImportError::WatchedFolder {
-            detail: format!(
-                "stored watched folder is not its canonical spelling {canonical}: {path}"
-            ),
-        });
+        return Err(WatchedPathError(format!(
+            "stored watched folder is not its canonical spelling {canonical}: {path}"
+        )));
     }
     Ok(())
 }
 
-pub(crate) fn validate_relative_path(path: &str) -> Result<(), crate::import::ImportError> {
+pub(crate) fn validate_relative_path(path: &str) -> Result<(), WatchedPathError> {
     let normalized = Path::new(path)
         .components()
         .map(|component| match component {
@@ -94,9 +108,9 @@ pub(crate) fn validate_relative_path(path: &str) -> Result<(), crate::import::Im
         .collect::<Result<Vec<_>, _>>()
         .map(|components| components.join("/"));
     if normalized.as_deref() != Ok(path) {
-        return Err(crate::import::ImportError::WatchedFolder {
-            detail: format!("candidate path must be normalized and root-relative: {path}"),
-        });
+        return Err(WatchedPathError(format!(
+            "candidate path must be normalized and root-relative: {path}"
+        )));
     }
     Ok(())
 }

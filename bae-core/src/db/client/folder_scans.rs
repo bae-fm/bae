@@ -637,6 +637,7 @@ pub(super) fn validate_decision_key_ownership(
             key.watched_folder_path
         )));
     }
-    crate::import::watched_folder::validate_relative_path(&key.relative_folder_path)
-        .map_err(|error| DbError::Message(error.to_string()))
+    Ok(crate::import::watched_folder::validate_relative_path(
+        &key.relative_folder_path,
+    )?)
 }

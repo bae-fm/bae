@@ -14,8 +14,8 @@ use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::discid::compute_discid_from_categorized;
 use bae_core::import::folder_scanner::{
-    collect_release_candidate_files_with_scope, scan_for_candidates_with_callback, ScanItem,
-    StoredCandidateEdits,
+    collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions,
+    FolderReleaseDecisions, ScanItem, StoredCandidateEdits,
 };
 use bae_core::import::{ImportCommand, MetadataProvenance, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
@@ -267,8 +267,11 @@ fn scanner_recognizes_cue_alac_pair() {
     std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
 
     let mut candidates = Vec::new();
-    scan_for_candidates_with_callback(album_dir.clone(), &StoredCandidateEdits::none(), |item| {
-        match item {
+    scan_for_candidates_with_decisions(
+        album_dir.clone(),
+        &StoredCandidateEdits::none(),
+        &FolderReleaseDecisions::default(),
+        |item| match item {
             ScanItem::Valid(c) => candidates.push(c),
             ScanItem::Invalid(c) => {
                 panic!(
@@ -277,8 +280,8 @@ fn scanner_recognizes_cue_alac_pair() {
                 )
             }
             ScanItem::Discovered(_) | ScanItem::Decided { .. } => {}
-        }
-    })
+        },
+    )
     .expect("scan folder");
 
     assert_eq!(candidates.len(), 1, "one release in the folder");

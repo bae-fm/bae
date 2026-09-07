@@ -314,7 +314,6 @@ pub(super) fn scan_directory<R, F, D>(
     root: &Path,
     relative: &Path,
     watched_folder_path: &str,
-    allow_unresolved_boundary: bool,
     ancestors_allow_actionable: bool,
     decisions: &FolderReleaseDecisions,
     stored: &StoredCandidateEdits,
@@ -356,7 +355,7 @@ where
     // itself, so it never decides.
     let (decision, decided_here) = match decisions.get(&relative_string) {
         Some((decision, _)) => (Some(decision), false),
-        None if allow_unresolved_boundary && !listing_dirs.is_empty() => {
+        None if !listing_dirs.is_empty() => {
             let parts = part_folder_names(reader, root, &listing_dirs, cancellation)?;
             let yields_several = parts.len() > 1 || (direct_audio && !parts.is_empty());
             if yields_several {
@@ -386,9 +385,8 @@ where
         decision,
         Some(FolderReleaseDecision::KeepAsSeparateReleases)
     );
-    let can_stream_collection = ancestors_allow_actionable
-        && !combine
-        && (!allow_unresolved_boundary || !has_direct_files || keep_separate);
+    let can_stream_collection =
+        ancestors_allow_actionable && !combine && (!has_direct_files || keep_separate);
     let mut collection_proven = !wrapper_has_files;
     let resolved_separate = keep_separate.then(|| ResolvedFolderReleaseBoundary {
         key: FolderReleaseDecisionKey {
@@ -407,7 +405,6 @@ where
             root,
             &child,
             watched_folder_path,
-            true,
             child_can_be_actionable,
             decisions,
             stored,
@@ -554,7 +551,7 @@ where
         if child_nodes_emitted && holds_its_own_node {
             emit_projected_nodes(nodes[..1].to_vec(), on_item);
         }
-    } else if allow_unresolved_boundary && nodes.len() > 1 {
+    } else if nodes.len() > 1 {
         // Several releases below and nothing settled about this folder: it is
         // a wrapper the releases happen to sit under — one child folder holding
         // them all, loose files beside it, or both. There is nothing to ask.
@@ -595,29 +592,6 @@ where
     }
 }
 
-pub(crate) fn scan_for_candidates_with_reader_cancellable<R, F>(
-    reader: &R,
-    root: PathBuf,
-    stored: &StoredCandidateEdits,
-    decisions: &FolderReleaseDecisions,
-    cancellation: &ScanCancellation,
-    on_item: F,
-) -> Result<(), FolderScanError>
-where
-    R: DirectoryReader,
-    F: FnMut(ScanItem),
-{
-    scan_for_candidates_with_reader_cancellable_and_directories(
-        reader,
-        root,
-        stored,
-        decisions,
-        cancellation,
-        |_| {},
-        on_item,
-    )
-}
-
 pub(crate) fn scan_for_candidates_with_reader_cancellable_and_directories<R, F, D>(
     reader: &R,
     root: PathBuf,
@@ -655,7 +629,6 @@ where
             &child,
             &watched_folder_path,
             true,
-            true,
             decisions,
             stored,
             cancellation,
@@ -688,51 +661,9 @@ where
     Ok(())
 }
 
-pub(crate) fn scan_for_candidates_with_reader<R, F>(
-    reader: &R,
-    root: PathBuf,
-    stored: &StoredCandidateEdits,
-    decisions: &FolderReleaseDecisions,
-    on_item: F,
-) -> Result<(), FolderScanError>
-where
-    R: DirectoryReader,
-    F: FnMut(ScanItem),
-{
-    scan_for_candidates_with_reader_cancellable(
-        reader,
-        root,
-        stored,
-        decisions,
-        &ScanCancellation::new(),
-        on_item,
-    )
-}
-
-/// Scan one watched root a directory at a time. Completed release
-/// approximations and unresolved boundaries are emitted before unrelated
-/// sibling directories are read.
-pub fn scan_for_candidates_with_callback<F>(
-    root: PathBuf,
-    stored: &StoredCandidateEdits,
-    mut on_item: F,
-) -> Result<(), FolderScanError>
-where
-    F: FnMut(ScanItem),
-{
-    scan_for_candidates_with_reader(
-        &OsDirectoryReader,
-        root,
-        stored,
-        &FolderReleaseDecisions::default(),
-        |item| {
-            if !matches!(item, ScanItem::Discovered(_)) {
-                on_item(item);
-            }
-        },
-    )
-}
-
+/// Scan one watched root a directory at a time, to completion. Completed
+/// release approximations and unresolved boundaries are emitted before
+/// unrelated sibling directories are read.
 pub fn scan_for_candidates_with_decisions<F>(
     root: PathBuf,
     stored: &StoredCandidateEdits,
@@ -742,7 +673,15 @@ pub fn scan_for_candidates_with_decisions<F>(
 where
     F: FnMut(ScanItem),
 {
-    scan_for_candidates_with_reader(&OsDirectoryReader, root, stored, decisions, on_item)
+    scan_for_candidates_with_reader_cancellable_and_directories(
+        &OsDirectoryReader,
+        root,
+        stored,
+        decisions,
+        &ScanCancellation::new(),
+        |_| {},
+        on_item,
+    )
 }
 
 /// The progressive, cancellable scan the desktop import service drives.

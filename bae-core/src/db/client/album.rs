@@ -32,42 +32,6 @@ impl Database {
         self.get_track_ids_for_release(&release_id).await.map(Some)
     }
 
-    /// Map each track id to its album id (track → release → album). Track ids that
-    /// aren't in the library are absent from the map.
-    pub async fn get_album_ids_for_tracks(
-        &self,
-        track_ids: &[String],
-    ) -> Result<HashMap<String, String>, DbError> {
-        if track_ids.is_empty() {
-            return Ok(HashMap::new());
-        }
-
-        let track_ids = track_ids.to_vec();
-        self.read(move |sql| {
-            let mut album_ids = HashMap::new();
-            for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
-                let placeholders = in_clause_placeholders(chunk.len());
-                let query = format!(
-                    "SELECT t.id AS track_id, r.album_id FROM tracks t \
-                         JOIN releases r ON t.release_id = r.id \
-                         WHERE t.id IN ({placeholders})"
-                );
-                album_ids.extend(sql.query(
-                    &query,
-                    coven::rusqlite::params_from_iter(chunk.iter()),
-                    |row| {
-                        Ok((
-                            row.get::<_, String>("track_id")?,
-                            row.get::<_, String>("album_id")?,
-                        ))
-                    },
-                )?);
-            }
-            Ok(album_ids)
-        })
-        .await
-    }
-
     /// Search albums, tracks, composers, and works by title/name.
     pub async fn search_library(
         &self,
@@ -301,24 +265,6 @@ impl Database {
 
     pub async fn get_album_count(&self) -> Result<u64, DbError> {
         self.read(|sql| album_count_on(&sql)).await
-    }
-
-    /// Raw album-summary lookup for a single album. Shares the JSON aggregates with
-    /// `get_album_page` so the resolver output matches.
-    pub async fn find_album_summary(
-        &self,
-        album_id: &str,
-    ) -> Result<Option<DbAlbumSummary>, DbError> {
-        let album_id = album_id.to_string();
-        let query = format!("{} FROM albums a WHERE a.id = ?", album_summary_select());
-        self.read(move |sql| {
-            sql.query_row(&query, params![album_id], |row| {
-                Ok(parse_album_summary_row(row))
-            })
-            .optional()?
-            .transpose()
-        })
-        .await
     }
 
     /// Find album by ID. Caller-provided ID — may not exist.

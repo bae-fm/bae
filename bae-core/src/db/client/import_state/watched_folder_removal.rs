@@ -13,7 +13,7 @@ impl Database {
         &self,
         path: &str,
     ) -> Result<Option<Vec<String>>, DbError> {
-        let path = Self::canonical_watched_root(path)?;
+        let path = crate::import::watched_folder::canonical_absolute_root(path)?;
         if !self.watched_import_roots().await?.contains(&path) {
             return Ok(None);
         }

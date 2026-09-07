@@ -1,5 +1,4 @@
 use super::super::*;
-use super::*;
 use crate::playback::QueueEntryId;
 use coven::SystemClock;
 use std::sync::Arc;
@@ -133,12 +132,6 @@ async fn track_id_queries_merge_chunks() {
     expected_existing.sort();
     assert_eq!(existing, expected_existing);
 
-    let album_ids = db.get_album_ids_for_tracks(&requested).await.unwrap();
-    assert_eq!(album_ids.len(), track_ids.len());
-    for track_id in &track_ids {
-        assert_eq!(album_ids.get(track_id).map(String::as_str), Some(ALBUM_A));
-    }
-
     let entries: Vec<QueueEntry> = requested
         .iter()
         .enumerate()
@@ -155,4 +148,7 @@ async fn track_id_queries_merge_chunks() {
         .map(String::as_str)
         .collect();
     assert_eq!(resolved_track_ids, expected_track_ids);
+    // Every chunk's rows carry what the track → release → album join resolved,
+    // so a dropped chunk shows up as a missing album, not just a missing id.
+    assert!(items.iter().all(|item| item.album_title == "Album Title A"));
 }

@@ -158,21 +158,6 @@ pub fn copy_and_tag(
     dest
 }
 
-/// Drain library events from `rx`, returning them in arrival order once no new
-/// event arrives within `timeout` (the quiet-window settle). Positive
-/// assertions check the expected events are present; negative ones check the
-/// returned set is empty.
-pub async fn collect_library_events(
-    rx: &mut tokio::sync::broadcast::Receiver<bae_core::library::LibraryEvent>,
-    timeout: std::time::Duration,
-) -> Vec<bae_core::library::LibraryEvent> {
-    let mut events = Vec::new();
-    while let Ok(Ok(event)) = tokio::time::timeout(timeout, rx.recv()).await {
-        events.push(event);
-    }
-    events
-}
-
 /// The id [`seed_discogs_test_release`] renders for a fixture's own spelling of
 /// a release or master id.
 ///

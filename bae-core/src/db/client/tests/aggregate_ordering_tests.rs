@@ -61,10 +61,12 @@ async fn aggregate_db() -> (Database, tempfile::TempDir) {
 #[tokio::test]
 async fn album_summary_orders_artist_names_and_release_ids_inside_aggregates() {
     let (db, _tmp) = aggregate_db().await;
+    // The one album in the fixture, read the way the library page reads it.
     let summary = db
-        .find_album_summary(ALBUM_A)
+        .get_album_page(&[], 0, 1)
         .await
         .unwrap()
+        .pop()
         .expect("album summary row");
 
     assert_eq!(

@@ -68,13 +68,12 @@ pub(crate) struct LoftyFileTagReader;
 
 impl FileTagReader for LoftyFileTagReader {
     fn read(&self, path: &Path) -> Result<FileTagRead, ImportError> {
-        let probe = Probe::open(path).map_err(|error| ImportError::FileTags {
-            detail: format!("failed to open {}: {error}", path.display()),
-        })?;
+        let probe =
+            Probe::open(path).map_err(|error| ImportError::file_tags("open", path, error))?;
         let file_type = probe.file_type();
-        let tagged = probe.read().map_err(|error| ImportError::FileTags {
-            detail: format!("failed to read tags from {}: {error}", path.display()),
-        })?;
+        let tagged = probe
+            .read()
+            .map_err(|error| ImportError::file_tags("read tags from", path, error))?;
         let tag = tagged.primary_tag().or_else(|| tagged.first_tag());
         let legacy_text = match tag.map(TagExt::tag_type) {
             Some(TagType::Id3v2) => legacy_id3v2_text(path, file_type)?,
@@ -178,19 +177,10 @@ fn read_legacy_id3v2_text<F>(path: &Path) -> Result<LegacyTagText, ImportError>
 where
     F: AudioFile + HasId3v2Tag,
 {
-    let file = File::open(path).map_err(|error| ImportError::FileTags {
-        detail: format!("failed to open {}: {error}", path.display()),
-    })?;
+    let file = File::open(path).map_err(|error| ImportError::file_tags("open", path, error))?;
     let mut reader = BufReader::new(file);
-    let parsed =
-        F::read_from(&mut reader, ParseOptions::new().read_properties(false)).map_err(|error| {
-            ImportError::FileTags {
-                detail: format!(
-                    "failed to read ID3v2 frames from {}: {error}",
-                    path.display()
-                ),
-            }
-        })?;
+    let parsed = F::read_from(&mut reader, ParseOptions::new().read_properties(false))
+        .map_err(|error| ImportError::file_tags("read ID3v2 frames from", path, error))?;
     let Some(tag) = parsed.id3v2_tag() else {
         return Err(ImportError::FileTags {
             detail: format!(
@@ -208,27 +198,15 @@ where
 }
 
 fn legacy_id3v1_text(path: &Path) -> Result<LegacyTagText, ImportError> {
-    let file = File::open(path).map_err(|error| ImportError::FileTags {
-        detail: format!("failed to open {}: {error}", path.display()),
-    })?;
+    let file = File::open(path).map_err(|error| ImportError::file_tags("open", path, error))?;
     let mut reader = BufReader::new(file);
     reader
         .seek(SeekFrom::End(-128))
-        .map_err(|error| ImportError::FileTags {
-            detail: format!(
-                "failed to seek to the ID3v1 tag in {}: {error}",
-                path.display()
-            ),
-        })?;
+        .map_err(|error| ImportError::file_tags("seek to the ID3v1 tag in", path, error))?;
     let mut tag = [0_u8; 128];
     reader
         .read_exact(&mut tag)
-        .map_err(|error| ImportError::FileTags {
-            detail: format!(
-                "failed to read the ID3v1 tag from {}: {error}",
-                path.display()
-            ),
-        })?;
+        .map_err(|error| ImportError::file_tags("read the ID3v1 tag from", path, error))?;
     if tag[..3] != *b"TAG" {
         return Err(ImportError::FileTags {
             detail: format!(
@@ -342,37 +320,39 @@ pub(crate) fn embedded_cover_selection(
 }
 
 fn observe_file(file: &ScannedFile) -> Result<FileObservation, ImportError> {
-    let metadata = std::fs::metadata(&file.path).map_err(|error| ImportError::FileTags {
-        detail: format!("failed to stat {}: {error}", file.path.display()),
-    })?;
+    let metadata = std::fs::metadata(&file.path)
+        .map_err(|error| ImportError::file_tags("stat", &file.path, error))?;
     if metadata.len() != file.size {
         return Err(changed_file_error(file));
     }
-    let modified = metadata.modified().map_err(|error| ImportError::FileTags {
-        detail: format!(
-            "failed to read modification time of {}: {error}",
-            file.path.display()
-        ),
-    })?;
-    let since_epoch = modified
+    Ok(FileObservation {
+        relative_path: file.relative_path.clone(),
+        modified_at_ns: modified_at_nanos(&file.path, &metadata)?,
+        size: metadata.len(),
+    })
+}
+
+/// The stamp a file is compared by: its modification time as nanoseconds since
+/// the Unix epoch, which is how the scan recorded it and how SQLite stores it.
+pub(crate) fn modified_at_nanos(
+    path: &Path,
+    metadata: &std::fs::Metadata,
+) -> Result<i64, ImportError> {
+    let since_epoch = metadata
+        .modified()
+        .map_err(|error| ImportError::file_tags("read modification time of", path, error))?
         .duration_since(UNIX_EPOCH)
         .map_err(|_| ImportError::FileTags {
             detail: format!(
                 "modification time of {} is before the Unix epoch",
-                file.path.display()
+                path.display()
             ),
         })?;
-    let modified_at_ns =
-        i64::try_from(since_epoch.as_nanos()).map_err(|_| ImportError::FileTags {
-            detail: format!(
-                "modification time of {} exceeds SQLite's integer range",
-                file.path.display()
-            ),
-        })?;
-    Ok(FileObservation {
-        relative_path: file.relative_path.clone(),
-        size: metadata.len(),
-        modified_at_ns,
+    i64::try_from(since_epoch.as_nanos()).map_err(|_| ImportError::FileTags {
+        detail: format!(
+            "modification time of {} exceeds SQLite's integer range",
+            path.display()
+        ),
     })
 }
 
@@ -461,11 +441,8 @@ pub fn read_embedded_cover(
                 path.display()
             ),
         })?;
-        let tagged = probe.read().map_err(|error| ImportError::FileTags {
-            detail: format!(
-                "failed to read embedded cover tags from {}: {error}",
-                path.display()
-            ),
+        let tagged = probe.read().map_err(|error| {
+            ImportError::file_tags("read embedded cover tags from", path, error)
         })?;
         if let Some(cover) = tagged
             .primary_tag()

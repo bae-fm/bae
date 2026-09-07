@@ -62,47 +62,19 @@ pub fn map_file_tags_to_db(
     let scanned = audio_files
         .iter()
         .map(|path| -> Result<ScannedFile, ImportError> {
-            let size = std::fs::metadata(path)
-                .map_err(|error| ImportError::FileTags {
-                    detail: format!("failed to stat {}: {error}", path.display()),
-                })?
-                .len();
+            let metadata = std::fs::metadata(path)
+                .map_err(|error| ImportError::file_tags("stat", path, error))?;
             let relative_path = path
                 .file_name()
                 .map(|name| name.to_string_lossy().into_owned())
                 .ok_or_else(|| ImportError::FileTags {
                     detail: format!("audio file path {} has no filename", path.display()),
                 })?;
-            let modified = std::fs::metadata(path)
-                .and_then(|metadata| metadata.modified())
-                .map_err(|error| ImportError::FileTags {
-                    detail: format!(
-                        "failed to read modification time of {}: {error}",
-                        path.display()
-                    ),
-                })?;
-            let modified_at_ns = i64::try_from(
-                modified
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_err(|_| ImportError::FileTags {
-                        detail: format!(
-                            "modification time of {} is before the Unix epoch",
-                            path.display()
-                        ),
-                    })?
-                    .as_nanos(),
-            )
-            .map_err(|_| ImportError::FileTags {
-                detail: format!(
-                    "modification time of {} exceeds SQLite's integer range",
-                    path.display()
-                ),
-            })?;
             Ok(ScannedFile::new(
                 path.clone(),
                 relative_path,
-                size,
-                modified_at_ns,
+                metadata.len(),
+                super::file_tag_snapshot::modified_at_nanos(path, &metadata)?,
             ))
         })
         .collect::<Result<Vec<_>, _>>()?;

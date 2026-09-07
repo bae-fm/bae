@@ -1,3 +1,21 @@
+/// Scan `root` through a test `DirectoryReader`, with no stored edits, no
+/// stored decisions, and nothing to cancel.
+fn scan_with_reader<R: DirectoryReader, F: FnMut(ScanItem)>(
+    reader: &R,
+    root: PathBuf,
+    on_item: F,
+) -> Result<(), FolderScanError> {
+    scan_for_candidates_with_reader_cancellable_and_directories(
+        reader,
+        root,
+        &StoredCandidateEdits::none(),
+        &FolderReleaseDecisions::default(),
+        &ScanCancellation::new(),
+        |_| {},
+        on_item,
+    )
+}
+
 #[test]
 fn names_do_not_combine_audio_bearing_children() {
     let temp_dir = tempfile::tempdir().unwrap();
@@ -95,13 +113,9 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
             entered: entered_tx,
             gate: thread_gate,
         };
-        scan_for_candidates_with_reader(
-            &reader,
-            scan_root,
-            &StoredCandidateEdits::none(),
-            &FolderReleaseDecisions::default(),
-            |item| item_tx.send(item).expect("receive scan item"),
-        )
+        scan_with_reader(&reader, scan_root, |item| {
+            item_tx.send(item).expect("receive scan item")
+        })
     });
 
     let mut first_item = item_rx
@@ -177,14 +191,12 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
     let scan_gate = gate.clone();
     let scan_root = root.clone();
     let scan = std::thread::spawn(move || {
-        scan_for_candidates_with_reader(
+        scan_with_reader(
             &BlockingReader {
                 entered: entered_tx,
                 gate: scan_gate,
             },
             scan_root,
-            &StoredCandidateEdits::none(),
-            &FolderReleaseDecisions::default(),
             |item| item_tx.send(item).expect("receive scan item"),
         )
     });
@@ -261,14 +273,12 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
     let scan_gate = gate.clone();
     let scan_root = root.clone();
     let scan = std::thread::spawn(move || {
-        scan_for_candidates_with_reader(
+        scan_with_reader(
             &BlockingReader {
                 entered: entered_tx,
                 gate: scan_gate,
             },
             scan_root,
-            &StoredCandidateEdits::none(),
-            &FolderReleaseDecisions::default(),
             |item| item_tx.send(item).expect("receive scan item"),
         )
     });
@@ -376,12 +386,13 @@ fn cancelled_scan_stops_before_the_next_directory_read() {
     let reader = RecordingReader::default();
     let cancellation = ScanCancellation::new();
 
-    let result = scan_for_candidates_with_reader_cancellable(
+    let result = scan_for_candidates_with_reader_cancellable_and_directories(
         &reader,
         root,
         &StoredCandidateEdits::none(),
         &FolderReleaseDecisions::default(),
         &cancellation,
+        |_| {},
         |item| {
             if matches!(item, ScanItem::Discovered(_)) {
                 cancellation.cancel();
@@ -421,7 +432,7 @@ fn cancellation_reaches_an_in_progress_directory_read() {
     let cancellation = ScanCancellation::new();
     let thread_cancellation = cancellation.clone();
     let scan = std::thread::spawn(move || {
-        scan_for_candidates_with_reader_cancellable(
+        scan_for_candidates_with_reader_cancellable_and_directories(
             &CancellableReader {
                 entered: entered_tx,
             },
@@ -429,6 +440,7 @@ fn cancellation_reaches_an_in_progress_directory_read() {
             &StoredCandidateEdits::none(),
             &FolderReleaseDecisions::default(),
             &thread_cancellation,
+            |_| {},
             |_| {},
         )
     });
