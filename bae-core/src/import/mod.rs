@@ -1,92 +1,64 @@
 // Gated with its two callers (`handle` and `service`), which the mobile builds
 // leave out — the import editor is desktop-only.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod artist_assignments;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod assemble;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod candidate_runtime;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod candidate_search;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod candidates;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod combination;
+desktop_only! {
+    mod artist_assignments;
+    mod assemble;
+    pub(crate) mod candidate_runtime;
+    pub mod candidate_search;
+    pub(crate) mod candidates;
+    pub mod combination;
+}
 pub mod cover_art;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod discid;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod discid_hash;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod discogs_mapper;
+desktop_only! {
+    pub mod discid;
+    mod discid_hash;
+    pub mod discogs_mapper;
+}
 mod error;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod file_evidence;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod file_tag_mapper;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod file_tag_snapshot;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod file_validation;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod folder_scanner;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod volume;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod watched_folder;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use volume::check_period_minutes;
-// The import pipeline (scanning, transcoding, identify orchestration) is
-// desktop-only; mobile is a sync/playback client. Only the shared domain types
-// below (re-exported from `types`) compile on mobile.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod edits;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod handle;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod list;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod local_artwork;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod loudness;
-// Projects the folder's audio units against a picked tracklist — the desktop
-// import pane's one structure, and desktop-only like the slots it reads.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod direct_entry_mapper;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod mapping;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod musicbrainz_mapper;
-// The payload store's projections build the picker detail and the commit's
-// `ParsedAlbum` from archived documents — both desktop-only import shapes.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod pane;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod payloads;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod preparation;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod preparations;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod probe;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod release_candidate;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod release_group;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod search;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod service;
+desktop_only! {
+    mod file_evidence;
+    pub mod file_tag_mapper;
+    pub(crate) mod file_tag_snapshot;
+    mod file_validation;
+    pub mod folder_scanner;
+    pub(crate) mod volume;
+    pub mod watched_folder;
+    pub use volume::check_period_minutes;
+    // The import pipeline (scanning, transcoding, identify orchestration) is
+    // desktop-only; mobile is a sync/playback client. Only the shared domain
+    // types below (re-exported from `types`) compile on mobile.
+    mod edits;
+    mod handle;
+    pub mod list;
+    pub(crate) mod local_artwork;
+    mod loudness;
+    // Projects the folder's audio units against a picked tracklist — the desktop
+    // import pane's one structure, and desktop-only like the slots it reads.
+    pub(crate) mod direct_entry_mapper;
+    pub mod mapping;
+    pub mod musicbrainz_mapper;
+    // The payload store's projections build the picker detail and the commit's
+    // `ParsedAlbum` from archived documents — both desktop-only import shapes.
+    pub mod pane;
+    pub mod payloads;
+    pub mod preparation;
+    pub mod preparations;
+    pub mod probe;
+    pub mod release_candidate;
+    pub mod release_group;
+    pub mod search;
+    pub(crate) mod service;
+}
 pub mod session;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod sweep;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod track_slots;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod triage;
+desktop_only! {
+    pub mod sweep;
+    pub mod track_slots;
+    pub mod triage;
+}
 mod types;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod worker_thread;
+desktop_only! {
+    mod worker_thread;
+}
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::db::{
@@ -169,87 +141,75 @@ impl ImportServices {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use candidate_search::{CandidateSearch, SourceSearch};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use candidates::{
-    CandidateIdentifyRuntime, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
-    ImportCandidateSnapshot, ImportInFlight, ImportedRelease, WatchedFolderScanStatus,
-};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use cover_art::{CoverChoice, CoverImageSource};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use edits::{
-    apply_track_edits, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit, ImportFailure,
-    TrackEditState,
-};
+desktop_only! {
+    pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
+    pub use candidate_search::{CandidateSearch, SourceSearch};
+    pub use candidates::{
+        CandidateIdentifyRuntime, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
+        ImportCandidateSnapshot, ImportInFlight, ImportedRelease, WatchedFolderScanStatus,
+    };
+    pub use cover_art::{CoverChoice, CoverImageSource};
+    pub use edits::{
+        apply_track_edits, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit,
+        ImportFailure, TrackEditState,
+    };
+}
 pub(crate) use error::artist_source_ids_are_compatible;
 pub use error::ArtistIdentityConflict;
 pub use error::ImportError;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use folder_scanner::{
-    FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
-    InvalidReason, ReleaseFileScope, ResolvedFolderReleaseBoundary,
-};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use handle::{
-    parsed_album_to_user_edit, DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
-    ImportServiceHandle, ScanEvent,
-};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use list::{
-    ActiveFolderScan, FirstUnidentifiedRowRef, FolderScanActivity, ImportCandidateDetail,
-    ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem, ImportListOrder,
-    ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListSubscription,
-    ImportListSubscriptionError, ImportListView, ImportListWindow, ImportQueueSummary, ReadyRowRef,
-};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use mapping::{
-    mapping_table, mapping_tracks, mapping_with_track, mapping_without_track, MappingBecomes,
-    MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage, MappingRole,
-    MappingSource, MappingTable, MappingTrackSection, MappingTrackSectionContent, PickedTracklist,
-    SheetBound, SheetGroup, TrackMapping, TracklistSource,
-};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use preparations::CandidatePreparations;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use search::{SearchQuery, SourceFailure, SourceLookup};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use service::ImportService;
+desktop_only! {
+    pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
+    pub use folder_scanner::{
+        FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
+        InvalidReason, ReleaseFileScope, ResolvedFolderReleaseBoundary,
+    };
+    pub use handle::{
+        parsed_album_to_user_edit, DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
+        ImportServiceHandle, ScanEvent,
+    };
+    pub use list::{
+        ActiveFolderScan, FirstUnidentifiedRowRef, FolderScanActivity, ImportCandidateDetail,
+        ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem,
+        ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
+        ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
+        ImportQueueSummary, ReadyRowRef,
+    };
+    pub use mapping::{
+        mapping_table, mapping_tracks, mapping_with_track, mapping_without_track, MappingBecomes,
+        MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage, MappingRole,
+        MappingSource, MappingTable, MappingTrackSection, MappingTrackSectionContent,
+        PickedTracklist, SheetBound, SheetGroup, TrackMapping, TracklistSource,
+    };
+    pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
+    pub use preparations::CandidatePreparations;
+    pub use search::{SearchQuery, SourceFailure, SourceLookup};
+    pub use service::ImportService;
+}
 pub use session::{CandidateSession, MetadataPresentation, SearchForm, SearchTab};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use sweep::QueueSweepHandle;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use track_slots::{
-    lengths_disagree, SlotFile, SlotReconciliation, SlotSpan, SlotTable, SourceTrack, TrackSlot,
-};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use triage::{
-    CandidateAnswer, IdentificationStatus, MatchEvidence, MatchedPressing, MatchedRelease,
-    MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
-    TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
-};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use types::CandidateMappingPreparation;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use types::ImportCommand;
+desktop_only! {
+    pub use sweep::QueueSweepHandle;
+    pub use track_slots::{
+        lengths_disagree, SlotFile, SlotReconciliation, SlotSpan, SlotTable, SourceTrack, TrackSlot,
+    };
+    pub use triage::{
+        CandidateAnswer, IdentificationStatus, MatchEvidence, MatchedPressing, MatchedRelease,
+        MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
+        TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
+    };
+    pub(crate) use types::CandidateMappingPreparation;
+    pub use types::ImportCommand;
+}
 pub use types::{
     ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, EditValidationError,
     ExistingArtist, MetadataProvenance, MetadataSource, NewArtistSeed, PressingEdit,
     RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
     ReleaseIdentity, ReleaseUserEdit, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit,
 };
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use types::{
-    CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, ImportPhase, ImportProgress,
-    ImportStep, MetadataRef, PayloadSource, PrepareStep, PreparedArtistImage, ReleaseReseed,
-    SourcePayload, StorageMode, TrackFile,
-};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use watched_folder::WatchedFolder;
+desktop_only! {
+    pub use types::{
+        CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, ImportPhase,
+        ImportProgress, ImportStep, MetadataRef, PayloadSource, PrepareStep, PreparedArtistImage,
+        ReleaseReseed, SourcePayload, StorageMode, TrackFile,
+    };
+    pub use watched_folder::WatchedFolder;
+}

@@ -75,6 +75,7 @@ capability_types=(
   CloudKitDriver
   ConfigHandle
   CoverUrlProvider
+  CovenHandle
   Database
   Diagnostics
   DiagnosticsTransport

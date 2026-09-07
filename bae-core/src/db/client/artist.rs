@@ -511,8 +511,8 @@ fn find_work_detail_on(
                     source: metadata_source_column(row, "link_source")?,
                     created_at: rfc3339_column(row, "created_at")?,
                 },
-                track: row_to_joined_track(row)?,
-                album: row_to_joined_album(row)?,
+                track: row_to_track_with_prefix(row, "track_")?,
+                album: row_to_album_with_prefix(row, "album_")?,
             })
         },
     )?;
@@ -660,7 +660,7 @@ fn find_composer_detail_on(
                     source_credit: row.get("source_credit")?,
                     created_at: rfc3339_column(row, "created_at")?,
                 },
-                album: row_to_joined_album(row)?,
+                album: row_to_album_with_prefix(row, "album_")?,
             })
         })?;
     let track_roles_query = format!(

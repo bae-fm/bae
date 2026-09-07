@@ -25,45 +25,28 @@
 pub mod failure;
 pub use failure::LookupFailure;
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod analyzer;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod artwork;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod barcode;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod cancellation;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod candidate_text;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod disc_id;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod fast_pass;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod origin;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod pool;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod release;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod service;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod text;
+desktop_only! {
+    mod analyzer;
+    pub mod artwork;
+    pub mod barcode;
+    mod cancellation;
+    pub(crate) mod candidate_text;
+    pub mod disc_id;
+    mod fast_pass;
+    pub mod origin;
+    mod pool;
+    mod release;
+    pub mod service;
+    pub mod text;
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use artwork::ArtworkScan;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use barcode::{is_placeholder_code, BarcodeSignal};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use disc_id::DiscIdSignal;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use origin::{SignalOrigin, SourcedValue};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use text::TextSignal;
+    pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
+    pub use artwork::ArtworkScan;
+    pub use barcode::{is_placeholder_code, BarcodeSignal};
+    pub use disc_id::DiscIdSignal;
+    pub use origin::{SignalOrigin, SourcedValue};
+    pub use service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
+    pub use text::TextSignal;
+}
 
 /// The identifying signals extracted from one candidate's files. Produced by
 /// the extraction pass as a stream of snapshots (signals settle as scanning

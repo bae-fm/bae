@@ -21,11 +21,13 @@ use crate::import::candidates::StoredEntryKey;
 use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
 use std::path::{Path, PathBuf};
 
-pub(super) use read::{
+// `use super::*` above also brings the client's own `read` and `write` modules
+// into scope, so these name this module's pair explicitly.
+pub(super) use self::read::{
     load_candidate_file_tag_snapshot, load_candidate_items, load_item_by_key,
     load_resolved_boundaries, stored_entries,
 };
-pub(super) use write::{delete_entry, insert_candidate_files, StoredEntry};
+pub(super) use self::write::{delete_entry, insert_candidate_files, StoredEntry};
 
 /// The entry at `entry_key`, on whichever connection the caller holds — the
 /// read connection for a query, the write transaction for a decision that has

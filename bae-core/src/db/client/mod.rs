@@ -41,33 +41,26 @@ mod blobs;
 mod candidate_state_rows;
 mod coven_capabilities;
 mod identity;
-// Watched folders, folder scans and the import candidate queue. Reads
+// Watched folders, folder scans and the import candidate queue. Read
 // `import::watched_folder` and `import::FolderScanStatus`, both desktop-only,
 // and every caller is a gated import module — the mobile builds are sync and
 // playback clients with no import pipeline.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod folder_scans;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use folder_scans::ScanItemWrite;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod import_combinations;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod import_content_hash;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod import_list;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod import_state;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use import_list::{
-    CandidateListSource, CandidateStateListRow, ImportQueueRows, ScanCandidateKind,
-    ScanCandidateListRow,
-};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use import_state::{
-    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
-};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod payloads;
+desktop_only! {
+    mod folder_scans;
+    pub use folder_scans::ScanItemWrite;
+    mod import_combinations;
+    mod import_content_hash;
+    mod import_list;
+    mod import_state;
+    pub use import_list::{
+        CandidateListSource, CandidateStateListRow, ImportQueueRows, ScanCandidateKind,
+        ScanCandidateListRow,
+    };
+    pub(crate) use import_state::{
+        CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
+    };
+    mod payloads;
+}
 mod playback;
 pub(crate) use playback::QueueCatalogProjection;
 mod release;

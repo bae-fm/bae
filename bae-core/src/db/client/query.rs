@@ -399,7 +399,7 @@ pub(super) fn row_to_work_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbWo
 
 pub(super) fn row_to_composer_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbComposerSummary> {
     Ok(DbComposerSummary {
-        artist: row_to_joined_artist(row)?,
+        artist: row_to_artist_with_prefix(row, "artist_")?,
         work_count: row.get("work_count")?,
         linked_release_count: row.get("linked_release_count")?,
         unlinked_credit_count: row.get("unlinked_credit_count")?,
@@ -408,7 +408,7 @@ pub(super) fn row_to_composer_summary(row: &Row<'_>) -> coven::rusqlite::Result<
 
 pub(super) fn row_to_artist_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbArtistSummary> {
     Ok(DbArtistSummary {
-        artist: row_to_joined_artist(row)?,
+        artist: row_to_artist_with_prefix(row, "artist_")?,
         album_count: row.get("album_count")?,
     })
 }
@@ -430,9 +430,9 @@ pub(super) fn row_to_track_role_summary(
             source_credit: row.get("source_credit")?,
             created_at: rfc3339_column(row, "created_at")?,
         },
-        track: row_to_joined_track(row)?,
-        album: row_to_joined_album(row)?,
-        artist: row_to_joined_artist(row)?,
+        track: row_to_track_with_prefix(row, "track_")?,
+        album: row_to_album_with_prefix(row, "album_")?,
+        artist: row_to_artist_with_prefix(row, "artist_")?,
     })
 }
 

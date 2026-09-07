@@ -1,5 +1,18 @@
 #![deny(unreachable_pub, dead_code)]
 
+/// Gates every item in the block to the desktop targets, so the predicate is
+/// written once for a run of modules or re-exports instead of above each one.
+/// Mobile (iOS, Android) is a sync and playback client: no import pipeline, no
+/// signal extraction, no metadata providers.
+macro_rules! desktop_only {
+    ($($item:item)*) => {
+        $(
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            $item
+        )*
+    };
+}
+
 pub mod airplay;
 pub mod album_detail;
 pub mod app;

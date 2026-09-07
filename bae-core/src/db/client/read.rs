@@ -118,10 +118,10 @@ pub(super) fn get_tracks_with_artists_for_release_on(
          ORDER BY track.side, track.track_number, track.id, ta.position",
         params![release_id],
         |row| {
-            let track = row_to_joined_track(row)?;
+            let track = row_to_track_with_prefix(row, "track_")?;
             let artist_id: Option<String> = row.get("artist_id")?;
             let artist = match artist_id {
-                Some(_) => Some(row_to_joined_artist(row)?),
+                Some(_) => Some(row_to_artist_with_prefix(row, "artist_")?),
                 None => None,
             };
             Ok((track, artist))
@@ -284,39 +284,59 @@ pub(super) fn metadata_source_column(
         .map_err(|e| column_conversion_error(row, column, e))
 }
 
-pub(super) fn row_to_joined_artist(row: &Row) -> coven::rusqlite::Result<DbArtist> {
+// ─── Entity row readers ──────────────────────────────────────────────────────
+//
+// A query that joins several entity tables aliases each table's columns behind
+// a per-entity prefix (`artist_name`, `album_title`); a query that selects one
+// table leaves them bare. Same read either way, so each entity has one reader
+// taking that prefix, plus a bare-column wrapper — which is also the `fn(&Row)`
+// value the single-table queries hand to `query` / `query_row`.
+
+pub(super) fn row_to_artist_with_prefix(
+    row: &Row,
+    prefix: &str,
+) -> coven::rusqlite::Result<DbArtist> {
+    let column = |name: &str| format!("{prefix}{name}");
     Ok(DbArtist {
-        id: row.get("artist_id")?,
-        name: row.get("artist_name")?,
-        sort_name: row.get("artist_sort_name")?,
-        discogs_artist_id: row.get("artist_discogs_artist_id")?,
-        musicbrainz_artist_id: row.get("artist_musicbrainz_artist_id")?,
-        created_at: rfc3339_column(row, "artist_created_at")?,
+        id: row.get(column("id").as_str())?,
+        name: row.get(column("name").as_str())?,
+        sort_name: row.get(column("sort_name").as_str())?,
+        discogs_artist_id: row.get(column("discogs_artist_id").as_str())?,
+        musicbrainz_artist_id: row.get(column("musicbrainz_artist_id").as_str())?,
+        created_at: rfc3339_column(row, &column("created_at"))?,
     })
 }
 
-pub(super) fn row_to_joined_album(row: &Row) -> coven::rusqlite::Result<DbAlbum> {
+pub(super) fn row_to_album_with_prefix(
+    row: &Row,
+    prefix: &str,
+) -> coven::rusqlite::Result<DbAlbum> {
+    let column = |name: &str| format!("{prefix}{name}");
     Ok(DbAlbum {
-        id: row.get("album_id")?,
-        title: row.get("album_title")?,
-        artist_id: row.get("album_artist_id")?,
-        year: row.get("album_year")?,
-        primary_release_id: row.get("album_primary_release_id")?,
-        is_compilation: row.get("album_is_compilation")?,
-        created_at: rfc3339_column(row, "album_created_at")?,
+        id: row.get(column("id").as_str())?,
+        title: row.get(column("title").as_str())?,
+        artist_id: row.get(column("artist_id").as_str())?,
+        year: row.get(column("year").as_str())?,
+        primary_release_id: row.get(column("primary_release_id").as_str())?,
+        is_compilation: row.get(column("is_compilation").as_str())?,
+        created_at: rfc3339_column(row, &column("created_at"))?,
     })
 }
 
-pub(super) fn row_to_joined_track(row: &Row) -> coven::rusqlite::Result<DbTrack> {
+pub(super) fn row_to_track_with_prefix(
+    row: &Row,
+    prefix: &str,
+) -> coven::rusqlite::Result<DbTrack> {
+    let column = |name: &str| format!("{prefix}{name}");
     Ok(DbTrack {
-        id: row.get("track_id")?,
-        release_id: row.get("track_release_id")?,
-        title: row.get("track_title")?,
-        side: row.get("track_side")?,
-        track_number: row.get("track_track_number")?,
-        duration_ms: row.get("track_duration_ms")?,
-        discogs_position: row.get("track_discogs_position")?,
-        created_at: rfc3339_column(row, "track_created_at")?,
+        id: row.get(column("id").as_str())?,
+        release_id: row.get(column("release_id").as_str())?,
+        title: row.get(column("title").as_str())?,
+        side: row.get(column("side").as_str())?,
+        track_number: row.get(column("track_number").as_str())?,
+        duration_ms: row.get(column("duration_ms").as_str())?,
+        discogs_position: row.get(column("discogs_position").as_str())?,
+        created_at: rfc3339_column(row, &column("created_at"))?,
     })
 }
 
@@ -436,39 +456,15 @@ pub(super) fn row_to_file(row: &Row) -> coven::rusqlite::Result<DbFile> {
 }
 
 pub(super) fn row_to_artist(row: &Row) -> coven::rusqlite::Result<DbArtist> {
-    Ok(DbArtist {
-        id: row.get("id")?,
-        name: row.get("name")?,
-        sort_name: row.get("sort_name")?,
-        discogs_artist_id: row.get("discogs_artist_id")?,
-        musicbrainz_artist_id: row.get("musicbrainz_artist_id")?,
-        created_at: rfc3339_column(row, "created_at")?,
-    })
+    row_to_artist_with_prefix(row, "")
 }
 
 pub(super) fn row_to_album(row: &Row) -> coven::rusqlite::Result<DbAlbum> {
-    Ok(DbAlbum {
-        id: row.get("id")?,
-        title: row.get("title")?,
-        artist_id: row.get("artist_id")?,
-        year: row.get("year")?,
-        primary_release_id: row.get("primary_release_id")?,
-        is_compilation: row.get("is_compilation")?,
-        created_at: rfc3339_column(row, "created_at")?,
-    })
+    row_to_album_with_prefix(row, "")
 }
 
 pub(super) fn row_to_track(row: &Row) -> coven::rusqlite::Result<DbTrack> {
-    Ok(DbTrack {
-        id: row.get("id")?,
-        release_id: row.get("release_id")?,
-        title: row.get("title")?,
-        side: row.get("side")?,
-        track_number: row.get("track_number")?,
-        duration_ms: row.get("duration_ms")?,
-        discogs_position: row.get("discogs_position")?,
-        created_at: rfc3339_column(row, "created_at")?,
-    })
+    row_to_track_with_prefix(row, "")
 }
 
 pub(super) fn row_to_audio_format(row: &Row) -> coven::rusqlite::Result<DbAudioFormat> {

@@ -38,8 +38,7 @@ retired (outbound-blobs 0 bytes after drain); emulator joined with the
 membership rollup — "Same-provider device join" 4610 ms / 27 requests,
 approval to library on screen in 14 s — and streamed "War Pigs" from the
 cloud 4 s after tapping Play. Idle sync cycle on the settled store:
-399 ms / 4 requests. Full number set in
-plans/session-state-2026-08-19.md's scorecard.
+399 ms / 4 requests.
 
 ### Remaining evidence and work
 

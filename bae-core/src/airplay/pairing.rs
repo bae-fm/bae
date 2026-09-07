@@ -155,7 +155,6 @@ impl From<SrpError> for PairingError {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

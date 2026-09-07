@@ -113,30 +113,6 @@ where
         + Send
         + 'static,
 {
-    bootstrap_on_thread(
-        library_id,
-        position_update_interval_ms,
-        restore_playback,
-        diagnostics,
-        cloudkit_ops,
-        compose,
-    )
-}
-
-fn bootstrap_on_thread<T, F>(
-    library_id: String,
-    position_update_interval_ms: u32,
-    restore_playback: bool,
-    diagnostics: Diagnostics,
-    cloudkit_ops: Option<crate::CloudKitOpsRef>,
-    compose: F,
-) -> Result<T, BootstrapError>
-where
-    T: Send + 'static,
-    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> Result<T, BootstrapError>
-        + Send
-        + 'static,
-{
     // Building the sync manager and `block_on`-ing the async setup uses a deep
     // stack, especially in debug builds. Callers may invoke us from small-stack
     // threads (Swift cooperative Tasks, Android coroutine workers; ~0.5 MB), which
