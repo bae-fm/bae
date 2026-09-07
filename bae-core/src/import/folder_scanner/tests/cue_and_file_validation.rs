@@ -314,10 +314,10 @@ fn audio_format_fixture(name: &str) -> Vec<u8> {
 }
 
 /// A FLAC with valid `fLaC` magic + well-formed STREAMINFO shape but no audio
-/// frames and `total_samples = 0` (streaming-length unknown). It passes the
-/// header-only `is_valid_flac` check yet has no usable duration, so the FFmpeg
-/// probe can't identify a playable stream — the shape of a download truncated
-/// right after the STREAMINFO block.
+/// frames and `total_samples = 0` (streaming-length unknown). Its header looks
+/// intact yet it has no usable duration, so the FFmpeg probe can't identify a
+/// playable stream — the shape of a download truncated right after the
+/// STREAMINFO block.
 fn header_only_flac_unprobeable() -> Vec<u8> {
     let mut buf = Vec::new();
     buf.extend_from_slice(b"fLaC");

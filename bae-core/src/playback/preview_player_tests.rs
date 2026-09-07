@@ -310,7 +310,7 @@ async fn failed_preview_seek_surfaces_idle() {
     // away mid-preview. Seeking must tear the preview down and notify the UI
     // rather than leaving a torn-down zombie. (The seek reuses the retained
     // output, so the device passed here is never opened from.)
-    player.audio_output = Some(Box::new(FailingAudioOutput));
+    player.audio_output = Some(Box::new(FailingAudioOutput::new()));
     player.seek(Duration::from_millis(500), &device).await;
 
     assert!(

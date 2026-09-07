@@ -40,7 +40,7 @@ impl AudioState {
 }
 
 #[derive(Clone)]
-pub(crate) struct AudioOutputControls {
+pub struct AudioOutputControls {
     state: Arc<AtomicU8>,
     volume: Arc<AtomicF32>,
 }
@@ -387,10 +387,25 @@ pub trait AudioOutput: Send + 'static {
     /// buffer so each non-gapless transition still yields one buffer.
     fn on_source_replaced(&mut self) {}
 
-    fn set_state(&self, state: AudioState);
-    fn get_state(&self) -> AudioState;
-    fn set_volume(&self, volume: f32);
-    fn get_volume(&self) -> f32;
+    /// The state/volume cell this output's callback reads. Every control
+    /// method below drives it, so an output that keeps one gets them all.
+    fn controls(&self) -> &AudioOutputControls;
+
+    fn set_state(&self, state: AudioState) {
+        self.controls().set_state(state);
+    }
+
+    fn get_state(&self) -> AudioState {
+        self.controls().get_state()
+    }
+
+    fn set_volume(&self, volume: f32) {
+        self.controls().set_volume(volume);
+    }
+
+    fn get_volume(&self) -> f32 {
+        self.controls().get_volume()
+    }
 }
 
 /// What the playback service opens its audio outputs from. The service plays
@@ -466,12 +481,13 @@ impl CaptureOutputCore {
             .map_err(|_| AudioError::StreamBuildError("capture receiver dropped".to_string()))
     }
 
-    fn set_state(&self, new_state: AudioState) {
-        self.controls.set_state(new_state);
-    }
-
-    fn get_state(&self) -> AudioState {
-        self.controls.get_state()
+    /// The one capture thread keeps running across a same-format swap; rotate
+    /// to a fresh buffer so this transition's samples are captured separately,
+    /// as the fixtures' one-buffer-per-transition await expects.
+    fn on_source_replaced(&self) {
+        if let Err(e) = self.rotate_capture_buffer() {
+            tracing::warn!("capture buffer rotation failed on source replace: {e}");
+        }
     }
 }
 
@@ -590,36 +606,6 @@ macro_rules! impl_capture_audio_device {
 }
 
 #[cfg(feature = "test-utils")]
-macro_rules! capture_output_control_methods {
-    () => {
-        fn on_source_replaced(&mut self) {
-            // The one capture thread keeps running across a same-format swap;
-            // rotate to a fresh buffer so this transition's samples are captured
-            // separately, as the fixtures' one-buffer-per-transition await expects.
-            if let Err(e) = self.core.rotate_capture_buffer() {
-                tracing::warn!("capture buffer rotation failed on source replace: {e}");
-            }
-        }
-
-        fn set_state(&self, new_state: AudioState) {
-            self.core.set_state(new_state);
-        }
-
-        fn get_state(&self) -> AudioState {
-            self.core.get_state()
-        }
-
-        fn set_volume(&self, _volume: f32) {
-            // Captured samples are raw, so volume is ignored.
-        }
-
-        fn get_volume(&self) -> f32 {
-            1.0
-        }
-    };
-}
-
-#[cfg(feature = "test-utils")]
 impl_capture_output_constructor!(CaptureAudioOutput);
 
 #[cfg(feature = "test-utils")]
@@ -657,7 +643,15 @@ impl AudioOutput for CaptureAudioOutput {
         }))
     }
 
-    capture_output_control_methods!();
+    fn on_source_replaced(&mut self) {
+        self.core.on_source_replaced();
+    }
+
+    /// Volume is remembered here but never applied — the capture thread drains
+    /// without gain.
+    fn controls(&self) -> &AudioOutputControls {
+        &self.core.controls
+    }
 }
 
 /// A test audio output with no backing device: `create_stream` always fails.
@@ -666,7 +660,7 @@ impl AudioOutput for CaptureAudioOutput {
 /// playback service for its queue/command behavior and never actually play, so
 /// they need no hardware.
 #[cfg(any(test, feature = "test-utils"))]
-pub(crate) struct FailingAudioOutput;
+pub(crate) struct FailingAudioOutput(AudioOutputControls);
 
 /// A device with no hardware behind it: every output it opens is a
 /// [`FailingAudioOutput`]. What the actor-level tests hand the service — they
@@ -678,7 +672,14 @@ pub(crate) struct FailingAudioDevice;
 #[cfg(any(test, feature = "test-utils"))]
 impl AudioOutputDevice for FailingAudioDevice {
     fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError> {
-        Ok(Box::new(FailingAudioOutput))
+        Ok(Box::new(FailingAudioOutput::new()))
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl FailingAudioOutput {
+    pub(crate) fn new() -> Self {
+        Self(AudioOutputControls::new(1.0))
     }
 }
 
@@ -697,16 +698,8 @@ impl AudioOutput for FailingAudioOutput {
         ))
     }
 
-    fn set_state(&self, _state: AudioState) {}
-
-    fn get_state(&self) -> AudioState {
-        AudioState::Stopped
-    }
-
-    fn set_volume(&self, _volume: f32) {}
-
-    fn get_volume(&self) -> f32 {
-        1.0
+    fn controls(&self) -> &AudioOutputControls {
+        &self.0
     }
 }
 
@@ -737,7 +730,15 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
         }))
     }
 
-    capture_output_control_methods!();
+    fn on_source_replaced(&mut self) {
+        self.core.on_source_replaced();
+    }
+
+    /// Volume is remembered here but never applied — the capture thread drains
+    /// without gain.
+    fn controls(&self) -> &AudioOutputControls {
+        &self.core.controls
+    }
 }
 
 /// Polls `buffer` every 50 ms until it holds at least `at_least` samples or
@@ -881,19 +882,7 @@ impl AudioOutput for RealtimeProbeOutput {
         }))
     }
 
-    fn set_state(&self, new_state: AudioState) {
-        self.controls.set_state(new_state);
-    }
-
-    fn get_state(&self) -> AudioState {
-        self.controls.get_state()
-    }
-
-    fn set_volume(&self, volume: f32) {
-        self.controls.set_volume(volume);
-    }
-
-    fn get_volume(&self) -> f32 {
-        self.controls.get_volume()
+    fn controls(&self) -> &AudioOutputControls {
+        &self.controls
     }
 }

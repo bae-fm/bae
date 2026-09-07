@@ -360,8 +360,9 @@ impl RendererDiscovery {
     }
 
     /// Whether a browse is live right now. For tests that assert browsing is (or
-    /// is not) reaching the network.
-    #[cfg(any(test, feature = "test-utils"))]
+    /// is not) reaching the network — the only observable for the built-in path,
+    /// whose device list stays empty either way on a test network.
+    #[cfg(feature = "test-utils")]
     pub fn is_browsing(&self) -> bool {
         match self {
             Self::Builtin(builtin) => {

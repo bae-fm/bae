@@ -200,16 +200,6 @@ mod tests {
         }
     }
 
-    fn status(release_id: &str) -> LibraryStatus {
-        LibraryStatus {
-            release_id: release_id.to_string(),
-            release_in_library: false,
-            album_in_library: false,
-            album_title: None,
-            album_id: None,
-        }
-    }
-
     fn answer(
         source: MetadataSource,
         release_id: &str,
@@ -217,7 +207,7 @@ mod tests {
     ) -> Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure> {
         Ok(vec![(
             result(source, release_id, group_id),
-            status(release_id),
+            LibraryStatus::absent(release_id),
         )])
     }
 

@@ -149,18 +149,11 @@ mod tests {
         MetadataResult::for_test(MetadataSource::MusicBrainz, release_id, group_id)
     }
 
-    fn mk_status(release_id: &str) -> LibraryStatus {
-        LibraryStatus {
-            release_id: release_id.to_string(),
-            release_in_library: false,
-            album_in_library: false,
-            album_title: None,
-            album_id: None,
-        }
-    }
-
     fn pair(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
-        (mk_result(release_id, group_id), mk_status(release_id))
+        (
+            mk_result(release_id, group_id),
+            LibraryStatus::absent(release_id),
+        )
     }
 
     fn pair_src(
@@ -170,7 +163,7 @@ mod tests {
     ) -> (MetadataResult, LibraryStatus) {
         let mut result = mk_result(release_id, group_id);
         result.source = source;
-        (result, mk_status(release_id))
+        (result, LibraryStatus::absent(release_id))
     }
 
     fn ids(matches: &[MetadataResult]) -> Vec<&str> {

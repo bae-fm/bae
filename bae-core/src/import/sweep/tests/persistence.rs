@@ -307,13 +307,8 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
     fixture.scan(1).await;
     let key = dir.to_string_lossy().into_owned();
 
-    let not_in_library = |result: &MetadataResult| crate::db::LibraryStatus {
-        release_id: result.release_id.clone(),
-        release_in_library: false,
-        album_in_library: false,
-        album_title: None,
-        album_id: None,
-    };
+    let not_in_library =
+        |result: &MetadataResult| crate::db::LibraryStatus::absent(&result.release_id);
     let found =
         multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1").resume_state(&not_in_library);
     let changed = |state: IdentifyState| ImportEvent::IdentifyStateChanged {

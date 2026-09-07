@@ -25,8 +25,7 @@ fn fake_mp3() -> Vec<u8> {
 }
 
 /// Minimal M4A: an ISO base media `ftyp` box with `M4A ` as the major
-/// brand. `is_valid_audio` has no m4a-specific validator (dispatches to
-/// the unknown-extension fallback `Ok(true)`), so the bytes only need
+/// brand. The scanner does not validate audio bytes, so these only need
 /// to be non-empty and have a plausible shape for anything downstream
 /// that might sniff them.
 fn fake_m4a() -> Vec<u8> {
@@ -63,8 +62,7 @@ fn malformed_flac_streaminfo() -> Vec<u8> {
     buf
 }
 
-/// FLAC with wrong magic bytes. `is_valid_flac` rejects on the magic
-/// check before even looking at STREAMINFO.
+/// FLAC with wrong magic bytes — nothing can probe it as audio.
 fn broken_flac() -> Vec<u8> {
     // Valid size, but the leading four bytes are not `fLaC`.
     let mut buf = b"BROK".to_vec();
@@ -144,8 +142,7 @@ enum FileKind {
     ZeroByteFlac,
     /// Valid `fLaC` magic with malformed STREAMINFO length.
     MalformedFlacStreaminfo,
-    /// Wrong magic bytes where a FLAC is expected. `is_valid_flac` must
-    /// reject it.
+    /// Wrong magic bytes where a FLAC is expected. The probe must reject it.
     BrokenFlac,
     // Image formats.
     Jpeg,
@@ -262,24 +259,9 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
         path,
     );
     match kind {
-        FileKind::Flac => {
-            assert!(
-                file_validation::is_valid_flac(path).unwrap_or(false),
-                "fixture builder bug: FLAC at {:?} fails validator",
-                path,
-            );
-        }
-        FileKind::Mp3 => {
-            assert!(
-                file_validation::is_valid_mp3(path).unwrap_or(false),
-                "fixture builder bug: MP3 at {:?} fails validator",
-                path,
-            );
-        }
         FileKind::M4a => {
-            // is_valid_audio dispatches by extension and falls through to
-            // Ok(true) for m4a, so "validation" is really just "file
-            // exists, non-empty, extension is .m4a". Pin those.
+            // The scanner does not validate audio bytes, so "validation" here
+            // is "file exists, non-empty, extension is .m4a". Pin those.
             let size = std::fs::metadata(path).unwrap().len();
             assert!(
                 size > 0,
@@ -301,16 +283,6 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
                 size, 0,
                 "fixture builder bug: {:?} should be zero-byte, is {}",
                 path, size,
-            );
-        }
-        FileKind::MalformedFlacStreaminfo | FileKind::BrokenFlac => {
-            // is_valid_flac must reject both — the test matrix depends on
-            // these kinds being seen as invalid audio.
-            assert!(
-                !file_validation::is_valid_flac(path).unwrap_or(true),
-                "fixture builder bug: {:?} at {:?} unexpectedly passes is_valid_flac",
-                kind,
-                path,
             );
         }
         FileKind::Jpeg | FileKind::Png => {
@@ -412,7 +384,11 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
                 ext,
             );
         }
-        FileKind::Avi
+        FileKind::Flac
+        | FileKind::Mp3
+        | FileKind::MalformedFlacStreaminfo
+        | FileKind::BrokenFlac
+        | FileKind::Avi
         | FileKind::Log
         | FileKind::M3u
         | FileKind::Md5

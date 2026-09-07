@@ -67,7 +67,7 @@ fn activity_ranks_the_real_upload_journey() {
 }
 
 #[test]
-#[should_panic(expected = "provider byte progress overflow")]
+#[should_panic(expected = "outbox progress overflow: upload_bytes_done")]
 fn aggregate_progress_cannot_wrap_its_byte_counters() {
     let mut total = UploadProgress {
         upload_bytes_done: u64::MAX,

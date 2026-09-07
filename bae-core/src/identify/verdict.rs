@@ -232,16 +232,6 @@ mod tests {
         MetadataResult::for_test(MetadataSource::MusicBrainz, release_id, Some("group-1"))
     }
 
-    fn mk_status(release_id: &str) -> LibraryStatus {
-        LibraryStatus {
-            release_id: release_id.to_string(),
-            release_in_library: false,
-            album_in_library: false,
-            album_title: None,
-            album_id: None,
-        }
-    }
-
     /// A bare context, standing in for whatever the reducer would have
     /// accumulated by this point — its contents don't matter to these tests,
     /// only that `Idle`/`Triangulating` carry one and still aren't terminal.
@@ -276,7 +266,7 @@ mod tests {
     fn found_state() -> IdentifyState {
         IdentifyState::Found {
             matches: vec![mk_result("rel-1")],
-            library_statuses: vec![mk_status("rel-1")],
+            library_statuses: vec![LibraryStatus::absent("rel-1")],
             track_count: 11,
             provenance: vec![ResultProvenance {
                 by_disc_id: true,
@@ -326,7 +316,7 @@ mod tests {
             matched_barcode: Some("5099969394522".to_string()),
         };
         let IdentifyState::Found { context, .. } =
-            verdict.resume_state(&|result| mk_status(&result.release_id))
+            verdict.resume_state(&|result| LibraryStatus::absent(&result.release_id))
         else {
             panic!("a found verdict resumes as Found");
         };
@@ -365,12 +355,12 @@ mod tests {
         let context = SignalsContext {
             disc: DiscIdEvidence {
                 signal: crate::signals::DiscIdSignal::Absent { track_count: 9 },
-                results: vec![(mk_result("rel-a"), mk_status("rel-a"))],
+                results: vec![(mk_result("rel-a"), LibraryStatus::absent("rel-a"))],
                 ..Default::default()
             },
             barcode: BarcodeEvidence {
                 had_source: true,
-                results: vec![(mk_result("rel-b"), mk_status("rel-b"))],
+                results: vec![(mk_result("rel-b"), LibraryStatus::absent("rel-b"))],
                 matched: Some("012345".to_string()),
                 ..Default::default()
             },
@@ -416,8 +406,8 @@ mod tests {
             barcode: BarcodeEvidence {
                 had_source: true,
                 results: vec![
-                    (mk_result("rel-1"), mk_status("rel-1")),
-                    (mk_result("rel-2"), mk_status("rel-2")),
+                    (mk_result("rel-1"), LibraryStatus::absent("rel-1")),
+                    (mk_result("rel-2"), LibraryStatus::absent("rel-2")),
                 ],
                 ..Default::default()
             },
@@ -490,7 +480,7 @@ mod tests {
     fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
         let mut context = mk_context(7);
         context.barcode.had_source = true;
-        context.barcode.results = vec![(mk_result("rel-mb"), mk_status("rel-mb"))];
+        context.barcode.results = vec![(mk_result("rel-mb"), LibraryStatus::absent("rel-mb"))];
         context.barcode.failures = vec![SourceFailure {
             source: MetadataSource::Discogs,
             failure: crate::signals::LookupFailure::Network,
@@ -525,8 +515,8 @@ mod tests {
         let mut context = mk_context(7);
         context.barcode.had_source = true;
         context.barcode.results = vec![
-            (mk_result("rel-mb"), mk_status("rel-mb")),
-            (mk_result("rel-dg"), mk_status("rel-dg")),
+            (mk_result("rel-mb"), LibraryStatus::absent("rel-mb")),
+            (mk_result("rel-dg"), LibraryStatus::absent("rel-dg")),
         ];
         let state = crate::identify::state::re_derive_for_tests(context);
         assert!(matches!(state, IdentifyState::Found { .. }));

@@ -1,6 +1,6 @@
 use super::audio_output::{
     AudioDrain, AudioError, AudioEventSender, AudioLockMissLog, AudioOutput, AudioOutputControls,
-    AudioState, AudioStream,
+    AudioStream,
 };
 use crate::playback::source::PlaybackSource;
 use cpal::traits::{DeviceTrait, HostTrait};
@@ -112,20 +112,8 @@ impl AudioOutput for CpalAudioOutput {
         Ok(Box::new(stream))
     }
 
-    fn set_state(&self, new_state: AudioState) {
-        self.controls.set_state(new_state);
-    }
-
-    fn get_state(&self) -> AudioState {
-        self.controls.get_state()
-    }
-
-    fn set_volume(&self, volume: f32) {
-        self.controls.set_volume(volume);
-    }
-
-    fn get_volume(&self) -> f32 {
-        self.controls.get_volume()
+    fn controls(&self) -> &AudioOutputControls {
+        &self.controls
     }
 }
 

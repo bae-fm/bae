@@ -91,18 +91,20 @@ impl OutputVolume {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::playback::audio_output::{AudioError, AudioEventSender, AudioState, AudioStream};
+    use crate::playback::audio_output::{
+        AudioError, AudioEventSender, AudioOutputControls, AudioState, AudioStream,
+    };
     use crate::playback::source::PlaybackSource;
     use std::sync::{Arc, Mutex};
 
     /// An output that only remembers its level — the whole of what `OutputVolume`
-    /// touches. Everything else on the trait is unreachable from here, and says
-    /// so rather than answering with a plausible default.
-    struct VolumeOnlyOutput(Mutex<f32>);
+    /// touches. The play state is unreachable from here, and says so rather than
+    /// answering with a plausible default.
+    struct VolumeOnlyOutput(AudioOutputControls);
 
     impl VolumeOnlyOutput {
         fn new() -> Self {
-            Self(Mutex::new(1.0))
+            Self(AudioOutputControls::new(1.0))
         }
     }
 
@@ -126,12 +128,8 @@ mod tests {
             unreachable!("volume never reads the play state")
         }
 
-        fn set_volume(&self, volume: f32) {
-            *self.0.lock().unwrap() = volume;
-        }
-
-        fn get_volume(&self) -> f32 {
-            *self.0.lock().unwrap()
+        fn controls(&self) -> &AudioOutputControls {
+            &self.0
         }
     }
 

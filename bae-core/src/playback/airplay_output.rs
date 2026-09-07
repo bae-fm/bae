@@ -154,24 +154,12 @@ impl AudioOutput for AirPlayOutput {
         Ok(Box::new(AirPlayAudioStream { _session: session }))
     }
 
-    fn set_state(&self, state: AudioState) {
-        self.controls.set_state(state);
-    }
-
-    fn get_state(&self) -> AudioState {
-        self.controls.get_state()
-    }
-
-    fn set_volume(&self, volume: f32) {
-        // Local gain IS the AirPlay volume path: the drain multiplies samples by
-        // this before they're packetized, so the user hears the change. The
-        // receiver stays at its own hardware level (the session's one initial
-        // SET_PARAMETER seeds it at full); there is no per-change device round-trip.
-        self.controls.set_volume(volume);
-    }
-
-    fn get_volume(&self) -> f32 {
-        self.controls.get_volume()
+    /// Local gain IS the AirPlay volume path: the drain multiplies samples by
+    /// this before they're packetized, so the user hears the change. The
+    /// receiver stays at its own hardware level (the session's one initial
+    /// SET_PARAMETER seeds it at full); there is no per-change device round-trip.
+    fn controls(&self) -> &AudioOutputControls {
+        &self.controls
     }
 }
 

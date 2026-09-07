@@ -337,6 +337,13 @@ impl From<LibraryCodeOperationError> for JoinDevicePairingError {
     }
 }
 
+/// A join failure with no arm of its own: coven's transport, the config dir, the
+/// OAuth lookup, and the pairing-journal cleanup all end up here under their own
+/// message, so one function carries every `.map_err`.
+fn join_err<E: std::fmt::Display>(error: E) -> JoinDevicePairingError {
+    JoinDevicePairingError::Join(error.to_string())
+}
+
 #[derive(Clone)]
 pub struct PreparedDevicePairingJoin {
     pairing: coven::PreparedDevicePairing,
@@ -351,10 +358,7 @@ impl PreparedDevicePairingJoin {
     }
 
     pub fn abandon(&self) -> Result<(), JoinDevicePairingError> {
-        self.pairing
-            .clone()
-            .abandon(&self.layout)
-            .map_err(|error| JoinDevicePairingError::Join(error.to_string()))
+        self.pairing.clone().abandon(&self.layout).map_err(join_err)
     }
 }
 
@@ -363,8 +367,7 @@ pub async fn prepare_device_pairing_join(
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
 ) -> Result<PreparedDevicePairingJoin, JoinDevicePairingError> {
-    let app_dir = crate::config::bae_dir()
-        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    let app_dir = crate::config::bae_dir().map_err(join_err)?;
     prepare_device_pairing_join_at(
         pairing_code,
         oauth_tokens,
@@ -376,8 +379,7 @@ pub async fn prepare_device_pairing_join(
 
 pub fn pending_device_pairing_join(
 ) -> Result<Option<PendingDevicePairingJoinInfo>, JoinDevicePairingError> {
-    let app_dir = crate::config::bae_dir()
-        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    let app_dir = crate::config::bae_dir().map_err(join_err)?;
     pending_device_pairing_join_at(library_layout(app_dir))
 }
 
@@ -397,8 +399,7 @@ fn pending_device_pairing_join_at(
 }
 
 pub fn abandon_pending_device_pairing_join() -> Result<(), JoinDevicePairingError> {
-    let app_dir = crate::config::bae_dir()
-        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    let app_dir = crate::config::bae_dir().map_err(join_err)?;
     abandon_pending_device_pairing_join_at(library_layout(app_dir))
 }
 
@@ -406,9 +407,7 @@ fn abandon_pending_device_pairing_join_at(
     layout: coven::StoreLayout,
 ) -> Result<(), JoinDevicePairingError> {
     if let Some(pairing) = pending_device_pairing_at(&layout)? {
-        pairing
-            .abandon(&layout)
-            .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+        pairing.abandon(&layout).map_err(join_err)?;
     }
     Ok(())
 }
@@ -416,8 +415,7 @@ fn abandon_pending_device_pairing_join_at(
 fn pending_device_pairing_at(
     layout: &coven::StoreLayout,
 ) -> Result<Option<coven::PreparedDevicePairing>, JoinDevicePairingError> {
-    let mut pending = coven::PreparedDevicePairing::pending(layout)
-        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    let mut pending = coven::PreparedDevicePairing::pending(layout).map_err(join_err)?;
     match pending.len() {
         0 => Ok(None),
         1 => Ok(pending.pop()),
@@ -471,14 +469,13 @@ async fn prepare_device_pairing_join_at(
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     layout: coven::StoreLayout,
 ) -> Result<PreparedDevicePairingJoin, JoinDevicePairingError> {
-    let offer = coven::DevicePairingOffer::decode(pairing_code)
-        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+    let offer = coven::DevicePairingOffer::decode(pairing_code).map_err(join_err)?;
     let provider_account_email =
         pairing_provider_account_email(offer.cloud_provider().clone(), oauth_tokens.as_ref())
             .await?;
     let pairing =
         coven::PreparedDevicePairing::open_or_create(pairing_code, provider_account_email, &layout)
-            .map_err(|error| JoinDevicePairingError::Join(error.to_string()))?;
+            .map_err(join_err)?;
     Ok(PreparedDevicePairingJoin {
         pairing,
         layout,
@@ -531,9 +528,7 @@ pub async fn join_prepared_device_pairing_cancellable(
         // The owner gave up on this attempt before it completed. Not a failure of
         // this device — a distinct end the UI reports as such.
         Ok(coven::DeviceJoinTransportOutcome::Abandoned(_)) => {
-            pairing
-                .abandon(&layout)
-                .map_err(|cleanup| JoinDevicePairingError::Join(cleanup.to_string()))?;
+            pairing.abandon(&layout).map_err(join_err)?;
             Err(JoinDevicePairingError::Abandoned)
         }
         Err(error) => {
@@ -552,9 +547,7 @@ pub async fn join_prepared_device_pairing_cancellable(
                     | JoinDevicePairingError::Abandoned
                     | JoinDevicePairingError::Expired
             ) {
-                pairing
-                    .abandon(&layout)
-                    .map_err(|cleanup| JoinDevicePairingError::Join(cleanup.to_string()))?;
+                pairing.abandon(&layout).map_err(join_err)?;
             }
             Err(error)
         }
@@ -581,7 +574,7 @@ fn classify_join_error(error: coven::BootstrapError) -> JoinDevicePairingError {
         // from the other end, which is an abandonment the user is owed a reason
         // for, not the silent "you pressed cancel" case.
         coven::BootstrapError::Cancelled => JoinDevicePairingError::Abandoned,
-        _ => JoinDevicePairingError::Join(error.to_string()),
+        _ => join_err(error),
     }
 }
 
@@ -599,7 +592,7 @@ async fn pairing_provider_account_email(
     coven::fetch_account_email(provider, tokens)
         .await
         .map(Some)
-        .map_err(|error| JoinDevicePairingError::Join(error.to_string()))
+        .map_err(join_err)
 }
 
 #[cfg(not(feature = "oauth-providers"))]

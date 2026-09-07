@@ -83,8 +83,8 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
         size: 1024,
         modified_at_ns: 1,
     }]);
-    // fs_root is an empty dir, so Album/01.flac does not exist on disk:
-    // is_valid_audio's open fails with a genuine I/O error.
+    // fs_root is an empty dir, so Album/01.flac does not exist on disk: the
+    // audio probe's open fails with a genuine I/O error.
     let temp = tempfile::TempDir::new().unwrap();
     let result = categorize_files_from_tree(
         &tree,

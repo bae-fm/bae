@@ -298,16 +298,6 @@ mod identify_mirrors {
         }
     }
 
-    fn library_status(release_id: &str) -> LibraryStatus {
-        LibraryStatus {
-            release_id: release_id.to_string(),
-            release_in_library: false,
-            album_in_library: false,
-            album_title: None,
-            album_id: None,
-        }
-    }
-
     fn empty_context() -> SignalsContext {
         SignalsContext {
             providers: Vec::new(),
@@ -327,7 +317,10 @@ mod identify_mirrors {
         ];
         let state = IdentifyState::Found {
             matches: matches.clone(),
-            library_statuses: vec![library_status("rel-1"), library_status("rel-2")],
+            library_statuses: vec![
+                LibraryStatus::absent("rel-1"),
+                LibraryStatus::absent("rel-2"),
+            ],
             track_count: 12,
             provenance: vec![
                 ResultProvenance {
@@ -372,7 +365,10 @@ mod identify_mirrors {
                 metadata_result("rel-disc", "g-d"),
                 metadata_result("rel-bar", "g-b"),
             ],
-            library_statuses: vec![library_status("rel-disc"), library_status("rel-bar")],
+            library_statuses: vec![
+                LibraryStatus::absent("rel-disc"),
+                LibraryStatus::absent("rel-bar"),
+            ],
             track_count: 9,
             provenance: vec![
                 ResultProvenance {
@@ -427,7 +423,7 @@ mod identify_mirrors {
                             code: Some("0123456789012".to_string()),
                             results: vec![(
                                 metadata_result("rel-dg", "group-1"),
-                                library_status("rel-dg"),
+                                LibraryStatus::absent("rel-dg"),
                             )],
                         },
                     },

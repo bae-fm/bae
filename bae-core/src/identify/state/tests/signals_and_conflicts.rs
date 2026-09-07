@@ -14,25 +14,15 @@ fn mk_result_from(
     MetadataResult::for_test(source, release_id, group_id)
 }
 
-fn mk_status(release_id: &str) -> LibraryStatus {
-    LibraryStatus {
-        release_id: release_id.to_string(),
-        release_in_library: false,
-        album_in_library: false,
-        album_title: None,
-        album_id: None,
-    }
-}
-
 fn pair(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
-    (mk_result(release_id, group_id), mk_status(release_id))
+    (mk_result(release_id, group_id), LibraryStatus::absent(release_id))
 }
 
 /// A Discogs result, for runs where both providers answer.
 fn discogs_pair(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
     (
         mk_result_from(MetadataSource::Discogs, release_id, group_id),
-        mk_status(release_id),
+        LibraryStatus::absent(release_id),
     )
 }
 
@@ -867,7 +857,10 @@ fn an_unchosen_catalog_number_narrows_nothing() {
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![(r_a, mk_status("rel-a")), (r_b, mk_status("rel-b"))],
+            results: vec![
+                (r_a, LibraryStatus::absent("rel-a")),
+                (r_b, LibraryStatus::absent("rel-b")),
+            ],
             track_count: 5,
         },
     );

@@ -625,13 +625,7 @@ fn search_result(
             source_group_id: None,
             source_tracks: None,
         },
-        LibraryStatus {
-            release_id: release_id.to_string(),
-            release_in_library: false,
-            album_in_library: false,
-            album_title: None,
-            album_id: None,
-        },
+        LibraryStatus::absent(release_id),
     )
 }
 

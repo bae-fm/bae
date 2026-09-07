@@ -646,7 +646,7 @@ mod tests {
     #[tokio::test]
     async fn start_stream_pipeline_failure_returns_err_and_cancels_decoder() {
         let buffer = create_sparse_buffer(0);
-        let mut output = FailingAudioOutput;
+        let mut output = FailingAudioOutput::new();
 
         let result = start_stream_pipeline(
             &mut output,

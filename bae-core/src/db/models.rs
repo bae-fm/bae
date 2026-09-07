@@ -237,6 +237,20 @@ pub struct LibraryStatus {
     pub album_id: Option<String>,
 }
 
+impl LibraryStatus {
+    /// Nothing in the library matches this release — neither the release itself
+    /// nor its album, so there is no album to name either.
+    pub fn absent(release_id: impl Into<String>) -> Self {
+        Self {
+            release_id: release_id.into(),
+            release_in_library: false,
+            album_in_library: false,
+            album_title: None,
+            album_id: None,
+        }
+    }
+}
+
 /// A release's pressing-level editorial metadata. A substruct so "no pressing
 /// claim" is one `Pressing::blank()` rather than nilling six fields at every
 /// caller — see `many-fields-none-together-means-a-missing-type`.

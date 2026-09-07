@@ -1,7 +1,7 @@
 use super::*;
 use crate::playback::audio_output::{
-    audio_event_channel, AudioError, AudioEvent, AudioEventReceiver, AudioEventSender, AudioState,
-    AudioStream,
+    audio_event_channel, AudioError, AudioEvent, AudioEventReceiver, AudioEventSender,
+    AudioOutputControls, AudioState, AudioStream,
 };
 use crate::playback::create_track_stream_pair;
 // Preview retains the per-track `StreamPipeline`; the test builds one for the
@@ -18,8 +18,7 @@ impl AudioStream for TestAudioStream {
 }
 
 struct TestAudioOutput {
-    state: std::sync::Mutex<AudioState>,
-    volume: std::sync::Mutex<f32>,
+    controls: AudioOutputControls,
     /// Count of device streams built (`create_stream`) vs source swaps
     /// (`on_source_replaced`), so a test can assert the persistent stream is
     /// rebuilt only on a format change, not on a same-format transition.
@@ -29,9 +28,10 @@ struct TestAudioOutput {
 
 impl TestAudioOutput {
     fn new() -> Self {
+        let controls = AudioOutputControls::new(1.0);
+        controls.set_state(AudioState::Playing);
         Self {
-            state: std::sync::Mutex::new(AudioState::Playing),
-            volume: std::sync::Mutex::new(1.0),
+            controls,
             build_count: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             replace_count: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
@@ -57,20 +57,8 @@ impl AudioOutput for TestAudioOutput {
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
-    fn set_state(&self, state: AudioState) {
-        *self.state.lock().unwrap() = state;
-    }
-
-    fn get_state(&self) -> AudioState {
-        *self.state.lock().unwrap()
-    }
-
-    fn set_volume(&self, volume: f32) {
-        *self.volume.lock().unwrap() = volume;
-    }
-
-    fn get_volume(&self) -> f32 {
-        *self.volume.lock().unwrap()
+    fn controls(&self) -> &AudioOutputControls {
+        &self.controls
     }
 }
 

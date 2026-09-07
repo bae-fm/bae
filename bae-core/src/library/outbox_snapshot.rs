@@ -499,54 +499,31 @@ impl UploadProgress {
     }
 
     fn add_progress(&mut self, progress: &UploadProgress) {
-        self.queued = self
-            .queued
-            .checked_add(progress.queued)
-            .expect("upload count overflow");
-        self.preparing = self
-            .preparing
-            .checked_add(progress.preparing)
-            .expect("upload count overflow");
-        self.prepared = self
-            .prepared
-            .checked_add(progress.prepared)
-            .expect("upload count overflow");
-        self.uploading = self
-            .uploading
-            .checked_add(progress.uploading)
-            .expect("upload count overflow");
-        self.retrying = self
-            .retrying
-            .checked_add(progress.retrying)
-            .expect("upload retry count overflow");
-        self.uploaded = self
-            .uploaded
-            .checked_add(progress.uploaded)
-            .expect("upload count overflow");
-        self.publishing = self
-            .publishing
-            .checked_add(progress.publishing)
-            .expect("upload count overflow");
-        self.cancelling = self
-            .cancelling
-            .checked_add(progress.cancelling)
-            .expect("upload count overflow");
-        self.preparation_bytes_done = self
-            .preparation_bytes_done
-            .checked_add(progress.preparation_bytes_done)
-            .expect("preparation byte progress overflow");
-        self.preparation_bytes_total = self
-            .preparation_bytes_total
-            .checked_add(progress.preparation_bytes_total)
-            .expect("preparation byte total overflow");
-        self.upload_bytes_done = self
-            .upload_bytes_done
-            .checked_add(progress.upload_bytes_done)
-            .expect("provider byte progress overflow");
-        self.upload_bytes_total = self
-            .upload_bytes_total
-            .checked_add(progress.upload_bytes_total)
-            .expect("provider byte total overflow");
+        // Every counter accumulates the same way. A wrapped count would
+        // misreport the queue rather than fail, so overflow panics, naming the
+        // counter it was.
+        macro_rules! bump {
+            ($($field:ident),+ $(,)?) => {$(
+                self.$field = self
+                    .$field
+                    .checked_add(progress.$field)
+                    .expect(concat!("outbox progress overflow: ", stringify!($field)));
+            )+};
+        }
+        bump!(
+            queued,
+            preparing,
+            prepared,
+            uploading,
+            retrying,
+            uploaded,
+            publishing,
+            cancelling,
+            preparation_bytes_done,
+            preparation_bytes_total,
+            upload_bytes_done,
+            upload_bytes_total,
+        );
         self.upload_bytes_total_complete &= progress.upload_bytes_total_complete;
         if let Some(UploadIssue::SourceUnavailable { paths }) = &progress.issue {
             for path in paths {

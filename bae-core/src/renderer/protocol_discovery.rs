@@ -46,7 +46,7 @@ impl<B: Browse> ProtocolDiscovery<B> {
 
     /// Whether this protocol is reaching the network right now. For tests that
     /// assert browsing is (or is not) live.
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(feature = "test-utils")]
     pub(crate) fn is_browsing(&self) -> bool {
         self.running.is_some()
     }
