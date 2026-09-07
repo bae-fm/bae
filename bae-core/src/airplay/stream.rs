@@ -200,16 +200,13 @@ impl MonotonicClock for SystemClock {
     }
 }
 
-/// The UDP endpoints a SETUP response resolves to, plus the negotiated latency.
+/// The UDP endpoints a SETUP response resolves to.
 pub struct StreamEndpoints {
     pub receiver: IpAddr,
     /// Where audio datagrams go.
     pub audio_port: u16,
     /// Where sync datagrams go.
     pub control_port: u16,
-    /// The receiver's audio latency in frames (its reported latency, else the
-    /// RAOP default of ~2 s at the sample rate).
-    pub latency_frames: u32,
 }
 
 /// The RTP audio flow a session hands the stream: the synchronization source id
@@ -238,19 +235,27 @@ pub struct RaopStream {
     threads: Vec<JoinHandle<()>>,
 }
 
+/// The shared state a running stream is observed and steered through: how far the
+/// send has got, the re-anchor request, whether the audio flow has died, and the
+/// negotiated receiver latency the pacing lead and the audible position both use.
+/// A session keeps one and hands a clone to the threads.
 #[derive(Clone)]
 pub(super) struct RaopStreamControl {
     frames_sent: Arc<AtomicU64>,
     reanchor: Arc<AtomicU64>,
     failed: Arc<AtomicBool>,
+    latency_frames: u32,
 }
 
 impl RaopStreamControl {
-    pub(super) fn new() -> Self {
+    /// `latency_frames` is the receiver's audio latency (its reported value, else
+    /// the dialect's ~2 s default).
+    pub(super) fn new(latency_frames: u32) -> Self {
         Self {
             frames_sent: Arc::new(AtomicU64::new(0)),
             reanchor: Arc::new(AtomicU64::new(0)),
             failed: Arc::new(AtomicBool::new(false)),
+            latency_frames,
         }
     }
 
@@ -264,6 +269,29 @@ impl RaopStreamControl {
 
     pub(super) fn has_failed(&self) -> bool {
         self.failed.load(Ordering::Relaxed)
+    }
+
+    /// The receiver's audio latency in frames — how far ahead of the playback
+    /// clock the sender paces, and the offset between frames sent and what is
+    /// audible.
+    pub(super) fn latency_frames(&self) -> u32 {
+        self.latency_frames
+    }
+
+    /// The re-anchor counter the audio thread watches: a change means restart the
+    /// pacing lead and re-mark the stream.
+    fn reanchor_epoch(&self) -> u64 {
+        self.reanchor.load(Ordering::Acquire)
+    }
+
+    /// Account for frames just handed to the receiver.
+    fn record_frames(&self, frames: u64) {
+        self.frames_sent.fetch_add(frames, Ordering::Relaxed);
+    }
+
+    /// The audio flow has failed persistently — the receiver is unreachable.
+    fn mark_failed(&self) {
+        self.failed.store(true, Ordering::Release);
     }
 }
 
@@ -298,16 +326,13 @@ impl RaopStream {
                     0,
                     audio.initial_timestamp,
                 ),
-                pacer: Pacer::new(audio.sample_rate, endpoints.latency_frames),
+                pacer: Pacer::new(audio.sample_rate, control.latency_frames()),
                 sample_rate: audio.sample_rate,
-                latency_frames: endpoints.latency_frames,
                 socket: audio_socket,
                 dst: audio_dst,
                 clock: clock.clone(),
                 stop: stop.clone(),
-                frames_sent: control.frames_sent.clone(),
-                reanchor: control.reanchor.clone(),
-                failed: control.failed.clone(),
+                control: control.clone(),
             }),
             spawn_timing_thread(sockets.timing, stop.clone()),
         ];
@@ -316,9 +341,7 @@ impl RaopStream {
                 sockets.control,
                 control_dst,
                 audio.initial_timestamp,
-                endpoints.latency_frames,
-                control.frames_sent.clone(),
-                audio.sample_rate,
+                control,
                 stop.clone(),
             ));
         }
@@ -344,14 +367,11 @@ struct AudioThread {
     packetizer: Packetizer,
     pacer: Pacer,
     sample_rate: u32,
-    latency_frames: u32,
     socket: UdpSocket,
     dst: SocketAddr,
     clock: Arc<dyn MonotonicClock>,
     stop: Arc<AtomicBool>,
-    frames_sent: Arc<AtomicU64>,
-    reanchor: Arc<AtomicU64>,
-    failed: Arc<AtomicBool>,
+    control: RaopStreamControl,
 }
 
 /// Pull PCM one packet at a time, pace by the clock, and send. Persistent: a
@@ -366,12 +386,12 @@ fn spawn_audio_thread(mut t: AudioThread) -> JoinHandle<()> {
     const FAILURE_THRESHOLD: u32 = 20;
     std::thread::spawn(move || {
         let mut buf = vec![0i16; FRAMES_PER_PACKET as usize * channels];
-        let mut seen_reanchor = t.reanchor.load(Ordering::Acquire);
+        let mut seen_reanchor = t.control.reanchor_epoch();
         let mut consecutive_failures = 0u32;
         while !t.stop.load(Ordering::Acquire) {
-            let epoch = t.reanchor.load(Ordering::Acquire);
+            let epoch = t.control.reanchor_epoch();
             if epoch != seen_reanchor {
-                t.pacer = Pacer::new(t.sample_rate, t.latency_frames);
+                t.pacer = Pacer::new(t.sample_rate, t.control.latency_frames());
                 t.clock.reset();
                 t.packetizer.reanchor();
                 seen_reanchor = epoch;
@@ -397,13 +417,12 @@ fn spawn_audio_thread(mut t: AudioThread) -> JoinHandle<()> {
                         if consecutive_failures >= FAILURE_THRESHOLD {
                             // The receiver is unreachable — surface the death rather
                             // than erroring silently forever.
-                            t.failed.store(true, Ordering::Release);
+                            t.control.mark_failed();
                         }
                     }
                 }
                 t.pacer.record_packet();
-                t.frames_sent
-                    .fetch_add(u64::from(FRAMES_PER_PACKET), Ordering::Relaxed);
+                t.control.record_frames(u64::from(FRAMES_PER_PACKET));
                 sent_any = true;
             }
             if due == 0 || !sent_any {
@@ -420,18 +439,17 @@ fn spawn_sync_thread(
     socket: UdpSocket,
     dst: SocketAddr,
     initial_timestamp: u32,
-    latency_frames: u32,
-    frames_sent: Arc<std::sync::atomic::AtomicU64>,
-    sample_rate: u32,
+    control: RaopStreamControl,
     stop: Arc<AtomicBool>,
 ) -> JoinHandle<()> {
     std::thread::spawn(move || {
+        let latency_frames = control.latency_frames();
         let mut first = true;
         let mut last_sent = Instant::now() - Duration::from_secs(1);
         while !stop.load(Ordering::Acquire) {
             if last_sent.elapsed() >= Duration::from_secs(1) {
                 let now_ts = initial_timestamp
-                    .wrapping_add(frames_sent.load(Ordering::Relaxed) as u32)
+                    .wrapping_add(control.frames_sent() as u32)
                     .wrapping_add(latency_frames);
                 let played = now_ts.wrapping_sub(latency_frames);
                 let packet = rtp::sync_packet(first, played, NtpTime::now(), now_ts);
@@ -441,7 +459,6 @@ fn spawn_sync_thread(
                 first = false;
                 last_sent = Instant::now();
             }
-            let _ = sample_rate;
             std::thread::sleep(Duration::from_millis(100));
         }
     })
@@ -575,24 +592,20 @@ mod tests {
     fn audio_thread(
         source: Box<dyn PcmSource>,
         stop: Arc<AtomicBool>,
-    ) -> (JoinHandle<()>, Arc<AtomicU64>, Arc<AtomicU64>) {
-        let frames_sent = Arc::new(AtomicU64::new(0));
-        let reanchor = Arc::new(AtomicU64::new(0));
+    ) -> (JoinHandle<()>, RaopStreamControl) {
+        let control = RaopStreamControl::new(88_200);
         let handle = spawn_audio_thread(AudioThread {
             source,
             packetizer: Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, 0, 0),
             pacer: Pacer::new(44_100, 88_200),
             sample_rate: 44_100,
-            latency_frames: 88_200,
             socket: UdpSocket::bind(("127.0.0.1", 0)).unwrap(),
             dst: "127.0.0.1:9".parse().unwrap(),
             clock: Arc::new(FarAheadClock),
             stop,
-            frames_sent: frames_sent.clone(),
-            reanchor: reanchor.clone(),
-            failed: Arc::new(AtomicBool::new(false)),
+            control: control.clone(),
         });
-        (handle, frames_sent, reanchor)
+        (handle, control)
     }
 
     /// A source that drains does NOT end the thread — the stream is persistent, so
@@ -601,12 +614,12 @@ mod tests {
     #[test]
     fn audio_thread_is_persistent_across_a_drained_source() {
         let stop = Arc::new(AtomicBool::new(false));
-        let (handle, frames_sent, _reanchor) =
+        let (handle, control) =
             audio_thread(Box::new(FixedSource { packets_left: 3 }), stop.clone());
 
         // Wait for the three packets to be sent; the thread stays alive after.
         let deadline = Instant::now() + Duration::from_secs(2);
-        while frames_sent.load(Ordering::Relaxed) < 3 * u64::from(FRAMES_PER_PACKET) {
+        while control.frames_sent() < 3 * u64::from(FRAMES_PER_PACKET) {
             assert!(Instant::now() < deadline, "packets were not sent in time");
             std::thread::sleep(Duration::from_millis(5));
         }
@@ -617,10 +630,7 @@ mod tests {
 
         stop.store(true, Ordering::Release);
         handle.join().unwrap();
-        assert_eq!(
-            frames_sent.load(Ordering::Relaxed),
-            3 * u64::from(FRAMES_PER_PACKET)
-        );
+        assert_eq!(control.frames_sent(), 3 * u64::from(FRAMES_PER_PACKET));
     }
 
     /// A re-anchor re-marks the stream: after it fires, a packet carries the RTP

@@ -440,7 +440,6 @@ fn pair_post(conn: &mut RtspConnection, path: &str, body: Vec<u8>) -> Result<Vec
 struct Ap2SessionControl {
     control: Arc<Mutex<Ap2Control>>,
     stream: RaopStreamControl,
-    latency_frames: u32,
 }
 
 impl Ap2SessionControl {
@@ -458,19 +457,6 @@ impl Ap2SessionControl {
     /// TEARDOWN the session on the receiver.
     fn teardown(&self) -> Result<(), Ap2Error> {
         self.control.lock().unwrap().teardown()
-    }
-
-    fn frames_sent(&self) -> u64 {
-        self.stream.frames_sent()
-    }
-
-    /// Whether the audio flow to the receiver has failed persistently.
-    fn has_failed(&self) -> bool {
-        self.stream.has_failed()
-    }
-
-    fn latency_frames(&self) -> u32 {
-        self.latency_frames
     }
 }
 
@@ -550,10 +536,9 @@ impl Ap2Session {
             receiver,
             audio_port: ports.data_port,
             control_port: ports.control_port,
-            latency_frames: latency,
         };
         let cipher = Ap2AudioCipher::from_shared_secret(&shared);
-        let stream_control = RaopStreamControl::new();
+        let stream_control = RaopStreamControl::new(latency);
         let stream = RaopStream::spawn(
             source,
             PayloadCrypto::Ap2(cipher),
@@ -576,7 +561,6 @@ impl Ap2Session {
         let session_control = Ap2SessionControl {
             control: Arc::new(Mutex::new(control)),
             stream: stream_control,
-            latency_frames: latency,
         };
         Ok(Ap2Session {
             control: session_control,
@@ -592,16 +576,20 @@ impl Ap2Session {
         self.control.reanchor()
     }
 
+    /// Whether the audio flow to the receiver has failed persistently.
     pub fn has_failed(&self) -> bool {
-        self.control.has_failed()
+        self.control.stream.has_failed()
     }
 
+    /// Frames handed to the receiver so far.
     pub fn frames_sent(&self) -> u64 {
-        self.control.frames_sent()
+        self.control.stream.frames_sent()
     }
 
+    /// The receiver's audio latency in frames — the offset between frames sent and
+    /// what is audible, for the position the UI shows.
     pub fn latency_frames(&self) -> u32 {
-        self.control.latency_frames()
+        self.control.stream.latency_frames()
     }
 }
 

@@ -207,7 +207,6 @@ struct RaopControl {
     rtsp: Arc<Mutex<RtspConnection>>,
     uri: String,
     stream: RaopStreamControl,
-    latency_frames: u32,
 }
 
 impl RaopControl {
@@ -225,23 +224,6 @@ impl RaopControl {
     /// TEARDOWN the session on the receiver.
     fn teardown(&self) -> Result<(), RaopError> {
         self.rtsp_request(Method::Teardown, "TEARDOWN")
-    }
-
-    /// Frames handed to the receiver so far.
-    fn frames_sent(&self) -> u64 {
-        self.stream.frames_sent()
-    }
-
-    /// Whether the audio flow to the receiver has failed persistently (a dead
-    /// receiver), so the session should be ended.
-    fn has_failed(&self) -> bool {
-        self.stream.has_failed()
-    }
-
-    /// The receiver's audio latency in frames — the offset between frames sent and
-    /// what is audible, for the position the UI shows.
-    fn latency_frames(&self) -> u32 {
-        self.latency_frames
     }
 
     fn rtsp_request(&self, method: Method, step: &'static str) -> Result<(), RaopError> {
@@ -311,9 +293,8 @@ impl RaopSession {
             receiver,
             audio_port: negotiated.server_port,
             control_port: negotiated.control_port,
-            latency_frames: latency,
         };
-        let stream_control = RaopStreamControl::new();
+        let stream_control = RaopStreamControl::new(latency);
         let stream = RaopStream::spawn(
             source,
             PayloadCrypto::Raop(cipher),
@@ -337,7 +318,6 @@ impl RaopSession {
             rtsp: Arc::new(Mutex::new(conn)),
             uri,
             stream: stream_control,
-            latency_frames: latency,
         };
         Ok(RaopSession {
             control,
@@ -353,16 +333,21 @@ impl RaopSession {
         self.control.reanchor();
     }
 
+    /// Whether the audio flow to the receiver has failed persistently (a dead
+    /// receiver), so the session should be ended.
     pub fn has_failed(&self) -> bool {
-        self.control.has_failed()
+        self.control.stream.has_failed()
     }
 
+    /// Frames handed to the receiver so far.
     pub fn frames_sent(&self) -> u64 {
-        self.control.frames_sent()
+        self.control.stream.frames_sent()
     }
 
+    /// The receiver's audio latency in frames — the offset between frames sent and
+    /// what is audible, for the position the UI shows.
     pub fn latency_frames(&self) -> u32 {
-        self.control.latency_frames()
+        self.control.stream.latency_frames()
     }
 }
 
