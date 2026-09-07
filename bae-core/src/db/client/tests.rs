@@ -1,3 +1,7 @@
+use crate::import::folder_scanner::{
+    CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScannedFile,
+};
+
 // Fixture row ids. coven validates every synced row's primary key as a
 // canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
 // real ids are, so these fixtures carry UUIDs too. Each constant is named
@@ -82,6 +86,109 @@ async fn temp_db() -> (super::Database, tempfile::TempDir) {
     .await
     .unwrap();
     (db, tmp)
+}
+
+/// A scanned folder named `name` sitting directly under watched root `root` and
+/// holding `files` — what the scanner produces for a folder whose file
+/// decisions nobody has edited yet.
+fn candidate_with(
+    root: &str,
+    name: &str,
+    files: CategorizedFiles,
+    scope: ReleaseFileScope,
+) -> FolderCandidate {
+    let path = std::path::PathBuf::from(root).join(name);
+    FolderCandidate {
+        path: path.clone(),
+        file_root: path,
+        name: name.to_string(),
+        files,
+        watched_folder_path: root.to_string(),
+        scope,
+        file_edit_revision: 0,
+        display_path: name.to_string(),
+        resolved_boundaries: Vec::new(),
+        combine_ancestor_key: None,
+    }
+}
+
+/// `candidate_with` for the folder most import fixtures want: one bound FLAC,
+/// scanned recursively.
+fn candidate(root: &str, name: &str) -> FolderCandidate {
+    candidate_with(
+        root,
+        name,
+        CategorizedFiles {
+            files: vec![CandidateFile {
+                proposed_audio: true,
+                file: ScannedFile::new(
+                    std::path::PathBuf::from(root).join(name).join("01.flac"),
+                    "01.flac".to_string(),
+                    1_000,
+                    1,
+                )
+                .with_test_flac_audio(),
+                role: FileRole::Audio,
+            }],
+        },
+        ReleaseFileScope::Recursive,
+    )
+}
+
+/// The instant the import fixtures pin their clock to, so a row's stored stamp
+/// is a value a test can name rather than whatever the wall clock said.
+fn fixed_now() -> chrono::DateTime<chrono::Utc> {
+    chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc)
+}
+
+/// `temp_db` under that pinned clock instead of the system one.
+async fn empty_db() -> (super::Database, tempfile::TempDir) {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let db = super::Database::new_test(
+        tmp.path().join("test.db").to_str().unwrap(),
+        std::sync::Arc::new(coven::FixedClock(fixed_now())),
+        std::sync::Arc::new(coven::UuidProvider),
+    )
+    .await
+    .unwrap();
+    (db, tmp)
+}
+
+/// `empty_db` plus a watched-folder root that exists on disk. The root comes
+/// back as a `String` the caller borrows; the `TempDir` owns the directory, so
+/// it has to outlive both.
+async fn watched_root() -> (super::Database, tempfile::TempDir, String) {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap().to_string();
+    (db, tmp, root)
+}
+
+/// Run one statement against the test database and panic if it fails. Spelled
+/// out at a call site, the closure and its `map`/`map_err` are five lines that
+/// say nothing about the write; only the SQL and the ids bound into it do.
+async fn exec(db: &super::Database, sql: &str, args: &[&str]) {
+    let sql = sql.to_string();
+    let args: Vec<String> = args.iter().map(|arg| arg.to_string()).collect();
+    db.call(move |conn| {
+        conn.execute(&sql, coven::rusqlite::params_from_iter(args))
+            .map(|_| ())
+            .map_err(coven::DbError::from)
+    })
+    .await
+    .unwrap();
+}
+
+/// `exec` for a multi-statement script, which takes no bound parameters —
+/// fixtures that seed several rows at once interpolate their ids instead.
+async fn exec_batch(db: &super::Database, sql: &str) {
+    let sql = sql.to_string();
+    db.call(move |conn| conn.execute_batch(&sql).map_err(coven::DbError::from))
+        .await
+        .unwrap();
 }
 
 /// The one-artist / one-album / one-release spine several fixtures start from:

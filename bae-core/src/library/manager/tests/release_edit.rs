@@ -93,11 +93,7 @@ async fn release_edit_reset_preserves_persisted_track_ids() {
     use crate::import::{MetadataRef, MetadataSource, ReleaseReseed};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_n_tracks(&manager.database, &release.id, 2).await;
     let persisted_ids = manager
         .database

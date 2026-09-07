@@ -1,5 +1,6 @@
 use super::super::*;
 use super::store_file_helpers::{close_store, copy_store};
+use super::{exec, exec_batch};
 use crate::library::LibraryPageWindow;
 use coven::SystemClock;
 use std::collections::BTreeSet;
@@ -24,8 +25,9 @@ const INSERTED_COMPOSER_LINK_ID: &str = "9168d755-3ed6-446c-a0ec-5f4039e18a6f";
 
 pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
     let (db, temp) = super::temp_db().await;
-    db.call(|sql| {
-        sql.execute_batch(&format!(
+    exec_batch(
+        &db,
+        &format!(
             "INSERT INTO artists (id, name, _updated_at, created_at)
              VALUES ('{ARTIST_ID}', 'Artist Name', 'seed', '2026-01-01T00:00:00Z');
              INSERT INTO albums
@@ -33,11 +35,9 @@ pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
              VALUES ('{ALBUM_ID}', 'Album Title', '{ARTIST_ID}', '{RELEASE_ID}', 0, 'seed', '2026-01-01T00:00:00Z');
              INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
              VALUES ('{RELEASE_ID}', '{ALBUM_ID}', 'file_tags', 1, 'seed', '2026-01-01T00:00:00Z');"
-        ))
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+        ),
+    )
+    .await;
     (db, temp)
 }
 
@@ -72,22 +72,18 @@ async fn album_page_subscription_delivers_rows_count_and_cover_versions() {
     assert!(initial.cover_versions.is_empty());
 
     let cover_hash = crate::util::fs::hash_bytes(b"cover fixture");
-    db.call(move |sql| {
-        sql.execute(
-            "INSERT INTO covers
-             (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at)
-             VALUES (?1, ?2, 'image/jpeg', 12, 'file_tags', ?3, 'cover-v1', '2026-01-01T00:00:00Z')",
-            params![
-                RELEASE_ID,
-                "bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa",
-                cover_hash
-            ],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "INSERT INTO covers
+         (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at)
+         VALUES (?1, ?2, 'image/jpeg', 12, 'file_tags', ?3, 'cover-v1', '2026-01-01T00:00:00Z')",
+        &[
+            RELEASE_ID,
+            "bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa",
+            cover_hash.as_str(),
+        ],
+    )
+    .await;
 
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
@@ -114,18 +110,17 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     assert_eq!(initial.total_count, 1);
     assert!(initial.windows.is_empty());
 
-    db.call(|sql| {
-        sql.execute_batch(&format!(
+    exec_batch(
+        &db,
+        &format!(
             "INSERT INTO albums
                (id, title, artist_id, primary_release_id, is_compilation, _updated_at, created_at)
              VALUES ('{OTHER_ALBUM_ID}', 'Album Title Second', '{ARTIST_ID}', '{OTHER_RELEASE_ID}', 0, 'album-v1', '2026-01-02T00:00:00Z');
              INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
              VALUES ('{OTHER_RELEASE_ID}', '{OTHER_ALBUM_ID}', 'file_tags', 1, 'release-v1', '2026-01-02T00:00:00Z');"
-        ))
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+        ),
+    )
+    .await;
     let inserted = live.next().await.into_result().unwrap();
     assert_eq!(inserted.total_count, 2);
     assert!(inserted.windows.is_empty());
@@ -166,16 +161,12 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     let second_page_initial = second_page_event.into_result().unwrap();
     assert_eq!(second_page_initial.windows[0].rows[0].id, OTHER_ALBUM_ID);
 
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE albums SET title = 'Album Title Renamed' WHERE id = ?1",
-            params![OTHER_ALBUM_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE albums SET title = 'Album Title Renamed' WHERE id = ?1",
+        &[OTHER_ALBUM_ID],
+    )
+    .await;
     let renamed_event = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("non-first album metadata wakes album browse");
@@ -183,16 +174,12 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     let renamed = renamed_event.into_result().unwrap();
     assert_eq!(renamed.windows[0].rows[0].title, "Album Title Renamed");
 
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE albums SET created_at = '2025-12-01T00:00:00Z' WHERE id = ?1",
-            params![OTHER_ALBUM_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE albums SET created_at = '2025-12-01T00:00:00Z' WHERE id = ?1",
+        &[OTHER_ALBUM_ID],
+    )
+    .await;
     let reordered = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("non-first album ordering field wakes album browse")
@@ -211,16 +198,12 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     let hidden_other_album = live.next().await.into_result().unwrap();
     assert_eq!(hidden_other_album.windows[0].rows[0].id, ALBUM_ID);
 
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE albums SET title = 'Album Title Hidden' WHERE id = ?1",
-            params![OTHER_ALBUM_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE albums SET title = 'Album Title Hidden' WHERE id = ?1",
+        &[OTHER_ALBUM_ID],
+    )
+    .await;
     // The edited album is outside the requested window, so the rerun
     // produces the page already delivered and coven withholds it.
     assert!(
@@ -230,16 +213,12 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         "unrequested album metadata leaves the delivered page unchanged"
     );
 
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE albums SET _updated_at = 'unread-column-write' WHERE id = ?1",
-            params![OTHER_ALBUM_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE albums SET _updated_at = 'unread-column-write' WHERE id = ?1",
+        &[OTHER_ALBUM_ID],
+    )
+    .await;
     assert!(
         tokio::time::timeout(Duration::from_millis(100), live.next())
             .await
@@ -247,22 +226,18 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     );
 
     let cover_hash = crate::util::fs::hash_bytes(b"other cover fixture");
-    db.call(move |sql| {
-        sql.execute(
-            "INSERT INTO covers
-             (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at)
-             VALUES (?1, ?2, 'image/jpeg', 19, 'file_tags', ?3, 'cover-v1', '2026-01-02T00:00:00Z')",
-            params![
-                OTHER_RELEASE_ID,
-                "96f3c15a-b99d-4395-81e5-2c32bb7a9c75",
-                cover_hash
-            ],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "INSERT INTO covers
+         (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at)
+         VALUES (?1, ?2, 'image/jpeg', 19, 'file_tags', ?3, 'cover-v1', '2026-01-02T00:00:00Z')",
+        &[
+            OTHER_RELEASE_ID,
+            "96f3c15a-b99d-4395-81e5-2c32bb7a9c75",
+            cover_hash.as_str(),
+        ],
+    )
+    .await;
     let covered = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("non-first album cover wakes album browse")
@@ -276,16 +251,12 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         Some("cover-v1")
     );
 
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE covers SET _updated_at = 'cover-v2' WHERE id = ?1",
-            params![OTHER_RELEASE_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE covers SET _updated_at = 'cover-v2' WHERE id = ?1",
+        &[OTHER_RELEASE_ID],
+    )
+    .await;
     let cover_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("non-first album cover version wakes album browse")
@@ -299,13 +270,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         Some("cover-v2")
     );
 
-    db.call(|sql| {
-        sql.execute("DELETE FROM albums WHERE id = ?1", params![OTHER_ALBUM_ID])
-            .map(|_| ())
-            .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(&db, "DELETE FROM albums WHERE id = ?1", &[OTHER_ALBUM_ID]).await;
     let deleted = live.next().await.into_result().unwrap();
     assert_eq!(deleted.total_count, 1);
     assert!(deleted.windows[0].rows.is_empty());
@@ -314,8 +279,9 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
 #[tokio::test]
 async fn composer_browse_subscription_reconfigures_bounded_windows() {
     let (db, _temp) = live_db().await;
-    db.call(|sql| {
-        sql.execute_batch(&format!(
+    exec_batch(
+        &db,
+        &format!(
             "INSERT INTO artists (id, name, _updated_at, created_at) VALUES
                ('{COMPOSER_ID}', 'Composer Name First', 'composer-v1', '2026-01-01T00:00:00Z'),
                ('{OTHER_COMPOSER_ID}', 'Composer Name Second', 'composer-v1', '2026-01-02T00:00:00Z');
@@ -325,11 +291,9 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
              INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at) VALUES
                ('{COMPOSER_LINK_ID}', '{COMPOSER_WORK_ID}', '{COMPOSER_ID}', 0, 'file_tags', 'link-v1', '2026-01-01T00:00:00Z'),
                ('{OTHER_COMPOSER_LINK_ID}', '{OTHER_COMPOSER_WORK_ID}', '{OTHER_COMPOSER_ID}', 0, 'file_tags', 'link-v1', '2026-01-02T00:00:00Z');"
-        ))
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+        ),
+    )
+    .await;
     let sort = [ComposerSortCriterion {
         field: ComposerSortField::Name,
         direction: SortDirection::Descending,
@@ -365,16 +329,12 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     assert_eq!(both.windows[0].rows[0].artist.id, OTHER_COMPOSER_ID);
     assert_eq!(both.windows[1].rows[0].artist.id, COMPOSER_ID);
 
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE artists SET name = 'Composer Name Renamed' WHERE id = ?1",
-            params![OTHER_COMPOSER_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE artists SET name = 'Composer Name Renamed' WHERE id = ?1",
+        &[OTHER_COMPOSER_ID],
+    )
+    .await;
     let renamed_event = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("non-first composer metadata wakes composer browse");
@@ -402,16 +362,12 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
         COMPOSER_ID
     );
 
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE artists SET sort_name = 'Composer Sort Hidden' WHERE id = ?1",
-            params![OTHER_COMPOSER_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE artists SET sort_name = 'Composer Sort Hidden' WHERE id = ?1",
+        &[OTHER_COMPOSER_ID],
+    )
+    .await;
     // The edited composer is outside the requested window, so the rerun
     // produces the page already delivered and coven withholds it.
     assert!(
@@ -422,22 +378,18 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     );
 
     let image_hash = crate::util::fs::hash_bytes(b"other artist fixture");
-    db.call(move |sql| {
-        sql.execute(
-            "INSERT INTO artist_images
-             (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at)
-             VALUES (?1, ?2, 'image/jpeg', 20, 'file_tags', ?3, 'image-v1', '2026-01-02T00:00:00Z')",
-            params![
-                OTHER_COMPOSER_ID,
-                "19af4b72-9f57-4110-bc92-b72735b7b4ad",
-                image_hash
-            ],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "INSERT INTO artist_images
+         (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at)
+         VALUES (?1, ?2, 'image/jpeg', 20, 'file_tags', ?3, 'image-v1', '2026-01-02T00:00:00Z')",
+        &[
+            OTHER_COMPOSER_ID,
+            "19af4b72-9f57-4110-bc92-b72735b7b4ad",
+            image_hash.as_str(),
+        ],
+    )
+    .await;
     let imaged = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("non-first composer image wakes composer browse")
@@ -451,16 +403,12 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
         Some("image-v1")
     );
 
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE artist_images SET _updated_at = 'image-v2' WHERE id = ?1",
-            params![OTHER_COMPOSER_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE artist_images SET _updated_at = 'image-v2' WHERE id = ?1",
+        &[OTHER_COMPOSER_ID],
+    )
+    .await;
     let image_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("non-first composer image version wakes composer browse")
@@ -479,33 +427,28 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     assert_eq!(count_only.total_count, 2);
     assert!(count_only.windows.is_empty());
 
-    db.call(|sql| {
-        sql.execute_batch(&format!(
+    exec_batch(
+        &db,
+        &format!(
             "INSERT INTO artists (id, name, _updated_at, created_at)
              VALUES ('{INSERTED_COMPOSER_ID}', 'Composer Name Inserted', 'composer-v1', '2026-01-03T00:00:00Z');
              INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at)
              VALUES ('{INSERTED_COMPOSER_WORK_ID}', 'Work Title Inserted', 'work', 'work-inserted', 'work-v1', '2026-01-03T00:00:00Z');
              INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
              VALUES ('{INSERTED_COMPOSER_LINK_ID}', '{INSERTED_COMPOSER_WORK_ID}', '{INSERTED_COMPOSER_ID}', 0, 'file_tags', 'link-v1', '2026-01-03T00:00:00Z');"
-        ))
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+        ),
+    )
+    .await;
     let inserted = live.next().await.into_result().unwrap();
     assert_eq!(inserted.total_count, 3);
     assert!(inserted.windows.is_empty());
 
-    db.call(|sql| {
-        sql.execute(
-            "DELETE FROM work_artists WHERE id = ?1",
-            params![INSERTED_COMPOSER_LINK_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "DELETE FROM work_artists WHERE id = ?1",
+        &[INSERTED_COMPOSER_LINK_ID],
+    )
+    .await;
     let deleted = live.next().await.into_result().unwrap();
     assert_eq!(deleted.total_count, 2);
     assert!(deleted.windows.is_empty());
@@ -517,18 +460,14 @@ async fn album_page_subscription_ignores_an_unread_table() {
     let mut live = db.subscribe_album_page(&[], 0, 50);
     live.next().await.unwrap();
 
-    db.call(|sql| {
-        sql.execute(
-            "INSERT INTO playback_state
-             (id, source, shuffled, manual, repeat, current_track_id, position_ms, volume, is_muted)
-             VALUES ('current', NULL, NULL, '[]', 'off', NULL, 0, 1.0, 0)",
-            [],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "INSERT INTO playback_state
+         (id, source, shuffled, manual, repeat, current_track_id, position_ms, volume, is_muted)
+         VALUES ('current', NULL, NULL, '[]', 'off', NULL, 0, 1.0, 0)",
+        &[],
+    )
+    .await;
 
     assert!(
         tokio::time::timeout(Duration::from_millis(100), live.next())
@@ -543,16 +482,12 @@ async fn album_detail_subscription_ignores_an_unread_column() {
     let mut live = db.subscribe_album_detail(ALBUM_ID);
     live.next().await.unwrap();
 
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE albums SET _updated_at = 'unread-column-write' WHERE id = ?1",
-            params![ALBUM_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE albums SET _updated_at = 'unread-column-write' WHERE id = ?1",
+        &[ALBUM_ID],
+    )
+    .await;
 
     assert!(
         tokio::time::timeout(Duration::from_millis(100), live.next())
@@ -564,18 +499,14 @@ async fn album_detail_subscription_ignores_an_unread_column() {
 #[tokio::test]
 async fn single_table_subscription_ignores_a_different_primary_key() {
     let (db, _temp) = live_db().await;
-    db.call(|sql| {
-        sql.execute(
-            "INSERT INTO albums
-             (id, title, artist_id, is_compilation, _updated_at, created_at)
-             VALUES (?1, 'Other Album', ?2, 0, 'seed', '2026-01-01T00:00:00Z')",
-            params![OTHER_ALBUM_ID, ARTIST_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "INSERT INTO albums
+         (id, title, artist_id, is_compilation, _updated_at, created_at)
+         VALUES (?1, 'Other Album', ?2, 0, 'seed', '2026-01-01T00:00:00Z')",
+        &[OTHER_ALBUM_ID, ARTIST_ID],
+    )
+    .await;
     let mut live = db.inner.handle.subscribe(|sql| {
         sql.query_row(
             "SELECT title FROM albums WHERE id = ?1",
@@ -586,16 +517,12 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
     });
     assert_eq!(live.next().await.unwrap(), "Album Title");
 
-    db.call(|sql| {
-        sql.execute(
-            "UPDATE albums SET title = 'Renamed Other Album' WHERE id = ?1",
-            params![OTHER_ALBUM_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE albums SET title = 'Renamed Other Album' WHERE id = ?1",
+        &[OTHER_ALBUM_ID],
+    )
+    .await;
 
     assert!(
         tokio::time::timeout(Duration::from_millis(100), live.next())
@@ -610,13 +537,7 @@ async fn album_detail_subscription_delivers_absence_after_deletion() {
     let mut live = db.subscribe_album_detail(ALBUM_ID);
     assert!(live.next().await.unwrap().detail.is_some());
 
-    db.call(|sql| {
-        sql.execute("DELETE FROM albums WHERE id = ?1", params![ALBUM_ID])
-            .map(|_| ())
-            .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(&db, "DELETE FROM albums WHERE id = ?1", &[ALBUM_ID]).await;
 
     let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
@@ -639,18 +560,14 @@ async fn release_library_status_subscription_delivers_identity_changes() {
     assert!(!initial.release_in_library);
     assert!(!initial.album_in_library);
 
-    db.call(|sql| {
-        sql.execute(
+    exec(
+        &db,
             "INSERT INTO release_identities
-             (id, release_id, source, source_release_id, source_group_id, _updated_at, created_at)
-             VALUES (?1, ?2, 'musicbrainz', 'source-release-1', 'source-group-1', 'identity-v1', '2026-01-01T00:00:00Z')",
-            params![IDENTITY_ID, RELEASE_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+         (id, release_id, source, source_release_id, source_group_id, _updated_at, created_at)
+         VALUES (?1, ?2, 'musicbrainz', 'source-release-1', 'source-group-1', 'identity-v1', '2026-01-01T00:00:00Z')",
+        &[IDENTITY_ID, RELEASE_ID],
+    )
+    .await;
 
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
@@ -683,33 +600,7 @@ pub(super) fn list_request(
 }
 
 pub(super) fn scan_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
-    use crate::import::folder_scanner::{
-        CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScanItem, ScannedFile,
-    };
-    ScanItem::Valid(crate::import::FolderCandidate {
-        path: format!("{root}/{name}").into(),
-        file_root: format!("{root}/{name}").into(),
-        name: name.to_string(),
-        files: CategorizedFiles {
-            files: vec![CandidateFile {
-                proposed_audio: true,
-                file: ScannedFile::new(
-                    format!("{root}/{name}/01.flac").into(),
-                    "01.flac".to_string(),
-                    1_000,
-                    1,
-                )
-                .with_test_flac_audio(),
-                role: FileRole::Audio,
-            }],
-        },
-        watched_folder_path: root.to_string(),
-        scope: ReleaseFileScope::Recursive,
-        file_edit_revision: 0,
-        display_path: name.to_string(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
-    })
+    crate::import::folder_scanner::ScanItem::Valid(super::candidate(root, name))
 }
 
 pub(super) fn candidate_names(projection: &crate::import::ImportListProjection) -> Vec<String> {
@@ -747,16 +638,12 @@ async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
     assert_eq!(initial.summary.counts.pending, 1);
     assert_eq!(initial.summary.counts.done, 0);
 
-    db.call(move |sql| {
-        sql.execute(
-            "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
-            params![content_hash, RELEASE_ID],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
+        &[content_hash.as_str(), RELEASE_ID],
+    )
+    .await;
 
     let imported = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
@@ -833,16 +720,12 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
 
     let second = format!("{root}/second");
-    db.call(move |sql| {
-        sql.execute(
-            "UPDATE scan_candidate SET initial_metadata_source = 'none' WHERE path = ?1",
-            params![second],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE scan_candidate SET initial_metadata_source = 'none' WHERE path = ?1",
+        &[second.as_str()],
+    )
+    .await;
 
     assert!(
         tokio::time::timeout(Duration::from_millis(500), live.next())

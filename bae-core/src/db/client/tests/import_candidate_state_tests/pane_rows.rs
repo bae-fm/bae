@@ -62,11 +62,7 @@ fn signals_with(durations: SourceDurations) -> Signals {
 /// Store a verdict for `hash` carrying `signals`, and say whether it landed.
 async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
-        candidate: crate::import::CandidateAsRead {
-            content_hash: hash.to_string(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        candidate: as_read(hash, 0),
         folder_path: pane_candidate_path(),
         verdict: sample_verdict(),
         signals,
@@ -111,7 +107,7 @@ fn existing_artist() -> DbArtist {
         sort_name: Some("Artist, Library".to_string()),
         discogs_artist_id: Some("discogs-library".to_string()),
         musicbrainz_artist_id: Some("mb-library".to_string()),
-        created_at: fixed_identified_at(),
+        created_at: fixed_now(),
     }
 }
 
@@ -137,8 +133,6 @@ async fn store_candidate_state(
     files: &CategorizedFiles,
     folder_path: &str,
 ) -> String {
-    use crate::import::folder_scanner::{FolderCandidate, ReleaseFileScope, ScanItem};
-
     let path = PathBuf::from(folder_path);
     let root = path
         .parent()
@@ -150,18 +144,12 @@ async fn store_candidate_state(
         .expect("the candidate fixture has a folder name")
         .to_string_lossy()
         .into_owned();
-    let item = ScanItem::Valid(FolderCandidate {
-        path: path.clone(),
-        file_root: path,
-        name: name.clone(),
-        files: files.clone(),
-        watched_folder_path: root.clone(),
-        scope: ReleaseFileScope::Direct,
-        file_edit_revision: 0,
-        display_path: name,
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
-    });
+    let item = crate::import::folder_scanner::ScanItem::Valid(super::candidate_with(
+        &root,
+        &name,
+        files.clone(),
+        crate::import::folder_scanner::ReleaseFileScope::Direct,
+    ));
     let hash = files.content_hash();
     db.add_watched_import_folder(&root).await.unwrap();
     let generation = db.begin_folder_scan(&root).await.unwrap();
@@ -393,11 +381,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
         let hash = store_candidate_state(&db, &candidate, &pane_candidate_path()).await;
 
         let error = crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
-                candidate: crate::import::CandidateAsRead {
-                    content_hash: hash.clone(),
-                    file_edit_revision: 0,
-                    metadata_revision: 0,
-                },
+                candidate: as_read(&hash, 0),
                 folder_path: pane_candidate_path(),
                 verdict: sample_verdict(),
                 signals: scanning,
@@ -434,7 +418,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
     db.save_import_candidate_failure(
         &hash,
         0,
-        &ImportFailure::error_only("the folder vanished", fixed_identified_at()),
+        &ImportFailure::error_only("the folder vanished", fixed_now()),
     )
     .await
     .unwrap();
@@ -446,7 +430,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         .failure
         .expect("the failure is stored");
     assert_eq!(failure.error, "the folder vanished");
-    assert_eq!(failure.failed_at, fixed_identified_at());
+    assert_eq!(failure.failed_at, fixed_now());
     assert!(db
         .load_import_candidate_pane_rows(&hash)
         .await
@@ -458,7 +442,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
     db.save_import_candidate_failure(
         &hash,
         0,
-        &ImportFailure::error_only("the disc would not read", fixed_identified_at()),
+        &ImportFailure::error_only("the disc would not read", fixed_now()),
     )
     .await
     .unwrap();
@@ -489,7 +473,7 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
     db.save_import_candidate_failure(
         &hash,
         0,
-        &ImportFailure::error_only("the prior attempt failed", fixed_identified_at()),
+        &ImportFailure::error_only("the prior attempt failed", fixed_now()),
     )
     .await
     .unwrap();
@@ -553,11 +537,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &as_read(&hash, 0),
         &cover,
         Some(&image),
     )
@@ -585,11 +565,7 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &as_read(&hash, 0),
         &cover,
         None,
     )
@@ -626,11 +602,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &as_read(&hash, 0),
         &current_cover,
         Some(&current_image),
     )
@@ -648,11 +620,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &as_read(&hash, 0),
         &stale_cover,
         Some(&stale_image),
     )
@@ -686,11 +654,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     };
     let revision = crate::import::CandidatePreparations::new(db.clone()).apply_source(
             &host_root("/music"),
-            &crate::import::CandidateAsRead {
-                content_hash: hash.clone(),
-                file_edit_revision: 0,
-                metadata_revision: 0,
-            },
+            &as_read(&hash, 0),
             &pane_candidate_path(),
             &crate::import::CandidateMetadataDraft {
                 draft: draft.clone(),
@@ -719,11 +683,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     };
     let revision = crate::import::CandidatePreparations::new(db.clone()).apply_source(
             &host_root("/music"),
-            &crate::import::CandidateAsRead {
-                content_hash: hash.clone(),
-                file_edit_revision: 0,
-                metadata_revision: revision,
-            },
+            &as_read(&hash, revision),
             &pane_candidate_path(),
             &crate::import::CandidateMetadataDraft {
                 draft,
@@ -761,11 +721,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     crate::import::CandidatePreparations::new(db.clone()).set_album_artists_prepared(
         &host_root("/music"),
         &pane_candidate_path(),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: revision,
-        },
+        &as_read(&hash, revision),
         &[third_assignment],
         &std::collections::BTreeSet::new(),
         std::slice::from_ref(&third),
@@ -793,11 +749,7 @@ async fn preparation_round_trips_source_only_artist_answers() {
 
     crate::import::CandidatePreparations::new(db.clone()).apply_source(
         &host_root("/music"),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &as_read(&hash, 0),
         &pane_candidate_path(),
         &crate::import::CandidateMetadataDraft {
             draft: candidate_draft("Release Title", "Artist Name"),

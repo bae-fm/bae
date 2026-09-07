@@ -116,11 +116,7 @@ async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
     let error = crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
             &root,
             &pane_candidate_path(),
-            &crate::import::CandidateAsRead {
-                content_hash: hash.clone(),
-                file_edit_revision: 0,
-                metadata_revision: 0,
-            },
+            &as_read(&hash, 0),
             &CoverSelection::Local("cover.jpg".to_string()),
             None,
         )
@@ -204,11 +200,7 @@ async fn an_existing_library_artist_needs_no_candidate_image_answer() {
 
     crate::import::CandidatePreparations::new(db.clone()).apply_source(
         &host_root("/music"),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &as_read(&hash, 0),
         &pane_candidate_path(),
         &crate::import::CandidateMetadataDraft {
             draft,
@@ -466,11 +458,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     settled.apply_candidate_file_edits(&edits).unwrap();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision,
-        },
+        &as_read(&hash, metadata_revision),
         &pane_candidate_path(),
         &edits,
         &[(pane_candidate_path(), settled)],
@@ -522,11 +510,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     settled.apply_candidate_file_edits(&file_edits).unwrap();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision,
-        },
+        &as_read(&hash, metadata_revision),
         &pane_candidate_path(),
         &file_edits,
         &[(pane_candidate_path(), settled)],
@@ -669,11 +653,7 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
         .unwrap();
 
     assert!(crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
-            candidate: crate::import::CandidateAsRead {
-                content_hash: hash.clone(),
-                file_edit_revision: 0,
-                metadata_revision: 2,
-            },
+            candidate: as_read(&hash, 2),
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
@@ -714,11 +694,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
     let (_, hash) = stored_pane_candidate(&db).await;
     let first_pick = release_pick("rel-first");
     assert!(crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
-            candidate: crate::import::CandidateAsRead {
-                content_hash: hash.clone(),
-                file_edit_revision: 0,
-                metadata_revision: 0,
-            },
+            candidate: as_read(&hash, 0),
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
@@ -737,11 +713,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
         .unwrap();
 
     assert!(!crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
-            candidate: crate::import::CandidateAsRead {
-                content_hash: hash.clone(),
-                file_edit_revision: 0,
-                metadata_revision: 1,
-            },
+            candidate: as_read(&hash, 1),
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),

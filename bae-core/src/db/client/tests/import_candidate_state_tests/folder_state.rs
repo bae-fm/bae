@@ -21,21 +21,12 @@ fn scanned_candidate_with_scope(
     name: &str,
     scope: crate::import::folder_scanner::ReleaseFileScope,
 ) -> crate::import::folder_scanner::ScanItem {
-    use crate::import::folder_scanner::{FolderCandidate, ScanItem};
-
-    let path = PathBuf::from(root).join(name);
-    ScanItem::Valid(FolderCandidate {
-        path: path.clone(),
-        file_root: path,
-        name: name.to_string(),
-        files: track_files_candidate(&[("01.flac", 123)]),
-        watched_folder_path: root.to_string(),
+    crate::import::folder_scanner::ScanItem::Valid(super::candidate_with(
+        root,
+        name,
+        track_files_candidate(&[("01.flac", 123)]),
         scope,
-        file_edit_revision: 0,
-        display_path: name.to_string(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
-    })
+    ))
 }
 
 #[tokio::test]
@@ -401,7 +392,7 @@ async fn a_late_import_failure_cannot_recreate_state_after_root_removal() {
         0,
         &crate::import::ImportFailure::error_only(
             "the source disappeared",
-            fixed_identified_at(),
+            fixed_now(),
         ),
     )
     .await
@@ -659,11 +650,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
     let hash = scanned.content_hash();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision,
-        },
+        &as_read(&hash, metadata_revision),
         &folder.path().to_string_lossy(),
         &candidate_edits,
         &[(folder.path().to_string_lossy().into_owned(), settled)],

@@ -1,38 +1,3 @@
-fn create_test_album() -> DbAlbum {
-    DbAlbum {
-        id: Uuid::new_v4().to_string(),
-        title: "Test Album".to_string(),
-        artist_id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
-        year: Some(2024),
-        primary_release_id: None,
-        is_compilation: false,
-        created_at: Utc::now(),
-    }
-}
-fn create_test_release(album_id: &str) -> DbRelease {
-    DbRelease {
-        id: Uuid::new_v4().to_string(),
-        album_id: album_id.to_string(),
-        release_name: None,
-        pressing: Pressing {
-            year: Some(2024),
-            format: None,
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcode: None,
-        },
-        disc_id: None,
-        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
-        remote: true,
-        source_folder_name: None,
-        content_hash: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: Utc::now(),
-    }
-}
-
 async fn create_candidate_draft(manager: &LibraryManager) -> (String, String) {
     let root = crate::import::watched_folder::host_root("/music");
     let path = std::path::Path::new(&root).join("candidate");
@@ -163,12 +128,7 @@ async fn work_detail_release_rows_are_display_ready() {
 
 #[tokio::test]
 async fn test_delete_release_with_single_release_deletes_album() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, album, release) = manager_with_release().await;
 
     manager.delete_release(&release.id).await.unwrap();
 
@@ -180,11 +140,7 @@ async fn test_delete_release_with_single_release_deletes_album() {
 
 #[tokio::test]
 async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, album, release) = manager_with_release().await;
 
     let artist = manager
         .database
@@ -447,11 +403,7 @@ async fn delete_album_survives_a_cloud_that_refuses_the_cleanup() {
 
 #[tokio::test]
 async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_fails() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
     let file = DbFile::new(
         &release.id,
@@ -479,11 +431,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_f
 /// after the deletes have been staged, which is the point.
 #[tokio::test]
 async fn delete_release_rolls_back_when_an_external_ref_clear_is_refused() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, album, release) = manager_with_release().await;
 
     let file = DbFile::new(
         &release.id,
@@ -517,11 +465,7 @@ async fn delete_release_rolls_back_when_an_external_ref_clear_is_refused() {
 /// delete transaction.
 #[tokio::test]
 async fn delete_release_rolls_back_when_a_blob_tombstone_is_refused() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, album, release) = manager_with_release().await;
     store_test_cover_image(&manager, &release.id).await;
 
     let cover_blob = manager
@@ -552,11 +496,7 @@ async fn delete_release_rolls_back_when_a_blob_tombstone_is_refused() {
 
 #[tokio::test]
 async fn delete_album_fails_before_rows_are_deleted_when_track_lookup_fails() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, album, _release) = manager_with_release().await;
 
     rename_table_for_test(&manager, "tracks").await;
 
@@ -567,11 +507,7 @@ async fn delete_album_fails_before_rows_are_deleted_when_track_lookup_fails() {
 
 #[tokio::test]
 async fn delete_album_fails_before_rows_are_deleted_when_file_cleanup_lookup_fails() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, album, _release) = manager_with_release().await;
 
     rename_table_for_test(&manager, "release_files").await;
 
@@ -664,11 +600,7 @@ async fn playback_info_from_track_release_rejects_missing_album() {
 
 #[tokio::test]
 async fn delete_release_fails_before_rows_are_deleted_when_cover_lookup_fails() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
     store_test_cover_image(&manager, &release.id).await;
 
     rename_table_for_test(&manager, "covers").await;

@@ -3,7 +3,7 @@ use super::*;
 fn artist_identity_failure(discogs: &DbArtist, musicbrainz: &DbArtist) -> ImportFailure {
     ImportFailure {
         error: "the artist identities disagree".to_string(),
-        failed_at: fixed_identified_at(),
+        failed_at: fixed_now(),
         artist_identity_conflict: Some(crate::import::ArtistIdentityConflict {
             incoming_artist_name: "Artist One".to_string(),
             discogs_artist_id: "discogs-1".to_string(),
@@ -24,7 +24,7 @@ async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
         musicbrainz_artist_id: None,
-        created_at: fixed_identified_at(),
+        created_at: fixed_now(),
     };
     let musicbrainz = DbArtist {
         id: bae_test_support::test_uuid("conflict-round-trip-musicbrainz-artist"),
@@ -32,7 +32,7 @@ async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
         sort_name: Some("Artist One, The".to_string()),
         discogs_artist_id: None,
         musicbrainz_artist_id: Some("mb-1".to_string()),
-        created_at: fixed_identified_at(),
+        created_at: fixed_now(),
     };
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
@@ -61,7 +61,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
         musicbrainz_artist_id: None,
-        created_at: fixed_identified_at(),
+        created_at: fixed_now(),
     };
     let musicbrainz = DbArtist {
         id: bae_test_support::test_uuid("conflict-merge-musicbrainz-artist"),
@@ -69,7 +69,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         sort_name: Some("Artist One, The".to_string()),
         discogs_artist_id: None,
         musicbrainz_artist_id: Some("mb-1".to_string()),
-        created_at: fixed_identified_at(),
+        created_at: fixed_now(),
     };
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
@@ -80,7 +80,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         year: None,
         primary_release_id: None,
         is_compilation: false,
-        created_at: fixed_identified_at(),
+        created_at: fixed_now(),
     };
     db.insert_album(&album).await.unwrap();
     let release_id = bae_test_support::test_uuid("conflict-merge-release");
@@ -309,7 +309,7 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
         musicbrainz_artist_id: Some("mb-other".to_string()),
-        created_at: fixed_identified_at(),
+        created_at: fixed_now(),
     };
     let musicbrainz = DbArtist {
         id: bae_test_support::test_uuid("three-identity-musicbrainz-artist"),
@@ -317,7 +317,7 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: Some("mb-1".to_string()),
-        created_at: fixed_identified_at(),
+        created_at: fixed_now(),
     };
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();

@@ -22,20 +22,26 @@ fn sort_by_album_title_asc() -> crate::db::StorageSortCriterion {
     }
 }
 
+/// A page of the storage list under `filter`, ordered by album title
+/// ascending — the ordering every assertion below reads rows in.
+async fn storage_page(
+    manager: &LibraryManager,
+    filter: crate::db::StorageFilter,
+    offset: u64,
+    limit: u64,
+) -> StoragePage {
+    manager
+        .get_storage_page(&sort_by_album_title_asc(), filter, offset, limit)
+        .await
+        .unwrap()
+}
+
 #[tokio::test]
 async fn storage_page_returns_all_rows_for_all_filter() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 3).await;
 
-    let page = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::All,
-            0,
-            10,
-        )
-        .await
-        .unwrap();
+    let page = storage_page(&manager, crate::db::StorageFilter::All, 0, 10).await;
     assert_eq!(page.rows.len(), 3);
     assert_eq!(page.total_count, 3);
 }
@@ -45,33 +51,9 @@ async fn storage_page_paginates() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 5).await;
 
-    let page1 = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::All,
-            0,
-            2,
-        )
-        .await
-        .unwrap();
-    let page2 = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::All,
-            2,
-            2,
-        )
-        .await
-        .unwrap();
-    let page3 = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::All,
-            4,
-            2,
-        )
-        .await
-        .unwrap();
+    let page1 = storage_page(&manager, crate::db::StorageFilter::All, 0, 2).await;
+    let page2 = storage_page(&manager, crate::db::StorageFilter::All, 2, 2).await;
+    let page3 = storage_page(&manager, crate::db::StorageFilter::All, 4, 2).await;
 
     assert_eq!(page1.rows.len(), 2);
     assert_eq!(page2.rows.len(), 2);
@@ -87,15 +69,7 @@ async fn storage_page_sorts_album_title_ascending() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 3).await;
 
-    let page = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::All,
-            0,
-            10,
-        )
-        .await
-        .unwrap();
+    let page = storage_page(&manager, crate::db::StorageFilter::All, 0, 10).await;
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album 0", "Album 1", "Album 2"]);
 }
@@ -154,15 +128,7 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     manager.database.insert_album(&local_album).await.unwrap();
     insert_release(&manager, &local).await;
 
-    let page = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::All,
-            0,
-            10,
-        )
-        .await
-        .unwrap();
+    let page = storage_page(&manager, crate::db::StorageFilter::All, 0, 10).await;
     let actions: std::collections::HashMap<_, _> = page
         .rows
         .iter()
@@ -232,15 +198,7 @@ async fn storage_page_rows_have_no_actions_without_cloud_home() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
-    let page = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::All,
-            0,
-            10,
-        )
-        .await
-        .unwrap();
+    let page = storage_page(&manager, crate::db::StorageFilter::All, 0, 10).await;
     assert_eq!(page.rows.len(), 1);
     assert!(page.rows[0].release.storage_actions.is_empty());
 }
@@ -260,15 +218,7 @@ async fn storage_page_local_filter_matches_local_path() {
     insert_release(&manager, &remote_release).await;
     insert_release(&manager, &local_release).await;
 
-    let local = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::Local,
-            0,
-            10,
-        )
-        .await
-        .unwrap();
+    let local = storage_page(&manager, crate::db::StorageFilter::Local, 0, 10).await;
     assert_eq!(local.rows.len(), 1);
     assert_eq!(local.total_count, 1);
     assert_eq!(local.rows[0].release.id, local_release.id);
@@ -277,15 +227,7 @@ async fn storage_page_local_filter_matches_local_path() {
         crate::album_detail::ReleaseStorageState::Local
     );
 
-    let remote = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::Remote,
-            0,
-            10,
-        )
-        .await
-        .unwrap();
+    let remote = storage_page(&manager, crate::db::StorageFilter::Remote, 0, 10).await;
     assert_eq!(remote.rows.len(), 1);
     assert_eq!(remote.rows[0].release.id, remote_release.id);
     assert_ne!(
@@ -342,26 +284,10 @@ async fn storage_count_matches_filtered_page_total() {
         0
     );
 
-    let all_page = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::All,
-            0,
-            10,
-        )
-        .await
-        .unwrap();
+    let all_page = storage_page(&manager, crate::db::StorageFilter::All, 0, 10).await;
     assert_eq!(all_page.total_count, 3);
 
-    let local_page = manager
-        .get_storage_page(
-            &sort_by_album_title_asc(),
-            crate::db::StorageFilter::Local,
-            0,
-            10,
-        )
-        .await
-        .unwrap();
+    let local_page = storage_page(&manager, crate::db::StorageFilter::Local, 0, 10).await;
     assert_eq!(local_page.rows.len(), 1);
     assert_eq!(local_page.rows[0].release.id, inserted_local.unwrap());
 }

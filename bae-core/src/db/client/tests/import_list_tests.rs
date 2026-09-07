@@ -8,63 +8,16 @@
 use super::super::*;
 use crate::identify::{ResultProvenance, TerminalVerdict};
 
+use super::{candidate, empty_db, exec, fixed_now, watched_root};
 use crate::import::folder_scanner::{
-    CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
-    ScannedFile,
+    CandidateFile, FileRole, FolderCandidate, ScanItem, ScannedFile,
 };
 use crate::import::list::{ImportListItem, ImportListRequest, ImportListView};
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::{MetadataProvenance, PayloadSource, TriageTab};
-use coven::FixedClock;
 use std::path::PathBuf;
 
 mod dates;
-
-fn now() -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
-        .unwrap()
-        .with_timezone(&Utc)
-}
-
-async fn empty_db() -> (Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(FixedClock(now())),
-        Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-    (db, tmp)
-}
-
-fn candidate(root: &str, name: &str) -> FolderCandidate {
-    FolderCandidate {
-        path: PathBuf::from(format!("{root}/{name}")),
-        file_root: PathBuf::from(format!("{root}/{name}")),
-        name: name.to_string(),
-        files: CategorizedFiles {
-            files: vec![CandidateFile {
-                proposed_audio: true,
-                file: ScannedFile::new(
-                    PathBuf::from(format!("{root}/{name}/01.flac")),
-                    "01.flac".to_string(),
-                    1_000,
-                    1,
-                )
-                .with_test_flac_audio(),
-                role: FileRole::Audio,
-            }],
-        },
-        watched_folder_path: root.to_string(),
-        scope: ReleaseFileScope::Recursive,
-        file_edit_revision: 0,
-        display_path: name.to_string(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
-    }
-}
 
 /// One scanned candidate under a fresh watched root.
 async fn scanned(db: &Database, root: &str, name: &str) -> FolderCandidate {
@@ -244,18 +197,15 @@ async fn sweepable_candidates_are_valid_find_online_candidates() {
 /// own archived documents describe it — not with whatever the verdict named.
 #[tokio::test]
 async fn a_picked_row_leads_with_the_archived_document() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let candidate = scanned(&db, root, "Album").await;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
 
     db.save_source_release_payloads(&[DbSourceReleasePayload {
         source: PayloadSource::MusicBrainz,
         source_release_id: "mb-picked".to_string(),
         json: musicbrainz_release("mb-picked", "Picked Album").to_string(),
-        fetched_at: now(),
+        fetched_at: fixed_now(),
     }])
     .await
     .unwrap();
@@ -295,11 +245,8 @@ async fn a_picked_row_leads_with_the_archived_document() {
 /// rather than the release the verdict happened to name.
 #[tokio::test]
 async fn a_pick_with_no_documents_leads_with_nothing() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let candidate = scanned(&db, root, "Album").await;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
     let draft = db
         .load_import_candidate_pane_rows(&candidate.files.content_hash())
@@ -337,11 +284,8 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
 /// read off its stored columns.
 #[tokio::test]
 async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let candidate = scanned(&db, root, "Album").await;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
 
     let projection = db
@@ -362,24 +306,15 @@ async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
 /// list unchanged, which is what "reads columns, decodes nothing" means.
 #[tokio::test]
 async fn the_list_places_a_row_without_reading_its_files() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let candidate = scanned(&db, root, "Album").await;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
 
     let before = db
         .load_import_list(request(TriageTab::Pending).await)
         .await
         .unwrap();
-    db.call(|sql| {
-        sql.execute("DELETE FROM scan_candidate_file", [])
-            .map(|_| ())
-            .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(&db, "DELETE FROM scan_candidate_file", &[]).await;
     let after = db
         .load_import_list(request(TriageTab::Pending).await)
         .await
@@ -394,11 +329,8 @@ async fn the_list_places_a_row_without_reading_its_files() {
 /// candidate shows when no run is in flight.
 #[tokio::test]
 async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let candidate = scanned(&db, root, "Album").await;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
 
     let detail = db
@@ -440,24 +372,17 @@ async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
 /// waiting on identification.
 #[tokio::test]
 async fn a_verdict_from_another_revision_does_not_resume() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let candidate = scanned(&db, root, "Album").await;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
     let key = candidate.path.to_string_lossy().into_owned();
     let edited = key.clone();
-    db.call(move |sql| {
-        sql.execute(
-            "UPDATE scan_candidate SET file_edit_revision = 1 WHERE path = ?1",
-            params![edited],
-        )
-        .map(|_| ())
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE scan_candidate SET file_edit_revision = 1 WHERE path = ?1",
+        &[&edited],
+    )
+    .await;
 
     let detail = db
         .load_import_candidate(&key)
@@ -478,13 +403,10 @@ async fn a_verdict_from_another_revision_does_not_resume() {
 /// row.
 #[tokio::test]
 async fn the_list_projects_the_applied_draft_and_cover() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
-    let mut candidate = candidate(root, "Album");
+    let (db, _tmp, root) = watched_root().await;
+    db.add_watched_import_folder(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let mut candidate = candidate(&root, "Album");
     candidate.files.files.push(CandidateFile {
         proposed_audio: false,
         file: ScannedFile::new(
@@ -506,7 +428,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         role: FileRole::Artwork,
     });
     db.save_folder_scan_item_with_initial_source(
-        root,
+        &root,
         generation,
         &ScanItem::Valid(candidate.clone()),
         crate::config::DefaultImportMetadataSource::FindOnline,
@@ -514,7 +436,9 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     )
     .await
     .unwrap();
-    db.finish_folder_scan(root, generation, None).await.unwrap();
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
     save_verdict(&db, &candidate, "mb-verdict").await;
     let hash = candidate.files.content_hash();
 
@@ -566,9 +490,9 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         )
         .await
         .unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(&root).await.unwrap();
     db.save_folder_scan_item_with_initial_source(
-        root,
+        &root,
         generation,
         &ScanItem::Valid(candidate.clone()),
         crate::config::DefaultImportMetadataSource::None,
@@ -576,7 +500,9 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     )
     .await
     .unwrap();
-    db.finish_folder_scan(root, generation, None).await.unwrap();
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
 
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)
@@ -599,9 +525,9 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         )
         .await
         .unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
+    let generation = db.begin_folder_scan(&root).await.unwrap();
     db.save_folder_scan_item_with_initial_source(
-        root,
+        &root,
         generation,
         &ScanItem::Valid(candidate),
         crate::config::DefaultImportMetadataSource::None,
@@ -609,7 +535,9 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     )
     .await
     .unwrap();
-    db.finish_folder_scan(root, generation, None).await.unwrap();
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
 
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)
@@ -626,13 +554,10 @@ async fn the_list_projects_the_applied_draft_and_cover() {
 
 #[tokio::test]
 async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
-    let mut candidate = candidate(root, "Album");
+    let (db, _tmp, root) = watched_root().await;
+    db.add_watched_import_folder(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root).await.unwrap();
+    let mut candidate = candidate(&root, "Album");
     candidate.files.files.push(CandidateFile {
         proposed_audio: false,
         file: ScannedFile::new(
@@ -644,7 +569,7 @@ async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
         role: FileRole::Artwork,
     });
     db.save_folder_scan_item_with_initial_source(
-        root,
+        &root,
         generation,
         &ScanItem::Valid(candidate.clone()),
         crate::config::DefaultImportMetadataSource::None,
@@ -652,7 +577,9 @@ async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
     )
     .await
     .unwrap();
-    db.finish_folder_scan(root, generation, None).await.unwrap();
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
 
     assert!(db
         .load_import_candidate_pane_rows(&candidate.files.content_hash())
@@ -686,21 +613,18 @@ async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
 
     save_verdict(&db, &candidate, "release-with-cover").await;
     let hash = candidate.files.content_hash();
-    db.call(move |sql| {
-        sql.execute(
-            "UPDATE import_candidate_match SET cover_url = ?, cover_thumbnail_url = ?, \
-                 cover_label = ?, cover_source = 'musicbrainz' WHERE content_hash = ?",
-            params![
-                "https://example.invalid/full.jpg",
-                "https://example.invalid/thumb.jpg",
-                "Cover",
-                hash,
-            ],
-        )?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    exec(
+        &db,
+        "UPDATE import_candidate_match SET cover_url = ?, cover_thumbnail_url = ?, \
+             cover_label = ?, cover_source = 'musicbrainz' WHERE content_hash = ?",
+        &[
+            "https://example.invalid/full.jpg",
+            "https://example.invalid/thumb.jpg",
+            "Cover",
+            &hash,
+        ],
+    )
+    .await;
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)
         .await
@@ -716,13 +640,10 @@ async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
 
 #[tokio::test]
 async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
+    let (db, _tmp, root) = watched_root().await;
     let candidate = scanned_with_source(
         &db,
-        root,
+        &root,
         "Album",
         crate::config::DefaultImportMetadataSource::FileTags,
     )
@@ -759,7 +680,7 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
     };
     crate::import::CandidatePreparations::new(db.clone())
         .apply_file_tags(
-            root,
+            &root,
             &candidate.path.to_string_lossy(),
             &crate::import::CandidateAsRead {
                 content_hash: hash.clone(),
@@ -795,11 +716,8 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
 /// Queueing the next attempt clears the row and it goes back to plain pending.
 #[tokio::test]
 async fn a_stored_failure_keeps_the_row_pending_saying_why() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let candidate = scanned(&db, root, "Album").await;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
     let hash = candidate.files.content_hash();
 
@@ -814,7 +732,7 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     db.save_import_candidate_failure(
         &hash,
         0,
-        &crate::import::ImportFailure::error_only("the disk filled", now()),
+        &crate::import::ImportFailure::error_only("the disk filled", fixed_now()),
     )
     .await
     .unwrap();

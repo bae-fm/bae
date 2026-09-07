@@ -170,6 +170,53 @@ async fn insert_release(manager: &LibraryManager, release: &DbRelease) {
     manager.database.insert_release(release).await.unwrap();
 }
 
+fn create_test_album() -> DbAlbum {
+    DbAlbum {
+        id: Uuid::new_v4().to_string(),
+        title: "Test Album".to_string(),
+        artist_id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
+        year: Some(2024),
+        primary_release_id: None,
+        is_compilation: false,
+        created_at: Utc::now(),
+    }
+}
+fn create_test_release(album_id: &str) -> DbRelease {
+    DbRelease {
+        id: Uuid::new_v4().to_string(),
+        album_id: album_id.to_string(),
+        release_name: None,
+        pressing: Pressing {
+            year: Some(2024),
+            format: None,
+            label: None,
+            catalog_number: None,
+            country: None,
+            barcode: None,
+        },
+        disc_id: None,
+        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
+        remote: true,
+        source_folder_name: None,
+        content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
+        created_at: Utc::now(),
+    }
+}
+
+/// A manager holding one album with one release — the spine most of these
+/// tests start from before adding tracks, files, or covers of their own. The
+/// `TempDir` owns the library directory, so callers keep it.
+async fn manager_with_release() -> (LibraryManager, TempDir, DbAlbum, DbRelease) {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    insert_release(&manager, &release).await;
+    (manager, temp_dir, album, release)
+}
+
 include!("tests/save_and_config.rs");
 include!("tests/deletion.rs");
 include!("tests/release_details.rs");

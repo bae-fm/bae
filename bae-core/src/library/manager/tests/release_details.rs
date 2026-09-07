@@ -24,11 +24,7 @@ async fn add_cover_row(manager: &LibraryManager, release_id: &str) {
 
 #[tokio::test]
 async fn release_detail_has_no_cover_without_a_cover_row() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
     let detail = manager
         .find_release_detail(&release.id)
         .await
@@ -104,11 +100,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
 /// reloads the cover.
 #[tokio::test]
 async fn release_cover_version_moves_when_the_cover_row_is_reupserted() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
     add_cover_row(&manager, &release.id).await;
     let before = manager
@@ -198,11 +190,7 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
 
 #[tokio::test]
 async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, album, release) = manager_with_release().await;
 
     // No cover row yet: the detail carries no cover reference.
     let detail = manager
@@ -297,11 +285,7 @@ async fn find_release_detail_returns_some_for_known_id() {
 
 #[tokio::test]
 async fn release_source_audio_summary_uses_every_file_without_track_formats() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
     let source = |content_type, layout, codec: &str, bitrate_kbps: Option<i64>| {
         crate::album_detail::SourceAudioFile {
@@ -361,11 +345,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
 
 #[tokio::test]
 async fn find_release_detail_surfaces_seeded_tracks() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
     // Seed two tracks; the detail resolver must surface both with their
     // titles and track numbers (not just report emptiness).
@@ -451,11 +431,7 @@ async fn display_artist_is_set_only_for_a_compilation() {
 
 #[tokio::test]
 async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
     // An image file for the release with no local copy on this device — the
     // release's images live only in the cloud here.

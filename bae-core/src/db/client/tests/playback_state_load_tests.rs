@@ -1,16 +1,11 @@
 use super::super::*;
 
-async fn empty_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
-    (db, tmp)
-}
-
 /// `source` and `shuffled` are written together, so a row carrying one
 /// without the other is corrupt: `load_playback_state` reports `Corrupt`
 /// rather than inventing a flag or masking it as an absent cache.
 #[tokio::test]
 async fn mismatched_source_and_shuffled_discards_the_cache() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = super::temp_db().await;
 
     // Write a row by hand with a present source but a NULL shuffled --
     // `save_playback_state` never produces this, so we insert it directly.

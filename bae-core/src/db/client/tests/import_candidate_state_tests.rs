@@ -1,3 +1,17 @@
+use super::{empty_db, fixed_now};
+
+/// The candidate as a caller reads it back after a fixture stored it: no file
+/// decisions edited yet, and whatever metadata revision the caller just
+/// observed. Tests that deliberately submit a stale or advanced
+/// `file_edit_revision` write the record out in full instead.
+fn as_read(content_hash: &str, metadata_revision: u64) -> crate::import::CandidateAsRead {
+    crate::import::CandidateAsRead {
+        content_hash: content_hash.to_string(),
+        file_edit_revision: 0,
+        metadata_revision,
+    }
+}
+
 async fn current_mapping_preparation(
     db: &Database,
     content_hash: &str,

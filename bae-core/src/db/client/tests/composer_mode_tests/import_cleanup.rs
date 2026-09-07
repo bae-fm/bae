@@ -197,18 +197,12 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             proposed_audio: true,
         }],
     };
-    let candidate = crate::import::folder_scanner::FolderCandidate {
-        path: candidate_path.clone(),
-        file_root: candidate_path.clone(),
-        name: "Album".to_string(),
+    let candidate = super::candidate_with(
+        &root,
+        "Album",
         files,
-        watched_folder_path: root.clone(),
-        scope: crate::import::folder_scanner::ReleaseFileScope::Direct,
-        file_edit_revision: 0,
-        display_path: "Album".to_string(),
-        resolved_boundaries: Vec::new(),
-        combine_ancestor_key: None,
-    };
+        crate::import::folder_scanner::ReleaseFileScope::Direct,
+    );
     let content_hash = candidate.files.content_hash();
     db.add_watched_import_folder(&root).await.unwrap();
     let generation = db.begin_folder_scan(&root).await.unwrap();

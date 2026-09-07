@@ -1,4 +1,5 @@
 use super::super::*;
+use super::watched_root;
 use crate::import::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot,
 };
@@ -7,27 +8,7 @@ use crate::import::folder_scanner::{
     ScannedFile,
 };
 use crate::util::content_type::ContentType;
-use coven::FixedClock;
 use std::path::PathBuf;
-
-fn now() -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
-        .unwrap()
-        .with_timezone(&Utc)
-}
-
-async fn empty_db() -> (Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(FixedClock(now())),
-        Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-    (db, tmp)
-}
 
 fn candidate(root: &str) -> FolderCandidate {
     let candidate_path = format!("{root}/candidate-a");
@@ -114,15 +95,12 @@ fn snapshot(generation: u64, revision: u64) -> FileTagSnapshot {
 
 #[tokio::test]
 async fn file_tag_snapshot_round_trips_with_current_candidate_stamp() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let (candidate, generation) = scanned_candidate(&db, root).await;
+    let (db, _tmp, root) = watched_root().await;
+    let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = candidate.path.to_string_lossy().into_owned();
 
     let empty = db
-        .load_candidate_file_tag_snapshot(root, &key)
+        .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()
         .unwrap();
@@ -132,12 +110,12 @@ async fn file_tag_snapshot_round_trips_with_current_candidate_stamp() {
 
     let expected = snapshot(generation, 0);
     assert!(db
-        .replace_candidate_file_tag_snapshot(root, &key, &expected)
+        .replace_candidate_file_tag_snapshot(&root, &key, &expected)
         .await
         .unwrap());
 
     let loaded = db
-        .load_candidate_file_tag_snapshot(root, &key)
+        .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()
         .unwrap();
@@ -148,13 +126,10 @@ async fn file_tag_snapshot_round_trips_with_current_candidate_stamp() {
 
 #[tokio::test]
 async fn replacement_removes_every_prior_file_and_embedded_cover() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let (candidate, generation) = scanned_candidate(&db, root).await;
+    let (db, _tmp, root) = watched_root().await;
+    let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = candidate.path.to_string_lossy().into_owned();
-    db.replace_candidate_file_tag_snapshot(root, &key, &snapshot(generation, 0))
+    db.replace_candidate_file_tag_snapshot(&root, &key, &snapshot(generation, 0))
         .await
         .unwrap();
 
@@ -194,12 +169,12 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
         embedded_cover: None,
     };
     assert!(db
-        .replace_candidate_file_tag_snapshot(root, &key, &replacement)
+        .replace_candidate_file_tag_snapshot(&root, &key, &replacement)
         .await
         .unwrap());
 
     let loaded = db
-        .load_candidate_file_tag_snapshot(root, &key)
+        .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()
         .unwrap();
@@ -208,27 +183,24 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
 
 #[tokio::test]
 async fn stale_generation_is_reported_and_cannot_replace_snapshot() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let (candidate, first_generation) = scanned_candidate(&db, root).await;
+    let (db, _tmp, root) = watched_root().await;
+    let (candidate, first_generation) = scanned_candidate(&db, &root).await;
     let key = candidate.path.to_string_lossy().into_owned();
     let stored = snapshot(first_generation, 0);
-    db.replace_candidate_file_tag_snapshot(root, &key, &stored)
+    db.replace_candidate_file_tag_snapshot(&root, &key, &stored)
         .await
         .unwrap();
 
-    let current_generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, current_generation, &ScanItem::Valid(candidate))
+    let current_generation = db.begin_folder_scan(&root).await.unwrap();
+    db.save_folder_scan_item(&root, current_generation, &ScanItem::Valid(candidate))
         .await
         .unwrap();
-    db.finish_folder_scan(root, current_generation, None)
+    db.finish_folder_scan(&root, current_generation, None)
         .await
         .unwrap();
 
     let loaded = db
-        .load_candidate_file_tag_snapshot(root, &key)
+        .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()
         .unwrap();
@@ -241,11 +213,11 @@ async fn stale_generation_is_reported_and_cannot_replace_snapshot() {
     );
 
     assert!(!db
-        .replace_candidate_file_tag_snapshot(root, &key, &stored)
+        .replace_candidate_file_tag_snapshot(&root, &key, &stored)
         .await
         .unwrap());
     assert_eq!(
-        db.load_candidate_file_tag_snapshot(root, &key)
+        db.load_candidate_file_tag_snapshot(&root, &key)
             .await
             .unwrap()
             .unwrap()
@@ -256,14 +228,11 @@ async fn stale_generation_is_reported_and_cannot_replace_snapshot() {
 
 #[tokio::test]
 async fn stale_file_edit_revision_cannot_replace_snapshot() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let (candidate, generation) = scanned_candidate(&db, root).await;
+    let (db, _tmp, root) = watched_root().await;
+    let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = candidate.path.to_string_lossy().into_owned();
     let stored = snapshot(generation, 0);
-    db.replace_candidate_file_tag_snapshot(root, &key, &stored)
+    db.replace_candidate_file_tag_snapshot(&root, &key, &stored)
         .await
         .unwrap();
 
@@ -281,40 +250,37 @@ async fn stale_file_edit_revision_cannot_replace_snapshot() {
     .unwrap();
 
     let loaded = db
-        .load_candidate_file_tag_snapshot(root, &key)
+        .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()
         .unwrap();
     assert_eq!(loaded.candidate.file_edit_revision(), 1);
     assert_eq!(loaded.snapshot, Some(stored.clone()));
     assert!(!db
-        .replace_candidate_file_tag_snapshot(root, &key, &stored)
+        .replace_candidate_file_tag_snapshot(&root, &key, &stored)
         .await
         .unwrap());
 }
 
 #[tokio::test]
 async fn failed_whole_replacement_preserves_the_previous_snapshot() {
-    let (db, tmp) = empty_db().await;
-    let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap();
-    let (candidate, generation) = scanned_candidate(&db, root).await;
+    let (db, _tmp, root) = watched_root().await;
+    let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = candidate.path.to_string_lossy().into_owned();
     let stored = snapshot(generation, 0);
-    db.replace_candidate_file_tag_snapshot(root, &key, &stored)
+    db.replace_candidate_file_tag_snapshot(&root, &key, &stored)
         .await
         .unwrap();
 
     let mut invalid = stored.clone();
     invalid.files[0].observation.modified_at_ns = -1;
     assert!(db
-        .replace_candidate_file_tag_snapshot(root, &key, &invalid)
+        .replace_candidate_file_tag_snapshot(&root, &key, &invalid)
         .await
         .is_err());
 
     assert_eq!(
-        db.load_candidate_file_tag_snapshot(root, &key)
+        db.load_candidate_file_tag_snapshot(&root, &key)
             .await
             .unwrap()
             .unwrap()

@@ -342,12 +342,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
     use crate::import::{ReleaseReseed, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
-    let (manager, _temp_dir) = setup_test_manager().await;
-
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
     // Local release has 10 tracks; picked release has 12.
     insert_n_tracks(&manager.database, &release.id, 10).await;

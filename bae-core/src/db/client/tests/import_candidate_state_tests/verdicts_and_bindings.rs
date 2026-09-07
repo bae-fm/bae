@@ -10,25 +10,6 @@ use std::path::PathBuf;
 /// than `SystemClock` so `identified_at` can be asserted exactly — which is
 /// why `CandidatePreparations::store_verdict` stamps it from the injected clock
 /// instead of taking it from the caller.
-fn fixed_identified_at() -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
-        .unwrap()
-        .with_timezone(&Utc)
-}
-
-async fn empty_db() -> (Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(FixedClock(fixed_identified_at())),
-        Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-    (db, tmp)
-}
-
 /// A folder of plain track files (no track sheet) named
 /// `(relative_path, size)`.
 fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
@@ -98,11 +79,7 @@ fn new_candidate_row(
     probed_total_duration_ms: u64,
 ) -> NewImportCandidateVerdict {
     NewImportCandidateVerdict {
-        candidate: crate::import::CandidateAsRead {
-            content_hash: content_hash.to_string(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        candidate: as_read(content_hash, 0),
         folder_path: folder_path.to_string(),
         verdict: verdict.clone(),
         signals: sample_signals(probed_total_duration_ms),
@@ -143,7 +120,7 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
     assert_eq!(identify.probed_total_duration_ms, 2_700_000);
     // Stamped by the write path from the injected clock, not something
     // `new_candidate_row` had any way to supply.
-    assert_eq!(identify.identified_at, fixed_identified_at());
+    assert_eq!(identify.identified_at, fixed_now());
     assert_eq!(
         identify.verdict, verdict,
         "the verdict must round-trip exactly, provenance included"
@@ -232,7 +209,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let path = tmp.path().join("test.db");
     let reopened = Database::new_test(
         path.to_str().unwrap(),
-        Arc::new(FixedClock(fixed_identified_at())),
+        Arc::new(FixedClock(fixed_now())),
         Arc::new(coven::UuidProvider),
     )
     .await
@@ -366,11 +343,7 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&settled).await.unwrap();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision,
-        },
+        &as_read(&hash, metadata_revision),
         "/music/Album",
         &edits,
         &[("/music/Album".to_string(), candidate.clone())],
@@ -583,11 +556,7 @@ async fn a_cleared_binding_survives_a_relaunch() {
     let hash = scanned.content_hash();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision,
-        },
+        &as_read(&hash, metadata_revision),
         &folder.path().to_string_lossy(),
         &candidate_edits,
         &[(folder.path().to_string_lossy().into_owned(), settled)],
@@ -700,11 +669,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     let folder_path = folder.path().to_string_lossy().into_owned();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision,
-        },
+        &as_read(&hash, metadata_revision),
         &folder_path,
         &CandidateFileEdits {
             sheet_bindings: edits,
