@@ -66,6 +66,24 @@ struct IdentifyLedgerView: View {
                     .padding(.leading, 10)
                 Spacer(minLength: 0)
             }
+        // The one source that answers disc IDs is not being asked, so the
+        // value stands with a dash where a count would be — nothing looked,
+        // which is not the same as looking and finding none.
+        case .readNotAsked(let discId, let source):
+            LedgerGroupLabel(text: label)
+            LedgerRowBand {
+                HStack(spacing: 7) {
+                    if let source {
+                        DiscIdFileChip(source: source)
+                    }
+                    LedgerValueText(value: discId)
+                }
+                Text(verbatim: "\u{2013}")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .padding(.leading, 10)
+                Spacer(minLength: 0)
+            }
         }
     }
 

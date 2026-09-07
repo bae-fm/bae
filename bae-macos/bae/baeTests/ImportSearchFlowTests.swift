@@ -568,8 +568,10 @@ struct ImportSearchFlowLibraryStatusTests {
             identifyState: .idle,
             search: BridgeCandidateSearch(
                 query: .general(artist: "Artist Name", album: "Album Title"),
-                musicbrainz: .done(count: 1),
-                discogs: .notConfigured,
+                sources: PreviewData.searchSources(
+                    musicbrainz: .done(count: 1),
+                    discogs: .notConfigured
+                ),
                 groups: [
                     BridgeReleaseGroup(
                         id: "group-live",

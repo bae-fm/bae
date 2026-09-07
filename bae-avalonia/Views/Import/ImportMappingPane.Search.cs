@@ -114,13 +114,10 @@ internal sealed partial class ImportMappingPane
             column.Children.Add(ChoiceList(choices));
         }
 
-        foreach (var (source, state) in new[]
+        foreach (var entry in search.Sources)
         {
-            (BridgeMetadataSource.MusicBrainz, search.Musicbrainz),
-            (BridgeMetadataSource.Discogs, search.Discogs),
-        })
-        {
-            switch (state)
+            var source = entry.Source;
+            switch (entry.State)
             {
                 case BridgeSourceSearch.Searching:
                     column.Children.Add(ImportPaneUi.Cell(

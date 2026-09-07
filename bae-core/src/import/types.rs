@@ -39,6 +39,18 @@ pub enum MetadataSource {
 }
 
 impl MetadataSource {
+    /// Every metadata source, in the order surfaces list them and runs ask
+    /// them. The one list behind "an entry per source": a preference, an
+    /// availability, a typed search's per-source part, a ledger column. No
+    /// source is the main one — adding a variant extends every one of those.
+    pub const ALL: [MetadataSource; 2] = [Self::MusicBrainz, Self::Discogs];
+
+    /// The one source that answers a disc ID. Disc IDs are a MusicBrainz
+    /// identifier, so no other source has an endpoint to ask; with this
+    /// source not asked, a disc ID read off a LOG or CUE stands with nothing
+    /// looked up against it.
+    pub const DISC_ID_SOURCE: MetadataSource = Self::MusicBrainz;
+
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::MusicBrainz => "musicbrainz",
@@ -72,6 +84,45 @@ impl MetadataSource {
             Self::Discogs => format!("https://www.discogs.com/master/{group_id}"),
         }
     }
+}
+
+/// Whether a source is asked when the sources are asked together, and when it
+/// is not, why not. Core's answer, so no surface re-derives "on and reachable"
+/// from a preference plus a key check.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SourceAvailability {
+    /// Asked.
+    On,
+    /// Switched off by the person.
+    Off,
+    /// The source needs a credential this library does not hold, so it cannot
+    /// be asked whatever the preference says. The preference is kept
+    /// underneath: supplying the credential restores the choice the person
+    /// last made.
+    NotConfigured,
+}
+
+impl SourceAvailability {
+    pub fn is_on(self) -> bool {
+        matches!(self, Self::On)
+    }
+}
+
+/// One source and whether this library asks it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MetadataSourceAvailability {
+    pub source: MetadataSource,
+    pub state: SourceAvailability,
+}
+
+/// The sources an availability list says to ask, in list order. What a run's
+/// provider list and a search's dispatch are both a projection of.
+pub fn asked_sources(sources: &[MetadataSourceAvailability]) -> Vec<MetadataSource> {
+    sources
+        .iter()
+        .filter(|entry| entry.state.is_on())
+        .map(|entry| entry.source)
+        .collect()
 }
 
 impl std::str::FromStr for MetadataSource {

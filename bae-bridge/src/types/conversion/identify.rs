@@ -249,6 +249,10 @@ mirror_enum! {
             source: (opt BridgeDiscIdFile),
             lookup: (BridgeLookupState),
         },
+        ReadNotAsked {
+            disc_id,
+            source: (opt BridgeDiscIdFile),
+        },
     },
 }
 

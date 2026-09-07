@@ -542,7 +542,9 @@ fn apply_signals(
     context.refresh_inputs(&signals, artwork);
 
     let discid = match (discid, &signals.disc_id) {
-        (DiscidProgress::Computing, signal) => start_discid_progress(signal, &mut effects),
+        (DiscidProgress::Computing, signal) => {
+            start_discid_progress(signal, &context.providers, &mut effects)
+        }
         // Past Computing: the lookup is in flight or settled.
         (discid, _) => discid,
     };
@@ -858,7 +860,7 @@ fn rerun(
 
     let mut effects = Vec::new();
 
-    let discid = start_discid_progress(&context.disc.signal, &mut effects);
+    let discid = start_discid_progress(&context.disc.signal, &context.providers, &mut effects);
     let barcode = start_barcode_progress(
         context.barcode.code_values(),
         context.barcode.had_source,

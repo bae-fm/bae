@@ -190,6 +190,10 @@ impl BridgeConfig {
             max_concurrent_downloads,
             identify_automatically,
             default_import_metadata_source,
+            // Which sources Find online asks. Surfaced as the availability
+            // list core computes, not as this raw preference — see the
+            // `metadata_sources` field below.
+            metadata_sources: _,
             show_remaining_time,
             library_full_width,
             // Import-time decode verification; not surfaced on the config screen.

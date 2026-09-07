@@ -35,15 +35,12 @@ fn broadcast_state_change(tx: &broadcast::Sender<ImportEvent>, event: ImportEven
     }
 }
 
-/// The providers a run asks: MusicBrainz always, Discogs when it has a
-/// usable key. Read when the run starts and again on a re-run, so a key
-/// added since joins the next run.
+/// The providers a run asks: every source this library has switched on and can
+/// reach. A projection of `metadata_sources()`, read when the run starts and
+/// again on a re-run, so a key added or a source switched on since joins the
+/// next run.
 fn run_providers(library_manager: &LibraryManager) -> Vec<MetadataSource> {
-    let mut providers = vec![MetadataSource::MusicBrainz];
-    if library_manager.discogs_is_usable() {
-        providers.push(MetadataSource::Discogs);
-    }
-    providers
+    crate::import::asked_sources(&library_manager.metadata_sources())
 }
 
 /// Pair one provider's results with live library status. The library check
@@ -159,10 +156,21 @@ impl IdentifyServiceHandle {
     /// Identify consumes the `Signals` extraction streams, so the caller must
     /// start identify *before* extraction for `key`: the bus subscription is
     /// taken synchronously here, so no early snapshot can be missed.
+    /// A run with no source to ask does not start. Every source is switched
+    /// off or missing its credential, so there is nothing to dispatch — and a
+    /// run that dispatched nothing would settle as "found nothing anywhere",
+    /// storing a verdict about a lookup that never happened. The candidate is
+    /// left as it was; what to do about it is a settings question, and the
+    /// surface reads the availability list to say so.
     pub fn start(&self, run: IdentifyRunId, key: String, priority: CallPriority) {
         // A restart (the user re-selects after a scan refresh) supersedes the
         // prior run — a candidate is identified once at a time.
         self.cancel(&key);
+
+        if run_providers(&self.inner.library_manager).is_empty() {
+            debug!("identify: {key} has no source to ask; not starting a run");
+            return;
+        }
 
         let token = CancellationToken::new();
         // Create the inbox up front so a `toggle_signal` / `rerun` arriving

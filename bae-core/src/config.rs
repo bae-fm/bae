@@ -141,6 +141,49 @@ impl std::str::FromStr for DefaultImportMetadataSource {
     }
 }
 
+/// Which metadata sources this library asks. One flag per
+/// [`MetadataSource`](crate::import::MetadataSource), all on by default.
+///
+/// The YAML mapping needs a name per source, so the fields are named — but
+/// nothing reads them by name: [`Self::enabled`] and [`Self::set`] are total
+/// over `MetadataSource`, so adding a source fails the build here rather than
+/// silently defaulting. No source is the main one; a source switched off is
+/// not asked by anything that asks the sources together.
+///
+/// A flag stays as the person set it while the source is unreachable for
+/// another reason (Discogs without a key), so supplying the key restores their
+/// choice rather than turning the source on behind them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MetadataSourcePreferences {
+    pub musicbrainz: bool,
+    pub discogs: bool,
+}
+
+impl MetadataSourcePreferences {
+    pub fn enabled(&self, source: crate::import::MetadataSource) -> bool {
+        match source {
+            crate::import::MetadataSource::MusicBrainz => self.musicbrainz,
+            crate::import::MetadataSource::Discogs => self.discogs,
+        }
+    }
+
+    pub fn set(&mut self, source: crate::import::MetadataSource, enabled: bool) {
+        match source {
+            crate::import::MetadataSource::MusicBrainz => self.musicbrainz = enabled,
+            crate::import::MetadataSource::Discogs => self.discogs = enabled,
+        }
+    }
+}
+
+impl Default for MetadataSourcePreferences {
+    fn default() -> Self {
+        Self {
+            musicbrainz: true,
+            discogs: true,
+        }
+    }
+}
+
 /// Whether a usable Discogs API key is configured. Folds the no-key case and
 /// the validation state into the four states a UI shows, so each binding
 /// doesn't re-derive the precedence.
@@ -300,6 +343,9 @@ pub struct Preferences {
     pub identify_automatically: bool,
     /// Which source is applied when a candidate is first discovered.
     pub default_import_metadata_source: DefaultImportMetadataSource,
+    /// Which metadata sources Find online asks — the automatic run, the typed
+    /// search, and every retry. All on by default.
+    pub metadata_sources: MetadataSourcePreferences,
     /// Whether casting to a network receiver (Cast, UPnP, AirPlay) is available.
     /// Defaults to `false`: casting browses the local network and serves audio
     /// off this machine, so it stays off until the user asks for it. While off,
@@ -329,6 +375,7 @@ impl Default for Preferences {
             verify_decode_on_import: true,
             identify_automatically: true,
             default_import_metadata_source: DefaultImportMetadataSource::FindOnline,
+            metadata_sources: MetadataSourcePreferences::default(),
             cast_enabled: false,
             mcp: McpConfig::disabled_default(),
             subsonic: SubsonicConfig::disabled_default(),

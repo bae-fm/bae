@@ -56,9 +56,9 @@ struct FindOnlineSearchResults: View {
     /// these — the pane's own bar says that once, above both sections.
     private var sourceLines: some View {
         VStack(alignment: .leading, spacing: 4) {
-            ForEach(search.sourceStates, id: \.source) { source, state in
-                let name = bridgeMetadataSourceName(source: source)
-                switch state {
+            ForEach(search.sources, id: \.source) { entry in
+                let name = bridgeMetadataSourceName(source: entry.source)
+                switch entry.state {
                 case .searching:
                     HStack(spacing: 6) {
                         ProgressView()
@@ -78,10 +78,10 @@ struct FindOnlineSearchResults: View {
                         Button("Retry", action: onRetry)
                             .buttonStyle(.link)
                     }
-                // A source that answered, and one that was never asked,
-                // both close the list with nothing: the bar above the
-                // sections is what says a source was never asked.
-                case .done, .notConfigured:
+                // A source that answered, and the two ways a source is
+                // never asked, all close the list with nothing: the switch
+                // says one, and the bar above the sections says the other.
+                case .done, .notConfigured, .off:
                     EmptyView()
                 }
             }
@@ -90,19 +90,6 @@ struct FindOnlineSearchResults: View {
         .foregroundStyle(.secondary)
         .padding(.leading, 28)
     }
-}
-
-extension BridgeCandidateSearch {
-    /// Each source's part of the run, in the order the pane names them.
-    var sourceStates:
-        [(source: BridgeMetadataSource, state: BridgeSourceSearch)]
-    {
-        [
-            (BridgeMetadataSource.musicBrainz, musicbrainz),
-            (BridgeMetadataSource.discogs, discogs),
-        ]
-    }
-
 }
 
 #if DEBUG

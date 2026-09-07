@@ -865,3 +865,22 @@ fn cancellation_returns_to_idle() {
     assert!(matches!(state, IdentifyState::Idle));
     assert!(effects.is_empty());
 }
+
+
+/// One source answers disc IDs, and a run that is not asking it has no
+/// disc-ID lookup to make. Nothing is dispatched, and the step records that
+/// it never asked rather than waiting on an answer that is not coming.
+#[test]
+fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
+    let state = started_with(vec![MetadataSource::Discogs]);
+    let (next, effects) = update(state, disc_only(&[]));
+
+    assert!(
+        !effects
+            .iter()
+            .any(|effect| matches!(effect, Effect::LookupDiscid { .. })),
+        "no source was asked about the disc ID: {effects:?}"
+    );
+    let context = next.context().expect("a started run carries its context");
+    assert_eq!(context.providers, vec![MetadataSource::Discogs]);
+}

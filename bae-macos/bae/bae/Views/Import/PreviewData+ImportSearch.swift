@@ -425,11 +425,27 @@
 
         // MARK: - Typed-search runs
 
+        /// The two sources' parts of a search, in core's order.
+        static func searchSources(
+            musicbrainz: BridgeSourceSearch,
+            discogs: BridgeSourceSearch
+        ) -> [BridgeSourceSearchEntry] {
+            [
+                BridgeSourceSearchEntry(
+                    source: .musicBrainz,
+                    state: musicbrainz
+                ),
+                BridgeSourceSearchEntry(source: .discogs, state: discogs),
+            ]
+        }
+
         /// A settled search over both providers, with results.
         static let manualSearchRun = BridgeCandidateSearch(
             query: .general(artist: "Artist Name", album: "Album Title One"),
-            musicbrainz: .done(count: 3),
-            discogs: .done(count: 1),
+            sources: searchSources(
+                musicbrainz: .done(count: 3),
+                discogs: .done(count: 1)
+            ),
             groups: searchGroupsManualBridge,
             libraryStatuses: [:],
             status: .found
@@ -438,8 +454,10 @@
         /// MusicBrainz has landed; Discogs is still out.
         static let searchRunInFlight = BridgeCandidateSearch(
             query: .general(artist: "Artist Name", album: "Album Title One"),
-            musicbrainz: .done(count: 3),
-            discogs: .searching,
+            sources: searchSources(
+                musicbrainz: .done(count: 3),
+                discogs: .searching
+            ),
             groups: searchGroupsManualBridge,
             libraryStatuses: [:],
             status: .searching
@@ -448,8 +466,10 @@
         /// One provider answered, the other dropped.
         static let searchRunSourceFailed = BridgeCandidateSearch(
             query: .catalogNumber(catalogNumber: "WPCR-80001"),
-            musicbrainz: .done(count: 1),
-            discogs: .failed(failure: .network),
+            sources: searchSources(
+                musicbrainz: .done(count: 1),
+                discogs: .failed(failure: .network)
+            ),
             groups: [searchGroupsManualBridge[0]],
             libraryStatuses: [:],
             status: .failed
@@ -458,8 +478,10 @@
         /// Both providers answered with nothing.
         static let searchRunEmpty = BridgeCandidateSearch(
             query: .general(artist: "Artist Name", album: "Album Title"),
-            musicbrainz: .done(count: 0),
-            discogs: .done(count: 0),
+            sources: searchSources(
+                musicbrainz: .done(count: 0),
+                discogs: .done(count: 0)
+            ),
             groups: [],
             libraryStatuses: [:],
             status: .noMatches

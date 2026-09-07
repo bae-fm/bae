@@ -47,14 +47,19 @@ pub enum IdentifyFailure {
 }
 
 impl IdentifyFailure {
-    /// The provider that could not answer, where the step asks several. The
-    /// disc-ID endpoint is MusicBrainz's alone, reading the candidate's
-    /// barcodes asks nobody, and release details come from the source that
-    /// named the release — so those three name no provider.
-    fn source(&self) -> Option<MetadataSource> {
+    /// Whether this failure is evidence the run asked `source`.
+    ///
+    /// A per-provider step names the provider that could not answer. A disc-ID
+    /// lookup names none because it has only one to name — the source whose
+    /// identifier a disc ID is — and that source was asked, or there would
+    /// have been nothing to fail. Reading the candidate's barcodes asks
+    /// nobody, and release details are fetched from whichever source already
+    /// named the release, so neither says anything about who the run asked.
+    fn asked(&self, source: MetadataSource) -> bool {
         match self {
-            Self::Barcode(failure) | Self::Catalog(failure) => Some(failure.source),
-            Self::DiscId(_) | Self::BarcodeScan(_) | Self::ReleaseDetails(_) => None,
+            Self::Barcode(failure) | Self::Catalog(failure) => failure.source == source,
+            Self::DiscId(_) => source == MetadataSource::DISC_ID_SOURCE,
+            Self::BarcodeScan(_) | Self::ReleaseDetails(_) => false,
         }
     }
 }
@@ -286,26 +291,31 @@ impl TerminalVerdict {
         }
     }
 
-    /// The providers a resumed run lays its columns out for. The run's own
-    /// list is not stored and the verdict is what is left of it: MusicBrainz
-    /// answers every run, and Discogs was in this one when the verdict names
-    /// it — as the source of a match, or of a failure. A run that asked
-    /// Discogs and heard neither from it resumes as a MusicBrainz-only ledger,
-    /// which is as much as the stored answer says.
+    /// The providers a resumed run lays its columns out for: the sources the
+    /// verdict names, in source order.
+    ///
+    /// The run's own list is not stored, and no source is the one that always
+    /// answers — a run asks whatever the library had switched on at the time —
+    /// so the verdict is all that is left of it. A source it names was asked,
+    /// as the source of a match or of a failure. A source that was asked and
+    /// said nothing resumes as an absent column, and a verdict that names none
+    /// resumes with no columns at all: that is as much as the stored answer
+    /// says, and inventing a column would claim a source was asked when the
+    /// stored row cannot say it was.
     fn resumed_providers(&self) -> Vec<MetadataSource> {
-        let asked_discogs = match self {
-            Self::Found { matches, .. } => matches
-                .iter()
-                .any(|result| result.source == MetadataSource::Discogs),
-            Self::Failed { failures, .. } => failures
-                .iter()
-                .any(|failure| failure.source() == Some(MetadataSource::Discogs)),
+        MetadataSource::ALL
+            .into_iter()
+            .filter(|source| self.names_source(*source))
+            .collect()
+    }
+
+    /// Whether the stored answer is evidence that this run asked `source`: it
+    /// named a match, or it named a failure only that source could produce.
+    fn names_source(&self, source: MetadataSource) -> bool {
+        match self {
+            Self::Found { matches, .. } => matches.iter().any(|result| result.source == source),
+            Self::Failed { failures, .. } => failures.iter().any(|failure| failure.asked(source)),
             Self::NotFoundAnywhere | Self::ManualOnly { .. } => false,
-        };
-        if asked_discogs {
-            vec![MetadataSource::MusicBrainz, MetadataSource::Discogs]
-        } else {
-            vec![MetadataSource::MusicBrainz]
         }
     }
 }

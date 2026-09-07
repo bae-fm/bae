@@ -517,9 +517,12 @@ fn not_in_library(result: &MetadataResult) -> LibraryStatus {
 }
 
 /// A stored failure resumes with the ledger the run failed on: the provider
-/// that could not answer warns on the code it was asked about — which is what
-/// puts that cell's Retry back on screen — and the one that answered nothing
-/// reads as a no-match.
+/// that could not answer warns on the code it was asked about, which is what
+/// puts that cell's Retry back on screen.
+///
+/// Only that provider is laid out. The stored verdict names it and no other,
+/// and no source is assumed to have been asked — a second column would claim
+/// a source ran when nothing stored says it did.
 #[test]
 fn a_resumed_failure_lays_out_the_run_it_failed_on() {
     let verdict = TerminalVerdict::Failed {
@@ -530,18 +533,15 @@ fn a_resumed_failure_lays_out_the_run_it_failed_on() {
         track_count: 9,
     };
     let run = run_of(verdict.resume_state(Some(&stored_signals()), &not_in_library));
-    assert_eq!(run.providers, vec![MB, DG]);
+    assert_eq!(run.providers, vec![DG]);
     let rows = barcode_rows(&run);
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].value, "0123456789012");
     assert_eq!(
         cells(&rows[0]),
-        vec![
-            &LookupView::NoMatch,
-            &LookupView::Failed {
-                failure: LookupFailure::Provider { status: Some(503) },
-            },
-        ]
+        vec![&LookupView::Failed {
+            failure: LookupFailure::Provider { status: Some(503) },
+        }]
     );
 }
 
@@ -593,17 +593,20 @@ fn a_resumed_found_lays_out_the_run_it_settled_on() {
     ));
 }
 
-/// Nothing found anywhere resumes as what it was: every provider tried every
-/// code and none of them matched.
+/// Nothing found anywhere names no source, so a resumed run lays out no
+/// columns: every source that was asked answered with nothing, and which
+/// sources those were is not stored. The codes and the disc ID still stand —
+/// they are the candidate's, not the run's — with no cell claiming a source
+/// was asked about them.
 #[test]
-fn a_resumed_empty_run_asked_every_provider() {
+fn a_resumed_empty_run_lays_out_no_provider_it_cannot_name() {
     let run = run_of(
         TerminalVerdict::NotFoundAnywhere.resume_state(Some(&stored_signals()), &|_| {
             unreachable!("a no-match verdict names no release")
         }),
     );
-    assert_eq!(run.providers, vec![MB]);
-    assert_eq!(cells(&barcode_rows(&run)[0]), vec![&LookupView::NoMatch]);
+    assert!(run.providers.is_empty());
+    assert!(cells(&barcode_rows(&run)[0]).is_empty());
     assert!(matches!(
         run.disc_id,
         DiscIdStepView::Read {

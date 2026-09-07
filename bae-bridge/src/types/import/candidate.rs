@@ -673,6 +673,12 @@ pub enum BridgeDiscIdStep {
         source: Option<BridgeDiscIdFile>,
         lookup: BridgeLookupState,
     },
+    /// A disc ID was read and the one source that answers disc IDs was not
+    /// asked, so nothing looked it up. The value stands with no count.
+    ReadNotAsked {
+        disc_id: String,
+        source: Option<BridgeDiscIdFile>,
+    },
 }
 
 /// The barcode step of a run: read off the artwork and the CUE sheets, then

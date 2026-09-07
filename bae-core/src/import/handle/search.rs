@@ -26,8 +26,10 @@ impl ImportServiceHandle {
     /// A search already running for this key is superseded — one search per
     /// candidate at a time, because the pane shows one result area.
     pub fn start_candidate_search(&self, candidate_key: String, query: SearchQuery) {
-        let search =
-            CandidateSearch::started(query.clone(), self.library_manager.discogs_is_usable());
+        let search = CandidateSearch::started(
+            query.clone(),
+            &self.library_manager.metadata_sources(),
+        );
         let sources = search.searching_sources();
         let run = self.runtime.start_search(&candidate_key, search);
         for source in sources {

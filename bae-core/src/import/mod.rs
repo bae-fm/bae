@@ -197,10 +197,11 @@ desktop_only! {
     pub use types::ImportCommand;
 }
 pub use types::{
-    ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, EditValidationError,
-    ExistingArtist, MetadataProvenance, MetadataSource, NewArtistSeed, PressingEdit,
-    RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
-    ReleaseIdentity, ReleaseUserEdit, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit,
+    asked_sources, ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack,
+    EditValidationError, ExistingArtist, MetadataProvenance, MetadataSource,
+    MetadataSourceAvailability, NewArtistSeed, PressingEdit, RawPressingEdit, RawReleaseEdit,
+    RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed, ReleaseIdentity, ReleaseUserEdit,
+    SourceAvailability, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit,
 };
 desktop_only! {
     pub use types::{

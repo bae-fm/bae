@@ -87,6 +87,10 @@ mirror_enum! {
             source: (opt AutomationDiscIdFile),
             lookup: (AutomationLookupState),
         },
+        ReadNotAsked {
+            disc_id,
+            source: (opt AutomationDiscIdFile),
+        },
     },
 }
 

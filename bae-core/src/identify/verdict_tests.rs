@@ -165,28 +165,23 @@ fn a_resumed_verdict_carries_the_stored_signal_inputs() {
     assert!(context.barcode.had_source);
     assert_eq!(context.catalog.number_values(), vec!["LBL-1"]);
     assert!(context.catalog.chosen.is_empty());
-    // The provider that could not answer stopped at the first code it was
-    // asked about; the one that answered ran out of codes.
+    // The verdict names only the provider that failed, so only that
+    // provider's walk is laid out: nothing stored says the other was asked,
+    // and a walk for it would claim it was.
     assert_eq!(
         context.barcode.walks,
-        vec![
-            RecordedWalk {
-                source: MetadataSource::MusicBrainz,
-                end: WalkEnd::Exhausted,
+        vec![RecordedWalk {
+            source: MetadataSource::Discogs,
+            end: WalkEnd::Failed {
+                code: "5099969394522".to_string(),
             },
-            RecordedWalk {
-                source: MetadataSource::Discogs,
-                end: WalkEnd::Failed {
-                    code: "5099969394522".to_string(),
-                },
-            },
-        ]
+        }]
     );
 }
 
-/// The run's provider list is not stored, so a resumed run asks what the
-/// verdict names: MusicBrainz answers every run, and Discogs is a column
-/// only where the verdict names it.
+/// The run's provider list is not stored, so a resumed run lays out the
+/// sources the verdict names and no others. No source is assumed to have been
+/// asked: a verdict naming only one draws one column, whichever it is.
 #[test]
 fn a_resumed_run_lists_the_providers_the_verdict_names() {
     let musicbrainz_only = TerminalVerdict::Failed {
@@ -225,10 +220,7 @@ fn a_resumed_run_lists_the_providers_the_verdict_names() {
     else {
         panic!("a found verdict resumes as Found");
     };
-    assert_eq!(
-        context.providers,
-        vec![MetadataSource::MusicBrainz, MetadataSource::Discogs]
-    );
+    assert_eq!(context.providers, vec![MetadataSource::Discogs]);
 }
 
 fn disc_id_only() -> ResultProvenance {

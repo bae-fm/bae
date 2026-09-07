@@ -93,8 +93,11 @@ pub struct DiscIdFile {
     pub file: String,
 }
 
-/// The disc ID: read off a LOG or CUE, then looked up on MusicBrainz — the one
-/// provider with a disc-ID endpoint, so this step has one lookup and no cells.
+/// The disc ID: read off a LOG or CUE, then looked up on
+/// [`MetadataSource::DISC_ID_SOURCE`] — the one provider with a disc-ID
+/// endpoint, so this step has one lookup and no cells. That one provider is
+/// also why the step, alone among them, has to say when it was not asked: the
+/// other steps say it by drawing no column for the source.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DiscIdStepView {
     /// Extraction has not reported yet.
@@ -109,6 +112,13 @@ pub enum DiscIdStepView {
         /// stored tracks.
         source: Option<DiscIdFile>,
         lookup: LookupView,
+    },
+    /// A disc ID was read and the source that answers disc IDs was not asked,
+    /// so nothing looked it up. The value still stands — it is the folder's,
+    /// not the run's — with nothing to say about what it matched.
+    ReadNotAsked {
+        disc_id: String,
+        source: Option<DiscIdFile>,
     },
 }
 
@@ -455,13 +465,19 @@ fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) -> DiscIdSt
             }
         }
     };
+    if let DiscidProgress::NotAsked { .. } = progress {
+        return DiscIdStepView::ReadNotAsked {
+            disc_id,
+            source: source_file.map(disc_id_file),
+        };
+    }
     let lookup = match progress {
         // The track count is a settled-state concern — it reaches a surface
         // through the terminal state, not through progress.
         DiscidProgress::Computing | DiscidProgress::LookingUp => LookupView::LookingUp,
         DiscidProgress::Done { results, .. } => found_or_no_match(results),
-        DiscidProgress::Skipped { .. } => {
-            unreachable!("a computed disc ID is never skipped")
+        DiscidProgress::Skipped { .. } | DiscidProgress::NotAsked { .. } => {
+            unreachable!("a computed disc ID is skipped only by the early return above")
         }
         DiscidProgress::Failed { failure, .. } => LookupView::Failed {
             failure: failure.clone(),

@@ -219,7 +219,10 @@ internal sealed partial class ImportMappingPane : UserControl
     private static string SearchFingerprint(BridgeCandidateSearch? search) =>
         search is null
             ? string.Empty
-            : $"{SourceSearchTag(search.Musicbrainz)}/{SourceSearchTag(search.Discogs)}|"
+            : string.Join(
+                    "/",
+                    search.Sources.Select(entry => SourceSearchTag(entry.State)))
+                + "|"
                 + string.Join(
                     ",",
                     search.Groups.SelectMany(group => group.Pressings
@@ -227,6 +230,7 @@ internal sealed partial class ImportMappingPane : UserControl
 
     private static string SourceSearchTag(BridgeSourceSearch state) => state switch
     {
+        BridgeSourceSearch.Off => "off",
         BridgeSourceSearch.NotConfigured => "unconfigured",
         BridgeSourceSearch.Searching => "searching",
         BridgeSourceSearch.Done done => $"done:{done.Count}",

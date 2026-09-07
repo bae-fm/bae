@@ -37,6 +37,13 @@ pub enum DiscidProgress {
     Skipped {
         track_count: u32,
     },
+    /// A disc ID was derived and the one source that answers disc IDs is not
+    /// among this run's providers, so no lookup was dispatched. Settled: the
+    /// run is not waiting on anything, and it contributes no results — which
+    /// is different from having looked and found none.
+    NotAsked {
+        track_count: u32,
+    },
     Failed {
         failure: LookupFailure,
         track_count: u32,
@@ -49,6 +56,7 @@ impl DiscidProgress {
             self,
             DiscidProgress::Done { .. }
                 | DiscidProgress::Skipped { .. }
+                | DiscidProgress::NotAsked { .. }
                 | DiscidProgress::Failed { .. }
         )
     }
@@ -381,7 +389,7 @@ pub(super) fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
     match progress {
         DiscidProgress::Computing | DiscidProgress::LookingUp => SignalState::LookingUp,
         DiscidProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
-        DiscidProgress::Skipped { .. } => SignalState::Skipped,
+        DiscidProgress::Skipped { .. } | DiscidProgress::NotAsked { .. } => SignalState::Skipped,
         DiscidProgress::Failed { failure, .. } => SignalState::Failed {
             failure: failure.clone(),
         },
@@ -606,6 +614,7 @@ pub(super) fn found_or_no_match(count: u32) -> SignalState {
 
 pub(super) fn start_discid_progress(
     signal: &DiscIdSignal,
+    providers: &[MetadataSource],
     effects: &mut Vec<Effect>,
 ) -> DiscidProgress {
     match signal {
@@ -614,6 +623,14 @@ pub(super) fn start_discid_progress(
             track_count,
             ..
         } => {
+            // One source answers disc IDs. A run that is not asking it has no
+            // disc-ID lookup to dispatch, and says so rather than waiting on
+            // an answer that is never coming.
+            if !providers.contains(&MetadataSource::DISC_ID_SOURCE) {
+                return DiscidProgress::NotAsked {
+                    track_count: *track_count,
+                };
+            }
             effects.push(Effect::LookupDiscid {
                 disc_id: disc_id.clone(),
                 track_count: *track_count,
@@ -761,9 +778,10 @@ pub(super) fn retry_failed_catalog_lookups(
     }
 }
 
-/// Ask MusicBrainz about the disc ID again, when the failure was the lookup's
-/// and not the derivation's: a disc ID that could not be computed has nothing
-/// to ask about.
+/// Ask the disc-ID source about the disc ID again, when the failure was the
+/// lookup's and not the derivation's: a disc ID that could not be computed has
+/// nothing to ask about. A run that never asked has nothing to re-ask either,
+/// so only a `Failed` lookup is retried.
 pub(super) fn retry_failed_discid_lookup(
     progress: &mut DiscidProgress,
     signal: &DiscIdSignal,
@@ -792,6 +810,7 @@ pub(super) fn settled_track_count(discid: &DiscidProgress) -> u32 {
     match discid {
         DiscidProgress::Done { track_count, .. } => *track_count,
         DiscidProgress::Skipped { track_count } => *track_count,
+        DiscidProgress::NotAsked { track_count } => *track_count,
         DiscidProgress::Failed { track_count, .. } => *track_count,
         DiscidProgress::Computing | DiscidProgress::LookingUp => 0,
     }

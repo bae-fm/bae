@@ -99,7 +99,10 @@ pub struct BridgePressing {
 /// through the search's `groups`, so a source reports only how many it found.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSourceSearch {
-    /// Discogs without a usable key: it was never asked.
+    /// Switched off: the person is not asking this source.
+    Off,
+    /// The source needs a credential this library does not hold, so it was
+    /// never asked.
     NotConfigured,
     Searching,
     Done {
@@ -115,6 +118,7 @@ impl BridgeSourceSearch {
     fn from_core(search: bae_core::import::SourceSearch) -> Self {
         use bae_core::import::SourceSearch;
         match search {
+            SourceSearch::Off => Self::Off,
             SourceSearch::NotConfigured => Self::NotConfigured,
             SourceSearch::Searching => Self::Searching,
             SourceSearch::Done { results } => Self::Done {
@@ -157,14 +161,23 @@ impl BridgeSearchStatus {
     }
 }
 
+/// One source's part of a candidate's typed search, as the surface that lists
+/// them reads it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSourceSearchEntry {
+    pub source: BridgeMetadataSource,
+    pub state: BridgeSourceSearch,
+}
+
 /// A candidate's typed search as its sources land. Mirrors
 /// `bae_core::import::CandidateSearch`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateSearch {
     /// What was asked — the line the result area heads itself with.
     pub query: BridgeSearchQuery,
-    pub musicbrainz: BridgeSourceSearch,
-    pub discogs: BridgeSourceSearch,
+    /// Each source's part, one entry per metadata source in core's order. A
+    /// surface iterates this; no source is the main one.
+    pub sources: Vec<BridgeSourceSearchEntry>,
     /// Every settled source's results, folded into album cards.
     pub groups: Vec<BridgeReleaseGroup>,
     /// Library status per result, keyed by release id.
@@ -179,16 +192,20 @@ impl BridgeCandidateSearch {
         let status = BridgeSearchStatus::from_core(search.status());
         let bae_core::import::CandidateSearch {
             query,
-            musicbrainz,
-            discogs,
+            sources,
             groups,
             library_statuses,
         } = search;
         Self {
             status,
             query: BridgeSearchQuery::from_core(query),
-            musicbrainz: BridgeSourceSearch::from_core(musicbrainz),
-            discogs: BridgeSourceSearch::from_core(discogs),
+            sources: sources
+                .into_iter()
+                .map(|(source, state)| BridgeSourceSearchEntry {
+                    source: BridgeMetadataSource::from_core(source),
+                    state: BridgeSourceSearch::from_core(state),
+                })
+                .collect(),
             groups: groups
                 .into_iter()
                 .map(BridgeReleaseGroup::from_core)

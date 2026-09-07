@@ -280,8 +280,15 @@ public sealed class ImportMappingPaneTests
     {
         var search = new BridgeCandidateSearch(
             new BridgeSearchQuery.General("Artist Name", "Album Title"),
-            new BridgeSourceSearch.Failed(new BridgeLookupFailure.Network()),
-            new BridgeSourceSearch.NotConfigured(),
+            new List<BridgeSourceSearchEntry>
+            {
+                new(
+                    BridgeMetadataSource.MusicBrainz,
+                    new BridgeSourceSearch.Failed(new BridgeLookupFailure.Network())),
+                new(
+                    BridgeMetadataSource.Discogs,
+                    new BridgeSourceSearch.NotConfigured()),
+            },
             Array.Empty<BridgeReleaseGroup>(),
             new Dictionary<string, BridgeLibraryStatus>(),
             BridgeSearchStatus.Failed);

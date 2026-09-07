@@ -517,19 +517,15 @@ internal sealed class ReleaseActionDialogs
     /// a note beside the list rather than the list's replacement.</summary>
     private static string? SearchFailureLine(BridgeCandidateSearch search)
     {
-        var failed = new[]
-        {
-            (BridgeMetadataSource.MusicBrainz, search.Musicbrainz),
-            (BridgeMetadataSource.Discogs, search.Discogs),
-        }
-            .Where(entry => entry.Item2 is BridgeSourceSearch.Failed)
+        var failed = search.Sources
+            .Where(entry => entry.State is BridgeSourceSearch.Failed)
             .Select(entry => Loc.Chrome(
                 "import.search.source_failed",
                 new Dictionary<string, object?>
                 {
-                    ["source"] = BaeBridgeMethods.BridgeMetadataSourceName(entry.Item1),
+                    ["source"] = BaeBridgeMethods.BridgeMetadataSourceName(entry.Source),
                     ["reason"] = BridgeDisplay.LocalizedLine(
-                        ((BridgeSourceSearch.Failed)entry.Item2).Failure),
+                        ((BridgeSourceSearch.Failed)entry.State).Failure),
                 }))
             .ToList();
         return failed.Count == 0 ? null : string.Join("  ·  ", failed);

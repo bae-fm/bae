@@ -263,6 +263,7 @@ fn config_yaml_requires_every_bae_field() {
         "verify_decode_on_import",
         "identify_automatically",
         "default_import_metadata_source",
+        "metadata_sources",
         "cast_enabled",
     ] {
         assert!(
@@ -321,6 +322,9 @@ library_full_width: false
 verify_decode_on_import: true
 identify_automatically: true
 default_import_metadata_source: find_online
+metadata_sources:
+  musicbrainz: true
+  discogs: true
 cast_enabled: false
 mcp:
   enabled: false
@@ -423,6 +427,21 @@ fn a_broken_library_does_not_hide_a_working_one() {
 fn config_yaml_allows_missing_device_id() {
     let config = parse_yaml_without("device_id").unwrap();
     assert_eq!(config.identity.device_id, None);
+}
+
+/// The YAML mapping names its fields, but nothing reads them by name: the
+/// accessors are total over `MetadataSource`, so every source has an answer
+/// and a new one cannot be silently forgotten.
+#[test]
+fn metadata_source_preferences_are_total_over_the_sources() {
+    let mut prefs = MetadataSourcePreferences::default();
+    for source in crate::import::MetadataSource::ALL {
+        assert!(prefs.enabled(source), "every source starts asked");
+    }
+
+    prefs.set(crate::import::MetadataSource::Discogs, false);
+    assert!(prefs.enabled(crate::import::MetadataSource::MusicBrainz));
+    assert!(!prefs.enabled(crate::import::MetadataSource::Discogs));
 }
 
 /// `is_usable` is the single source of truth for whether Discogs can be a

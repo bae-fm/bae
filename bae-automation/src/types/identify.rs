@@ -80,6 +80,11 @@ pub enum AutomationDiscIdStep {
         source: Option<AutomationDiscIdFile>,
         lookup: AutomationLookupState,
     },
+    /// A disc ID was read and the source that answers disc IDs was not asked.
+    ReadNotAsked {
+        disc_id: String,
+        source: Option<AutomationDiscIdFile>,
+    },
 }
 
 /// Mirrors bae-core's `identify::BarcodeStepView`.
