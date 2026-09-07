@@ -409,6 +409,48 @@
             }
         }
 
+        public func replaceRecordIfVersion(
+            ownerName: String?,
+            zoneName: String?,
+            key: String,
+            expected: String,
+            data: Data
+        ) throws -> BridgeCloudConditionalWriteOutcome {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
+            let record = try fetchRecord(key: key, in: scope)
+            let temporary = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+            do {
+                try data.write(to: temporary)
+                defer {
+                    do { try FileManager.default.removeItem(at: temporary) }
+                    catch {
+                        logger.error(
+                            "Could not remove CloudKit replacement staging file: \(error.localizedDescription)"
+                        )
+                    }
+                }
+                return try CloudKitRecordReplacement.replace(
+                    record: record,
+                    expected: expected,
+                    asset: CKAsset(fileURL: temporary),
+                    submit: scope.database.add
+                )
+            }
+            catch let error as CloudKitError { throw error }
+            catch {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(
+                        error,
+                        op: "Conditional replacement"
+                    )
+                )
+            }
+        }
+
         /// Open a staging batch. Nothing reaches CloudKit until the commit: the
         /// payloads sit in host-owned temporary files so the whole set can be
         /// created in one atomic zone modification.

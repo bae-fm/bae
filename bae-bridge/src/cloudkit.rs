@@ -64,6 +64,16 @@ pub trait CloudKitDriver: Send + Sync {
         zone_name: Option<String>,
         key: String,
     ) -> Result<BridgeCloudVersionedObject, CloudKitError>;
+    /// Replace only the fetched CloudKit revision; a server-side race is a
+    /// version change, while transport and provider failures remain errors.
+    fn replace_record_if_version(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        key: String,
+        expected: String,
+        data: Vec<u8>,
+    ) -> Result<BridgeCloudConditionalWriteOutcome, CloudKitError>;
     /// Open a host-local staging batch, returning its id. Staging creates no
     /// CloudKit records — the host holds the payloads until commit.
     fn begin_atomic_create(
@@ -172,6 +182,13 @@ pub struct BridgeCloudVersionedObject {
     pub version: String,
 }
 
+/// The provider's outcome for a conditional record replacement.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeCloudConditionalWriteOutcome {
+    Replaced { version: String },
+    VersionChanged,
+}
+
 /// One record named by the revision it was read at.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCloudKitRecordVersion {
@@ -228,6 +245,36 @@ impl coven::CloudKitOps for CloudKitDriverAdapter {
             bytes: read.bytes,
             version: coven::CloudObjectVersion::from_provider(read.version)?,
         })
+    }
+
+    fn replace_record_if_version(
+        &self,
+        scope: &coven::CloudKitScope,
+        key: &str,
+        expected: &coven::CloudObjectVersion,
+        data: Vec<u8>,
+    ) -> Result<coven::ConditionalWriteOutcome, coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
+        match self
+            .driver
+            .replace_record_if_version(
+                owner_name,
+                zone_name,
+                key.to_string(),
+                expected.as_provider().to_string(),
+                data,
+            )
+            .map_err(cloudkit_err_to_cloud_home_err)?
+        {
+            BridgeCloudConditionalWriteOutcome::Replaced { version } => {
+                Ok(coven::ConditionalWriteOutcome::Replaced(
+                    coven::CloudObjectVersion::from_provider(version)?,
+                ))
+            }
+            BridgeCloudConditionalWriteOutcome::VersionChanged => {
+                Ok(coven::ConditionalWriteOutcome::VersionChanged)
+            }
+        }
     }
 
     fn begin_atomic_create(

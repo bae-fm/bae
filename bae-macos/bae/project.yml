@@ -42,6 +42,7 @@ targets:
           - Info.plist
       - path: ../../BaeKit/Sources/AppleHost/CloudKitService.swift
       - path: ../../BaeKit/Sources/AppleHost/CloudKitService+Account.swift
+      - path: ../../BaeKit/Sources/AppleHost/CloudKitRecordReplacement.swift
     info:
       path: bae/Info.plist
       properties:
@@ -156,6 +157,9 @@ targets:
   baeTests:
     type: bundle.unit-test
     platform: macOS
+    configFiles:
+      Debug: Features.xcconfig
+      Release: Features.xcconfig
     sources:
       - baeTests
       - baeTestSupport
@@ -164,6 +168,9 @@ targets:
     settings:
       base:
         SWIFT_VERSION: "6.2"
+        # Test feature guards match the generated bridge without inheriting
+        # the application entitlement file from baeium builds.
+        CODE_SIGN_ENTITLEMENTS: ""
         GENERATE_INFOPLIST_FILE: YES
   baeUITests:
     type: bundle.ui-testing
