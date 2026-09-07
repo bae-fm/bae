@@ -250,26 +250,8 @@ impl MultiWindowPlayback {
             .expect("clone the multi-window template library");
         tracing::debug!("multi-window clone ready for {name}");
 
-        let db_path = temp_dir.path().join("test.db");
-        let database = Database::new_test(
-            db_path.to_str().expect("db path is valid UTF-8"),
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await
-        .expect("open the cloned multi-window database");
-        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let config_handle = test_config(&library_dir);
+        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
         let runtime_handle = tokio::runtime::Handle::current();
-        let library_manager = LibraryManager::new(
-            database,
-            config_handle,
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-            bae_core::diagnostics::Diagnostics::noop(),
-            runtime_handle.clone(),
-            bae_core::import::cover_art::RemoteImageCache::for_test(),
-        );
 
         let (playback_handle, capture_stream_rx) =
             start_capture_service(library_manager.clone(), runtime_handle.clone());

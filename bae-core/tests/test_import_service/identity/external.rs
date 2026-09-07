@@ -49,20 +49,11 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key.clone(),
-                partners: vec![],
-            }),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            support::discogs_release(release_id_key.clone()),
+        ))
         .await
         .unwrap();
 
@@ -133,18 +124,12 @@ async fn a_user_edit_overlays_the_picked_release() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key.clone(),
-                partners: vec![],
-            }),
             user_edit: Some(edit),
+            ..support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_id_key.clone()),
+            )
         })
         .await
         .unwrap();
@@ -320,20 +305,15 @@ async fn cross_source_writes_both_release_ids() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.clone(),
                 partners: vec![],
-            }),
-            user_edit: None,
-        })
+            },
+        ))
         .await
         .unwrap();
 
@@ -385,23 +365,20 @@ async fn a_pick_with_a_partner_writes_both_identity_rows() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.clone(),
-                partners: vec![bae_core::import::MetadataRef::new(
-                    discogs_id.clone(),
-                    MetadataSource::Discogs,
-                )],
-            }),
-            user_edit: None,
-        })
+                partners: vec![
+                    bae_core::import::MetadataRef::new(
+                        discogs_id.clone(),
+                        MetadataSource::Discogs,
+                    ),
+                ],
+            },
+        ))
         .await
         .unwrap();
 
@@ -454,23 +431,20 @@ async fn a_partner_replaces_an_inferred_identity_of_the_same_source() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.clone(),
-                partners: vec![bae_core::import::MetadataRef::new(
-                    picked_id.clone(),
-                    MetadataSource::Discogs,
-                )],
-            }),
-            user_edit: None,
-        })
+                partners: vec![
+                    bae_core::import::MetadataRef::new(
+                        picked_id.clone(),
+                        MetadataSource::Discogs,
+                    ),
+                ],
+            },
+        ))
         .await
         .unwrap();
 

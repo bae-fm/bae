@@ -61,6 +61,28 @@ fn scan(root: &Path) -> CategorizedFiles {
     .expect("scan succeeds")
 }
 
+/// The table an external release's picked tracklist maps onto, addressed as
+/// `import-track-{n}` — what most of these tests project. `format` is the
+/// pressing format whose shape decides whether a row's position reads `8`,
+/// `A1`, or `2-3`.
+fn external_table(
+    files: &CategorizedFiles,
+    slots: &SlotTable,
+    durations: &SourceDurations,
+    format: Option<&str>,
+) -> MappingTable {
+    mapping_table(
+        files,
+        Some(PickedTracklist {
+            slots,
+            track_id_prefix: "import-track",
+            source: TracklistSource::ExternalRelease,
+            format,
+        }),
+        durations,
+    )
+}
+
 fn source_tracks(count: usize) -> Vec<SourceTrack> {
     (0..count)
         .map(|index| SourceTrack {
@@ -235,16 +257,7 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     let files = scan(tmp.path());
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(3), &files, &durations);
-    let table = mapping_table(
-        &files,
-        Some(PickedTracklist {
-            slots: &slots,
-            track_id_prefix: "import-track",
-            source: TracklistSource::ExternalRelease,
-            format: None,
-        }),
-        &durations,
-    );
+    let table = external_table(&files, &slots, &durations, None);
 
     assert_eq!(
         table.track_sections.len(),
@@ -318,16 +331,7 @@ fn standalone_tracks_are_sectioned_by_release_side() {
     }
     let slots = slot_table(&tracks, &files, &durations);
 
-    let table = mapping_table(
-        &files,
-        Some(PickedTracklist {
-            slots: &slots,
-            track_id_prefix: "import-track",
-            source: TracklistSource::ExternalRelease,
-            format: Some("Vinyl"),
-        }),
-        &durations,
-    );
+    let table = external_table(&files, &slots, &durations, Some("Vinyl"));
 
     assert_eq!(table.track_sections.len(), 2);
     assert_eq!(
@@ -378,16 +382,7 @@ fn each_cue_is_one_section_on_its_assigned_disc() {
     }
     let slots = slot_table(&tracks, &files, &durations);
 
-    let table = mapping_table(
-        &files,
-        Some(PickedTracklist {
-            slots: &slots,
-            track_id_prefix: "import-track",
-            source: TracklistSource::ExternalRelease,
-            format: Some("2xCD"),
-        }),
-        &durations,
-    );
+    let table = external_table(&files, &slots, &durations, Some("2xCD"));
 
     assert_eq!(table.track_sections.len(), 2);
     for (section, (disc, sheet_id)) in table
@@ -425,16 +420,7 @@ fn tracks_the_folder_has_nothing_for_close_the_table() {
     let files = scan(tmp.path());
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(4), &files, &durations);
-    let table = mapping_table(
-        &files,
-        Some(PickedTracklist {
-            slots: &slots,
-            track_id_prefix: "import-track",
-            source: TracklistSource::ExternalRelease,
-            format: None,
-        }),
-        &durations,
-    );
+    let table = external_table(&files, &slots, &durations, None);
 
     assert_eq!(table.track_sections.len(), 1);
     let mappings = mappings(&table);
@@ -481,16 +467,7 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
     let files = scan(tmp.path());
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(4), &files, &durations);
-    let table = mapping_table(
-        &files,
-        Some(PickedTracklist {
-            slots: &slots,
-            track_id_prefix: "import-track",
-            source: TracklistSource::ExternalRelease,
-            format: None,
-        }),
-        &durations,
-    );
+    let table = external_table(&files, &slots, &durations, None);
 
     let tracks = mapping_tracks(&table);
     assert_eq!(
@@ -611,16 +588,7 @@ fn with_track_writes_the_edited_row_back_by_its_id() {
     let files = scan(tmp.path());
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(2), &files, &durations);
-    let table = mapping_table(
-        &files,
-        Some(PickedTracklist {
-            slots: &slots,
-            track_id_prefix: "import-track",
-            source: TracklistSource::ExternalRelease,
-            format: None,
-        }),
-        &durations,
-    );
+    let table = external_table(&files, &slots, &durations, None);
 
     let mut edited = mapping_tracks(&table)[1].clone();
     edited.title = "Renamed".to_string();
@@ -651,16 +619,7 @@ fn without_track_drops_the_row_and_restates_the_tally() {
     let files = scan(tmp.path());
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(3), &files, &durations);
-    let table = mapping_table(
-        &files,
-        Some(PickedTracklist {
-            slots: &slots,
-            track_id_prefix: "import-track",
-            source: TracklistSource::ExternalRelease,
-            format: None,
-        }),
-        &durations,
-    );
+    let table = external_table(&files, &slots, &durations, None);
     assert_eq!(
         table.reconciliation,
         Some(SlotReconciliation::MoreTracks {
@@ -733,16 +692,7 @@ fn projecting_the_table_opens_no_audio() {
 
     let seed = || {
         let slots = slot_table(&source_tracks(3), &files, &durations);
-        mapping_table(
-            &files,
-            Some(PickedTracklist {
-                slots: &slots,
-                track_id_prefix: "import-track",
-                source: TracklistSource::ExternalRelease,
-                format: None,
-            }),
-            &durations,
-        )
+        external_table(&files, &slots, &durations, None)
     };
     let first = seed();
     let second = seed();

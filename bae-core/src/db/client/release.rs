@@ -6,6 +6,32 @@ mod fail_import;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use fail_import::*;
 
+/// The row lists an import commit writes around its release — the artist, work,
+/// role, audio-format, and identity rows that hang off it.
+///
+/// One group rather than thirteen parameters: each is a plain list the caller
+/// either has or does not, and `Default` is every one of them empty, so a
+/// caller names only the lists it actually fills.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Default)]
+pub(crate) struct ImportRows<'a> {
+    pub track_artists: &'a [DbTrackArtist],
+    pub album_artists: &'a [DbAlbumArtist],
+    pub works: &'a [DbWork],
+    pub work_artists: &'a [DbWorkArtist],
+    pub work_parts: &'a [DbWorkPart],
+    pub track_works: &'a [DbTrackWork],
+    pub release_artist_roles: &'a [DbReleaseArtistRole],
+    pub track_artist_roles: &'a [DbTrackArtistRole],
+    pub artists: &'a [DbArtist],
+    /// `(artist_id, artist)` — an existing artist row whose empty source-id and
+    /// sort-name fields this import fills in.
+    pub artist_external_id_updates: &'a [(String, DbArtist)],
+    pub audio_formats: &'a [DbAudioFormat],
+    pub audio_segments: &'a [DbAudioSegment],
+    pub identities: &'a [crate::import::ReleaseIdentity],
+}
+
 impl Database {
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
@@ -557,23 +583,11 @@ impl Database {
         album: Option<&DbAlbum>,
         release: &DbRelease,
         tracks_to_files: &[crate::import::TrackFile],
-        track_artists: &[DbTrackArtist],
-        album_artists: &[DbAlbumArtist],
-        works: &[DbWork],
-        work_artists: &[DbWorkArtist],
-        work_parts: &[DbWorkPart],
-        track_works: &[DbTrackWork],
-        release_artist_roles: &[DbReleaseArtistRole],
-        track_artist_roles: &[DbTrackArtistRole],
-        artists: &[DbArtist],
-        artist_external_id_updates: &[(String, DbArtist)],
+        rows: ImportRows<'_>,
         files: Vec<crate::import::service::PreparedImportFile>,
-        audio_formats: &[DbAudioFormat],
-        audio_segments: &[DbAudioSegment],
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: &[(&DbLibraryImage, &[u8])],
         primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
-        identities: &[crate::import::ReleaseIdentity],
         // The cloud home's storage mode, which decides the blob layout: `Opaque`
         // keys each blob by its hashed id, `Browsable` lays it out at a readable
         // `cloud_path` computed inside this transaction, ready when the gate flips.
@@ -586,18 +600,18 @@ impl Database {
             .iter()
             .map(|tf| tf.db_track().clone())
             .collect();
-        let track_artists = track_artists.to_vec();
-        let album_artists = album_artists.to_vec();
-        let works = works.to_vec();
-        let work_artists = work_artists.to_vec();
-        let work_parts = work_parts.to_vec();
-        let track_works = track_works.to_vec();
-        let release_artist_roles = release_artist_roles.to_vec();
-        let track_artist_roles = track_artist_roles.to_vec();
-        let artists = artists.to_vec();
-        let artist_external_id_updates = artist_external_id_updates.to_vec();
-        let audio_formats = audio_formats.to_vec();
-        let audio_segments = audio_segments.to_vec();
+        let track_artists = rows.track_artists.to_vec();
+        let album_artists = rows.album_artists.to_vec();
+        let works = rows.works.to_vec();
+        let work_artists = rows.work_artists.to_vec();
+        let work_parts = rows.work_parts.to_vec();
+        let track_works = rows.track_works.to_vec();
+        let release_artist_roles = rows.release_artist_roles.to_vec();
+        let track_artist_roles = rows.track_artist_roles.to_vec();
+        let artists = rows.artists.to_vec();
+        let artist_external_id_updates = rows.artist_external_id_updates.to_vec();
+        let audio_formats = rows.audio_formats.to_vec();
+        let audio_segments = rows.audio_segments.to_vec();
         let library_image = library_image.map(|(image, bytes)| (image.clone(), bytes.to_vec()));
         let artist_images: Vec<(DbLibraryImage, Vec<u8>)> = artist_images
             .iter()
@@ -617,7 +631,7 @@ impl Database {
             })
             .collect();
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
-        let identities = identities.to_vec();
+        let identities = rows.identities.to_vec();
         let replacement_deletes = replacement_deletes.to_vec();
 
         let now_dt = self.inner.clock.now();

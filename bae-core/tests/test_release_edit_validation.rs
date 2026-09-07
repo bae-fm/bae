@@ -12,37 +12,9 @@ use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, Pressing};
 use bae_core::import::{
     ArtistAssignment, PressingEdit, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit,
 };
-use bae_core::library::{LibraryError, LibraryManager};
-use bae_test_support::{test_config, tracing_init};
+use bae_core::library::LibraryError;
 use chrono::Utc;
-use coven::StoreDir;
-use tempfile::TempDir;
 use uuid::Uuid;
-
-async fn setup() -> (LibraryManager, Database, TempDir) {
-    tracing_init();
-    let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-    let config_handle = test_config(&library_dir);
-    let manager = LibraryManager::new(
-        database.clone(),
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
-    (manager, database, temp_dir)
-}
 
 /// One album, one release, one track — enough for an edit to land on.
 async fn seed(db: &Database) -> (String, String) {
@@ -117,7 +89,7 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
 
 #[tokio::test]
 async fn empty_album_title_is_rejected_on_the_write_path() {
-    let (manager, db, _tmp) = setup().await;
+    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
     let (album_id, release_id) = seed(&db).await;
 
     let result = manager
@@ -138,7 +110,7 @@ async fn empty_album_title_is_rejected_on_the_write_path() {
 /// Whitespace-only is the same blank, one keystroke away.
 #[tokio::test]
 async fn whitespace_only_album_title_is_rejected_on_the_write_path() {
-    let (manager, db, _tmp) = setup().await;
+    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
     let (album_id, release_id) = seed(&db).await;
 
     let result = manager
@@ -155,7 +127,7 @@ async fn whitespace_only_album_title_is_rejected_on_the_write_path() {
 /// what lands in the row.
 #[tokio::test]
 async fn an_untrimmed_album_title_is_stored_trimmed() {
-    let (manager, db, _tmp) = setup().await;
+    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
     let (album_id, release_id) = seed(&db).await;
 
     manager
@@ -172,7 +144,7 @@ async fn an_untrimmed_album_title_is_stored_trimmed() {
 
 #[tokio::test]
 async fn an_artist_less_edit_is_rejected_on_the_write_path() {
-    let (manager, db, _tmp) = setup().await;
+    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
     let (album_id, release_id) = seed(&db).await;
 
     let result = manager
@@ -188,7 +160,7 @@ async fn an_artist_less_edit_is_rejected_on_the_write_path() {
 /// one artist, and the name is empty.
 #[tokio::test]
 async fn a_blank_artist_name_is_rejected_on_the_write_path() {
-    let (manager, db, _tmp) = setup().await;
+    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
     let (album_id, release_id) = seed(&db).await;
 
     let result = manager
@@ -203,7 +175,7 @@ async fn a_blank_artist_name_is_rejected_on_the_write_path() {
 /// The artist names a user edit does supply are trimmed.
 #[tokio::test]
 async fn new_artist_names_are_stored_trimmed() {
-    let (manager, db, _tmp) = setup().await;
+    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
     let (album_id, release_id) = seed(&db).await;
 
     manager

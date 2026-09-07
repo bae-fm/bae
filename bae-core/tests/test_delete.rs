@@ -1,37 +1,8 @@
 #![cfg(feature = "test-utils")]
-use bae_core::db::{Database, DbAlbum, DbRelease, DbTrack, Pressing};
-use bae_core::library::LibraryManager;
+use bae_core::db::{DbAlbum, DbRelease, DbTrack, Pressing};
 use bae_test_support as support;
 use chrono::Utc;
-use coven::StoreDir;
-use support::{test_config, tracing_init};
-use tempfile::TempDir;
 use uuid::Uuid;
-
-async fn setup_test_environment() -> (LibraryManager, Database, TempDir) {
-    tracing_init();
-    let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .expect("Failed to create database");
-    let config_handle = test_config(&library_dir);
-    let library_manager = LibraryManager::new(
-        database.clone(),
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
-    (library_manager, database, temp_dir)
-}
 
 fn create_test_artist() -> bae_core::db::DbArtist {
     bae_core::db::DbArtist {
@@ -96,7 +67,7 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
 
 #[tokio::test]
 async fn test_delete_album_integration() {
-    let (library_manager, database, _temp_dir) = setup_test_environment().await;
+    let (library_manager, database, _temp_dir) = support::setup_test_library().await;
     let artist = create_test_artist();
     database.insert_artist(&artist).await.unwrap();
     let album = create_test_album(&artist.id);
@@ -129,7 +100,7 @@ async fn test_delete_album_integration() {
 
 #[tokio::test]
 async fn test_delete_release_integration() {
-    let (library_manager, database, _temp_dir) = setup_test_environment().await;
+    let (library_manager, database, _temp_dir) = support::setup_test_library().await;
     let artist = create_test_artist();
     database.insert_artist(&artist).await.unwrap();
     let album = create_test_album(&artist.id);
@@ -171,7 +142,7 @@ async fn test_delete_release_integration() {
 
 #[tokio::test]
 async fn test_delete_last_release_deletes_album() {
-    let (library_manager, database, _temp_dir) = setup_test_environment().await;
+    let (library_manager, database, _temp_dir) = support::setup_test_library().await;
     let artist = create_test_artist();
     database.insert_artist(&artist).await.unwrap();
     let album = create_test_album(&artist.id);
@@ -194,7 +165,7 @@ async fn test_delete_last_release_deletes_album() {
 
 #[tokio::test]
 async fn test_delete_primary_release_clears_album_primary_pointer() {
-    let (library_manager, database, _temp_dir) = setup_test_environment().await;
+    let (library_manager, database, _temp_dir) = support::setup_test_library().await;
     let artist = create_test_artist();
     database.insert_artist(&artist).await.unwrap();
     let album = create_test_album(&artist.id);
@@ -227,7 +198,7 @@ async fn test_delete_primary_release_clears_album_primary_pointer() {
 
 #[tokio::test]
 async fn test_delete_non_primary_release_preserves_primary_pointer() {
-    let (library_manager, database, _temp_dir) = setup_test_environment().await;
+    let (library_manager, database, _temp_dir) = support::setup_test_library().await;
     let artist = create_test_artist();
     database.insert_artist(&artist).await.unwrap();
     let album = create_test_album(&artist.id);

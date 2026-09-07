@@ -4,22 +4,20 @@
 // for the moniker it replaced, so assertions still read by name.
 const RELEASE_THAT_WAS_DELETED: &str = "763072b0-643f-4469-8ac7-799c4550a769"; // was "release-that-was-deleted"
 
-use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
-use bae_core::import::{ImportCommand, MetadataProvenance, MetadataSource, StorageMode};
+use bae_core::import::{ImportCommand, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{
     PlaybackPauseReason, PlaybackProgress, PlaybackState, RepeatMode,
     SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_VINYL_MESSAGE_KEY,
 };
 use bae_test_support as support;
-use coven::StoreDir;
 use coven::{IdProvider, SequentialIdProvider};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use support::start_test_import;
 use support::{
-    samples_as_f32, seed_discogs_test_release, test_config, tracing_init,
+    open_test_library, samples_as_f32, seed_discogs_test_release, tracing_init,
     try_wait_for_import_complete, wait_for_import_complete,
 };
 use tempfile::TempDir;
@@ -462,29 +460,11 @@ where
 {
     tracing_init();
     let temp_dir = TempDir::new()?;
-    let db_path = temp_dir.path().join("test.db");
     let album_dir = temp_dir.path().join("album");
     std::fs::create_dir_all(&album_dir)?;
 
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await?;
-    let database_arc = Arc::new(database.clone());
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let config_handle = test_config(&library_dir);
+    let (library_manager, _database) = open_test_library(temp_dir.path()).await;
     let runtime_handle = tokio::runtime::Handle::current();
-    let library_manager = LibraryManager::new(
-        (*database_arc).clone(),
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        runtime_handle.clone(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
     configure(&library_manager)?;
 
     let release_id_key = seed_discogs_test_release(release);
@@ -493,18 +473,12 @@ where
     let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
     import_handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
             candidate_key: candidate_key.to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir.clone(), scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
+            ..support::folder_import(
+                &import_id,
+                album_dir.clone(),
+                support::discogs_release(release_id_key),
+            )
         })
         .await
         .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
@@ -621,26 +595,8 @@ impl PlaybackTestFixture {
                 .await
                 .expect("clone the playback fixture template library");
 
-        let db_path = temp_dir.path().join("test.db");
-        let database = Database::new_test(
-            db_path.to_str().expect("db path is valid UTF-8"),
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await
-        .expect("open the cloned playback database");
-        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let config_handle = test_config(&library_dir);
+        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
         let runtime_handle = tokio::runtime::Handle::current();
-        let library_manager = LibraryManager::new(
-            database,
-            config_handle,
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-            bae_core::diagnostics::Diagnostics::noop(),
-            runtime_handle.clone(),
-            bae_core::import::cover_art::RemoteImageCache::for_test(),
-        );
 
         // A real-time capture sink stands in for the audio device: no hardware
         // required, and it paces the decoder to wall-clock like a real device so

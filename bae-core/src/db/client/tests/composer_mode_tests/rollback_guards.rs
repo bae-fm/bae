@@ -2,15 +2,7 @@ use super::*;
 
 #[tokio::test]
 async fn failed_import_rollback_refuses_a_deletion_plan_that_changed_before_write() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, _tmp) = super::temp_db().await;
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
@@ -60,15 +52,7 @@ async fn failed_import_rollback_refuses_a_deletion_plan_that_changed_before_writ
 /// bytes those inputs need even after the live rows are gone.
 #[tokio::test]
 async fn fail_import_and_delete_release_retains_replay_owned_image_blobs() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
@@ -187,23 +171,14 @@ async fn fail_import_and_delete_release_retains_replay_owned_image_blobs() {
         Some(&album_a),
         &release_a,
         &track_files,
-        &[],
-        &album_artists,
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
+        crate::db::ImportRows {
+            album_artists: &album_artists,
+            ..Default::default()
+        },
         vec![file_a],
-        &[],
-        &[],
         Some((&cover, &bytes)),
         &[(&img_exclusive, &bytes), (&img_shared, &bytes)],
         Some((&album_a.id, &release_a.id)),
-        &[],
         crate::config::HomeStorage::Opaque,
         &[],
     )

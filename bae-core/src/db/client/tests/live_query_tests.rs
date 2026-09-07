@@ -23,14 +23,7 @@ const OTHER_COMPOSER_LINK_ID: &str = "49a10300-3036-4301-9e1b-a50a76a46032";
 const INSERTED_COMPOSER_LINK_ID: &str = "9168d755-3ed6-446c-a0ec-5f4039e18a6f";
 
 pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
-    let temp = tempfile::TempDir::new().unwrap();
-    let db = Database::new_test(
-        temp.path().join("library.db").to_str().unwrap(),
-        Arc::new(SystemClock),
-        Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, temp) = super::temp_db().await;
     db.call(|sql| {
         sql.execute_batch(&format!(
             "INSERT INTO artists (id, name, _updated_at, created_at)

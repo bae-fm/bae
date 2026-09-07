@@ -4,20 +4,9 @@
 //! every read below checks bae's routing without exposing coven's retained
 //! handle.
 
-use std::sync::Arc;
-
-use bae_core::db::Database;
-
 #[tokio::test]
 async fn pure_reads_use_the_read_connection() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let db = Database::new_test(
-        tmp.path().join("tripwire.db").to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = bae_test_support::temp_test_db().await;
 
     // A device-local write still uses the write connection.
     db.save_playback_state(&bae_core::db::DbPlaybackState {

@@ -27,20 +27,11 @@ async fn two_sequential_imports() {
 
         let import_id = uuid::Uuid::new_v4().to_string();
         f.handle
-            .send_command(ImportCommand {
-                import_id: import_id.clone(),
-                candidate_key: "test".to_string(),
-                source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-                selected_cover: None,
-                storage_mode: StorageMode::Local,
-                pin: false,
-                metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                    source: MetadataSource::Discogs,
-                release_id: release_keys[i].clone(),
-                    partners: vec![],
-                }),
-                user_edit: None,
-            })
+            .send_command(support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_keys[i].clone()),
+            ))
             .await
             .unwrap();
 
@@ -294,14 +285,8 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
     let import_id = f.ids.new_id();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
             storage_mode: StorageMode::Remote,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
+            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags)
         })
         .await
         .unwrap();

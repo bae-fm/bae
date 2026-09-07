@@ -1,21 +1,11 @@
 use super::super::*;
 use super::*;
 use crate::playback::QueueEntryId;
-use coven::SystemClock;
-use std::sync::Arc;
 
 /// `album-null` has no primary release at all; `album-set` has one, pointing at
 /// a release that the queued track is NOT on.
 async fn cover_db() -> (Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     // coven verifies a blob row's declared hash, so the seeded covers carry
     // real content hashes rather than placeholder strings.
     let lonely_hash = crate::util::fs::hash_bytes(b"cover-lonely");

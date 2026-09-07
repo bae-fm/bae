@@ -67,16 +67,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
 
     let import_id = uuid::Uuid::new_v4().to_string();
     handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags))
         .await
         .unwrap();
     let mut progress_rx = handle.subscribe_import(import_id);

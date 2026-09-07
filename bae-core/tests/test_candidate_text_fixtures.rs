@@ -232,25 +232,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
 /// outlive the manager.
 async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) {
     let tmp = TempDir::new().expect("library temp dir");
-    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let database = bae_core::db::Database::new_test(
-        tmp.path().join("test.db").to_str().unwrap(),
-        clock.clone(),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-    let library_dir = coven::StoreDir::new(tmp.path());
-    let config_handle = support::test_config(&library_dir);
-    let manager = bae_core::library::LibraryManager::new(
-        database,
-        config_handle,
-        clock,
-        Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
+    let (manager, _db) = support::open_test_library(tmp.path()).await;
     (manager, tmp)
 }
 

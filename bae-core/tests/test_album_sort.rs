@@ -3,21 +3,7 @@ use bae_core::db::{
     AlbumSortCriterion, AlbumSortField, Database, DbAlbum, DbArtist, SortDirection,
 };
 use chrono::{Duration, Utc};
-use tempfile::TempDir;
 use uuid::Uuid;
-
-async fn setup_db() -> (Database, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .expect("Failed to create database");
-    (database, temp_dir)
-}
 
 fn make_album(
     title: &str,
@@ -64,7 +50,7 @@ fn make_artist(name: &str, sort_name: Option<&str>) -> DbArtist {
 
 #[tokio::test]
 async fn test_default_sort_is_date_added_desc() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     let old = make_album("Old Album", &aid, Some(2020), -2);
@@ -81,7 +67,7 @@ async fn test_default_sort_is_date_added_desc() {
 
 #[tokio::test]
 async fn test_sort_by_title_ascending() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     let c = make_album("Charlie", &aid, Some(2020), 0);
@@ -106,7 +92,7 @@ async fn test_sort_by_title_ascending() {
 
 #[tokio::test]
 async fn test_sort_by_title_descending() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     let a = make_album("Alpha", &aid, Some(2020), 0);
@@ -128,7 +114,7 @@ async fn test_sort_by_title_descending() {
 
 #[tokio::test]
 async fn test_sort_by_title_is_case_insensitive() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     let lower = make_album("alpha", &aid, Some(2020), 0);
@@ -150,7 +136,7 @@ async fn test_sort_by_title_is_case_insensitive() {
 
 #[tokio::test]
 async fn test_sort_by_year_ascending_nulls_last() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     let no_year = make_album("No Year", &aid, None, 0);
@@ -175,7 +161,7 @@ async fn test_sort_by_year_ascending_nulls_last() {
 
 #[tokio::test]
 async fn test_sort_by_year_descending_nulls_first() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     let no_year = make_album("No Year", &aid, None, 0);
@@ -200,7 +186,7 @@ async fn test_sort_by_year_descending_nulls_first() {
 
 #[tokio::test]
 async fn test_sort_by_date_added_ascending() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     let oldest = make_album("Oldest", &aid, Some(2024), -3);
@@ -225,7 +211,7 @@ async fn test_sort_by_date_added_ascending() {
 
 #[tokio::test]
 async fn test_sort_by_artist_ascending() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
 
     let artist_z = make_artist("Zebra", None);
     let artist_a = make_artist("Alpha", None);
@@ -251,7 +237,7 @@ async fn test_sort_by_artist_ascending() {
 
 #[tokio::test]
 async fn test_sort_by_artist_uses_sort_name() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
 
     let artist_the = make_artist("The Zebras", Some("Zebras, The"));
     let artist_a = make_artist("Alpha", None);
@@ -278,7 +264,7 @@ async fn test_sort_by_artist_uses_sort_name() {
 
 #[tokio::test]
 async fn test_multi_criteria_artist_then_year() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
 
     let artist = make_artist("Same Artist", None);
     db.insert_artist(&artist).await.unwrap();
@@ -314,7 +300,7 @@ async fn test_multi_criteria_artist_then_year() {
 
 #[tokio::test]
 async fn test_album_index_matches_page_position() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     // A handful of albums with distinct titles so a title sort is total.
@@ -346,7 +332,7 @@ async fn test_album_index_matches_page_position() {
 
 #[tokio::test]
 async fn test_album_index_matches_page_position_default_sort() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     for i in 0..4 {
@@ -366,7 +352,7 @@ async fn test_album_index_matches_page_position_default_sort() {
 
 #[tokio::test]
 async fn test_album_index_matches_page_position_on_ties() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     // Many albums sharing one title and one created_at offset: the sort value
@@ -393,7 +379,7 @@ async fn test_album_index_matches_page_position_on_ties() {
 
 #[tokio::test]
 async fn test_multi_criteria_year_asc_then_title_asc() {
-    let (db, _dir) = setup_db().await;
+    let (db, _dir) = bae_test_support::temp_test_db().await;
     let aid = insert_default_artist(&db).await;
 
     let a = make_album("Bravo", &aid, Some(2020), 0);

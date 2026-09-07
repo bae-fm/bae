@@ -48,25 +48,8 @@ impl ImportFixture {
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
 
-        let db = Database::new_test(
-            db_dir.join("test.db").to_str().unwrap(),
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await
-        .unwrap();
-        let library_dir = StoreDir::new(db_dir.clone());
-        let config_handle = support::test_config(&library_dir);
+        let (library_manager, db) = support::open_test_library(&db_dir).await;
         let ids: Arc<dyn coven::IdProvider> = Arc::new(coven::UuidProvider);
-        let library_manager = LibraryManager::new(
-            db.clone(),
-            config_handle.clone(),
-            std::sync::Arc::new(coven::SystemClock),
-            ids.clone(),
-            bae_core::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::RemoteImageCache::for_test(),
-        );
         support::configure_test_discogs(&library_manager);
 
         let handle = library_manager
@@ -110,17 +93,9 @@ async fn import_folder(
     let import_id = f.ids.new_id();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder {
-                path: album_dir.to_path_buf(),
-                scope: bae_core::import::ReleaseFileScope::Recursive,
-            },
             selected_cover,
             storage_mode,
-            pin: false,
-            metadata_provenance: Some(metadata_provenance),
-            user_edit: None,
+            ..support::folder_import(&import_id, album_dir.to_path_buf(), metadata_provenance)
         })
         .await
         .map_err(|error| error.to_string())?;

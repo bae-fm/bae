@@ -10,12 +10,10 @@ use bae_test_support as support;
 use bae_core::config::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
 };
-use bae_core::db::Database;
-use bae_core::import::{ImportCommand, MetadataProvenance, StorageMode};
+use bae_core::import::MetadataProvenance;
 use bae_core::library::{LibraryManager, OutputKind};
 use coven::EncryptionService;
 use coven::InMemoryCloudHome;
-use coven::StoreDir;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -58,24 +56,7 @@ impl ExportFixture {
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
 
-        let db = Database::new_test(
-            db_dir.join("test.db").to_str().unwrap(),
-            Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await
-        .unwrap();
-        let library_dir = StoreDir::new(db_dir.clone());
-        let config_handle = support::test_config(&library_dir);
-        let mgr = LibraryManager::new(
-            db.clone(),
-            config_handle,
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidProvider),
-            bae_core::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::RemoteImageCache::for_test(),
-        );
+        let (mgr, _db) = support::open_test_library(&db_dir).await;
         let cloud = Arc::new(InMemoryCloudHome::new());
         mgr.connect_test_cloud_home_caller_driven(
             cloud.clone(),
@@ -110,19 +91,11 @@ impl ExportFixture {
 async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (String, Vec<u8>) {
     let import_id = "import-then-strand-in-cloud".to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder {
-                path: album_dir.to_path_buf(),
-                scope: bae_core::import::ReleaseFileScope::Recursive,
-            },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir.to_path_buf(),
+            MetadataProvenance::FileTags,
+        ))
         .await
         .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -142,19 +115,11 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
 async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
     let import_id = "import-unknown-local".to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder {
-                path: album_dir.to_path_buf(),
-                scope: bae_core::import::ReleaseFileScope::Recursive,
-            },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir.to_path_buf(),
+            MetadataProvenance::FileTags,
+        ))
         .await
         .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);

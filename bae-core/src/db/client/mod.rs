@@ -71,6 +71,8 @@ mod payloads;
 mod playback;
 pub(crate) use playback::QueueCatalogProjection;
 mod release;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use release::ImportRows;
 mod release_projection;
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;

@@ -102,22 +102,11 @@ fn test_reorder_unknown_source_is_noop() {
 #[test]
 fn test_clear_up_next_empties_manual_keeps_context() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
     q.add_to_queue(rel(&["m1", "m2"]));
     q.clear_up_next();
     // Manual gone; context tail (t2, t3) survives.
-    assert_eq!(
-        upcoming_tracks(&q),
-        vec!["08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"]
-    );
+    assert_eq!(upcoming_tracks(&q), vec!["t2", "t3"]);
 }
 
 /// Clearing the context lane drops its rows, its history, and its label
@@ -126,24 +115,12 @@ fn test_clear_up_next_empties_manual_keeps_context() {
 #[test]
 fn test_clear_playing_from_drops_the_context_keeping_the_current_track() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(1),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(1));
     assert!(q.has_previous(), "t1 sits behind the cursor");
 
     q.clear_playing_from();
 
-    assert_eq!(
-        q.current_track_id(),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
-        "the playing track keeps playing"
-    );
+    assert_eq!(q.current_track_id(), Some("t2"), "the playing track keeps playing");
     assert!(
         q.context_projection().is_none(),
         "the context section is gone"
@@ -157,15 +134,7 @@ fn test_clear_playing_from_drops_the_context_keeping_the_current_track() {
 #[test]
 fn test_clear_playing_from_then_up_next_drains_and_stops() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
     q.add_to_queue(rel(&["m1"]));
 
     q.clear_playing_from();
@@ -214,39 +183,17 @@ fn test_skip_to_unknown_id_is_noop() {
 #[test]
 fn test_play_release_sets_current_and_upcoming() {
     let mut q = queue();
-    let first = q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
-    assert_eq!(first, "08c7ff07-b56a-4e16-8df6-ae2967fa0806");
-    assert_eq!(
-        q.current_track_id(),
-        Some("08c7ff07-b56a-4e16-8df6-ae2967fa0806")
-    );
-    assert_eq!(
-        upcoming_tracks(&q),
-        vec!["08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"]
-    );
+    let first = q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
+    assert_eq!(first, "t1");
+    assert_eq!(q.current_track_id(), Some("t1"));
+    assert_eq!(upcoming_tracks(&q), vec!["t2", "t3"]);
 }
 
 #[test]
 fn test_play_release_start_index() {
     let mut q = queue();
-    let first = q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(1),
-    );
-    assert_eq!(first, "08c7fe07-b56a-4c63-8df6-ad2967fa0653");
+    let first = q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(1));
+    assert_eq!(first, "t2");
     assert_eq!(upcoming_tracks(&q), vec!["t3"]);
 }
 
@@ -257,25 +204,15 @@ fn test_play_release_clears_up_next() {
     let mut q = queue();
     q.add_to_queue(rel(&["m1", "m2"]));
 
-    let first = q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
+    let first = q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
 
-    assert_eq!(first, "08c7ff07-b56a-4e16-8df6-ae2967fa0806");
+    assert_eq!(first, "t1");
     assert_eq!(
         upcoming_tracks(&q),
-        vec!["08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"],
+        vec!["t2", "t3"],
         "the new context replaces the old Up Next lane"
     );
-    assert!(
-        matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
 }
 
 #[test]
@@ -295,26 +232,13 @@ fn test_play_release_shuffled_keeps_all_tracks() {
     let mut q = queue();
     q.play_release(
         rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-        ]),
+        rel(&["t1", "t2", "t3", "t4"]),
         ContextStart::Shuffled { seed: 7 },
     );
     let mut all = full_order(&q);
     all.sort();
     // Sorted, so the ids come out in lexical order.
-    assert_eq!(
-        all,
-        vec![
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "t3",
-            "t4"
-        ]
-    );
+    assert_eq!(all, vec!["t1", "t2", "t3", "t4"]);
 }
 
 /// A repeating shuffled lane loops a freshly permuted order each pass, not
@@ -325,13 +249,7 @@ fn test_context_repeat_shuffled_loops_a_re_derived_order() {
     let mut q = queue();
     q.play_release(
         rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
+        rel(&["t1", "t2", "t3", "t4", "t5"]),
         ContextStart::Shuffled { seed: 1 },
     );
     q.set_repeat_mode(RepeatMode::Context);
@@ -363,17 +281,7 @@ fn test_context_repeat_shuffled_loops_a_re_derived_order() {
 #[test]
 fn test_unshuffle_after_a_repeat_wrap_lands_in_the_stamped_order() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(0));
     // Shuffle on from the head, so the stamp is source order.
     q.set_shuffle(true, 7);
     q.set_repeat_mode(RepeatMode::Context);
@@ -386,13 +294,7 @@ fn test_unshuffle_after_a_repeat_wrap_lands_in_the_stamped_order() {
     q.set_shuffle(false, 0);
 
     let wrapped_current = q.current_track_id().unwrap().to_string();
-    let expected: Vec<&str> = [
-        "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-        "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        "t3",
-        "t4",
-        "t5",
-    ]
+    let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
     .into_iter()
     .filter(|t| *t != wrapped_current)
     .collect();
@@ -408,16 +310,7 @@ fn test_unshuffle_after_a_repeat_wrap_lands_in_the_stamped_order() {
 #[test]
 fn test_context_repeat_sequential_wrap_carries_edits_into_the_next_pass() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4"]), ContextStart::Index(0));
     // Remove t2 and move t4 ahead of t3: the lane becomes [t1, t4, t3].
     let up = q.upcoming();
     let t2_id = up[0].id.clone();
@@ -425,20 +318,15 @@ fn test_context_repeat_sequential_wrap_carries_edits_into_the_next_pass() {
     let t4_id = up[2].id.clone();
     q.remove(&t2_id);
     q.reorder(&t4_id, Some(&t3_id));
-    assert_eq!(
-        q.context_order(),
-        vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806", "t4", "t3"]
-    );
+    assert_eq!(q.context_order(), vec!["t1", "t4", "t3"]);
 
     q.set_repeat_mode(RepeatMode::Context);
     q.next_entry(); // t4
     q.next_entry(); // t3
-    assert!(
-        matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806")
-    );
+    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t1"));
     assert_eq!(
         q.context_order(),
-        vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806", "t4", "t3"],
+        vec!["t1", "t4", "t3"],
         "the wrap replays the edited lane, not the source"
     );
 }
@@ -451,28 +339,13 @@ fn test_library_source_context_materializes_all_tracks() {
     let mut q = queue();
     q.play_release(
         ContextSource::Library,
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
+        rel(&["t1", "t2", "t3", "t4", "t5"]),
         ContextStart::Shuffled { seed: 3 },
     );
     let mut all = full_order(&q);
     all.sort();
     // Sorted, so the ids come out in lexical order.
-    assert_eq!(
-        all,
-        vec![
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "t3",
-            "t4",
-            "t5"
-        ]
-    );
+    assert_eq!(all, vec!["t1", "t2", "t3", "t4", "t5"]);
     assert_eq!(q.snapshot().context.unwrap().source, ContextSource::Library);
 }
 
@@ -481,17 +354,7 @@ fn test_library_source_context_materializes_all_tracks() {
 #[test]
 fn test_set_shuffle_on_keeps_current_track_with_cursor_on_it() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
-        ContextStart::Index(2),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(2));
     assert_eq!(q.current_track_id(), Some("t3"));
 
     q.set_shuffle(true, 7);
@@ -508,17 +371,7 @@ fn test_set_shuffle_on_keeps_current_track_with_cursor_on_it() {
     let mut all = q.context_order();
     all.sort();
     // Sorted, so the ids come out in lexical order.
-    assert_eq!(
-        all,
-        vec![
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "t3",
-            "t4",
-            "t5"
-        ],
-        "no track is lost"
-    );
+    assert_eq!(all, vec!["t1", "t2", "t3", "t4", "t5"], "no track is lost");
 }
 
 /// Turning shuffle on is surgery on the upcoming tail alone: the current row
@@ -532,13 +385,7 @@ fn test_set_shuffle_on_keeps_history_and_permutes_only_upcoming() {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&[
-                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-                "t3",
-                "t4",
-                "t5",
-            ]),
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
             ContextStart::Index(2),
         );
         q.set_shuffle(true, seed);
@@ -546,11 +393,7 @@ fn test_set_shuffle_on_keeps_history_and_permutes_only_upcoming() {
         assert_eq!(q.current_track_id(), Some("t3"), "seed {seed}");
         assert_eq!(
             q.context_order()[..3],
-            [
-                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-                "t3"
-            ],
+            ["t1", "t2", "t3"],
             "seed {seed}: the history and the current row never move"
         );
         let mut rest = upcoming_tracks(&q);
@@ -569,27 +412,14 @@ fn test_set_shuffle_on_keeps_history_and_permutes_only_upcoming() {
 #[test]
 fn test_shuffle_round_trip_restores_a_reordered_lane_not_source_order() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(0));
     // Move t5 to the front of the upcoming tail: [t2, t3, t4, t5] → [t5, t2, t3, t4].
     let up = q.upcoming();
     let t5_id = up[3].id.clone();
     let t2_id = up[0].id.clone();
     q.reorder(&t5_id, Some(&t2_id));
     let reordered = upcoming_tracks(&q);
-    assert_eq!(
-        reordered,
-        vec!["t5", "08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3", "t4"]
-    );
+    assert_eq!(reordered, vec!["t5", "t2", "t3", "t4"]);
 
     q.set_shuffle(true, 7);
     q.set_shuffle(false, 0);
@@ -608,14 +438,7 @@ fn test_shuffle_round_trip_with_no_edits_is_the_identity() {
     let mut q = queue();
     q.play_release(
         rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-            "t6",
-        ]),
+        rel(&["t1", "t2", "t3", "t4", "t5", "t6"]),
         ContextStart::Index(1),
     );
     let before = q.context_order();
@@ -624,10 +447,7 @@ fn test_shuffle_round_trip_with_no_edits_is_the_identity() {
     q.set_shuffle(false, 0);
 
     assert_eq!(q.context_order(), before);
-    assert_eq!(
-        q.current_track_id(),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    assert_eq!(q.current_track_id(), Some("t2"));
 }
 
 /// A row removed while shuffled is gone for the rest of the session — no
@@ -636,17 +456,7 @@ fn test_shuffle_round_trip_with_no_edits_is_the_identity() {
 #[test]
 fn test_a_row_removed_while_shuffled_is_absent_after_unshuffling() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(0));
     q.set_shuffle(true, 7);
     let removed_track = q.upcoming()[0].track_id.clone();
     let removed_id = q.upcoming()[0].id.clone();
@@ -654,11 +464,8 @@ fn test_a_row_removed_while_shuffled_is_absent_after_unshuffling() {
 
     q.set_shuffle(false, 0);
 
-    assert_eq!(
-        q.current_track_id(),
-        Some("08c7ff07-b56a-4e16-8df6-ae2967fa0806")
-    );
-    let expected: Vec<&str> = ["08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3", "t4", "t5"]
+    assert_eq!(q.current_track_id(), Some("t1"));
+    let expected: Vec<&str> = ["t2", "t3", "t4", "t5"]
         .into_iter()
         .filter(|t| *t != removed_track)
         .collect();
@@ -674,17 +481,7 @@ fn test_a_row_removed_while_shuffled_is_absent_after_unshuffling() {
 #[test]
 fn test_set_shuffle_to_the_current_state_is_idempotent() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(0));
     q.set_shuffle(true, 7);
     let order = q.context_order();
     let revision = q.revision();
@@ -711,17 +508,7 @@ fn test_set_shuffle_to_the_current_state_is_idempotent() {
 #[test]
 fn test_set_shuffle_off_restores_source_order_from_current() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
-        ContextStart::Index(2),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(2));
     assert_eq!(q.current_track_id(), Some("t3"));
 
     // On then off; the playing track rides through to a restored source order.
@@ -752,13 +539,7 @@ fn test_shuffled_fill_then_unshuffle_yields_source_order() {
     let mut q = queue();
     q.play_release(
         rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
+        rel(&["t1", "t2", "t3", "t4", "t5"]),
         ContextStart::Shuffled { seed: 7 },
     );
     let played_first = q.current_track_id().unwrap().to_string();
@@ -770,13 +551,7 @@ fn test_shuffled_fill_then_unshuffle_yields_source_order() {
         played_first,
         "the playing track keeps playing"
     );
-    let expected: Vec<&str> = [
-        "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-        "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        "t3",
-        "t4",
-        "t5",
-    ]
+    let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
     .into_iter()
     .filter(|t| *t != played_first)
     .collect();

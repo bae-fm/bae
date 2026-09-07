@@ -1,19 +1,9 @@
 use super::super::*;
 use super::*;
 use crate::playback::QueueEntryId;
-use coven::SystemClock;
-use std::sync::Arc;
 
 async fn aggregate_db() -> (Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -125,15 +115,7 @@ async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
 
 #[tokio::test]
 async fn album_and_storage_pages_allow_missing_primary_artist() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, _tmp) = super::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -193,15 +175,7 @@ async fn album_and_storage_pages_allow_missing_primary_artist() {
 }
 
 async fn queue_db() -> (Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -255,15 +229,7 @@ async fn queue_items_order_track_artist_names_inside_the_aggregate() {
 }
 
 async fn release_detail_db() -> (Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "

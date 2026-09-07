@@ -32,7 +32,6 @@ use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use coven::EncryptionService;
 use coven::InMemoryCloudHome;
-use coven::StoreDir;
 use std::sync::Arc;
 use tempfile::TempDir;
 use uuid::Uuid;
@@ -70,25 +69,7 @@ async fn setup_manager(
     Arc<InMemoryCloudHome>,
     EncryptionService,
 ) {
-    let library_dir = StoreDir::new(tmp.path());
-    let config_handle = support::test_config(&library_dir);
-    let db_path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-    let mgr = LibraryManager::new(
-        db.clone(),
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
+    let (mgr, db) = support::open_test_library(tmp.path()).await;
     let cloud = Arc::new(InMemoryCloudHome::new());
     let enc = EncryptionService::from_key([9u8; 32]);
     (db, mgr, cloud, enc)

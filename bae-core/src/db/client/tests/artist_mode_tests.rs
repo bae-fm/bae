@@ -1,21 +1,12 @@
 use super::super::*;
 use super::*;
-use coven::SystemClock;
 
 /// Artists covering every membership case: a primary-FK artist that is
 /// also a junction artist elsewhere, a junction-only artist, the Various
 /// Artists row as a compilation's primary, a work-only composer (no album
 /// links), and a fully unlinked artist.
 async fn seeded_db() -> (Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -159,15 +150,7 @@ async fn artist_page_sorts_by_album_count() {
 
 #[tokio::test]
 async fn artist_page_uses_id_tiebreaker() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, _tmp) = super::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -222,15 +205,7 @@ async fn artist_page_uses_id_tiebreaker() {
 /// fall through to the tail's `ar.name ASC` and order them the other way.
 #[tokio::test]
 async fn artist_page_applies_secondary_criterion() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, _tmp) = super::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -283,15 +258,7 @@ async fn artist_page_applies_secondary_criterion() {
 
 #[tokio::test]
 async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, _tmp) = super::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "

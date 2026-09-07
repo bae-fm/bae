@@ -18,15 +18,7 @@ fn test_front_peeks_without_consuming() {
 #[test]
 fn test_projection_keeps_manual_and_context_separate() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
     q.add_to_queue(rel(&["m1", "m2"]));
 
     let manual: Vec<String> = q.manual_entries().into_iter().map(|e| e.track_id).collect();
@@ -34,11 +26,7 @@ fn test_projection_keeps_manual_and_context_separate() {
 
     let ctx = q.context_projection().expect("a release is playing");
     let context_tracks: Vec<String> = ctx.upcoming.into_iter().map(|e| e.track_id).collect();
-    assert_eq!(
-        context_tracks,
-        vec!["08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"],
-        "the context is only the not-yet-played tail"
-    );
+    assert_eq!(context_tracks, vec!["t2", "t3"], "the context is only the not-yet-played tail");
     assert!(!ctx.shuffled, "a sequential context is not shuffled");
 
     // The lanes don't bleed into each other.
@@ -49,7 +37,7 @@ fn test_projection_keeps_manual_and_context_separate() {
     assert!(
         !manual
             .iter()
-            .any(|t| t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653" || t == "t3"),
+            .any(|t| t == "t2" || t == "t3"),
         "context entries are not mixed into the manual list"
     );
 }
@@ -60,12 +48,7 @@ fn test_projection_context_carries_shuffled_flag() {
     let mut q = queue();
     q.play_release(
         rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-        ]),
+        rel(&["t1", "t2", "t3", "t4"]),
         ContextStart::Shuffled { seed: 7 },
     );
     let ctx = q.context_projection().expect("a release is playing");
@@ -90,14 +73,7 @@ fn test_has_upcoming_and_has_previous() {
     let mut q = queue();
     assert!(!q.has_upcoming());
     assert!(!q.has_previous());
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
     assert!(q.has_upcoming());
     assert!(!q.has_previous());
     q.next_entry(); // → t2
@@ -118,19 +94,8 @@ fn test_next_sequential_context_track_all_branches() {
     assert_eq!(q.next_sequential_context_track(), None);
 
     // Sequential context with an upcoming track → that track.
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
-    assert_eq!(
-        q.next_sequential_context_track(),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
+    assert_eq!(q.next_sequential_context_track(), Some("t2"));
 
     // A pending manual entry is not physical-side playback → None.
     q.add_to_queue(rel(&["m1"]));
@@ -140,25 +105,14 @@ fn test_next_sequential_context_track_all_branches() {
     let mut shuffled = queue();
     shuffled.play_release(
         rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
+        rel(&["t1", "t2", "t3"]),
         ContextStart::Shuffled { seed: 5 },
     );
     assert_eq!(shuffled.next_sequential_context_track(), None);
 
     // The last track of a sequential context has no upcoming track → None.
     let mut last = queue();
-    last.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]),
-        ContextStart::Index(1),
-    );
+    last.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
     assert_eq!(last.next_sequential_context_track(), None);
 }
 
@@ -168,19 +122,8 @@ fn test_next_sequential_context_track_all_branches() {
 #[test]
 fn test_shuffle_closes_the_side_pause_gate_and_unshuffle_reopens_it() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
-    assert_eq!(
-        q.next_sequential_context_track(),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
+    assert_eq!(q.next_sequential_context_track(), Some("t2"));
 
     q.set_shuffle(true, 7);
     assert_eq!(
@@ -192,7 +135,7 @@ fn test_shuffle_closes_the_side_pause_gate_and_unshuffle_reopens_it() {
     q.set_shuffle(false, 0);
     assert_eq!(
         q.next_sequential_context_track(),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
+        Some("t2"),
         "unshuffling reopens the gate on the restored order"
     );
 }
@@ -217,25 +160,14 @@ fn test_set_shuffle_with_no_context_is_noop() {
 #[test]
 fn test_previous_action_from_manual_current_lands_on_cursor() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
     q.add_to_queue(rel(&["m1"]));
     // Drain the manual lane: current becomes m1 while the cursor stays on t1.
     assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
     assert_eq!(q.current_track_id(), Some("m1"));
 
     // Current is a manual item, so Previous lands on the cursor entry t1.
-    assert!(matches!(
-        q.previous_action(1000),
-        PreviousAction::PlayPrevious(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806"
-    ));
+    assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t1"));
 }
 
 // -- remove of the currently-playing context entry -------------------------
@@ -246,28 +178,14 @@ fn test_previous_action_from_manual_current_lands_on_cursor() {
 #[test]
 fn test_remove_current_context_entry_clears_current() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
     // Skip to t2 so it is both the cursor entry and current.
     let t2_id = q.upcoming()[0].id.clone();
     q.skip_to(&t2_id);
-    assert_eq!(
-        q.current_track_id(),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    assert_eq!(q.current_track_id(), Some("t2"));
 
     let removed = q.remove(&t2_id);
-    assert_eq!(
-        removed.map(|e| e.track_id),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653".into())
-    );
+    assert_eq!(removed.map(|e| e.track_id), Some("t2".into()));
     assert_eq!(
         q.current_track_id(),
         None,
@@ -301,15 +219,7 @@ fn test_revision_bumps_on_mutations_not_reads() {
     q.remove(&id);
     assert_eq!(q.revision(), 3, "remove bumps");
 
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
     assert_eq!(q.revision(), 4, "play_release bumps");
 
     q.next_entry();
@@ -374,25 +284,9 @@ fn test_revision_unchanged_on_noops() {
 #[test]
 fn test_reorder_context_to_end() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4"]), ContextStart::Index(0));
     let t2_id = q.upcoming()[0].id.clone(); // upcoming = [t2, t3, t4]
     q.reorder(&t2_id, None);
-    assert_eq!(
-        upcoming_tracks(&q),
-        vec!["t3", "t4", "08c7fe07-b56a-4c63-8df6-ad2967fa0653"]
-    );
-    assert_eq!(
-        q.current_track_id(),
-        Some("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
-        "the cursor stays on the playing track"
-    );
+    assert_eq!(upcoming_tracks(&q), vec!["t3", "t4", "t2"]);
+    assert_eq!(q.current_track_id(), Some("t1"), "the cursor stays on the playing track");
 }

@@ -69,6 +69,21 @@ const WORK_ARTIST_A: &str = "ec41a8cd-a9a4-473e-8b70-d78168aefd8e"; // was "work
 const WORK_CHILD_A: &str = "f63d8e66-6a81-4a67-8005-1fbe870f27eb"; // was "work-child-a"
 const WORK_PARENT_A: &str = "6b05af7a-ee0c-4f12-8938-1d5536697271"; // was "work-parent-a"
 
+/// A database in a fresh temp directory, under the real clock and real UUID
+/// provider. The `TempDir` owns the file, so it must outlive the handle — every
+/// caller keeps it, even the ones that never name it again.
+async fn temp_db() -> (super::Database, tempfile::TempDir) {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let db = super::Database::new_test(
+        tmp.path().join("test.db").to_str().unwrap(),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+    )
+    .await
+    .unwrap();
+    (db, tmp)
+}
+
 #[cfg(test)]
 mod queue_ordering_tests;
 

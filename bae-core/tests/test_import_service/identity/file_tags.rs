@@ -42,16 +42,7 @@ async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags))
         .await
         .unwrap();
 
@@ -139,14 +130,8 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
             candidate_key: "cue".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
+            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags)
         })
         .await
         .unwrap();
@@ -225,16 +210,7 @@ async fn file_tags_import_seeds_embedded_cover_when_no_folder_image() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags))
         .await
         .unwrap();
 
@@ -292,16 +268,7 @@ async fn file_tags_import_embedded_cover_wins_over_folder_image() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags))
         .await
         .unwrap();
 
@@ -339,18 +306,12 @@ async fn file_tags_import_always_creates_a_fresh_album() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
             candidate_key: "identified".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: identified_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
+            ..support::folder_import(
+                &import_id,
+                identified_dir,
+                support::discogs_release(release_id_key),
+            )
         })
         .await
         .unwrap();
@@ -376,14 +337,8 @@ async fn file_tags_import_always_creates_a_fresh_album() {
     let import_id2 = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id2.clone(),
             candidate_key: "file-tags".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: file_tags_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
+            ..support::folder_import(&import_id2, file_tags_dir, MetadataProvenance::FileTags)
         })
         .await
         .unwrap();
@@ -443,14 +398,8 @@ async fn file_tags_import_with_user_edit_overlay() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: Some(edit),
+            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags)
         })
         .await
         .unwrap();

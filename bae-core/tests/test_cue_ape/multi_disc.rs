@@ -235,18 +235,13 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
             storage_mode,
             pin,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
+            ..support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_id_key),
+            )
         })
         .await
         .expect("send command");

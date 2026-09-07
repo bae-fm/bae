@@ -46,26 +46,9 @@ async fn build_remote_multi_window_template(
 ) -> Result<RemoteMultiWindowTemplate, Box<dyn std::error::Error>> {
     tracing_init();
     let temp_dir = TempDir::new()?;
-    let db_path = temp_dir.path().join("test.db");
     let album_dir = temp_dir.path().join("album");
     std::fs::create_dir_all(&album_dir)?;
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await?;
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let config_handle = test_config(&library_dir);
-    let library_manager = LibraryManager::new(
-        database,
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
+    let (library_manager, _database) = open_test_library(temp_dir.path()).await;
     let cloud = coven::InMemoryCloudHome::new();
     library_manager
         .connect_test_cloud_home(Arc::new(cloud.clone()), remote_fixture_cipher())
@@ -80,18 +63,13 @@ async fn build_remote_multi_window_template(
     let import_id = import_ids.new_id();
     import_handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
             candidate_key: "multi-window-remote-template".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir.clone(), scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
             storage_mode: StorageMode::Remote,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
+            ..support::folder_import(
+                &import_id,
+                album_dir.clone(),
+                support::discogs_release(release_id_key),
+            )
         })
         .await
         .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
@@ -202,25 +180,8 @@ impl RemoteMultiWindowPlayback {
         cloud: coven::InMemoryCloudHome,
         track_ids: Vec<String>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let db_path = temp_dir.path().join("test.db");
-        let database = Database::new_test(
-            db_path.to_str().expect("db path is valid UTF-8"),
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await?;
-        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let config_handle = test_config(&library_dir);
+        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
         let runtime_handle = tokio::runtime::Handle::current();
-        let library_manager = LibraryManager::new(
-            database,
-            config_handle,
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-            bae_core::diagnostics::Diagnostics::noop(),
-            runtime_handle.clone(),
-            bae_core::import::cover_art::RemoteImageCache::for_test(),
-        );
 
         // Reconnect the template's bucket: the cloned rows name the blob, but the
         // live cloud home is an in-process object no directory copy can carry.

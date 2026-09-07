@@ -1,25 +1,11 @@
 #![cfg(feature = "test-utils")]
 //! The device-local `playback_state` table: save, load, replace, clear.
 
-use bae_core::db::{Database, DbPlaybackContext, DbPlaybackState, LoadedPlaybackState};
-use tempfile::TempDir;
-
-async fn setup_db() -> (Database, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .expect("Failed to create database");
-    (database, temp_dir)
-}
+use bae_core::db::{DbPlaybackContext, DbPlaybackState, LoadedPlaybackState};
 
 #[tokio::test]
 async fn playback_state_saves_loads_replaces_and_clears() {
-    let (db, _tmp) = setup_db().await;
+    let (db, _tmp) = bae_test_support::temp_test_db().await;
 
     // Nothing stored to start.
     assert!(matches!(

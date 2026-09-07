@@ -766,6 +766,32 @@ mod tests {
         percents
     }
 
+    /// [`measure_loudness`] under the labels every test in this module uses —
+    /// none of them varies the candidate key, release id, or import id, and none
+    /// asserts on one.
+    async fn measure(
+        event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
+        audio_formats: &mut [crate::db::DbAudioFormat],
+        audio_segments: &[crate::db::DbAudioSegment],
+        file_ids: &HashMap<PathBuf, String>,
+        source_file_sizes: &HashMap<PathBuf, u64>,
+        tracks_to_files: &[TrackFile],
+    ) -> LoudnessResult {
+        measure_loudness(
+            event_tx,
+            audio_formats,
+            audio_segments,
+            file_ids,
+            source_file_sizes,
+            tracks_to_files,
+            "cand",
+            "release-1",
+            "import-1",
+        )
+        .await
+        .unwrap()
+    }
+
     fn cue_flac_fixture(name: &str) -> PathBuf {
         PathBuf::from(concat!(
             env!("CARGO_MANIFEST_DIR"),
@@ -786,19 +812,15 @@ mod tests {
         let source_file_sizes = HashMap::from([(missing.clone(), 1)]);
         let tracks = vec![standalone_track("track-0", &missing)];
 
-        let result = measure_loudness(
+        let result = measure(
             &event_tx,
             &mut audio_formats,
             &audio_segments,
             &file_ids,
             &source_file_sizes,
             &tracks,
-            "cand",
-            "release-1",
-            "import-1",
         )
-        .await
-        .unwrap();
+        .await;
 
         assert!(result.album_loudness_lufs.is_none());
         assert!(result.album_peak_linear.is_none());
@@ -826,19 +848,15 @@ mod tests {
         let source_file_sizes = HashMap::new();
         let tracks = vec![standalone_track("track-0", &PathBuf::from("/unused.flac"))];
 
-        let result = measure_loudness(
+        let result = measure(
             &event_tx,
             &mut audio_formats,
             &audio_segments,
             &file_ids,
             &source_file_sizes,
             &tracks,
-            "cand",
-            "release-1",
-            "import-1",
         )
-        .await
-        .unwrap();
+        .await;
 
         assert!(result.album_loudness_lufs.is_none());
         assert!(audio_formats[0].track_loudness_lufs.is_none());
@@ -858,19 +876,15 @@ mod tests {
             HashMap::from([(path.clone(), std::fs::metadata(&path).unwrap().len())]);
         let tracks = vec![standalone_track("track-0", &path)];
 
-        let result = measure_loudness(
+        let result = measure(
             &event_tx,
             &mut audio_formats,
             &audio_segments,
             &file_ids,
             &source_file_sizes,
             &tracks,
-            "cand",
-            "release-1",
-            "import-1",
         )
-        .await
-        .unwrap();
+        .await;
 
         assert!(
             audio_formats[0].track_loudness_lufs.is_some(),
@@ -906,19 +920,15 @@ mod tests {
             standalone_track("track-1", &path),
         ];
 
-        measure_loudness(
+        measure(
             &event_tx,
             &mut audio_formats,
             &audio_segments,
             &file_ids,
             &source_file_sizes,
             &tracks,
-            "cand",
-            "release-1",
-            "import-1",
         )
-        .await
-        .unwrap();
+        .await;
 
         // The first track holds 2,205 of the 8,820 measured frames, so the pass
         // stands at 25% when it finishes — a quarter, not the half an
@@ -951,19 +961,15 @@ mod tests {
             HashMap::from([(path.clone(), std::fs::metadata(&path).unwrap().len())]);
         let tracks = vec![standalone_track("track-0", &path)];
 
-        let result = measure_loudness(
+        let result = measure(
             &event_tx,
             &mut audio_formats,
             &audio_segments,
             &file_ids,
             &source_file_sizes,
             &tracks,
-            "cand",
-            "release-1",
-            "import-1",
         )
-        .await
-        .unwrap();
+        .await;
 
         assert!(
             audio_formats[0].track_loudness_lufs.is_none(),

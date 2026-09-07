@@ -1,7 +1,6 @@
 mod rollback_guards;
 use super::super::*;
 use super::*;
-use coven::SystemClock;
 
 /// A replacement with no blob/outbox cleanup — the released-in-place local
 /// files these album-cleanup tests use carry no cloud state to tear down.
@@ -36,14 +35,7 @@ async fn prepare_release_file(
 
 #[tokio::test]
 async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let db = Database::new_test(
-        tmp.path().join("test.db").to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     let root = tmp.path().join("watch").to_string_lossy().into_owned();
     let candidate_path = std::path::PathBuf::from(&root).join("Album");
     let files = crate::import::folder_scanner::CategorizedFiles {
@@ -111,23 +103,11 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             None,
             &release,
             &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
+            crate::db::ImportRows::default(),
             Vec::new(),
-            &[],
-            &[],
             None,
             &[],
             None,
-            &[],
             crate::config::HomeStorage::Opaque,
             &[],
         )
@@ -229,23 +209,11 @@ async fn finalize_reimport_replacing_release(
         Some(&album_new),
         &release_new,
         &track_files,
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
+        crate::db::ImportRows::default(),
         vec![file],
-        &[],
-        &[],
         None,
         &[],
         None,
-        &[],
         crate::config::HomeStorage::Opaque,
         &[replacement],
     )
@@ -254,15 +222,7 @@ async fn finalize_reimport_replacing_release(
 }
 
 async fn seeded_db() -> (Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -305,15 +265,7 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
 
 #[tokio::test]
 async fn finalize_import_persists_composer_work_and_role_rows() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
@@ -434,23 +386,18 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         Some(&album),
         &release,
         &track_files,
-        &[],
-        &[],
-        &works,
-        &work_artists,
-        &[],
-        &track_works,
-        &release_roles,
-        &track_roles,
-        &[],
-        &[],
+        crate::db::ImportRows {
+            works: &works,
+            work_artists: &work_artists,
+            track_works: &track_works,
+            release_artist_roles: &release_roles,
+            track_artist_roles: &track_roles,
+            ..Default::default()
+        },
         Vec::new(),
-        &[],
-        &[],
         None,
         &[],
         Some((&album.id, &release.id)),
-        &[],
         crate::config::HomeStorage::Opaque,
         &[],
     )
@@ -499,15 +446,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
 
 #[tokio::test]
 async fn fail_import_and_delete_release_removes_finalized_import_state_atomically() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
@@ -583,23 +522,11 @@ async fn fail_import_and_delete_release_removes_finalized_import_state_atomicall
         Some(&album),
         &release,
         &track_files,
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
+        crate::db::ImportRows::default(),
         vec![file],
-        &[],
-        &[],
         None,
         &[],
         Some((&album.id, &release.id)),
-        &[],
         crate::config::HomeStorage::Opaque,
         &[],
     )
@@ -626,15 +553,7 @@ async fn fail_import_and_delete_release_removes_finalized_import_state_atomicall
 /// departed release goes NULL — read paths fall back to the first release left.
 #[tokio::test]
 async fn finalize_replacement_in_surviving_album_clears_dangling_primary() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
@@ -663,15 +582,7 @@ async fn finalize_replacement_in_surviving_album_clears_dangling_primary() {
 /// album empties and is deleted, and the outcome reports that.
 #[tokio::test]
 async fn finalize_replacement_of_last_release_deletes_prior_album() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
@@ -694,15 +605,7 @@ async fn finalize_replacement_of_last_release_deletes_prior_album() {
 /// and the sibling release is untouched.
 #[tokio::test]
 async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_primary() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
@@ -760,23 +663,11 @@ async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_prima
         Some(&album),
         &release,
         &track_files,
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
-        &[],
+        crate::db::ImportRows::default(),
         vec![file],
-        &[],
-        &[],
         None,
         &[],
         Some((&album.id, &release.id)),
-        &[],
         crate::config::HomeStorage::Opaque,
         &[],
     )

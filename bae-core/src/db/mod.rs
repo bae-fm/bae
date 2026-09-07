@@ -14,7 +14,7 @@ pub use client::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{
-    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
+    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ImportRows, ScannedCandidateKey,
 };
 pub use client::{Database, DeleteCleanupPlan, ImportReplacementDelete, ImportReplacementOutcome};
 pub use models::*;

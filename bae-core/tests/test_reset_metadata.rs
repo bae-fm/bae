@@ -12,13 +12,9 @@ use bae_core::import::{
     ArtistAssignment, MetadataProvenance, MetadataSource, NewArtistSeed, PayloadSource,
     ReleaseIdentity,
 };
-use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
-use coven::StoreDir;
 use std::path::PathBuf;
-use support::{test_config, tracing_init};
-use tempfile::TempDir;
 use uuid::Uuid;
 
 /// Archive one provider document under the source entity it describes, as a
@@ -32,31 +28,6 @@ async fn seed_payload(db: &Database, source: PayloadSource, source_release_id: &
     }])
     .await
     .unwrap();
-}
-
-async fn setup() -> (LibraryManager, Database, TempDir) {
-    tracing_init();
-    let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-    let config_handle = test_config(&library_dir);
-    let library_manager = LibraryManager::new(
-        database.clone(),
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
-    (library_manager, database, temp_dir)
 }
 
 fn make_artist(name: &str) -> DbArtist {
@@ -116,7 +87,7 @@ fn make_track(release_id: &str, n: i32, title: &str) -> DbTrack {
 
 #[tokio::test]
 async fn edit_seed_exposes_reset_eligibility_from_provenance() {
-    let (lm, db, _tmp) = setup().await;
+    let (lm, db, _tmp) = support::setup_test_library().await;
     let artist = make_artist("Artist Name");
     db.insert_artist(&artist).await.unwrap();
 
@@ -159,7 +130,7 @@ async fn edit_seed_exposes_reset_eligibility_from_provenance() {
 
 #[tokio::test]
 async fn resetting_a_source_less_release_reports_that_it_has_no_provenance() {
-    let (lm, db, _tmp) = setup().await;
+    let (lm, db, _tmp) = support::setup_test_library().await;
     let artist = make_artist("Artist Name");
     let album = make_album(&artist.id, "Album Title");
     let release = make_release(&album.id);
@@ -250,7 +221,7 @@ fn mb_release_json(
 
 #[tokio::test]
 async fn reset_mb_returns_full_pressing_data_from_cache() {
-    let (lm, db, _tmp) = setup().await;
+    let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Original Artist");
     let album = make_album(&artist.id, "Original Album");
@@ -389,7 +360,7 @@ fn discogs_release_json(
 
 #[tokio::test]
 async fn reset_discogs_returns_full_pressing_data_from_cache() {
-    let (lm, db, _tmp) = setup().await;
+    let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Original Artist");
     let album = make_album(&artist.id, "Original Album");
@@ -468,7 +439,7 @@ fn fixtures_dir() -> PathBuf {
 
 #[tokio::test]
 async fn reset_file_tags_unknown_returns_tags_from_disk() {
-    let (lm, db, tmp) = setup().await;
+    let (lm, db, tmp) = support::setup_test_library().await;
 
     // Create real audio files inside a local folder so the release
     // can resolve them via `local_file_path`.
@@ -562,7 +533,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
 
 #[tokio::test]
 async fn reset_mb_missing_archived_payload_errors() {
-    let (lm, db, _tmp) = setup().await;
+    let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Artist");
     let album = make_album(&artist.id, "Album");
@@ -599,7 +570,7 @@ async fn reset_mb_missing_archived_payload_errors() {
 /// surfacing the wrong pressing's fields without telling the user.
 #[tokio::test]
 async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
-    let (lm, db, _tmp) = setup().await;
+    let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Artist");
     let album = make_album(&artist.id, "Album");

@@ -1,28 +1,9 @@
 async fn restore_test_library() -> RestoreTestLibrary {
     tracing_init();
     let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
     let album_dir = temp_dir.path().join("album");
     std::fs::create_dir_all(&album_dir).unwrap();
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-    let database_arc = Arc::new(database.clone());
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let config_handle = test_config(&library_dir);
-    let library_manager = LibraryManager::new(
-        (*database_arc).clone(),
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
+    let (library_manager, _database) = open_test_library(temp_dir.path()).await;
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
     let discogs_release = create_test_album();
@@ -30,20 +11,11 @@ async fn restore_test_library() -> RestoreTestLibrary {
     let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            support::discogs_release(release_id_key),
+        ))
         .await
         .unwrap();
     let mut progress_rx = import_handle.subscribe_import(import_id);
@@ -71,25 +43,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
 async fn empty_test_library() -> (LibraryManager, tokio::runtime::Handle, TempDir) {
     tracing_init();
     let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let config_handle = test_config(&library_dir);
-    let library_manager = LibraryManager::new(
-        database,
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
+    let (library_manager, _database) = open_test_library(temp_dir.path()).await;
     (library_manager, tokio::runtime::Handle::current(), temp_dir)
 }
 
@@ -107,18 +61,12 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
             candidate_key: "second".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: source.path().to_path_buf(), scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_key,
-                partners: vec![],
-            }),
-            user_edit: None,
+            ..support::folder_import(
+                &import_id,
+                source.path().to_path_buf(),
+                support::discogs_release(release_key),
+            )
         })
         .await
         .unwrap();
@@ -352,26 +300,9 @@ impl CloudOnlyPlaybackFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         tracing_init();
         let temp_dir = TempDir::new()?;
-        let db_path = temp_dir.path().join("test.db");
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
-        let database = Database::new_test(
-            db_path.to_str().unwrap(),
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await?;
-        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let config_handle = test_config(&library_dir);
-        let library_manager = LibraryManager::new(
-            database,
-            config_handle,
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-            bae_core::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::RemoteImageCache::for_test(),
-        );
+        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
         let master_key = [11u8; 32];
         let cloud = Arc::new(coven::InMemoryCloudHome::new());
         library_manager
@@ -393,18 +324,12 @@ impl CloudOnlyPlaybackFixture {
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
             .send_command(ImportCommand {
-                import_id: import_id.clone(),
-                candidate_key: "test".to_string(),
-                source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir.clone(), scope: bae_core::import::ReleaseFileScope::Recursive },
-                selected_cover: None,
                 storage_mode: StorageMode::Remote,
-                pin: false,
-                metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                    source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                    partners: vec![],
-                }),
-                user_edit: None,
+                ..support::folder_import(
+                    &import_id,
+                    album_dir.clone(),
+                    support::discogs_release(release_id_key),
+                )
             })
             .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;

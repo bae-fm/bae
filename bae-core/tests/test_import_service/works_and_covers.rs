@@ -188,18 +188,16 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
     let import_id = f.ids.new_id();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
             storage_mode: StorageMode::Remote,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: remote_mb,
-                partners: vec![],
-            }),
-            user_edit: None,
+            ..support::folder_import(
+                &import_id,
+                album_dir,
+                MetadataProvenance::ExternalRelease {
+                    source: MetadataSource::MusicBrainz,
+                    release_id: remote_mb,
+                    partners: vec![],
+                },
+            )
         })
         .await
         .unwrap();
@@ -386,18 +384,12 @@ async fn import_with_cover_art() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
+            ..support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_id_key),
+            )
         })
         .await
         .unwrap();
@@ -441,18 +433,12 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: Some(CoverSelection::Local(cover_path)),
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
+            ..support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_id_key),
+            )
         })
         .await
         .unwrap();
@@ -507,18 +493,12 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
+            ..support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_id_key),
+            )
         })
         .await
         .unwrap();

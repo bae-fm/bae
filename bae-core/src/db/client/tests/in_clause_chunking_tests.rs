@@ -1,18 +1,8 @@
 use super::super::*;
 use crate::playback::QueueEntryId;
-use coven::SystemClock;
-use std::sync::Arc;
 
 async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db().await;
     let track_count = SQL_MAX_IN_VARS * 45;
     let track_ids: Vec<String> = (0..track_count)
         .map(|index| bae_test_support::test_uuid(&format!("track-{index}")))
@@ -54,15 +44,7 @@ async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
 /// doesn't return fewer rows — it fails the query outright.
 #[tokio::test]
 async fn cover_versions_merges_chunks() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, _tmp) = super::temp_db().await;
 
     let cover_count = SQL_MAX_IN_VARS * 3;
     // Minted in Rust for the same reason as the track seed: coven takes only

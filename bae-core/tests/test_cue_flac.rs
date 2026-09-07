@@ -8,19 +8,17 @@
 //!
 //! These tests use storageless imports for simplicity (the CUE/FLAC handling
 //! is independent of storage configuration).
-use bae_core::db::{Database, DbAudioSegmentRole};
+use bae_core::db::DbAudioSegmentRole;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
-use bae_core::import::{ImportCommand, MetadataProvenance, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use bae_test_support as support;
-use coven::StoreDir;
 use std::path::Path;
 use std::time::Duration;
 use support::start_test_import;
 use support::{
-    assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release, test_config,
-    tracing_init, wait_for_import_complete,
+    assert_captured_matches_reference, open_test_library, samples_as_f32,
+    seed_discogs_test_release, tracing_init, wait_for_import_complete,
 };
 use tempfile::TempDir;
 use tokio::time::timeout;
@@ -363,46 +361,17 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
     std::fs::create_dir_all(&album_dir).expect("album dir");
     std::fs::create_dir_all(&db_dir).expect("db dir");
     copy_cue_flac_fixture_with_seektable(&album_dir);
-    let database = Database::new_test(
-        db_dir.join("test.db").to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .expect("database");
-    let library_dir = StoreDir::new(db_dir);
-    let config_handle = test_config(&library_dir);
-    let library_manager = LibraryManager::new(
-        database,
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
-    );
+    let (library_manager, _database) = open_test_library(&db_dir).await;
     let release_id_key = seed_discogs_test_release(create_test_discogs_release());
     let import_handle =
         start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder {
-                path: album_dir,
-                scope: bae_core::import::ReleaseFileScope::Recursive,
-            },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            support::discogs_release(release_id_key),
+        ))
         .await
         .expect("send command");
     let mut progress_rx = import_handle.subscribe_import(import_id);
@@ -437,29 +406,12 @@ impl CueFlacCaptureFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         tracing_init();
         let temp_dir = TempDir::new()?;
-        let db_path = temp_dir.path().join("test.db");
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
 
         copy_cue_flac_fixture_with_seektable(&album_dir);
 
-        let database = Database::new_test(
-            db_path.to_str().unwrap(),
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await?;
-        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let config_handle = test_config(&library_dir);
-        let library_manager = LibraryManager::new(
-            database.clone(),
-            config_handle,
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-            bae_core::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::RemoteImageCache::for_test(),
-        );
+        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
         let runtime_handle = tokio::runtime::Handle::current();
 
         let discogs_release = create_test_discogs_release();
@@ -468,23 +420,11 @@ impl CueFlacCaptureFixture {
             start_test_import(runtime_handle.clone(), library_manager.clone()).await;
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
-            .send_command(ImportCommand {
-                import_id: import_id.clone(),
-                candidate_key: "test".to_string(),
-                source: bae_core::import::release_candidate::CandidateSource::Folder {
-                    path: album_dir.clone(),
-                    scope: bae_core::import::ReleaseFileScope::Recursive,
-                },
-                selected_cover: None,
-                storage_mode: StorageMode::Local,
-                pin: false,
-                metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                    source: MetadataSource::Discogs,
-                    release_id: release_id_key,
-                    partners: vec![],
-                }),
-                user_edit: None,
-            })
+            .send_command(support::folder_import(
+                &import_id,
+                album_dir.clone(),
+                support::discogs_release(release_id_key),
+            ))
             .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
         let mut progress_rx = import_handle.subscribe_import(import_id);

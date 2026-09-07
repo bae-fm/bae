@@ -169,6 +169,28 @@ async fn make_service() -> (
     (handle, tx, rx, lib_tmp)
 }
 
+/// Start a service with `analyzer` registered and an extraction already running
+/// over `folder` under candidate key `"cand-1"` — the arrange step most of these
+/// tests share. The `TempDir` holds the library the service was built over and
+/// must outlive it.
+async fn start_signals(
+    folder: PathBuf,
+    analyzer: Arc<dyn ArtworkAnalyzer>,
+) -> (
+    ExtractionServiceHandle,
+    broadcast::Receiver<ImportEvent>,
+    TempDir,
+) {
+    let (handle, _tx, rx, lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer);
+    handle.start(
+        "cand-1".to_string(),
+        folder_source(folder),
+        CallPriority::Interactive,
+    );
+    (handle, rx, lib_tmp)
+}
+
 fn fixture_flac() -> Vec<u8> {
     std::fs::read(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -244,14 +266,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
             .with("Cover.jpg", vec!["WPCR-80001".to_string()])
             .with("Back.jpg", vec!["Extra Line".to_string()]),
     );
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        folder_source(folder.clone()),
-        CallPriority::Interactive,
-    );
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
 
     // Fast-pass snapshot + one per image read but the last + final settled
     // = 3 snapshots: the last image's additions land in the settled one,
@@ -334,14 +349,7 @@ async fn no_artwork_still_emits_fast_pass_and_settled() {
     let folder = build_release(&tmp, "Artist Name - Album Title", &[], &[]);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        folder_source(folder),
-        CallPriority::Interactive,
-    );
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     // Fast pass + final settled.
     let signals = collect_signals(&mut rx, 2).await;
@@ -423,14 +431,7 @@ async fn ocr_join_error_aborts_without_settled_snapshot() {
     let folder = build_release(&tmp, "Some Folder", &["cover.jpg"], &[]);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(PanicAnalyzer);
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        folder_source(folder),
-        CallPriority::Interactive,
-    );
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 2).await;
     assert!(matches!(signals[0].text, TextSignal::Scanning { .. }));
@@ -472,14 +473,7 @@ FILE "audio.flac" WAVE
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        folder_source(folder),
-        CallPriority::Interactive,
-    );
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     // Fast pass + final settled.
     let signals = collect_signals(&mut rx, 2).await;
@@ -516,14 +510,7 @@ FILE \"audio.flac\" WAVE\n  \
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        folder_source(folder),
-        CallPriority::Interactive,
-    );
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     // Fast pass + final settled.
     let signals = collect_signals(&mut rx, 2).await;
@@ -558,14 +545,7 @@ FILE \"audio.flac\" WAVE\n  \
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        folder_source(folder),
-        CallPriority::Interactive,
-    );
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 2).await;
     let final_signals = &signals[signals.len() - 1];
@@ -636,14 +616,7 @@ async fn text_files_feed_free_text() {
     );
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        folder_source(folder),
-        CallPriority::Interactive,
-    );
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     // Fast pass + final settled. The cluster scores PathComponent(3) + TextFile(1).
     let signals = collect_signals(&mut rx, 2).await;
@@ -670,14 +643,7 @@ async fn cancelled_ocr_run_does_not_settle() {
             .with("p3.jpg", vec!["Artist C".to_string()])
             .with_delay(Duration::from_millis(100)),
     );
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        folder_source(folder),
-        CallPriority::Interactive,
-    );
+    let (handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     tokio::time::sleep(Duration::from_millis(50)).await;
     handle.cancel("cand-1");
@@ -755,14 +721,7 @@ async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
             .with("p1.jpg", vec!["Artist A".to_string()])
             .with_delay(Duration::from_millis(100)),
     );
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        folder_source(folder.clone()),
-        CallPriority::Interactive,
-    );
+    let (handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
     handle.start(
         "cand-1".to_string(),
         folder_source(folder),
@@ -806,14 +765,7 @@ async fn three_starts_cancel_each_predecessor() {
             .with("p1.jpg", vec!["Artist A".to_string()])
             .with_delay(Duration::from_millis(200)),
     );
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        folder_source(folder.clone()),
-        CallPriority::Interactive,
-    );
+    let (handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
     tokio::time::sleep(Duration::from_millis(40)).await;
     handle.start(
         "cand-1".to_string(),

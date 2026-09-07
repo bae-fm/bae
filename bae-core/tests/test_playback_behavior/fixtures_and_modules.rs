@@ -358,28 +358,10 @@ impl CueFlacTestFixture {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         tracing_init();
         let temp_dir = TempDir::new()?;
-        let db_path = temp_dir.path().join("test.db");
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
 
-        let database = Database::new_test(
-            db_path.to_str().unwrap(),
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await?;
-        let database_arc = Arc::new(database.clone());
-        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-        let config_handle = test_config(&library_dir);
-        let library_manager = LibraryManager::new(
-            (*database_arc).clone(),
-            config_handle,
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-            bae_core::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::RemoteImageCache::for_test(),
-        );
+        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
         let runtime_handle = tokio::runtime::Handle::current();
 
         // Use CUE/FLAC fixtures
@@ -394,20 +376,11 @@ impl CueFlacTestFixture {
 
         // Import without storage (local CUE/FLAC playback)
         import_handle
-            .send_command(ImportCommand {
-                import_id: import_id.clone(),
-                candidate_key: "test".to_string(),
-                source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir.clone(), scope: bae_core::import::ReleaseFileScope::Recursive },
-                selected_cover: None,
-                storage_mode: StorageMode::Local,
-                pin: false,
-                metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                    source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                    partners: vec![],
-                }),
-                user_edit: None,
-            })
+            .send_command(support::folder_import(
+                &import_id,
+                album_dir.clone(),
+                support::discogs_release(release_id_key),
+            ))
             .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
         let mut progress_rx = import_handle.subscribe_import(import_id);

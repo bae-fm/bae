@@ -20,20 +20,11 @@ async fn local_folder_import() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir.clone(), scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir.clone(),
+            support::discogs_release(release_id_key),
+        ))
         .await
         .unwrap();
 
@@ -97,16 +88,7 @@ async fn import_progress_names_every_operation_before_loudness() {
 
     let import_id = f.ids.new_id();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags))
         .await
         .unwrap();
 
@@ -173,20 +155,11 @@ async fn import_produces_audio_format_records() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            support::discogs_release(release_id_key),
+        ))
         .await
         .unwrap();
 
@@ -231,20 +204,11 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
 
         let import_id = uuid::Uuid::new_v4().to_string();
         f.handle
-            .send_command(ImportCommand {
-                import_id: import_id.clone(),
-                candidate_key: "test".to_string(),
-                source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-                selected_cover: None,
-                storage_mode: StorageMode::Local,
-                pin: false,
-                metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                    source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                    partners: vec![],
-                }),
-                user_edit: None,
-            })
+            .send_command(support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_id_key),
+            ))
             .await
             .unwrap();
 
@@ -306,20 +270,11 @@ async fn loudness_pass_emits_within_track_progress() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            support::discogs_release(release_id_key),
+        ))
         .await
         .unwrap();
 
@@ -448,20 +403,11 @@ async fn loudness_measured_at_import_drives_playback_gain() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            support::discogs_release(release_id_key),
+        ))
         .await
         .unwrap();
 
@@ -606,20 +552,11 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: release_id_key,
-                partners: vec![],
-            }),
-            user_edit: None,
-        })
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            support::discogs_release(release_id_key),
+        ))
         .await
         .unwrap();
 

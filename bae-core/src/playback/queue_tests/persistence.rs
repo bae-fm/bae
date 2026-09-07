@@ -4,40 +4,18 @@
 #[test]
 fn test_snapshot_restore_sequential_context() {
     let mut q = queue();
-    q.play_release(
-        rel_src("rel-A"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(1),
-    );
+    q.play_release(rel_src("rel-A"), rel(&["t1", "t2", "t3"]), ContextStart::Index(1));
     let snap = q.snapshot();
     assert_eq!(
         snap.context.as_ref().unwrap().source,
         ContextSource::Release("rel-A".into())
     );
     assert!(!snap.context.as_ref().unwrap().shuffled);
-    assert_eq!(
-        snap.current_track_id.as_deref(),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    assert_eq!(snap.current_track_id.as_deref(), Some("t2"));
 
     let mut restored = queue();
-    restored.restore(
-        snap,
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        0,
-    );
-    assert_eq!(
-        restored.current_track_id(),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    restored.restore(snap, rel(&["t1", "t2", "t3"]), 0);
+    assert_eq!(restored.current_track_id(), Some("t2"));
     assert_eq!(upcoming_tracks(&restored), vec!["t3"]);
     assert!(
         restored.has_previous(),
@@ -53,13 +31,7 @@ fn test_snapshot_restore_shuffled_fronts_the_current_track() {
     let mut q = queue();
     q.play_release(
         rel_src("rel-A"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
+        rel(&["t1", "t2", "t3", "t4", "t5"]),
         ContextStart::Shuffled { seed: 99 },
     );
     q.next_entry();
@@ -67,17 +39,7 @@ fn test_snapshot_restore_shuffled_fronts_the_current_track() {
     let current_before = q.current_track_id().unwrap().to_string();
 
     let mut restored = queue();
-    restored.restore(
-        q.snapshot(),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-            "t5",
-        ]),
-        5,
-    );
+    restored.restore(q.snapshot(), rel(&["t1", "t2", "t3", "t4", "t5"]), 5);
 
     assert_eq!(restored.current_track_id().unwrap(), current_before);
     assert!(
@@ -90,13 +52,7 @@ fn test_snapshot_restore_shuffled_fronts_the_current_track() {
     );
     let mut rest = upcoming_tracks(&restored);
     rest.sort();
-    let expected: Vec<&str> = [
-        "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-        "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        "t3",
-        "t4",
-        "t5",
-    ]
+    let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
     .into_iter()
     .filter(|t| *t != current_before)
     .collect();
@@ -124,14 +80,7 @@ fn test_snapshot_restore_drops_a_context_missing_its_current_track() {
         repeat: RepeatMode::Off,
     };
     let mut q = queue();
-    q.restore(
-        snapshot,
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]),
-        0,
-    );
+    q.restore(snapshot, rel(&["t1", "t2"]), 0);
 
     assert_eq!(q.current_track_id(), Some("ghost"));
     assert!(
@@ -158,38 +107,19 @@ fn test_snapshot_restore_single_track_with_manual_lane() {
 #[test]
 fn test_manual_drains_before_context() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
     q.add_to_queue(rel(&["m1"]));
     // current = t1; next drains manual (m1) before advancing the context.
     assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
-    assert!(
-        matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
     assert!(matches!(q.next_entry(), NextEntry::Stop));
 }
 
 #[test]
 fn test_context_advances_by_cursor() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
-    assert!(
-        matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
+    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
     assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t3"));
     assert!(matches!(q.next_entry(), NextEntry::Stop));
 }
@@ -199,64 +129,30 @@ fn test_context_repeat_loops_from_stored_order() {
     // The queue holds the context order, so looping reuses it: the queue has
     // no library access, so it structurally cannot re-fetch.
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
     q.set_repeat_mode(RepeatMode::Context);
-    assert!(
-        matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
     // Exhausted under Context repeat → loop from the start of the same order.
-    assert!(
-        matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806")
-    );
-    assert!(
-        matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t1"));
+    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
 }
 
 #[test]
 fn test_repeat_track_pins_current() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
     q.set_repeat_mode(RepeatMode::Track);
-    assert!(
-        matches!(q.next_entry(), NextEntry::RepeatCurrent(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806")
-    );
+    assert!(matches!(q.next_entry(), NextEntry::RepeatCurrent(t) if t == "t1"));
 }
 
 #[test]
 fn test_previous_steps_cursor_back_multiple() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
     q.next_entry(); // t2
     q.next_entry(); // t3
-    assert!(
-        matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
-    assert!(
-        matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806")
-    );
+    assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t2"));
+    assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t1"));
     // At the context start, Previous restarts.
     assert!(matches!(
         q.previous_action(1000),
@@ -267,14 +163,7 @@ fn test_previous_steps_cursor_back_multiple() {
 #[test]
 fn test_previous_past_3s_restarts() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]),
-        ContextStart::Index(1),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
     assert!(matches!(
         q.previous_action(5000),
         PreviousAction::RestartCurrent
@@ -284,16 +173,7 @@ fn test_previous_past_3s_restarts() {
 #[test]
 fn test_skip_to_context_tail_moves_cursor() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4"]), ContextStart::Index(0));
     let t3_id = q.upcoming()[1].id.clone(); // upcoming = [t2, t3, t4]
     let entry = q.skip_to(&t3_id);
     assert_eq!(entry.map(|e| e.track_id), Some("t3".into()));
@@ -304,78 +184,41 @@ fn test_skip_to_context_tail_moves_cursor() {
 #[test]
 fn test_remove_context_tail_entry() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
     let t2_id = q.upcoming()[0].id.clone();
     let removed = q.remove(&t2_id);
-    assert_eq!(
-        removed.map(|e| e.track_id),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653".into())
-    );
+    assert_eq!(removed.map(|e| e.track_id), Some("t2".into()));
     assert_eq!(upcoming_tracks(&q), vec!["t3"]);
 }
 
 #[test]
 fn test_reorder_context_tail_keeps_cursor() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4"]), ContextStart::Index(0));
     let up = q.upcoming(); // [t2, t3, t4]
     let t2_id = up[0].id.clone();
     let t3_id = up[1].id.clone();
     // Move t3 before t2 → upcoming becomes [t3, t2, t4].
     q.reorder(&t3_id, Some(&t2_id));
-    assert_eq!(
-        upcoming_tracks(&q),
-        vec!["t3", "08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t4"]
-    );
-    assert_eq!(
-        q.current_track_id(),
-        Some("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
-        "the cursor stays on the playing track"
-    );
+    assert_eq!(upcoming_tracks(&q), vec!["t3", "t2", "t4"]);
+    assert_eq!(q.current_track_id(), Some("t1"), "the cursor stays on the playing track");
 }
 
 #[test]
 fn test_reorder_cross_lane_is_noop() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
     q.add_to_queue(rel(&["m1"]));
     let manual_id = manual_ids(&q)[0].clone();
     let context_id = q
         .upcoming()
         .into_iter()
-        .find(|e| e.track_id == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        .find(|e| e.track_id == "t2")
         .unwrap()
         .id;
     // Manual source, context target → no-op (can't cross lanes).
     q.reorder(&manual_id, Some(&context_id));
-    assert_eq!(
-        upcoming_tracks(&q),
-        vec!["m1", "08c7fe07-b56a-4c63-8df6-ad2967fa0653"]
-    );
+    assert_eq!(upcoming_tracks(&q), vec!["m1", "t2"]);
 }
 
 #[test]
@@ -399,11 +242,7 @@ fn test_insert_at_beyond_end_clamps() {
 #[test]
 fn test_remove_by_ids_clears_manual_and_context() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806", "dup", "t3"]),
-        ContextStart::Index(0),
-    );
+    q.play_release(rel_src("r1"), rel(&["t1", "dup", "t3"]), ContextStart::Index(0));
     q.add_to_queue(rel(&["dup", "m2"]));
     let ids: HashSet<String> = ["dup"].iter().map(|s| s.to_string()).collect();
     q.remove_by_ids(&ids);
@@ -414,33 +253,19 @@ fn test_remove_by_ids_clears_manual_and_context() {
 #[test]
 fn test_remove_by_ids_keeps_cursor_on_same_track() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&["gone", "08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"]),
-        ContextStart::Index(1),
-    );
+    q.play_release(rel_src("r1"), rel(&["gone", "t2", "t3"]), ContextStart::Index(1));
     // current = t2 (cursor 1). Deleting t1 (before cursor) keeps current at t2.
     let ids: HashSet<String> = ["gone"].iter().map(|s| s.to_string()).collect();
     q.remove_by_ids(&ids);
-    assert_eq!(
-        q.current_track_id(),
-        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
-    );
+    assert_eq!(q.current_track_id(), Some("t2"));
     assert_eq!(upcoming_tracks(&q), vec!["t3"]);
 }
 
 #[test]
 fn test_remove_by_ids_clears_current_when_deleted() {
     let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]),
-        ContextStart::Index(0),
-    );
-    let ids: HashSet<String> = ["08c7ff07-b56a-4e16-8df6-ae2967fa0806"]
+    q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
+    let ids: HashSet<String> = ["t1"]
         .iter()
         .map(|s| s.to_string())
         .collect();
@@ -452,15 +277,8 @@ fn test_remove_by_ids_clears_current_when_deleted() {
 fn test_remove_by_ids_deleting_current_last_entry_keeps_cursor_valid() {
     let mut q = queue();
     // current = t2 at the last position (cursor == len-1).
-    q.play_release(
-        rel_src("r1"),
-        rel(&[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]),
-        ContextStart::Index(1),
-    );
-    let ids: HashSet<String> = ["08c7fe07-b56a-4c63-8df6-ad2967fa0653"]
+    q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
+    let ids: HashSet<String> = ["t2"]
         .iter()
         .map(|s| s.to_string())
         .collect();
@@ -471,8 +289,5 @@ fn test_remove_by_ids_deleting_current_last_entry_keeps_cursor_valid() {
         "the deleted playing track clears current"
     );
     // The cursor must not be stranded at == len: Previous must not panic.
-    assert!(matches!(
-        q.previous_action(1000),
-        PreviousAction::PlayPrevious(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806"
-    ));
+    assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t1"));
 }

@@ -559,6 +559,111 @@ pub fn test_config(
     std::sync::Arc::new(bae_core::config::ConfigHandle::new(config))
 }
 
+/// The provenance of an import identified by a Discogs release, with no
+/// partner source alongside it — what a [`seed_discogs_test_release`] fixture
+/// is imported under.
+pub fn discogs_release(release_id: impl Into<String>) -> bae_core::import::MetadataProvenance {
+    bae_core::import::MetadataProvenance::ExternalRelease {
+        source: bae_core::import::MetadataSource::Discogs,
+        release_id: release_id.into(),
+        partners: vec![],
+    }
+}
+
+/// The command a test sends to import one folder, in the shape almost every
+/// test wants it: a recursive scan of `folder` under candidate key `"test"`,
+/// no chosen cover, stored locally, unpinned, and no user edit over the
+/// metadata.
+///
+/// A test that differs in one of those names that field and takes the rest
+/// from here:
+///
+/// ```ignore
+/// ImportCommand {
+///     storage_mode: StorageMode::Remote,
+///     ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags)
+/// }
+/// ```
+pub fn folder_import(
+    import_id: &str,
+    folder: impl Into<std::path::PathBuf>,
+    metadata_provenance: bae_core::import::MetadataProvenance,
+) -> bae_core::import::ImportCommand {
+    bae_core::import::ImportCommand {
+        import_id: import_id.to_string(),
+        candidate_key: "test".to_string(),
+        source: bae_core::import::release_candidate::CandidateSource::Folder {
+            path: folder.into(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
+        },
+        selected_cover: None,
+        storage_mode: bae_core::import::StorageMode::Local,
+        pin: false,
+        metadata_provenance: Some(metadata_provenance),
+        user_edit: None,
+    }
+}
+
+/// Open `dir/test.db` under the real clock and real UUID provider.
+async fn open_test_db(dir: &std::path::Path) -> bae_core::db::Database {
+    bae_core::db::Database::new_test(
+        dir.join("test.db")
+            .to_str()
+            .expect("test database path is valid UTF-8"),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+    )
+    .await
+    .expect("open the test database")
+}
+
+/// A database in a fresh temp directory, for tests that assert on rows and need
+/// no library manager around them. The returned `TempDir` owns the file.
+pub async fn temp_test_db() -> (bae_core::db::Database, tempfile::TempDir) {
+    let temp_dir = tempfile::TempDir::new().expect("test database temp dir");
+    let database = open_test_db(temp_dir.path()).await;
+    (database, temp_dir)
+}
+
+/// Open `dir/test.db` and build a [`LibraryManager`] over it, with `dir` as the
+/// library's store dir.
+///
+/// The database-only constructor, not the production `open` path — the same one
+/// every test binary was assembling by hand. Takes the directory rather than
+/// making one, so a test that already owns its library directory (a cloned
+/// fixture template, a `db/` subdirectory next to an `album/`) uses it too.
+///
+/// [`LibraryManager`]: bae_core::library::LibraryManager
+pub async fn open_test_library(
+    dir: &std::path::Path,
+) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
+    let database = open_test_db(dir).await;
+    let config_handle = test_config(&coven::StoreDir::new(dir.to_path_buf()));
+    let library_manager = bae_core::library::LibraryManager::new(
+        database.clone(),
+        config_handle,
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(),
+    );
+    (library_manager, database)
+}
+
+/// [`open_test_library`] over a fresh temp directory. The returned `TempDir`
+/// owns the database file, so it must outlive the manager.
+pub async fn setup_test_library() -> (
+    bae_core::library::LibraryManager,
+    bae_core::db::Database,
+    tempfile::TempDir,
+) {
+    tracing_init();
+    let temp_dir = tempfile::TempDir::new().expect("test library temp dir");
+    let (library_manager, database) = open_test_library(temp_dir.path()).await;
+    (library_manager, database, temp_dir)
+}
+
 /// Set up a fresh library + LibraryManager through the production creation and
 /// open paths. No sync manager — tests configure sync themselves via
 /// connect_*/save_s3_config.

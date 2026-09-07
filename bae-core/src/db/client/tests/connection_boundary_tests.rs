@@ -1,19 +1,9 @@
 use super::super::*;
 use super::*;
-use coven::SystemClock;
-use std::sync::Arc;
 
 #[tokio::test]
 async fn coven_connection_enforces_foreign_keys_for_bae_schema() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let path = tmp.path().join("test.db");
-    let db = Database::new_test(
-        path.to_str().unwrap(),
-        Arc::new(SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
+    let (db, _tmp) = super::temp_db().await;
 
     let track = DbTrack::new_test("missing-release", TRACK_A, "Track Title A", Some(1));
     let error = db
