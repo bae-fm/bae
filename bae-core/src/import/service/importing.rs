@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::worker_thread::WorkerThread;
+use crate::util::worker_thread::WorkerThread;
 
 impl ImportService {
     /// Start the import service worker: one task that drains the import queue
@@ -29,11 +29,11 @@ impl ImportService {
         let folder_watcher = Arc::new(FolderWatcher::new(fs_tx));
 
         let scan = ScanServices::new(services.clone(), folder_watcher);
-        let watcher = WorkerThread::spawn("folder scan coordinator", move |watcher_rx| {
+        let watcher = WorkerThread::spawn("folder scan coordinator", move |_, watcher_rx| {
             ImportService::start_watcher(watcher_rx, fs_rx, scan)
         });
 
-        let worker = WorkerThread::spawn("import worker thread", move |commands_rx| {
+        let worker = WorkerThread::spawn("import worker thread", move |_, commands_rx| {
             std::thread::spawn(move || {
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()

@@ -8,3 +8,4 @@ pub mod http;
 pub mod rate_limiter;
 pub mod session_cache;
 pub mod test_base_url;
+pub(crate) mod worker_thread;

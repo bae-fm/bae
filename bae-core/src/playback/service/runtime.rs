@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::util::worker_thread::WorkerThread;
+
 impl PlaybackService {
     /// Hand the current track's reader fetch priority over a preload's. Called
     /// wherever a track becomes the current one.
@@ -676,94 +678,91 @@ impl PlaybackService {
         restore_playback: bool,
         custom_device: Option<Box<dyn AudioOutputDevice>>,
     ) -> PlaybackHandle {
-        let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
         let playback_queue = PublishedQueue::new(queue_ids);
         let queue_receiver = playback_queue.subscribe();
-        let thread_slot = Arc::new(Mutex::new(None));
-        let handle = PlaybackHandle::new(
-            command_tx.clone(),
-            progress_handle.clone(),
-            queue_receiver,
-            thread_slot.clone(),
-        );
-        let command_tx_for_completion = command_tx.clone();
         let progress_handle_for_completion = progress_handle.clone();
-        runtime_handle.spawn(async move {
-            let mut progress_rx = progress_handle_for_completion.subscribe_all();
-            while let Some(progress) = progress_rx.recv().await {
-                match progress {
-                    PlaybackProgress::TrackCompleted { track_id } => {
-                        info!(
-                            "Auto-advance: Track completed, sending AutoAdvance command: {}",
-                            track_id
-                        );
-                        dispatch_command(
-                            &command_tx_for_completion,
-                            PlaybackCommand::AutoAdvance { track_id },
-                        );
+        let worker =
+            WorkerThread::spawn("playback service thread", move |command_tx, command_rx| {
+                let command_tx_for_completion = command_tx.clone();
+                runtime_handle.spawn(async move {
+                    let mut progress_rx = progress_handle_for_completion.subscribe_all();
+                    while let Some(progress) = progress_rx.recv().await {
+                        match progress {
+                            PlaybackProgress::TrackCompleted { track_id } => {
+                                info!(
+                                    "Auto-advance: Track completed, sending AutoAdvance \
+                                     command: {track_id}"
+                                );
+                                dispatch_command(
+                                    &command_tx_for_completion,
+                                    PlaybackCommand::AutoAdvance { track_id },
+                                );
+                            }
+                            // A mid-flight read failure cancels the buffer and the decoder
+                            // exits without a TrackCompleted, so without this the UI would
+                            // sit in Playing forever.
+                            PlaybackProgress::PlaybackError { .. } => {
+                                dispatch_command(
+                                    &command_tx_for_completion,
+                                    PlaybackCommand::HaltOnError,
+                                );
+                            }
+                            _ => {}
+                        }
                     }
-                    // A mid-flight read failure cancels the buffer and the decoder
-                    // exits without a TrackCompleted, so without this the UI would
-                    // sit in Playing forever.
-                    PlaybackProgress::PlaybackError { .. } => {
-                        dispatch_command(&command_tx_for_completion, PlaybackCommand::HaltOnError);
-                    }
-                    _ => {}
-                }
-            }
-        });
-        let join_handle = std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("Failed to create runtime");
-            rt.block_on(async move {
-                let Some((audio_device, audio_output)) =
-                    open_audio_device_and_output(custom_device, &command_tx)
-                else {
-                    return;
-                };
-                let preview = PreviewPlayer::new(
-                    progress_tx.clone(),
-                    command_tx.clone(),
-                    position_update_interval_ms,
-                );
-                let mut service = PlaybackService {
-                    library_manager,
-                    command_tx: command_tx.clone(),
-                    command_rx,
-                    progress_tx,
-                    playback_queue,
-                    current_position_shared: Arc::new(std::sync::Mutex::new(None)),
-                    audio_device,
-                    audio_output,
-                    output: None,
-                    slot: PlaybackSlot::Stopped,
-                    load_generation_counter: 0,
-                    preloaded_next: None,
-                    volume: OutputVolume::new(),
-                    preview,
-                    position_update_interval_ms,
-                    file_buffers: FileBuffers::new(),
-                    starvation_episode: None,
-                    last_position_persist: None,
-                    first_audio_pending: None,
-                    renderer: Renderer::Local,
-                };
-                // "Restore on launch" off starts with nothing in playback; the
-                // row is kept either way — it stays the crash-safe resume point.
-                if restore_playback {
-                    service.restore_from_cache().await;
-                } else {
-                    debug!("restore on launch is off; starting with nothing in playback");
-                }
-                service.run().await;
+                });
+                std::thread::spawn(move || {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("Failed to create runtime");
+                    rt.block_on(async move {
+                        let Some((audio_device, audio_output)) =
+                            open_audio_device_and_output(custom_device, &command_tx)
+                        else {
+                            return;
+                        };
+                        let preview = PreviewPlayer::new(
+                            progress_tx.clone(),
+                            command_tx.clone(),
+                            position_update_interval_ms,
+                        );
+                        let mut service = PlaybackService {
+                            library_manager,
+                            command_tx: command_tx.clone(),
+                            command_rx,
+                            progress_tx,
+                            playback_queue,
+                            current_position_shared: Arc::new(std::sync::Mutex::new(None)),
+                            audio_device,
+                            audio_output,
+                            output: None,
+                            slot: PlaybackSlot::Stopped,
+                            load_generation_counter: 0,
+                            preloaded_next: None,
+                            volume: OutputVolume::new(),
+                            preview,
+                            position_update_interval_ms,
+                            file_buffers: FileBuffers::new(),
+                            starvation_episode: None,
+                            last_position_persist: None,
+                            first_audio_pending: None,
+                            renderer: Renderer::Local,
+                        };
+                        // "Restore on launch" off starts with nothing in playback; the
+                        // row is kept either way — it stays the crash-safe resume point.
+                        if restore_playback {
+                            service.restore_from_cache().await;
+                        } else {
+                            debug!("restore on launch is off; starting with nothing in playback");
+                        }
+                        service.run().await;
+                    });
+                })
             });
-        });
-        *thread_slot.lock().unwrap() = Some(join_handle);
-        handle
+        PlaybackHandle::new(worker, progress_handle, queue_receiver)
     }
 
     pub(super) async fn apply_repeat_mode(&mut self, mode: RepeatMode) {

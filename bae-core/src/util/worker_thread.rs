@@ -12,7 +12,8 @@ use tokio::sync::mpsc;
 /// clone runs teardown has both the way to stop the thread and the way to wait
 /// for it.
 pub(crate) struct WorkerThread<M> {
-    /// Names the thread in the warnings [`Self::stop_and_join`] logs.
+    /// Names the worker in every warning logged here — a dropped message, a
+    /// panic seen at the join.
     name: &'static str,
     tx: mpsc::UnboundedSender<M>,
     /// Taken by whichever clone joins; a later `stop_and_join` finds `None` and
@@ -32,22 +33,39 @@ impl<M> Clone for WorkerThread<M> {
 }
 
 impl<M> WorkerThread<M> {
-    /// Open the channel and hand its receiving end to `spawn`, which starts the
-    /// thread that drains it.
+    /// Open the channel and hand it to `spawn`, which starts the thread that
+    /// drains it. Both ends go in: a worker whose loop sends itself messages —
+    /// or hands a sender to what it drives — gets the one paired with its own
+    /// receiver rather than a loose one the caller had to keep straight.
     pub(crate) fn spawn(
         name: &'static str,
-        spawn: impl FnOnce(mpsc::UnboundedReceiver<M>) -> std::thread::JoinHandle<()>,
+        spawn: impl FnOnce(
+            mpsc::UnboundedSender<M>,
+            mpsc::UnboundedReceiver<M>,
+        ) -> std::thread::JoinHandle<()>,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
         Self {
             name,
-            tx,
-            thread: Arc::new(Mutex::new(Some(spawn(rx)))),
+            tx: tx.clone(),
+            thread: Arc::new(Mutex::new(Some(spawn(tx, rx)))),
         }
     }
 
     pub(crate) fn send(&self, message: M) -> Result<(), mpsc::error::SendError<M>> {
         self.tx.send(message)
+    }
+
+    /// Fire-and-forget send. A worker that has already shut down is not a
+    /// caller's error — the message is logged against the worker's name and
+    /// dropped.
+    pub(crate) fn dispatch(&self, message: M)
+    where
+        M: std::fmt::Debug,
+    {
+        if let Err(err) = self.send(message) {
+            tracing::warn!("{} command channel closed; dropped {:?}", self.name, err.0);
+        }
     }
 
     /// Ask the thread to stop, then wait for it to exit.
@@ -67,6 +85,27 @@ impl<M> WorkerThread<M> {
         stop(&self.tx);
         if let Err(panic) = thread.join() {
             tracing::warn!("{} panicked before join: {panic:?}", self.name);
+        }
+    }
+
+    /// The async twin of [`Self::stop_and_join`], for a caller already on a
+    /// runtime: `stop` may await the worker's acknowledgement, and the join runs
+    /// off-worker so it doesn't stall a runtime thread. The two share the one
+    /// take-once join handle, so whichever runs first stops the thread and the
+    /// other returns.
+    pub(crate) async fn stop_and_join_async<F: std::future::Future<Output = ()>>(
+        &self,
+        stop: impl FnOnce(&mpsc::UnboundedSender<M>) -> F,
+    ) {
+        let Some(thread) = self.thread.lock().unwrap().take() else {
+            return;
+        };
+        stop(&self.tx).await;
+        let name = self.name;
+        match tokio::task::spawn_blocking(move || thread.join()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(panic)) => tracing::warn!("{name} panicked before join: {panic:?}"),
+            Err(join_err) => tracing::warn!("joining {name} failed: {join_err}"),
         }
     }
 }

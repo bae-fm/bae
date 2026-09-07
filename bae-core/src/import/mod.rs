@@ -56,9 +56,6 @@ desktop_only! {
     pub mod triage;
 }
 mod types;
-desktop_only! {
-    mod worker_thread;
-}
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::db::{

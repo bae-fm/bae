@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::util::worker_thread::WorkerThread;
+
 /// Track metadata resolved once at prepare time and held for the track's
 /// playback, so `PlaybackState` emissions carry it and the bridge needs no DB
 /// access.
@@ -262,34 +264,38 @@ async fn await_shutdown_ack(rx: oneshot::Receiver<()>) {
 /// Handle for sending commands to the playback service.
 #[derive(Clone)]
 pub struct PlaybackHandle {
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    /// The service's dedicated OS thread and the command channel that feeds it.
+    /// The thread is joined on the first shutdown/stop so the `LibraryManager`
+    /// clone it holds — and through the shared coven handle, the store's
+    /// exclusive open lock — is released before teardown returns. The service
+    /// loop holds its own sender, so it only stops on an explicit `Shutdown`;
+    /// nothing else would ever join this thread. The join handle is shared
+    /// across clones behind a take-once slot, so teardown is idempotent.
+    worker: WorkerThread<PlaybackCommand>,
     progress_handle: PlaybackProgressHandle,
     queue_values: tokio::sync::watch::Receiver<PlaybackQueueProjection>,
-    /// The service's dedicated OS thread. Taken and joined on the first
-    /// shutdown/stop so the `LibraryManager` clone it holds — and through the
-    /// shared coven handle, the store's exclusive open lock — is released before
-    /// teardown returns. The service loop holds its own `command_tx`, so it only
-    /// stops on an explicit `Shutdown`; nothing else would ever join this thread.
-    /// Shared across clones behind a take-once slot, so teardown is idempotent.
-    thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
 }
 impl PlaybackHandle {
     pub(super) fn new(
-        command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+        worker: WorkerThread<PlaybackCommand>,
         progress_handle: PlaybackProgressHandle,
         queue_values: tokio::sync::watch::Receiver<PlaybackQueueProjection>,
-        thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     ) -> Self {
         Self {
-            command_tx,
+            worker,
             progress_handle,
             queue_values,
-            thread,
         }
     }
 
+    /// Send a command to the service. Fire-and-forget; the service processes
+    /// commands serially on its own thread.
+    fn dispatch(&self, command: PlaybackCommand) {
+        self.worker.dispatch(command);
+    }
+
     pub fn play(&self, track_id: String) {
-        dispatch_command(&self.command_tx, PlaybackCommand::Play(track_id));
+        self.dispatch(PlaybackCommand::Play(track_id));
     }
     pub fn play_release(
         &self,
@@ -297,47 +303,44 @@ impl PlaybackHandle {
         start_track_index: Option<usize>,
         shuffle: bool,
     ) {
-        dispatch_command(
-            &self.command_tx,
-            PlaybackCommand::PlayRelease {
-                release_id,
-                start_track_index,
-                shuffle,
-            },
-        );
+        self.dispatch(PlaybackCommand::PlayRelease {
+            release_id,
+            start_track_index,
+            shuffle,
+        });
     }
     pub fn play_releases(&self, release_ids: Vec<String>) {
-        dispatch_command(&self.command_tx, PlaybackCommand::PlayReleases(release_ids));
+        self.dispatch(PlaybackCommand::PlayReleases(release_ids));
     }
     pub fn play_library_shuffled(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::PlayLibraryShuffled);
+        self.dispatch(PlaybackCommand::PlayLibraryShuffled);
     }
     pub fn pause(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::Pause);
+        self.dispatch(PlaybackCommand::Pause);
     }
     pub fn resume(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::Resume);
+        self.dispatch(PlaybackCommand::Resume);
     }
     pub fn stop(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::Stop);
+        self.dispatch(PlaybackCommand::Stop);
     }
     pub fn next(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::Next);
+        self.dispatch(PlaybackCommand::Next);
     }
     pub fn previous(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::Previous);
+        self.dispatch(PlaybackCommand::Previous);
     }
     pub fn seek(&self, position: std::time::Duration) {
-        dispatch_command(&self.command_tx, PlaybackCommand::Seek(position));
+        self.dispatch(PlaybackCommand::Seek(position));
     }
     pub fn seek_by_ratio(&self, ratio: f64) {
-        dispatch_command(&self.command_tx, PlaybackCommand::SeekByRatio(ratio));
+        self.dispatch(PlaybackCommand::SeekByRatio(ratio));
     }
     pub fn set_volume(&self, volume: f32) {
-        dispatch_command(&self.command_tx, PlaybackCommand::SetVolume(volume));
+        self.dispatch(PlaybackCommand::SetVolume(volume));
     }
     pub fn set_muted(&self, muted: bool) {
-        dispatch_command(&self.command_tx, PlaybackCommand::SetMuted(muted));
+        self.dispatch(PlaybackCommand::SetMuted(muted));
     }
     /// Switch playback to a remote renderer over `channel`, minting each track's
     /// media through `media_source` (the device's view of this library). The
@@ -349,14 +352,11 @@ impl PlaybackHandle {
         device_name: String,
         media_source: crate::renderer::RendererMediaSource,
     ) {
-        dispatch_command(
-            &self.command_tx,
-            PlaybackCommand::PlayOn(Box::new(RemoteConnect::new(
-                channel,
-                device_name,
-                media_source,
-            ))),
-        );
+        self.dispatch(PlaybackCommand::PlayOn(Box::new(RemoteConnect::new(
+            channel,
+            device_name,
+            media_source,
+        ))));
     }
     /// Switch playback to an AirPlay receiver via `sink` (built off the service
     /// thread by bae-desktop with the device's address, encryption, and reported
@@ -367,19 +367,14 @@ impl PlaybackHandle {
         device_name: String,
         latency_frames: u32,
     ) {
-        dispatch_command(
-            &self.command_tx,
-            PlaybackCommand::PlayOnAirPlay(Box::new(renderer::AirPlayConnect::new(
-                sink,
-                device_name,
-                latency_frames,
-            ))),
-        );
+        self.dispatch(PlaybackCommand::PlayOnAirPlay(Box::new(
+            renderer::AirPlayConnect::new(sink, device_name, latency_frames),
+        )));
     }
     /// Stop remote or AirPlay playback and resume local playback, paused at the
     /// last position.
     pub fn stop_remote(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::StopRemote);
+        self.dispatch(PlaybackCommand::StopRemote);
     }
     pub fn subscribe_progress(&self) -> tokio_mpsc::UnboundedReceiver<PlaybackProgress> {
         self.progress_handle.subscribe_all()
@@ -398,60 +393,48 @@ impl PlaybackHandle {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn queue_projection(&self) -> Result<PlaybackQueueProjection, String> {
         let (tx, rx) = oneshot::channel();
-        dispatch_command(&self.command_tx, PlaybackCommand::GetQueueProjection(tx));
+        self.dispatch(PlaybackCommand::GetQueueProjection(tx));
         rx.await
             .map_err(|e| format!("playback loop dropped the queue response channel: {e}"))
     }
     pub fn add_to_queue(&self, track_ids: Vec<String>) {
-        dispatch_command(&self.command_tx, PlaybackCommand::AddToQueue(track_ids));
+        self.dispatch(PlaybackCommand::AddToQueue(track_ids));
     }
     pub fn add_next(&self, track_ids: Vec<String>) {
-        dispatch_command(&self.command_tx, PlaybackCommand::AddNext(track_ids));
+        self.dispatch(PlaybackCommand::AddNext(track_ids));
     }
     pub fn add_release_to_queue(&self, release_id: String) {
-        dispatch_command(
-            &self.command_tx,
-            PlaybackCommand::AddReleaseToQueue(release_id),
-        );
+        self.dispatch(PlaybackCommand::AddReleaseToQueue(release_id));
     }
     pub fn add_release_next(&self, release_id: String) {
-        dispatch_command(
-            &self.command_tx,
-            PlaybackCommand::AddReleaseNext(release_id),
-        );
+        self.dispatch(PlaybackCommand::AddReleaseNext(release_id));
     }
     pub fn insert_in_queue(&self, track_ids: Vec<String>, index: usize) {
-        dispatch_command(
-            &self.command_tx,
-            PlaybackCommand::InsertInQueue(track_ids, index),
-        );
+        self.dispatch(PlaybackCommand::InsertInQueue(track_ids, index));
     }
     pub fn remove_entry(&self, entry_id: QueueEntryId) {
-        dispatch_command(&self.command_tx, PlaybackCommand::RemoveFromQueue(entry_id));
+        self.dispatch(PlaybackCommand::RemoveFromQueue(entry_id));
     }
     pub fn reorder_entry(&self, entry_id: QueueEntryId, before: Option<QueueEntryId>) {
-        dispatch_command(
-            &self.command_tx,
-            PlaybackCommand::ReorderQueue { entry_id, before },
-        );
+        self.dispatch(PlaybackCommand::ReorderQueue { entry_id, before });
     }
     pub fn clear_up_next(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::ClearUpNext);
+        self.dispatch(PlaybackCommand::ClearUpNext);
     }
     pub fn clear_playing_from(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::ClearPlayingFrom);
+        self.dispatch(PlaybackCommand::ClearPlayingFrom);
     }
     pub fn set_repeat_mode(&self, mode: RepeatMode) {
-        dispatch_command(&self.command_tx, PlaybackCommand::SetRepeatMode(mode));
+        self.dispatch(PlaybackCommand::SetRepeatMode(mode));
     }
 
     pub fn set_shuffle(&self, on: bool) {
-        dispatch_command(&self.command_tx, PlaybackCommand::SetShuffle(on));
+        self.dispatch(PlaybackCommand::SetShuffle(on));
     }
 
     pub async fn get_volume(&self) -> f32 {
         let (tx, rx) = oneshot::channel();
-        dispatch_command(&self.command_tx, PlaybackCommand::GetVolume(tx));
+        self.dispatch(PlaybackCommand::GetVolume(tx));
         rx.await.unwrap_or_else(|e| {
             warn!("get_volume: playback loop dropped the response channel: {e}");
             1.0
@@ -464,20 +447,15 @@ impl PlaybackHandle {
     /// quit path relies on it being durable). Idempotent with [`Self::stop_and_join`]:
     /// they share the take-once join handle, so a later teardown is a no-op.
     pub async fn shutdown(&self) {
-        let Some(join_handle) = self.thread.lock().unwrap().take() else {
-            return;
-        };
-        let (tx, rx) = oneshot::channel();
-        dispatch_command(&self.command_tx, PlaybackCommand::Shutdown(tx));
-        await_shutdown_ack(rx).await;
-        // The loop has broken; join so the thread fully exits and drops its
-        // LibraryManager clone. Off-worker via spawn_blocking so the blocking join
-        // doesn't stall a runtime thread.
-        match tokio::task::spawn_blocking(move || join_handle.join()).await {
-            Ok(Ok(())) => {}
-            Ok(Err(panic)) => warn!("playback service thread panicked before join: {panic:?}"),
-            Err(join_err) => warn!("joining the playback service thread failed: {join_err}"),
-        }
+        // The join lets the thread fully exit and drop its LibraryManager clone;
+        // `WorkerThread` runs it off-worker so it doesn't stall a runtime thread.
+        self.worker
+            .stop_and_join_async(|command_tx| {
+                let (tx, rx) = oneshot::channel();
+                dispatch_command(command_tx, PlaybackCommand::Shutdown(tx));
+                await_shutdown_ack(rx)
+            })
+            .await;
     }
 
     /// Synchronous teardown for `Drop`: stop the service loop and join its thread,
@@ -486,16 +464,10 @@ impl PlaybackHandle {
     /// breaks). No runtime needed — the loop runs on its own — so this is safe from
     /// `Drop`. Idempotent with [`Self::shutdown`] via the shared take-once join handle.
     pub fn stop_and_join(&self) {
-        let Some(join_handle) = self.thread.lock().unwrap().take() else {
-            return;
-        };
-        let (tx, _rx) = oneshot::channel();
-        dispatch_command(&self.command_tx, PlaybackCommand::Shutdown(tx));
-        // A panicked service thread already reported itself; joining from Drop
-        // must not repropagate, but the panic shouldn't vanish either.
-        if let Err(panic) = join_handle.join() {
-            warn!("playback service thread panicked before join: {panic:?}");
-        }
+        self.worker.stop_and_join(|command_tx| {
+            let (tx, _rx) = oneshot::channel();
+            dispatch_command(command_tx, PlaybackCommand::Shutdown(tx));
+        });
     }
 
     /// Persist the current playback state without stopping playback. Mobile
@@ -505,37 +477,34 @@ impl PlaybackHandle {
     /// durable before the OS suspends the app.
     pub async fn save_state(&self) {
         let (tx, rx) = oneshot::channel();
-        dispatch_command(&self.command_tx, PlaybackCommand::SaveState(tx));
+        self.dispatch(PlaybackCommand::SaveState(tx));
         let _ = rx.await;
     }
 
     pub fn skip_to_entry(&self, entry_id: QueueEntryId) {
-        dispatch_command(&self.command_tx, PlaybackCommand::SkipTo(entry_id));
+        self.dispatch(PlaybackCommand::SkipTo(entry_id));
     }
     /// Re-evaluate the side-pause staging decision for the currently preloaded
     /// next track. Called after `pause_between_sides` turns on, so a track
     /// already staged into the gapless chain is held instead if a pause is now
     /// due at its boundary.
     pub fn reevaluate_side_pause_staging(&self) {
-        dispatch_command(
-            &self.command_tx,
-            PlaybackCommand::ReevaluateSidePauseStaging,
-        );
+        self.dispatch(PlaybackCommand::ReevaluateSidePauseStaging);
     }
     /// Preview a local source window. The same target stops; another switches.
     pub fn preview_play(&self, target: crate::playback::PreviewTarget) {
-        dispatch_command(&self.command_tx, PlaybackCommand::PreviewPlay(target));
+        self.dispatch(PlaybackCommand::PreviewPlay(target));
     }
     /// Stop any active preview playback.
     pub fn preview_stop(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::PreviewStop);
+        self.dispatch(PlaybackCommand::PreviewStop);
     }
     /// Toggle pause/resume on the active preview.
     pub fn preview_toggle_pause(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::PreviewTogglePause);
+        self.dispatch(PlaybackCommand::PreviewTogglePause);
     }
     /// Seek by slider ratio (0.0–1.0) within the active preview.
     pub fn preview_seek_by_ratio(&self, ratio: f64) {
-        dispatch_command(&self.command_tx, PlaybackCommand::PreviewSeekByRatio(ratio));
+        self.dispatch(PlaybackCommand::PreviewSeekByRatio(ratio));
     }
 }

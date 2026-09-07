@@ -3,7 +3,7 @@ use crate::import::folder_scanner::{
 };
 use crate::import::types::{ImportCommand, ImportProgress, MetadataSource, StorageMode};
 use crate::import::watched_folder::WatchedFolder;
-use crate::import::worker_thread::WorkerThread;
+use crate::util::worker_thread::WorkerThread;
 use crate::library::manager::discogs_validation_from_result as validation_from_validate_result;
 use crate::library::LibraryManager;
 use std::collections::HashMap;
