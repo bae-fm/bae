@@ -21,9 +21,14 @@
 //! `Idle` and `Triangulating` have no terminal verdict.
 
 use super::combine::ResultProvenance;
-use super::state::{BarcodeEvidence, DiscIdEvidence, IdentifyState, SignalsContext};
+use super::state::{
+    BarcodeEvidence, CatalogEvidence, DiscIdEvidence, IdentifyState, RecordedWalk, SignalsContext,
+    WalkEnd,
+};
+use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
-use crate::signals::LookupFailure;
+use crate::import::MetadataSource;
+use crate::signals::{ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals};
 
 /// Which lookup failed, and — where several providers answer it — which
 /// provider. The disc-ID endpoint is MusicBrainz's alone, and release details
@@ -39,6 +44,19 @@ pub enum IdentifyFailure {
     Barcode(SourceFailure),
     Catalog(SourceFailure),
     ReleaseDetails(LookupFailure),
+}
+
+impl IdentifyFailure {
+    /// The provider that could not answer, where the step asks several. The
+    /// disc-ID endpoint is MusicBrainz's alone, reading the candidate's
+    /// barcodes asks nobody, and release details come from the source that
+    /// named the release — so those three name no provider.
+    fn source(&self) -> Option<MetadataSource> {
+        match self {
+            Self::Barcode(failure) | Self::Catalog(failure) => Some(failure.source),
+            Self::DiscId(_) | Self::BarcodeScan(_) | Self::ReleaseDetails(_) => None,
+        }
+    }
 }
 
 /// The identify pipeline's outcome once it can no longer change without new
@@ -147,33 +165,31 @@ impl TerminalVerdict {
     /// The identify state this stored verdict stands back up as — what opening
     /// an answered candidate shows without running anything.
     ///
-    /// The matches and their provenance are the stored ones, and so is the
-    /// barcode that matched. The raw signal inputs (the disc ID value, the
-    /// barcode codes, the catalog candidates) are deliberately not: they are
-    /// local, recomputable facts a re-run re-extracts, and the verdict never
-    /// stored them — so the context carries none of those, and a resumed state
-    /// has no signals toolbar. `status_of`
-    /// is the live library check for a release id the verdict names, never a
-    /// stored copy (see the module doc).
+    /// A settled run is two halves, stored side by side in one write:
+    /// `signals` is what extraction read off the folder — the disc ID and the
+    /// file it came from, every barcode sighting, every catalog number — and
+    /// the verdict is what the providers answered about them. Put back
+    /// together they are the run as it settled, so a resumed candidate lays
+    /// the same ledger out as the live run did, and a cell that failed offers
+    /// its retry.
+    ///
+    /// Two things no write keeps, so no resume has them: the catalog numbers
+    /// the person had chosen (they come back as tiles to choose again), and a
+    /// failed run's partial matches — the failure is what stores, and
+    /// re-running is what turns partial evidence into an answer.
+    ///
+    /// `signals` is `None` for a candidate whose signals are not stored: then
+    /// there are no inputs, so there is no ledger — the matches, the barcode
+    /// that found them, and nothing else.
+    ///
+    /// `status_of` is the live library check for a release id the verdict
+    /// names, never a stored copy (see the module doc).
     pub fn resume_state(
         self,
-        status_of: &impl Fn(&MetadataResult) -> crate::db::LibraryStatus,
+        signals: Option<&Signals>,
+        status_of: &impl Fn(&MetadataResult) -> LibraryStatus,
     ) -> IdentifyState {
-        // `disc_id: Absent` here means "not retained by the stored verdict",
-        // not "the folder had no disc artifact" — the distinction never
-        // leaves core: the bridge crosses matches and result sections, and
-        // the resumed state's toolbar is empty rather than derived from this.
-        let empty_context = |track_count: u32| SignalsContext {
-            providers: Vec::new(),
-            artwork: crate::signals::ArtworkScan::Absent,
-            disc: DiscIdEvidence {
-                signal: crate::signals::DiscIdSignal::Absent { track_count },
-                ..Default::default()
-            },
-            barcode: BarcodeEvidence::default(),
-            catalog: Default::default(),
-            track_count,
-        };
+        let providers = self.resumed_providers();
         match self {
             Self::Found {
                 matches,
@@ -181,27 +197,46 @@ impl TerminalVerdict {
                 provenance,
                 matched_barcode,
             } => {
-                let library_statuses = matches.iter().map(status_of).collect();
+                let library_statuses: Vec<LibraryStatus> = matches.iter().map(status_of).collect();
+                let context = match signals {
+                    Some(signals) => found_run(
+                        stored_inputs(signals, providers),
+                        &matches,
+                        &library_statuses,
+                        &provenance,
+                        matched_barcode,
+                    ),
+                    None => SignalsContext {
+                        barcode: BarcodeEvidence {
+                            matched: matched_barcode,
+                            ..Default::default()
+                        },
+                        ..no_inputs(track_count)
+                    },
+                };
                 IdentifyState::Found {
                     matches,
                     library_statuses,
                     track_count,
                     provenance,
-                    context: SignalsContext {
-                        barcode: BarcodeEvidence {
-                            matched: matched_barcode,
-                            ..Default::default()
-                        },
-                        ..empty_context(track_count)
-                    },
+                    context,
                 }
             }
             Self::NotFoundAnywhere => IdentifyState::NotFoundAnywhere {
-                context: empty_context(0),
+                context: match signals {
+                    Some(signals) => exhausted_run(stored_inputs(signals, providers)),
+                    None => no_inputs(0),
+                },
             },
             Self::ManualOnly { track_count } => IdentifyState::ManualOnly {
                 track_count,
-                context: empty_context(track_count),
+                // Nothing ran, so there is nothing to record onto the inputs:
+                // they are the whole run. Catalog numbers among them come back
+                // as tiles to choose.
+                context: match signals {
+                    Some(signals) => stored_inputs(signals, providers),
+                    None => no_inputs(track_count),
+                },
             },
             // A stored failure resumes with no matches: what one source found
             // before the other failed was never stored, so a resumed failure
@@ -210,15 +245,200 @@ impl TerminalVerdict {
                 failures,
                 track_count,
             } => IdentifyState::Failed {
+                context: match signals {
+                    Some(signals) => failed_run(stored_inputs(signals, providers), &failures),
+                    None => no_inputs(track_count),
+                },
                 failures,
                 track_count,
                 matches: Vec::new(),
                 library_statuses: Vec::new(),
                 provenance: Vec::new(),
-                context: empty_context(track_count),
             },
         }
     }
+
+    /// The providers a resumed run lays its columns out for. The run's own
+    /// list is not stored and the verdict is what is left of it: MusicBrainz
+    /// answers every run, and Discogs was in this one when the verdict names
+    /// it — as the source of a match, or of a failure. A run that asked
+    /// Discogs and heard neither from it resumes as a MusicBrainz-only ledger,
+    /// which is as much as the stored answer says.
+    fn resumed_providers(&self) -> Vec<MetadataSource> {
+        let asked_discogs = match self {
+            Self::Found { matches, .. } => matches
+                .iter()
+                .any(|result| result.source == MetadataSource::Discogs),
+            Self::Failed { failures, .. } => failures
+                .iter()
+                .any(|failure| failure.source() == Some(MetadataSource::Discogs)),
+            Self::NotFoundAnywhere | Self::ManualOnly { .. } => false,
+        };
+        if asked_discogs {
+            vec![MetadataSource::MusicBrainz, MetadataSource::Discogs]
+        } else {
+            vec![MetadataSource::MusicBrainz]
+        }
+    }
+}
+
+/// What extraction read, as the run had it. Nothing has been asked yet — the
+/// verdict's own answers are recorded onto this below.
+fn stored_inputs(signals: &Signals, providers: Vec<MetadataSource>) -> SignalsContext {
+    SignalsContext {
+        providers,
+        // No artwork pass runs behind a stored verdict, so no row waits on one.
+        artwork: ArtworkScan::Absent,
+        disc: DiscIdEvidence {
+            signal: signals.disc_id.clone(),
+            ..Default::default()
+        },
+        barcode: BarcodeEvidence {
+            codes: signals.barcode.codes().to_vec(),
+            had_source: !matches!(signals.barcode, BarcodeSignal::Absent),
+            ..Default::default()
+        },
+        catalog: CatalogEvidence {
+            numbers: signals.text.catalogs().to_vec(),
+            chosen: Vec::new(),
+        },
+        track_count: signals.disc_id.track_count(),
+    }
+}
+
+/// The context a verdict resumes with when its candidate's signals are not
+/// stored. `disc_id: Absent` here means "not retained", not "the folder had no
+/// disc artifact" — the distinction never leaves core: with no inputs at all
+/// there is no ledger to lay out and no toolbar to draw.
+fn no_inputs(track_count: u32) -> SignalsContext {
+    SignalsContext {
+        providers: Vec::new(),
+        artwork: ArtworkScan::Absent,
+        disc: DiscIdEvidence {
+            signal: DiscIdSignal::Absent { track_count },
+            ..Default::default()
+        },
+        barcode: BarcodeEvidence::default(),
+        catalog: CatalogEvidence::default(),
+        track_count,
+    }
+}
+
+/// What a `Found` verdict's providers answered: each match lands on the signal
+/// its provenance names, and every provider's walk through the codes ended
+/// where its match says — on the code the verdict points at, or having tried
+/// them all.
+fn found_run(
+    mut context: SignalsContext,
+    matches: &[MetadataResult],
+    library_statuses: &[LibraryStatus],
+    provenance: &[ResultProvenance],
+    matched_barcode: Option<String>,
+) -> SignalsContext {
+    let found_by = |names: fn(&ResultProvenance) -> bool| {
+        matches
+            .iter()
+            .zip(provenance)
+            .zip(library_statuses)
+            .filter(|((_, provenance), _)| names(provenance))
+            .map(|((result, _), status)| (result.clone(), status.clone()))
+            .collect::<Vec<_>>()
+    };
+    context.disc.results = found_by(|provenance| provenance.by_disc_id);
+    context.barcode.results = found_by(|provenance| provenance.by_barcode);
+
+    // A walk that matched names one of the codes it asked about, and the codes
+    // and the verdict are written together, so the code the verdict points at
+    // is one of them.
+    let codes = context.barcode.code_values();
+    let matched = matched_barcode.filter(|code| codes.contains(code));
+    let answered = |source| {
+        context
+            .barcode
+            .results
+            .iter()
+            .any(|(result, _)| result.source == source)
+    };
+    let walks = context
+        .providers
+        .iter()
+        .map(|&source| RecordedWalk {
+            source,
+            end: match &matched {
+                Some(code) if answered(source) => WalkEnd::Matched { code: code.clone() },
+                _ => WalkEnd::Exhausted,
+            },
+        })
+        .collect();
+    context.barcode.walks = walks;
+    context.barcode.matched = matched;
+    context
+}
+
+/// A run that asked everything it had and matched nothing: every provider's
+/// walk ran out of codes.
+fn exhausted_run(mut context: SignalsContext) -> SignalsContext {
+    let walks = context
+        .providers
+        .iter()
+        .map(|&source| RecordedWalk {
+            source,
+            end: WalkEnd::Exhausted,
+        })
+        .collect();
+    context.barcode.walks = walks;
+    context
+}
+
+/// What a `Failed` verdict says of each step: the disc-ID lookup's failure,
+/// the failure that stopped the barcodes being read at all, and every provider
+/// that could not answer about a barcode. Which code a failed walk stopped on
+/// is not stored, and every walk starts at the first code, so that is where
+/// the ledger puts the warning. The providers that did answer show no matches:
+/// a failed verdict stores none.
+fn failed_run(mut context: SignalsContext, failures: &[IdentifyFailure]) -> SignalsContext {
+    context.disc.failure = failures.iter().find_map(|failure| match failure {
+        IdentifyFailure::DiscId(failure) => Some(failure.clone()),
+        _ => None,
+    });
+    context.barcode.scan_failure = failures.iter().find_map(|failure| match failure {
+        IdentifyFailure::BarcodeScan(failure) => Some(failure.clone()),
+        _ => None,
+    });
+    context.barcode.failures = failures
+        .iter()
+        .filter_map(|failure| match failure {
+            IdentifyFailure::Barcode(failure) => Some(failure.clone()),
+            _ => None,
+        })
+        .collect();
+    let first_code = context.barcode.code_values().into_iter().next();
+    let walks = match &first_code {
+        Some(first) => context
+            .providers
+            .iter()
+            .map(|&source| RecordedWalk {
+                source,
+                end: if context
+                    .barcode
+                    .failures
+                    .iter()
+                    .any(|failure| failure.source == source)
+                {
+                    WalkEnd::Failed {
+                        code: first.clone(),
+                    }
+                } else {
+                    WalkEnd::Exhausted
+                },
+            })
+            .collect(),
+        // No code to walk, so no walk ran: the barcode pipe stands back up
+        // from the codes alone.
+        None => Vec::new(),
+    };
+    context.barcode.walks = walks;
+    context
 }
 
 #[cfg(test)]
@@ -299,10 +519,11 @@ mod tests {
         );
     }
 
-    /// A stored verdict stands back up with its matches, and with the barcode
-    /// that found them: the barcode rows say which image each was read off, so
-    /// without this pointer a resumed candidate could not tell which of several
-    /// images the release was identified from.
+    /// A candidate whose signals were never stored stands its verdict back up
+    /// with its matches, and with the barcode that found them: the barcode rows
+    /// say which image each was read off, so without this pointer a resumed
+    /// candidate could not tell which of several images the release was
+    /// identified from.
     #[test]
     fn a_resumed_found_keeps_the_barcode_that_matched() {
         let verdict = TerminalVerdict::Found {
@@ -316,14 +537,136 @@ mod tests {
             matched_barcode: Some("5099969394522".to_string()),
         };
         let IdentifyState::Found { context, .. } =
-            verdict.resume_state(&|result| LibraryStatus::absent(&result.release_id))
+            verdict.resume_state(None, &|result| LibraryStatus::absent(&result.release_id))
         else {
             panic!("a found verdict resumes as Found");
         };
         assert_eq!(context.barcode.matched.as_deref(), Some("5099969394522"));
-        // The signal inputs themselves are not retained — a re-run re-extracts
-        // them, and the resumed state draws no signals toolbar.
+        // With no stored signals there are no inputs to stand the run back up
+        // from, so the resumed state has no ledger and no signals toolbar.
         assert!(context.barcode.codes.is_empty());
+        assert!(!context.has_inputs());
+    }
+
+    /// The signals stored beside a verdict: a disc ID read off a rip log, one
+    /// barcode read off the back cover, one catalog number off the sheet.
+    fn stored_signals() -> Signals {
+        Signals {
+            disc_id: DiscIdSignal::Computed {
+                disc_id: "disc-1".to_string(),
+                track_count: 11,
+                source_file: Some("rip/Album.LOG".to_string()),
+            },
+            barcode: BarcodeSignal::Settled {
+                codes: vec![crate::signals::SourcedValue::in_file(
+                    "5099969394522".to_string(),
+                    crate::signals::SignalOrigin::Artwork,
+                    "back.jpg".to_string(),
+                )],
+            },
+            text: crate::signals::TextSignal::Settled {
+                catalogs: vec![crate::signals::SourcedValue::new(
+                    "LBL-1".to_string(),
+                    crate::signals::SignalOrigin::CueSheet,
+                )],
+                free_text: Vec::new(),
+            },
+            durations: Default::default(),
+        }
+    }
+
+    /// A candidate's stored signals are the run's inputs, so a verdict resumed
+    /// with them carries what extraction read — every sighting with where it
+    /// was read — and the run stands back up from it. The numbers the person
+    /// had chosen are not stored, so they come back as numbers to choose.
+    #[test]
+    fn a_resumed_verdict_carries_the_stored_signal_inputs() {
+        let verdict = TerminalVerdict::Failed {
+            failures: vec![IdentifyFailure::Barcode(SourceFailure {
+                source: MetadataSource::Discogs,
+                failure: LookupFailure::Provider { status: Some(503) },
+            })],
+            track_count: 11,
+        };
+        let IdentifyState::Failed { context, .. } = verdict
+            .resume_state(Some(&stored_signals()), &|result| {
+                LibraryStatus::absent(&result.release_id)
+            })
+        else {
+            panic!("a failed verdict resumes as Failed");
+        };
+        assert!(context.has_inputs());
+        assert_eq!(context.disc.signal, stored_signals().disc_id);
+        assert_eq!(context.barcode.code_values(), vec!["5099969394522"]);
+        assert_eq!(
+            context.barcode.codes[0].origin_path.as_deref(),
+            Some("back.jpg")
+        );
+        assert!(context.barcode.had_source);
+        assert_eq!(context.catalog.number_values(), vec!["LBL-1"]);
+        assert!(context.catalog.chosen.is_empty());
+        // The provider that could not answer stopped at the first code it was
+        // asked about; the one that answered ran out of codes.
+        assert_eq!(
+            context.barcode.walks,
+            vec![
+                RecordedWalk {
+                    source: MetadataSource::MusicBrainz,
+                    end: WalkEnd::Exhausted,
+                },
+                RecordedWalk {
+                    source: MetadataSource::Discogs,
+                    end: WalkEnd::Failed {
+                        code: "5099969394522".to_string(),
+                    },
+                },
+            ]
+        );
+    }
+
+    /// The run's provider list is not stored, so a resumed run asks what the
+    /// verdict names: MusicBrainz answers every run, and Discogs is a column
+    /// only where the verdict names it.
+    #[test]
+    fn a_resumed_run_lists_the_providers_the_verdict_names() {
+        let musicbrainz_only = TerminalVerdict::Failed {
+            failures: vec![IdentifyFailure::DiscId(LookupFailure::Network)],
+            track_count: 11,
+        };
+        let IdentifyState::Failed { context, .. } = musicbrainz_only
+            .resume_state(Some(&stored_signals()), &|result| {
+                LibraryStatus::absent(&result.release_id)
+            })
+        else {
+            panic!("a failed verdict resumes as Failed");
+        };
+        assert_eq!(context.providers, vec![MetadataSource::MusicBrainz]);
+
+        let found_on_discogs = TerminalVerdict::Found {
+            matches: vec![MetadataResult::for_test(
+                MetadataSource::Discogs,
+                "dg-1",
+                Some("g"),
+            )],
+            track_count: 11,
+            provenance: vec![ResultProvenance {
+                by_disc_id: false,
+                by_barcode: true,
+                by_catalog: false,
+            }],
+            matched_barcode: Some("5099969394522".to_string()),
+        };
+        let IdentifyState::Found { context, .. } = found_on_discogs
+            .resume_state(Some(&stored_signals()), &|result| {
+                LibraryStatus::absent(&result.release_id)
+            })
+        else {
+            panic!("a found verdict resumes as Found");
+        };
+        assert_eq!(
+            context.providers,
+            vec![MetadataSource::MusicBrainz, MetadataSource::Discogs]
+        );
     }
 
     /// The reducer exposes a failed lookup directly, and verdict conversion

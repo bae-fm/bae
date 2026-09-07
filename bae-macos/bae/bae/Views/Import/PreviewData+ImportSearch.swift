@@ -748,6 +748,22 @@
             )
         )
 
+        /// A failure with no ledger to put it on: the folder carried nothing
+        /// to lay out, or the verdict was stored before its signals were. The
+        /// reasons are the whole pane, so the retry sits under them.
+        static let searchStateFailedWithoutRun = searchState(
+            identifyState: .failed(
+                run: nil,
+                failures: [
+                    .discId(failure: .network),
+                    .barcode(source: .discogs, failure: .provider(status: 503)),
+                ],
+                groups: [],
+                libraryStatuses: [:],
+                provenance: [:]
+            )
+        )
+
         /// A sole match core is picking on its own: its row holds the
         /// spinner while its details fetch and the answer saves.
         static let searchStateFinalizing = searchState(

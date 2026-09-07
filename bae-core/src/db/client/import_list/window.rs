@@ -319,7 +319,10 @@ pub(super) fn load_candidate_detail_on(
             &statuses,
         ));
         matched = MatchedRelease::of_summary(&VerdictSummary::of(&identify.verdict));
-        resumed_identify_state = identify.verdict.clone().resume_state(&status_of);
+        resumed_identify_state = identify
+            .verdict
+            .clone()
+            .resume_state(signals.as_ref(), &status_of);
     }
     if let Some(pick) = picked.as_ref() {
         let audio_durations =

@@ -4,9 +4,10 @@ use crate::identify::state::{
     BarcodeEvidence, BarcodeLookupState, CatalogEvidence, ChosenCatalog, DiscIdEvidence,
     ProviderBarcodeLookup, ProviderLookup, RecordedWalk, WalkEnd,
 };
+use crate::identify::{IdentifyFailure, TerminalVerdict};
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::MetadataSource;
-use crate::signals::{SignalOrigin, SourcedValue};
+use crate::signals::{BarcodeSignal, SignalOrigin, Signals, SourcedValue, TextSignal};
 
 const MB: MetadataSource = MetadataSource::MusicBrainz;
 const DG: MetadataSource = MetadataSource::Discogs;
@@ -480,4 +481,147 @@ fn a_found_lookup_names_its_releases() {
             file: "rip/Album.LOG".to_string(),
         })
     );
+}
+
+// ── Resuming a stored verdict ───────────────────────────────────────────────
+
+/// The signals a candidate stores beside its verdict: a disc ID read off a rip
+/// log, one barcode read off the back cover, one catalog number off the sheet.
+fn stored_signals() -> Signals {
+    Signals {
+        disc_id: DiscIdSignal::Computed {
+            disc_id: "disc-1".to_string(),
+            track_count: 9,
+            source_file: Some("rip/Album.LOG".to_string()),
+        },
+        barcode: BarcodeSignal::Settled {
+            codes: vec![SourcedValue::in_file(
+                "0123456789012".to_string(),
+                SignalOrigin::Artwork,
+                "back.jpg".to_string(),
+            )],
+        },
+        text: TextSignal::Settled {
+            catalogs: vec![SourcedValue::new(
+                "LBL-1".to_string(),
+                SignalOrigin::CueSheet,
+            )],
+            free_text: Vec::new(),
+        },
+        durations: Default::default(),
+    }
+}
+
+fn not_in_library(result: &MetadataResult) -> LibraryStatus {
+    LibraryStatus::absent(&result.release_id)
+}
+
+/// A stored failure resumes with the ledger the run failed on: the provider
+/// that could not answer warns on the code it was asked about — which is what
+/// puts that cell's Retry back on screen — and the one that answered nothing
+/// reads as a no-match.
+#[test]
+fn a_resumed_failure_lays_out_the_run_it_failed_on() {
+    let verdict = TerminalVerdict::Failed {
+        failures: vec![IdentifyFailure::Barcode(SourceFailure {
+            source: DG,
+            failure: LookupFailure::Provider { status: Some(503) },
+        })],
+        track_count: 9,
+    };
+    let run = run_of(verdict.resume_state(Some(&stored_signals()), &not_in_library));
+    assert_eq!(run.providers, vec![MB, DG]);
+    let rows = barcode_rows(&run);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].value, "0123456789012");
+    assert_eq!(
+        cells(&rows[0]),
+        vec![
+            &LookupView::NoMatch,
+            &LookupView::Failed {
+                failure: LookupFailure::Provider { status: Some(503) },
+            },
+        ]
+    );
+}
+
+/// A stored `Found` resumes with the ledger it settled on: the disc ID's count
+/// on its own row, beside the file it was read off, and the barcode's count on
+/// the code the verdict names, under the provider that answered about it.
+#[test]
+fn a_resumed_found_lays_out_the_run_it_settled_on() {
+    let verdict = TerminalVerdict::Found {
+        matches: vec![
+            MetadataResult::for_test(MB, "mb-1", Some("g")),
+            MetadataResult::for_test(DG, "dg-1", Some("g")),
+        ],
+        track_count: 9,
+        provenance: vec![
+            ResultProvenance {
+                by_disc_id: true,
+                by_barcode: false,
+                by_catalog: false,
+            },
+            ResultProvenance {
+                by_disc_id: false,
+                by_barcode: true,
+                by_catalog: false,
+            },
+        ],
+        matched_barcode: Some("0123456789012".to_string()),
+    };
+    let run = run_of(verdict.resume_state(Some(&stored_signals()), &not_in_library));
+    assert_eq!(run.providers, vec![MB, DG]);
+    let DiscIdStepView::Read { source, lookup, .. } = &run.disc_id else {
+        panic!("a disc ID that was read, got {:?}", run.disc_id);
+    };
+    assert!(matches!(lookup, LookupView::Found { count: 1, .. }));
+    assert_eq!(
+        source,
+        &Some(DiscIdFile {
+            kind: DiscIdFileKind::Log,
+            file: "rip/Album.LOG".to_string(),
+        })
+    );
+    let rows = barcode_rows(&run);
+    assert_eq!(rows.len(), 1);
+    assert!(matches!(
+        cells(&rows[0]).as_slice(),
+        [LookupView::NoMatch, LookupView::Found { count: 1, .. }]
+    ));
+}
+
+/// Nothing found anywhere resumes as what it was: every provider tried every
+/// code and none of them matched.
+#[test]
+fn a_resumed_empty_run_asked_every_provider() {
+    let run = run_of(
+        TerminalVerdict::NotFoundAnywhere.resume_state(Some(&stored_signals()), &|_| {
+            unreachable!("a no-match verdict names no release")
+        }),
+    );
+    assert_eq!(run.providers, vec![MB]);
+    assert_eq!(cells(&barcode_rows(&run)[0]), vec![&LookupView::NoMatch]);
+    assert!(matches!(
+        run.disc_id,
+        DiscIdStepView::Read {
+            lookup: LookupView::NoMatch,
+            ..
+        }
+    ));
+}
+
+/// A verdict whose candidate has no stored signals has no inputs to lay a
+/// ledger out from, so it resumes without one — and the pane offers the
+/// re-run in the failure lines instead.
+#[test]
+fn a_verdict_resumed_without_stored_signals_has_no_run() {
+    let verdict = TerminalVerdict::Failed {
+        failures: vec![IdentifyFailure::DiscId(LookupFailure::Network)],
+        track_count: 9,
+    };
+    assert!(matches!(
+        IdentifyStateView::from(verdict.resume_state(None, &not_in_library)),
+        IdentifyStateView::Failed { run: None, .. }
+    ));
 }

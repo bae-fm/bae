@@ -231,6 +231,11 @@ struct ImportSearchPane: View {
     }
 
     /// Every lookup failed, so the reasons take the place of the results.
+    ///
+    /// With a ledger above them, the way to ask again is the Retry in the cell
+    /// that failed. Without one — a folder that carried nothing to lay out, or
+    /// a verdict stored before its signals were — the reasons are the whole
+    /// pane, and this is the only way back.
     private var failureLines: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(state.identifyFailures, id: \.badgeLine) { failure in
@@ -240,6 +245,10 @@ struct ImportSearchPane: View {
                     Text(failure.badgeLine)
                     Spacer(minLength: 0)
                 }
+            }
+            if state.run == nil {
+                Button("Retry", action: onRetryFailed)
+                    .buttonStyle(.link)
             }
         }
         .font(.system(size: 12.5))
@@ -302,11 +311,13 @@ struct ImportSearchPane: View {
     extension ImportSearchPane {
         /// Preview builder — fixes the form bindings and action callbacks to
         /// inert defaults so a preview states only the situation it exercises.
+        /// A test that presses one of them passes it in.
         @MainActor
         static func preview(
             state: ImportSearchState,
             searchArtist: String = "",
             searchAlbum: String = "",
+            onRetryFailed: @escaping () -> Void = {},
         ) -> ImportSearchPane {
             ImportSearchPane(
                 state: state,
@@ -321,7 +332,7 @@ struct ImportSearchPane: View {
                 onOpenSettings: {},
                 onToggleCatalog: { _ in },
                 onIdentify: {},
-                onRetryFailed: {},
+                onRetryFailed: onRetryFailed,
                 onSelect: { _ in },
             )
         }
@@ -371,6 +382,12 @@ struct ImportSearchPane: View {
 
     #Preview("Find online — every source failed") {
         ImportSearchPane.preview(state: PreviewData.searchStateAllSourcesFailed)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — a failure with no ledger") {
+        ImportSearchPane.preview(state: PreviewData.searchStateFailedWithoutRun)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }

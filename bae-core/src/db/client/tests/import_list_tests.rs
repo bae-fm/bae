@@ -83,6 +83,31 @@ fn verdict(release_id: &str) -> TerminalVerdict {
 }
 
 async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &str) {
+    save_verdict_with_signals(
+        db,
+        candidate,
+        release_id,
+        crate::signals::Signals {
+            disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+            barcode: crate::signals::BarcodeSignal::Absent,
+            text: crate::signals::TextSignal::Settled {
+                catalogs: Vec::new(),
+                free_text: Vec::new(),
+            },
+            durations: crate::import::probe::SourceDurations::totalling(1_000),
+        },
+    )
+    .await;
+}
+
+/// Store the verdict beside the signals the run read it off — the pair one
+/// write lands, and what a resumed candidate stands its ledger back up from.
+async fn save_verdict_with_signals(
+    db: &Database,
+    candidate: &FolderCandidate,
+    release_id: &str,
+    signals: crate::signals::Signals,
+) {
     assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             candidate: crate::import::CandidateAsRead {
@@ -92,15 +117,7 @@ async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &s
             },
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: verdict(release_id),
-            signals: crate::signals::Signals {
-                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
-                barcode: crate::signals::BarcodeSignal::Absent,
-                text: crate::signals::TextSignal::Settled {
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
-                },
-                durations: crate::import::probe::SourceDurations::totalling(1_000),
-            },
+            signals,
             metadata: {
                 let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
                 crate::import::CandidateMetadataDraft {
@@ -365,6 +382,67 @@ async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
         vec![("mb-verdict", false)],
         "statuses ride the resumed state, aligned with its matches"
     );
+}
+
+/// The signals stored beside the verdict are the run's inputs, so a resumed
+/// candidate stands the whole ledger back up — the disc ID on its row, with
+/// what MusicBrainz answered about it — rather than the matches alone.
+#[tokio::test]
+async fn the_detail_resumes_the_ledger_the_run_settled_with() {
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    save_verdict_with_signals(
+        &db,
+        &candidate,
+        "mb-verdict",
+        crate::signals::Signals {
+            disc_id: crate::signals::DiscIdSignal::Computed {
+                disc_id: "disc-1".to_string(),
+                track_count: 1,
+                source_file: Some("rip/Album.LOG".to_string()),
+            },
+            barcode: crate::signals::BarcodeSignal::Absent,
+            text: crate::signals::TextSignal::Settled {
+                catalogs: Vec::new(),
+                free_text: Vec::new(),
+            },
+            durations: crate::import::probe::SourceDurations::totalling(1_000),
+        },
+    )
+    .await;
+
+    let detail = db
+        .load_import_candidate(&candidate.path.to_string_lossy())
+        .await
+        .unwrap()
+        .expect("the scanned candidate reads back");
+
+    let crate::identify::IdentifyStateView::Found { run: Some(run), .. } =
+        crate::identify::IdentifyStateView::from(detail.resumed_identify_state)
+    else {
+        panic!("a stored Found resumes with the run it settled as");
+    };
+    assert_eq!(run.providers, vec![MetadataSource::MusicBrainz]);
+    let crate::identify::DiscIdStepView::Read {
+        disc_id,
+        source,
+        lookup,
+    } = run.disc_id
+    else {
+        panic!("the disc ID the run read");
+    };
+    assert_eq!(disc_id, "disc-1");
+    assert_eq!(
+        source,
+        Some(crate::identify::DiscIdFile {
+            kind: crate::identify::DiscIdFileKind::Log,
+            file: "rip/Album.LOG".to_string(),
+        })
+    );
+    assert!(matches!(
+        lookup,
+        crate::identify::LookupView::Found { count: 1, .. }
+    ));
 }
 
 /// A verdict stored for an earlier file-edit revision describes files the

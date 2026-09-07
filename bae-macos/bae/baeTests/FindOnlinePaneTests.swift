@@ -3,6 +3,7 @@ import BaeKit
 import Foundation
 import SwiftUI
 import Testing
+import Vision
 import XCTest
 
 @testable import bae
@@ -27,6 +28,57 @@ final class FindOnlinePaneTests: XCTestCase {
                 .contains { $0 is NSScrollView }
         )
         withExtendedLifetime(window) {}
+    }
+
+    /// A failure with no ledger to hang a cell's Retry off — a folder that
+    /// carried nothing to lay out, or a verdict stored before its signals
+    /// were — is a dead end without this: the reasons, and one way to ask
+    /// again beneath them. A failure that does have a ledger says it in the
+    /// cell that failed instead, so the word appears in the one case and not
+    /// the other.
+    ///
+    /// Read off the rendered pane: the pane draws its own controls rather than
+    /// hanging AppKit ones in the view tree, so what it says is in its pixels.
+    func testAFailureWithNoLedgerOffersItsRetry() async throws {
+        let retry = String(localized: "Retry")
+        let withoutLedger = try await renderedText(
+            of: PreviewData.searchStateFailedWithoutRun
+        )
+        let withLedger = try await renderedText(
+            of: PreviewData.searchStateAllSourcesFailed
+        )
+
+        XCTAssertTrue(
+            withoutLedger.contains {
+                $0.localizedCaseInsensitiveContains(retry)
+            },
+            "a failure with no ledger reads: \(withoutLedger)"
+        )
+        XCTAssertFalse(
+            withLedger.contains { $0.localizedCaseInsensitiveContains(retry) },
+            "a failure with a ledger reads: \(withLedger)"
+        )
+    }
+
+    /// Every line of text the pane draws for `state`.
+    private func renderedText(
+        of state: ImportSearchState
+    ) async throws -> [String] {
+        let size = NSSize(width: 900, height: 600)
+        let (window, host) = FindOnlineRendering.host(
+            ImportSearchPane.preview(state: state).importPreviewEnvironment(),
+            size: size
+        )
+        defer { withExtendedLifetime(window) {} }
+        await SnapshotTestSupport.settle(host)
+        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        try VNImageRequestHandler(data: png, options: [:]).perform([request])
+        return (request.results ?? [])
+            .compactMap {
+                $0.topCandidates(1).first?.string
+            }
     }
 }
 
