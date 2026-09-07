@@ -45,7 +45,10 @@ pub(crate) struct CandidateSaveExtras {
 #[derive(Debug)]
 pub(crate) enum CandidateSaved {
     /// Every row landed. Carries the scanned candidates a reshape rewrote.
-    Landed(Vec<FolderCandidate>),
+    Landed {
+        metadata_revision: u64,
+        candidates: Vec<FolderCandidate>,
+    },
     /// The stored revisions had moved past the expectation between the load
     /// and this write; nothing was written.
     Superseded,
@@ -89,6 +92,7 @@ pub(super) fn save_preparation_on(
     sql: &SqlContext<'_, '_>,
     prep: &CandidatePreparation,
     expected: &CandidateSaveExpectation,
+    metadata_changed: bool,
     extras: &CandidateSaveExtras,
 ) -> Result<CandidateSaved, DbError> {
     prep.validate().map_err(DbError::Message)?;
@@ -96,7 +100,6 @@ pub(super) fn save_preparation_on(
     let expected_edit = to_i64(expected.edit_revision, "candidate edit revision")?;
     let expected_metadata = to_i64(expected.metadata_revision, "candidate metadata revision")?;
     let next_edit = to_i64(prep.file_edits.revision, "candidate edit revision")?;
-    let next_metadata = to_i64(prep.metadata_revision, "candidate metadata revision")?;
 
     if let Some(scanned) = &expected.scanned {
         let generation = require_current_candidate(
@@ -115,12 +118,6 @@ pub(super) fn save_preparation_on(
                     scanned.candidate_path
                 )));
             }
-            super::folder_scans::write::replace_candidate_file_tag_snapshot(
-                sql,
-                &scanned.watched_folder_path,
-                &scanned.candidate_path,
-                snapshot,
-            )?;
         }
     } else if extras.file_tag_snapshot.is_some() {
         return Err(DbError::Message(
@@ -131,13 +128,12 @@ pub(super) fn save_preparation_on(
     let changed = sql.execute(
         "UPDATE import_candidate_state SET \
              folder_path = :folder_path, \
-             edit_revision = :next_edit, metadata_revision = :next_metadata \
+             edit_revision = :next_edit \
          WHERE content_hash = :content_hash \
            AND edit_revision = :expected_edit AND metadata_revision = :expected_metadata",
         named_params! {
             ":folder_path": prep.folder_path,
             ":next_edit": next_edit,
-            ":next_metadata": next_metadata,
             ":content_hash": content_hash,
             ":expected_edit": expected_edit,
             ":expected_metadata": expected_metadata,
@@ -158,6 +154,25 @@ pub(super) fn save_preparation_on(
             )));
         }
         return Ok(CandidateSaved::Superseded);
+    }
+
+    let metadata_revision = if metadata_changed {
+        let revision = super::super::candidate_revision::allocate(sql)?;
+        sql.execute(
+            "UPDATE import_candidate_state SET metadata_revision = ? WHERE content_hash = ?",
+            params![revision, content_hash],
+        )?;
+        revision as u64
+    } else {
+        expected.metadata_revision
+    };
+    if let (Some(scanned), Some(snapshot)) = (&expected.scanned, &extras.file_tag_snapshot) {
+        super::folder_scans::write::replace_candidate_file_tag_snapshot(
+            sql,
+            &scanned.watched_folder_path,
+            &scanned.candidate_path,
+            snapshot,
+        )?;
     }
 
     // The matches hang off the verdict row, so this clears them too.
@@ -205,7 +220,10 @@ pub(super) fn save_preparation_on(
             settle_scanned_candidates(sql, content_hash, expected_edit, next_edit, &settled_by_key)?
         }
     };
-    Ok(CandidateSaved::Landed(reshaped))
+    Ok(CandidateSaved::Landed {
+        metadata_revision,
+        candidates: reshaped,
+    })
 }
 
 fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
@@ -231,9 +249,10 @@ impl Database {
         &self,
         prep: CandidatePreparation,
         expected: CandidateSaveExpectation,
+        metadata_changed: bool,
         extras: CandidateSaveExtras,
     ) -> Result<CandidateSaved, DbError> {
-        self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras))
+        self.call(move |sql| save_preparation_on(sql, &prep, &expected, metadata_changed, &extras))
             .await
     }
 

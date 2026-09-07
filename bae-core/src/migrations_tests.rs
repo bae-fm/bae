@@ -22,6 +22,8 @@ mod migration_twelve;
 mod migration_twenty;
 #[path = "migrations_tests/migration_twenty_one.rs"]
 mod migration_twenty_one;
+#[path = "migrations_tests/migration_twenty_two.rs"]
+mod migration_twenty_two;
 
 fn config(store_id: &str) -> coven::Config {
     coven::Config::with_defaults(

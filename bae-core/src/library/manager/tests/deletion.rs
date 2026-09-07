@@ -197,16 +197,27 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
         .unwrap()
         .expect("the fixture artist exists");
     let (candidate_hash, candidate_track_id) = create_candidate_draft(&manager).await;
+    let state = manager
+        .database
+        .load_import_candidate_state(&candidate_hash)
+        .await
+        .unwrap()
+        .expect("the candidate draft has state");
     manager
         .database
         .save_import_candidate_failure(
-            &candidate_hash,
-            0,
+            &crate::import::CandidateAsRead {
+                content_hash: candidate_hash.clone(),
+                file_edit_revision: state.file_edits.revision,
+                metadata_revision: state.metadata_revision,
+            },
             &crate::import::ImportFailure::error_only("not imported", manager.clock.now()),
         )
         .await
         .unwrap();
-    manager.preparations.set_album_artists(
+    manager
+        .preparations
+        .set_album_artists(
             &candidate_hash,
             &[crate::import::ArtistAssignment::existing(
                 artist.clone().into(),
@@ -214,7 +225,9 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
         )
         .await
         .unwrap();
-    manager.preparations.set_track_edit(
+    manager
+        .preparations
+        .set_track_edit(
             &candidate_hash,
             &crate::import::CandidateTrackEdit::edited(crate::import::RawTrackEdit {
                 id: candidate_track_id,

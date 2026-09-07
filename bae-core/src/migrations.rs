@@ -113,6 +113,11 @@ pub fn all() -> Vec<coven::Migration> {
             "source_document_references",
             migrate_source_document_references,
         ),
+        coven::Migration::sql(
+            22,
+            "candidate_revisions",
+            include_str!("../migrations/022_candidate_revisions.sql"),
+        ),
     ]
 }
 

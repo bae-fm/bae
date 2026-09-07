@@ -61,14 +61,17 @@ impl Database {
         .await
     }
 
-    /// Forget the last failure — what queueing an import of this candidate
-    /// does before the worker takes it.
-    pub async fn clear_import_candidate_failure(&self, content_hash: &str) -> Result<(), DbError> {
-        let content_hash = content_hash.to_string();
+    /// Forget the previous failure only for the preparation this attempt accepted.
+    pub async fn clear_import_candidate_failure(
+        &self,
+        read: &crate::import::CandidateAsRead,
+    ) -> Result<(), DbError> {
+        let read = read.clone();
         self.call(move |sql| {
+            super::super::super::candidate_revision::require_current(sql, &read)?;
             sql.execute(
                 "DELETE FROM import_candidate_failure WHERE content_hash = ?",
-                [&content_hash],
+                [&read.content_hash],
             )?;
             Ok(())
         })

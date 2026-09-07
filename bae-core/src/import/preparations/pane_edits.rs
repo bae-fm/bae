@@ -286,14 +286,14 @@ impl CandidatePreparations {
             scanned,
         };
         change(&mut prep)?;
-        prep.metadata_revision += 1;
-        let revision = prep.metadata_revision;
         match self
             .database
-            .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
+            .save_candidate_preparation(prep, expected, true, CandidateSaveExtras::default())
             .await?
         {
-            CandidateSaved::Landed(_) => Ok(revision),
+            CandidateSaved::Landed {
+                metadata_revision, ..
+            } => Ok(metadata_revision),
             CandidateSaved::Superseded => Err(LibraryError::Import(format!(
                 "candidate {content_hash} changed while its edit was being stored"
             ))),

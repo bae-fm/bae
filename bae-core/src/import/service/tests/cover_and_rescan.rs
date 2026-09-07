@@ -188,7 +188,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         "Candidate",
     )
     .await;
-    preparations.set_prepared_cover(
+    let metadata_revision = preparations.set_prepared_cover(
             &watched_folder_path,
             &folder.to_string_lossy(),
             &crate::import::CandidateAsRead {
@@ -216,9 +216,9 @@ async fn selected_local_cover_path_must_match_discovered_file() {
                 candidate: crate::import::CandidateAsRead {
                     content_hash: expected_content_hash,
                     file_edit_revision: 0,
-                    metadata_revision: metadata_revision + 1,
+                    metadata_revision,
                 },
-                file_tag_snapshot: None,
+                file_tag_snapshot_revision: None,
             },
             StorageMode::Local,
             false,
@@ -550,7 +550,7 @@ async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_ann
         Some(crate::import::MetadataProvenance::FileTags)
     );
     assert!(!detail.metadata_draft.is_blank());
-    assert_eq!(detail.metadata_revision, 1);
+    assert!(detail.metadata_revision > 0);
     let snapshot = service
         .library_manager
         .load_candidate_file_tag_snapshot(&root_text, &key)

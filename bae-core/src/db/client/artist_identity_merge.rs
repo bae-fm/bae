@@ -178,6 +178,28 @@ fn apply_artist_identity_merge(
     plan: &ArtistIdentityMergePlan,
 ) -> Result<(), DbError> {
     let reg = sql.stamp();
+    // Rewriting a pending artist assignment changes that candidate's draft.
+    // Allocate once per affected candidate before any reference is removed;
+    // every mutation below rolls back together if a version cannot be allocated.
+    let candidates: Vec<String> = sql.query(
+        "SELECT content_hash FROM import_candidate_album_artist_assignment WHERE artist_id = ?1 \
+         UNION SELECT content_hash FROM import_candidate_track_artist_assignment WHERE artist_id = ?1 \
+         ORDER BY content_hash",
+        [&plan.absorbed_artist_id],
+        |row| row.get(0),
+    )?;
+    for hash in candidates {
+        let revision = super::candidate_revision::allocate(sql)?;
+        let changed = sql.execute(
+            "UPDATE import_candidate_state SET metadata_revision = ? WHERE content_hash = ?",
+            params![revision, hash],
+        )?;
+        if changed != 1 {
+            return Err(DbError::Message(format!(
+                "artist identity merge found no candidate state for {hash}"
+            )));
+        }
+    }
     // Removing the parent failure also removes the conflict row whose
     // restrictive artist FKs would otherwise prevent consolidation.
     sql.execute(

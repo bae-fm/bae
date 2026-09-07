@@ -59,18 +59,18 @@ fn load_committing_candidate(
             ))
         })
         .transpose()?;
-    let file_tag_snapshot = super::folder_scans::load_candidate_file_tag_snapshot(
-        sql,
-        candidate.watched_folder_path(),
-        candidate_key,
-    )?
-    .and_then(|stored| stored.snapshot);
+    let file_tag_snapshot_revision =
+        super::folder_scans::read::retained_file_tag_snapshot_revision(
+            sql,
+            candidate.watched_folder_path(),
+            candidate_key,
+        )?;
     Ok(Some(CommittingCandidate {
         actionable: stored.actionable,
         source: candidate.source(),
         content_hash: candidate.files().content_hash(),
         file_edit_revision: candidate.file_edit_revision(),
         prepared_revisions,
-        file_tag_snapshot,
+        file_tag_snapshot_revision,
     }))
 }

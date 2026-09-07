@@ -318,6 +318,33 @@ impl LibraryManager {
             .await?)
     }
 
+    pub(crate) async fn candidate_file_tag_snapshot_revision(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+    ) -> Result<Option<u64>, LibraryError> {
+        Ok(self
+            .database
+            .candidate_file_tag_snapshot_revision(watched_folder_path, candidate_path)
+            .await?)
+    }
+
+    pub(crate) async fn load_candidate_file_tag_snapshot_at_revision(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        revision: u64,
+    ) -> Result<crate::import::file_tag_snapshot::FileTagSnapshot, LibraryError> {
+        Ok(self
+            .database
+            .load_candidate_file_tag_snapshot_at_revision(
+                watched_folder_path,
+                candidate_path,
+                revision,
+            )
+            .await?)
+    }
+
     pub(crate) async fn replace_candidate_file_tag_snapshot(
         &self,
         watched_folder_path: &str,
@@ -443,24 +470,20 @@ impl LibraryManager {
     /// offers Retry after a relaunch.
     pub async fn save_import_candidate_failure(
         &self,
-        content_hash: &str,
-        edit_revision: u64,
+        read: &crate::import::CandidateAsRead,
         failure: &crate::import::ImportFailure,
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
-            .save_import_candidate_failure(content_hash, edit_revision, failure)
+            .save_import_candidate_failure(read, failure)
             .await?)
     }
 
     pub async fn clear_import_candidate_failure(
         &self,
-        content_hash: &str,
+        read: &crate::import::CandidateAsRead,
     ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .clear_import_candidate_failure(content_hash)
-            .await?)
+        Ok(self.database.clear_import_candidate_failure(read).await?)
     }
 
     /// Every candidate's user-set file decisions, keyed by content hash — what

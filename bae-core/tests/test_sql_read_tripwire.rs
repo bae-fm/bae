@@ -1,5 +1,5 @@
 #![cfg(feature = "test-utils")]
-//! Pure reads must run on coven's read-only companion connection. Coven rejects
+//! Pure reads must run on coven's read-only workers. Coven rejects
 //! a write callback that prepares no INSERT, UPDATE, or DELETE statement, so
 //! every read below checks bae's routing without exposing coven's retained
 //! handle.
@@ -124,9 +124,64 @@ async fn pure_reads_use_the_read_connection() {
         .unwrap()
         .is_none());
 
-    // Clearing a failure nothing stored still names a DELETE, so coven takes
-    // the write callback rather than rejecting it as a disguised read.
-    db.clear_import_candidate_failure("hash-that-never-failed")
+    // Clearing an absent failure on a current candidate still names a DELETE,
+    // so coven takes the write callback rather than rejecting it as a read.
+    use bae_core::import::folder_scanner::{
+        CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
+        ScannedAudio, ScannedFile,
+    };
+    let path = std::path::Path::new(root).join("Album");
+    let mut audio = ScannedFile::new(path.join("01.flac"), "01.flac".to_string(), 1_000, 1);
+    audio.source_audio = Some(ScannedAudio {
+        content_type: bae_core::util::content_type::ContentType::Flac,
+        duration_ms: 5_000,
+        format: bae_core::album_detail::AudioFormat {
+            codec: "FLAC".to_string(),
+            sample_rate_hz: 44_100,
+            bits_per_sample: Some(16),
+            bitrate_kbps: None,
+            channels: 2,
+        },
+    });
+    let files = CategorizedFiles {
+        files: vec![CandidateFile {
+            proposed_audio: true,
+            file: audio,
+            role: FileRole::Audio,
+        }],
+    };
+    let hash = files.content_hash();
+    db.save_folder_scan_item_with_initial_source(
+        root,
+        generation,
+        &ScanItem::Valid(FolderCandidate {
+            path: path.clone(),
+            file_root: path,
+            name: "Album".to_string(),
+            files,
+            watched_folder_path: root.to_string(),
+            scope: ReleaseFileScope::Direct,
+            file_edit_revision: 0,
+            display_path: "Album".to_string(),
+            resolved_boundaries: Vec::new(),
+            combine_ancestor_key: None,
+        }),
+        bae_core::config::DefaultImportMetadataSource::FindOnline,
+        None,
+    )
+    .await
+    .unwrap()
+    .expect("the current scan accepts the candidate");
+    let state = db
+        .load_import_candidate_state(&hash)
         .await
-        .unwrap();
+        .unwrap()
+        .expect("discovery stores candidate state");
+    db.clear_import_candidate_failure(&bae_core::import::CandidateAsRead {
+        content_hash: hash,
+        file_edit_revision: state.file_edits.revision,
+        metadata_revision: state.metadata_revision,
+    })
+    .await
+    .unwrap();
 }

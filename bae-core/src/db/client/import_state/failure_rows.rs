@@ -69,35 +69,14 @@ impl Database {
     /// offers Retry after a relaunch.
     pub async fn save_import_candidate_failure(
         &self,
-        content_hash: &str,
-        edit_revision: u64,
+        read: &crate::import::CandidateAsRead,
         failure: &ImportFailure,
     ) -> Result<(), DbError> {
-        let content_hash = content_hash.to_string();
+        let read = read.clone();
         let failure = failure.clone();
-        let edit_revision = i64::try_from(edit_revision).map_err(|_| {
-            DbError::Message(format!(
-                "candidate edit revision {edit_revision} exceeds SQLite's integer range"
-            ))
-        })?;
         self.call(move |sql| {
-            let current_revision = sql
-                .query_row(
-                    "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
-                    [&content_hash],
-                    |row| row.get::<_, i64>(0),
-                )
-                .optional()?
-                .ok_or_else(|| {
-                    DbError::Message(
-                        "import failure has no current candidate state row".to_string(),
-                    )
-                })?;
-            if current_revision != edit_revision {
-                return Err(DbError::Message(format!(
-                    "candidate file decisions changed from revision {edit_revision}"
-                )));
-            }
+            super::super::candidate_revision::require_current(sql, &read)?;
+            let content_hash = read.content_hash.as_str();
             let error = failure.error.as_str();
             let failed_at = failure.failed_at.to_rfc3339();
             sql.execute(

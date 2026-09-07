@@ -76,20 +76,25 @@ impl CandidatePreparations {
             identified_at: self.database.now(),
         });
         prep.signals = Some(verdict.signals.clone());
-        if prep.author != crate::import::MetadataAuthor::User {
+        let metadata_changed = prep.author != crate::import::MetadataAuthor::User;
+        if metadata_changed {
             prep.author = match verdict.metadata.provenance {
                 Some(_) => crate::import::MetadataAuthor::Identification,
                 None => crate::import::MetadataAuthor::Nobody,
             };
             prep.metadata = verdict.metadata.clone();
             prep.assets_prepared = true;
-            prep.metadata_revision += 1;
         }
         Ok(matches!(
             self.database
-                .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
+                .save_candidate_preparation(
+                    prep,
+                    expected,
+                    metadata_changed,
+                    CandidateSaveExtras::default()
+                )
                 .await?,
-            CandidateSaved::Landed(_)
+            CandidateSaved::Landed { .. }
         ))
     }
 
@@ -188,10 +193,10 @@ impl CandidatePreparations {
         };
         match self
             .database
-            .save_candidate_preparation(prep, expected, extras)
+            .save_candidate_preparation(prep, expected, true, extras)
             .await?
         {
-            CandidateSaved::Landed(candidates) => Ok((next_revision, candidates)),
+            CandidateSaved::Landed { candidates, .. } => Ok((next_revision, candidates)),
             CandidateSaved::Superseded => Err(CandidateAsRead::files_moved(
                 read.file_edit_revision,
                 CandidateWrite::FileDecisions,
@@ -324,18 +329,18 @@ impl CandidatePreparations {
         };
         prep.metadata = metadata;
         prep.assets_prepared = true;
-        prep.metadata_revision += 1;
-        let revision = prep.metadata_revision;
         let extras = CandidateSaveExtras {
             file_tag_snapshot,
             reshaped_files: None,
         };
         match self
             .database
-            .save_candidate_preparation(prep, expected, extras)
+            .save_candidate_preparation(prep, expected, true, extras)
             .await?
         {
-            CandidateSaved::Landed(_) => Ok(revision),
+            CandidateSaved::Landed {
+                metadata_revision, ..
+            } => Ok(metadata_revision),
             CandidateSaved::Superseded => Err(crate::library::LibraryError::Import(
                 "candidate changed before its metadata was stored".into(),
             )),

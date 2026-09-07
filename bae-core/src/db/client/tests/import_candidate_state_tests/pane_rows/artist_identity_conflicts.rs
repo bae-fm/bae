@@ -38,7 +38,7 @@ async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
     db.insert_artist(&musicbrainz).await.unwrap();
     let expected = artist_identity_failure(&discogs, &musicbrainz);
 
-    db.save_import_candidate_failure(&hash, 0, &expected)
+    db.save_import_candidate_failure(&current_candidate_as_read(&db, &hash).await, &expected)
         .await
         .unwrap();
 
@@ -203,12 +203,16 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     .await
     .unwrap();
     let failure = artist_identity_failure(&discogs, &musicbrainz);
-    db.save_import_candidate_failure(&hash, 0, &failure)
+    db.save_import_candidate_failure(&current_candidate_as_read(&db, &hash).await, &failure)
         .await
         .unwrap();
-    db.save_import_candidate_failure(&pending_hash, 0, &failure)
+    db.save_import_candidate_failure(&current_candidate_as_read(&db, &pending_hash).await, &failure)
         .await
         .unwrap();
+
+    let accepted = current_candidate_as_read(&db, &pending_hash).await;
+    let mut stale_preparation = db.load_candidate_preparation(&pending_hash).await.unwrap()
+        .expect("the pending artist assignments have a stored preparation");
 
     db.merge_import_artist_identity_conflict(&hash, &discogs.id)
         .await
@@ -297,6 +301,42 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         .unwrap()
         .failure
         .is_none());
+
+    let current = current_candidate_as_read(&db, &pending_hash).await;
+    assert!(current.metadata_revision > accepted.metadata_revision,
+        "merging pending artist assignments changes the accepted draft version");
+    assert_eq!(current.file_edit_revision, accepted.file_edit_revision);
+    let merged = db.load_candidate_preparation(&pending_hash).await.unwrap().unwrap();
+    // Make the old proposed edit independent of the removed artist's foreign
+    // key, so only the stale revision can refuse this otherwise valid draft.
+    stale_preparation.metadata.draft.album_title = "Stale replacement".to_string();
+    stale_preparation.metadata.draft.album_artist_assignments = vec![new_artist("Replacement artist")];
+    for track in &mut stale_preparation.metadata.draft.tracks {
+        track.edit.artist_assignments = TrackArtistAssignments::AlbumArtists;
+    }
+    let saved = db.save_candidate_preparation(
+        stale_preparation,
+        crate::db::CandidateSaveExpectation {
+            edit_revision: accepted.file_edit_revision,
+            metadata_revision: accepted.metadata_revision,
+            scanned: None,
+        },
+        true,
+        crate::db::CandidateSaveExtras::default(),
+    ).await.unwrap();
+    assert!(matches!(saved, crate::db::CandidateSaved::Superseded));
+    assert_eq!(db.load_candidate_preparation(&pending_hash).await.unwrap(), Some(merged));
+
+    let old_failure = ImportFailure::error_only("an older attempt failed", fixed_identified_at());
+    db.save_import_candidate_failure(&accepted, &old_failure).await
+        .expect_err("an attempt predating the artist merge cannot write a failure");
+    let current_failure = ImportFailure::error_only("the current attempt failed", fixed_identified_at());
+    db.save_import_candidate_failure(&current, &current_failure).await.unwrap();
+    db.clear_import_candidate_failure(&accepted).await
+        .expect_err("an attempt predating the artist merge cannot clear a newer failure");
+    assert_eq!(db.load_import_candidate_pane_rows(&pending_hash).await.unwrap().failure,
+        Some(current_failure));
+
 }
 
 #[tokio::test]
@@ -321,9 +361,7 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
     };
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
-    db.save_import_candidate_failure(
-        &hash,
-        0,
+    db.save_import_candidate_failure(&current_candidate_as_read(&db, &hash).await,
         &artist_identity_failure(&discogs, &musicbrainz),
     )
     .await

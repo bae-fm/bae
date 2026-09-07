@@ -73,8 +73,7 @@ impl ImportService {
     pub(super) async fn do_import(&self, command: ImportCommand, expectation: ImportExpectation) {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
-        let content_hash = expectation.candidate.content_hash.clone();
-        let edit_revision = expectation.candidate.file_edit_revision;
+        let accepted = expectation.candidate.clone();
         let result = self
             .prepare_and_run_folder_import(
                 import_id.clone(),
@@ -104,7 +103,7 @@ impl ImportService {
             // to see.
             if let Err(write) = self
                 .library_manager
-                .save_import_candidate_failure(&content_hash, edit_revision, &failure)
+                .save_import_candidate_failure(&accepted, &failure)
                 .await
             {
                 error!("could not record the failed import of {candidate_key}: {write}");
@@ -201,6 +200,18 @@ impl ImportService {
         .map_err(|error| crate::import::ImportError::Internal {
             detail: format!("file identity validation task failed: {error}"),
         })??;
+        let file_tag_snapshot = match expectation.file_tag_snapshot_revision {
+            Some(revision) => Some(
+                library_manager
+                    .load_candidate_file_tag_snapshot_at_revision(
+                        stored_candidate.watched_folder_path(),
+                        &candidate_key,
+                        revision,
+                    )
+                    .await?,
+            ),
+            None => None,
+        };
         let source_name = stored_candidate.name().to_string();
         let categorized = stored_candidate.into_files();
 
@@ -224,7 +235,7 @@ impl ImportService {
         let user_edit = Some(preparation.draft.release_edit().shape()?);
         let prepared_assets = preparation.assets;
 
-        let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
+        let file_tag_snapshot = file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
             if !snapshot
                 .files

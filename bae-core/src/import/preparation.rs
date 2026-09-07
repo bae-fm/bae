@@ -21,8 +21,8 @@ use std::collections::BTreeSet;
 /// Every write composed against what its caller read carries this, and is
 /// refused when either revision has moved. The two are never one number:
 /// `file_edit_revision` is the folder's file shape, which the scan rows carry
-/// and the list and pane queries join on, while `metadata_revision` counts
-/// writes to the draft.
+/// and the list and pane queries join on, while `metadata_revision` identifies
+/// a stored draft version and is never reused after a candidate is removed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateAsRead {
     /// `CategorizedFiles::content_hash` — which candidate this is, and the row
@@ -119,7 +119,7 @@ pub(crate) struct CommittingCandidate {
     /// The state row's file and metadata revisions, or `None` when no row
     /// is stored under the content hash the import was prepared from.
     pub prepared_revisions: Option<(u64, u64)>,
-    pub file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
+    pub file_tag_snapshot_revision: Option<u64>,
 }
 
 /// One candidate's stored state.

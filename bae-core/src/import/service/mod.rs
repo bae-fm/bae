@@ -124,7 +124,7 @@ pub(crate) enum ImportWorkerMessage {
 #[derive(Debug, Clone)]
 pub(crate) struct ImportExpectation {
     pub(crate) candidate: crate::import::CandidateAsRead,
-    pub(crate) file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
+    pub(crate) file_tag_snapshot_revision: Option<u64>,
 }
 
 impl ImportExpectation {
@@ -161,8 +161,8 @@ impl ImportExpectation {
                 "{candidate_key}'s prepared metadata changed before its import committed"
             ));
         }
-        if let Some(snapshot) = &self.file_tag_snapshot {
-            if current.file_tag_snapshot.as_ref() != Some(snapshot) {
+        if let Some(revision) = self.file_tag_snapshot_revision {
+            if current.file_tag_snapshot_revision != Some(revision) {
                 return Err(format!(
                     "{candidate_key}'s file-tag reading changed before its import committed"
                 ));

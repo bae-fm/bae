@@ -657,6 +657,18 @@ impl Fixture {
         self.stored().await.remove(&hash)
     }
 
+    async fn candidate_as_read(&self, dir: &Path) -> crate::import::CandidateAsRead {
+        let state = self
+            .stored_for(dir)
+            .await
+            .expect("the scanned candidate has stored revisions");
+        crate::import::CandidateAsRead {
+            content_hash: state.content_hash,
+            file_edit_revision: state.file_edits.revision,
+            metadata_revision: state.metadata_revision,
+        }
+    }
+
     async fn identified_for(&self, dir: &Path) -> Option<DbCandidateIdentifyResult> {
         self.stored_for(dir).await.and_then(|row| row.identify)
     }
@@ -774,11 +786,7 @@ impl Fixture {
             .save_candidate_verdict_if_current(
                 &dir.to_string_lossy(),
                 &NewImportCandidateVerdict {
-                    candidate: crate::import::CandidateAsRead {
-                        content_hash: self.content_hash(dir),
-                        file_edit_revision: 0,
-                        metadata_revision: 0,
-                    },
+                    candidate: self.candidate_as_read(dir).await,
                     folder_path: dir.to_string_lossy().into_owned(),
                     verdict,
                     // A computed disc ID that names the log it came from, so
