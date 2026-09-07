@@ -196,14 +196,7 @@ mod tests {
 
     #[test]
     fn desktop_initialization_does_not_reenter_the_owned_runtime() {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        let (manager, _tmp) = support::setup_fresh_library(&runtime);
-        let services = runtime
-            .block_on(AppServices::for_test(manager))
-            .expect("app services");
+        let (runtime, services, _tmp) = support::runtime_with_services();
 
         runtime.block_on(async {
             let desktop = DesktopServices::start(services, tokio::runtime::Handle::current()).await;
@@ -213,14 +206,7 @@ mod tests {
 
     #[test]
     fn desktop_controller_calls_do_not_reenter_the_owned_runtime() {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        let (manager, _tmp) = support::setup_fresh_library(&runtime);
-        let services = runtime
-            .block_on(AppServices::for_test(manager))
-            .expect("app services");
+        let (runtime, services, _tmp) = support::runtime_with_services();
         let desktop = runtime.block_on(DesktopServices::start(services, runtime.handle().clone()));
 
         runtime.block_on(async {
@@ -241,14 +227,7 @@ mod tests {
     /// the persisted config untouched — no half-applied enable.
     #[test]
     fn set_subsonic_config_rolls_back_persisted_config_on_runtime_error() {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        let (manager, _tmp) = support::setup_fresh_library(&runtime);
-        let services = runtime
-            .block_on(AppServices::for_test(manager))
-            .expect("app services");
+        let (runtime, services, _tmp) = support::runtime_with_services();
         services
             .set_subsonic_password("s3cret".to_string())
             .expect("seed keyring password");

@@ -5,11 +5,7 @@ fn driven_disagreement() -> IdentifyState {
     let (state, _) = update(
         started(),
         signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 7,
-                source_file: None,
-            },
+            disc("d", 7),
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["BAR"]),
             },
@@ -96,20 +92,7 @@ fn toggle_excludes_discid_then_re_includes() {
 /// and the exclusion is honored once the lookups settle.
 #[test]
 fn toggle_during_triangulation_keeps_looking_up() {
-    let (state, effects) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["BAR"]),
-            },
-            &[],
-        ),
-    );
+    let (state, effects) = update(started(), disc_and_codes("d", &["BAR"]));
     assert!(matches!(state, IdentifyState::Triangulating { .. }));
     assert!(effects
         .iter()
@@ -171,20 +154,7 @@ fn toggle_during_triangulation_keeps_looking_up() {
 /// part of the active evidence and cannot invalidate the remaining answer.
 #[test]
 fn excluded_in_flight_disc_failure_does_not_fail_the_barcode_answer() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["BAR"]),
-            },
-            &[],
-        ),
-    );
+    let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
     let (state, _) = step(
         state,
         IdentifyEvent::SignalToggled {
@@ -218,20 +188,7 @@ fn excluded_in_flight_disc_failure_does_not_fail_the_barcode_answer() {
 /// lookups from the retained signals.
 #[test]
 fn rerun_re_dispatches_lookups() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["BAR"]),
-            },
-            &[],
-        ),
-    );
+    let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {

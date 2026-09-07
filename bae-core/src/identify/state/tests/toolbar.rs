@@ -8,15 +8,7 @@
 fn state_with_catalog_offered(providers: Vec<MetadataSource>) -> IdentifyState {
     let (state, _) = update(
         started_with(providers),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &["LBL 001"],
-        ),
+        signals(disc("disc-hash", 5), BarcodeSignal::Absent, &["LBL 001"]),
     );
     let (state, _) = step(
         state,
@@ -33,11 +25,7 @@ fn toolbar_while_triangulating_shows_spinners() {
     let (state, _) = update(
         started(),
         signals(
-            DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
+            disc("disc-hash", 5),
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["012345678905"]),
             },
@@ -83,11 +71,7 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
     let (state, _) = update(
         started(),
         signals_with_catalogs(
-            DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
+            disc("disc-hash", 5),
             BarcodeSignal::Absent,
             vec![
                 SourcedValue::new("LBL 001".to_string(), SignalOrigin::FolderName),
@@ -219,20 +203,7 @@ fn checking_the_chosen_catalog_number_again_clears_it() {
 fn toolbar_shows_failed_disc_id_lookup() {
     // The disc-ID lookup fails while the barcode is still in flight, so the badge
     // must read Failed rather than keep spinning.
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["012345678905"]),
-            },
-            &[],
-        ),
-    );
+    let (state, _) = update(started(), disc_and_codes("disc-hash", &["012345678905"]));
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupFailed {
@@ -255,20 +226,7 @@ fn toolbar_shows_failed_disc_id_lookup() {
 
 #[test]
 fn toolbar_shows_failed_barcode_lookup() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["012345678905"]),
-            },
-            &[],
-        ),
-    );
+    let (state, _) = update(started(), disc_and_codes("disc-hash", &["012345678905"]));
     let failure = LookupFailure::Diagnostic {
         detail: "provider lookup failed".to_string(),
     };
@@ -330,18 +288,7 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
 /// failure must not be persisted as a permanent verdict.
 #[test]
 fn toolbar_keeps_failed_disc_id_lookup_after_settle() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &[],
-        ),
-    );
+    let (state, _) = update(started(), signals(disc("disc-hash", 5), BarcodeSignal::Absent, &[]));
     let failure = LookupFailure::Provider { status: Some(503) };
     let (state, _) = step(
         state,
@@ -402,18 +349,7 @@ fn pair_in_library(release_id: &str, group_id: Option<&str>) -> (MetadataResult,
 /// with `matches`.
 #[test]
 fn found_carries_in_library_status_through() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &[],
-        ),
-    );
+    let (state, _) = disc_only_started();
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
@@ -448,18 +384,7 @@ fn found_carries_in_library_status_through() {
 /// re-including it restores the `Found`.
 #[test]
 fn toggle_from_found_re_derives_terminal_state() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &[],
-        ),
-    );
+    let (state, _) = disc_only_started();
     let (found, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
@@ -498,20 +423,7 @@ fn toggle_from_found_re_derives_terminal_state() {
 /// failed automatic lookup instead of presenting the disc's partial answer.
 #[test]
 fn barcode_failure_before_disc_settles_is_retained_through_combine() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["BAR"]),
-            },
-            &[],
-        ),
-    );
+    let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
 
     let failure = LookupFailure::Provider { status: Some(500) };
     let source_failure = SourceFailure {

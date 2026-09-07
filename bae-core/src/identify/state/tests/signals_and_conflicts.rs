@@ -122,29 +122,32 @@ fn signals_with_catalogs(
     }
 }
 
+/// A disc ID computed for `track_count` tracks. `source_file` stays `None`
+/// throughout these tests — the reducer never reads it.
+fn disc(disc_id: &str, track_count: u32) -> DiscIdSignal {
+    DiscIdSignal::Computed {
+        disc_id: disc_id.to_string(),
+        track_count,
+        source_file: None,
+    }
+}
+
 /// The disc ID computed for five tracks and nothing else scanned: no barcode,
 /// and only the named catalog numbers on offer.
 fn disc_only(catalogs: &[&str]) -> Signals {
-    signals(
-        DiscIdSignal::Computed {
-            disc_id: "d".to_string(),
-            track_count: 5,
-            source_file: None,
-        },
-        BarcodeSignal::Absent,
-        catalogs,
-    )
+    signals(disc("d", 5), BarcodeSignal::Absent, catalogs)
+}
+
+/// The opener most tests share: a MusicBrainz run given the disc ID alone.
+fn disc_only_started() -> (IdentifyState, Vec<Effect>) {
+    update(started(), disc_only(&[]))
 }
 
 /// The disc ID computed, with the given barcode codes settled — both providers'
 /// walks start on the first code.
 fn disc_and_codes(disc_id: &str, codes: &[&str]) -> Signals {
     signals(
-        DiscIdSignal::Computed {
-            disc_id: disc_id.to_string(),
-            track_count: 5,
-            source_file: None,
-        },
+        disc(disc_id, 5),
         BarcodeSignal::Settled {
             codes: artwork_codes(codes),
         },
@@ -193,15 +196,7 @@ fn started_enters_triangulating_awaiting_signals() {
 #[test]
 fn disc_computed_dispatches_lookup_idempotently() {
     let snapshot = || {
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Scanning { codes: vec![] },
-            &[],
-        )
+        signals(disc("d", 5), BarcodeSignal::Scanning { codes: vec![] }, &[])
     };
     let (state, effects) = update(started(), snapshot());
     assert!(effects
@@ -305,10 +300,7 @@ fn barcode_walks_start_only_from_settled() {
 
 #[test]
 fn disc_only_resolves_to_found_with_provenance() {
-    let (state, _) = update(
-        started(),
-        disc_only(&[]),
-    );
+    let (state, _) = disc_only_started();
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
@@ -763,10 +755,7 @@ fn retry_with_nothing_failed_changes_nothing() {
 /// about.
 #[test]
 fn retry_re_asks_a_failed_disc_id_lookup() {
-    let (state, _) = update(
-        started(),
-        disc_only(&[]),
-    );
+    let (state, _) = disc_only_started();
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupFailed {
@@ -795,10 +784,7 @@ fn retry_re_asks_a_failed_disc_id_lookup() {
 
 #[test]
 fn failed_discid_lookup_preserves_track_count() {
-    let (state, _) = update(
-        started(),
-        disc_only(&[]),
-    );
+    let (state, _) = disc_only_started();
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupFailed {

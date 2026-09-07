@@ -93,39 +93,56 @@ fn remote_connect(channel: FakeChannel) -> RemoteConnect {
     )
 }
 
+/// The arrange every remote test shares: a service over one release of `tracks`,
+/// that release playing from its first track, and the session handed to a fake
+/// device by `handle_play_on`. `position` seeds the live shared position when
+/// given; `None` leaves whatever the seeded service had. Returns the service,
+/// the fake channel's shared state and the progress receiver.
+async fn playing_remote_fixture(
+    tracks: &[&str],
+    position: Option<std::time::Duration>,
+) -> (
+    TempDir,
+    PlaybackService,
+    Arc<Mutex<FakeChannelState>>,
+    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+) {
+    const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
+    let (home, mut service, rx) = remote_service(&[(RELEASE, tracks)]).await;
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release(RELEASE.to_string()),
+            tracks.iter().map(|t| (*t).to_string()).collect(),
+            ContextStart::Index(0),
+        )
+    });
+    service.slot = active_slot(
+        test_prepared_track(tracks[0], create_sparse_buffer(1_024)),
+        TrackPhase::Playing,
+    );
+    if let Some(position) = position {
+        *service.current_position_shared.lock().unwrap() = Some(position);
+    }
+
+    let channel = FakeChannel::new();
+    let state = channel.state.clone();
+    service.handle_play_on(remote_connect(channel)).await;
+    (home, service, state, rx)
+}
+
 /// `play_on` mid-track keeps the current track and queue position, switches the
 /// renderer to Remote, and reissues the current track to the device at its
 /// current position (a LOAD plus a seek).
 #[tokio::test]
 async fn play_on_reissues_current_track_at_position() {
-    let (_home, mut service, _rx) = remote_service(&[(
-        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+    let (_home, service, state, _rx) = playing_remote_fixture(
         &[
             "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
             "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
         ],
-    )])
+        Some(std::time::Duration::from_secs(30)),
+    )
     .await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-            vec![
-                "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
-                "08c7fe07-b56a-4c63-8df6-ad2967fa0653".to_string(),
-            ],
-            ContextStart::Index(0),
-        )
-    });
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(
-        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
-        TrackPhase::Playing,
-    );
-    *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::from_secs(30));
-
-    let channel = FakeChannel::new();
-    let state = channel.state.clone();
-    service.handle_play_on(remote_connect(channel)).await;
 
     assert!(
         service.renderer.is_remote(),
@@ -153,34 +170,14 @@ async fn play_on_reissues_current_track_at_position() {
 /// loads it onto the device — the same advance path local end-of-track uses.
 #[tokio::test]
 async fn remote_finished_advances_queue_and_loads_next() {
-    let (_home, mut service, _rx) = remote_service(&[(
-        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+    let (_home, mut service, state, _rx) = playing_remote_fixture(
         &[
             "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
             "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
         ],
-    )])
+        Some(std::time::Duration::ZERO),
+    )
     .await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-            vec![
-                "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
-                "08c7fe07-b56a-4c63-8df6-ad2967fa0653".to_string(),
-            ],
-            ContextStart::Index(0),
-        )
-    });
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(
-        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
-        TrackPhase::Playing,
-    );
-    *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
-
-    let channel = FakeChannel::new();
-    let state = channel.state.clone();
-    service.handle_play_on(remote_connect(channel)).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
 
     service
@@ -210,26 +207,8 @@ async fn remote_finished_advances_queue_and_loads_next() {
 /// and the position store update exactly as for local playback.
 #[tokio::test]
 async fn remote_status_feeds_progress() {
-    let (_home, mut service, mut rx) = remote_service(&[(
-        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
-        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-    )])
-    .await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-            vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
-            ContextStart::Index(0),
-        )
-    });
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(
-        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
-        TrackPhase::Playing,
-    );
-
-    let channel = FakeChannel::new();
-    service.handle_play_on(remote_connect(channel)).await;
+    let (_home, mut service, _state, mut rx) =
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], None).await;
     // Drain the setup events.
     while rx.try_recv().is_ok() {}
 
@@ -266,27 +245,8 @@ async fn remote_status_feeds_progress() {
 /// and announces `RemoteStatusChanged(None)` so the UI leaves the remote state.
 #[tokio::test]
 async fn stop_remote_stops_device_and_returns_to_local() {
-    let (_home, mut service, mut rx) = remote_service(&[(
-        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
-        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-    )])
-    .await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-            vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
-            ContextStart::Index(0),
-        )
-    });
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(
-        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
-        TrackPhase::Playing,
-    );
-
-    let channel = FakeChannel::new();
-    let state = channel.state.clone();
-    service.handle_play_on(remote_connect(channel)).await;
+    let (_home, mut service, state, mut rx) =
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], None).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
@@ -319,27 +279,8 @@ async fn stop_remote_stops_device_and_returns_to_local() {
 /// hit; the DLNA channel is held to the same contract in its own tests.
 #[tokio::test]
 async fn stop_while_remote_stops_device_and_returns_to_local() {
-    let (_home, mut service, mut rx) = remote_service(&[(
-        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
-        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-    )])
-    .await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-            vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
-            ContextStart::Index(0),
-        )
-    });
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(
-        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
-        TrackPhase::Playing,
-    );
-
-    let channel = FakeChannel::new();
-    let state = channel.state.clone();
-    service.handle_play_on(remote_connect(channel)).await;
+    let (_home, mut service, state, mut rx) =
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], None).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
@@ -369,36 +310,19 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
     );
 }
 
-/// Set up a remote-playback service over a single fake-backed track `t1`, current
-/// at position 0, and return the service plus the fake channel's shared state.
+/// [`playing_remote_fixture`] over one track at position zero, waited until the
+/// device has taken its first load.
 async fn remote_over_fake() -> (
     TempDir,
     PlaybackService,
     Arc<Mutex<FakeChannelState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
-    let (home, mut service, rx) = remote_service(&[(
-        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+    let (home, service, state, rx) = playing_remote_fixture(
         &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-    )])
+        Some(std::time::Duration::ZERO),
+    )
     .await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-            vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
-            ContextStart::Index(0),
-        )
-    });
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(
-        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
-        TrackPhase::Playing,
-    );
-    *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
-
-    let channel = FakeChannel::new();
-    let state = channel.state.clone();
-    service.handle_play_on(remote_connect(channel)).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     (home, service, state, rx)
 }

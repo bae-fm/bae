@@ -17,8 +17,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use support::start_test_import;
 use support::{
-    open_test_library, samples_as_f32, seed_discogs_test_release, tracing_init,
-    try_wait_for_import_complete, wait_for_import_complete,
+    imported_release_setup, open_test_library, samples_as_f32, seed_discogs_test_release,
+    tracing_init, try_wait_for_import_complete, wait_for_import_complete,
 };
 use tempfile::TempDir;
 use tokio::time::timeout;
@@ -438,65 +438,6 @@ fn start_capture_service_with_restore(
     (handle, capture_stream_rx)
 }
 
-struct ImportedReleaseSetup {
-    library_manager: LibraryManager,
-    runtime_handle: tokio::runtime::Handle,
-    track_ids: Vec<String>,
-    release_id: String,
-    album_dir: std::path::PathBuf,
-    temp_dir: TempDir,
-}
-
-async fn imported_release_setup<G, C>(
-    release: DiscogsRelease,
-    candidate_key: &str,
-    import_id: String,
-    generate_files: G,
-    configure: C,
-) -> Result<ImportedReleaseSetup, Box<dyn std::error::Error>>
-where
-    G: FnOnce(&std::path::Path),
-    C: FnOnce(&LibraryManager) -> Result<(), Box<dyn std::error::Error>>,
-{
-    tracing_init();
-    let temp_dir = TempDir::new()?;
-    let album_dir = temp_dir.path().join("album");
-    std::fs::create_dir_all(&album_dir)?;
-
-    let (library_manager, _database) = open_test_library(temp_dir.path()).await;
-    let runtime_handle = tokio::runtime::Handle::current();
-    configure(&library_manager)?;
-
-    let release_id_key = seed_discogs_test_release(release);
-    generate_files(&album_dir);
-
-    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
-    import_handle
-        .send_command(ImportCommand {
-            candidate_key: candidate_key.to_string(),
-            ..support::folder_import(
-                &import_id,
-                album_dir.clone(),
-                support::discogs_release(release_id_key),
-            )
-        })
-        .await
-        .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
-    let tracks = library_manager.get_tracks_for_release(&release_id).await?;
-    let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
-
-    Ok(ImportedReleaseSetup {
-        library_manager,
-        runtime_handle,
-        track_ids,
-        release_id,
-        album_dir,
-        temp_dir,
-    })
-}
-
 /// The three-track local FLAC album every `PlaybackTestFixture` plays,
 /// imported once (decode-verify + DB writes) into a template library directory
 /// that outlives every test. Each `PlaybackTestFixture::new` clones the
@@ -525,7 +466,7 @@ static PLAYBACK_FIXTURE_TEMPLATE: std::sync::LazyLock<PlaybackFixtureTemplate> =
             tokio::runtime::Runtime::new().expect("build the playback template import's runtime");
         let template = rt.block_on(async {
             let import_ids = SequentialIdProvider::new("playback-fixture-template");
-            let setup = imported_release_setup(
+            let (_library_manager, imported) = imported_release_setup(
                 create_test_album(),
                 "test",
                 import_ids.new_id(),
@@ -537,13 +478,13 @@ static PLAYBACK_FIXTURE_TEMPLATE: std::sync::LazyLock<PlaybackFixtureTemplate> =
             .await
             .expect("import the playback fixture template release");
             assert!(
-                !setup.track_ids.is_empty(),
+                !imported.track_ids.is_empty(),
                 "the playback fixture template should import tracks"
             );
             PlaybackFixtureTemplate {
-                album_dir: setup.album_dir.clone(),
-                dir: setup.temp_dir,
-                track_ids: setup.track_ids,
+                album_dir: imported.album_dir.clone(),
+                dir: imported.temp_dir,
+                track_ids: imported.track_ids,
             }
         });
         drop(rt);

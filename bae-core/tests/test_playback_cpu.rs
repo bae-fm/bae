@@ -30,10 +30,6 @@ use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_test_support as support;
 use serial_test::serial;
 use std::time::{Duration, Instant};
-use support::start_test_import;
-use support::{
-    open_test_library, seed_discogs_test_release, tracing_init, wait_for_import_complete,
-};
 use tempfile::TempDir;
 use tokio::time::timeout;
 
@@ -347,45 +343,16 @@ impl PlaybackTestFixture {
         expected_tracks: usize,
         source_file: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        tracing_init();
-        let temp_dir = TempDir::new()?;
-        let album_dir = temp_dir.path().join("album");
-        std::fs::create_dir_all(&album_dir)?;
-
-        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
-        let runtime_handle = tokio::runtime::Handle::current();
-
-        generate_files(&album_dir);
-
-        let release_id_key = seed_discogs_test_release(discogs_release);
-        let import_handle =
-            start_test_import(runtime_handle.clone(), library_manager.clone()).await;
-
-        let import_id = uuid::Uuid::new_v4().to_string();
-
-        import_handle
-            .send_command(support::folder_import(
-                &import_id,
-                album_dir.clone(),
-                support::discogs_release(release_id_key),
-            ))
-            .await
-            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
-        let mut progress_rx = import_handle.subscribe_import(import_id);
-        let (_release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
-
-        let albums = library_manager.get_albums(&[]).await?;
-        assert!(!albums.is_empty(), "Should have imported album");
-        let releases = library_manager
-            .get_releases_for_album(&albums[0].id)
-            .await?;
-        assert!(!releases.is_empty(), "Should have imported release");
-        let tracks = library_manager
-            .get_tracks_for_release(&releases[0].id)
-            .await?;
-        let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
+        let (library_manager, imported) = support::imported_release_setup(
+            discogs_release,
+            "test",
+            uuid::Uuid::new_v4().to_string(),
+            generate_files,
+            |_| Ok(()),
+        )
+        .await?;
         assert_eq!(
-            track_ids.len(),
+            imported.track_ids.len(),
             expected_tracks,
             "Should have {} tracks",
             expected_tracks
@@ -394,7 +361,7 @@ impl PlaybackTestFixture {
         // Real-time probe sink: drives the real decode + drain at real time and
         // discards the samples, so playback CPU is measured with no device.
         let playback_handle = library_manager.start_playback_service_with_audio_device(
-            runtime_handle,
+            tokio::runtime::Handle::current(),
             100,
             true,
             Box::new(bae_core::playback::RealtimeProbeDevice),
@@ -404,9 +371,9 @@ impl PlaybackTestFixture {
         Ok(Self {
             playback_handle,
             progress_rx,
-            track_ids,
-            source_file: album_dir.join(source_file),
-            _temp_dir: temp_dir,
+            track_ids: imported.track_ids,
+            source_file: imported.album_dir.join(source_file),
+            _temp_dir: imported.temp_dir,
         })
     }
 }

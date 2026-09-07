@@ -704,6 +704,74 @@ pub async fn setup_test_library() -> (
     (library_manager, database, temp_dir)
 }
 
+/// What an import landed, beside the library manager it landed through. Holds
+/// no service of its own, so a fixture can keep it whole while handing the
+/// manager to whatever it starts.
+pub struct ImportedRelease {
+    pub track_ids: Vec<String>,
+    pub release_id: String,
+    /// The folder the audio was written into, for a test that reads a real file.
+    pub album_dir: std::path::PathBuf,
+    /// Owns the library's files, so it must outlive the manager.
+    pub temp_dir: tempfile::TempDir,
+}
+
+/// Import one Discogs-identified release from a folder, on the calling test's
+/// runtime: open a fresh library, apply whatever settings the import must see
+/// with `configure`, seed `release` for the fake Discogs endpoint, write the
+/// audio with `generate_files`, run the import to completion, and read back the
+/// tracks it landed. The arrange every playback test binary starts from.
+pub async fn imported_release_setup<G, C>(
+    release: bae_core::discogs::DiscogsRelease,
+    candidate_key: &str,
+    import_id: String,
+    generate_files: G,
+    configure: C,
+) -> Result<(bae_core::library::LibraryManager, ImportedRelease), Box<dyn std::error::Error>>
+where
+    G: FnOnce(&std::path::Path),
+    C: FnOnce(&bae_core::library::LibraryManager) -> Result<(), Box<dyn std::error::Error>>,
+{
+    tracing_init();
+    let temp_dir = tempfile::TempDir::new()?;
+    let album_dir = temp_dir.path().join("album");
+    std::fs::create_dir_all(&album_dir)?;
+
+    let (library_manager, _database) = open_test_library(temp_dir.path()).await;
+    let runtime_handle = tokio::runtime::Handle::current();
+    configure(&library_manager)?;
+
+    let release_id_key = seed_discogs_test_release(release);
+    generate_files(&album_dir);
+
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
+    import_handle
+        .send_command(bae_core::import::ImportCommand {
+            candidate_key: candidate_key.to_string(),
+            ..folder_import(
+                &import_id,
+                album_dir.clone(),
+                discogs_release(release_id_key),
+            )
+        })
+        .await
+        .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+    let mut progress_rx = import_handle.subscribe_import(import_id);
+    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
+    let tracks = library_manager.get_tracks_for_release(&release_id).await?;
+    let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
+
+    Ok((
+        library_manager,
+        ImportedRelease {
+            track_ids,
+            release_id,
+            album_dir,
+            temp_dir,
+        },
+    ))
+}
+
 /// Set up a fresh library + LibraryManager through the production creation and
 /// open paths. No sync manager — tests configure sync themselves via
 /// connect_*/save_s3_config.
@@ -731,6 +799,33 @@ pub fn setup_fresh_library(
     .expect("open library manager");
 
     (lm, tmp)
+}
+
+/// A multi-threaded runtime with every driver enabled, for a `#[test]` that has
+/// to `block_on` its async work rather than being a `#[tokio::test]` itself —
+/// the shape any test that also owns a runtime-driven service needs.
+pub fn multi_thread_runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("multi-threaded test runtime")
+}
+
+/// [`multi_thread_runtime`] with a fresh library's [`AppServices`] already built
+/// on it. The `TempDir` owns the library's files, so it must outlive both.
+///
+/// [`AppServices`]: bae_core::library::AppServices
+pub fn runtime_with_services() -> (
+    tokio::runtime::Runtime,
+    bae_core::library::AppServices,
+    tempfile::TempDir,
+) {
+    let runtime = multi_thread_runtime();
+    let (manager, tmp) = setup_fresh_library(&runtime);
+    let services = runtime
+        .block_on(bae_core::library::AppServices::for_test(manager))
+        .expect("app services");
+    (runtime, services, tmp)
 }
 
 /// A stable v4 UUID for a fixture moniker.

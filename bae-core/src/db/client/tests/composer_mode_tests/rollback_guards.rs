@@ -7,24 +7,9 @@ async fn failed_import_rollback_refuses_a_deletion_plan_that_changed_before_writ
         .unwrap()
         .with_timezone(&chrono::Utc);
 
-    let artist = DbArtist {
-        id: ARTIST_A.to_string(),
-        name: "Artist Name A".to_string(),
-        sort_name: None,
-        discogs_artist_id: None,
-        musicbrainz_artist_id: None,
-        created_at: now,
-    };
+    let artist = test_artist(ARTIST_A, "Artist Name A", now);
     db.insert_artist(&artist).await.unwrap();
-    let album = DbAlbum {
-        id: ALBUM_A.to_string(),
-        title: "Album Title A".to_string(),
-        artist_id: artist.id,
-        year: Some(2026),
-        primary_release_id: None,
-        is_compilation: false,
-        created_at: now,
-    };
+    let album = test_album(ALBUM_A, "Album Title A", &artist.id, now);
     let release = DbRelease::new_test(&album.id, REL_A);
     db.insert_album_with_release_and_tracks(&album, &release, &[], &[])
         .await
@@ -57,58 +42,15 @@ async fn fail_import_and_delete_release_retains_replay_owned_image_blobs() {
         .unwrap()
         .with_timezone(&chrono::Utc);
 
-    let artist = |id: &str| DbArtist {
-        id: id.to_string(),
-        name: id.to_string(),
-        sort_name: None,
-        discogs_artist_id: None,
-        musicbrainz_artist_id: None,
-        created_at: now,
-    };
+    // Every row here is named for its own id, so the assertions below can read
+    // a subject straight off the name.
+    let artist = |id: &str| test_artist(id, id, now);
     db.insert_artist(&artist(ARTIST_EXCLUSIVE)).await.unwrap();
     db.insert_artist(&artist(ARTIST_SHARED)).await.unwrap();
 
-    let pressing = || Pressing {
-        year: Some(2026),
-        format: Some("CD".to_string()),
-        label: None,
-        catalog_number: None,
-        country: None,
-        barcode: None,
-    };
-    let album = |id: &str, artist_id: &str| DbAlbum {
-        id: id.to_string(),
-        title: id.to_string(),
-        artist_id: artist_id.to_string(),
-        year: Some(2026),
-        primary_release_id: None,
-        is_compilation: false,
-        created_at: now,
-    };
-    let release = |id: &str, album_id: &str| DbRelease {
-        id: id.to_string(),
-        album_id: album_id.to_string(),
-        release_name: None,
-        pressing: pressing(),
-        disc_id: None,
-        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
-        remote: false,
-        source_folder_name: None,
-        content_hash: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: now,
-    };
-    let track = |id: &str, release_id: &str| DbTrack {
-        id: id.to_string(),
-        release_id: release_id.to_string(),
-        title: id.to_string(),
-        side: 1,
-        track_number: Some(1),
-        duration_ms: Some(1000),
-        discogs_position: None,
-        created_at: now,
-    };
+    let album = |id: &str, artist_id: &str| test_album(id, id, artist_id, now);
+    let release = |id: &str, album_id: &str| test_release(id, album_id, now);
+    let track = |id: &str, release_id: &str| test_track(id, release_id, id, now);
 
     // A prior surviving album references artist-shared, so the failed
     // import below must keep artist-shared and its image.
@@ -123,21 +65,14 @@ async fn fail_import_and_delete_release_retains_replay_owned_image_blobs() {
 
     let album_a = album(ALBUM_A, ARTIST_EXCLUSIVE);
     let release_a = release(RELEASE_A, ALBUM_A);
-    let file_path = tmp.path().join("Track A.flac");
-    let file_a = DbFile::new(
-        RELEASE_A,
+    let (track_files, file_a) = standalone_track_file(
+        &tmp,
+        track(TRACK_A, RELEASE_A),
+        FILE_A,
         "Track A.flac",
-        1024,
-        ContentType::Flac,
-        FILE_A.to_string(),
         now,
-    );
-    let file_a = prepare_release_file(file_a, &file_path).await;
-    let track_files = vec![crate::import::TrackFile::Standalone {
-        db_track: track(TRACK_A, RELEASE_A),
-        file_path,
-        source_audio: scanned_flac(),
-    }];
+    )
+    .await;
     // The failed release also credits artist-shared, so both artists are
     // rollback candidates; only artist-exclusive should be deleted.
     let album_artists = vec![DbAlbumArtist {
@@ -166,24 +101,24 @@ async fn fail_import_and_delete_release_retains_replay_owned_image_blobs() {
     let img_shared = image(ARTIST_SHARED, LibraryImageType::Artist);
     let bytes = [1u8, 2, 3];
 
-    db.finalize_import_atomic(
-        crate::db::ImportCommitGuard::UncheckedTestSetup,
-        Some(&album_a),
+    commit_import(
+        &db,
         &release_a,
-        &track_files,
-        crate::db::ImportRows {
-            album_artists: &album_artists,
+        Commit {
+            album: Some(&album_a),
+            track_files: &track_files,
+            rows: crate::db::ImportRows {
+                album_artists: &album_artists,
+                ..Default::default()
+            },
+            files: vec![file_a],
+            library_image: Some((&cover, &bytes)),
+            artist_images: &[(&img_exclusive, &bytes), (&img_shared, &bytes)],
+            primary_release_id: Some((&album_a.id, &release_a.id)),
             ..Default::default()
         },
-        vec![file_a],
-        Some((&cover, &bytes)),
-        &[(&img_exclusive, &bytes), (&img_shared, &bytes)],
-        Some((&album_a.id, &release_a.id)),
-        crate::config::HomeStorage::Opaque,
-        &[],
     )
-    .await
-    .unwrap();
+    .await;
 
     // The bytes coven holds for each host-provided image, before the rollback.
     let store_dir = coven::StoreDir::new(tmp.path());

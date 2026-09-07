@@ -350,50 +350,23 @@ impl CueFlacTestFixture {
         capture_device: Box<dyn bae_core::playback::AudioOutputDevice>,
         capture_stream_rx: tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        tracing_init();
-        let temp_dir = TempDir::new()?;
-        let album_dir = temp_dir.path().join("album");
-        std::fs::create_dir_all(&album_dir)?;
-
-        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
-        let runtime_handle = tokio::runtime::Handle::current();
-
-        // Use CUE/FLAC fixtures
-        let discogs_release = create_cue_flac_test_album();
-        let release_id_key = seed_discogs_test_release(discogs_release);
-        generate_cue_flac_files(&album_dir);
-
-        let import_handle =
-            start_test_import(runtime_handle.clone(), library_manager.clone()).await;
-
-        let import_id = uuid::Uuid::new_v4().to_string();
-
-        // Import without storage (local CUE/FLAC playback)
-        import_handle
-            .send_command(support::folder_import(
-                &import_id,
-                album_dir.clone(),
-                support::discogs_release(release_id_key),
-            ))
-            .await
-            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
-        let mut progress_rx = import_handle.subscribe_import(import_id);
-        let (_release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
-
-        let albums = library_manager.get_albums(&[]).await?;
-        assert!(!albums.is_empty(), "Should have imported album");
-        let releases = library_manager
-            .get_releases_for_album(&albums[0].id)
-            .await?;
-        assert!(!releases.is_empty(), "Should have imported release");
-        let tracks = library_manager
-            .get_tracks_for_release(&releases[0].id)
-            .await?;
-        let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
-        assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
+        // Import without storage (local CUE/FLAC playback).
+        let (library_manager, imported) = imported_release_setup(
+            create_cue_flac_test_album(),
+            "test",
+            uuid::Uuid::new_v4().to_string(),
+            generate_cue_flac_files,
+            |_| Ok(()),
+        )
+        .await?;
+        assert_eq!(
+            imported.track_ids.len(),
+            3,
+            "Should have 3 tracks from CUE/FLAC"
+        );
 
         let playback_handle = library_manager.start_playback_service_with_audio_device(
-            runtime_handle,
+            tokio::runtime::Handle::current(),
             100,
             true,
             capture_device,
@@ -403,9 +376,9 @@ impl CueFlacTestFixture {
         Ok(Self {
             playback_handle,
             progress_rx,
-            track_ids,
+            track_ids: imported.track_ids,
             capture_stream_rx,
-            _temp_dir: temp_dir,
+            _temp_dir: imported.temp_dir,
         })
     }
 }
@@ -428,7 +401,7 @@ impl SidePauseTestFixture {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let import_ids = SequentialIdProvider::new("side-pause-import");
         let import_id = import_ids.new_id();
-        let setup = imported_release_setup(
+        let (library_manager, imported) = imported_release_setup(
             create_side_pause_test_album(format, positions),
             "side-pause",
             import_id,
@@ -442,7 +415,7 @@ impl SidePauseTestFixture {
         )
         .await?;
         assert_eq!(
-            setup.track_ids.len(),
+            imported.track_ids.len(),
             3,
             "side-pause fixture imports 3 tracks"
         );
@@ -456,24 +429,22 @@ impl SidePauseTestFixture {
         // can only slow that sink down, never speed it up.
         let (capture_device, capture_stream_rx) =
             bae_core::playback::RealtimeCaptureAudioDevice::new();
-        let playback_handle = setup
-            .library_manager
-            .start_playback_service_with_audio_device(
-                setup.runtime_handle,
-                100,
-                true,
-                Box::new(capture_device),
-            );
+        let playback_handle = library_manager.start_playback_service_with_audio_device(
+            tokio::runtime::Handle::current(),
+            100,
+            true,
+            Box::new(capture_device),
+        );
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {
             playback_handle,
-            library_manager: setup.library_manager,
+            library_manager,
             progress_rx,
-            track_ids: setup.track_ids,
-            release_id: setup.release_id,
+            track_ids: imported.track_ids,
+            release_id: imported.release_id,
             capture_stream_rx,
-            _temp_dir: setup.temp_dir,
+            _temp_dir: imported.temp_dir,
         })
     }
 

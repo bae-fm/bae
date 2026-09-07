@@ -519,19 +519,20 @@ mod tests {
         panic!("timed out waiting for {what}");
     }
 
+    /// A controller over a fresh library, on the runtime it returns. The
+    /// `TempDir` owns that library's files, so it must outlive the controller.
     fn test_controller(
-        runtime: &tokio::runtime::Runtime,
         discovery: RendererDiscovery,
-    ) -> (Arc<CastController>, AppServices, tempfile::TempDir) {
-        use bae_test_support as support;
-
-        let (manager, tmp) = support::setup_fresh_library(runtime);
-        let services = runtime
-            .block_on(AppServices::for_test(manager))
-            .expect("app services");
+    ) -> (
+        tokio::runtime::Runtime,
+        Arc<CastController>,
+        AppServices,
+        tempfile::TempDir,
+    ) {
+        let (runtime, services, tmp) = bae_test_support::runtime_with_services();
         let controller =
             CastController::start(services.clone(), runtime.handle().clone(), discovery);
-        (controller, services, tmp)
+        (runtime, controller, services, tmp)
     }
 
     fn reported_cast_service(instance: &str, id: &str) -> ReportedRenderer {
@@ -553,11 +554,7 @@ mod tests {
     /// on makes the same two calls do their work.
     #[test]
     fn discovery_and_casting_follow_the_cast_setting() {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        let (controller, services, _tmp) = test_controller(&runtime, RendererDiscovery::builtin());
+        let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::builtin());
 
         assert!(
             !services.get_config().prefs.cast_enabled,
@@ -591,11 +588,7 @@ mod tests {
     /// watcher does this, so writing the setting is all a caller has to do.
     #[test]
     fn turning_casting_off_stops_browsing() {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        let (controller, services, _tmp) = test_controller(&runtime, RendererDiscovery::builtin());
+        let (_runtime, controller, services, _tmp) = test_controller(RendererDiscovery::builtin());
 
         services.set_cast_enabled(true).unwrap();
         controller.start_discovery();
@@ -613,11 +606,7 @@ mod tests {
     /// the setting is one gate rather than one per device source.
     #[test]
     fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        let (controller, services, _tmp) = test_controller(&runtime, RendererDiscovery::reported());
+        let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
 
         controller.start_discovery();
         controller.renderer_found(reported_cast_service("Kitchen", "cast-1"));
@@ -661,12 +650,7 @@ mod tests {
 
     #[test]
     fn ephemeral_server_start_does_not_reenter_the_owned_runtime() {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        let (controller, _services, _tmp) =
-            test_controller(&runtime, RendererDiscovery::reported());
+        let (runtime, controller, _services, _tmp) = test_controller(RendererDiscovery::reported());
 
         runtime.block_on(async {
             controller
@@ -737,16 +721,7 @@ mod tests {
     /// stopping the server frees the port.
     #[test]
     fn ephemeral_server_authenticates_minted_urls_and_stops() {
-        use bae_test_support as support;
-
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        let (manager, _tmp) = support::setup_fresh_library(&runtime);
-        let services = runtime
-            .block_on(AppServices::for_test(manager))
-            .expect("app services");
+        let (runtime, services, _tmp) = bae_test_support::runtime_with_services();
 
         runtime.block_on(async move {
             let server = EphemeralServer::start(services)

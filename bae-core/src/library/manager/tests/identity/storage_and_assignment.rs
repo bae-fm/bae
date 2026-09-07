@@ -59,6 +59,29 @@ fn discogs_identity(group: &str, release: &str) -> crate::import::ReleaseIdentit
     }
 }
 
+/// Insert `album`, then one release under it per `(group, release)` MusicBrainz
+/// identity named — the arrangement every `set_identity` test below starts
+/// from. The returned releases are in the order the identities were given.
+async fn seed_grouped_releases(
+    manager: &LibraryManager,
+    album: &DbAlbum,
+    identities: &[(&str, &str)],
+) -> Vec<DbRelease> {
+    manager.database.insert_album(album).await.unwrap();
+    let mut releases = Vec::with_capacity(identities.len());
+    for (group, release_id) in identities {
+        let release = create_test_release(&album.id);
+        manager.database.insert_release(&release).await.unwrap();
+        manager
+            .database
+            .insert_release_identities(&release.id, &[mb_identity(group, release_id)])
+            .await
+            .unwrap();
+        releases.push(release);
+    }
+    releases
+}
+
 #[tokio::test]
 async fn set_identity_to_file_tags_moves_release_to_fresh_album() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -137,21 +160,9 @@ async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
 
     // Album has two releases, both MB identities on group g1.
     let album = create_test_album();
-    let release1 = create_test_release(&album.id);
-    let release2 = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release1).await.unwrap();
-    manager.database.insert_release(&release2).await.unwrap();
-    manager
-        .database
-        .insert_release_identities(&release1.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release2.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
+    let releases =
+        seed_grouped_releases(&manager, &album, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
+    let release1 = &releases[0];
 
     // Re-point release1 at another pressing within g1. The new row still
     // agrees with release2's group, so release1 stays put.
@@ -217,42 +228,11 @@ async fn set_identity_creates_new_album_when_no_existing_album_fits() {
     let album_a = create_test_album();
     let mut album_b = create_test_album();
     album_b.title = "Other Album".to_string();
-    manager.database.insert_album(&album_a).await.unwrap();
-    manager.database.insert_album(&album_b).await.unwrap();
-
-    let release_alpha = create_test_release(&album_a.id);
-    let release_beta = create_test_release(&album_a.id);
-    let release_other = create_test_release(&album_b.id);
-    manager
-        .database
-        .insert_release(&release_alpha)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release(&release_beta)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release(&release_other)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_beta.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_other.id, &[mb_identity("g3", "g3-rel")])
-        .await
-        .unwrap();
+    let album_a_releases =
+        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
+    let release_alpha = &album_a_releases[0];
+    let release_beta = &album_a_releases[1];
+    seed_grouped_releases(&manager, &album_b, &[("g3", "g3-rel")]).await;
 
     // release_alpha takes on a brand-new MB group (g2). Its current
     // album (album_a) holds release_beta on g1, so it can't stay.
@@ -299,31 +279,10 @@ async fn set_identity_moves_release_to_matching_album() {
     let album_a = create_test_album();
     let mut album_b = create_test_album();
     album_b.title = "Other Album".to_string();
-    manager.database.insert_album(&album_a).await.unwrap();
-    manager.database.insert_album(&album_b).await.unwrap();
-
-    let release_alpha = create_test_release(&album_a.id);
-    let release_other = create_test_release(&album_b.id);
-    manager
-        .database
-        .insert_release(&release_alpha)
+    let release_alpha = seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel")])
         .await
-        .unwrap();
-    manager
-        .database
-        .insert_release(&release_other)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_other.id, &[mb_identity("g2", "g2-rel")])
-        .await
-        .unwrap();
+        .remove(0);
+    seed_grouped_releases(&manager, &album_b, &[("g2", "g2-rel")]).await;
 
     manager
         .set_identity(
@@ -369,29 +328,10 @@ async fn set_identity_keeps_vacated_album_when_other_releases_remain() {
     // album_a holds two releases, both on MB g1. Move release_alpha
     // out by giving it a different group.
     let album_a = create_test_album();
-    manager.database.insert_album(&album_a).await.unwrap();
-    let release_alpha = create_test_release(&album_a.id);
-    let release_beta = create_test_release(&album_a.id);
-    manager
-        .database
-        .insert_release(&release_alpha)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release(&release_beta)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_beta.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
+    let releases =
+        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
+    let release_alpha = &releases[0];
+    let release_beta = &releases[1];
 
     manager
         .set_identity(
@@ -512,22 +452,16 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
 
     // Two extra artists so the album carries multiple album_artists
     // rows beyond the primary (which lives on `albums.artist_id`).
-    let primary = DbArtist {
-        id: "755ab566-9e71-4a7f-88df-fc5f573f882f".to_string(),
-        name: "Primary".to_string(),
+    let artist = |id: &str, name: &str| DbArtist {
+        id: id.to_string(),
+        name: name.to_string(),
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
         created_at: Utc::now(),
     };
-    let secondary = DbArtist {
-        id: "1d4f0221-7e2b-4e87-8376-93eaf8998bd7".to_string(),
-        name: "Secondary".to_string(),
-        sort_name: None,
-        discogs_artist_id: None,
-        musicbrainz_artist_id: None,
-        created_at: Utc::now(),
-    };
+    let primary = artist("755ab566-9e71-4a7f-88df-fc5f573f882f", "Primary");
+    let secondary = artist("1d4f0221-7e2b-4e87-8376-93eaf8998bd7", "Secondary");
     manager.database.insert_artist(&primary).await.unwrap();
     manager.database.insert_artist(&secondary).await.unwrap();
 
@@ -537,52 +471,22 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
     // creation of a fresh album.
     let mut album_a = create_test_album();
     album_a.artist_id = primary.id.clone();
-    manager.database.insert_album(&album_a).await.unwrap();
-    manager
-        .database
-        .insert_album_artist(&DbAlbumArtist::new(
-            &album_a.id,
-            &primary.id,
-            0,
-            Uuid::new_v4().to_string(),
-            Utc::now(),
-        ))
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_album_artist(&DbAlbumArtist::new(
-            &album_a.id,
-            &secondary.id,
-            1,
-            Uuid::new_v4().to_string(),
-            Utc::now(),
-        ))
-        .await
-        .unwrap();
-
-    let release_alpha = create_test_release(&album_a.id);
-    let release_beta = create_test_release(&album_a.id);
-    manager
-        .database
-        .insert_release(&release_alpha)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release(&release_beta)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_beta.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
+    let releases =
+        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
+    let release_alpha = &releases[0];
+    for (position, artist_id) in [(0, &primary.id), (1, &secondary.id)] {
+        manager
+            .database
+            .insert_album_artist(&DbAlbumArtist::new(
+                &album_a.id,
+                artist_id,
+                position,
+                Uuid::new_v4().to_string(),
+                Utc::now(),
+            ))
+            .await
+            .unwrap();
+    }
 
     // release_alpha takes a different group → can't stay in album_a
     // (g1 disagrees with g2), no other album holds g2 → fresh album.
@@ -630,20 +534,10 @@ async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
     // The chosen release is gone, so primary_release_id becomes NULL
     // and the read path falls back to the remaining release_beta.
     let album_a = create_test_album();
-    manager.database.insert_album(&album_a).await.unwrap();
-    let release_alpha = create_test_release(&album_a.id);
-    let release_beta = create_test_release(&album_a.id);
-
-    manager
-        .database
-        .insert_release(&release_alpha)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release(&release_beta)
-        .await
-        .unwrap();
+    let releases =
+        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
+    let release_alpha = &releases[0];
+    let release_beta = &releases[1];
 
     // A track on release_beta so the read-path resolution below has an
     // identifiable target: the fallback should surface beta's tracks.
@@ -664,17 +558,6 @@ async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
     manager
         .database
         .set_album_primary_release(&album_a.id, &release_alpha.id)
-        .await
-        .unwrap();
-
-    manager
-        .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_beta.id, &[mb_identity("g1", "g1-rel")])
         .await
         .unwrap();
 
@@ -728,19 +611,9 @@ async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let album_a = create_test_album();
-    manager.database.insert_album(&album_a).await.unwrap();
-
-    let release_alpha = create_test_release(&album_a.id);
-    manager
-        .database
-        .insert_release(&release_alpha)
+    let release_alpha = seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel")])
         .await
-        .unwrap();
-    manager
-        .database
-        .insert_release_identities(&release_alpha.id, &[mb_identity("g1", "g1-rel")])
-        .await
-        .unwrap();
+        .remove(0);
 
     // Build the fresh-album row the manager would have produced —
     // we're driving the atomic API by hand.

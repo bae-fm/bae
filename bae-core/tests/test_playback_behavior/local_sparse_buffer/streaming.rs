@@ -140,7 +140,7 @@ static MULTI_WINDOW_TEMPLATE: std::sync::LazyLock<MultiWindowTemplate> =
         let rt = tokio::runtime::Runtime::new().expect("build the template import's runtime");
         let template = rt.block_on(async {
             let import_ids = SequentialIdProvider::new("multi-window-template");
-            let setup = imported_release_setup(
+            let (_library_manager, imported) = imported_release_setup(
                 create_multi_window_cue_album(),
                 "multi-window-template",
                 import_ids.new_id(),
@@ -149,10 +149,10 @@ static MULTI_WINDOW_TEMPLATE: std::sync::LazyLock<MultiWindowTemplate> =
             )
             .await
             .expect("import the multi-window template release");
-            assert_eq!(setup.track_ids.len(), 3, "the CUE album imports 3 tracks");
+            assert_eq!(imported.track_ids.len(), 3, "the CUE album imports 3 tracks");
             MultiWindowTemplate {
-                dir: setup.temp_dir,
-                track_ids: setup.track_ids,
+                dir: imported.temp_dir,
+                track_ids: imported.track_ids,
             }
         });
         drop(rt);

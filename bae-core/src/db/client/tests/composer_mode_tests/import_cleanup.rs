@@ -33,6 +33,152 @@ async fn prepare_release_file(
     crate::import::service::PreparedImportFile { row, blob }
 }
 
+/// A named artist with no external ids and no sort name.
+fn test_artist(id: &str, name: &str, now: chrono::DateTime<chrono::Utc>) -> DbArtist {
+    DbArtist {
+        id: id.to_string(),
+        name: name.to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: now,
+    }
+}
+
+/// A 2026 album by `artist_id`, with no primary release chosen yet.
+fn test_album(
+    id: &str,
+    title: &str,
+    artist_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> DbAlbum {
+    DbAlbum {
+        id: id.to_string(),
+        title: title.to_string(),
+        artist_id: artist_id.to_string(),
+        year: Some(2026),
+        primary_release_id: None,
+        is_compilation: false,
+        created_at: now,
+    }
+}
+
+/// A local release read from file tags, pressed on CD in 2026.
+fn test_release(id: &str, album_id: &str, now: chrono::DateTime<chrono::Utc>) -> DbRelease {
+    DbRelease {
+        id: id.to_string(),
+        album_id: album_id.to_string(),
+        release_name: None,
+        pressing: Pressing {
+            year: Some(2026),
+            format: Some("CD".to_string()),
+            label: None,
+            catalog_number: None,
+            country: None,
+            barcode: None,
+        },
+        disc_id: None,
+        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
+        remote: false,
+        source_folder_name: None,
+        content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
+        created_at: now,
+    }
+}
+
+/// Track one, side one, one second long.
+fn test_track(
+    id: &str,
+    release_id: &str,
+    title: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> DbTrack {
+    DbTrack {
+        id: id.to_string(),
+        release_id: release_id.to_string(),
+        title: title.to_string(),
+        side: 1,
+        track_number: Some(1),
+        duration_ms: Some(1000),
+        discogs_position: None,
+        created_at: now,
+    }
+}
+
+/// `track`'s audio: a 1 KiB FLAC written under `tmp` and prepared as an
+/// external blob, with the standalone track file that points at it.
+async fn standalone_track_file(
+    tmp: &tempfile::TempDir,
+    track: DbTrack,
+    file_id: &str,
+    filename: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> (
+    Vec<crate::import::TrackFile>,
+    crate::import::service::PreparedImportFile,
+) {
+    let file_path = tmp.path().join(filename);
+    let row = DbFile::new(
+        &track.release_id,
+        filename,
+        1024,
+        ContentType::Flac,
+        file_id.to_string(),
+        now,
+    );
+    let file = prepare_release_file(row, &file_path).await;
+    (
+        vec![crate::import::TrackFile::Standalone {
+            db_track: track,
+            file_path,
+            source_audio: scanned_flac(),
+        }],
+        file,
+    )
+}
+
+/// What a finalize varies between these tests. Everything else it takes — the
+/// unchecked test-setup guard and opaque home storage — is the same in all of
+/// them.
+#[derive(Default)]
+struct Commit<'a> {
+    album: Option<&'a DbAlbum>,
+    track_files: &'a [crate::import::TrackFile],
+    rows: crate::db::ImportRows<'a>,
+    files: Vec<crate::import::service::PreparedImportFile>,
+    library_image: Option<(&'a DbLibraryImage, &'a [u8])>,
+    artist_images: &'a [(&'a DbLibraryImage, &'a [u8])],
+    /// `(album_id, release_id)`
+    primary_release_id: Option<(&'a str, &'a str)>,
+    replacement_deletes: &'a [ImportReplacementDelete],
+}
+
+/// Finalize `release` past the guard, which these tests have already satisfied
+/// by seeding the DB directly rather than going through the import queue.
+async fn commit_import(
+    db: &Database,
+    release: &DbRelease,
+    commit: Commit<'_>,
+) -> Vec<ImportReplacementOutcome> {
+    db.finalize_import_atomic(
+        crate::db::ImportCommitGuard::UncheckedTestSetup,
+        commit.album,
+        release,
+        commit.track_files,
+        commit.rows,
+        commit.files,
+        commit.library_image,
+        commit.artist_images,
+        commit.primary_release_id,
+        crate::config::HomeStorage::Opaque,
+        commit.replacement_deletes,
+    )
+    .await
+    .unwrap()
+}
+
 #[tokio::test]
 async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     let (db, tmp) = super::temp_db().await;
@@ -134,25 +280,10 @@ async fn finalize_reimport_replacing_release(
     existing_release_ids: &[&str],
     replaced_release_id: &str,
 ) -> Vec<ImportReplacementOutcome> {
-    let artist = DbArtist {
-        id: ARTIST_A.to_string(),
-        name: "Artist Name A".to_string(),
-        sort_name: None,
-        discogs_artist_id: None,
-        musicbrainz_artist_id: None,
-        created_at: now,
-    };
+    let artist = test_artist(ARTIST_A, "Artist Name A", now);
     db.insert_artist(&artist).await.unwrap();
 
-    let album_old = DbAlbum {
-        id: ALBUM_OLD.to_string(),
-        title: "Album Title Old".to_string(),
-        artist_id: artist.id.clone(),
-        year: Some(2026),
-        primary_release_id: None,
-        is_compilation: false,
-        created_at: now,
-    };
+    let album_old = test_album(ALBUM_OLD, "Album Title Old", &artist.id, now);
     db.insert_album(&album_old).await.unwrap();
     for id in existing_release_ids {
         db.insert_release(&DbRelease::new_test(&album_old.id, id))
@@ -163,62 +294,34 @@ async fn finalize_reimport_replacing_release(
         .await
         .unwrap();
 
-    let album_new = DbAlbum {
-        id: ALBUM_NEW.to_string(),
-        title: "Album Title New".to_string(),
-        artist_id: artist.id.clone(),
-        year: Some(2026),
-        primary_release_id: None,
-        is_compilation: false,
-        created_at: now,
-    };
+    let album_new = test_album(ALBUM_NEW, "Album Title New", &artist.id, now);
     let release_new = DbRelease::new_test(&album_new.id, REL_NEW);
-    let track = DbTrack {
-        id: TRACK_NEW.to_string(),
-        release_id: release_new.id.clone(),
-        title: "Track Title New".to_string(),
-        side: 1,
-        track_number: Some(1),
-        duration_ms: Some(1000),
-        discogs_position: None,
-        created_at: now,
-    };
-    let file_path = tmp.path().join("Track Title New.flac");
-    let file = DbFile::new(
-        &release_new.id,
+    let (track_files, file) = standalone_track_file(
+        tmp,
+        test_track(TRACK_NEW, &release_new.id, "Track Title New", now),
+        FILE_NEW,
         "Track Title New.flac",
-        1024,
-        ContentType::Flac,
-        FILE_NEW.to_string(),
         now,
-    );
-    let file = prepare_release_file(file, &file_path).await;
-    let track_files = vec![crate::import::TrackFile::Standalone {
-        db_track: track,
-        file_path,
-        source_audio: scanned_flac(),
-    }];
+    )
+    .await;
 
     let replacement = ImportReplacementDelete {
         release_id: replaced_release_id.to_string(),
         album_id: album_old.id.clone(),
         cleanup: empty_cleanup_plan(),
     };
-    db.finalize_import_atomic(
-        crate::db::ImportCommitGuard::UncheckedTestSetup,
-        Some(&album_new),
+    commit_import(
+        db,
         &release_new,
-        &track_files,
-        crate::db::ImportRows::default(),
-        vec![file],
-        None,
-        &[],
-        None,
-        crate::config::HomeStorage::Opaque,
-        &[replacement],
+        Commit {
+            album: Some(&album_new),
+            track_files: &track_files,
+            files: vec![file],
+            replacement_deletes: &[replacement],
+            ..Default::default()
+        },
     )
     .await
-    .unwrap()
 }
 
 async fn seeded_db() -> (Database, tempfile::TempDir) {
@@ -270,71 +373,27 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         .unwrap()
         .with_timezone(&chrono::Utc);
 
-    let album_artist = DbArtist {
-        id: ARTIST_ALBUM.to_string(),
-        name: "Album Artist A".to_string(),
-        sort_name: None,
-        discogs_artist_id: None,
-        musicbrainz_artist_id: None,
-        created_at: now,
-    };
+    let album_artist = test_artist(ARTIST_ALBUM, "Album Artist A", now);
     let composer = DbArtist {
-        id: ARTIST_COMPOSER.to_string(),
-        name: "Composer Artist A".to_string(),
         sort_name: Some("Composer Artist A".to_string()),
-        discogs_artist_id: None,
         musicbrainz_artist_id: Some("mb-artist-composer-a".to_string()),
-        created_at: now,
+        ..test_artist(ARTIST_COMPOSER, "Composer Artist A", now)
     };
     db.insert_artist(&album_artist).await.unwrap();
     db.insert_artist(&composer).await.unwrap();
 
-    let album = DbAlbum {
-        id: ALBUM_A.to_string(),
-        title: "Album Title A".to_string(),
-        artist_id: album_artist.id.clone(),
-        year: Some(2026),
-        primary_release_id: None,
-        is_compilation: false,
-        created_at: now,
-    };
+    let album = test_album(ALBUM_A, "Album Title A", &album_artist.id, now);
     let release = DbRelease {
-        id: RELEASE_A.to_string(),
-        album_id: album.id.clone(),
-        release_name: None,
-        pressing: Pressing {
-            year: Some(2026),
-            format: Some("CD".to_string()),
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcode: None,
-        },
-        disc_id: None,
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             source: crate::import::MetadataSource::MusicBrainz,
             release_id: "mb-release-a".to_string(),
             partners: vec![],
         }),
         remote: true,
-        source_folder_name: None,
-        content_hash: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: now,
-    };
-    let track = DbTrack {
-        id: TRACK_A.to_string(),
-        release_id: release.id.clone(),
-        title: "Track Title A".to_string(),
-        side: 1,
-        track_number: Some(1),
-        duration_ms: Some(1000),
-        discogs_position: None,
-        created_at: now,
+        ..test_release(RELEASE_A, &album.id, now)
     };
     let track_files = vec![crate::import::TrackFile::Standalone {
-        db_track: track,
+        db_track: test_track(TRACK_A, &release.id, "Track Title A", now),
         file_path: tmp.path().join("Track.flac"),
         source_audio: scanned_flac(),
     }];
@@ -381,28 +440,25 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         now,
     )];
 
-    db.finalize_import_atomic(
-        crate::db::ImportCommitGuard::UncheckedTestSetup,
-        Some(&album),
+    commit_import(
+        &db,
         &release,
-        &track_files,
-        crate::db::ImportRows {
-            works: &works,
-            work_artists: &work_artists,
-            track_works: &track_works,
-            release_artist_roles: &release_roles,
-            track_artist_roles: &track_roles,
+        Commit {
+            album: Some(&album),
+            track_files: &track_files,
+            rows: crate::db::ImportRows {
+                works: &works,
+                work_artists: &work_artists,
+                track_works: &track_works,
+                release_artist_roles: &release_roles,
+                track_artist_roles: &track_roles,
+                ..Default::default()
+            },
+            primary_release_id: Some((&album.id, &release.id)),
             ..Default::default()
         },
-        Vec::new(),
-        None,
-        &[],
-        Some((&album.id, &release.id)),
-        crate::config::HomeStorage::Opaque,
-        &[],
     )
-    .await
-    .unwrap();
+    .await;
 
     let composer_detail = db
         .find_composer_detail(&composer.id)
@@ -451,87 +507,32 @@ async fn fail_import_and_delete_release_removes_finalized_import_state_atomicall
         .unwrap()
         .with_timezone(&chrono::Utc);
 
-    let artist = DbArtist {
-        id: ARTIST_A.to_string(),
-        name: "Artist Name A".to_string(),
-        sort_name: None,
-        discogs_artist_id: None,
-        musicbrainz_artist_id: None,
-        created_at: now,
-    };
+    let artist = test_artist(ARTIST_A, "Artist Name A", now);
     db.insert_artist(&artist).await.unwrap();
 
-    let album = DbAlbum {
-        id: ALBUM_A.to_string(),
-        title: "Album Title A".to_string(),
-        artist_id: artist.id.clone(),
-        year: Some(2026),
-        primary_release_id: None,
-        is_compilation: false,
-        created_at: now,
-    };
-    let release = DbRelease {
-        id: RELEASE_A.to_string(),
-        album_id: album.id.clone(),
-        release_name: None,
-        pressing: Pressing {
-            year: Some(2026),
-            format: Some("CD".to_string()),
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcode: None,
-        },
-        disc_id: None,
-        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
-        remote: false,
-        source_folder_name: None,
-        content_hash: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: now,
-    };
-    let track = DbTrack {
-        id: TRACK_A.to_string(),
-        release_id: release.id.clone(),
-        title: "Track Title A".to_string(),
-        side: 1,
-        track_number: Some(1),
-        duration_ms: Some(1000),
-        discogs_position: None,
-        created_at: now,
-    };
-    let file_path = tmp.path().join("Track Title A.flac");
-    let file = DbFile::new(
-        &release.id,
+    let album = test_album(ALBUM_A, "Album Title A", &artist.id, now);
+    let release = test_release(RELEASE_A, &album.id, now);
+    let (track_files, file) = standalone_track_file(
+        &tmp,
+        test_track(TRACK_A, &release.id, "Track Title A", now),
+        FILE_A,
         "Track Title A.flac",
-        1024,
-        ContentType::Flac,
-        FILE_A.to_string(),
         now,
-    );
-    let file = prepare_release_file(file, &file_path).await;
-    let track_files = vec![crate::import::TrackFile::Standalone {
-        db_track: track,
-        file_path,
-        source_audio: scanned_flac(),
-    }];
-
-    db.finalize_import_atomic(
-        crate::db::ImportCommitGuard::UncheckedTestSetup,
-        Some(&album),
-        &release,
-        &track_files,
-        crate::db::ImportRows::default(),
-        vec![file],
-        None,
-        &[],
-        Some((&album.id, &release.id)),
-        crate::config::HomeStorage::Opaque,
-        &[],
     )
-    .await
-    .unwrap();
+    .await;
+
+    commit_import(
+        &db,
+        &release,
+        Commit {
+            album: Some(&album),
+            track_files: &track_files,
+            files: vec![file],
+            primary_release_id: Some((&album.id, &release.id)),
+            ..Default::default()
+        },
+    )
+    .await;
     assert!(db.external_blob(FILE_A).await.unwrap().is_some());
 
     db.fail_import_and_delete_release(RELEASE_A).await.unwrap();
@@ -610,69 +611,34 @@ async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_prima
         .unwrap()
         .with_timezone(&chrono::Utc);
 
-    let artist = DbArtist {
-        id: ARTIST_A.to_string(),
-        name: "Artist Name A".to_string(),
-        sort_name: None,
-        discogs_artist_id: None,
-        musicbrainz_artist_id: None,
-        created_at: now,
-    };
+    let artist = test_artist(ARTIST_A, "Artist Name A", now);
     db.insert_artist(&artist).await.unwrap();
 
-    let album = DbAlbum {
-        id: ALBUM_A.to_string(),
-        title: "Album Title A".to_string(),
-        artist_id: artist.id.clone(),
-        year: Some(2026),
-        primary_release_id: None,
-        is_compilation: false,
-        created_at: now,
-    };
+    let album = test_album(ALBUM_A, "Album Title A", &artist.id, now);
     let release = DbRelease::new_test(&album.id, REL_A);
-    let track = DbTrack {
-        id: TRACK_A.to_string(),
-        release_id: release.id.clone(),
-        title: "Track Title A".to_string(),
-        side: 1,
-        track_number: Some(1),
-        duration_ms: Some(1000),
-        discogs_position: None,
-        created_at: now,
-    };
-    let file_path = tmp.path().join("Track Title A.flac");
-    let file = DbFile::new(
-        &release.id,
+    let (track_files, file) = standalone_track_file(
+        &tmp,
+        test_track(TRACK_A, &release.id, "Track Title A", now),
+        FILE_A,
         "Track Title A.flac",
-        1024,
-        ContentType::Flac,
-        FILE_A.to_string(),
         now,
-    );
-    let file = prepare_release_file(file, &file_path).await;
-    let track_files = vec![crate::import::TrackFile::Standalone {
-        db_track: track,
-        file_path,
-        source_audio: scanned_flac(),
-    }];
+    )
+    .await;
 
     // Finalize the import, pointing the album's primary at the release
     // this import created.
-    db.finalize_import_atomic(
-        crate::db::ImportCommitGuard::UncheckedTestSetup,
-        Some(&album),
+    commit_import(
+        &db,
         &release,
-        &track_files,
-        crate::db::ImportRows::default(),
-        vec![file],
-        None,
-        &[],
-        Some((&album.id, &release.id)),
-        crate::config::HomeStorage::Opaque,
-        &[],
+        Commit {
+            album: Some(&album),
+            track_files: &track_files,
+            files: vec![file],
+            primary_release_id: Some((&album.id, &release.id)),
+            ..Default::default()
+        },
     )
-    .await
-    .unwrap();
+    .await;
 
     // A sibling release in the same album keeps it alive through the
     // rollback.
