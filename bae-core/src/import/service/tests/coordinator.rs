@@ -1,12 +1,76 @@
-#[tokio::test]
-async fn coordinator_coalesces_same_root_to_one_followup_scan() {
-    let harness = CoordinatorHarness::new().await;
-    let root = root_path("/music");
+/// Rescan `root` and wait for the coordinator to start its scan. Returns the
+/// root in the host's own spelling, which the commands that follow address.
+async fn rescan_and_wait(harness: &CoordinatorHarness, root: &str) -> PathBuf {
+    let root = root_path(root);
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
         .unwrap();
     harness.scans.wait_for_count(1).await;
+    root
+}
+
+/// Where the removal tests start: `root` is being scanned, its removal has been
+/// asked for, and the coordinator has cancelled the scan the removal waits on.
+/// What that scan does next is the caller's, as is the returned removal result.
+async fn removal_awaiting_its_cancelled_scan(
+    harness: &CoordinatorHarness,
+    root: &str,
+) -> tokio::sync::oneshot::Receiver<Result<(), String>> {
+    let root = rescan_and_wait(harness, root).await;
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove {
+            path: root,
+            completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+    result
+}
+
+fn request_refresh(
+    harness: &CoordinatorHarness,
+    root: &str,
+) -> tokio::sync::oneshot::Receiver<Result<(), String>> {
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Refresh {
+            path: root_path(root),
+            completion,
+        })
+        .unwrap();
+    result
+}
+
+/// Ask for `Group` under `root` to become one release.
+fn request_group_decision(
+    harness: &CoordinatorHarness,
+    root: &Path,
+) -> tokio::sync::oneshot::Receiver<Result<(), String>> {
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::SetFolderReleaseDecision {
+            target: (
+                crate::import::FolderReleaseDecisionKey {
+                    watched_folder_path: root.to_string_lossy().into_owned(),
+                    relative_folder_path: "Group".to_string(),
+                },
+                crate::import::FolderReleaseDecision::CombineAsOneRelease,
+            ),
+            completion,
+        })
+        .unwrap();
+    result
+}
+
+#[tokio::test]
+async fn coordinator_coalesces_same_root_to_one_followup_scan() {
+    let harness = CoordinatorHarness::new().await;
+    let root = rescan_and_wait(&harness, "/music").await;
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
@@ -23,22 +87,7 @@ async fn coordinator_coalesces_same_root_to_one_followup_scan() {
 #[tokio::test]
 async fn coordinator_removal_waits_for_the_active_scan_to_finish() {
     let harness = CoordinatorHarness::new().await;
-    let root = root_path("/music");
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root.clone()))
-        .unwrap();
-    harness.scans.wait_for_count(1).await;
-
-    let (completion, result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Remove {
-            path: root,
-            completion,
-        })
-        .unwrap();
-    harness.scans.wait_for_cancellation(0).await;
+    let result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;
 
     let mut result = Box::pin(result);
     assert!(
@@ -56,27 +105,12 @@ async fn coordinator_removal_waits_for_the_active_scan_to_finish() {
 #[tokio::test]
 async fn coordinator_coalesces_duplicate_removals_for_one_root() {
     let harness = CoordinatorHarness::new().await;
-    let root = root_path("/music");
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root.clone()))
-        .unwrap();
-    harness.scans.wait_for_count(1).await;
-
-    let (first_completion, first_result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Remove {
-            path: root.clone(),
-            completion: first_completion,
-        })
-        .unwrap();
-    harness.scans.wait_for_cancellation(0).await;
+    let first_result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;
     let (second_completion, second_result) = tokio::sync::oneshot::channel();
     harness
         .commands
         .send(WatcherCommand::Remove {
-            path: root,
+            path: root_path("/music"),
             completion: second_completion,
         })
         .unwrap();
@@ -94,30 +128,9 @@ async fn coordinator_coalesces_duplicate_removals_for_one_root() {
 #[tokio::test]
 async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh() {
     let harness = CoordinatorHarness::with_roots(&["/music/one", "/music/two"]).await;
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root_path("/music/one")))
-        .unwrap();
-    harness.scans.wait_for_count(1).await;
+    let remove_result = removal_awaiting_its_cancelled_scan(&harness, "/music/one").await;
 
-    let (remove_completion, remove_result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Remove {
-            path: root_path("/music/one"),
-            completion: remove_completion,
-        })
-        .unwrap();
-    harness.scans.wait_for_cancellation(0).await;
-
-    let (refresh_completion, refresh_result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Refresh {
-            path: root_path("/music/two"),
-            completion: refresh_completion,
-        })
-        .unwrap();
+    let refresh_result = request_refresh(&harness, "/music/two");
     harness.scans.wait_for_count(2).await;
     harness.scans.complete(1);
     assert_eq!(
@@ -141,22 +154,7 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
 #[tokio::test]
 async fn coordinator_removal_join_failure_restores_a_runnable_root_schedule() {
     let harness = CoordinatorHarness::new().await;
-    let root = root_path("/music");
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root.clone()))
-        .unwrap();
-    harness.scans.wait_for_count(1).await;
-
-    let (completion, result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Remove {
-            path: root,
-            completion,
-        })
-        .unwrap();
-    harness.scans.wait_for_cancellation(0).await;
+    let result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;
     harness.scans.abort(0);
 
     let error = result.await.unwrap().unwrap_err();
@@ -171,22 +169,7 @@ async fn coordinator_removal_uninstall_failure_restores_a_runnable_root_schedule
     let harness = CoordinatorHarness::new().await;
     *harness.removal_backend.uninstall_error.lock().unwrap() =
         Some("injected uninstall failure".to_string());
-    let root = root_path("/music");
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root.clone()))
-        .unwrap();
-    harness.scans.wait_for_count(1).await;
-
-    let (completion, result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Remove {
-            path: root,
-            completion,
-        })
-        .unwrap();
-    harness.scans.wait_for_cancellation(0).await;
+    let result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;
     harness.scans.complete(0);
 
     let error = result.await.unwrap().unwrap_err();
@@ -205,22 +188,7 @@ async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_retu
     let harness = CoordinatorHarness::new().await;
     *harness.removal_backend.remove_error.lock().unwrap() =
         Some("injected database failure".to_string());
-    let root = root_path("/music");
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root.clone()))
-        .unwrap();
-    harness.scans.wait_for_count(1).await;
-
-    let (completion, result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Remove {
-            path: root,
-            completion,
-        })
-        .unwrap();
-    harness.scans.wait_for_cancellation(0).await;
+    let result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;
     harness.scans.complete(0);
 
     let error = result.await.unwrap().unwrap_err();
@@ -251,21 +219,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
         .removal_backend
         .block_reinstall
         .store(true, std::sync::atomic::Ordering::SeqCst);
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root_path("/music/one")))
-        .unwrap();
-    harness.scans.wait_for_count(1).await;
-
-    let (remove_completion, remove_result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Remove {
-            path: root_path("/music/one"),
-            completion: remove_completion,
-        })
-        .unwrap();
-    harness.scans.wait_for_cancellation(0).await;
+    let remove_result = removal_awaiting_its_cancelled_scan(&harness, "/music/one").await;
     harness.scans.complete(0);
     tokio::time::timeout(
         Duration::from_secs(2),
@@ -274,14 +228,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
     .await
     .expect("failed durable removal did not start watch restoration");
 
-    let (refresh_completion, refresh_result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Refresh {
-            path: root_path("/music/two"),
-            completion: refresh_completion,
-        })
-        .unwrap();
+    let refresh_result = request_refresh(&harness, "/music/two");
     harness.scans.wait_for_count(2).await;
     let other_root_commit = tokio::time::timeout(
         Duration::from_millis(50),
@@ -321,22 +268,7 @@ async fn coordinator_removal_database_and_restore_failures_return_both_errors() 
         Some("injected database failure".to_string());
     *harness.removal_backend.reinstall_error.lock().unwrap() =
         Some("injected restore failure".to_string());
-    let root = root_path("/music");
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root.clone()))
-        .unwrap();
-    harness.scans.wait_for_count(1).await;
-
-    let (completion, result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Remove {
-            path: root,
-            completion,
-        })
-        .unwrap();
-    harness.scans.wait_for_cancellation(0).await;
+    let result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;
     harness.scans.complete(0);
 
     let error = result.await.unwrap().unwrap_err();
@@ -371,14 +303,7 @@ async fn coordinator_runs_different_roots_concurrently() {
 #[tokio::test]
 async fn coordinator_completes_refresh_waiter_once_its_scan_is_over() {
     let harness = CoordinatorHarness::new().await;
-    let (completion, result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Refresh {
-            path: root_path("/music"),
-            completion,
-        })
-        .unwrap();
+    let result = request_refresh(&harness, "/music");
     harness.scans.wait_for_count(1).await;
     harness.scans.complete(0);
     assert_eq!(result.await.unwrap(), Ok(()));
@@ -467,14 +392,7 @@ fn debounced_event(
 #[tokio::test]
 async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
     let harness = CoordinatorHarness::new().await;
-    let (completion, result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Refresh {
-            path: root_path("/music"),
-            completion,
-        })
-        .unwrap();
+    let result = request_refresh(&harness, "/music");
     harness.scans.wait_for_count(1).await;
     for _ in 0..10_000 {
         harness.fs_events.send(Ok(Vec::new())).unwrap();
@@ -537,26 +455,8 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
 #[tokio::test]
 async fn coordinator_decision_waits_for_cancelled_scan_before_starting_replacement() {
     let harness = CoordinatorHarness::new().await;
-    let root = root_path("/music");
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root.clone()))
-        .unwrap();
-    harness.scans.wait_for_count(1).await;
-    let (decision_completion, decision_result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::SetFolderReleaseDecision {
-            target: (
-                crate::import::FolderReleaseDecisionKey {
-                    watched_folder_path: root.to_string_lossy().into_owned(),
-                    relative_folder_path: "Group".to_string(),
-                },
-                crate::import::FolderReleaseDecision::CombineAsOneRelease,
-            ),
-            completion: decision_completion,
-        })
-        .unwrap();
+    let root = rescan_and_wait(&harness, "/music").await;
+    let decision_result = request_group_decision(&harness, &root);
     harness.scans.wait_for_cancellation(0).await;
     assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
     harness.scans.complete(0);
@@ -570,28 +470,10 @@ async fn coordinator_decision_waits_for_cancelled_scan_before_starting_replaceme
 #[tokio::test]
 async fn coordinator_decision_validates_after_the_cancelled_scan_releases_its_commit() {
     let harness = CoordinatorHarness::new().await;
-    let root = root_path("/music");
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root.clone()))
-        .unwrap();
-    harness.scans.wait_for_count(1).await;
+    let root = rescan_and_wait(&harness, "/music").await;
 
     let commit = harness.folder_state_commit.clone().lock_owned().await;
-    let (decision_completion, decision_result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::SetFolderReleaseDecision {
-            target: (
-                crate::import::FolderReleaseDecisionKey {
-                    watched_folder_path: root.to_string_lossy().into_owned(),
-                    relative_folder_path: "Group".to_string(),
-                },
-                crate::import::FolderReleaseDecision::CombineAsOneRelease,
-            ),
-            completion: decision_completion,
-        })
-        .unwrap();
+    let decision_result = request_group_decision(&harness, &root);
     harness.scans.wait_for_cancellation(0).await;
     harness
         .library_manager

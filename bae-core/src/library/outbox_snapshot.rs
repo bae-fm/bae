@@ -363,24 +363,22 @@ impl UploadProgress {
         }
     }
 
+    /// Fold one file's state into this slice. Every state contributes its
+    /// source size to the preparation denominator and bumps exactly one count.
+    /// What varies is the rest of the triple each arm names: how much of the
+    /// source is prepared, and the provider progress — `Some` only once
+    /// preparation has finished and an exact provider total exists.
     fn add_upload(&mut self, state: &UploadState, bytes_total: u64) {
         self.preparation_bytes_total = self
             .preparation_bytes_total
             .checked_add(bytes_total)
             .expect("upload byte total overflow");
-        match state {
-            UploadState::Queued => {
-                self.queued = self.queued.checked_add(1).expect("upload count overflow");
-                self.upload_bytes_total_complete = false;
-            }
+        let (count, preparation_done, upload) = match state {
+            UploadState::Queued => (&mut self.queued, 0, None),
             UploadState::Preparing {
                 bytes_done,
                 bytes_total: preparation_total,
             } => {
-                self.preparing = self
-                    .preparing
-                    .checked_add(1)
-                    .expect("upload count overflow");
                 assert_eq!(
                     *preparation_total, bytes_total,
                     "preparation progress must use the source's exact plaintext total"
@@ -389,112 +387,65 @@ impl UploadProgress {
                     *bytes_done <= *preparation_total,
                     "preparation progress cannot exceed its exact total"
                 );
-                self.preparation_bytes_done = self
-                    .preparation_bytes_done
-                    .checked_add(*bytes_done)
-                    .expect("preparation byte progress overflow");
-                self.upload_bytes_total_complete = false;
+                (&mut self.preparing, *bytes_done, None)
             }
+            UploadState::RetryingPreparation { .. } => (&mut self.retrying, 0, None),
             UploadState::Prepared {
                 bytes_total: upload_total,
-            } => {
-                self.prepared = self.prepared.checked_add(1).expect("upload count overflow");
-                self.preparation_bytes_done = self
-                    .preparation_bytes_done
-                    .checked_add(bytes_total)
-                    .expect("preparation byte progress overflow");
-                self.upload_bytes_total = self
-                    .upload_bytes_total
-                    .checked_add(*upload_total)
-                    .expect("provider byte total overflow");
-            }
+            } => (&mut self.prepared, bytes_total, Some((0, *upload_total))),
+            UploadState::RetryingUpload {
+                bytes_total: upload_total,
+                ..
+            } => (&mut self.retrying, bytes_total, Some((0, *upload_total))),
             UploadState::Uploading {
                 bytes_done,
                 bytes_total: upload_total,
             } => {
-                self.uploading = self
-                    .uploading
-                    .checked_add(1)
-                    .expect("upload count overflow");
                 assert!(
                     *bytes_done <= *upload_total,
                     "provider progress cannot exceed its exact total"
                 );
-                self.preparation_bytes_done = self
-                    .preparation_bytes_done
-                    .checked_add(bytes_total)
-                    .expect("preparation byte progress overflow");
-                self.upload_bytes_done = self
-                    .upload_bytes_done
-                    .checked_add(*bytes_done)
-                    .expect("provider byte progress overflow");
-                self.upload_bytes_total = self
-                    .upload_bytes_total
-                    .checked_add(*upload_total)
-                    .expect("provider byte total overflow");
+                (
+                    &mut self.uploading,
+                    bytes_total,
+                    Some((*bytes_done, *upload_total)),
+                )
             }
-            UploadState::RetryingPreparation { .. } => {
-                self.retrying = self
-                    .retrying
-                    .checked_add(1)
-                    .expect("upload retry count overflow");
-                self.upload_bytes_total_complete = false;
-            }
-            UploadState::RetryingUpload {
-                bytes_total: upload_total,
-                ..
-            } => {
-                self.retrying = self
-                    .retrying
-                    .checked_add(1)
-                    .expect("upload retry count overflow");
-                self.preparation_bytes_done = self
-                    .preparation_bytes_done
-                    .checked_add(bytes_total)
-                    .expect("preparation byte progress overflow");
-                self.upload_bytes_total = self
-                    .upload_bytes_total
-                    .checked_add(*upload_total)
-                    .expect("provider byte total overflow");
-            }
+            // Both of these have written every provider byte; publication is
+            // what has not finished.
             UploadState::RetryingPublication {
                 bytes_total: upload_total,
                 ..
-            } => {
-                self.retrying = self
-                    .retrying
-                    .checked_add(1)
-                    .expect("upload retry count overflow");
-                self.preparation_bytes_done = self
-                    .preparation_bytes_done
-                    .checked_add(bytes_total)
-                    .expect("preparation byte progress overflow");
-                self.upload_bytes_done = self
-                    .upload_bytes_done
-                    .checked_add(*upload_total)
-                    .expect("provider byte progress overflow");
-                self.upload_bytes_total = self
-                    .upload_bytes_total
-                    .checked_add(*upload_total)
-                    .expect("provider byte total overflow");
-            }
+            } => (
+                &mut self.retrying,
+                bytes_total,
+                Some((*upload_total, *upload_total)),
+            ),
             UploadState::Uploaded {
                 bytes_total: upload_total,
-            } => {
-                self.uploaded = self.uploaded.checked_add(1).expect("upload count overflow");
-                self.preparation_bytes_done = self
-                    .preparation_bytes_done
-                    .checked_add(bytes_total)
-                    .expect("preparation byte progress overflow");
+            } => (
+                &mut self.uploaded,
+                bytes_total,
+                Some((*upload_total, *upload_total)),
+            ),
+        };
+        *count = count.checked_add(1).expect("upload count overflow");
+        self.preparation_bytes_done = self
+            .preparation_bytes_done
+            .checked_add(preparation_done)
+            .expect("preparation byte progress overflow");
+        match upload {
+            Some((upload_done, upload_total)) => {
                 self.upload_bytes_done = self
                     .upload_bytes_done
-                    .checked_add(*upload_total)
+                    .checked_add(upload_done)
                     .expect("provider byte progress overflow");
                 self.upload_bytes_total = self
                     .upload_bytes_total
-                    .checked_add(*upload_total)
+                    .checked_add(upload_total)
                     .expect("provider byte total overflow");
             }
+            None => self.upload_bytes_total_complete = false,
         }
     }
 
