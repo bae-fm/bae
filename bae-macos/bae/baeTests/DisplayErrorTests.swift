@@ -155,7 +155,7 @@ struct DisplayErrorTests {
     func noDetailNoSummary() throws {
         let notFound = try #require(
             DisplayError(
-                BridgeError.NotFound(entity: .album, id: "a") as any Error
+                BridgeError.NotFound(entity: .library, id: "a") as any Error
             )
         )
         #expect(notFound.detailSummary == nil)
