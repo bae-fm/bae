@@ -264,8 +264,8 @@ final class DesktopSubscriptions {
                 }
             ),
         ]
-        uiStore.onFolderCandidateSelectionChanged = { [selection] keys in
-            selection.selectionChanged(keys)
+        uiStore.onFolderCandidateSelectionChanged = { [weak selection] keys in
+            selection?.selectionChanged(keys)
         }
         editorVisibility = importStore.editorVisibility.sink {
             [selection] visible in

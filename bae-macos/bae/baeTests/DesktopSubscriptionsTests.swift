@@ -35,6 +35,18 @@ private final class ImportSelectionHandle: AppHandle, @unchecked Sendable {
         return subscription
     }
 
+    override func subscribeOutputs(callback: any OutputCallback)
+        -> LiveSubscription
+    {
+        ImportSelectionSubscription()
+    }
+
+    override func subscribeCandidateRuntime(
+        callback: any CandidateRuntimeCallback
+    ) -> LiveSubscription {
+        ImportSelectionSubscription()
+    }
+
     override func identifyFolderForLookup(candidateKey: String) {
         identifyCalls.append(candidateKey)
     }
@@ -216,6 +228,41 @@ struct DesktopSubscriptionsTests {
         observations = nil
         #expect(handle.editorSubscriptions[0].cancelled)
         #expect(handle.selectionSubscriptions[0].cancelled)
+    }
+
+    @Test("dropping desktop wiring closes queries installed on the UI store")
+    func desktopOwnerClosesInstalledQueries() {
+        let handle = ImportSelectionHandle()
+        let store = ImportStore()
+        let uiStore = UiStore()
+        uiStore.setFolderCandidateSelection(["/imports/first"])
+        store.editorVisibility.send(true)
+        var subscriptions: DesktopSubscriptions? = DesktopSubscriptions(
+            appHandle: handle,
+            importStore: store,
+            outputStore: OutputStore(
+                snapshot: BridgeOutputSnapshot(
+                    outputs: [],
+                    total: BridgeOutputProgress(
+                        queued: 0,
+                        active: 0,
+                        failed: 0
+                    ),
+                    summaryParts: [],
+                    paused: false
+                )
+            ),
+            uiStore: uiStore
+        )
+        subscriptions?.start()
+        #expect(handle.editorSubscriptions.count == 1)
+        #expect(handle.selectionSubscriptions.count == 1)
+        subscriptions = nil
+        #expect(handle.editorSubscriptions[0].cancelled)
+        #expect(handle.selectionSubscriptions[0].cancelled)
+        uiStore.setFolderCandidateSelection(["/imports/second"])
+        #expect(handle.editorSubscriptions.count == 1)
+        #expect(handle.selectionSubscriptions.count == 1)
     }
 
     private func settle(_ arrived: () -> Bool) async {
