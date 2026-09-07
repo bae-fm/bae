@@ -312,7 +312,7 @@ pub(super) fn load_candidate_detail_rows_on(
     let candidate = &stored.candidate;
     let content_hash = candidate.files().content_hash();
 
-    let skipped = skipped_on(sql, &candidate)?;
+    let skipped = skipped_on(sql, candidate)?;
 
     let imported_release = sql
         .query_row(
