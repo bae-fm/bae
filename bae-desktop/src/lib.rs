@@ -110,10 +110,6 @@ impl DesktopServices {
         .await
     }
 
-    pub async fn shutdown_mcp(&self) {
-        self.mcp_controller.shutdown().await;
-    }
-
     pub async fn subsonic_server_status(&self) -> SubsonicServerStatus {
         self.subsonic_controller.status().await
     }
@@ -153,7 +149,10 @@ impl DesktopServices {
         Ok(())
     }
 
-    pub async fn shutdown_subsonic(&self) {
+    /// Stop both hosted servers. They start and stop together with the app, and
+    /// no caller has ever wanted one without the other.
+    pub async fn shutdown(&self) {
+        self.mcp_controller.shutdown().await;
         self.subsonic_controller.shutdown().await;
     }
 }
@@ -217,8 +216,7 @@ mod tests {
 
         runtime.block_on(async {
             let desktop = DesktopServices::start(services, tokio::runtime::Handle::current()).await;
-            desktop.shutdown_mcp().await;
-            desktop.shutdown_subsonic().await;
+            desktop.shutdown().await;
         });
     }
 
@@ -243,8 +241,7 @@ mod tests {
                 desktop.subsonic_server_status().await,
                 SubsonicServerStatus::Disabled
             ));
-            desktop.shutdown_mcp().await;
-            desktop.shutdown_subsonic().await;
+            desktop.shutdown().await;
         });
     }
 

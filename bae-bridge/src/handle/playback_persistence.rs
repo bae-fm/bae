@@ -13,8 +13,7 @@ impl AppHandle {
         self.run_exported(move |this| async move {
             #[cfg(feature = "desktop")]
             {
-                this.desktop.shutdown_mcp().await;
-                this.desktop.shutdown_subsonic().await;
+                this.desktop.shutdown().await;
                 this.services.playback_shutdown().await;
             }
             #[cfg(not(feature = "desktop"))]
