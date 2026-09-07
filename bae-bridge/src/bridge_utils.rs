@@ -236,15 +236,15 @@ impl BridgeConfig {
     /// sync loop is running. That is runtime state, and lives in the sync-status
     /// snapshot, not on `BridgeConfig`.
     ///
-    /// bae-core's own `Config` fields are exhaustively destructured so a new one
-    /// fails the build here. The coven `inner` sub-config it embeds is an external
+    /// bae's own settings are exhaustively destructured so a new one fails the
+    /// build here. The coven `inner` sub-config `Config` embeds is an external
     /// crate's type — exempt from the destructure — so its fields (`store_id`,
     /// `cloud_home`, …) stay dotted reads through `inner`.
     pub(crate) fn from_core(config: &bae_core::config::Config) -> Self {
         let discogs_status = config.discogs_token_status();
         let cloud_account_display = config.cloud_account_display();
-        let bae_core::config::Config {
-            inner,
+        let bae_core::config::Config { inner, prefs, .. } = config;
+        let bae_core::config::Preferences {
             // Read via the derived `discogs_token_status()` above.
             discogs: _,
             // Playback loudness policy; not surfaced on the config screen.
@@ -264,8 +264,7 @@ impl BridgeConfig {
             cast_enabled,
             mcp,
             subsonic,
-            ..
-        } = config;
+        } = prefs;
 
         let bae_core::config::McpConfig { enabled, port } = mcp;
         let bae_core::config::SubsonicConfig {

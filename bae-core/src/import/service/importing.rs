@@ -704,7 +704,12 @@ impl ImportService {
         // A track that didn't decode fully (fatal errors, a truncated body) would
         // import fine and then fail at play time. With verify on, fail now —
         // before finalize commits anything to the library.
-        if self.library_manager.get_config().verify_decode_on_import && !loudness.broken.is_empty()
+        if self
+            .library_manager
+            .get_config()
+            .prefs
+            .verify_decode_on_import
+            && !loudness.broken.is_empty()
         {
             return Err(crate::import::ImportError::DecodeVerification {
                 broken: loudness.broken,

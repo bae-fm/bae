@@ -419,7 +419,7 @@ async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
     };
     assert!(manager.set_mcp_config(invalid).is_err());
     assert_eq!(
-        manager.get_config().mcp,
+        manager.get_config().prefs.mcp,
         crate::config::McpConfig::disabled_default()
     );
 
@@ -428,7 +428,7 @@ async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
         port: crate::config::MCP_DEFAULT_PORT + 1,
     };
     manager.set_mcp_config(valid).unwrap();
-    assert_eq!(manager.get_config().mcp, valid);
+    assert_eq!(manager.get_config().prefs.mcp, valid);
 }
 
 #[tokio::test]
@@ -482,7 +482,7 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
         .set_subsonic_config(enabled_without_username)
         .is_err());
     assert_eq!(
-        manager.get_config().subsonic,
+        manager.get_config().prefs.subsonic,
         crate::config::SubsonicConfig::disabled_default()
     );
 
@@ -493,5 +493,5 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
         bind_address: "0.0.0.0".to_string(),
     };
     manager.set_subsonic_config(valid.clone()).unwrap();
-    assert_eq!(manager.get_config().subsonic, valid);
+    assert_eq!(manager.get_config().prefs.subsonic, valid);
 }

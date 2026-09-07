@@ -475,7 +475,7 @@ impl PlaybackService {
             }
         };
         let content_type = resolved.content_type.clone();
-        let replay_gain_mode = self.library_manager.get_config().replay_gain_mode;
+        let replay_gain_mode = self.library_manager.get_config().prefs.replay_gain_mode;
         let prepared = finalize_playback_track(resolved, track_info, Vec::new(), replay_gain_mode);
 
         let Renderer::Remote(remote) = &self.renderer else {

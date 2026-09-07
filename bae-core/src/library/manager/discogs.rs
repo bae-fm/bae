@@ -20,7 +20,7 @@ struct DiscogsSession {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl DiscogsSession {
     fn open(config_handle: &Arc<ConfigHandle>, database: &Database) -> Result<Self, LibraryError> {
-        let validation = config_handle.config().discogs;
+        let validation = config_handle.config().prefs.discogs;
         if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
             return Ok(Self { client: None });
         }
@@ -36,7 +36,7 @@ impl DiscogsSession {
     }
 
     fn record_validation_signal(config_handle: &ConfigHandle, signal: DiscogsKeySignal) {
-        let Some(current) = config_handle.config().discogs else {
+        let Some(current) = config_handle.config().prefs.discogs else {
             debug!("discogs validation signal ignored: no key stored");
             return;
         };
@@ -50,7 +50,7 @@ impl DiscogsSession {
         if current == next {
             return;
         }
-        if let Err(error) = config_handle.update(|config| config.discogs = Some(next)) {
+        if let Err(error) = config_handle.update(|config| config.prefs.discogs = Some(next)) {
             warn!("failed to persist discogs validation {next:?}: {error}");
         }
     }
@@ -168,14 +168,15 @@ impl LibraryManager {
         self.database
             .set_host_secret(crate::keys::DISCOGS_API_KEY, token)?;
         self.config_handle
-            .update(|config| config.discogs = Some(validation))?;
+            .update(|config| config.prefs.discogs = Some(validation))?;
         Ok(())
     }
 
     /// Clear the config state before deleting the keyring bytes, so a failure
     /// between the writes leaves Discogs disabled rather than half-enabled.
     pub fn clear_discogs_key(&self) -> Result<(), LibraryError> {
-        self.config_handle.update(|config| config.discogs = None)?;
+        self.config_handle
+            .update(|config| config.prefs.discogs = None)?;
         self.database
             .delete_host_secret(crate::keys::DISCOGS_API_KEY)?;
         Ok(())
@@ -186,14 +187,14 @@ impl LibraryManager {
         validation: DiscogsValidation,
     ) -> Result<(), crate::config::ConfigError> {
         self.config_handle.update(|config| {
-            if config.discogs.is_some() {
-                config.discogs = Some(validation);
+            if config.prefs.discogs.is_some() {
+                config.prefs.discogs = Some(validation);
             }
         })
     }
 
     pub fn discogs_validation(&self) -> Option<DiscogsValidation> {
-        self.config_handle.config().discogs
+        self.config_handle.config().prefs.discogs
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

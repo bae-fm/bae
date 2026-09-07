@@ -254,7 +254,11 @@ impl LibraryManager {
         item: &crate::import::folder_scanner::ScanItem,
         folder_date: Option<crate::import::folder_scanner::FolderDate>,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
-        let initial_metadata_source = self.config_handle.config().default_import_metadata_source;
+        let initial_metadata_source = self
+            .config_handle
+            .config()
+            .prefs
+            .default_import_metadata_source;
         Ok(self
             .database
             .save_folder_scan_item_with_initial_source(

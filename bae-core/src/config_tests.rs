@@ -26,7 +26,7 @@ fn parse_yaml_without(key: &str) -> Result<ConfigYaml, serde_yaml::Error> {
     let map = value.as_mapping_mut().unwrap();
     map.remove(serde_yaml::Value::String(key.to_string()))
         .unwrap_or_else(|| panic!("{key} not in serialized config"));
-    serde_yaml::from_value(value)
+    ConfigYaml::from_value(&value)
 }
 
 #[test]
@@ -34,25 +34,24 @@ fn export_settings_survive_yaml_roundtrip() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
     // Filename tokens are per-preset now; a preset's edited pattern survives.
-    config.save_presets[0].filename_tokens =
+    config.prefs.save_presets[0].filename_tokens =
         vec![SaveFilenameToken::Artist, SaveFilenameToken::Title];
     config.save_to_config_yaml().unwrap();
 
-    let yaml: ConfigYaml =
-        serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
-            .unwrap();
+    let yaml = parse_config_yaml(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
+        .unwrap();
     assert_eq!(
-        yaml.save_presets[0].filename_tokens,
+        yaml.prefs.save_presets[0].filename_tokens,
         vec![SaveFilenameToken::Artist, SaveFilenameToken::Title]
     );
-    assert_eq!(yaml.save_presets, config.save_presets);
+    assert_eq!(yaml.prefs.save_presets, config.prefs.save_presets);
     assert_eq!(
-        yaml.default_track_save_preset,
-        config.default_track_save_preset
+        yaml.prefs.default_track_save_preset,
+        config.prefs.default_track_save_preset
     );
     assert_eq!(
-        yaml.default_release_save_preset,
-        config.default_release_save_preset
+        yaml.prefs.default_release_save_preset,
+        config.prefs.default_release_save_preset
     );
 }
 
@@ -60,8 +59,8 @@ fn export_settings_survive_yaml_roundtrip() {
 fn transfer_concurrency_defaults_to_three() {
     let tmp = TempDir::new().unwrap();
     let config = make_test_config("lib", tmp.path().to_path_buf());
-    assert_eq!(config.max_concurrent_uploads.get(), 3);
-    assert_eq!(config.max_concurrent_downloads.get(), 3);
+    assert_eq!(config.prefs.max_concurrent_uploads.get(), 3);
+    assert_eq!(config.prefs.max_concurrent_downloads.get(), 3);
 }
 
 #[test]
@@ -91,25 +90,24 @@ fn validate_concurrency_bounds() {
 fn stored_concurrency_widens_to_the_builder_bound() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
-    config.max_concurrent_uploads = NonZeroU32::new(5).unwrap();
-    config.max_concurrent_downloads = NonZeroU32::new(2).unwrap();
-    assert_eq!(usize_bound(config.max_concurrent_uploads).get(), 5);
-    assert_eq!(usize_bound(config.max_concurrent_downloads).get(), 2);
+    config.prefs.max_concurrent_uploads = NonZeroU32::new(5).unwrap();
+    config.prefs.max_concurrent_downloads = NonZeroU32::new(2).unwrap();
+    assert_eq!(usize_bound(config.prefs.max_concurrent_uploads).get(), 5);
+    assert_eq!(usize_bound(config.prefs.max_concurrent_downloads).get(), 2);
 }
 
 #[test]
 fn transfer_concurrency_survives_yaml_roundtrip() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
-    config.max_concurrent_uploads = NonZeroU32::new(7).unwrap();
-    config.max_concurrent_downloads = NonZeroU32::new(4).unwrap();
+    config.prefs.max_concurrent_uploads = NonZeroU32::new(7).unwrap();
+    config.prefs.max_concurrent_downloads = NonZeroU32::new(4).unwrap();
     config.save_to_config_yaml().unwrap();
 
-    let yaml: ConfigYaml =
-        serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
-            .unwrap();
-    assert_eq!(yaml.max_concurrent_uploads.get(), 7);
-    assert_eq!(yaml.max_concurrent_downloads.get(), 4);
+    let yaml = parse_config_yaml(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
+        .unwrap();
+    assert_eq!(yaml.prefs.max_concurrent_uploads.get(), 7);
+    assert_eq!(yaml.prefs.max_concurrent_downloads.get(), 4);
 }
 
 #[test]
@@ -117,9 +115,9 @@ fn import_metadata_settings_default_to_automatic_lookup() {
     let tmp = TempDir::new().unwrap();
     let config = make_test_config("lib", tmp.path().to_path_buf());
 
-    assert!(config.identify_automatically);
+    assert!(config.prefs.identify_automatically);
     assert_eq!(
-        config.default_import_metadata_source,
+        config.prefs.default_import_metadata_source,
         DefaultImportMetadataSource::FindOnline
     );
 }
@@ -128,18 +126,17 @@ fn import_metadata_settings_default_to_automatic_lookup() {
 fn import_metadata_source_and_identify_automatically_roundtrip_independently() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
-    config.identify_automatically = false;
-    config.default_import_metadata_source = DefaultImportMetadataSource::None;
+    config.prefs.identify_automatically = false;
+    config.prefs.default_import_metadata_source = DefaultImportMetadataSource::None;
     config.save_to_config_yaml().unwrap();
 
-    let yaml: ConfigYaml =
-        serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
-            .unwrap();
+    let yaml = parse_config_yaml(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
+        .unwrap();
     let loaded = yaml.into_config("device".to_string(), tmp.path().to_path_buf());
 
-    assert!(!loaded.identify_automatically);
+    assert!(!loaded.prefs.identify_automatically);
     assert_eq!(
-        loaded.default_import_metadata_source,
+        loaded.prefs.default_import_metadata_source,
         DefaultImportMetadataSource::None
     );
 }
@@ -275,21 +272,100 @@ fn config_yaml_requires_every_bae_field() {
     }
 }
 
+/// The file is the contract. Identity, preferences, and coven's cloud home are
+/// three structs flattened onto one mapping, so this pins the whole thing a
+/// fresh library writes: every key, its order, its nesting, and its default. A
+/// rename, a dropped key, or a value that stopped being emitted shows up here.
+#[test]
+fn config_yaml_pins_the_on_disk_file() {
+    let config = make_test_config("abc-123", PathBuf::from("unused"));
+    let written = serde_yaml::to_string(&ConfigYaml::from(&config)).unwrap();
+
+    assert_eq!(
+        written,
+        r#"library_id: abc-123
+library_name: Test Library
+device_id: test-device-id
+discogs: null
+replay_gain_mode: Off
+save_presets:
+- id: flac
+  name: FLAC
+  codec: !Flac
+    bit_depth: Source
+  filename_tokens:
+  - TrackNumber
+  - Title
+  pregap_placement: AppendToPreviousExceptHtoa
+  applies_to_track: true
+  applies_to_release: true
+  embed_cover: true
+- id: mp3
+  name: MP3
+  codec: !Mp3
+    bitrate_kbps: 320
+  filename_tokens:
+  - TrackNumber
+  - Title
+  pregap_placement: AppendToPreviousExceptHtoa
+  applies_to_track: true
+  applies_to_release: true
+  embed_cover: true
+default_track_save_preset: flac
+default_release_save_preset: flac
+pause_between_sides: false
+max_concurrent_uploads: 3
+max_concurrent_downloads: 3
+show_remaining_time: false
+library_full_width: false
+verify_decode_on_import: true
+identify_automatically: true
+default_import_metadata_source: find_online
+cast_enabled: false
+mcp:
+  enabled: false
+  port: 47777
+subsonic:
+  enabled: false
+  port: 4533
+  username: ''
+  bind_address: 127.0.0.1
+provider: null
+s3_bucket: null
+s3_region: null
+s3_endpoint: null
+s3_key_prefix: null
+exact_upload_verification: metadata_hash
+google_drive_folder_id: null
+dropbox_folder_path: null
+onedrive_drive_id: null
+onedrive_folder_id: null
+cloudkit_owner_name: null
+cloudkit_zone_name: null
+storage: opaque
+"#
+    );
+    // And it reads back: the flattened parts each claim their own keys.
+    let read_back = parse_config_yaml(&written).unwrap();
+    assert_eq!(read_back.identity.library_id, "abc-123");
+    assert_eq!(read_back.prefs.save_presets, config.prefs.save_presets);
+    assert_eq!(read_back.cloud_home, config.cloud_home);
+}
+
 /// Casting reaches the local network, so it is opt-in: a fresh library has
 /// it off, and the choice survives a write/read of config.yaml.
 #[test]
 fn cast_is_off_by_default_and_survives_yaml_roundtrip() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib-cast", tmp.path().to_path_buf());
-    assert!(!config.cast_enabled, "casting is opt-in");
+    assert!(!config.prefs.cast_enabled, "casting is opt-in");
 
-    config.cast_enabled = true;
+    config.prefs.cast_enabled = true;
     config.save_to_config_yaml().unwrap();
 
-    let yaml: ConfigYaml =
-        serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
-            .unwrap();
-    assert!(yaml.cast_enabled);
+    let yaml = parse_config_yaml(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
+        .unwrap();
+    assert!(yaml.prefs.cast_enabled);
 }
 
 /// A config that is genuinely unreadable is SHOWN as broken, not skipped. The
@@ -346,7 +422,7 @@ fn a_broken_library_does_not_hide_a_working_one() {
 #[test]
 fn config_yaml_allows_missing_device_id() {
     let config = parse_yaml_without("device_id").unwrap();
-    assert_eq!(config.device_id, None);
+    assert_eq!(config.identity.device_id, None);
 }
 
 /// `is_usable` is the single source of truth for whether Discogs can be a
@@ -367,19 +443,19 @@ fn discogs_token_status_derives_from_option() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib-discogs", tmp.path().to_path_buf());
 
-    assert!(config.discogs.is_none());
+    assert!(config.prefs.discogs.is_none());
     assert!(matches!(
         config.discogs_token_status(),
         DiscogsTokenStatus::NotConfigured
     ));
 
-    config.discogs = Some(DiscogsValidation::Unvalidated);
+    config.prefs.discogs = Some(DiscogsValidation::Unvalidated);
     assert!(matches!(
         config.discogs_token_status(),
         DiscogsTokenStatus::Unvalidated
     ));
 
-    config.discogs = Some(DiscogsValidation::Rejected);
+    config.prefs.discogs = Some(DiscogsValidation::Rejected);
     assert!(matches!(
         config.discogs_token_status(),
         DiscogsTokenStatus::Rejected
@@ -405,11 +481,11 @@ fn save_and_load_config_yaml_roundtrip() {
 
     config.save_to_config_yaml().unwrap();
 
-    let yaml: ConfigYaml =
-        serde_yaml::from_str(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
+    let yaml =
+        parse_config_yaml(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
             .unwrap();
-    assert_eq!(yaml.library_id, "my-library-id");
-    assert_eq!(yaml.mcp, McpConfig::disabled_default());
+    assert_eq!(yaml.identity.library_id, "my-library-id");
+    assert_eq!(yaml.prefs.mcp, McpConfig::disabled_default());
 }
 
 #[test]
@@ -490,7 +566,10 @@ fn discovery_skips_non_utf8_library_dir() {
 
     let discovered = discover_all_library_paths(bae_dir);
     assert_eq!(discovered.len(), 1, "non-UTF-8 dir should be skipped");
-    assert_eq!(discovered[0].1.as_ref().unwrap().library_id, "valid-lib");
+    assert_eq!(
+        discovered[0].1.as_ref().unwrap().identity.library_id,
+        "valid-lib"
+    );
 }
 
 #[test]
@@ -501,10 +580,10 @@ fn library_name_roundtrip() {
     config.store_name = "My Music".to_string();
     config.save_to_config_yaml().unwrap();
 
-    let yaml: ConfigYaml =
-        serde_yaml::from_str(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
+    let yaml =
+        parse_config_yaml(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
             .unwrap();
-    assert_eq!(yaml.library_name, "My Music");
+    assert_eq!(yaml.identity.library_name, "My Music");
 }
 
 #[test]
@@ -532,17 +611,17 @@ fn discover_libraries_finds_dirs_with_config() {
 
     let ids: Vec<&str> = discovered
         .iter()
-        .map(|(_, y)| y.as_ref().unwrap().library_id.as_str())
+        .map(|(_, y)| y.as_ref().unwrap().identity.library_id.as_str())
         .collect();
     assert!(ids.contains(&"lib-1"));
     assert!(ids.contains(&"lib-2"));
 
     let lib2_entry = discovered
         .iter()
-        .find(|(_, y)| y.as_ref().unwrap().library_id == "lib-2")
+        .find(|(_, y)| y.as_ref().unwrap().identity.library_id == "lib-2")
         .unwrap();
     let lib2_yaml = lib2_entry.1.as_ref().unwrap();
-    assert_eq!(lib2_yaml.library_name, "Second Library");
+    assert_eq!(lib2_yaml.identity.library_name, "Second Library");
 }
 
 #[test]
@@ -585,11 +664,11 @@ fn rename_library_updates_config_yaml() {
         .unwrap();
     assert_eq!(handle.config().store_name, "New Name");
 
-    let yaml: ConfigYaml =
-        serde_yaml::from_str(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
+    let yaml =
+        parse_config_yaml(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
             .unwrap();
-    assert_eq!(yaml.library_name, "New Name");
-    assert_eq!(yaml.library_id, "lib-1"); // unchanged
+    assert_eq!(yaml.identity.library_name, "New Name");
+    assert_eq!(yaml.identity.library_id, "lib-1"); // unchanged
 }
 
 /// An `update` is reflected by the `Config` that `config()` returns — the
@@ -603,11 +682,14 @@ fn update_is_reflected_by_config() {
     config.save_to_config_yaml().unwrap();
     let handle = ConfigHandle::new(config);
 
-    assert!(handle.config().discogs.is_none());
+    assert!(handle.config().prefs.discogs.is_none());
     handle
-        .update(|c| c.discogs = Some(DiscogsValidation::Valid))
+        .update(|c| c.prefs.discogs = Some(DiscogsValidation::Valid))
         .unwrap();
-    assert_eq!(handle.config().discogs, Some(DiscogsValidation::Valid));
+    assert_eq!(
+        handle.config().prefs.discogs,
+        Some(DiscogsValidation::Valid)
+    );
 }
 
 #[test]
@@ -639,7 +721,7 @@ fn update_serializes_concurrent_edits() {
         config.store_name = "Renamed Library".to_string();
     });
     let playback = spawn_update(Arc::clone(&handle), Arc::clone(&start), |config| {
-        config.pause_between_sides = true;
+        config.prefs.pause_between_sides = true;
     });
 
     start.wait();
@@ -648,13 +730,13 @@ fn update_serializes_concurrent_edits() {
 
     let final_config = handle.config().clone();
     assert_eq!(final_config.store_name, "Renamed Library");
-    assert!(final_config.pause_between_sides);
+    assert!(final_config.prefs.pause_between_sides);
 
-    let yaml: ConfigYaml =
-        serde_yaml::from_str(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
+    let yaml =
+        parse_config_yaml(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
             .unwrap();
-    assert_eq!(yaml.library_name, "Renamed Library");
-    assert!(yaml.pause_between_sides);
+    assert_eq!(yaml.identity.library_name, "Renamed Library");
+    assert!(yaml.prefs.pause_between_sides);
 }
 
 #[test]
@@ -675,7 +757,7 @@ fn from_coven_preserves_library_id_and_persists_bae_yaml() {
 
     assert_eq!(config.store_id, library_id);
     assert_eq!(config.store_name, "Test Library");
-    assert_eq!(config.mcp, McpConfig::disabled_default());
+    assert_eq!(config.prefs.mcp, McpConfig::disabled_default());
     assert_eq!(
         config.cloud_home.cloudkit_owner_name.as_deref(),
         Some("_owner")
@@ -687,11 +769,11 @@ fn from_coven_preserves_library_id_and_persists_bae_yaml() {
 
     config.save_to_config_yaml().unwrap();
 
-    let yaml: ConfigYaml =
-        serde_yaml::from_str(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
+    let yaml =
+        parse_config_yaml(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
             .unwrap();
-    assert_eq!(yaml.library_id, library_id);
-    assert_eq!(yaml.mcp, McpConfig::disabled_default());
+    assert_eq!(yaml.identity.library_id, library_id);
+    assert_eq!(yaml.prefs.mcp, McpConfig::disabled_default());
     assert_eq!(
         yaml.cloud_home.cloudkit_owner_name.as_deref(),
         Some("_owner")

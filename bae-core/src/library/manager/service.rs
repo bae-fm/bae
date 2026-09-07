@@ -33,8 +33,8 @@ impl LibraryManager {
         let (max_uploads, max_downloads) = {
             let config = config_handle.config();
             (
-                crate::config::usize_bound(config.max_concurrent_uploads),
-                crate::config::usize_bound(config.max_concurrent_downloads),
+                crate::config::usize_bound(config.prefs.max_concurrent_uploads),
+                crate::config::usize_bound(config.prefs.max_concurrent_downloads),
             )
         };
         let handle = config_handle

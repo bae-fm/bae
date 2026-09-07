@@ -168,7 +168,7 @@ impl Config {
     /// The Discogs key's state for display: not configured, or the stored key's
     /// validation state.
     pub fn discogs_token_status(&self) -> DiscogsTokenStatus {
-        match self.discogs {
+        match self.prefs.discogs {
             None => DiscogsTokenStatus::NotConfigured,
             Some(DiscogsValidation::Valid) => DiscogsTokenStatus::Valid,
             Some(DiscogsValidation::Unvalidated) => DiscogsTokenStatus::Unvalidated,
@@ -212,7 +212,6 @@ impl Config {
             c.store_name.clone(),
         );
         cfg.inner = c;
-        cfg.mcp = McpConfig::disabled_default();
         cfg
     }
 }
@@ -247,166 +246,20 @@ where
     Option::deserialize(deserializer)
 }
 
-/// YAML config file structure for non-secret settings (per-library).
+/// bae's own per-library settings, in the order `config.yaml` writes them.
 ///
-/// Every field except `device_id` is required, with no `serde` defaults:
-/// serialization always emits every key, so a missing key fails the load
-/// rather than silently taking an implicit value.
+/// Declared once: [`Config`] holds them at runtime and [`ConfigYaml`] flattens
+/// them onto the top level of the file, so each field name is its on-disk key.
 ///
-/// **Adding a field to `ConfigYaml`: add it to [`Config::with_defaults`] too.**
+/// No field carries a `serde` default — serialization always emits every key,
+/// so a missing key fails the load rather than silently taking an implicit
+/// value. A new library starts from [`Preferences::default`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigYaml {
-    pub library_id: String,
-    /// Human-readable name for this library
-    pub library_name: String,
-    /// Unique identifier for this device, used as the namespace key for sync changesets.
-    /// Auto-generated on first startup if missing.
-    #[serde(default)]
-    pub device_id: Option<String>,
-    /// The stored Discogs key's validation state, or `None` when no key is
-    /// configured. `Some(v)` doubles as the hint that a key is in the keyring,
-    /// so the settings screen renders without a keyring read.
-    #[serde(deserialize_with = "deserialize_some")]
-    pub discogs: Option<DiscogsValidation>,
-    /// How loudness normalization is applied at playback.
-    pub replay_gain_mode: ReplayGainMode,
-    /// Configured export presets offered by release and track export.
-    pub save_presets: Vec<SavePreset>,
-    /// Id of the preset a track save defaults to. A required, valid preset id
-    /// that applies to track saves (config validation keeps it non-dangling).
-    pub default_track_save_preset: String,
-    /// Id of the preset a release save defaults to. A required, valid preset id
-    /// that applies to release saves (config validation keeps it non-dangling).
-    pub default_release_save_preset: String,
-    /// Whether playback pauses between vinyl/cassette sides.
-    pub pause_between_sides: bool,
-    /// How many blob uploads coven's upload drain runs at once. Device-local (a
-    /// concurrency limit is a per-machine choice, not a synced preference).
-    pub max_concurrent_uploads: NonZeroU32,
-    /// How many blob downloads a pin fetches at once. Device-local, like uploads.
-    pub max_concurrent_downloads: NonZeroU32,
-    /// Whether the seek bar's leading label counts down the time remaining
-    /// instead of showing the time elapsed.
-    pub show_remaining_time: bool,
-    /// Whether the library page spans the window's full width instead of
-    /// centering its content in a width-capped column.
-    pub library_full_width: bool,
-    /// Whether import fully decodes each track to verify it (fatal-error / frame
-    /// shortfall), failing the import for a broken track rather than importing it
-    /// and failing at play time. Rides the loudness decode, so it adds no work.
-    pub verify_decode_on_import: bool,
-    /// Whether identification starts on its own: the queue-wide sweep identifies
-    /// newly discovered Find online candidates, and opening Find online for a
-    /// candidate starts its identification.
-    pub identify_automatically: bool,
-    /// Which source is applied when a candidate is first discovered.
-    pub default_import_metadata_source: DefaultImportMetadataSource,
-    /// Whether casting to a network receiver is available at all. Off unless the
-    /// user turns it on: while off, nothing browses the local network and no
-    /// cast session can be started.
-    pub cast_enabled: bool,
-    /// Local automation server configuration.
-    pub mcp: McpConfig,
-    /// Subsonic/OpenSubsonic server settings. The password is keyring-only.
-    pub subsonic: SubsonicConfig,
-    /// Cloud home provider + per-provider settings. Flattened so the on-disk
-    /// keys sit at the top level.
-    #[serde(flatten)]
-    pub cloud_home: CloudHomeConfig,
-}
-
-impl ConfigYaml {
-    /// Convert to a runtime Config. The caller resolves device_id (auto-generating
-    /// if missing from YAML) and provides the library_dir.
-    fn into_config(self, device_id: String, library_path: PathBuf) -> Config {
-        Config {
-            inner: coven::Config {
-                store_id: self.library_id,
-                device_id,
-                store_name: self.library_name,
-                cloud_home: self.cloud_home,
-            },
-            library_path,
-            discogs: self.discogs,
-            replay_gain_mode: self.replay_gain_mode,
-            save_presets: self.save_presets,
-            default_track_save_preset: self.default_track_save_preset,
-            default_release_save_preset: self.default_release_save_preset,
-            pause_between_sides: self.pause_between_sides,
-            max_concurrent_uploads: self.max_concurrent_uploads,
-            max_concurrent_downloads: self.max_concurrent_downloads,
-            show_remaining_time: self.show_remaining_time,
-            library_full_width: self.library_full_width,
-            verify_decode_on_import: self.verify_decode_on_import,
-            identify_automatically: self.identify_automatically,
-            default_import_metadata_source: self.default_import_metadata_source,
-            cast_enabled: self.cast_enabled,
-            mcp: self.mcp,
-            subsonic: self.subsonic,
-        }
-    }
-}
-
-impl From<&Config> for ConfigYaml {
-    fn from(config: &Config) -> Self {
-        Self {
-            library_id: config.store_id.clone(),
-            library_name: config.store_name.clone(),
-            device_id: Some(config.device_id.clone()),
-            discogs: config.discogs,
-            replay_gain_mode: config.replay_gain_mode,
-            save_presets: config.save_presets.clone(),
-            default_track_save_preset: config.default_track_save_preset.clone(),
-            default_release_save_preset: config.default_release_save_preset.clone(),
-            pause_between_sides: config.pause_between_sides,
-            max_concurrent_uploads: config.max_concurrent_uploads,
-            max_concurrent_downloads: config.max_concurrent_downloads,
-            show_remaining_time: config.show_remaining_time,
-            library_full_width: config.library_full_width,
-            verify_decode_on_import: config.verify_decode_on_import,
-            identify_automatically: config.identify_automatically,
-            default_import_metadata_source: config.default_import_metadata_source,
-            cast_enabled: config.cast_enabled,
-            mcp: config.mcp,
-            subsonic: config.subsonic.clone(),
-            cloud_home: config.cloud_home.clone(),
-        }
-    }
-}
-
-/// Metadata about a discovered library (for the library switcher UI)
-/// A library found under `~/.bae/libraries/`, whether or not it can be opened.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LibraryInfo {
-    pub id: String,
-    pub name: String,
-    pub path: PathBuf,
-    pub is_active: bool,
-    pub cloud_provider: Option<CloudProvider>,
-    /// Why this library cannot be opened, or `None` when its config loaded.
-    ///
-    /// A library whose config.yaml will not parse is still listed — it must not
-    /// silently vanish from the picker. Its `id` and `name` use the directory
-    /// name because the configured values could not be read.
-    pub error: Option<String>,
-}
-
-/// Application configuration.
-///
-/// Holds coven's sync/cloud config (`inner`) plus bae's own fields.
-/// `Deref`/`DerefMut` expose coven's fields directly, so `config.store_id`,
-/// `config.device_id`, and `config.cloud_home.provider = …` read and write
-/// through to `inner`.
-#[derive(Clone, Debug)]
-pub struct Config {
-    /// Sync/cloud config coven owns — embedded, not re-declared.
-    pub inner: coven::Config,
-    /// Runtime location of this library. It is host context rather than synced
-    /// configuration, so it stays outside `coven::Config` and off the wire.
-    library_path: PathBuf,
+pub struct Preferences {
     /// The stored Discogs key's validation state, or `None` when no key is
     /// configured. `Some` doubles as the hint that a key is in the keyring, so
     /// settings render without a keyring read.
+    #[serde(deserialize_with = "deserialize_some")]
     pub discogs: Option<DiscogsValidation>,
     /// How loudness normalization is applied at playback. Defaults to `Off`.
     pub replay_gain_mode: ReplayGainMode,
@@ -435,8 +288,10 @@ pub struct Config {
     /// centering its content in a width-capped column. Defaults to `false`
     /// (capped). A synced preference, like `show_remaining_time`.
     pub library_full_width: bool,
-    /// Whether import verifies each track by fully decoding it, failing the import
-    /// for a broken (truncated/corrupt) track. Defaults to `true`.
+    /// Whether import fully decodes each track to verify it (fatal-error / frame
+    /// shortfall), failing the import for a broken track rather than importing it
+    /// and failing at play time. Rides the loudness decode, so it adds no work.
+    /// Defaults to `true`.
     pub verify_decode_on_import: bool,
     /// Whether identification starts on its own: the queue-wide sweep identifies
     /// newly discovered Find online candidates, and opening Find online for a
@@ -456,6 +311,137 @@ pub struct Config {
     /// The password is keyring-only, like the MCP bearer token; the server
     /// controller combines this `username` with it into the runtime credential.
     pub subsonic: SubsonicConfig,
+}
+
+impl Default for Preferences {
+    fn default() -> Self {
+        Self {
+            discogs: None,
+            replay_gain_mode: ReplayGainMode::Off,
+            save_presets: default_save_presets(),
+            default_track_save_preset: "flac".to_string(),
+            default_release_save_preset: "flac".to_string(),
+            pause_between_sides: false,
+            max_concurrent_uploads: default_transfer_concurrency(),
+            max_concurrent_downloads: default_transfer_concurrency(),
+            show_remaining_time: false,
+            library_full_width: false,
+            verify_decode_on_import: true,
+            identify_automatically: true,
+            default_import_metadata_source: DefaultImportMetadataSource::FindOnline,
+            cast_enabled: false,
+            mcp: McpConfig::disabled_default(),
+            subsonic: SubsonicConfig::disabled_default(),
+        }
+    }
+}
+
+/// Which library `config.yaml` describes, under the key names bae has always
+/// written: `library_id` and `library_name` are coven's `store_id` and
+/// `store_name`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LibraryIdentity {
+    pub library_id: String,
+    /// Human-readable name for this library
+    pub library_name: String,
+    /// Unique identifier for this device, used as the namespace key for sync changesets.
+    /// The one designed absence: auto-generated and written back on first load.
+    #[serde(default)]
+    pub device_id: Option<String>,
+}
+
+/// `config.yaml`: the library's identity, bae's settings, and coven's cloud
+/// home, each flattened onto one top-level mapping.
+///
+/// Serializing is derived. Parsing is not: a save preset's codec is written as
+/// a YAML tag (`codec: !Flac`), and serde's `flatten` funnels every flattened
+/// key through an untagged intermediate that rejects tags. [`Self::from_value`]
+/// reads each part from the same parsed [`serde_yaml::Value`], which keeps them.
+#[derive(Debug, Clone, Serialize)]
+pub struct ConfigYaml {
+    #[serde(flatten)]
+    pub identity: LibraryIdentity,
+    #[serde(flatten)]
+    pub prefs: Preferences,
+    /// Cloud home provider + per-provider settings.
+    #[serde(flatten)]
+    pub cloud_home: CloudHomeConfig,
+}
+
+impl ConfigYaml {
+    /// Read the three parts out of one parsed mapping. Each ignores the keys
+    /// that belong to the others; between them they claim every key the file has.
+    fn from_value(value: &serde_yaml::Value) -> Result<Self, serde_yaml::Error> {
+        Ok(Self {
+            identity: LibraryIdentity::deserialize(value)?,
+            prefs: Preferences::deserialize(value)?,
+            cloud_home: CloudHomeConfig::deserialize(value)?,
+        })
+    }
+
+    /// Convert to a runtime Config. The caller resolves device_id (auto-generating
+    /// if missing from YAML) and provides the library_dir.
+    fn into_config(self, device_id: String, library_path: PathBuf) -> Config {
+        Config {
+            inner: coven::Config {
+                store_id: self.identity.library_id,
+                device_id,
+                store_name: self.identity.library_name,
+                cloud_home: self.cloud_home,
+            },
+            library_path,
+            prefs: self.prefs,
+        }
+    }
+}
+
+impl From<&Config> for ConfigYaml {
+    fn from(config: &Config) -> Self {
+        Self {
+            identity: LibraryIdentity {
+                library_id: config.store_id.clone(),
+                library_name: config.store_name.clone(),
+                device_id: Some(config.device_id.clone()),
+            },
+            prefs: config.prefs.clone(),
+            cloud_home: config.cloud_home.clone(),
+        }
+    }
+}
+
+/// Metadata about a discovered library (for the library switcher UI)
+/// A library found under `~/.bae/libraries/`, whether or not it can be opened.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LibraryInfo {
+    pub id: String,
+    pub name: String,
+    pub path: PathBuf,
+    pub is_active: bool,
+    pub cloud_provider: Option<CloudProvider>,
+    /// Why this library cannot be opened, or `None` when its config loaded.
+    ///
+    /// A library whose config.yaml will not parse is still listed — it must not
+    /// silently vanish from the picker. Its `id` and `name` use the directory
+    /// name because the configured values could not be read.
+    pub error: Option<String>,
+}
+
+/// Application configuration.
+///
+/// Three parts: coven's sync/cloud config (`inner`), bae's own settings
+/// (`prefs`), and where this library lives on this machine.
+/// `Deref`/`DerefMut` expose coven's fields directly, so `config.store_id`,
+/// `config.device_id`, and `config.cloud_home.provider = …` read and write
+/// through to `inner`.
+#[derive(Clone, Debug)]
+pub struct Config {
+    /// Sync/cloud config coven owns — embedded, not re-declared.
+    pub inner: coven::Config,
+    /// Runtime location of this library. It is host context rather than synced
+    /// configuration, so it stays outside `coven::Config` and off the wire.
+    library_path: PathBuf,
+    /// bae's own settings, exactly as `config.yaml` carries them.
+    pub prefs: Preferences,
 }
 
 impl std::ops::Deref for Config {
@@ -517,12 +503,12 @@ impl Config {
         config_path: &std::path::Path,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
-        let device_id = match yaml_config.device_id.clone() {
+        let device_id = match yaml_config.identity.device_id.clone() {
             Some(id) => id,
             None => {
                 let id = ids.new_id();
                 info!("No device_id in config.yaml, generated: {}", id);
-                yaml_config.device_id = Some(id.clone());
+                yaml_config.identity.device_id = Some(id.clone());
                 let serialized = serde_yaml::to_string(&yaml_config)
                     .map_err(|e| ConfigError::Serialization(e.to_string()))?;
                 write_atomic(config_path, serialized.as_bytes()).map_err(WriteError::into_inner)?;
@@ -568,22 +554,7 @@ impl Config {
         Self {
             inner: coven::Config::with_defaults(library_id, device_id, library_name),
             library_path: library_path.as_ref().to_path_buf(),
-            discogs: None,
-            replay_gain_mode: ReplayGainMode::Off,
-            save_presets: default_save_presets(),
-            default_track_save_preset: "flac".to_string(),
-            default_release_save_preset: "flac".to_string(),
-            pause_between_sides: false,
-            max_concurrent_uploads: default_transfer_concurrency(),
-            max_concurrent_downloads: default_transfer_concurrency(),
-            show_remaining_time: false,
-            library_full_width: false,
-            verify_decode_on_import: true,
-            identify_automatically: true,
-            default_import_metadata_source: DefaultImportMetadataSource::FindOnline,
-            cast_enabled: false,
-            mcp: McpConfig::disabled_default(),
-            subsonic: SubsonicConfig::disabled_default(),
+            prefs: Preferences::default(),
         }
     }
 
@@ -608,9 +579,9 @@ fn discover_libraries_from_bae_dir(
         .into_iter()
         .map(|(path, yaml)| match yaml {
             Ok(yaml) => LibraryInfo {
-                is_active: active_id.as_deref() == Some(&yaml.library_id),
-                id: yaml.library_id,
-                name: yaml.library_name,
+                is_active: active_id.as_deref() == Some(&yaml.identity.library_id),
+                id: yaml.identity.library_id,
+                name: yaml.identity.library_name,
                 path,
                 cloud_provider: yaml.cloud_home.provider.clone(),
                 error: None,
@@ -662,10 +633,8 @@ pub fn rename_inactive_library(
     let library_dir = find_library_by_id(bae_dir, library_id)
         .ok_or_else(|| ConfigError::Config(format!("library not found: {library_id}")))?;
     let config_path = library_dir.join("config.yaml");
-    let content = std::fs::read_to_string(&config_path)?;
-    let mut yaml: ConfigYaml =
-        serde_yaml::from_str(&content).map_err(|e| ConfigError::Serialization(e.to_string()))?;
-    yaml.library_name = new_name.as_str().to_string();
+    let mut yaml = parse_config_yaml(&std::fs::read_to_string(&config_path)?)?;
+    yaml.identity.library_name = new_name.as_str().to_string();
     let serialized =
         serde_yaml::to_string(&yaml).map_err(|e| ConfigError::Serialization(e.to_string()))?;
     write_atomic(&config_path, serialized.as_bytes()).map_err(WriteError::into_inner)?;
@@ -681,11 +650,11 @@ fn load_registered_config_yaml(
     expected_library_id: &str,
 ) -> Result<ConfigYaml, ConfigError> {
     let yaml_config = Config::load_config_yaml(&library_dir.join("config.yaml"))?;
-    if yaml_config.library_id != expected_library_id {
+    if yaml_config.identity.library_id != expected_library_id {
         return Err(ConfigError::Config(format!(
             "registered library directory {} contains library_id {}",
             library_dir.display(),
-            yaml_config.library_id
+            yaml_config.identity.library_id
         )));
     }
     Ok(yaml_config)
@@ -712,7 +681,7 @@ fn find_library_by_id(bae_dir: &std::path::Path, uuid: &str) -> Option<PathBuf> 
     for (path, yaml) in discover_all_library_paths(bae_dir) {
         // A library whose config will not parse cannot be addressed by id — its id
         // is precisely what we could not read.
-        if yaml.is_ok_and(|yaml| yaml.library_id == uuid) {
+        if yaml.is_ok_and(|yaml| yaml.identity.library_id == uuid) {
             return Some(path);
         }
     }
@@ -801,7 +770,9 @@ fn read_config_yaml(path: &std::path::Path) -> Result<Option<ConfigYaml>, Config
 
 /// Parse config.yaml into the fields this build uses.
 fn parse_config_yaml(content: &str) -> Result<ConfigYaml, ConfigError> {
-    serde_yaml::from_str(content).map_err(|e| ConfigError::Serialization(e.to_string()))
+    let value: serde_yaml::Value =
+        serde_yaml::from_str(content).map_err(|e| ConfigError::Serialization(e.to_string()))?;
+    ConfigYaml::from_value(&value).map_err(|e| ConfigError::Serialization(e.to_string()))
 }
 
 fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, ConfigError> {

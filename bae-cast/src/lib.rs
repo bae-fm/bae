@@ -281,7 +281,7 @@ impl CastController {
             loop {
                 match config_rx.changed().await {
                     Ok(()) => {
-                        let enabled = config_rx.borrow().cast_enabled;
+                        let enabled = config_rx.borrow().prefs.cast_enabled;
                         if !enabled {
                             controller.stop_discovery();
                             controller.stop_casting();
@@ -332,7 +332,7 @@ impl CastController {
     /// config is the one authority, so there is no copy here to fall out of step
     /// with a change made on this device or synced from another.
     fn enabled(&self) -> bool {
-        self.services.get_config().cast_enabled
+        self.services.get_config().prefs.cast_enabled
     }
 
     /// Start browsing for devices (the picker opened). Idempotent, and a no-op
@@ -619,7 +619,10 @@ mod tests {
             .unwrap();
         let (controller, services, _tmp) = test_controller(&runtime, RendererDiscovery::builtin());
 
-        assert!(!services.get_config().cast_enabled, "casting is opt-in");
+        assert!(
+            !services.get_config().prefs.cast_enabled,
+            "casting is opt-in"
+        );
         controller.start_discovery();
         assert!(!browsing(&controller), "casting is off: nothing may browse");
         assert!(

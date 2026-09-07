@@ -987,8 +987,8 @@ async fn transfer_concurrency_settings_apply_to_the_open_store() {
     assert_eq!(after.uploads.get(), 5);
     assert_eq!(after.downloads.get(), 2);
     assert_ne!((before.uploads, before.downloads), (after.uploads, after.downloads));
-    assert_eq!(manager.get_config().max_concurrent_uploads.get(), 5);
-    assert_eq!(manager.get_config().max_concurrent_downloads.get(), 2);
+    assert_eq!(manager.get_config().prefs.max_concurrent_uploads.get(), 5);
+    assert_eq!(manager.get_config().prefs.max_concurrent_downloads.get(), 2);
 
     assert!(manager.set_max_concurrent_uploads(0).is_err());
     assert_eq!(

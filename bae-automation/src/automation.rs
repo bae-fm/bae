@@ -12,7 +12,7 @@ impl Automation {
             library_id: config.store_id.clone(),
             library_name: config.store_name.clone(),
             library_path: config.library_path().to_string_lossy().to_string(),
-            mcp: config.mcp.into(),
+            mcp: config.prefs.mcp.into(),
         }
     }
 

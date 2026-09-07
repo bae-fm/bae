@@ -216,7 +216,7 @@ impl PlaybackService {
     }
 
     pub(super) fn side_pause_enabled(&self) -> bool {
-        self.library_manager.get_config().pause_between_sides
+        self.library_manager.get_config().prefs.pause_between_sides
             && self.playback_queue.repeat_mode() != RepeatMode::Track
     }
 

@@ -165,7 +165,7 @@ pub fn start(
                         if changed.is_err() {
                             return;
                         }
-                        if config.borrow().identify_automatically {
+                        if config.borrow().prefs.identify_automatically {
                             run_pass(&loop_context, &loop_token, &mut event_rx, &mut config).await;
                         } else {
                             loop_context.release_all();
@@ -311,7 +311,7 @@ async fn run_pass_once(
     bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
     config: &mut tokio::sync::watch::Receiver<crate::config::Config>,
 ) -> PassOutcome {
-    if !config.borrow().identify_automatically {
+    if !config.borrow().prefs.identify_automatically {
         context.release_all();
         announce_empty_queue(context);
         return PassOutcome::Complete;
@@ -348,7 +348,7 @@ async fn run_pass_once(
 
     loop {
         while pass.in_flight_count() + finishing.len() < MAX_IN_FLIGHT {
-            if !config.borrow().identify_automatically {
+            if !config.borrow().prefs.identify_automatically {
                 context.release_all();
                 finishing.shutdown().await;
                 announce_empty_queue(context);
@@ -416,11 +416,7 @@ async fn run_pass_once(
                 return PassOutcome::Complete;
             }
             changed = config.changed() => {
-                if changed.is_err()
-                    || !config
-                        .borrow()
-                        .identify_automatically
-                {
+                if changed.is_err() || !config.borrow().prefs.identify_automatically {
                     context.release_all();
                     finishing.shutdown().await;
                     announce_empty_queue(context);

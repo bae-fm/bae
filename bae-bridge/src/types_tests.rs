@@ -149,8 +149,8 @@ mod conversion_roundtrip {
                     std::path::PathBuf::from("/library"),
                     "Library".to_string(),
                 );
-                config.identify_automatically = identify_automatically;
-                config.default_import_metadata_source = source;
+                config.prefs.identify_automatically = identify_automatically;
+                config.prefs.default_import_metadata_source = source;
 
                 let bridge = BridgeConfig::from_core(&config);
                 assert_eq!(bridge.identify_automatically, identify_automatically);

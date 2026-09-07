@@ -19,7 +19,7 @@ impl LibraryManager {
 
     pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
         self.config_handle
-            .update(|c| c.pause_between_sides = enabled)
+            .update(|c| c.prefs.pause_between_sides = enabled)
     }
 
     /// How many blob uploads coven's upload drain runs at once. Rejected outside
@@ -29,7 +29,7 @@ impl LibraryManager {
     pub fn set_max_concurrent_uploads(&self, n: u32) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
         self.config_handle
-            .update(|c| c.max_concurrent_uploads = n)?;
+            .update(|c| c.prefs.max_concurrent_uploads = n)?;
         self.apply_transfer_limits();
         Ok(())
     }
@@ -39,7 +39,7 @@ impl LibraryManager {
     pub fn set_max_concurrent_downloads(&self, n: u32) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
         self.config_handle
-            .update(|c| c.max_concurrent_downloads = n)?;
+            .update(|c| c.prefs.max_concurrent_downloads = n)?;
         self.apply_transfer_limits();
         Ok(())
     }
@@ -49,8 +49,8 @@ impl LibraryManager {
     fn apply_transfer_limits(&self) {
         let config = self.config_handle.config();
         self.database.set_transfer_limits(coven::TransferLimits {
-            uploads: crate::config::usize_bound(config.max_concurrent_uploads),
-            downloads: crate::config::usize_bound(config.max_concurrent_downloads),
+            uploads: crate::config::usize_bound(config.prefs.max_concurrent_uploads),
+            downloads: crate::config::usize_bound(config.prefs.max_concurrent_downloads),
         });
     }
 
@@ -66,7 +66,7 @@ impl LibraryManager {
     /// operation; the config value stream re-renders the bar.
     pub fn set_show_remaining_time(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
         self.config_handle
-            .update(|c| c.show_remaining_time = enabled)
+            .update(|c| c.prefs.show_remaining_time = enabled)
     }
 
     /// Whether the library page spans the window's full width instead of
@@ -74,7 +74,7 @@ impl LibraryManager {
     /// preference: the config value stream re-renders the page after the write.
     pub fn set_library_full_width(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
         self.config_handle
-            .update(|c| c.library_full_width = enabled)
+            .update(|c| c.prefs.library_full_width = enabled)
     }
 
     pub fn set_identify_automatically(
@@ -82,7 +82,7 @@ impl LibraryManager {
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
         self.config_handle
-            .update(|config| config.identify_automatically = enabled)
+            .update(|config| config.prefs.identify_automatically = enabled)
     }
 
     pub fn set_default_import_metadata_source(
@@ -90,18 +90,19 @@ impl LibraryManager {
         source: crate::config::DefaultImportMetadataSource,
     ) -> Result<(), crate::config::ConfigError> {
         self.config_handle
-            .update(|config| config.default_import_metadata_source = source)
+            .update(|config| config.prefs.default_import_metadata_source = source)
     }
 
     /// Whether casting to a network receiver is available. Turning it off is
     /// what ends an active session: the desktop cast controller follows this
     /// field, stops browsing, and disconnects.
     pub fn set_cast_enabled(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
-        self.config_handle.update(|c| c.cast_enabled = enabled)
+        self.config_handle
+            .update(|c| c.prefs.cast_enabled = enabled)
     }
 
     pub fn save_presets(&self) -> Vec<crate::config::SavePreset> {
-        self.config_handle.config().save_presets.clone()
+        self.config_handle.config().prefs.save_presets.clone()
     }
 
     pub fn set_save_presets(
@@ -125,13 +126,14 @@ impl LibraryManager {
         let (default_track, default_release) = {
             let config = self.config_handle.config();
             (
-                config.default_track_save_preset.clone(),
-                config.default_release_save_preset.clone(),
+                config.prefs.default_track_save_preset.clone(),
+                config.prefs.default_release_save_preset.clone(),
             )
         };
         Self::validate_default_save_preset(&default_track, &presets, true)?;
         Self::validate_default_save_preset(&default_release, &presets, false)?;
-        self.config_handle.update(|c| c.save_presets = presets)
+        self.config_handle
+            .update(|c| c.prefs.save_presets = presets)
     }
 
     pub fn set_default_track_save_preset(
@@ -140,11 +142,11 @@ impl LibraryManager {
     ) -> Result<(), crate::config::ConfigError> {
         Self::validate_default_save_preset(
             &preset_id,
-            &self.config_handle.config().save_presets,
+            &self.config_handle.config().prefs.save_presets,
             true,
         )?;
         self.config_handle
-            .update(|c| c.default_track_save_preset = preset_id)
+            .update(|c| c.prefs.default_track_save_preset = preset_id)
     }
 
     pub fn set_default_release_save_preset(
@@ -153,11 +155,11 @@ impl LibraryManager {
     ) -> Result<(), crate::config::ConfigError> {
         Self::validate_default_save_preset(
             &preset_id,
-            &self.config_handle.config().save_presets,
+            &self.config_handle.config().prefs.save_presets,
             false,
         )?;
         self.config_handle
-            .update(|c| c.default_release_save_preset = preset_id)
+            .update(|c| c.prefs.default_release_save_preset = preset_id)
     }
 
     /// A save default must name a preset that exists and applies to its level
@@ -195,7 +197,7 @@ impl LibraryManager {
         config: crate::config::McpConfig,
     ) -> Result<(), crate::config::ConfigError> {
         config.validate()?;
-        self.config_handle.update(|c| c.mcp = config)
+        self.config_handle.update(|c| c.prefs.mcp = config)
     }
 
     pub fn get_mcp_token(&self) -> Result<Option<String>, LibraryError> {
@@ -227,7 +229,7 @@ impl LibraryManager {
         config: crate::config::SubsonicConfig,
     ) -> Result<(), crate::config::ConfigError> {
         config.validate()?;
-        self.config_handle.update(|c| c.subsonic = config)
+        self.config_handle.update(|c| c.prefs.subsonic = config)
     }
 
     pub fn get_subsonic_password(&self) -> Result<Option<String>, LibraryError> {

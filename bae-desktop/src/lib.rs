@@ -58,7 +58,7 @@ impl DesktopServices {
             automation,
             Arc::new(move || token_manager.ensure_mcp_token().map_err(|e| e.to_string())),
         );
-        let initial = services.get_config().mcp;
+        let initial = services.get_config().prefs.mcp;
         controller.apply_config(initial).await;
 
         // The Subsonic server's runtime credential is the config username plus
@@ -73,7 +73,7 @@ impl DesktopServices {
                     .map_err(|e| e.to_string())
             }),
         );
-        let initial_subsonic = services.get_config().subsonic;
+        let initial_subsonic = services.get_config().prefs.subsonic;
         subsonic_controller.apply_config(initial_subsonic).await;
 
         let config_controller = controller.clone();
@@ -85,7 +85,7 @@ impl DesktopServices {
                     Ok(()) => {
                         let (mcp, subsonic) = {
                             let config = config_rx.borrow();
-                            (config.mcp, config.subsonic.clone())
+                            (config.prefs.mcp, config.prefs.subsonic.clone())
                         };
                         config_controller.apply_config(mcp).await;
                         config_subsonic_controller.apply_config(subsonic).await;
@@ -111,7 +111,7 @@ impl DesktopServices {
 
     pub async fn set_mcp_config(&self, config: McpConfig) -> Result<(), DesktopMcpConfigError> {
         config.validate().map_err(DesktopMcpConfigError::Config)?;
-        let previous = self.services.get_config().mcp;
+        let previous = self.services.get_config().prefs.mcp;
         let status = self.mcp_controller.apply_config(config).await;
         if let McpServerStatus::Error { error } = status {
             self.mcp_controller.apply_config(previous).await;
@@ -163,7 +163,7 @@ impl DesktopServices {
         self.services
             .set_subsonic_password(password.to_string())
             .map_err(|e| DesktopSubsonicConfigError::Config(ConfigError::Config(e.to_string())))?;
-        let config = self.services.get_config().subsonic;
+        let config = self.services.get_config().prefs.subsonic;
         if let SubsonicServerStatus::Error { error } =
             self.subsonic_controller.restart(config).await
         {
@@ -188,7 +188,7 @@ async fn apply_subsonic_config(
     config
         .validate()
         .map_err(DesktopSubsonicConfigError::Config)?;
-    let previous = services.get_config().subsonic;
+    let previous = services.get_config().prefs.subsonic;
     let status = controller.apply_config(config.clone()).await;
     if let SubsonicServerStatus::Error { error } = status {
         controller.apply_config(previous).await;
@@ -294,7 +294,7 @@ mod tests {
         let occupied = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = occupied.local_addr().unwrap().port();
 
-        let before = services.get_config().subsonic;
+        let before = services.get_config().prefs.subsonic;
         let result = runtime.block_on(apply_subsonic_config(
             &controller,
             &services,
@@ -311,7 +311,7 @@ mod tests {
             "a failed bind must surface as a server error, got {result:?}"
         );
         assert_eq!(
-            services.get_config().subsonic,
+            services.get_config().prefs.subsonic,
             before,
             "a runtime apply failure must not persist the new config"
         );

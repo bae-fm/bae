@@ -94,7 +94,7 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
     // Config claims an Unvalidated key; the keyring has none — the torn state.
     manager
         .config_handle
-        .update(|c| c.discogs = Some(DiscogsValidation::Unvalidated))
+        .update(|c| c.prefs.discogs = Some(DiscogsValidation::Unvalidated))
         .unwrap();
 
     let handle = manager
@@ -116,7 +116,7 @@ async fn discogs_validation_signals_confirm_and_reject() {
     // A success confirms a stored Unvalidated key.
     manager
         .config_handle
-        .update(|c| c.discogs = Some(DiscogsValidation::Unvalidated))
+        .update(|c| c.prefs.discogs = Some(DiscogsValidation::Unvalidated))
         .unwrap();
     manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted);
     assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
