@@ -6,6 +6,28 @@ async fn report_background_task_exit(task_name: &'static str, task: tokio::task:
     }
 }
 
+/// The live upload observer both constructors build before assembling the
+/// manager: the upload list coven's blob transitions are reported into, the
+/// observer that reports them, and the event stream its callbacks drive.
+struct UploadObserver {
+    uploads: crate::library::live_uploads::LiveUploads,
+    observer: Arc<crate::sync::upload_observer::ReleaseUploadObserver>,
+    events: crate::sync::upload_observer::UploadObserverEvents,
+}
+
+impl UploadObserver {
+    fn new() -> Self {
+        let uploads = crate::library::live_uploads::LiveUploads::new();
+        let (observer, events) =
+            crate::sync::upload_observer::ReleaseUploadObserver::new(uploads.clone());
+        Self {
+            uploads,
+            observer: Arc::new(observer),
+            events,
+        }
+    }
+}
+
 impl LibraryManager {
     /// Open coven through the top-level builder and create the library manager
     /// over the resulting handle.
@@ -19,16 +41,13 @@ impl LibraryManager {
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
         remote_images: crate::import::cover_art::RemoteImageCache,
     ) -> Result<Self, coven::DbError> {
-        let uploads = crate::library::live_uploads::LiveUploads::new();
-        let (observer, observer_events) =
-            crate::sync::upload_observer::ReleaseUploadObserver::new(uploads.clone());
-        let observer = Arc::new(observer);
+        let uploads = UploadObserver::new();
         // coven holds only a `Weak` to the observer (via `WeakUploadObserver`);
         // the `LibraryManager` below owns the strong `Arc`. Registering the
         // observer strongly here would close a cycle through the `CovenHandle` it
         // holds back, pinning coven's store-open lock past the manager's life.
         let weak_observer = Arc::new(crate::sync::upload_observer::WeakUploadObserver::new(
-            Arc::downgrade(&observer),
+            Arc::downgrade(&uploads.observer),
         ));
         let (max_uploads, max_downloads) = {
             let config = config_handle.config();
@@ -62,8 +81,6 @@ impl LibraryManager {
             remote_images,
             cloudkit_ops,
             uploads,
-            observer,
-            observer_events,
         ))
     }
 
@@ -81,9 +98,6 @@ impl LibraryManager {
         runtime_handle: tokio::runtime::Handle,
         remote_images: crate::import::cover_art::RemoteImageCache,
     ) -> Self {
-        let uploads = crate::library::live_uploads::LiveUploads::new();
-        let (observer, observer_events) =
-            crate::sync::upload_observer::ReleaseUploadObserver::new(uploads.clone());
         Self::assemble(
             database,
             config_handle,
@@ -93,9 +107,7 @@ impl LibraryManager {
             runtime_handle,
             remote_images,
             None,
-            uploads,
-            Arc::new(observer),
-            observer_events,
+            UploadObserver::new(),
         )
     }
 
@@ -112,16 +124,14 @@ impl LibraryManager {
         runtime_handle: tokio::runtime::Handle,
         remote_images: crate::import::cover_art::RemoteImageCache,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-        uploads: crate::library::live_uploads::LiveUploads,
-        observer: Arc<crate::sync::upload_observer::ReleaseUploadObserver>,
-        observer_events: crate::sync::upload_observer::UploadObserverEvents,
+        uploads: UploadObserver,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
         let sync_status = SyncStatus::new(database.clone());
         let sync = SyncController::new(
             config_handle.clone(),
             database.clone(),
-            uploads,
+            uploads.uploads,
             cloudkit_ops,
             diagnostics.clone(),
         );
@@ -146,9 +156,9 @@ impl LibraryManager {
             outputs: crate::library::Outputs::new(
                 crate::library::output_snapshot::build_output_snapshot,
             ),
-            _upload_observer: observer,
+            _upload_observer: uploads.observer,
         };
-        manager.start_upload_observer_events(observer_events);
+        manager.start_upload_observer_events(uploads.events);
         manager.start_queue_workers();
         manager
     }

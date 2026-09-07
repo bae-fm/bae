@@ -307,18 +307,8 @@ async fn rescan_seeded_root(
         .unwrap()
         .expect("the seeded scan generation is current");
 
-    let result = ImportService::rescan_and_reconcile(
-        root,
-        &event_tx,
-        &service.library_manager,
-        preparations,
-        &service.clock,
-        &service.ids,
-        &Arc::new(tokio::sync::Mutex::new(())),
-        &folder_watcher,
-        &cancellation,
-    )
-    .await;
+    let scan = test_scan_services(service, preparations, event_tx, folder_watcher);
+    let result = ImportService::rescan_and_reconcile(root, &scan, &cancellation).await;
 
     (events, result)
 }
@@ -484,7 +474,6 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
     let (event_tx, mut events) = tokio::sync::broadcast::channel(256);
     let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
     let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
-    let commit = Arc::new(tokio::sync::Mutex::new(()));
     let cancellation = crate::import::folder_scanner::ScanCancellation::new();
     service
         .library_manager
@@ -492,20 +481,11 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
         .await
         .unwrap();
 
+    let scan = test_scan_services(&service, &preparations, event_tx, folder_watcher);
     let pass = async || {
-        ImportService::rescan_and_reconcile(
-            &root,
-            &event_tx,
-            &service.library_manager,
-            &preparations,
-            &service.clock,
-            &service.ids,
-            &commit,
-            &folder_watcher,
-            &cancellation,
-        )
-        .await
-        .expect("the pass reads the folder")
+        ImportService::rescan_and_reconcile(&root, &scan, &cancellation)
+            .await
+            .expect("the pass reads the folder")
     };
     pass().await;
     while events.try_recv().is_ok() {}
@@ -544,15 +524,15 @@ async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_ann
     let (event_tx, mut events) = tokio::sync::broadcast::channel(256);
     let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
 
+    let scan = test_scan_services(
+        &service,
+        &preparations,
+        event_tx,
+        Arc::new(FolderWatcher::new(fs_tx)),
+    );
     ImportService::rescan_and_reconcile(
         &root,
-        &event_tx,
-        &service.library_manager,
-        &preparations,
-        &service.clock,
-        &service.ids,
-        &Arc::new(tokio::sync::Mutex::new(())),
-        &Arc::new(super::FolderWatcher::new(fs_tx)),
+        &scan,
         &crate::import::folder_scanner::ScanCancellation::new(),
     )
     .await
@@ -620,15 +600,15 @@ async fn assert_default_source_discovers_a_local_cover_without_reading_file_tags
     let (event_tx, _events) = tokio::sync::broadcast::channel(256);
     let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
 
+    let scan = test_scan_services(
+        &service,
+        &preparations,
+        event_tx,
+        Arc::new(FolderWatcher::new(fs_tx)),
+    );
     ImportService::rescan_and_reconcile(
         &root,
-        &event_tx,
-        &service.library_manager,
-        &preparations,
-        &service.clock,
-        &service.ids,
-        &Arc::new(tokio::sync::Mutex::new(())),
-        &Arc::new(super::FolderWatcher::new(fs_tx)),
+        &scan,
         &crate::import::folder_scanner::ScanCancellation::new(),
     )
     .await
@@ -703,15 +683,10 @@ async fn a_pass_records_the_directories_it_read() {
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
+    let scan = test_scan_services(&service, &preparations, event_tx, folder_watcher);
     ImportService::rescan_and_reconcile(
         &root,
-        &event_tx,
-        &service.library_manager,
-        &preparations,
-        &service.clock,
-        &service.ids,
-        &Arc::new(tokio::sync::Mutex::new(())),
-        &folder_watcher,
+        &scan,
         &crate::import::folder_scanner::ScanCancellation::new(),
     )
     .await

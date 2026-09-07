@@ -64,18 +64,7 @@ impl ImportService {
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
         let library_manager = &self.library_manager;
 
-        let crate::import::ParsedAlbum {
-            album: mut db_album,
-            release: mut db_release,
-            tracks: mut db_tracks,
-            mut artists,
-            mut album_artists,
-            mut track_artists,
-            work_graph,
-            release_artist_roles,
-            track_artist_roles,
-            identities,
-        } = parsed;
+        let mut parsed = parsed;
 
         // The overlay applies after the seed, so the user's edits win over
         // every seeded value.
@@ -84,12 +73,7 @@ impl ImportService {
                 super::load_existing_artist_assignments(&edit, library_manager).await?;
             apply_user_edit_to_seed(
                 &edit,
-                &mut db_album,
-                &mut db_release,
-                &mut db_tracks,
-                &mut artists,
-                &mut album_artists,
-                &mut track_artists,
+                &mut parsed,
                 &existing_artists,
                 self.clock.as_ref(),
                 self.ids.as_ref(),
@@ -97,6 +81,19 @@ impl ImportService {
         } else {
             std::collections::HashSet::new()
         };
+
+        let crate::import::ParsedAlbum {
+            album: mut db_album,
+            release: mut db_release,
+            tracks: db_tracks,
+            mut artists,
+            album_artists,
+            track_artists,
+            work_graph,
+            release_artist_roles,
+            track_artist_roles,
+            identities,
+        } = parsed;
 
         let album_title = db_album.title.clone();
 
@@ -235,7 +232,9 @@ impl ImportService {
             db_album,
             db_release,
             db_tracks,
+            selected_cover: None,
             remote_cover_image: None,
+            embedded_cover: None,
             existing_album_id,
             remapped_track_artists,
             remapped_album_artists,

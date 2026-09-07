@@ -80,13 +80,15 @@ impl PlaybackService {
         let channels = prepared.channels;
 
         let (track_stream, handle, cancel_token, ready) = spawn_decoder(
-            decode,
-            sample_rate,
-            channels,
-            "Streaming decode",
-            DecodeFailureReport::EmitPlaybackError {
-                progress_tx: self.progress_tx.clone(),
-            },
+            DecoderSetup::new(
+                decode,
+                sample_rate,
+                channels,
+                "Streaming decode",
+                DecodeFailureReport::EmitPlaybackError {
+                    progress_tx: self.progress_tx.clone(),
+                },
+            ),
             |track_stream, handle, cancel_token, ready| (track_stream, handle, cancel_token, ready),
         );
 

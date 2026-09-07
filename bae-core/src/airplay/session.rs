@@ -17,8 +17,8 @@ use super::crypto::RaopCipher;
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::stream::{
-    MonotonicClock, PayloadCrypto, PcmSource, RaopStream, RaopStreamControl, StreamEndpoints,
-    FRAMES_PER_PACKET,
+    MonotonicClock, PayloadCrypto, PcmSource, RaopStream, RaopStreamControl, RtpAudio,
+    StreamEndpoints, StreamSockets, FRAMES_PER_PACKET,
 };
 
 /// RAOP streams 44.1 kHz / 16-bit / stereo — bae's pipeline resamples to it.
@@ -337,12 +337,16 @@ impl RaopSession {
             source,
             PayloadCrypto::Raop(cipher),
             endpoints,
-            ssrc,
-            SAMPLE_RATE,
-            CHANNELS,
-            initial_timestamp,
-            timing_socket,
-            control_socket,
+            RtpAudio {
+                ssrc,
+                sample_rate: SAMPLE_RATE,
+                channels: CHANNELS,
+                initial_timestamp,
+            },
+            StreamSockets {
+                timing: timing_socket,
+                control: control_socket,
+            },
             clock,
             true, // RAOP sends periodic sync packets
             stream_control.clone(),

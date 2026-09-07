@@ -24,7 +24,8 @@ use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::session::{CHANNELS, SAMPLE_RATE};
 use super::stream::{
-    MonotonicClock, PayloadCrypto, PcmSource, RaopStream, RaopStreamControl, StreamEndpoints,
+    MonotonicClock, PayloadCrypto, PcmSource, RaopStream, RaopStreamControl, RtpAudio,
+    StreamEndpoints, StreamSockets,
 };
 
 /// The AirPlay 2 audio latency in frames when a receiver doesn't report one.
@@ -589,12 +590,16 @@ impl Ap2Session {
             source,
             PayloadCrypto::Ap2(cipher),
             endpoints,
-            rand::random::<u32>(),
-            SAMPLE_RATE,
-            CHANNELS,
-            0,
-            timing_socket,
-            control_socket,
+            RtpAudio {
+                ssrc: rand::random::<u32>(),
+                sample_rate: SAMPLE_RATE,
+                channels: CHANNELS,
+                initial_timestamp: 0,
+            },
+            StreamSockets {
+                timing: timing_socket,
+                control: control_socket,
+            },
             clock,
             false, // AirPlay 2 anchors with SETRATEANCHORTIME, not RAOP sync packets
             stream_control.clone(),

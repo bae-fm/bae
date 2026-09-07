@@ -236,15 +236,18 @@ impl ImportServiceHandle {
     pub(super) fn new(
         worker: WorkerThread<crate::import::service::ImportWorkerMessage>,
         watcher: WorkerThread<WatcherCommand>,
-        library_manager: LibraryManager,
-        preparations: crate::import::CandidatePreparations,
-        clock: coven::ClockRef,
-        ids: coven::IdRef,
-        runtime_handle: tokio::runtime::Handle,
-        event_tx: broadcast::Sender<ImportEvent>,
+        services: crate::import::ImportServices,
         runtime: CandidateRuntime,
-        folder_state_commit: Arc<tokio::sync::Mutex<()>>,
+        runtime_handle: tokio::runtime::Handle,
     ) -> Self {
+        let crate::import::ImportServices {
+            event_tx,
+            library_manager,
+            preparations,
+            clock,
+            ids,
+            folder_state_commit,
+        } = services;
         let handle = Self {
             worker,
             library_manager,

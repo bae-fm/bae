@@ -228,6 +228,24 @@ pub struct StreamEndpoints {
     pub latency_frames: u32,
 }
 
+/// The RTP audio flow a session hands the stream: the synchronization source id
+/// its packets are tagged with, the PCM format they carry, and the RECORD
+/// timestamp its timeline starts at.
+pub(super) struct RtpAudio {
+    pub(super) ssrc: u32,
+    pub(super) sample_rate: u32,
+    pub(super) channels: u32,
+    pub(super) initial_timestamp: u32,
+}
+
+/// The two sockets a session bound before SETUP so it could announce their
+/// ports: the receiver sends timing requests to `timing`, and RAOP sync packets
+/// leave from `control`.
+pub(super) struct StreamSockets {
+    pub(super) timing: UdpSocket,
+    pub(super) control: UdpSocket,
+}
+
 /// The live push-audio stream shared by both dialects: the UDP audio flow, the
 /// timing responder, and — for RAOP — the periodic sync packets. Dropping it
 /// stops every thread. Created by a session after RECORD.
@@ -266,22 +284,17 @@ impl RaopStreamControl {
 }
 
 impl RaopStream {
-    /// Spawn the audio, (optional) sync, and timing threads over already-bound
-    /// sockets. `timing_socket` and `control_socket` are the sockets whose ports
-    /// the session announced in SETUP: the receiver sends timing requests to the
-    /// former, and RAOP sync packets go out from the latter. AirPlay 2 anchors its
-    /// timeline with SETRATEANCHORTIME instead, so it passes `send_sync = false`.
+    /// Spawn the audio, (optional) sync, and timing threads over the already-bound
+    /// sockets in `sockets`. AirPlay 2 anchors its timeline with
+    /// SETRATEANCHORTIME instead of RAOP sync packets, so it passes
+    /// `send_sync = false`.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn spawn(
         source: Box<dyn PcmSource>,
         crypto: PayloadCrypto,
         endpoints: StreamEndpoints,
-        ssrc: u32,
-        sample_rate: u32,
-        channels: u32,
-        initial_timestamp: u32,
-        timing_socket: UdpSocket,
-        control_socket: UdpSocket,
+        audio: RtpAudio,
+        sockets: StreamSockets,
         clock: Arc<dyn MonotonicClock>,
         send_sync: bool,
         control: RaopStreamControl,
@@ -294,9 +307,15 @@ impl RaopStream {
         let mut threads = vec![
             spawn_audio_thread(AudioThread {
                 source,
-                packetizer: Packetizer::new(ssrc, crypto, channels, 0, initial_timestamp),
-                pacer: Pacer::new(sample_rate, endpoints.latency_frames),
-                sample_rate,
+                packetizer: Packetizer::new(
+                    audio.ssrc,
+                    crypto,
+                    audio.channels,
+                    0,
+                    audio.initial_timestamp,
+                ),
+                pacer: Pacer::new(audio.sample_rate, endpoints.latency_frames),
+                sample_rate: audio.sample_rate,
                 latency_frames: endpoints.latency_frames,
                 socket: audio_socket,
                 dst: audio_dst,
@@ -306,16 +325,16 @@ impl RaopStream {
                 reanchor: control.reanchor.clone(),
                 failed: control.failed.clone(),
             }),
-            spawn_timing_thread(timing_socket, stop.clone()),
+            spawn_timing_thread(sockets.timing, stop.clone()),
         ];
         if send_sync {
             threads.push(spawn_sync_thread(
-                control_socket,
+                sockets.control,
                 control_dst,
-                initial_timestamp,
+                audio.initial_timestamp,
                 endpoints.latency_frames,
                 control.frames_sent.clone(),
-                sample_rate,
+                audio.sample_rate,
                 stop.clone(),
             ));
         }

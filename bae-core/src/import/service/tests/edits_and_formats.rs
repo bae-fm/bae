@@ -11,6 +11,34 @@ fn test_clock() -> FixedClock {
 
 // ── apply_user_edit_to_seed ────────────────────────────────────────
 
+/// A `ParsedAlbum` seed over one album/release/track list and its artists, with
+/// no junction, work or identity rows — the shape the `apply_user_edit_to_seed`
+/// tests overlay an edit onto.
+fn seed_parsed(
+    album: crate::db::DbAlbum,
+    release: crate::db::DbRelease,
+    tracks: Vec<crate::db::DbTrack>,
+    artists: Vec<crate::db::DbArtist>,
+) -> crate::import::ParsedAlbum {
+    crate::import::ParsedAlbum {
+        album,
+        release,
+        tracks,
+        artists,
+        album_artists: Vec::new(),
+        track_artists: Vec::new(),
+        work_graph: crate::import::ParsedWorkGraph {
+            works: Vec::new(),
+            work_artists: Vec::new(),
+            work_parts: Vec::new(),
+            track_works: Vec::new(),
+        },
+        release_artist_roles: Vec::new(),
+        track_artist_roles: Vec::new(),
+        identities: Vec::new(),
+    }
+}
+
 fn make_seed_album_release_track() -> (
     crate::db::DbAlbum,
     crate::db::DbRelease,
@@ -75,11 +103,8 @@ fn make_seed_album_release_track() -> (
 
 #[test]
 fn user_edit_overrides_album_year_and_pressing_fields() {
-    let (mut album, mut release, track, seed_artist) = make_seed_album_release_track();
-    let mut tracks = vec![track];
-    let mut artists = vec![seed_artist];
-    let mut album_artists = Vec::new();
-    let mut track_artists = Vec::new();
+    let (album, release, track, seed_artist) = make_seed_album_release_track();
+    let mut seed = seed_parsed(album, release, vec![track], vec![seed_artist]);
 
     let edit = crate::import::ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
@@ -104,34 +129,35 @@ fn user_edit_overrides_album_year_and_pressing_fields() {
 
     apply_user_edit_to_seed(
         &edit,
-        &mut album,
-        &mut release,
-        &mut tracks,
-        &mut artists,
-        &mut album_artists,
-        &mut track_artists,
+        &mut seed,
         &HashMap::new(),
         &test_clock(),
         &SequentialIdProvider::new("seed"),
     )
     .unwrap();
 
-    assert_eq!(album.title, "Edited Title");
-    assert_eq!(album.year, Some(1981));
-    assert_eq!(release.pressing.year, Some(1995));
-    assert_eq!(release.pressing.format.as_deref(), Some("Vinyl"));
-    assert_eq!(release.pressing.label.as_deref(), Some("Edited Label"));
-    assert_eq!(release.pressing.catalog_number.as_deref(), Some("EDIT-1"));
-    assert_eq!(release.pressing.country.as_deref(), Some("JP"));
-    assert_eq!(release.pressing.barcode.as_deref(), Some("4943674000000"));
-    assert_eq!(tracks[0].title, "Edited Track");
+    assert_eq!(seed.album.title, "Edited Title");
+    assert_eq!(seed.album.year, Some(1981));
+    assert_eq!(seed.release.pressing.year, Some(1995));
+    assert_eq!(seed.release.pressing.format.as_deref(), Some("Vinyl"));
+    assert_eq!(seed.release.pressing.label.as_deref(), Some("Edited Label"));
+    assert_eq!(
+        seed.release.pressing.catalog_number.as_deref(),
+        Some("EDIT-1")
+    );
+    assert_eq!(seed.release.pressing.country.as_deref(), Some("JP"));
+    assert_eq!(
+        seed.release.pressing.barcode.as_deref(),
+        Some("4943674000000")
+    );
+    assert_eq!(seed.tracks[0].title, "Edited Track");
 
     // The new album artist gets a placeholder DbArtist row so the
     // import pipeline can canonicalize it at DB-write time.
-    assert!(artists.iter().any(|a| a.name == "Edited Artist"));
+    assert!(seed.artists.iter().any(|a| a.name == "Edited Artist"));
     assert_eq!(
-        album.artist_id,
-        artists
+        seed.album.artist_id,
+        seed.artists
             .iter()
             .find(|a| a.name == "Edited Artist")
             .unwrap()
@@ -143,28 +169,25 @@ fn user_edit_overrides_album_year_and_pressing_fields() {
 fn user_edit_can_fill_country_for_approximate_seed() {
     // Approximate seed clears pressing fields; the user can supply
     // them via the editor and the overlay applies the value.
-    let (mut album, mut release, track, seed_artist) = make_seed_album_release_track();
+    let (album, mut release, track, seed_artist) = make_seed_album_release_track();
     // Simulate the Approximate-cleared release row.
     release.pressing = crate::db::Pressing::blank();
-    let mut tracks = vec![track];
-    let mut artists = vec![seed_artist];
-    let mut album_artists = Vec::new();
-    let mut track_artists = Vec::new();
+    let mut seed = seed_parsed(album, release, vec![track], vec![seed_artist]);
 
     let edit = crate::import::ReleaseUserEdit {
-        album_title: album.title.clone(),
+        album_title: seed.album.title.clone(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::new(
-            artists[0].name.clone(),
+            seed.artists[0].name.clone(),
         )],
-        album_year: album.year,
+        album_year: seed.album.year,
         pressing: crate::import::PressingEdit {
             country: Some("JP".to_string()),
             ..crate::import::PressingEdit::blank()
         },
         tracks: vec![crate::import::TrackUserEdit {
-            title: tracks[0].title.clone(),
-            side: tracks[0].side,
-            track_number: tracks[0].track_number,
+            title: seed.tracks[0].title.clone(),
+            side: seed.tracks[0].side,
+            track_number: seed.tracks[0].track_number,
             artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
             file: None,
         }],
@@ -172,30 +195,22 @@ fn user_edit_can_fill_country_for_approximate_seed() {
 
     apply_user_edit_to_seed(
         &edit,
-        &mut album,
-        &mut release,
-        &mut tracks,
-        &mut artists,
-        &mut album_artists,
-        &mut track_artists,
+        &mut seed,
         &HashMap::new(),
         &test_clock(),
         &SequentialIdProvider::new("seed"),
     )
     .unwrap();
 
-    assert_eq!(release.pressing.country.as_deref(), Some("JP"));
-    assert!(release.pressing.year.is_none());
-    assert!(release.pressing.format.is_none());
+    assert_eq!(seed.release.pressing.country.as_deref(), Some("JP"));
+    assert!(seed.release.pressing.year.is_none());
+    assert!(seed.release.pressing.format.is_none());
 }
 
 #[test]
 fn user_edit_track_count_mismatch_is_an_error() {
-    let (mut album, mut release, track, seed_artist) = make_seed_album_release_track();
-    let mut tracks = vec![track];
-    let mut artists = vec![seed_artist];
-    let mut album_artists = Vec::new();
-    let mut track_artists = Vec::new();
+    let (album, release, track, seed_artist) = make_seed_album_release_track();
+    let mut seed = seed_parsed(album, release, vec![track], vec![seed_artist]);
 
     let edit = crate::import::ReleaseUserEdit {
         album_title: "T".to_string(),
@@ -223,12 +238,7 @@ fn user_edit_track_count_mismatch_is_an_error() {
 
     let err = apply_user_edit_to_seed(
         &edit,
-        &mut album,
-        &mut release,
-        &mut tracks,
-        &mut artists,
-        &mut album_artists,
-        &mut track_artists,
+        &mut seed,
         &HashMap::new(),
         &test_clock(),
         &SequentialIdProvider::new("seed"),
@@ -310,31 +320,27 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         now,
     );
 
-    let mut album = album;
-    let mut release = release;
-    let mut tracks = vec![track];
-    let mut artists = vec![seed_artist.clone()];
-    let mut album_artists = Vec::<crate::db::DbAlbumArtist>::new();
-    let mut track_artists = vec![seed_track_artist.clone()];
+    let mut seed = seed_parsed(album, release, vec![track], vec![seed_artist.clone()]);
+    seed.track_artists = vec![seed_track_artist.clone()];
 
     // The user changes pressing fields but leaves artist names
     // alone. The track's edit ships `artist_names = []` because
     // the editor's "no override" form maps to empty when the
     // track's credit equals the album's.
     let edit = crate::import::ReleaseUserEdit {
-        album_title: album.title.clone(),
+        album_title: seed.album.title.clone(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::existing(
             seed_artist.clone().into(),
         )],
-        album_year: album.year,
+        album_year: seed.album.year,
         pressing: crate::import::PressingEdit {
             year: Some(1995),
             ..crate::import::PressingEdit::blank()
         },
         tracks: vec![crate::import::TrackUserEdit {
-            title: tracks[0].title.clone(),
-            side: tracks[0].side,
-            track_number: tracks[0].track_number,
+            title: seed.tracks[0].title.clone(),
+            side: seed.tracks[0].side,
+            track_number: seed.tracks[0].track_number,
             artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
                 crate::import::ArtistAssignment::existing(seed_artist.clone().into()),
             ]),
@@ -345,12 +351,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
     let existing_artists = HashMap::from([(seed_artist.id.clone(), seed_artist.clone())]);
     let explicit_existing = apply_user_edit_to_seed(
         &edit,
-        &mut album,
-        &mut release,
-        &mut tracks,
-        &mut artists,
-        &mut album_artists,
-        &mut track_artists,
+        &mut seed,
         &existing_artists,
         &test_clock(),
         &SequentialIdProvider::new("seed"),
@@ -360,20 +361,20 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
 
     // The MB-id-bearing artist row must still exist with its
     // source binding intact — no fresh placeholder created.
-    assert_eq!(artists.len(), 1, "no extra placeholder rows expected");
+    assert_eq!(seed.artists.len(), 1, "no extra placeholder rows expected");
     assert_eq!(
-        artists[0].musicbrainz_artist_id.as_deref(),
+        seed.artists[0].musicbrainz_artist_id.as_deref(),
         Some("mb-artist-1"),
         "MB artist id must survive the edit",
     );
     assert_eq!(
-        album.artist_id, seed_artist.id,
+        seed.album.artist_id, seed_artist.id,
         "album.artist_id should still reference the seeded row",
     );
 
     // Track credit must still reference the seeded artist row.
-    assert_eq!(track_artists.len(), 1);
-    assert_eq!(track_artists[0].artist_id, seed_artist.id);
+    assert_eq!(seed.track_artists.len(), 1);
+    assert_eq!(seed.track_artists[0].artist_id, seed_artist.id);
 }
 
 /// User-renaming an artist must rebuild the credit rows. The new
@@ -381,21 +382,18 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
 /// carries `None` for both source ids.
 #[test]
 fn user_edit_renaming_album_artist_rebuilds_credits() {
-    let (mut album, mut release, track, seed_artist) = make_seed_album_release_track();
-    let mut tracks = vec![track];
-    let mut artists = vec![seed_artist.clone()];
-    let mut album_artists = Vec::new();
-    let mut track_artists = Vec::new();
+    let (album, release, track, seed_artist) = make_seed_album_release_track();
+    let mut seed = seed_parsed(album, release, vec![track], vec![seed_artist.clone()]);
 
     let edit = crate::import::ReleaseUserEdit {
-        album_title: album.title.clone(),
+        album_title: seed.album.title.clone(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::new("Different Artist")],
-        album_year: album.year,
+        album_year: seed.album.year,
         pressing: crate::import::PressingEdit::blank(),
         tracks: vec![crate::import::TrackUserEdit {
-            title: tracks[0].title.clone(),
-            side: tracks[0].side,
-            track_number: tracks[0].track_number,
+            title: seed.tracks[0].title.clone(),
+            side: seed.tracks[0].side,
+            track_number: seed.tracks[0].track_number,
             artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
             file: None,
         }],
@@ -403,25 +401,21 @@ fn user_edit_renaming_album_artist_rebuilds_credits() {
 
     apply_user_edit_to_seed(
         &edit,
-        &mut album,
-        &mut release,
-        &mut tracks,
-        &mut artists,
-        &mut album_artists,
-        &mut track_artists,
+        &mut seed,
         &HashMap::new(),
         &test_clock(),
         &SequentialIdProvider::new("seed"),
     )
     .unwrap();
 
-    let new_artist = artists
+    let new_artist = seed
+        .artists
         .iter()
         .find(|a| a.name == "Different Artist")
         .expect("new placeholder should be inserted");
     assert!(new_artist.musicbrainz_artist_id.is_none());
     assert!(new_artist.discogs_artist_id.is_none());
-    assert_eq!(album.artist_id, new_artist.id);
+    assert_eq!(seed.album.artist_id, new_artist.id);
 }
 
 #[test]

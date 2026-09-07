@@ -46,13 +46,37 @@ pub(crate) use folder_watcher::FolderWatcher;
 
 use format_prep::resolve_file_content_type;
 
+/// Which import run a progress event is about: the run the pane is watching and
+/// the candidate row it redraws. The pair travels from the command that started
+/// the import through every event it publishes.
+#[derive(Clone, Copy)]
+pub(super) struct ImportRun<'a> {
+    pub(super) import_id: &'a str,
+    pub(super) candidate_key: &'a str,
+}
+
+/// The files one import writes: every file the candidate contributes, and the
+/// track rows already bound to the audio each names. Both are derived from the
+/// same categorized folder, and the write needs them together.
+#[derive(Clone, Copy)]
+pub(super) struct ImportFiles<'a> {
+    pub(super) discovered: &'a [ScannedFile],
+    pub(super) tracks: &'a [TrackFile],
+}
+
 /// What `reconcile_prepared_release` yields: the release's rows with parsed
 /// artist IDs already remapped to their real DB IDs, ready for the run pass.
 struct PreparedMetadata {
     db_album: DbAlbum,
     db_release: DbRelease,
     db_tracks: Vec<DbTrack>,
+    /// The cover the person picked for this candidate, whatever its source.
+    selected_cover: Option<CoverSelection>,
+    /// The exact prepared bytes of a picked remote cover.
     remote_cover_image: Option<cover_image::CoverCandidate>,
+    /// The artwork the File Tags snapshot carried, with the content type the
+    /// download reported — checked at read time and dropped by the resize.
+    embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
     existing_album_id: Option<String>,
     remapped_track_artists: Vec<DbTrackArtist>,
     remapped_album_artists: Vec<DbAlbumArtist>,
@@ -318,16 +342,30 @@ type RootScanStarter = Arc<
     dyn Fn(u64, PathBuf, mpsc::UnboundedSender<RootScanCompletion>) -> RootScanTask + Send + Sync,
 >;
 
+/// What one folder scan runs on: the import service's shared dependencies, plus
+/// the OS watch installer the walk registers each directory it reaches with.
+#[derive(Clone)]
+pub(super) struct ScanServices {
+    services: crate::import::ImportServices,
+    folder_watcher: Arc<FolderWatcher>,
+}
+
+impl ScanServices {
+    pub(super) fn new(
+        services: crate::import::ImportServices,
+        folder_watcher: Arc<FolderWatcher>,
+    ) -> Self {
+        Self {
+            services,
+            folder_watcher,
+        }
+    }
+}
+
 fn spawn_root_scan(
     id: u64,
     path: PathBuf,
-    event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
-    library_manager: LibraryManager,
-    preparations: crate::import::CandidatePreparations,
-    clock: coven::ClockRef,
-    ids: coven::IdRef,
-    folder_state_commit: Arc<tokio::sync::Mutex<()>>,
-    folder_watcher: Arc<FolderWatcher>,
+    scan: ScanServices,
     completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
 ) -> RootScanTask {
     let cancellation = crate::import::folder_scanner::ScanCancellation::new();
@@ -339,18 +377,7 @@ fn spawn_root_scan(
             // has already recorded it as the root's status and announced it, and
             // a refresh caller that reported it a second time would put two
             // dialogs on screen for one broken folder.
-            let _ = ImportService::rescan_and_reconcile(
-                &path,
-                &event_tx,
-                &library_manager,
-                &preparations,
-                &clock,
-                &ids,
-                &folder_state_commit,
-                &folder_watcher,
-                &scan_cancellation,
-            )
-            .await;
+            let _ = ImportService::rescan_and_reconcile(&path, &scan, &scan_cancellation).await;
         }
         if completion_tx
             .send(RootScanCompletion {
@@ -535,17 +562,22 @@ pub(crate) fn retain_track_metadata(
 /// seeded track list and never adds or removes rows.
 fn apply_user_edit_to_seed(
     edit: &crate::import::ReleaseUserEdit,
-    db_album: &mut crate::db::DbAlbum,
-    db_release: &mut crate::db::DbRelease,
-    db_tracks: &mut [crate::db::DbTrack],
-    artists: &mut Vec<crate::db::DbArtist>,
-    album_artists: &mut Vec<crate::db::DbAlbumArtist>,
-    track_artists: &mut Vec<crate::db::DbTrackArtist>,
+    seed: &mut crate::import::ParsedAlbum,
     existing_artists: &HashMap<String, crate::db::DbArtist>,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
 ) -> Result<HashSet<String>, crate::import::ImportError> {
     use crate::db::{DbAlbumArtist, DbTrackArtist};
+
+    let crate::import::ParsedAlbum {
+        album: db_album,
+        release: db_release,
+        tracks: db_tracks,
+        artists,
+        album_artists,
+        track_artists,
+        ..
+    } = seed;
 
     if edit.album_artist_assignments.is_empty() {
         return Err(crate::import::EditValidationError::NoAlbumArtist.into());

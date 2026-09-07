@@ -76,11 +76,13 @@ impl PlaybackService {
         // surfaced as a PlaybackError — the promotion path re-decodes through
         // play_track if the preload turns out unusable.
         let (track_stream, decoder_handle, cancel_token) = spawn_decoder(
-            decode,
-            prepared.sample_rate,
-            prepared.channels,
-            "Preload streaming decode",
-            DecodeFailureReport::LogOnly,
+            DecoderSetup::new(
+                decode,
+                prepared.sample_rate,
+                prepared.channels,
+                "Preload streaming decode",
+                DecodeFailureReport::LogOnly,
+            ),
             // No Loading state observes a preload; the ready signal goes unused.
             |track_stream, decoder_handle, cancel_token, _ready| {
                 (track_stream, decoder_handle, cancel_token)

@@ -130,6 +130,45 @@ pub struct ParsedAlbum {
     pub identities: Vec<crate::import::types::ReleaseIdentity>,
 }
 
+/// The import service's shared dependencies: the library it reads and writes,
+/// the one writer of candidates' stored state, coven's clock and id sources,
+/// the lock that serializes folder-state commits, and the channel every import
+/// event goes out on.
+///
+/// [`service::ImportService::start`] builds one and hands it to the service
+/// handle and to every folder scan, which is why it is declared here rather
+/// than in either of those modules — its fields stay private to `import`.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Clone)]
+pub(crate) struct ImportServices {
+    event_tx: tokio::sync::broadcast::Sender<handle::ImportEvent>,
+    library_manager: crate::library::LibraryManager,
+    preparations: preparations::CandidatePreparations,
+    clock: coven::ClockRef,
+    ids: coven::IdRef,
+    folder_state_commit: std::sync::Arc<tokio::sync::Mutex<()>>,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl ImportServices {
+    pub(crate) fn new(
+        event_tx: tokio::sync::broadcast::Sender<handle::ImportEvent>,
+        library_manager: crate::library::LibraryManager,
+        preparations: preparations::CandidatePreparations,
+        clock: coven::ClockRef,
+        ids: coven::IdRef,
+    ) -> Self {
+        Self {
+            event_tx,
+            library_manager,
+            preparations,
+            clock,
+            ids,
+            folder_state_commit: std::sync::Arc::new(tokio::sync::Mutex::new(())),
+        }
+    }
+}
+
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -4,6 +4,18 @@ use crate::playback::audio_output::{
 };
 use std::sync::Arc;
 
+/// A one-second stereo preview of `preview.wav` over `buffer` — the shape every
+/// `start_streaming` test drives.
+fn preview_source(buffer: SharedSparseBuffer) -> PreviewSource {
+    PreviewSource {
+        target: PreviewTarget::whole_file("preview.wav".to_string()),
+        duration: Duration::from_secs(1),
+        sample_rate: 44_100,
+        channels: 2,
+        buffer,
+    }
+}
+
 #[tokio::test]
 async fn preview_play_rejects_unprobeable_file() {
     let temp_dir = tempfile::TempDir::new().unwrap();
@@ -202,11 +214,7 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
 
     let started = player
         .start_streaming(
-            PreviewTarget::whole_file("preview.wav".to_string()),
-            Duration::from_secs(1),
-            44_100,
-            2,
-            buffer.clone(),
+            preview_source(buffer.clone()),
             None,
             false,
             &FailingAudioDevice,
@@ -224,16 +232,7 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
     let next_buffer = create_sparse_buffer(0);
 
     let started = player
-        .start_streaming(
-            PreviewTarget::whole_file("preview.wav".to_string()),
-            Duration::from_secs(1),
-            44_100,
-            2,
-            next_buffer,
-            None,
-            false,
-            &device,
-        )
+        .start_streaming(preview_source(next_buffer), None, false, &device)
         .await;
 
     assert!(started);
@@ -292,16 +291,7 @@ async fn failed_preview_seek_surfaces_idle() {
     let buffer = create_sparse_buffer(0);
     assert!(
         player
-            .start_streaming(
-                PreviewTarget::whole_file("preview.wav".to_string()),
-                Duration::from_secs(1),
-                44_100,
-                2,
-                buffer,
-                None,
-                false,
-                &device,
-            )
+            .start_streaming(preview_source(buffer), None, false, &device)
             .await
     );
     assert!(player.is_active());

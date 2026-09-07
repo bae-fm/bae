@@ -47,6 +47,35 @@ pub(crate) enum DecodeFailureReport {
     LogOnly,
 }
 
+/// One decoder thread to start: the window to decode, the PCM format the ring
+/// it fills is built at, the tag its diagnostics carry, and what a genuine
+/// failure does beyond the shared log.
+pub(crate) struct DecoderSetup {
+    decode: StreamDecodeParams,
+    sample_rate: u32,
+    channels: u32,
+    log_context: &'static str,
+    on_decode_failure: DecodeFailureReport,
+}
+
+impl DecoderSetup {
+    pub(crate) fn new(
+        decode: StreamDecodeParams,
+        sample_rate: u32,
+        channels: u32,
+        log_context: &'static str,
+        on_decode_failure: DecodeFailureReport,
+    ) -> Self {
+        Self {
+            decode,
+            sample_rate,
+            channels,
+            log_context,
+            on_decode_failure,
+        }
+    }
+}
+
 /// One track's decode window — the one shape both playback and the save
 /// re-encoder run: its segments in play order, preceded by
 /// `leading_silence_frames` of generated silence (a CUE `PREGAP` directive) and
@@ -275,23 +304,23 @@ fn push_silence_to_sink(
     Ok(())
 }
 
-/// Spawn the streaming decoder for `decode`: mint its AVIO cancel token, create
-/// the sink/stream pair, and run `run_decoder` on a thread. A genuine decode
-/// failure surfaces via `on_decode_failure` (the main player emits a
-/// `PlaybackError`; preview only logs); normal teardown (seek / stop / track
-/// change cancels the token first) stays silent. Builds no output stream — that
-/// is the caller's next step.
-pub(crate) fn spawn_decoder<T, F>(
-    decode: StreamDecodeParams,
-    sample_rate: u32,
-    channels: u32,
-    log_context: &'static str,
-    on_decode_failure: DecodeFailureReport,
-    compose: F,
-) -> T
+/// Spawn the streaming decoder `setup` describes: mint its AVIO cancel token,
+/// create the sink/stream pair, and run `run_decoder` on a thread. A genuine
+/// decode failure surfaces via the setup's `on_decode_failure` (the main player
+/// emits a `PlaybackError`; preview only logs); normal teardown (seek / stop /
+/// track change cancels the token first) stays silent. Builds no output stream —
+/// that is the caller's next step.
+pub(crate) fn spawn_decoder<T, F>(setup: DecoderSetup, compose: F) -> T
 where
     F: FnOnce(TrackStream, std::thread::JoinHandle<()>, Arc<AtomicBool>, ReadyReceiver) -> T,
 {
+    let DecoderSetup {
+        decode,
+        sample_rate,
+        channels,
+        log_context,
+        on_decode_failure,
+    } = setup;
     let cancel_token = Arc::new(AtomicBool::new(false));
     let (mut sink, track_stream, ready) = create_track_stream_pair(sample_rate, channels);
 
@@ -325,32 +354,25 @@ where
     compose(track_stream, handle, cancel_token, ready)
 }
 
-/// Spawn the decoder for `decode`, build the audio stream on `audio_output`,
-/// start it, and return the assembled pipeline plus its event/ready channels. On
-/// any stream-build failure the spawned decoder is cancelled and its handle
-/// dropped before returning `Err`, so no half-built pipeline escapes. Cancelling
-/// the source's byte buffers (stopping the data reader) stays with the buffer's
-/// owner — this cancels only the decoder it spawned. Used by the preview player.
+/// Spawn the decoder `setup` describes, build the audio stream on
+/// `audio_output`, start it, and return the assembled pipeline plus its
+/// event/ready channels. On any stream-build failure the spawned decoder is
+/// cancelled and its handle dropped before returning `Err`, so no half-built
+/// pipeline escapes. Cancelling the source's byte buffers (stopping the data
+/// reader) stays with the buffer's owner — this cancels only the decoder it
+/// spawned. Used by the preview player.
 pub(crate) async fn start_stream_pipeline<T, F>(
     audio_output: &mut dyn AudioOutput,
-    decode: StreamDecodeParams,
+    setup: DecoderSetup,
     fmt: TrackFmt,
-    sample_rate: u32,
-    channels: u32,
     position_update_interval_ms: u32,
-    log_context: &'static str,
-    on_decode_failure: DecodeFailureReport,
     compose: F,
 ) -> Result<T, PlaybackError>
 where
     F: FnOnce(StreamPipeline, AudioEventReceiver) -> T,
 {
     let (track_stream, handle, cancel_token) = spawn_decoder(
-        decode,
-        sample_rate,
-        channels,
-        log_context,
-        on_decode_failure,
+        setup,
         // Preview has no Loading state; the ready signal goes unused.
         |track_stream, handle, cancel_token, _ready| (track_stream, handle, cancel_token),
     );
@@ -650,13 +672,15 @@ mod tests {
 
         let result = start_stream_pipeline(
             &mut output,
-            one_segment_decode(buffer.clone()),
+            DecoderSetup::new(
+                one_segment_decode(buffer.clone()),
+                44_100,
+                2,
+                "unit decode",
+                DecodeFailureReport::LogOnly,
+            ),
             test_fmt(),
-            44_100,
-            2,
             50,
-            "unit decode",
-            DecodeFailureReport::LogOnly,
             |pipeline, _audio_events| pipeline,
         )
         .await;
@@ -756,13 +780,15 @@ mod tests {
 
         let start = start_stream_pipeline(
             &mut output,
-            one_segment_decode(buffer),
+            DecoderSetup::new(
+                one_segment_decode(buffer),
+                44_100,
+                2,
+                "unit decode",
+                DecodeFailureReport::LogOnly,
+            ),
             test_fmt(),
-            44_100,
-            2,
             50,
-            "unit decode",
-            DecodeFailureReport::LogOnly,
             |pipeline, _audio_events| pipeline,
         )
         .await

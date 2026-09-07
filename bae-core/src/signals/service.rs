@@ -238,11 +238,13 @@ async fn run_extraction(
                 key,
                 token,
                 ExtractionInputs {
-                    disc_id: fast.disc_id,
-                    barcodes: fast.cue_barcodes,
-                    pool,
+                    gathered: Gathered {
+                        disc_id: fast.disc_id,
+                        barcodes: fast.cue_barcodes,
+                        pool,
+                        durations: fast.durations,
+                    },
                     artwork,
-                    durations: fast.durations,
                 },
                 priority,
             )
@@ -310,13 +312,15 @@ async fn run_extraction(
                 key,
                 token,
                 ExtractionInputs {
-                    disc_id,
-                    barcodes: Vec::new(),
-                    pool: Pool::default(),
+                    gathered: Gathered {
+                        disc_id,
+                        barcodes: Vec::new(),
+                        pool: Pool::default(),
+                        // A library release has no candidate folder to walk, so
+                        // nothing is probed on this path.
+                        durations: crate::import::probe::SourceDurations::default(),
+                    },
                     artwork,
-                    // A library release has no candidate folder to walk, so
-                    // nothing is probed on this path.
-                    durations: crate::import::probe::SourceDurations::default(),
                 },
                 priority,
             )
@@ -353,15 +357,22 @@ where
     }
 }
 
-/// What the streaming pass consumes: the settled disc ID, the CUE barcodes, the
-/// text pool, and the artwork pass. A folder scan and a release re-identify each
-/// build one, differing only in which fields are populated.
-struct ExtractionInputs {
+/// What the pass has gathered so far: the settled disc ID, every barcode found
+/// (CUE first, then each image OCR adds to it), the text pool, and the folder's
+/// track durations. Every snapshot the pass emits is built from this.
+struct Gathered {
     disc_id: DiscIdSignal,
     barcodes: Vec<SourcedValue>,
     pool: Pool,
-    artwork: Option<ArtworkPass>,
     durations: crate::import::probe::SourceDurations,
+}
+
+/// What the streaming pass consumes: what is already gathered, and the artwork
+/// pass that adds to it. A folder scan and a release re-identify each build one,
+/// differing only in which fields are populated.
+struct ExtractionInputs {
+    gathered: Gathered,
+    artwork: Option<ArtworkPass>,
 }
 
 /// The artwork OCR pass: the images to decode, and the analyzer that decodes
@@ -391,11 +402,8 @@ async fn stream_extraction(
     priority: CallPriority,
 ) {
     let ExtractionInputs {
-        disc_id,
-        mut barcodes,
-        mut pool,
+        mut gathered,
         artwork,
-        durations,
     } = inputs;
     let total = artwork.as_ref().map_or(0, |pass| pass.images.len() as u32);
     let has_artwork = artwork.is_some();
@@ -411,7 +419,7 @@ async fn stream_extraction(
 
     // First snapshot: disc ID and CUE barcodes are settled and the autocomplete
     // pool is populated; barcode/text stay `Scanning` while OCR is pending.
-    let classification = pool.classify();
+    let classification = gathered.pool.classify();
     let first_image = match &artwork {
         Some(pass) => position_of(&pass.images, 0),
         None => ArtworkScan::Absent,
@@ -420,12 +428,10 @@ async fn stream_extraction(
         &inner,
         &key,
         scanning_signals(
-            disc_id.clone(),
-            &barcodes,
+            &gathered,
             has_artwork,
             classification.catalogs,
             classification.free_text,
-            durations.clone(),
         ),
         first_image,
         priority,
@@ -444,16 +450,13 @@ async fn stream_extraction(
                     emit_failed_ocr_signals(
                         &inner,
                         &key,
-                        disc_id,
-                        &barcodes,
-                        &mut pool,
+                        gathered,
                         ArtworkScan::Failed {
                             failure: failure.clone(),
                             read: index as u32,
                             total,
                         },
                         failure,
-                        durations,
                         priority,
                     );
                     return;
@@ -471,10 +474,10 @@ async fn stream_extraction(
                 if crate::signals::is_placeholder_code(&value) {
                     continue;
                 }
-                if !barcodes.iter().any(|b| b.value == value) {
+                if !gathered.barcodes.iter().any(|b| b.value == value) {
                     // The image it was read off, so a surface can put the
                     // barcode on that image rather than beside the release.
-                    barcodes.push(match file_id {
+                    gathered.barcodes.push(match file_id {
                         Some(file_id) => {
                             SourcedValue::in_file(value, SignalOrigin::Artwork, file_id.clone())
                         }
@@ -483,7 +486,7 @@ async fn stream_extraction(
                 }
             }
             for text in analysis.text_lines {
-                pool.push(SourcedLine {
+                gathered.pool.push(SourcedLine {
                     source: Source::Artwork(path.clone()),
                     text,
                 });
@@ -505,17 +508,15 @@ async fn stream_extraction(
             // Every image read is a snapshot, whether or not it added anything:
             // the pass has moved on to the next image, and that is what a
             // surface watching the run is shown.
-            let classification = pool.classify();
+            let classification = gathered.pool.classify();
             emit_signals(
                 &inner,
                 &key,
                 scanning_signals(
-                    disc_id.clone(),
-                    &barcodes,
+                    &gathered,
                     has_artwork,
                     classification.catalogs,
                     classification.free_text,
-                    durations.clone(),
                 ),
                 position_of(&images, index + 1),
                 priority,
@@ -527,9 +528,11 @@ async fn stream_extraction(
         return;
     }
 
-    let classification = pool.classify();
-    let barcode = if has_artwork || !barcodes.is_empty() {
-        BarcodeSignal::Settled { codes: barcodes }
+    let classification = gathered.pool.classify();
+    let barcode = if has_artwork || !gathered.barcodes.is_empty() {
+        BarcodeSignal::Settled {
+            codes: gathered.barcodes,
+        }
     } else {
         BarcodeSignal::Absent
     };
@@ -537,13 +540,13 @@ async fn stream_extraction(
         &inner,
         &key,
         Signals {
-            disc_id,
+            disc_id: gathered.disc_id,
             barcode,
             text: TextSignal::Settled {
                 catalogs: classification.catalogs,
                 free_text: classification.free_text,
             },
-            durations,
+            durations: gathered.durations,
         },
         if has_artwork {
             ArtworkScan::Done { total }
@@ -554,35 +557,31 @@ async fn stream_extraction(
     );
 }
 
-#[allow(clippy::too_many_arguments)]
 fn emit_failed_ocr_signals(
     inner: &ExtractionServiceInner,
     key: &str,
-    disc_id: DiscIdSignal,
-    barcodes: &[SourcedValue],
-    pool: &mut Pool,
+    mut gathered: Gathered,
     artwork: ArtworkScan,
     failure: LookupFailure,
-    durations: crate::import::probe::SourceDurations,
     priority: CallPriority,
 ) {
-    let classification = pool.classify();
+    let classification = gathered.pool.classify();
     let barcode = BarcodeSignal::Failed {
         failure: failure.clone(),
-        codes: barcodes.to_vec(),
+        codes: gathered.barcodes,
     };
     emit_signals(
         inner,
         key,
         Signals {
-            disc_id,
+            disc_id: gathered.disc_id,
             barcode,
             text: TextSignal::Failed {
                 failure,
                 catalogs: classification.catalogs,
                 free_text: classification.free_text,
             },
-            durations,
+            durations: gathered.durations,
         },
         artwork,
         priority,
@@ -593,32 +592,30 @@ fn emit_failed_ocr_signals(
 /// `Scanning` while artwork OCR is pending; with no artwork it settles
 /// immediately (CUE codes only, or `Absent` when there's no source at all).
 fn scanning_signals(
-    disc_id: DiscIdSignal,
-    barcodes: &[SourcedValue],
+    gathered: &Gathered,
     has_artwork: bool,
     catalogs: Vec<SourcedValue>,
     free_text: Vec<String>,
-    durations: crate::import::probe::SourceDurations,
 ) -> Signals {
     let barcode = if has_artwork {
         BarcodeSignal::Scanning {
-            codes: barcodes.to_vec(),
+            codes: gathered.barcodes.clone(),
         }
-    } else if barcodes.is_empty() {
+    } else if gathered.barcodes.is_empty() {
         BarcodeSignal::Absent
     } else {
         BarcodeSignal::Settled {
-            codes: barcodes.to_vec(),
+            codes: gathered.barcodes.clone(),
         }
     };
     Signals {
-        disc_id,
+        disc_id: gathered.disc_id.clone(),
         barcode,
         text: TextSignal::Scanning {
             catalogs,
             free_text,
         },
-        durations,
+        durations: gathered.durations.clone(),
     }
 }
 

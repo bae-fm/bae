@@ -512,13 +512,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     let scan = spawn_root_scan(
         1,
         root,
-        service.event_tx.clone(),
-        service.library_manager.clone(),
-        preparations.clone(),
-        service.clock.clone(),
-        service.ids.clone(),
-        Arc::new(tokio::sync::Mutex::new(())),
-        watcher,
+        test_scan_services(&service, &preparations, service.event_tx.clone(), watcher),
         completion_tx,
     );
     scan.cancellation.cancel();

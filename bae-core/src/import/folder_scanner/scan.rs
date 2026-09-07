@@ -152,6 +152,25 @@ pub(super) struct ScannedDirectory {
     nodes_emitted: bool,
 }
 
+/// The folder one scan pass reads, and what it reads it against: the watched
+/// root every relative path is under, the folder key its candidates are stamped
+/// with, the file corrections the user has stored, and the flag that stops the
+/// pass.
+pub(super) struct ScanRoot<'a> {
+    root: &'a Path,
+    watched_folder_path: &'a str,
+    stored: &'a StoredCandidateEdits,
+    cancellation: &'a ScanCancellation,
+}
+
+/// One walk over a [`ScanRoot`]: how directories are read, and the release
+/// decisions each folder under it is read under.
+pub(super) struct Walk<'a, R> {
+    scan: ScanRoot<'a>,
+    reader: &'a R,
+    decisions: &'a FolderReleaseDecisions,
+}
+
 /// The child folders that are this folder's parts, in listing order — what the
 /// scan reads its decision from when nothing is stored for it.
 ///
@@ -240,26 +259,21 @@ pub(super) fn directory_name(root: &Path, relative: &Path) -> String {
 }
 
 pub(super) fn categorize_selected_files(
+    scan: &ScanRoot<'_>,
     files: Vec<FileEntry>,
     relative: &Path,
-    root: &Path,
-    stored: &StoredCandidateEdits,
-    cancellation: &ScanCancellation,
 ) -> Result<CategorizeOutcome, FolderScanError> {
     let tree = CandidateFileIndex::new(files);
-    categorize_files_from_tree(&tree, relative, root, stored, cancellation)
+    categorize_files_from_tree(&tree, relative, scan.root, scan.stored, scan.cancellation)
 }
 
 pub(super) fn candidate_from_files(
+    scan: &ScanRoot<'_>,
     files: Vec<FileEntry>,
     relative: &Path,
     candidate_relative: &Path,
-    root: &Path,
-    watched_folder_path: &str,
     scope: ReleaseFileScope,
     resolved_boundaries: Vec<ResolvedFolderReleaseBoundary>,
-    stored: &StoredCandidateEdits,
-    cancellation: &ScanCancellation,
 ) -> Result<Option<ProjectedScanNode>, FolderScanError> {
     if files.iter().any(|file| is_partial_marker_file(&file.path)) {
         info!(
@@ -268,6 +282,7 @@ pub(super) fn candidate_from_files(
         );
         return Ok(None);
     }
+    let root = scan.root;
     let path = if candidate_relative.as_os_str().is_empty() {
         root.to_path_buf()
     } else {
@@ -280,15 +295,15 @@ pub(super) fn candidate_from_files(
     };
     let name = directory_name(root, candidate_relative);
     let display_path = relative_path_string(candidate_relative);
-    match categorize_selected_files(files, relative, root, stored, cancellation)? {
+    match categorize_selected_files(scan, files, relative)? {
         CategorizeOutcome::Valid(files) => {
-            let file_edit_revision = stored.revision_for_hash(&files.content_hash());
+            let file_edit_revision = scan.stored.revision_for_hash(&files.content_hash());
             Ok(Some(ProjectedScanNode::Candidate(FolderCandidate {
                 path,
                 file_root,
                 name,
                 files,
-                watched_folder_path: watched_folder_path.to_string(),
+                watched_folder_path: scan.watched_folder_path.to_string(),
                 scope,
                 file_edit_revision,
                 display_path,
@@ -300,7 +315,7 @@ pub(super) fn candidate_from_files(
             Ok(Some(ProjectedScanNode::Invalid(InvalidCandidate {
                 path,
                 name,
-                watched_folder_path: watched_folder_path.to_string(),
+                watched_folder_path: scan.watched_folder_path.to_string(),
                 display_path,
                 resolved_boundaries,
                 reason,
@@ -310,14 +325,9 @@ pub(super) fn candidate_from_files(
 }
 
 pub(super) fn scan_directory<R, F, D>(
-    reader: &R,
-    root: &Path,
+    walk: &Walk<'_, R>,
     relative: &Path,
-    watched_folder_path: &str,
     ancestors_allow_actionable: bool,
-    decisions: &FolderReleaseDecisions,
-    stored: &StoredCandidateEdits,
-    cancellation: &ScanCancellation,
     on_directory: &mut D,
     on_item: &mut F,
 ) -> Result<ScannedDirectory, FolderScanError>
@@ -326,6 +336,14 @@ where
     F: FnMut(ScanItem),
     D: FnMut(PathBuf),
 {
+    let Walk {
+        scan,
+        reader,
+        decisions,
+    } = walk;
+    let root = scan.root;
+    let watched_folder_path = scan.watched_folder_path;
+    let cancellation = scan.cancellation;
     cancellation.check()?;
     on_directory(root.join(relative));
     let listing = reader.read(root, relative, cancellation)?;
@@ -356,7 +374,7 @@ where
     let (decision, decided_here) = match decisions.get(&relative_string) {
         Some((decision, _)) => (Some(decision), false),
         None if !listing_dirs.is_empty() => {
-            let parts = part_folder_names(reader, root, &listing_dirs, cancellation)?;
+            let parts = part_folder_names(*reader, root, &listing_dirs, cancellation)?;
             let yields_several = parts.len() > 1 || (direct_audio && !parts.is_empty());
             if yields_several {
                 (
@@ -400,18 +418,8 @@ where
 
     for child in listing_dirs.clone() {
         let child_can_be_actionable = can_stream_collection && collection_proven;
-        let child_scan = scan_directory(
-            reader,
-            root,
-            &child,
-            watched_folder_path,
-            child_can_be_actionable,
-            decisions,
-            stored,
-            cancellation,
-            on_directory,
-            on_item,
-        )?;
+        let child_scan =
+            scan_directory(walk, &child, child_can_be_actionable, on_directory, on_item)?;
         contains_audio |= child_scan.contains_audio;
         if !child_scan.contains_audio {
             direct_scope_files.extend(child_scan.all_files.iter().cloned());
@@ -466,15 +474,12 @@ where
             display_path: relative_string.clone(),
         };
         let node = candidate_from_files(
+            scan,
             all_files.clone(),
             relative,
             relative,
-            root,
-            watched_folder_path,
             ReleaseFileScope::Recursive,
             vec![resolved],
-            stored,
-            cancellation,
         )?;
         let nodes = node.into_iter().collect();
         return Ok(ScannedDirectory {
@@ -491,15 +496,12 @@ where
     let mut holds_its_own_node = false;
     if direct_audio {
         if let Some(node) = candidate_from_files(
+            scan,
             direct_scope_files,
             relative,
             relative,
-            root,
-            watched_folder_path,
             ReleaseFileScope::Direct,
             Vec::new(),
-            stored,
-            cancellation,
         )? {
             if let ProjectedScanNode::Candidate(candidate) = &node {
                 on_item(ScanItem::Discovered(candidate.clone()));
@@ -523,15 +525,12 @@ where
                 .to_path_buf();
             let resolved_boundaries = existing.resolved_boundaries.clone();
             if let Some(candidate) = candidate_from_files(
+                scan,
                 all_files.clone(),
                 relative,
                 &candidate_relative,
-                root,
-                watched_folder_path,
                 ReleaseFileScope::Recursive,
                 resolved_boundaries,
-                stored,
-                cancellation,
             )? {
                 nodes = vec![candidate];
             }
@@ -614,6 +613,16 @@ where
         }
     }
     let watched_folder_path = root.to_string_lossy().into_owned();
+    let walk = Walk {
+        scan: ScanRoot {
+            root: &root,
+            watched_folder_path: &watched_folder_path,
+            stored,
+            cancellation,
+        },
+        reader,
+        decisions,
+    };
     on_directory(root.clone());
     let root_listing = reader.read(&root, Path::new(""), cancellation)?;
     let direct_audio = root_listing
@@ -623,18 +632,7 @@ where
     let mut direct_scope_files = root_listing.files;
 
     for child in root_listing.directories {
-        let child_scan = scan_directory(
-            reader,
-            &root,
-            &child,
-            &watched_folder_path,
-            true,
-            decisions,
-            stored,
-            cancellation,
-            &mut on_directory,
-            &mut on_item,
-        )?;
+        let child_scan = scan_directory(&walk, &child, true, &mut on_directory, &mut on_item)?;
         if !child_scan.contains_audio {
             direct_scope_files.extend(child_scan.all_files.iter().cloned());
         }
@@ -645,15 +643,12 @@ where
 
     if direct_audio {
         if let Some(node) = candidate_from_files(
+            &walk.scan,
             direct_scope_files,
             Path::new(""),
             Path::new(""),
-            &root,
-            &watched_folder_path,
             ReleaseFileScope::Direct,
             Vec::new(),
-            stored,
-            cancellation,
         )? {
             emit_projected_nodes(vec![node], &mut on_item);
         }

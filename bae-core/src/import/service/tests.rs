@@ -260,7 +260,11 @@ impl CoordinatorHarness {
     /// spelling, the same one [`root_path`] gives the tests that address them.
     async fn with_roots(roots: &[&str]) -> Self {
         let roots: Vec<String> = roots.iter().map(|root| host_root(root)).collect();
-        let TestService { service, temp, .. } = setup_import_service().await;
+        let TestService {
+            service,
+            preparations,
+            temp,
+        } = setup_import_service().await;
         for root in &roots {
             service
                 .library_manager
@@ -301,9 +305,14 @@ impl CoordinatorHarness {
         let coordinator_thread = ImportService::start_watcher_with_starter(
             command_rx,
             fs_rx,
-            service.event_tx,
-            service.library_manager.clone(),
-            folder_state_commit.clone(),
+            crate::import::ImportServices {
+                event_tx: service.event_tx,
+                library_manager: service.library_manager.clone(),
+                preparations: preparations.clone(),
+                clock: service.clock.clone(),
+                ids: service.ids.clone(),
+                folder_state_commit: folder_state_commit.clone(),
+            },
             starter,
             removal_backend.clone(),
         );
@@ -382,6 +391,29 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
             ..
         }) if actual_discogs == discogs_artist && actual_musicbrainz == musicbrainz_artist
     ));
+}
+
+/// The scan dependencies a test drives `rescan_and_reconcile` and
+/// `spawn_root_scan` with: the service's own library, clock and ids, the
+/// preparations writer its harness built, and a folder-state commit lock of its
+/// own.
+fn test_scan_services(
+    service: &ImportService,
+    preparations: &crate::import::CandidatePreparations,
+    event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
+    folder_watcher: Arc<FolderWatcher>,
+) -> ScanServices {
+    ScanServices::new(
+        crate::import::ImportServices {
+            event_tx,
+            library_manager: service.library_manager.clone(),
+            preparations: preparations.clone(),
+            clock: service.clock.clone(),
+            ids: service.ids.clone(),
+            folder_state_commit: Arc::new(tokio::sync::Mutex::new(())),
+        },
+        folder_watcher,
+    )
 }
 
 include!("tests/coordinator.rs");

@@ -15,37 +15,24 @@ impl ImportService {
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
         let (event_tx, _) = broadcast::channel(1024);
         let event_tx_for_worker = event_tx.clone();
-        let library_manager_for_handle = library_manager.clone();
         let runtime = CandidateRuntime::default();
-        let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
+        let services = crate::import::ImportServices::new(
+            event_tx,
+            library_manager.clone(),
+            preparations,
+            clock.clone(),
+            ids.clone(),
+        );
 
         // Constructed before the watcher task spawns; the task doesn't need the
         // debouncer, only the `fs_rx` end of its event channel.
         let folder_watcher = Arc::new(FolderWatcher::new(fs_tx));
 
-        let watcher_library_manager = library_manager_for_handle.clone();
-        let watcher_preparations = preparations.clone();
-        let watcher_clock = clock.clone();
-        let watcher_ids = ids.clone();
-        let watcher_folder_state_commit = folder_state_commit.clone();
-        let watcher_event_tx = event_tx.clone();
+        let scan = ScanServices::new(services.clone(), folder_watcher);
         let watcher = WorkerThread::spawn("folder scan coordinator", move |watcher_rx| {
-            ImportService::start_watcher(
-                watcher_rx,
-                fs_rx,
-                watcher_event_tx,
-                watcher_library_manager,
-                watcher_preparations,
-                watcher_clock,
-                watcher_ids,
-                watcher_folder_state_commit,
-                folder_watcher,
-            )
+            ImportService::start_watcher(watcher_rx, fs_rx, scan)
         });
 
-        let clock_for_handle = clock.clone();
-        let ids_for_handle = ids.clone();
-        let preparations_for_handle = preparations.clone();
         let worker = WorkerThread::spawn("import worker thread", move |commands_rx| {
             std::thread::spawn(move || {
                 let rt = tokio::runtime::Builder::new_current_thread()
@@ -77,14 +64,9 @@ impl ImportService {
         Ok(ImportServiceHandle::new(
             worker,
             watcher,
-            library_manager_for_handle,
-            preparations_for_handle,
-            clock_for_handle,
-            ids_for_handle,
-            runtime_handle,
-            event_tx,
+            services,
             runtime,
-            folder_state_commit,
+            runtime_handle,
         ))
     }
 
@@ -382,6 +364,8 @@ impl ImportService {
         };
         prepared.db_release.content_hash = Some(content_hash);
 
+        prepared.selected_cover = selected_cover.clone();
+
         // The selected remote cover and its exact prepared bytes are one
         // candidate revision. Import validates that pair and never fetches it.
         let remote_cover_data = match (&selected_cover, prepared_assets.remote_cover) {
@@ -451,6 +435,7 @@ impl ImportService {
         // No storage yet: the winning cover's bytes go to coven's local store below
         // and its row is written by finalize.
         prepared.remote_cover_image = remote_cover_data;
+        prepared.embedded_cover = embedded_cover;
 
         debug!(
             "Prepared album '{}' (release: {}) with {} tracks",
@@ -465,15 +450,17 @@ impl ImportService {
                 source,
                 expectation: expectation.clone(),
             },
+            ImportRun {
+                import_id: &import_id,
+                candidate_key: &candidate_key,
+            },
             &storage_mode,
             pin,
             &mut prepared,
-            &discovered_files,
-            &tracks_to_files,
-            selected_cover.as_ref(),
-            &import_id,
-            &candidate_key,
-            embedded_cover,
+            ImportFiles {
+                discovered: &discovered_files,
+                tracks: &tracks_to_files,
+            },
             &replacement_plans,
         )
         .await?;
@@ -507,18 +494,22 @@ impl ImportService {
     pub(super) async fn run_import(
         &self,
         commit_guard: crate::db::ImportCommitGuard,
+        run: ImportRun<'_>,
         storage_mode: &StorageMode,
         pin: bool,
         prepared: &mut PreparedMetadata,
-        discovered_files: &[ScannedFile],
-        tracks_to_files: &[TrackFile],
-        selected_cover: Option<&CoverSelection>,
-        import_id: &str,
-        candidate_key: &str,
-        embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
+        files: ImportFiles<'_>,
         replacement_plans: &[crate::library::manager::ImportReplacementPlan],
     ) -> Result<(), crate::import::ImportError> {
         let library_manager = &self.library_manager;
+        let ImportFiles {
+            discovered: discovered_files,
+            tracks: tracks_to_files,
+        } = files;
+        let ImportRun {
+            import_id,
+            candidate_key,
+        } = run;
         let total_files = discovered_files.len();
         let PreparedMetadata {
             db_album,
@@ -533,7 +524,9 @@ impl ImportService {
             artist_external_id_updates,
             artist_images,
             identities,
+            selected_cover,
             remote_cover_image,
+            embedded_cover,
             ..
         } = prepared;
         let new_album = existing_album_id.is_none().then_some(&*db_album);
@@ -589,13 +582,7 @@ impl ImportService {
                 detail: "stored import candidate contains no bytes".to_string(),
             });
         }
-        self.emit_phase_progress(
-            candidate_key,
-            &db_release.id,
-            Some(0),
-            ImportPhase::ReadingFiles,
-            import_id,
-        );
+        self.emit_phase_progress(run, &db_release.id, Some(0), ImportPhase::ReadingFiles);
         let mut bytes_read = 0u128;
         let mut last_release_percent = 0u8;
         for (idx, file) in discovered_files.iter().enumerate() {
@@ -617,11 +604,13 @@ impl ImportService {
                 if previous != percent {
                     ImportService::emit_phase_progress_on(
                         &event_tx,
-                        &candidate_key_for_progress,
+                        ImportRun {
+                            import_id: &import_id_for_progress,
+                            candidate_key: &candidate_key_for_progress,
+                        },
                         &release_id_for_progress,
                         Some(percent),
                         ImportPhase::ReadingFiles,
-                        &import_id_for_progress,
                     );
                 }
             })
@@ -721,15 +710,17 @@ impl ImportService {
         // Finalize writes the winner's bytes and row in one coven batch.
         let cover_candidate = match remote_cover_image.take() {
             Some(remote) => Some(remote),
-            None => match selected_cover {
+            None => match selected_cover.as_ref() {
                 Some(CoverSelection::Local(path)) => {
                     self.pick_folder_cover(discovered_files, Some(path))?
                 }
                 Some(CoverSelection::Embedded(_)) => {
-                    embedded_cover.map(|(bytes, _content_type)| cover_image::CoverCandidate {
-                        bytes,
-                        source: "embedded".to_string(),
-                        source_url: None,
+                    embedded_cover.take().map(|(bytes, _content_type)| {
+                        cover_image::CoverCandidate {
+                            bytes,
+                            source: "embedded".to_string(),
+                            source_url: None,
+                        }
                     })
                 }
                 Some(CoverSelection::Remote(_, _)) => {
@@ -737,7 +728,7 @@ impl ImportService {
                         detail: "selected remote cover produced no downloaded image".to_string(),
                     })
                 }
-                None => match embedded_cover {
+                None => match embedded_cover.take() {
                     Some((bytes, _content_type)) => Some(cover_image::CoverCandidate {
                         bytes,
                         source: "embedded".to_string(),
@@ -777,13 +768,7 @@ impl ImportService {
             .collect();
         let cover_rel_id = Some((album_id, db_release.id.as_str()));
 
-        self.emit_phase_progress(
-            candidate_key,
-            &db_release.id,
-            None,
-            ImportPhase::Finalizing,
-            import_id,
-        );
+        self.emit_phase_progress(run, &db_release.id, None, ImportPhase::Finalizing);
 
         let remote_intent = matches!(storage_mode, StorageMode::Remote);
         library_manager

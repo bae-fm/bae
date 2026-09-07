@@ -81,7 +81,7 @@ mod volume;
 
 use crate::playback::stream_pipeline::{
     cancel_and_join_decoder, log_stream_diagnostic, report_dropped_audio_events, spawn_decoder,
-    DecodeFailureReport, SegmentDecodeParams, StreamDecodeParams,
+    DecodeFailureReport, DecoderSetup, SegmentDecodeParams, StreamDecodeParams,
 };
 use api::SidePauseDecision;
 pub(crate) use api::{dispatch_command, PlaybackCommand};

@@ -28,59 +28,32 @@ impl ImportService {
     pub(super) fn start_watcher(
         cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
         fs_rx: mpsc::UnboundedReceiver<DebounceEventResult>,
-        event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
-        library_manager: LibraryManager,
-        preparations: crate::import::CandidatePreparations,
-        clock: coven::ClockRef,
-        ids: coven::IdRef,
-        folder_state_commit: Arc<tokio::sync::Mutex<()>>,
-        folder_watcher: Arc<FolderWatcher>,
+        scan: ScanServices,
     ) -> std::thread::JoinHandle<()> {
-        let scan_event_tx = event_tx.clone();
-        let scan_library_manager = library_manager.clone();
-        let scan_preparations = preparations;
-        let scan_clock = clock.clone();
-        let scan_ids = ids.clone();
-        let scan_folder_state_commit = folder_state_commit.clone();
-        let scan_folder_watcher = folder_watcher.clone();
         let removal_backend = Arc::new(ServiceRootRemovalBackend::new(
-            folder_watcher.clone(),
-            library_manager.clone(),
+            scan.folder_watcher.clone(),
+            scan.services.library_manager.clone(),
         ));
+        let scan_for_starter = scan.clone();
         let starter: RootScanStarter = Arc::new(move |id, path, completion_tx| {
-            spawn_root_scan(
-                id,
-                path,
-                scan_event_tx.clone(),
-                scan_library_manager.clone(),
-                scan_preparations.clone(),
-                scan_clock.clone(),
-                scan_ids.clone(),
-                scan_folder_state_commit.clone(),
-                scan_folder_watcher.clone(),
-                completion_tx,
-            )
+            spawn_root_scan(id, path, scan_for_starter.clone(), completion_tx)
         });
-        Self::start_watcher_with_starter(
-            cmd_rx,
-            fs_rx,
-            event_tx,
-            library_manager,
-            folder_state_commit,
-            starter,
-            removal_backend,
-        )
+        Self::start_watcher_with_starter(cmd_rx, fs_rx, scan.services, starter, removal_backend)
     }
 
     pub(super) fn start_watcher_with_starter(
         mut cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
         mut fs_rx: mpsc::UnboundedReceiver<DebounceEventResult>,
-        event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
-        library_manager: LibraryManager,
-        folder_state_commit: Arc<tokio::sync::Mutex<()>>,
+        services: crate::import::ImportServices,
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
     ) -> std::thread::JoinHandle<()> {
+        let crate::import::ImportServices {
+            event_tx,
+            library_manager,
+            folder_state_commit,
+            ..
+        } = services;
         std::thread::spawn(move || {
             let runtime = tokio::runtime::Builder::new_current_thread()
                 .enable_all()

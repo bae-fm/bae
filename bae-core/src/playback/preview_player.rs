@@ -25,7 +25,7 @@ use crate::playback::source::TrackFmt;
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::stream_pipeline::{
     log_stream_diagnostic, report_dropped_audio_events, start_stream_pipeline, DecodeFailureReport,
-    SegmentDecodeParams, StreamDecodeParams, StreamPipeline,
+    DecoderSetup, SegmentDecodeParams, StreamDecodeParams, StreamPipeline,
 };
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
@@ -146,10 +146,12 @@ pub(crate) struct PreviewPlayer {
     paused_main_player: bool,
 }
 
-/// One loaded preview: its file identity + format, the retained buffer (kept
-/// across seeks so the reader isn't restarted), the event-listener task, and the
-/// live streaming pipeline.
-struct ActivePreview {
+/// What is being previewed: the source window, how long it plays for, the PCM
+/// format it decodes to, and the buffer its bytes stream through. A seek
+/// rebuilds the pipeline over exactly this — the buffer included, so the reader
+/// is not restarted.
+#[derive(Clone)]
+struct PreviewSource {
     target: PreviewTarget,
     duration: Duration,
     sample_rate: u32,
@@ -157,6 +159,12 @@ struct ActivePreview {
     /// Sparse buffer for the current preview, retained across seeks; the owner
     /// cancels it on stop.
     buffer: SharedSparseBuffer,
+}
+
+/// One loaded preview: what it plays, the event-listener task, and the live
+/// streaming pipeline.
+struct ActivePreview {
+    source: PreviewSource,
     /// The preview event-listener task (aborted on stop/seek).
     listener_handle: JoinHandle<()>,
     pipeline: StreamPipeline,
@@ -187,7 +195,7 @@ impl PreviewPlayer {
 
     /// Exact source window currently being previewed, if any.
     pub(crate) fn current_target(&self) -> Option<&PreviewTarget> {
-        self.active.as_ref().map(|active| &active.target)
+        self.active.as_ref().map(|active| &active.source.target)
     }
 
     /// Whether a preview file is loaded (playing or paused).
@@ -240,11 +248,13 @@ impl PreviewPlayer {
 
         let started = self
             .start_streaming(
-                target.clone(),
-                duration,
-                probe.sample_rate,
-                probe.channels,
-                buffer,
+                PreviewSource {
+                    target: target.clone(),
+                    duration,
+                    sample_rate: probe.sample_rate,
+                    channels: probe.channels,
+                    buffer,
+                },
                 None,
                 false,
                 audio_device,
@@ -265,7 +275,7 @@ impl PreviewPlayer {
         };
         let position_ms = crate::playback::format::position_for_progress(
             ratio,
-            active.duration.as_millis() as u64,
+            active.source.duration.as_millis() as u64,
             None,
         );
         self.seek(Duration::from_millis(position_ms), audio_device)
@@ -278,15 +288,13 @@ impl PreviewPlayer {
         let Some(active) = self.active.as_ref() else {
             return;
         };
-        if active.duration.is_zero() {
+        if active.source.duration.is_zero() {
             return;
         }
 
-        let buffer = active.buffer.clone();
-        let target = active.target.clone();
-        let duration = active.duration;
-        let sample_rate = active.sample_rate;
-        let channels = active.channels;
+        let source = active.source.clone();
+        let buffer = source.buffer.clone();
+        let duration = source.duration;
 
         let was_paused = self
             .audio_output
@@ -304,16 +312,7 @@ impl PreviewPlayer {
             .await;
 
         let started = self
-            .start_streaming(
-                target,
-                duration,
-                sample_rate,
-                channels,
-                buffer,
-                Some(position),
-                was_paused,
-                audio_device,
-            )
+            .start_streaming(source, Some(position), was_paused, audio_device)
             .await;
 
         // The rebuild failed: the old pipeline is torn down and `start_streaming`
@@ -352,8 +351,8 @@ impl PreviewPlayer {
         let Some(active) = self.active.as_ref() else {
             return;
         };
-        let target = active.target.clone();
-        let dur_ms = active.duration.as_millis() as u64;
+        let target = active.source.target.clone();
+        let dur_ms = active.source.duration.as_millis() as u64;
 
         let Some(preview_output) = &self.audio_output else {
             return;
@@ -406,7 +405,7 @@ impl PreviewPlayer {
             // Cancelling the buffer after the pipeline stops the local reader and
             // unblocks a decoder parked on a read.
             active.pipeline.cancel();
-            active.buffer.cancel();
+            active.source.buffer.cancel();
         }
 
         if let Some(preview_output) = &self.audio_output {
@@ -427,11 +426,7 @@ impl PreviewPlayer {
     /// and returns true; on failure cancels the buffer and returns false.
     async fn start_streaming(
         &mut self,
-        target: PreviewTarget,
-        duration: Duration,
-        sample_rate: u32,
-        channels: u32,
-        buffer: SharedSparseBuffer,
+        source: PreviewSource,
         seek_to: Option<Duration>,
         paused: bool,
         audio_device: &dyn AudioOutputDevice,
@@ -441,7 +436,7 @@ impl PreviewPlayer {
                 Ok(output) => self.audio_output = Some(output),
                 Err(e) => {
                     error!("Failed to open the preview audio output: {:?}", e);
-                    buffer.cancel();
+                    source.buffer.cancel();
                     return false;
                 }
             }
@@ -450,12 +445,12 @@ impl PreviewPlayer {
         // The offset is relative to the selected source window. No recorded
         // landing byte exists for an unimported file, so the decoder sample-seeks.
         let start_offset = seek_to
-            .map(|d| (d.as_secs_f64() * sample_rate as f64) as u64)
+            .map(|d| (d.as_secs_f64() * source.sample_rate as f64) as u64)
             .unwrap_or(0);
         let decode = StreamDecodeParams::new(
             vec![SegmentDecodeParams::new(
-                buffer.clone(),
-                target.span,
+                source.buffer.clone(),
+                source.target.span,
                 start_offset,
             )],
             true,
@@ -467,8 +462,8 @@ impl PreviewPlayer {
         // measurements) at unity gain. The listener reads position off this fmt,
         // carried on the event stream.
         let fmt = TrackFmt {
-            track_id: target.path.clone(),
-            duration_ms: duration.as_millis() as u64,
+            track_id: source.target.path.clone(),
+            duration_ms: source.duration.as_millis() as u64,
             pregap_ms: None,
             position_offset: seek_to.unwrap_or(Duration::ZERO),
             replay_gain_linear: 1.0,
@@ -476,23 +471,23 @@ impl PreviewPlayer {
 
         let progress_tx = self.progress_tx.clone();
         let command_tx = self.command_tx.clone();
-        let active_target = target.clone();
-        let active_buffer = buffer.clone();
-        let active = match start_stream_pipeline(
-            self.audio_output.as_deref_mut().unwrap(),
+        let target = source.target.clone();
+        let duration = source.duration;
+        let buffer = source.buffer.clone();
+        let setup = DecoderSetup::new(
             decode,
-            fmt,
-            sample_rate,
-            channels,
-            self.position_update_interval_ms,
+            source.sample_rate,
+            source.channels,
             "Preview decode",
             DecodeFailureReport::LogOnly,
+        );
+        let active = match start_stream_pipeline(
+            self.audio_output.as_deref_mut().unwrap(),
+            setup,
+            fmt,
+            self.position_update_interval_ms,
             move |pipeline, audio_events| ActivePreview {
-                target: active_target,
-                duration,
-                sample_rate,
-                channels,
-                buffer: active_buffer,
+                source,
                 listener_handle: spawn_preview_listener(progress_tx, command_tx, audio_events),
                 pipeline,
             },
@@ -648,11 +643,13 @@ impl PreviewPlayer {
         buffer: SharedSparseBuffer,
     ) {
         self.active = Some(ActivePreview {
-            target: PreviewTarget::whole_file(path),
-            duration: Duration::from_secs(1),
-            sample_rate: 44_100,
-            channels: 2,
-            buffer,
+            source: PreviewSource {
+                target: PreviewTarget::whole_file(path),
+                duration: Duration::from_secs(1),
+                sample_rate: 44_100,
+                channels: 2,
+                buffer,
+            },
             listener_handle: tokio::spawn(async {}),
             pipeline,
         });
