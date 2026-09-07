@@ -124,6 +124,41 @@ impl ReportedDiscovery {
         }
     }
 
+    /// Subscribe to the live device list. The current snapshot is available
+    /// immediately on the returned receiver.
+    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
+        self.devices.subscribe()
+    }
+
+    /// The current device list snapshot.
+    pub fn devices(&self) -> Vec<RendererDevice> {
+        self.devices.current()
+    }
+
+    /// Whether a browse is live right now. For tests that assert browsing is (or
+    /// is not) running.
+    #[cfg(feature = "test-utils")]
+    pub fn is_browsing(&self) -> bool {
+        self.reported.is_some()
+    }
+
+    /// Begin browsing. Idempotent: a second call while already browsing is a
+    /// no-op. A fresh browse starts from nothing, so the picker never opens on
+    /// what a previous one found.
+    pub fn start(&mut self) {
+        if self.reported.is_some() {
+            return;
+        }
+        self.reported = Some(HashMap::new());
+        self.devices.clear();
+    }
+
+    /// Stop browsing: later reports accumulate nothing. The last published
+    /// device list is kept.
+    pub fn stop(&mut self) {
+        self.reported = None;
+    }
+
     /// Take a service the host resolved. Ignored when the host reports outside a
     /// browse, and when the service carries too little to reach or name the
     /// device.
@@ -144,7 +179,7 @@ impl ReportedDiscovery {
             return;
         };
         reported.insert(key, entry);
-        self.publish();
+        self.devices.publish(snapshot(reported));
     }
 
     /// Drop a service the host's browser no longer sees.
@@ -158,13 +193,7 @@ impl ReportedDiscovery {
         {
             return;
         }
-        self.publish();
-    }
-
-    fn publish(&self) {
-        self.devices.publish(snapshot(
-            self.reported.as_ref().expect("published while browsing"),
-        ));
+        self.devices.publish(snapshot(reported));
     }
 }
 
@@ -281,7 +310,7 @@ impl RendererDiscovery {
                 builtin.dlna.subscribe(),
                 builtin.airplay.subscribe(),
             ],
-            Self::Reported(reported) => vec![reported.devices.subscribe()],
+            Self::Reported(reported) => vec![reported.subscribe()],
         }
     }
 
@@ -293,13 +322,7 @@ impl RendererDiscovery {
                 builtin.dlna.start();
                 builtin.airplay.start();
             }
-            Self::Reported(reported) => {
-                if reported.reported.is_some() {
-                    return;
-                }
-                reported.reported = Some(HashMap::new());
-                reported.devices.clear();
-            }
+            Self::Reported(reported) => reported.start(),
         }
     }
 
@@ -312,7 +335,7 @@ impl RendererDiscovery {
                 builtin.dlna.stop();
                 builtin.airplay.stop();
             }
-            Self::Reported(reported) => reported.reported = None,
+            Self::Reported(reported) => reported.stop(),
         }
     }
 
@@ -326,7 +349,7 @@ impl RendererDiscovery {
                 sort_for_picker(&mut devices);
                 devices
             }
-            Self::Reported(reported) => reported.devices.current(),
+            Self::Reported(reported) => reported.devices(),
         }
     }
 
@@ -364,7 +387,7 @@ impl RendererDiscovery {
                     || builtin.dlna.is_browsing()
                     || builtin.airplay.is_browsing()
             }
-            Self::Reported(reported) => reported.reported.is_some(),
+            Self::Reported(reported) => reported.is_browsing(),
         }
     }
 }
