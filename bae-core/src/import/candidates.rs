@@ -42,11 +42,11 @@ impl CandidateStanding {
     /// Whether its preparation may still be changed. A skipped candidate may
     /// be: skipping sets it aside, it does not freeze it.
     pub fn editable(&self) -> Result<(), super::ImportError> {
-        if self.claimed {
-            return Err(super::ImportError::CandidateImportInProgress);
-        }
         if self.imported {
             return Err(super::ImportError::CandidateAlreadyImported);
+        }
+        if self.claimed {
+            return Err(super::ImportError::CandidateImportInProgress);
         }
         Ok(())
     }
@@ -358,3 +358,7 @@ pub(crate) fn files_for_identity(
         })
         .collect()
 }
+
+#[cfg(test)]
+#[path = "candidate_standing_tests.rs"]
+mod candidate_standing_tests;
