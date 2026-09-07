@@ -196,7 +196,10 @@
             sem.wait()
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "User record lookup")
+                    msg: CloudKitFailure.message(
+                        error,
+                        op: "User record lookup"
+                    )
                 )
             }
             guard let recordID else {
@@ -228,7 +231,7 @@
             sem.wait()
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(
+                    msg: CloudKitFailure.message(
                         error,
                         op: "Accepted share lookup"
                     )
@@ -242,7 +245,7 @@
 
     }
 
-    // MARK: - Zones, record ids, and error classification
+    // MARK: - Zones and record ids
 
     extension CloudKitService {
         private func ensureZone() throws {
@@ -259,7 +262,7 @@
             sem.wait()
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Zone setup")
+                    msg: CloudKitFailure.message(error, op: "Zone setup")
                 )
             }
             zoneEnsured = true
@@ -315,55 +318,6 @@
         private func ensureWritableZone(for scope: RecordScope) throws {
             if scope.ownsZone {
                 try ensureZone()
-            }
-        }
-
-        // MARK: - Error classification
-
-        /// Translate a CloudKit operation failure into the message core carries
-        /// as the failure's diagnostic. The four classified `CKError` codes are
-        /// recovery copy a user acts on — bae shows them under core's category
-        /// line whenever a sync cycle fails — so they are localized. The
-        /// fallback names the operation and CloudKit's own description, which is
-        /// a diagnostic for a log or a bug report, and stays English.
-        private func cloudKitErrorMessage(_ error: Error, op: String) -> String
-        {
-            guard let ckError = error as? CKError else {
-                // Optional because core reports a cancellation as "no line to
-                // show" — then the operation label is the whole message, and
-                // interpolating the optional would render `Optional("…")`.
-                return error.displayLine.map { "\(op) failed: \($0)" }
-                    ?? "\(op) failed."
-            }
-            switch ckError.code {
-            case .notAuthenticated:
-                return String(
-                    localized:
-                        "You're not signed into iCloud. Open System Settings → Apple ID to sign in, then try again."
-                )
-            case .quotaExceeded:
-                return String(
-                    localized:
-                        "Your iCloud storage is full. Free up space in System Settings → Apple ID → iCloud to keep syncing."
-                )
-            case .permissionFailure:
-                return String(
-                    localized:
-                        "bae doesn't have permission to use iCloud. Open System Settings → Apple ID → iCloud → Apps Using iCloud and turn bae on."
-                )
-            case .zoneNotFound, .userDeletedZone:
-                return String(
-                    localized:
-                        "The iCloud sync zone is gone. Reconnect in sync settings to recreate it."
-                )
-            default:
-                // Concrete `CKError`, not a `LocalizedFailure`, so `DisplayError`
-                // always resolves it to `localizedDescription` — CloudKit's own
-                // localized message. Reading it directly keeps the sentence
-                // non-optional instead of rendering `Optional("…")`; the
-                // `displayLine` detour exists for `any Error`, where a bridge
-                // failure would otherwise print its reflected enum.
-                return "\(op) failed: \(ckError.localizedDescription)"
             }
         }
 
@@ -443,7 +397,7 @@
             catch let error as CloudKitError { throw error }
             catch {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(
+                    msg: CloudKitFailure.message(
                         error,
                         op: "Conditional replacement"
                     )
@@ -568,7 +522,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Atomic create")
+                    msg: CloudKitFailure.message(error, op: "Atomic create")
                 )
             }
             // Staging order is the order coven expects its versions back in.
@@ -660,7 +614,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Exact delete")
+                    msg: CloudKitFailure.message(error, op: "Exact delete")
                 )
             }
         }
@@ -700,7 +654,7 @@
                     throw CloudKitError.NotFound(msg: key)
                 }
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Read")
+                    msg: CloudKitFailure.message(error, op: "Read")
                 )
             }
             guard let fetched else { throw CloudKitError.NotFound(msg: key) }
@@ -762,7 +716,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Write")
+                    msg: CloudKitFailure.message(error, op: "Write")
                 )
             }
         }
@@ -806,7 +760,7 @@
                     throw CloudKitError.NotFound(msg: key)
                 }
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Read")
+                    msg: CloudKitFailure.message(error, op: "Read")
                 )
             }
             guard let data = resultData else {
@@ -895,7 +849,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "List")
+                    msg: CloudKitFailure.message(error, op: "List")
                 )
             }
             keys.append(contentsOf: pageKeys)
@@ -936,7 +890,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Delete")
+                    msg: CloudKitFailure.message(error, op: "Delete")
                 )
             }
         }
@@ -976,7 +930,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Exists check")
+                    msg: CloudKitFailure.message(error, op: "Exists check")
                 )
             }
             return exists
@@ -1062,7 +1016,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Share zone lookup")
+                    msg: CloudKitFailure.message(error, op: "Share zone lookup")
                 )
             }
             guard let fetchedZone else {
@@ -1112,7 +1066,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Share lookup")
+                    msg: CloudKitFailure.message(error, op: "Share lookup")
                 )
             }
             return share
@@ -1154,7 +1108,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: op)
+                    msg: CloudKitFailure.message(error, op: op)
                 )
             }
             guard let savedShare else {
@@ -1192,7 +1146,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(
+                    msg: CloudKitFailure.message(
                         error,
                         op: "Share metadata lookup"
                     )
@@ -1232,7 +1186,7 @@
 
             if let error = resultError {
                 throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Accept share")
+                    msg: CloudKitFailure.message(error, op: "Accept share")
                 )
             }
             guard let acceptedShare else {

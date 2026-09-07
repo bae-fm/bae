@@ -37,6 +37,7 @@ targets:
       - path: ../../BaeKit/Sources/AppleHost/CloudKitService.swift
       - path: ../../BaeKit/Sources/AppleHost/CloudKitService+Account.swift
       - path: ../../BaeKit/Sources/AppleHost/CloudKitRecordReplacement.swift
+      - path: ../../BaeKit/Sources/AppleHost/CloudKitFailure.swift
     preBuildScripts:
       - name: Build Rust Bridge
         basedOnDependencyAnalysis: false
