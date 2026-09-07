@@ -445,13 +445,36 @@ async fn insert_with_identities(
         .unwrap();
 }
 
+/// A library holding one album titled `title`, whose single release carries
+/// `identities`. The `TempDir` comes back because dropping it deletes the
+/// database.
+async fn album_with(
+    title: &str,
+    identities: &[ReleaseIdentity],
+) -> (LibraryManager, TempDir, DbAlbum, DbRelease) {
+    let (manager, tmp) = setup_test_db_with_artist().await;
+    let album = make_album(title);
+    let release = make_release(&album.id);
+    insert_with_identities(&manager, &album, &release, identities).await;
+    (manager, tmp, album, release)
+}
+
+/// The album an import carrying `identities` would join, or `None` when it
+/// belongs to no album the library already holds.
+async fn album_for_import(
+    manager: &LibraryManager,
+    identities: &[ReleaseIdentity],
+) -> Option<String> {
+    manager
+        .find_existing_album_for_import(identities)
+        .await
+        .unwrap()
+}
+
 #[tokio::test]
 async fn test_exact_release_duplicate_rejected() {
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    let identities = vec![mb_identity("mb-rg-456", "mb-rel-123")];
-    insert_with_identities(&manager, &album, &release, &identities).await;
+    let (manager, _tmp, _album, _release) =
+        album_with("Album Title", &[mb_identity("mb-rg-456", "mb-rel-123")]).await;
 
     // Same MB release ID → rejected as duplicate.
     let incoming = vec![mb_identity("mb-rg-789", "mb-rel-123")];
@@ -476,94 +499,51 @@ async fn test_exact_release_duplicate_rejected() {
 
 #[tokio::test]
 async fn test_same_release_group_finds_existing_album() {
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release,
-        &[mb_identity("mb-rg-456", "mb-rel-123")],
-    )
-    .await;
+    let (manager, _tmp, album, _release) =
+        album_with("Album Title", &[mb_identity("mb-rg-456", "mb-rel-123")]).await;
 
     // Different release within the same group → merge into existing album.
     let incoming = vec![mb_identity("mb-rg-456", "mb-rel-999")];
-    let merged = manager
-        .find_existing_album_for_import(&incoming)
-        .await
-        .unwrap();
-    assert_eq!(merged, Some(album.id));
+    assert_eq!(album_for_import(&manager, &incoming).await, Some(album.id));
 }
 
 #[tokio::test]
 async fn test_same_discogs_master_finds_existing_album() {
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release,
+    let (manager, _tmp, album, _release) = album_with(
+        "Album Title",
         &[discogs_identity("d-master-456", "d-rel-123")],
     )
     .await;
 
     let incoming = vec![discogs_identity("d-master-456", "d-rel-999")];
-    let merged = manager
-        .find_existing_album_for_import(&incoming)
-        .await
-        .unwrap();
-    assert_eq!(merged, Some(album.id));
+    assert_eq!(album_for_import(&manager, &incoming).await, Some(album.id));
 }
 
 #[tokio::test]
 async fn test_no_match_returns_none() {
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Existing Album");
-    let release = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release,
-        &[mb_identity("mb-rg-456", "mb-rel-123")],
-    )
-    .await;
+    let (manager, _tmp, _album, _release) =
+        album_with("Existing Album", &[mb_identity("mb-rg-456", "mb-rel-123")]).await;
 
     // Different group + different release → no match.
     let incoming = vec![mb_identity("mb-rg-999", "mb-rel-999")];
-    let result = manager
-        .find_existing_album_for_import(&incoming)
-        .await
-        .unwrap();
-    assert_eq!(result, None);
+    assert_eq!(album_for_import(&manager, &incoming).await, None);
 
     // Empty identity vec (File Tags or direct entry) → skip lookup.
-    let result_unknown = manager.find_existing_album_for_import(&[]).await.unwrap();
-    assert_eq!(result_unknown, None);
+    assert_eq!(album_for_import(&manager, &[]).await, None);
 }
 
 #[tokio::test]
 async fn test_cross_source_no_false_merge() {
-    let (manager, _tmp) = setup_test_db_with_artist().await;
     // Existing album holds only a Discogs identity row.
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release,
+    let (manager, _tmp, _album, _release) = album_with(
+        "Album Title",
         &[discogs_identity("d-master-200", "d-rel-100")],
     )
     .await;
 
     // Unrelated MB import → should not merge.
     let incoming = vec![mb_identity("mb-rg-600", "mb-rel-500")];
-    let result = manager
-        .find_existing_album_for_import(&incoming)
-        .await
-        .unwrap();
-    assert_eq!(result, None);
+    assert_eq!(album_for_import(&manager, &incoming).await, None);
 }
 
 #[tokio::test]
@@ -572,22 +552,18 @@ async fn test_cross_source_merge_via_path_2() {
     // (because MB url-rels resolved to a Discogs release at commit
     // time) is reachable from a later Discogs-only import of the same
     // master.
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    let identities = vec![
-        mb_identity("mb-rg-100", "mb-rel-50"),
-        discogs_identity("d-master-200", "d-rel-75"),
-    ];
-    insert_with_identities(&manager, &album, &release, &identities).await;
+    let (manager, _tmp, album, _release) = album_with(
+        "Album Title",
+        &[
+            mb_identity("mb-rg-100", "mb-rel-50"),
+            discogs_identity("d-master-200", "d-rel-75"),
+        ],
+    )
+    .await;
 
     // Later Discogs import of the same master, different pressing.
     let incoming = vec![discogs_identity("d-master-200", "d-rel-300")];
-    let merged = manager
-        .find_existing_album_for_import(&incoming)
-        .await
-        .unwrap();
-    assert_eq!(merged, Some(album.id));
+    assert_eq!(album_for_import(&manager, &incoming).await, Some(album.id));
 }
 
 #[tokio::test]
@@ -597,13 +573,8 @@ async fn test_cross_source_merge_via_path_2_inverse() {
     // cross-link Discogs row pointing to the same master and thus
     // attaches via the Discogs match — even though the existing album
     // has no MB row to compare against.
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release,
+    let (manager, _tmp, album, _release) = album_with(
+        "Album Title",
         &[discogs_identity("d-master-200", "d-rel-75")],
     )
     .await;
@@ -614,31 +585,18 @@ async fn test_cross_source_merge_via_path_2_inverse() {
         mb_identity("mb-rg-100", "mb-rel-50"),
         discogs_identity("d-master-200", "d-rel-300"),
     ];
-    let merged = manager
-        .find_existing_album_for_import(&incoming)
-        .await
-        .unwrap();
-    assert_eq!(merged, Some(album.id));
+    assert_eq!(album_for_import(&manager, &incoming).await, Some(album.id));
 }
 
 #[tokio::test]
 async fn test_file_tags_import_skips_lookup() {
     // File Tags imports never deduplicate against existing releases —
     // they always create a fresh album.
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Existing Album");
-    let release = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release,
-        &[mb_identity("mb-rg-1", "mb-rel-1")],
-    )
-    .await;
+    let (manager, _tmp, _album, _release) =
+        album_with("Existing Album", &[mb_identity("mb-rg-1", "mb-rel-1")]).await;
 
     // Empty identity vec — no match should be returned.
-    let result = manager.find_existing_album_for_import(&[]).await.unwrap();
-    assert_eq!(result, None);
+    assert_eq!(album_for_import(&manager, &[]).await, None);
 }
 
 #[tokio::test]
@@ -647,24 +605,13 @@ async fn test_merge_release_into_existing_album() {
     // existing album via `find_existing_album_for_import` returning
     // `Some(album_id)`. The caller redirects the new release's
     // album_id and inserts it as a sibling.
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release1 = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release1,
-        &[mb_identity("mb-rg-500", "mb-rel-100")],
-    )
-    .await;
+    let (manager, _tmp, album, release1) =
+        album_with("Album Title", &[mb_identity("mb-rg-500", "mb-rel-100")]).await;
 
     // Lookup returns the existing album for a release in the same
     // MB group.
     let incoming = vec![mb_identity("mb-rg-500", "mb-rel-200")];
-    let existing_album_id = manager
-        .find_existing_album_for_import(&incoming)
-        .await
-        .unwrap();
+    let existing_album_id = album_for_import(&manager, &incoming).await;
     assert_eq!(existing_album_id, Some(album.id.clone()));
 
     // Insert a sibling release pointing at the existing album.
@@ -691,16 +638,8 @@ async fn test_merge_release_into_existing_album() {
 
 #[tokio::test]
 async fn test_check_release_in_library_exact_match() {
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release,
-        &[mb_identity("mb-rg-1", "mb-rel-1")],
-    )
-    .await;
+    let (manager, _tmp, album, _release) =
+        album_with("Album Title", &[mb_identity("mb-rg-1", "mb-rel-1")]).await;
 
     let checks = vec![crate::db::LibraryCheck {
         release_id: "mb-rel-1".to_string(),
@@ -717,16 +656,8 @@ async fn test_check_release_in_library_exact_match() {
 
 #[tokio::test]
 async fn test_check_album_in_library_group_only() {
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release,
-        &[mb_identity("mb-rg-1", "mb-rel-1")],
-    )
-    .await;
+    let (manager, _tmp, album, _release) =
+        album_with("Album Title", &[mb_identity("mb-rg-1", "mb-rel-1")]).await;
 
     // Different release ID, same group → album_in_library only.
     let checks = vec![crate::db::LibraryCheck {
@@ -746,16 +677,8 @@ async fn test_check_album_in_library_other_pressing_of_the_group() {
     // The library holds a different pressing of the same release group. A
     // candidate naming that group is in the library as an album, and not as a
     // pressing.
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release,
-        &[mb_identity("mb-rg-1", "mb-rel-other")],
-    )
-    .await;
+    let (manager, _tmp, album, _release) =
+        album_with("Album Title", &[mb_identity("mb-rg-1", "mb-rel-other")]).await;
 
     let checks = vec![crate::db::LibraryCheck {
         release_id: "mb-rel-1".to_string(),
@@ -773,16 +696,8 @@ async fn test_check_album_in_library_other_pressing_of_the_group() {
 async fn test_check_pressing_match_wins_over_sibling_pressing_row() {
     // Two releases in the group: one at a different pressing, one at the
     // pressing the check names. The pressing match is the row that answers.
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let sibling = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &sibling,
-        &[mb_identity("mb-rg-1", "mb-rel-other")],
-    )
-    .await;
+    let (manager, _tmp, album, _sibling) =
+        album_with("Album Title", &[mb_identity("mb-rg-1", "mb-rel-other")]).await;
     let named = make_release(&album.id);
     let track = make_track(&named.id, 1);
     manager
@@ -825,16 +740,8 @@ async fn test_check_release_not_in_library() {
 async fn test_check_cross_source_doesnt_leak() {
     // An MB candidate against a Discogs-only library entry should
     // not match — different sources.
-    let (manager, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    insert_with_identities(
-        &manager,
-        &album,
-        &release,
-        &[discogs_identity("d-master-1", "d-rel-1")],
-    )
-    .await;
+    let (manager, _tmp, _album, _release) =
+        album_with("Album Title", &[discogs_identity("d-master-1", "d-rel-1")]).await;
 
     let checks = vec![crate::db::LibraryCheck {
         release_id: "mb-rel-1".to_string(),

@@ -128,6 +128,25 @@ fn scan_projected_items_with_decisions(
         .collect()
 }
 
+/// Everything `root` holds, read as one release, with nothing stored about it.
+fn scan_files(root: impl AsRef<Path>) -> CategorizedFiles {
+    collect_release_candidate_files_with_scope(
+        root.as_ref(),
+        ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan")
+}
+
+/// A temp folder holding an empty `Album` directory. The `TempDir` comes back
+/// with it because dropping it deletes the folder.
+fn album_dir() -> (tempfile::TempDir, PathBuf) {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    (tmp, album)
+}
+
 /// Only the valid `FolderCandidate`s for `root` — the shape most scanner
 /// tests assert against (counts, paths, categorized files).
 fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {

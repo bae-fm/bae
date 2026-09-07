@@ -63,6 +63,35 @@ fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbA
     }
 }
 
+/// What the import `import_id` reported: the release and album it created, or
+/// the error it failed with. Every other event on the stream is skipped.
+async fn await_import_outcome(
+    events: &mut tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
+    import_id: &str,
+) -> Result<(String, String), String> {
+    loop {
+        let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
+            .await
+            .expect("the import reports its result")
+            .expect("the import event stream remains open");
+        let crate::import::handle::ImportEvent::ImportProgress { progress, .. } = event else {
+            continue;
+        };
+        match progress {
+            crate::import::ImportProgress::Complete {
+                import_id: completed,
+                id,
+                album_id,
+            } if completed == import_id => return Ok((id, album_id)),
+            crate::import::ImportProgress::Failed {
+                import_id: failed,
+                error,
+            } if failed == import_id => return Err(error),
+            _ => {}
+        }
+    }
+}
+
 include!("tests/identity.rs");
 include!("tests/edit_shape.rs");
 include!("tests/candidate_state.rs");

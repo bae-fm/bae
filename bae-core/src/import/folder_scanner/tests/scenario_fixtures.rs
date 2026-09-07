@@ -404,6 +404,14 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
 
 // --- Sugar: per-track audio ---
 
+/// One file the fixture writes at `rel_path`.
+fn file(rel_path: impl Into<String>, kind: FileKind) -> FixtureEntry {
+    FixtureEntry::File {
+        rel_path: rel_path.into(),
+        kind,
+    }
+}
+
 /// Produce `n` `File` entries at `{dir}/{i:02}.<ext>`, one per track,
 /// with the given audio `kind`. The extension is derived from the kind
 /// (Flac / ZeroByteFlac → `flac`, Mp3 → `mp3`). Panics on
@@ -420,10 +428,7 @@ fn flat_audio(dir: &str, n: usize, kind: FileKind) -> Vec<FixtureEntry> {
         ),
     };
     (1..=n)
-        .map(|i| FixtureEntry::File {
-            rel_path: format!("{dir}/{i:02}.{ext}"),
-            kind,
-        })
+        .map(|i| file(format!("{dir}/{i:02}.{ext}"), kind))
         .collect()
 }
 

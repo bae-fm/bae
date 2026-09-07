@@ -3,18 +3,44 @@
 // The scan proposes; these pin both its automatic choices and what happens
 // when the user overrules them.
 
+/// Copy the CUE/FLAC disc-image fixture into `album` under `name`.
+fn copy_cue_flac(album: &Path, name: &str) {
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
+        album.join(name),
+    )
+    .unwrap();
+}
+
+/// An `Album` folder holding the disc-image FLAC as `audio_name`, beside a
+/// sheet named for the same stem that carves `tracks` tracks out of
+/// `cue_reference`.
+fn cue_flac_album(
+    audio_name: &str,
+    cue_reference: &str,
+    tracks: usize,
+) -> (tempfile::TempDir, PathBuf) {
+    let (tmp, album) = album_dir();
+    copy_cue_flac(&album, audio_name);
+    let stem = Path::new(audio_name)
+        .file_stem()
+        .expect("the audio fixture is named")
+        .to_string_lossy()
+        .into_owned();
+    std::fs::write(
+        album.join(format!("{stem}.cue")),
+        make_cue_content_n_tracks(cue_reference, "Album Title", tracks),
+    )
+    .unwrap();
+    (tmp, album)
+}
+
 /// A single-file sheet written against a WAV automatically describes the FLAC
 /// it was encoded to when it is the only same-stem audio beside the sheet.
 #[test]
 fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
-        album.join("cd.flac"),
-    )
-    .unwrap();
+    let (_tmp, album) = album_dir();
+    copy_cue_flac(&album, "cd.flac");
     let cue = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
     )
@@ -22,12 +48,7 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
     .replace("Test Album.flac", "cd.wav");
     std::fs::write(album.join("cd.cue"), cue).unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let files = scan_files(&album);
 
     assert_eq!(files.track_count(), 3);
     assert_uniform_source_audio(&files, crate::album_detail::SourceAudioLayout::Cue, "FLAC");
@@ -49,31 +70,14 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
 
 #[test]
 fn same_stem_audio_is_not_guessed_when_more_than_one_file_matches() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
-        album.join("cd.flac"),
-    )
-    .unwrap();
+    let (_tmp, album) = cue_flac_album("cd.flac", "cd.wav", 3);
     std::fs::copy(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_ape/Test Album.ape"),
         album.join("cd.ape"),
     )
     .unwrap();
-    std::fs::write(
-        album.join("cd.cue"),
-        make_cue_content_n_tracks("cd.wav", "Album Title", 3),
-    )
-    .unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let files = scan_files(&album);
 
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
@@ -84,26 +88,16 @@ fn same_stem_audio_is_not_guessed_when_more_than_one_file_matches() {
 
 #[test]
 fn same_stem_audio_outside_the_cue_directory_is_not_guessed() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
+    let (_tmp, album) = album_dir();
     std::fs::create_dir_all(album.join("sheets")).unwrap();
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
-        album.join("cd.flac"),
-    )
-    .unwrap();
+    copy_cue_flac(&album, "cd.flac");
     std::fs::write(
         album.join("sheets/cd.cue"),
         make_cue_content_n_tracks("cd.wav", "Album Title", 3),
     )
     .unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let files = scan_files(&album);
 
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
@@ -114,14 +108,8 @@ fn same_stem_audio_outside_the_cue_directory_is_not_guessed() {
 
 #[test]
 fn multi_file_cue_with_a_missing_reference_stays_unresolved() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
-        album.join("track-01.flac"),
-    )
-    .unwrap();
+    let (_tmp, album) = album_dir();
+    copy_cue_flac(&album, "track-01.flac");
     std::fs::write(
         album.join("disc.cue"),
         "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n\
@@ -130,12 +118,7 @@ fn multi_file_cue_with_a_missing_reference_stays_unresolved() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let files = scan_files(&album);
 
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
@@ -146,31 +129,14 @@ fn multi_file_cue_with_a_missing_reference_stays_unresolved() {
 
 #[test]
 fn exact_file_reference_wins_over_other_same_stem_audio() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
-        album.join("cd.flac"),
-    )
-    .unwrap();
+    let (_tmp, album) = cue_flac_album("cd.flac", "cd.flac", 3);
     std::fs::copy(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_ape/Test Album.ape"),
         album.join("cd.ape"),
     )
     .unwrap();
-    std::fs::write(
-        album.join("cd.cue"),
-        make_cue_content_n_tracks("cd.flac", "Album Title", 3),
-    )
-    .unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let files = scan_files(&album);
 
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
@@ -189,32 +155,15 @@ fn exact_file_reference_wins_over_other_same_stem_audio() {
 /// and not an empty picker.
 #[test]
 fn audio_a_sheet_cannot_use_is_refused_at_offer_time_with_the_codec_named() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let (_tmp, album) = cue_flac_album("cd.flac", "cd.wav", 12);
     std::fs::copy(
-        fixtures.join("tests/fixtures/cue_flac/Test Album.flac"),
-        album.join("cd.flac"),
-    )
-    .unwrap();
-    std::fs::copy(
-        fixtures.join("test-fixtures/audio-format/placeholder-mp3.mp3"),
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("test-fixtures/audio-format/placeholder-mp3.mp3"),
         album.join("cd.mp3"),
     )
     .unwrap();
-    std::fs::write(
-        album.join("cd.cue"),
-        make_cue_content_n_tracks("cd.wav", "Album Title", 12),
-    )
-    .unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let files = scan_files(&album);
     let options = files.sheet_binding_options("cd.cue");
 
     assert_eq!(
@@ -241,26 +190,9 @@ fn audio_a_sheet_cannot_use_is_refused_at_offer_time_with_the_codec_named() {
 /// what they asked for.
 #[test]
 fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
-        album.join("cd.flac"),
-    )
-    .unwrap();
-    std::fs::write(
-        album.join("cd.cue"),
-        make_cue_content_n_tracks("cd.wav", "Album Title", 12),
-    )
-    .unwrap();
+    let (_tmp, album) = cue_flac_album("cd.flac", "cd.wav", 12);
 
-    let proposed = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let proposed = scan_files(&album);
     assert_eq!(
         proposed.track_count(),
         12,
@@ -285,31 +217,14 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
 /// actually there. The behaviour is what matters; the hash is only how.
 #[test]
 fn a_binding_whose_audio_disappears_is_not_kept() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
-        album.join("cd.flac"),
-    )
-    .unwrap();
+    let (_tmp, album) = cue_flac_album("cd.flac", "cd.wav", 12);
     std::fs::copy(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
         album.join("bonus.flac"),
     )
     .unwrap();
-    std::fs::write(
-        album.join("cd.cue"),
-        make_cue_content_n_tracks("cd.wav", "Album Title", 12),
-    )
-    .unwrap();
 
-    let scanned = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let scanned = scan_files(&album);
     let stored = stored_binding(&scanned, "cd.cue", Some("cd.flac"));
     assert_eq!(
         collect_release_candidate_files_with_scope(
@@ -393,29 +308,12 @@ fn scan_with_binding(
 /// none of its own.
 #[test]
 fn becomes_names_the_slots_each_file_backs() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
-        album.join("CDImage.flac"),
-    )
-    .unwrap();
-    std::fs::write(
-        album.join("CDImage.cue"),
-        make_cue_content_n_tracks("CDImage.flac", "Album Title", 11),
-    )
-    .unwrap();
+    let (_tmp, album) = cue_flac_album("CDImage.flac", "CDImage.flac", 11);
     std::fs::write(album.join("bonus-1.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("bonus-2.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("cover.jpg"), fake_jpeg()).unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let files = scan_files(&album);
     let becomes: Vec<(&str, FileBecomes)> = files
         .files
         .iter()
@@ -440,19 +338,12 @@ fn becomes_names_the_slots_each_file_backs() {
 /// content hash is what the decision is stored under, so it must not move.
 #[test]
 fn a_file_taken_out_of_the_tracklist_stops_being_a_slot_and_stays_in_the_release() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (_tmp, album) = album_dir();
     for index in 1..=3 {
         std::fs::write(album.join(format!("{index:02}.flac")), fake_flac()).unwrap();
     }
 
-    let mut files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let mut files = scan_files(&album);
     let hash = files.content_hash();
     assert_eq!(files.track_count(), 3);
 
@@ -506,17 +397,10 @@ fn a_file_taken_out_of_the_tracklist_stops_being_a_slot_and_stays_in_the_release
 /// with no tracks is not a state the rest of the import can describe.
 #[test]
 fn taking_out_the_last_audio_is_refused() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (_tmp, album) = album_dir();
     std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
 
-    let mut files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let mut files = scan_files(&album);
     let mut roles = FileRoleEdits::default();
     roles.set("01.flac".to_string(), FileRoleChoice::NotATrack);
 
@@ -534,18 +418,11 @@ fn taking_out_the_last_audio_is_refused() {
 /// path, and an image is never offered the choice in the first place.
 #[test]
 fn only_audio_carries_a_role_decision() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (_tmp, album) = album_dir();
     std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("cover.jpg"), fake_jpeg()).unwrap();
 
-    let mut files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let mut files = scan_files(&album);
     let alternatives: Vec<(&str, usize)> = files
         .files
         .iter()
@@ -576,9 +453,7 @@ fn only_audio_carries_a_role_decision() {
 /// names starting with `c`, not after every capitalized one.
 #[test]
 fn files_list_in_case_insensitive_natural_order() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (_tmp, album) = album_dir();
     for name in [
         "Track 10.flac",
         "cover.jpg",
@@ -596,12 +471,7 @@ fn files_list_in_case_insensitive_natural_order() {
         std::fs::write(album.join(name), bytes).unwrap();
     }
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
+    let files = scan_files(&album);
     let names: Vec<&str> = files
         .files
         .iter()

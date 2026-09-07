@@ -1,5 +1,90 @@
 use super::*;
 
+/// Every preparation mutation the pane offers, each refused with the error
+/// `is_expected` names, and the whole set left unwritten. The values passed in
+/// are inert: a refused mutation stores nothing.
+async fn assert_every_mutation_refused(
+    handle: &ImportServiceHandle,
+    key: &str,
+    album_title: &str,
+    track: crate::import::RawTrackEdit,
+    cover: crate::import::CoverSelection,
+    is_expected: fn(&crate::import::ImportError) -> bool,
+) {
+    let refused = |result: Result<(), crate::import::ImportError>| {
+        let error = result.expect_err("the mutation must be refused");
+        assert!(is_expected(&error), "unexpected refusal: {error:?}");
+    };
+
+    refused(
+        handle
+            .set_candidate_edit_field(
+                key,
+                crate::import::CandidateEditField::AlbumTitle,
+                album_title.to_string(),
+            )
+            .await
+            .map(drop),
+    );
+    refused(
+        handle
+            .set_candidate_album_artists(
+                key,
+                vec![crate::import::ArtistAssignment::new("Blocked artist")],
+            )
+            .await
+            .map(drop),
+    );
+    refused(
+        handle
+            .set_candidate_track_edit(key, track.clone())
+            .await
+            .map(drop),
+    );
+    refused(
+        handle
+            .set_candidate_track_artists(
+                key,
+                vec![track.id.clone()],
+                crate::import::TrackArtistAssignments::AlbumArtists,
+            )
+            .await
+            .map(drop),
+    );
+    refused(
+        handle
+            .drop_candidate_track(key, track.id)
+            .await
+            .map(drop),
+    );
+    refused(handle.set_candidate_cover(key, cover).await.map(drop));
+    refused(
+        handle
+            .select_candidate_metadata_provenance(
+                key.to_string(),
+                crate::import::MetadataProvenance::FileTags,
+            )
+            .await
+            .map(drop),
+    );
+    refused(
+        handle
+            .clear_candidate_metadata(key.to_string())
+            .await
+            .map(drop),
+    );
+    refused(
+        handle
+            .set_file_role(
+                key.to_string(),
+                "02 Track.flac".to_string(),
+                crate::import::folder_scanner::FileRoleChoice::NotATrack,
+            )
+            .await
+            .map(drop),
+    );
+}
+
 /// A typed field replaces that one field of the form and leaves the rest to
 /// the pick. Committing it empty is the person clearing the field, not undoing
 /// their edit: the blank is stored and the form comes back blank.
@@ -365,32 +450,9 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
         .start_import(&key, crate::import::StorageMode::Local, false)
         .await
         .unwrap();
-    let (release_id, _album_id) = loop {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
-            .await
-            .expect("the import reports its result")
-            .expect("the import event stream remains open");
-        match event {
-            crate::import::handle::ImportEvent::ImportProgress {
-                progress:
-                    crate::import::ImportProgress::Complete {
-                        import_id: completed_import_id,
-                        id,
-                        album_id,
-                    },
-                ..
-            } if completed_import_id == import_id => break (id, album_id),
-            crate::import::handle::ImportEvent::ImportProgress {
-                progress:
-                    crate::import::ImportProgress::Failed {
-                        import_id: failed_import_id,
-                        error,
-                    },
-                ..
-            } if failed_import_id == import_id => panic!("import failed: {error}"),
-            _ => {}
-        }
-    };
+    let (release_id, _album_id) = await_import_outcome(&mut events, &import_id)
+        .await
+        .unwrap_or_else(|error| panic!("import failed: {error}"));
     let first_track = handle
         .library_manager
         .get_tracks_for_release(&release_id)
@@ -471,68 +533,20 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
         .selection;
     handle.claim_candidate_for_import_for_test(&key).await;
 
-    fn assert_refused<T>(result: Result<T, crate::import::ImportError>) {
-        assert!(matches!(
-            result,
-            Err(crate::import::ImportError::CandidateImportInProgress)
-        ));
-    }
-
-    assert_refused(
-        handle
-            .set_candidate_edit_field(
-                &key,
-                crate::import::CandidateEditField::AlbumTitle,
-                "Blocked title".to_string(),
+    assert_every_mutation_refused(
+        &handle,
+        &key,
+        "Blocked title",
+        first_track,
+        cover,
+        |error| {
+            matches!(
+                error,
+                crate::import::ImportError::CandidateImportInProgress
             )
-            .await,
-    );
-    assert_refused(
-        handle
-            .set_candidate_album_artists(
-                &key,
-                vec![crate::import::ArtistAssignment::new("Blocked artist")],
-            )
-            .await,
-    );
-    assert_refused(
-        handle
-            .set_candidate_track_edit(&key, first_track.clone())
-            .await,
-    );
-    assert_refused(
-        handle
-            .set_candidate_track_artists(
-                &key,
-                vec![first_track.id.clone()],
-                crate::import::TrackArtistAssignments::AlbumArtists,
-            )
-            .await,
-    );
-    assert_refused(
-        handle
-            .drop_candidate_track(&key, first_track.id)
-            .await,
-    );
-    assert_refused(handle.set_candidate_cover(&key, cover).await);
-    assert_refused(
-        handle
-            .select_candidate_metadata_provenance(
-                key.clone(),
-                crate::import::MetadataProvenance::FileTags,
-            )
-            .await,
-    );
-    assert_refused(handle.clear_candidate_metadata(key.clone()).await);
-    assert_refused(
-        handle
-            .set_file_role(
-                key.clone(),
-                "02 Track.flac".to_string(),
-                crate::import::folder_scanner::FileRoleChoice::NotATrack,
-            )
-            .await,
-    );
+        },
+    )
+    .await;
 
     let after = handle
         .library_manager
@@ -565,32 +579,9 @@ async fn an_imported_candidate_refuses_metadata_edits() {
         .start_import(&key, crate::import::StorageMode::Local, false)
         .await
         .expect("the prepared candidate enters the import queue");
-    let release_id = loop {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
-            .await
-            .expect("the import reports its result")
-            .expect("the import event stream remains open");
-        match event {
-            crate::import::handle::ImportEvent::ImportProgress {
-                progress:
-                    crate::import::ImportProgress::Complete {
-                        import_id: completed_import_id,
-                        id,
-                        ..
-                    },
-                ..
-            } if completed_import_id == import_id => break id,
-            crate::import::handle::ImportEvent::ImportProgress {
-                progress:
-                    crate::import::ImportProgress::Failed {
-                        import_id: failed_import_id,
-                        error,
-                    },
-                ..
-            } if failed_import_id == import_id => panic!("import failed: {error}"),
-            _ => {}
-        }
-    };
+    let (release_id, _) = await_import_outcome(&mut events, &import_id)
+        .await
+        .unwrap_or_else(|error| panic!("import failed: {error}"));
     let candidate_before = handle
         .library_manager
         .load_import_candidate_preparation(&_hash)
@@ -603,67 +594,20 @@ async fn an_imported_candidate_refuses_metadata_edits() {
         .await
         .unwrap();
 
-    fn assert_refused<T>(result: Result<T, crate::import::ImportError>) {
-        assert!(matches!(
-            result,
-            Err(crate::import::ImportError::CandidateAlreadyImported)
-        ));
-    }
-    assert_refused(
-        handle
-            .set_candidate_edit_field(
-                &key,
-                crate::import::CandidateEditField::AlbumTitle,
-                "Edited after import".to_string(),
+    assert_every_mutation_refused(
+        &handle,
+        &key,
+        "Edited after import",
+        first_track,
+        cover,
+        |error| {
+            matches!(
+                error,
+                crate::import::ImportError::CandidateAlreadyImported
             )
-            .await,
-    );
-    assert_refused(
-        handle
-            .set_candidate_album_artists(
-                &key,
-                vec![crate::import::ArtistAssignment::new("Blocked artist")],
-            )
-            .await,
-    );
-    assert_refused(
-        handle
-            .set_candidate_track_edit(&key, first_track.clone())
-            .await,
-    );
-    assert_refused(
-        handle
-            .set_candidate_track_artists(
-                &key,
-                vec![first_track.id.clone()],
-                crate::import::TrackArtistAssignments::AlbumArtists,
-            )
-            .await,
-    );
-    assert_refused(
-        handle
-            .drop_candidate_track(&key, first_track.id)
-            .await,
-    );
-    assert_refused(handle.set_candidate_cover(&key, cover).await);
-    assert_refused(
-        handle
-            .select_candidate_metadata_provenance(
-                key.clone(),
-                crate::import::MetadataProvenance::FileTags,
-            )
-            .await,
-    );
-    assert_refused(handle.clear_candidate_metadata(key.clone()).await);
-    assert_refused(
-        handle
-            .set_file_role(
-                key,
-                "02 Track.flac".to_string(),
-                crate::import::folder_scanner::FileRoleChoice::NotATrack,
-            )
-            .await,
-    );
+        },
+    )
+    .await;
 
     assert_eq!(
         handle
@@ -726,23 +670,9 @@ async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
         .start_import(&key, crate::import::StorageMode::Local, false)
         .await
         .expect("the complete candidate enters source validation");
-    let error = loop {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
-            .await
-            .expect("the import reports its result")
-            .expect("the import event stream remains open");
-        match event {
-            crate::import::handle::ImportEvent::ImportProgress {
-                progress:
-                    crate::import::ImportProgress::Failed {
-                        error,
-                        import_id: failed_import_id,
-                    },
-                ..
-            } if failed_import_id == import_id => break error,
-            _ => {}
-        }
-    };
+    let error = await_import_outcome(&mut events, &import_id)
+        .await
+        .expect_err("the invalid draft cannot import");
 
     assert!(
         error.contains("Album title is required"),

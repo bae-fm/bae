@@ -2,17 +2,14 @@
 #[test]
 fn folder_with_only_cue_and_no_audio() {
     let result = run_scenario(vec![
-        FixtureEntry::File {
-            rel_path: "Album/Album.cue".into(),
-            kind: FileKind::CueFor {
+        file(
+            "Album/Album.cue",
+            FileKind::CueFor {
                 stem: "Album.flac",
                 n_tracks: 5,
             },
-        },
-        FixtureEntry::File {
-            rel_path: "Album/cover.jpg".into(),
-            kind: FileKind::Jpeg,
-        },
+        ),
+        file("Album/cover.jpg", FileKind::Jpeg),
     ]);
     assert!(result.top_level_paths().is_empty());
 }
@@ -22,10 +19,7 @@ fn folder_with_only_cue_and_no_audio() {
 #[test]
 fn folder_with_audio_and_video_mixed() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/bonus.avi".into(),
-        kind: FileKind::Avi,
-    });
+    entries.push(file("Album/bonus.avi", FileKind::Avi));
     let result = run_scenario(entries);
     assert_eq!(result.top_level_paths(), vec!["Album"]);
     let c = result.candidate("Album");
@@ -49,14 +43,8 @@ fn deeply_nested_release_scan_root_two_levels_up() {
 fn unexpected_file_types_silently_ignored() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
     entries.extend([
-        FixtureEntry::File {
-            rel_path: "Album/weird.xyz".into(),
-            kind: FileKind::UnrecognizedFile("xyz"),
-        },
-        FixtureEntry::File {
-            rel_path: "Album/script.sh".into(),
-            kind: FileKind::UnrecognizedFile("sh"),
-        },
+        file("Album/weird.xyz", FileKind::UnrecognizedFile("xyz")),
+        file("Album/script.sh", FileKind::UnrecognizedFile("sh")),
     ]);
     let result = run_scenario(entries);
     assert_eq!(result.top_level_paths(), vec!["Album"]);
@@ -86,10 +74,7 @@ fn unexpected_file_types_silently_ignored() {
 #[test]
 fn zero_byte_cover_art_does_not_surface() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/cover.jpg".into(),
-        kind: FileKind::ZeroByteJpeg,
-    });
+    entries.push(file("Album/cover.jpg", FileKind::ZeroByteJpeg));
     let result = run_scenario(entries);
     assert!(result.top_level_paths().is_empty());
 }
@@ -102,9 +87,7 @@ fn zero_byte_cover_art_does_not_surface() {
 /// when the FLAC is the unique same-stem audio beside it.
 #[test]
 fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (tmp, album) = album_dir();
     std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
     std::fs::write(
         album.join("Album.cue"),
@@ -158,9 +141,7 @@ fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
 /// standalone files leaves all three files on the candidate, hashed and listed.
 #[test]
 fn audio_no_sheet_references_survives() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (_tmp, album) = album_dir();
     std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
     std::fs::write(
         album.join("Album.cue"),
@@ -170,12 +151,7 @@ fn audio_no_sheet_references_survives() {
     std::fs::write(album.join("bonus 1.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("bonus 2.flac"), fake_flac()).unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan should succeed");
+    let files = scan_files(&album);
     assert_eq!(
         files
             .audio()
@@ -204,9 +180,7 @@ fn audio_no_sheet_references_survives() {
 /// the scan refused the folder first, so the log never got the chance.
 #[test]
 fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (tmp, album) = album_dir();
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     std::fs::copy(fixtures.join("test_album.log"), album.join("rip.log")).unwrap();
     std::fs::copy(
@@ -232,12 +206,7 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
         "folder must be a candidate so its log can identify it",
     );
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan should succeed");
+    let files = scan_files(&album);
     assert!(files.bound_sheets().is_empty());
     assert!(
         crate::import::discid::compute_discid_from_categorized(&files).is_some(),
@@ -249,9 +218,7 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
 /// audio keeps its role.
 #[test]
 fn unparseable_sheet_lands_as_a_document() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (tmp, album) = album_dir();
     std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
     // No INDEX: the sheet does not parse.
     std::fs::write(
@@ -302,13 +269,7 @@ fn content_hash_covers_audio_no_sheet_references() {
         if with_bonus {
             std::fs::write(dir.join("bonus.flac"), fake_flac()).unwrap();
         }
-        collect_release_candidate_files_with_scope(
-            dir,
-            crate::import::ReleaseFileScope::Recursive,
-            &StoredCandidateEdits::none(),
-        )
-        .expect("scan should succeed")
-        .content_hash()
+        scan_files(dir).content_hash()
     };
     let tmp = tempfile::tempdir().unwrap();
     let plain = build(&tmp.path().join("Plain"), false);
@@ -338,18 +299,8 @@ fn an_unrecognized_sidecar_is_carried_and_hashed() {
         std::fs::write(with_sidecars.join(sidecar), b"scene notes").unwrap();
     }
 
-    let bare_files = collect_release_candidate_files_with_scope(
-        &bare,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .unwrap();
-    let sidecar_files = collect_release_candidate_files_with_scope(
-        &with_sidecars,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .unwrap();
+    let bare_files = scan_files(&bare);
+    let sidecar_files = scan_files(&with_sidecars);
     assert_eq!(
         sidecar_files
             .files
@@ -384,9 +335,7 @@ fn an_unrecognized_sidecar_is_carried_and_hashed() {
 /// even when their names have nothing in common.
 #[test]
 fn a_binding_survives_a_rename_of_the_sheet() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (_tmp, album) = album_dir();
     std::fs::write(album.join("Audio.flac"), fake_flac()).unwrap();
     std::fs::write(
         album.join("Completely Unrelated.cue"),
@@ -394,12 +343,7 @@ fn a_binding_survives_a_rename_of_the_sheet() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan should succeed");
+    let files = scan_files(&album);
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     assert_eq!(bound[0].file.file_name, "Completely Unrelated.cue");

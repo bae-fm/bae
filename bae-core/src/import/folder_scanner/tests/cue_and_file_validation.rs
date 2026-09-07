@@ -95,12 +95,7 @@ fn test_collect_release_candidate_files_skips_hidden_and_bae() {
     std::fs::write(bae_dir.join("cover-mb.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     std::fs::write(bae_dir.join("cover-discogs.jpeg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        root,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .unwrap();
+    let files = scan_files(root);
 
     let audio_paths: Vec<_> = files.audio().map(|f| f.relative_path.as_str()).collect();
     assert_eq!(audio_paths, vec!["track.flac"]);
@@ -717,12 +712,7 @@ fn test_collect_release_candidate_files_cue_alac_source_audio() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        root,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan should succeed");
+    let files = scan_files(root);
 
     assert_uniform_source_audio(&files, crate::album_detail::SourceAudioLayout::Cue, "ALAC");
     let bound = files.bound_sheets();
@@ -754,12 +744,7 @@ FILE "02 - Track Two.flac" WAVE
 "#;
     std::fs::write(root.join("Album.cue"), cue).unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        root,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan should succeed");
+    let files = scan_files(root);
 
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
@@ -809,12 +794,7 @@ fn bound_sheets_take_their_positions_as_discs_by_default() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        root,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan should succeed");
+    let files = scan_files(root);
 
     assert_eq!(
         files
@@ -849,12 +829,7 @@ fn a_stored_disc_assignment_overrules_the_default_position() {
     )
     .unwrap();
 
-    let scanned = collect_release_candidate_files_with_scope(
-        root,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan should succeed");
+    let scanned = scan_files(root);
 
     let mut sheet_discs = SheetDiscEdits::default();
     sheet_discs.set("alpha.cue".to_string(), SheetDisc::Disc { number: 2 });
@@ -906,12 +881,7 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files_with_scope(
-        root,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan should succeed");
+    let files = scan_files(root);
 
     assert_uniform_source_audio(&files, crate::album_detail::SourceAudioLayout::Cue, "APE");
     let bound = files.bound_sheets();

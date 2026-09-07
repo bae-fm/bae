@@ -16,6 +16,80 @@ fn scan_with_reader<R: DirectoryReader, F: FnMut(ScanItem)>(
     )
 }
 
+/// Held closed until a test opens it, which is what lets one directory read
+/// stay suspended while the walk's other work is observed.
+type ScanGate = std::sync::Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>;
+
+/// Reads directories normally, except inside `blocked`: there it announces
+/// itself on `entered` and waits for `gate` to open.
+struct BlockingReader {
+    blocked: PathBuf,
+    entered: std::sync::mpsc::Sender<()>,
+    gate: ScanGate,
+}
+
+impl DirectoryReader for BlockingReader {
+    fn read(
+        &self,
+        root: &Path,
+        directory: &Path,
+        cancellation: &ScanCancellation,
+    ) -> Result<DirectoryListing, FolderScanError> {
+        if directory == self.blocked {
+            self.entered.send(()).expect("announce blocked directory");
+            let (lock, condition) = &*self.gate;
+            let mut open = lock.lock().unwrap();
+            while !*open {
+                open = condition.wait(open).unwrap();
+            }
+        }
+        OsDirectoryReader.read(root, directory, cancellation)
+    }
+}
+
+/// A scan of `root` running on its own thread, suspended inside `blocked`
+/// until [`SuspendedScan::finish`] opens the gate.
+struct SuspendedScan {
+    gate: ScanGate,
+    /// Announces that the walk reached the blocked directory.
+    entered: std::sync::mpsc::Receiver<()>,
+    items: std::sync::mpsc::Receiver<ScanItem>,
+    thread: std::thread::JoinHandle<Result<(), FolderScanError>>,
+}
+
+impl SuspendedScan {
+    fn spawn(root: PathBuf, blocked: &str) -> Self {
+        let (entered_tx, entered) = std::sync::mpsc::channel();
+        let (item_tx, items) = std::sync::mpsc::channel();
+        let gate: ScanGate =
+            std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
+        let reader = BlockingReader {
+            blocked: PathBuf::from(blocked),
+            entered: entered_tx,
+            gate: gate.clone(),
+        };
+        let thread = std::thread::spawn(move || {
+            scan_with_reader(&reader, root, |item| {
+                item_tx.send(item).expect("receive scan item")
+            })
+        });
+        Self {
+            gate,
+            entered,
+            items,
+            thread,
+        }
+    }
+
+    /// Let the blocked read proceed, and require the walk to finish cleanly.
+    fn finish(self) {
+        let (lock, condition) = &*self.gate;
+        *lock.lock().unwrap() = true;
+        condition.notify_all();
+        self.thread.join().unwrap().unwrap();
+    }
+}
+
 #[test]
 fn names_do_not_combine_audio_bearing_children() {
     let temp_dir = tempfile::tempdir().unwrap();
@@ -67,31 +141,6 @@ fn direct_audio_and_audio_bearing_child_are_distinct_approximations() {
 
 #[test]
 fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
-    struct BlockingReader {
-        blocked: PathBuf,
-        entered: std::sync::mpsc::Sender<()>,
-        gate: std::sync::Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>,
-    }
-
-    impl DirectoryReader for BlockingReader {
-        fn read(
-            &self,
-            root: &Path,
-            directory: &Path,
-            cancellation: &ScanCancellation,
-        ) -> Result<DirectoryListing, FolderScanError> {
-            if directory == self.blocked {
-                self.entered.send(()).expect("announce blocked directory");
-                let (lock, condition) = &*self.gate;
-                let mut open = lock.lock().unwrap();
-                while !*open {
-                    open = condition.wait(open).unwrap();
-                }
-            }
-            OsDirectoryReader.read(root, directory, cancellation)
-        }
-    }
-
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Queue");
     let group = root.join("Collection");
@@ -102,29 +151,17 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
     std::fs::write(first.join("track.flac"), fake_flac()).unwrap();
     std::fs::write(later.join("track.flac"), fake_flac()).unwrap();
 
-    let (entered_tx, entered_rx) = std::sync::mpsc::channel();
-    let (item_tx, item_rx) = std::sync::mpsc::channel();
-    let gate = std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
-    let thread_gate = gate.clone();
-    let scan_root = root.clone();
-    let scan = std::thread::spawn(move || {
-        let reader = BlockingReader {
-            blocked: PathBuf::from("Collection/Release 99"),
-            entered: entered_tx,
-            gate: thread_gate,
-        };
-        scan_with_reader(&reader, scan_root, |item| {
-            item_tx.send(item).expect("receive scan item")
-        })
-    });
+    let scan = SuspendedScan::spawn(root.clone(), "Collection/Release 99");
 
-    let mut first_item = item_rx
+    let mut first_item = scan
+        .items
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("first release emits");
     // The folder's own reading comes first — it is what says the releases
     // below it are separate.
     if matches!(first_item, ScanItem::Decided { .. }) {
-        first_item = item_rx
+        first_item = scan
+            .items
             .recv_timeout(std::time::Duration::from_secs(2))
             .expect("first release emits");
     }
@@ -132,48 +169,21 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
         first_item,
         ScanItem::Discovered(candidate) if candidate.path == first
     ));
-    entered_rx
+    scan.entered
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("later directory is suspended");
     assert!(
-        item_rx
+        scan.items
             .try_iter()
             .any(|item| matches!(item, ScanItem::Valid(candidate) if candidate.path == first)),
         "the immediate listing proves the file-free group cannot own shared release files"
     );
 
-    let (lock, condition) = &*gate;
-    *lock.lock().unwrap() = true;
-    condition.notify_all();
-    scan.join().unwrap().unwrap();
+    scan.finish();
 }
 
 #[test]
 fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
-    struct BlockingReader {
-        entered: std::sync::mpsc::Sender<()>,
-        gate: std::sync::Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>,
-    }
-
-    impl DirectoryReader for BlockingReader {
-        fn read(
-            &self,
-            root: &Path,
-            directory: &Path,
-            cancellation: &ScanCancellation,
-        ) -> Result<DirectoryListing, FolderScanError> {
-            if directory == Path::new("Group/Release 99") {
-                self.entered.send(()).expect("announce blocked directory");
-                let (lock, condition) = &*self.gate;
-                let mut open = lock.lock().unwrap();
-                while !*open {
-                    open = condition.wait(open).unwrap();
-                }
-            }
-            OsDirectoryReader.read(root, directory, cancellation)
-        }
-    }
-
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Queue");
     let group = root.join("Group");
@@ -185,26 +195,12 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
         std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
     }
 
-    let (entered_tx, entered_rx) = std::sync::mpsc::channel();
-    let (item_tx, item_rx) = std::sync::mpsc::channel();
-    let gate = std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
-    let scan_gate = gate.clone();
-    let scan_root = root.clone();
-    let scan = std::thread::spawn(move || {
-        scan_with_reader(
-            &BlockingReader {
-                entered: entered_tx,
-                gate: scan_gate,
-            },
-            scan_root,
-            |item| item_tx.send(item).expect("receive scan item"),
-        )
-    });
+    let scan = SuspendedScan::spawn(root.clone(), "Group/Release 99");
 
-    entered_rx
+    scan.entered
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("final sibling is suspended");
-    let available: Vec<_> = item_rx.try_iter().collect();
+    let available: Vec<_> = scan.items.try_iter().collect();
     // `Release 01`, `Release 02`, `Release 99` are not the parts of one
     // release, so the scan says so before it walks them and the ones it has
     // reached are ready to identify.
@@ -222,38 +218,11 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
         "a wrapper the scan has read does not hold its descendants back"
     );
 
-    let (lock, condition) = &*gate;
-    *lock.lock().unwrap() = true;
-    condition.notify_all();
-    scan.join().unwrap().unwrap();
+    scan.finish();
 }
 
 #[test]
 fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
-    struct BlockingReader {
-        entered: std::sync::mpsc::Sender<()>,
-        gate: std::sync::Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>,
-    }
-
-    impl DirectoryReader for BlockingReader {
-        fn read(
-            &self,
-            root: &Path,
-            directory: &Path,
-            cancellation: &ScanCancellation,
-        ) -> Result<DirectoryListing, FolderScanError> {
-            if directory == Path::new("Group/Release 99") {
-                self.entered.send(()).expect("announce blocked directory");
-                let (lock, condition) = &*self.gate;
-                let mut open = lock.lock().unwrap();
-                while !*open {
-                    open = condition.wait(open).unwrap();
-                }
-            }
-            OsDirectoryReader.read(root, directory, cancellation)
-        }
-    }
-
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Queue");
     let group = root.join("Group");
@@ -267,26 +236,12 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
         std::fs::write(path, fake_flac()).unwrap();
     }
 
-    let (entered_tx, entered_rx) = std::sync::mpsc::channel();
-    let (item_tx, item_rx) = std::sync::mpsc::channel();
-    let gate = std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
-    let scan_gate = gate.clone();
-    let scan_root = root.clone();
-    let scan = std::thread::spawn(move || {
-        scan_with_reader(
-            &BlockingReader {
-                entered: entered_tx,
-                gate: scan_gate,
-            },
-            scan_root,
-            |item| item_tx.send(item).expect("receive scan item"),
-        )
-    });
+    let scan = SuspendedScan::spawn(root.clone(), "Group/Release 99");
 
-    entered_rx
+    scan.entered
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("final sibling is suspended");
-    assert!(item_rx.try_iter().any(|item| matches!(
+    assert!(scan.items.try_iter().any(|item| matches!(
         item,
         ScanItem::Decided {
             key,
@@ -294,10 +249,7 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
         } if key.relative_folder_path == "Group"
     )));
 
-    let (lock, condition) = &*gate;
-    *lock.lock().unwrap() = true;
-    condition.notify_all();
-    scan.join().unwrap().unwrap();
+    scan.finish();
 }
 
 #[test]

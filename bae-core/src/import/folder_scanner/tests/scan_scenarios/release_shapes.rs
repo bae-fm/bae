@@ -1,9 +1,6 @@
 #[test]
 fn same_size_same_mtime_corrupt_replacement_is_not_served_from_probe_cache() {
-    let result = run_scenario(vec![FixtureEntry::File {
-        rel_path: "Album/01.flac".into(),
-        kind: FileKind::Flac,
-    }]);
+    let result = run_scenario(vec![file("Album/01.flac", FileKind::Flac)]);
     let path = result.root.join("Album/01.flac");
     let original_metadata = std::fs::metadata(&path).unwrap();
     std::fs::write(&path, vec![0; original_metadata.len() as usize]).unwrap();
@@ -30,14 +27,8 @@ fn same_size_same_mtime_corrupt_replacement_is_not_served_from_probe_cache() {
 #[test]
 fn zero_byte_audio_in_release_skips_candidate() {
     let result = run_scenario(vec![
-        FixtureEntry::File {
-            rel_path: "Album/01.flac".into(),
-            kind: FileKind::Flac,
-        },
-        FixtureEntry::File {
-            rel_path: "Album/02.flac".into(),
-            kind: FileKind::ZeroByteFlac,
-        },
+        file("Album/01.flac", FileKind::Flac),
+        file("Album/02.flac", FileKind::ZeroByteFlac),
     ]);
     assert!(result.top_level_paths().is_empty());
 }
@@ -46,14 +37,8 @@ fn zero_byte_audio_in_release_skips_candidate() {
 #[test]
 fn partial_marker_sidecar_skips_release() {
     let result = run_scenario(vec![
-        FixtureEntry::File {
-            rel_path: "Album/01.flac".into(),
-            kind: FileKind::Flac,
-        },
-        FixtureEntry::File {
-            rel_path: "Album/02.flac.part".into(),
-            kind: FileKind::PartialMarker("part"),
-        },
+        file("Album/01.flac", FileKind::Flac),
+        file("Album/02.flac.part", FileKind::PartialMarker("part")),
     ]);
     assert!(result.top_level_paths().is_empty());
 }
@@ -64,10 +49,10 @@ fn partial_marker_sidecar_skips_release() {
 /// "looks like audio" we notice.
 #[test]
 fn partial_marker_only_no_real_audio_skips() {
-    let result = run_scenario(vec![FixtureEntry::File {
-        rel_path: "Album/01.flac.part".into(),
-        kind: FileKind::PartialMarker("part"),
-    }]);
+    let result = run_scenario(vec![file(
+        "Album/01.flac.part",
+        FileKind::PartialMarker("part"),
+    )]);
     assert!(result.top_level_paths().is_empty());
 }
 
@@ -108,18 +93,9 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
 #[test]
 fn loose_marker_at_scan_root_does_not_suppress_sibling_albums() {
     let result = run_scenario(vec![
-        FixtureEntry::File {
-            rel_path: "loose.flac.part".into(),
-            kind: FileKind::PartialMarker("part"),
-        },
-        FixtureEntry::File {
-            rel_path: "AlbumA/01.flac".into(),
-            kind: FileKind::Flac,
-        },
-        FixtureEntry::File {
-            rel_path: "AlbumB/01.flac".into(),
-            kind: FileKind::Flac,
-        },
+        file("loose.flac.part", FileKind::PartialMarker("part")),
+        file("AlbumA/01.flac", FileKind::Flac),
+        file("AlbumB/01.flac", FileKind::Flac),
     ]);
     let mut paths = result.top_level_paths();
     paths.sort();
@@ -132,14 +108,8 @@ fn loose_marker_at_scan_root_does_not_suppress_sibling_albums() {
 fn each_partial_marker_extension_skips_release() {
     for ext in ["part", "crdownload", "download", "aria2", "partial"] {
         let result = run_scenario(vec![
-            FixtureEntry::File {
-                rel_path: "Album/01.flac".into(),
-                kind: FileKind::Flac,
-            },
-            FixtureEntry::File {
-                rel_path: format!("Album/02.flac.{ext}"),
-                kind: FileKind::PartialMarker(ext),
-            },
+            file("Album/01.flac", FileKind::Flac),
+            file(format!("Album/02.flac.{ext}"), FileKind::PartialMarker(ext)),
         ]);
         assert!(
             result.top_level_paths().is_empty(),
@@ -154,14 +124,8 @@ fn partial_marker_extension_case_insensitive() {
     for name in ["02.FLAC.PART", "03.FLAC.CRDownload"] {
         let ext = name.rsplit('.').next().unwrap();
         let result = run_scenario(vec![
-            FixtureEntry::File {
-                rel_path: "Album/01.flac".into(),
-                kind: FileKind::Flac,
-            },
-            FixtureEntry::File {
-                rel_path: format!("Album/{name}"),
-                kind: FileKind::PartialMarker(ext),
-            },
+            file("Album/01.flac", FileKind::Flac),
+            file(format!("Album/{name}"), FileKind::PartialMarker(ext)),
         ]);
         assert!(
             result.top_level_paths().is_empty(),
@@ -175,10 +139,7 @@ fn partial_marker_extension_case_insensitive() {
 #[test]
 fn invalid_flac_audio_yields_no_candidate() {
     for kind in [FileKind::MalformedFlacStreaminfo, FileKind::BrokenFlac] {
-        let result = run_scenario(vec![FixtureEntry::File {
-            rel_path: "Album/01.flac".into(),
-            kind,
-        }]);
+        let result = run_scenario(vec![file("Album/01.flac", kind)]);
         assert!(
             result.top_level_paths().is_empty(),
             "{kind:?} must reject the candidate",
@@ -202,14 +163,8 @@ fn sibling_audio_folders_emit_separate_candidates() {
 #[test]
 fn non_audio_folder_emits_no_candidates() {
     let result = run_scenario(vec![
-        FixtureEntry::File {
-            rel_path: "Show/S01E01.avi".into(),
-            kind: FileKind::Avi,
-        },
-        FixtureEntry::File {
-            rel_path: "Show/S01E02.avi".into(),
-            kind: FileKind::Avi,
-        },
+        file("Show/S01E01.avi", FileKind::Avi),
+        file("Show/S01E02.avi", FileKind::Avi),
     ]);
     assert!(result.top_level_paths().is_empty());
 }
@@ -219,18 +174,9 @@ fn non_audio_folder_emits_no_candidates() {
 #[test]
 fn loose_junk_at_scan_root_ignored() {
     let mut entries = vec![
-        FixtureEntry::File {
-            rel_path: "loose.pdf".into(),
-            kind: FileKind::Pdf,
-        },
-        FixtureEntry::File {
-            rel_path: "loose.zip".into(),
-            kind: FileKind::Zip,
-        },
-        FixtureEntry::File {
-            rel_path: "loose.dmg".into(),
-            kind: FileKind::Dmg,
-        },
+        file("loose.pdf", FileKind::Pdf),
+        file("loose.zip", FileKind::Zip),
+        file("loose.dmg", FileKind::Dmg),
     ];
     entries.extend(flat_audio("Album", 3, FileKind::Flac));
     let result = run_scenario(entries);
@@ -258,17 +204,14 @@ fn flat_flac_release_surfaces_as_trackfiles() {
 #[test]
 fn cue_flac_pair_binds_and_reports_source_audio() {
     let result = run_scenario(vec![
-        FixtureEntry::File {
-            rel_path: "Album/Album.flac".into(),
-            kind: FileKind::Flac,
-        },
-        FixtureEntry::File {
-            rel_path: "Album/Album.cue".into(),
-            kind: FileKind::CueFor {
+        file("Album/Album.flac", FileKind::Flac),
+        file(
+            "Album/Album.cue",
+            FileKind::CueFor {
                 stem: "Album.flac",
                 n_tracks: 8,
             },
-        },
+        ),
     ]);
     let c = result.candidate("Album");
     assert_uniform_source_audio(
@@ -312,9 +255,7 @@ fn m4a_release_surfaces_as_trackfiles() {
 /// file remains attached as an ordered source for that layout.
 #[test]
 fn multi_file_cue_surfaces_as_cue_backed_release() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (tmp, album) = album_dir();
     for i in 1..=3 {
         std::fs::write(album.join(format!("0{i}.m4a")), bytes_for(FileKind::M4a)).unwrap();
     }
@@ -351,9 +292,7 @@ fn multi_file_cue_surfaces_as_cue_backed_release() {
 /// intact while the audio extension changes.
 #[test]
 fn multi_file_cue_resolves_each_reference_by_unique_stem() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (tmp, album) = album_dir();
     for name in ["01 First.flac", "02 Second.flac", "03 Third.flac"] {
         std::fs::write(album.join(name), bytes_for(FileKind::Flac)).unwrap();
     }
@@ -438,9 +377,7 @@ fn multi_file_cue_resolves_each_reference_by_unique_stem() {
 /// filename stem. The CUE is the source of truth for what it points at.
 #[test]
 fn single_file_cue_pairs_by_file_directive_not_stem() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (tmp, album) = album_dir();
     std::fs::write(album.join("Audio.flac"), bytes_for(FileKind::Flac)).unwrap();
     std::fs::write(
         album.join("Sheet.cue"),
@@ -463,13 +400,13 @@ fn single_file_cue_pairs_by_file_directive_not_stem() {
 #[test]
 fn cue_referencing_missing_audio_leaves_the_sheet_unbound() {
     let mut entries = flat_audio("Album", 5, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/Album.cue".into(),
-        kind: FileKind::NonPairingCue {
+    entries.push(file(
+        "Album/Album.cue",
+        FileKind::NonPairingCue {
             n_tracks: 5,
             file_reference: "Album.flac",
         },
-    });
+    ));
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().to_path_buf();
     build_fixture(&root, &entries);
@@ -494,18 +431,9 @@ fn cue_referencing_missing_audio_leaves_the_sheet_unbound() {
 fn subfolder_sidecars_attach_by_category() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
     entries.extend([
-        FixtureEntry::File {
-            rel_path: "Album/booklet/page1.png".into(),
-            kind: FileKind::Png,
-        },
-        FixtureEntry::File {
-            rel_path: "Album/booklet/page2.png".into(),
-            kind: FileKind::Png,
-        },
-        FixtureEntry::File {
-            rel_path: "Album/Info/Tracklist.txt".into(),
-            kind: FileKind::TracklistTxt,
-        },
+        file("Album/booklet/page1.png", FileKind::Png),
+        file("Album/booklet/page2.png", FileKind::Png),
+        file("Album/Info/Tracklist.txt", FileKind::TracklistTxt),
     ]);
     let result = run_scenario(entries);
     let c = result.candidate("Album");
@@ -536,14 +464,8 @@ fn subfolder_sidecars_attach_by_category() {
 fn md5_ffp_sidecars_silently_ignored() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
     entries.extend([
-        FixtureEntry::File {
-            rel_path: "Album/checksums.md5".into(),
-            kind: FileKind::Md5,
-        },
-        FixtureEntry::File {
-            rel_path: "Album/checksums.ffp".into(),
-            kind: FileKind::Ffp,
-        },
+        file("Album/checksums.md5", FileKind::Md5),
+        file("Album/checksums.ffp", FileKind::Ffp),
     ]);
     let result = run_scenario(entries);
     let c = result.candidate("Album");
@@ -562,14 +484,8 @@ fn md5_ffp_sidecars_silently_ignored() {
 fn log_m3u_attach_as_documents() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
     entries.extend([
-        FixtureEntry::File {
-            rel_path: "Album/rip.log".into(),
-            kind: FileKind::Log,
-        },
-        FixtureEntry::File {
-            rel_path: "Album/playlist.m3u".into(),
-            kind: FileKind::M3u,
-        },
+        file("Album/rip.log", FileKind::Log),
+        file("Album/playlist.m3u", FileKind::M3u),
     ]);
     let result = run_scenario(entries);
     let docs: Vec<_> = result
@@ -587,10 +503,7 @@ fn log_m3u_attach_as_documents() {
 #[test]
 fn bae_sidecar_hidden_from_scanner() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/.bae/cover-mb.jpg".into(),
-        kind: FileKind::Jpeg,
-    });
+    entries.push(file("Album/.bae/cover-mb.jpg", FileKind::Jpeg));
     let result = run_scenario(entries);
     assert_eq!(result.top_level_paths(), vec!["Album"]);
     let c = result.candidate("Album");
@@ -620,17 +533,14 @@ fn cyrillic_path_component_scans_cleanly() {
 #[test]
 fn sibling_folders_keep_their_own_audio_layouts() {
     let mut entries = flat_audio("Collection/Track Files", 3, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Collection/Cue Image/Audio.flac".into(),
-        kind: FileKind::Flac,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "Collection/Cue Image/Audio.cue".into(),
-        kind: FileKind::CueFor {
+    entries.push(file("Collection/Cue Image/Audio.flac", FileKind::Flac));
+    entries.push(file(
+        "Collection/Cue Image/Audio.cue",
+        FileKind::CueFor {
             stem: "Audio.flac",
             n_tracks: 10,
         },
-    });
+    ));
     let result = run_scenario(entries);
     let top = result.top_level_paths();
     assert_eq!(top.len(), 2);
@@ -656,10 +566,10 @@ fn sibling_folders_keep_their_own_audio_layouts() {
 #[test]
 fn partial_marker_in_nested_subdir_stops_release_candidate() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/booklet/02.flac.part".into(),
-        kind: FileKind::PartialMarker("part"),
-    });
+    entries.push(file(
+        "Album/booklet/02.flac.part",
+        FileKind::PartialMarker("part"),
+    ));
     let result = run_scenario(entries);
     assert!(result.top_level_paths().is_empty());
 }
@@ -671,13 +581,13 @@ fn partial_marker_in_nested_subdir_stops_release_candidate() {
 #[test]
 fn cue_no_header_naming_absent_audio_stays_unbound() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/Album.cue".into(),
-        kind: FileKind::CueNoHeader {
+    entries.push(file(
+        "Album/Album.cue",
+        FileKind::CueNoHeader {
             n_tracks: 15,
             file_reference: "Album.flac",
         },
-    });
+    ));
     let result = run_scenario(entries);
     assert_eq!(result.top_level_paths(), vec!["Album"]);
     let c = result.candidate("Album");
@@ -692,30 +602,27 @@ fn cue_no_header_naming_absent_audio_stays_unbound() {
 fn cue_file_reference_with_unquoted_filename_still_parses() {
     // Stem-matched variant: pair detected even with unquoted FILE.
     let result = run_scenario(vec![
-        FixtureEntry::File {
-            rel_path: "Paired/Album.flac".into(),
-            kind: FileKind::Flac,
-        },
-        FixtureEntry::File {
-            rel_path: "Paired/Album.cue".into(),
-            kind: FileKind::CueUnquoted {
+        file("Paired/Album.flac", FileKind::Flac),
+        file(
+            "Paired/Album.cue",
+            FileKind::CueUnquoted {
                 stem: "Album.flac",
                 n_tracks: 6,
             },
-        },
+        ),
     ]);
     assert_eq!(result.candidate("Paired").files.bound_sheets().len(), 1);
 
     // Non-pairing variant: the directive names audio that isn't here, so the
     // sheet stays unbound and the folder still imports.
     let mut entries = flat_audio("Mismatch", 3, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Mismatch/Album.cue".into(),
-        kind: FileKind::CueUnquoted {
+    entries.push(file(
+        "Mismatch/Album.cue",
+        FileKind::CueUnquoted {
             stem: "Album.flac",
             n_tracks: 15,
         },
-    });
+    ));
     let result = run_scenario(entries);
     assert_eq!(result.top_level_paths(), vec!["Mismatch"]);
     assert!(result.candidate("Mismatch").files.bound_sheets().is_empty());
@@ -729,9 +636,7 @@ fn cue_file_reference_with_unquoted_filename_still_parses() {
 /// the present audio as one track.
 #[test]
 fn multi_file_cue_with_missing_secondary_file_stays_unbound() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    let (tmp, album) = album_dir();
     std::fs::write(album.join("Album.flac"), bytes_for(FileKind::Flac)).unwrap();
     // Hand-write the CUE because the DSL doesn't model two-FILE sheets.
     std::fs::write(
