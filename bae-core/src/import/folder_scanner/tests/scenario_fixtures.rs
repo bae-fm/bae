@@ -121,8 +121,9 @@ fn make_cue_content_no_header(audio_filename: &str, n_tracks: usize) -> String {
 /// A file the scenario builder writes at `rel_path`. Folder creation is
 /// implicit via `create_dir_all` on the parent.
 #[derive(Debug)]
-enum FixtureEntry {
-    File { rel_path: String, kind: FileKind },
+struct FixtureEntry {
+    rel_path: String,
+    kind: FileKind,
 }
 
 /// Every file the fixture writes. One variant per distinct byte pattern
@@ -406,7 +407,7 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
 
 /// One file the fixture writes at `rel_path`.
 fn file(rel_path: impl Into<String>, kind: FileKind) -> FixtureEntry {
-    FixtureEntry::File {
+    FixtureEntry {
         rel_path: rel_path.into(),
         kind,
     }
@@ -438,15 +439,11 @@ fn flat_audio(dir: &str, n: usize, kind: FileKind) -> Vec<FixtureEntry> {
 /// file path are created implicitly, so container folders need no entries.
 fn build_fixture(root: &Path, spec: &[FixtureEntry]) {
     for entry in spec {
-        match entry {
-            FixtureEntry::File { rel_path, kind } => {
-                let path = root.join(rel_path);
-                if let Some(parent) = path.parent() {
-                    std::fs::create_dir_all(parent).unwrap();
-                }
-                std::fs::write(&path, bytes_for(*kind)).unwrap();
-            }
+        let path = root.join(&entry.rel_path);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
         }
+        std::fs::write(&path, bytes_for(entry.kind)).unwrap();
     }
 }
 
@@ -454,11 +451,7 @@ fn build_fixture(root: &Path, spec: &[FixtureEntry]) {
 
 fn assert_fixture_invariants(root: &Path, spec: &[FixtureEntry]) {
     for entry in spec {
-        match entry {
-            FixtureEntry::File { rel_path, kind } => {
-                assert_kind_invariant(&root.join(rel_path), *kind);
-            }
-        }
+        assert_kind_invariant(&root.join(&entry.rel_path), entry.kind);
     }
 }
 

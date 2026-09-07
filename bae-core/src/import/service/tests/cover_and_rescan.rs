@@ -42,13 +42,9 @@ fn watcher_error_without_a_mapped_path_rescans_every_root() {
 
 #[tokio::test]
 async fn explicit_bmp_cover_is_selected() {
-    let TestService {
-        service,
-        temp: tmp,
-        ..
-    } = setup_import_service().await;
-    let bmp = tmp.path().join("cover.bmp");
-    let jpg = tmp.path().join("front.jpg");
+    let test = setup_import_service().await;
+    let bmp = test.temp.path().join("cover.bmp");
+    let jpg = test.temp.path().join("front.jpg");
     std::fs::write(&bmp, b"bmp bytes").unwrap();
     std::fs::write(&jpg, b"jpg bytes").unwrap();
     let discovered = vec![
@@ -66,7 +62,8 @@ async fn explicit_bmp_cover_is_selected() {
         ),
     ];
 
-    let candidate = service
+    let candidate = test
+        .service
         .pick_folder_cover(&discovered, Some("cover.bmp"))
         .unwrap()
         .expect("selected cover should be picked");
@@ -78,12 +75,8 @@ async fn explicit_bmp_cover_is_selected() {
 
 #[tokio::test]
 async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
-    let TestService {
-        service,
-        temp: tmp,
-        ..
-    } = setup_import_service().await;
-    let fallback = tmp.path().join("front.jpg");
+    let test = setup_import_service().await;
+    let fallback = test.temp.path().join("front.jpg");
     std::fs::write(&fallback, b"jpg bytes").unwrap();
     let discovered = vec![ScannedFile::new(
         fallback.clone(),
@@ -92,7 +85,8 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
         1,
     )];
 
-    let err = service
+    let err = test
+        .service
         .pick_folder_cover(&discovered, Some("cover.bmp"))
         .unwrap_err();
 
@@ -104,13 +98,10 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
-    let TestService {
-        service,
-        temp: _tmp,
-        ..
-    } = setup_import_service().await;
+    let test = setup_import_service().await;
 
-    let err = service
+    let err = test
+        .service
         .pick_folder_cover(&[], Some("cover.bmp"))
         .unwrap_err();
 
@@ -122,11 +113,7 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn selected_local_cover_path_must_match_discovered_file() {
-    let TestService {
-        service,
-        preparations,
-        temp: tmp,
-    } = setup_import_service().await;
+    let TestService { service, preparations, temp: tmp } = setup_import_service().await;
     let folder = tmp.path().join("release");
     std::fs::create_dir(&folder).unwrap();
     write_test_jpeg(&folder.join("front.jpg"));
@@ -242,12 +229,8 @@ async fn selected_local_cover_path_must_match_discovered_file() {
 async fn unreadable_selected_cover_is_an_error() {
     use std::os::unix::fs::PermissionsExt;
 
-    let TestService {
-        service,
-        temp: tmp,
-        ..
-    } = setup_import_service().await;
-    let cover = tmp.path().join("cover.jpg");
+    let test = setup_import_service().await;
+    let cover = test.temp.path().join("cover.jpg");
     std::fs::write(&cover, b"jpg bytes").unwrap();
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
     let discovered = vec![ScannedFile::new(
@@ -257,7 +240,7 @@ async fn unreadable_selected_cover_is_an_error() {
         1,
     )];
 
-    let result = service.pick_folder_cover(&discovered, Some("cover.jpg"));
+    let result = test.service.pick_folder_cover(&discovered, Some("cover.jpg"));
 
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
     let err = result.unwrap_err();
@@ -268,17 +251,13 @@ async fn unreadable_selected_cover_is_an_error() {
 }
 
 async fn rescan_seeded_root(
-    service: &ImportService,
-    preparations: &crate::import::CandidatePreparations,
+    test: &TestService,
     root: &Path,
 ) -> (
     tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
     Result<(), crate::import::ImportError>,
 ) {
-    let (event_tx, events) = tokio::sync::broadcast::channel(16);
-    let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
-    let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
-    let cancellation = crate::import::folder_scanner::ScanCancellation::new();
+    let service = &test.service;
     service
         .library_manager
         .add_watched_import_folder(&root.to_string_lossy())
@@ -307,8 +286,8 @@ async fn rescan_seeded_root(
         .unwrap()
         .expect("the seeded scan generation is current");
 
-    let scan = test_scan_services(service, preparations, event_tx, folder_watcher);
-    let result = ImportService::rescan_and_reconcile(root, &scan, &cancellation).await;
+    let (scan, events) = test.scan();
+    let result = scan.rescan(root).await;
 
     (events, result)
 }
@@ -327,13 +306,9 @@ async fn stored_invalid_candidates(service: &ImportService, root: &Path) -> usiz
 
 #[tokio::test]
 async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
-    let TestService {
-        service,
-        preparations,
-        temp: tmp,
-    } = setup_import_service().await;
-    let root = tmp.path().join("missing-root");
-    let (mut events, result) = rescan_seeded_root(&service, &preparations, &root).await;
+    let test = setup_import_service().await;
+    let root = test.temp.path().join("missing-root");
+    let (mut events, result) = rescan_seeded_root(&test, &root).await;
     assert!(result.is_err());
 
     let failed = loop {
@@ -359,19 +334,15 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
         failed.contains(&root.to_string_lossy().into_owned()),
         "{failed}"
     );
-    assert_eq!(stored_invalid_candidates(&service, &root).await, 1);
+    assert_eq!(stored_invalid_candidates(&test.service, &root).await, 1);
 }
 
 #[tokio::test]
 async fn rescan_non_directory_root_keeps_previous_candidates() {
-    let TestService {
-        service,
-        preparations,
-        temp: tmp,
-    } = setup_import_service().await;
-    let root = tmp.path().join("not-a-directory");
+    let test = setup_import_service().await;
+    let root = test.temp.path().join("not-a-directory");
     std::fs::write(&root, b"not a directory").unwrap();
-    let (mut events, result) = rescan_seeded_root(&service, &preparations, &root).await;
+    let (mut events, result) = rescan_seeded_root(&test, &root).await;
     assert!(result.is_err(), "a non-directory root must fail its scan");
 
     loop {
@@ -395,7 +366,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
             event => panic!("expected scan status, got {event:?}"),
         }
     }
-    assert_eq!(stored_invalid_candidates(&service, &root).await, 1);
+    assert_eq!(stored_invalid_candidates(&test.service, &root).await, 1);
 }
 
 #[test]
@@ -459,34 +430,22 @@ fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
 /// did not change.
 #[tokio::test]
 async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
-    let TestService {
-        service,
-        preparations,
-        temp: tmp,
-    } = setup_import_service().await;
-    let root = tmp.path().join("watched");
+    let test = setup_import_service().await;
+    let root = test.temp.path().join("watched");
     for album in ["Artist - One", "Artist - Two"] {
         let album = root.join(album);
         std::fs::create_dir_all(&album).unwrap();
         std::fs::write(album.join("01.flac"), flac()).unwrap();
         std::fs::write(album.join("02.flac"), flac()).unwrap();
     }
-    let (event_tx, mut events) = tokio::sync::broadcast::channel(256);
-    let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
-    let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
-    let cancellation = crate::import::folder_scanner::ScanCancellation::new();
-    service
+    test.service
         .library_manager
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
 
-    let scan = test_scan_services(&service, &preparations, event_tx, folder_watcher);
-    let pass = async || {
-        ImportService::rescan_and_reconcile(&root, &scan, &cancellation)
-            .await
-            .expect("the pass reads the folder")
-    };
+    let (scan, mut events) = test.scan();
+    let pass = async || scan.rescan(&root).await.expect("the pass reads the folder");
     pass().await;
     while events.try_recv().is_ok() {}
     pass().await;
@@ -502,44 +461,30 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
 
 #[tokio::test]
 async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_announcement() {
-    let TestService {
-        service,
-        preparations,
-        temp: tmp,
-    } = setup_import_service().await;
-    service
+    let test = setup_import_service().await;
+    test.service
         .library_manager
         .set_default_import_metadata_source(crate::config::DefaultImportMetadataSource::FileTags)
         .unwrap();
-    let root = tmp.path().join("watched");
+    let root = test.temp.path().join("watched");
     let album = root.join("Candidate");
     std::fs::create_dir_all(&album).unwrap();
     std::fs::write(album.join("01.flac"), flac()).unwrap();
     let root_text = root.to_string_lossy().into_owned();
-    service
+    test.service
         .library_manager
         .add_watched_import_folder(&root_text)
         .await
         .unwrap();
-    let (event_tx, mut events) = tokio::sync::broadcast::channel(256);
-    let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
 
-    let scan = test_scan_services(
-        &service,
-        &preparations,
-        event_tx,
-        Arc::new(FolderWatcher::new(fs_tx)),
-    );
-    ImportService::rescan_and_reconcile(
-        &root,
-        &scan,
-        &crate::import::folder_scanner::ScanCancellation::new(),
-    )
-    .await
-    .expect("the File Tags candidate is read and stored");
+    let (scan, mut events) = test.scan();
+    scan.rescan(&root)
+        .await
+        .expect("the File Tags candidate is read and stored");
 
     let key = album.to_string_lossy().into_owned();
-    let detail = service
+    let detail = test
+        .service
         .library_manager
         .load_import_candidate(&key)
         .await
@@ -551,7 +496,8 @@ async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_ann
     );
     assert!(!detail.metadata_draft.is_blank());
     assert_eq!(detail.metadata_revision, 1);
-    let snapshot = service
+    let snapshot = test
+        .service
         .library_manager
         .load_candidate_file_tag_snapshot(&root_text, &key)
         .await
@@ -576,46 +522,32 @@ async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_ann
 async fn assert_default_source_discovers_a_local_cover_without_reading_file_tags(
     source: crate::config::DefaultImportMetadataSource,
 ) {
-    let TestService {
-        service,
-        preparations,
-        temp: tmp,
-    } = setup_import_service().await;
-    service
+    let test = setup_import_service().await;
+    test.service
         .library_manager
         .set_default_import_metadata_source(source)
         .unwrap();
-    let root = tmp.path().join("watched");
+    let root = test.temp.path().join("watched");
     let album = root.join("Candidate");
     std::fs::create_dir_all(&album).unwrap();
     std::fs::write(album.join("01.flac"), flac()).unwrap();
     write_test_jpeg(&album.join("folder.jpg"));
     write_test_jpeg(&album.join("cover.jpg"));
     let root_text = root.to_string_lossy().into_owned();
-    service
+    test.service
         .library_manager
         .add_watched_import_folder(&root_text)
         .await
         .unwrap();
-    let (event_tx, _events) = tokio::sync::broadcast::channel(256);
-    let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
 
-    let scan = test_scan_services(
-        &service,
-        &preparations,
-        event_tx,
-        Arc::new(FolderWatcher::new(fs_tx)),
-    );
-    ImportService::rescan_and_reconcile(
-        &root,
-        &scan,
-        &crate::import::folder_scanner::ScanCancellation::new(),
-    )
-    .await
-    .expect("the candidate is read and stored");
+    let (scan, _events) = test.scan();
+    scan.rescan(&root)
+        .await
+        .expect("the candidate is read and stored");
 
     let key = album.to_string_lossy().into_owned();
-    let detail = service
+    let detail = test
+        .service
         .library_manager
         .load_import_candidate(&key)
         .await
@@ -628,7 +560,7 @@ async fn assert_default_source_discovers_a_local_cover_without_reading_file_tags
         Some(CoverSelection::Local("cover.jpg".to_string()))
     );
     assert!(
-        service
+        test.service
             .library_manager
             .load_candidate_file_tag_snapshot(&root_text, &key)
             .await
@@ -665,34 +597,22 @@ async fn find_online_default_discovers_a_local_cover_before_a_release_is_selecte
 /// would happen anyway.
 #[tokio::test]
 async fn a_pass_records_the_directories_it_read() {
-    let TestService {
-        service,
-        preparations,
-        temp: tmp,
-    } = setup_import_service().await;
-    let root = tmp.path().join("watched");
+    let test = setup_import_service().await;
+    let root = test.temp.path().join("watched");
     let album = root.join("Artist - Album");
     std::fs::create_dir_all(album.join("Artwork")).unwrap();
     std::fs::write(album.join("01.flac"), flac()).unwrap();
-
-    let (event_tx, _events) = tokio::sync::broadcast::channel(256);
-    let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
-    let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
-    service
+    test.service
         .library_manager
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
-    let scan = test_scan_services(&service, &preparations, event_tx, folder_watcher);
-    ImportService::rescan_and_reconcile(
-        &root,
-        &scan,
-        &crate::import::folder_scanner::ScanCancellation::new(),
-    )
-    .await
-    .expect("the pass reads the folder");
 
-    let recorded = service
+    let (scan, _events) = test.scan();
+    scan.rescan(&root).await.expect("the pass reads the folder");
+
+    let recorded = test
+        .service
         .library_manager
         .load_folder_scan_directories(&root.to_string_lossy())
         .await

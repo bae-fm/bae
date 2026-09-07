@@ -85,14 +85,28 @@ async fn picked_candidate(
         combine_ancestor_key: None,
     };
 
-    let root = root.to_string_lossy().into_owned();
-    manager.add_watched_import_folder(&root).await.unwrap();
+    manager
+        .add_watched_import_folder(&root.to_string_lossy())
+        .await
+        .unwrap();
+    rescan_into(manager, candidate.clone()).await;
+
+    let key = folder.to_string_lossy().into_owned();
+    let hash = candidate.files.content_hash();
+    (candidate, key, hash)
+}
+
+/// Store `candidate` as the whole of a fresh scan generation of its own
+/// watched root — the stamp every later read of that candidate is checked
+/// against.
+async fn rescan_into(manager: &LibraryManager, candidate: FolderCandidate) {
+    let root = candidate.watched_folder_path.clone();
     let generation = manager.begin_folder_scan(&root).await.unwrap();
     manager
         .save_folder_scan_item(
             &root,
             generation,
-            &crate::import::folder_scanner::ScanItem::Valid(candidate.clone()),
+            &crate::import::folder_scanner::ScanItem::Valid(candidate),
         )
         .await
         .unwrap();
@@ -100,22 +114,46 @@ async fn picked_candidate(
         .finish_folder_scan(&root, generation, None)
         .await
         .unwrap();
+}
 
-    let key = folder.to_string_lossy().into_owned();
-    let hash = candidate.files.content_hash();
-    (candidate, key, hash)
+/// A running import service over a watched root holding one stored candidate —
+/// what every control in this file is addressed to.
+struct StoredCandidate {
+    handle: ImportServiceHandle,
+    /// The library the service was started from, for the tests that restart the
+    /// service over it to read what survived the first one.
+    manager: LibraryManager,
+    candidate: FolderCandidate,
+    /// The key the pane's controls address the candidate by.
+    key: String,
+    /// Held for its `Drop`: the watched root lives inside it.
+    tmp: TempDir,
+}
+
+async fn stored_candidate() -> StoredCandidate {
+    let (manager, tmp) = setup_test_manager().await;
+    let (candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    StoredCandidate {
+        handle,
+        manager,
+        candidate,
+        key,
+        tmp,
+    }
 }
 
 /// The handle, the key its controls address, and the hash its rows are stored
 /// under — with the folder's own tags already picked, which is what draws the
 /// edit form and the mapping table.
 async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
-    let (manager, tmp) = setup_test_manager().await;
-    let (_candidate, key, hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let fixture = stored_candidate().await;
+    let hash = fixture.candidate.files.content_hash();
+    let handle = fixture.handle;
+    let key = fixture.key;
     handle
         .preview_file_tags_for_folder(key.clone())
         .await
@@ -129,7 +167,7 @@ async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
         .unwrap();
     assert_eq!(revision, 1);
     assert_eq!(pane(&handle, &key).await.metadata_revision, revision);
-    (handle, tmp, key, hash)
+    (handle, fixture.tmp, key, hash)
 }
 
 async fn pane(handle: &ImportServiceHandle, key: &str) -> crate::import::ImportCandidateDetail {
@@ -148,12 +186,7 @@ async fn shut_down(handle: ImportServiceHandle) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_candidate_without_metadata() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (_, key, _) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
     let gallery = handle
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Candidate(key))
         .await
@@ -306,12 +339,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn one_unreadable_file_stores_no_partial_tag_snapshot() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::failing(1));
 
     let error = handle
@@ -336,12 +364,7 @@ async fn one_unreadable_file_stores_no_partial_tag_snapshot() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
 
     let first = handle
@@ -378,12 +401,7 @@ async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn changed_file_observations_replace_the_complete_tag_snapshot() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (mut candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let StoredCandidate { handle, manager, mut candidate, key, tmp } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
 
     handle
@@ -433,20 +451,7 @@ async fn changed_file_observations_replace_the_complete_tag_snapshot() {
         .unwrap()
         .file
         .size = std::fs::metadata(&second_audio).unwrap().len();
-    let root = candidate.watched_folder_path.clone();
-    let generation = manager.begin_folder_scan(&root).await.unwrap();
-    manager
-        .save_folder_scan_item(
-            &root,
-            generation,
-            &crate::import::folder_scanner::ScanItem::Valid(candidate),
-        )
-        .await
-        .unwrap();
-    manager
-        .finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    rescan_into(&manager, candidate).await;
 
     let after_size = handle
         .file_tag_snapshot_with_reader(&key, reader.clone())
@@ -467,32 +472,14 @@ async fn changed_file_observations_replace_the_complete_tag_snapshot() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn changed_candidate_stamps_replace_the_complete_tag_snapshot() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let StoredCandidate { handle, manager, candidate, key, tmp: _tmp } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     handle
         .file_tag_snapshot_with_reader(&key, reader.clone())
         .await
         .unwrap();
 
-    let root = candidate.watched_folder_path.clone();
-    let generation = manager.begin_folder_scan(&root).await.unwrap();
-    manager
-        .save_folder_scan_item(
-            &root,
-            generation,
-            &crate::import::folder_scanner::ScanItem::Valid(candidate),
-        )
-        .await
-        .unwrap();
-    manager
-        .finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    rescan_into(&manager, candidate).await;
 
     let after_generation = handle
         .file_tag_snapshot_with_reader(&key, reader.clone())
@@ -510,12 +497,7 @@ async fn changed_candidate_stamps_replace_the_complete_tag_snapshot() {
     );
     shut_down(handle).await;
 
-    let (manager, tmp) = setup_test_manager().await;
-    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     handle
         .file_tag_snapshot_with_reader(&key, reader.clone())
@@ -676,12 +658,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_scan_that_moves_during_tag_reading_refuses_the_snapshot() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let StoredCandidate { handle, manager, candidate, key, tmp: _tmp } = stored_candidate().await;
     let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
     let resume = std::sync::Arc::new(std::sync::Barrier::new(2));
     let reader = std::sync::Arc::new(CountingFileTagReader::blocking(
@@ -701,20 +678,7 @@ async fn a_scan_that_moves_during_tag_reading_refuses_the_snapshot() {
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("the tag reader reached the first audio file");
 
-    let root = candidate.watched_folder_path.clone();
-    let generation = manager.begin_folder_scan(&root).await.unwrap();
-    manager
-        .save_folder_scan_item(
-            &root,
-            generation,
-            &crate::import::folder_scanner::ScanItem::Valid(candidate),
-        )
-        .await
-        .unwrap();
-    manager
-        .finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    rescan_into(&manager, candidate).await;
     resume.wait();
 
     let error = operation

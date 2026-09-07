@@ -140,12 +140,7 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
 /// source selection before it can persist edits.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_edit_with_no_metadata_source_updates_the_draft() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
 
     handle
         .set_candidate_edit_field(
@@ -658,12 +653,7 @@ async fn an_imported_candidate_refuses_metadata_edits() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
 
     let mut events = handle.subscribe_events();
     let import_id = handle
@@ -834,12 +824,7 @@ async fn file_tags_uses_the_conventional_folder_cover() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn file_tags_persists_embedded_artwork_ahead_of_the_folder_cover() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let StoredCandidate { handle, manager, key, tmp: _tmp, .. } = stored_candidate().await;
     let bytes = vec![1, 2, 3, 4];
     handle
         .file_tag_snapshot_with_reader(

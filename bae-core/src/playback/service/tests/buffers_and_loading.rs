@@ -5,10 +5,11 @@ async fn retiring_preloaded_next_stops_decoder_but_keeps_buffer_alive() {
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
     let cancel_token = Arc::new(std::sync::atomic::AtomicBool::new(false));
     service.preloaded_next = Some(PreloadedNext {
-        prepared: test_prepared_track("next-track", buffer.clone()),
-        decoder_handle: finished_decoder_handle(),
         cancel_token: cancel_token.clone(),
-        source: PreloadedNextSource::Held(source),
+        ..test_preloaded_next(
+            test_prepared_track("next-track", buffer.clone()),
+            PreloadedNextSource::Held(source),
+        )
     });
 
     assert!(service.retire_preloaded_track());
@@ -40,12 +41,10 @@ async fn retiring_preloaded_next_removes_staged_source() {
         .stage_next(next_source, test_track_fmt("next-track"));
 
     let buffer = create_sparse_buffer(1_024);
-    service.preloaded_next = Some(PreloadedNext {
-        prepared: test_prepared_track("next-track", buffer.clone()),
-        decoder_handle: finished_decoder_handle(),
-        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        source: PreloadedNextSource::Staged,
-    });
+    service.preloaded_next = Some(test_preloaded_next(
+        test_prepared_track("next-track", buffer.clone()),
+        PreloadedNextSource::Staged,
+    ));
 
     let (_audio_tx, audio_events) = audio_event_channel();
     service.output = Some(test_output(gapless.clone(), audio_events));
@@ -90,16 +89,10 @@ async fn read_failure_on_the_preloaded_next_discards_it_and_keeps_playing() {
         TrackPhase::Playing,
     );
     let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
-    service.preloaded_next = Some(PreloadedNext {
-        prepared: test_prepared_track_with_file(
-            "next-track",
-            "preload-file",
-            preload_buffer.clone(),
-        ),
-        decoder_handle: finished_decoder_handle(),
-        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        source: PreloadedNextSource::Held(next_source),
-    });
+    service.preloaded_next = Some(test_preloaded_next(
+        test_prepared_track_with_file("next-track", "preload-file", preload_buffer.clone()),
+        PreloadedNextSource::Held(next_source),
+    ));
 
     service
         .handle_read_failed(
@@ -223,12 +216,10 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
     });
     service.current_position_shared =
         Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
-    service.preloaded_next = Some(PreloadedNext {
-        prepared: test_prepared_track("incoming-track", incoming_buffer),
-        decoder_handle: finished_decoder_handle(),
-        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        source: PreloadedNextSource::Staged,
-    });
+    service.preloaded_next = Some(test_preloaded_next(
+        test_prepared_track("incoming-track", incoming_buffer),
+        PreloadedNextSource::Staged,
+    ));
 
     service.seek(std::time::Duration::ZERO).await;
 
@@ -318,12 +309,10 @@ async fn next_after_natural_completion_resumes_audibly() {
     // A next track is preloaded and ready to play without a fresh decode.
     let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
     let next_buffer = create_sparse_buffer(1_024);
-    service.preloaded_next = Some(PreloadedNext {
-        prepared: test_prepared_track("next-track", next_buffer),
-        decoder_handle: finished_decoder_handle(),
-        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        source: PreloadedNextSource::Held(next_source),
-    });
+    service.preloaded_next = Some(test_preloaded_next(
+        test_prepared_track("next-track", next_buffer),
+        PreloadedNextSource::Held(next_source),
+    ));
 
     service.handle_next().await;
 
@@ -366,12 +355,10 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
         test_prepared_track_with_file("finished-track", "finished-file", finished_buffer.clone()),
         TrackPhase::Playing,
     );
-    service.preloaded_next = Some(PreloadedNext {
-        prepared: test_prepared_track_with_file("incoming-track", "incoming-file", incoming_buffer),
-        decoder_handle: finished_decoder_handle(),
-        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        source: PreloadedNextSource::Staged,
-    });
+    service.preloaded_next = Some(test_preloaded_next(
+        test_prepared_track_with_file("incoming-track", "incoming-file", incoming_buffer),
+        PreloadedNextSource::Staged,
+    ));
 
     service
         .handle_track_crossed(TrackCrossing {
@@ -406,16 +393,10 @@ async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
         test_prepared_track_with_file("finished-track", "shared-file", shared_buffer.clone()),
         TrackPhase::Playing,
     );
-    service.preloaded_next = Some(PreloadedNext {
-        prepared: test_prepared_track_with_file(
-            "incoming-track",
-            "shared-file",
-            shared_buffer.clone(),
-        ),
-        decoder_handle: finished_decoder_handle(),
-        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        source: PreloadedNextSource::Staged,
-    });
+    service.preloaded_next = Some(test_preloaded_next(
+        test_prepared_track_with_file("incoming-track", "shared-file", shared_buffer.clone()),
+        PreloadedNextSource::Staged,
+    ));
 
     service
         .handle_track_crossed(TrackCrossing {

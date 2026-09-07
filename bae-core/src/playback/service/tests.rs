@@ -349,6 +349,21 @@ fn finished_decoder_handle() -> std::thread::JoinHandle<()> {
     std::thread::spawn(|| {})
 }
 
+/// A preloaded next track whose decoder has already finished, holding a cancel
+/// token nothing else can observe. A test that reads the token back passes its
+/// own in with struct-update syntax.
+fn test_preloaded_next(
+    prepared: PlaybackPreparedTrack,
+    source: PreloadedNextSource,
+) -> PreloadedNext {
+    PreloadedNext {
+        prepared,
+        decoder_handle: finished_decoder_handle(),
+        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        source,
+    }
+}
+
 fn test_track_fmt(track_id: &str) -> TrackFmt {
     TrackFmt {
         track_id: track_id.to_string(),

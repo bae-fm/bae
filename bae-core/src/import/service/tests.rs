@@ -416,6 +416,47 @@ fn test_scan_services(
     )
 }
 
+/// Everything a test needs to read a folder besides the folder itself: the scan
+/// dependencies, the cancellation the pass is driven with, and the watcher's own
+/// receiver, held so the folder watcher's sender stays connected for as long as
+/// the scan does.
+struct TestScan {
+    services: ScanServices,
+    cancellation: crate::import::folder_scanner::ScanCancellation,
+    _fs_rx: tokio::sync::mpsc::UnboundedReceiver<DebounceEventResult>,
+}
+
+impl TestService {
+    /// A scan over this service's library, and the stream it announces on.
+    fn scan(
+        &self,
+    ) -> (
+        TestScan,
+        broadcast::Receiver<crate::import::handle::ImportEvent>,
+    ) {
+        let (event_tx, events) = broadcast::channel(256);
+        let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
+        let scan = TestScan {
+            services: test_scan_services(
+                &self.service,
+                &self.preparations,
+                event_tx,
+                Arc::new(FolderWatcher::new(fs_tx)),
+            ),
+            cancellation: crate::import::folder_scanner::ScanCancellation::new(),
+            _fs_rx: fs_rx,
+        };
+        (scan, events)
+    }
+}
+
+impl TestScan {
+    /// Read `root` and reconcile what it holds against what is stored.
+    async fn rescan(&self, root: &Path) -> Result<(), crate::import::ImportError> {
+        ImportService::rescan_and_reconcile(root, &self.services, &self.cancellation).await
+    }
+}
+
 include!("tests/coordinator.rs");
 include!("tests/cover_and_rescan.rs");
 include!("tests/edits_and_formats.rs");
