@@ -85,7 +85,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
                     file_edit_revision: 0,
                     metadata_revision,
                 },
-                file_tag_snapshot: None,
+                file_tag_snapshot_revision: None,
             },
             StorageMode::Local,
             false,

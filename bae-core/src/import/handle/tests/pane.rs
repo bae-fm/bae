@@ -120,6 +120,13 @@ async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
         .preview_file_tags_for_folder(key.clone())
         .await
         .unwrap();
+    let before = handle
+        .library_manager
+        .load_import_candidate_state(&hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .metadata_revision;
     let revision = handle
         .select_candidate_metadata_provenance(
             key.clone(),
@@ -127,7 +134,7 @@ async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
         )
         .await
         .unwrap();
-    assert_eq!(revision, 1);
+    assert!(revision > before);
     assert_eq!(pane(&handle, &key).await.metadata_revision, revision);
     (handle, tmp, key, hash)
 }

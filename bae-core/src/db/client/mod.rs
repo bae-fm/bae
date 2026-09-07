@@ -38,6 +38,8 @@ mod artist;
 mod artist_identity_merge;
 mod blobs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod candidate_revision;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod candidate_state_rows;
 mod coven_capabilities;
 mod identity;

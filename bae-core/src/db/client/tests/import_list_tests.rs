@@ -131,12 +131,17 @@ fn verdict(release_id: &str) -> TerminalVerdict {
 }
 
 async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &str) {
+    let state = db
+        .load_import_candidate_state(&candidate.files.content_hash())
+        .await
+        .unwrap()
+        .expect("the scanned candidate has state");
     assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             candidate: crate::import::CandidateAsRead {
                 content_hash: candidate.files.content_hash(),
-                file_edit_revision: 0,
-                metadata_revision: 0,
+                file_edit_revision: state.file_edits.revision,
+                metadata_revision: state.metadata_revision,
             },
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: verdict(release_id),
@@ -734,6 +739,11 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
         .await
         .unwrap()
         .draft;
+    let state = db
+        .load_import_candidate_state(&hash)
+        .await
+        .unwrap()
+        .expect("the scanned candidate has state");
     let bytes = vec![1, 2, 3, 4];
     let snapshot = crate::import::file_tag_snapshot::FileTagSnapshot {
         scan_generation: 1,
@@ -764,8 +774,8 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
             &candidate.path.to_string_lossy(),
             &crate::import::CandidateAsRead {
                 content_hash: hash.clone(),
-                file_edit_revision: 0,
-                metadata_revision: 0,
+                file_edit_revision: state.file_edits.revision,
+                metadata_revision: state.metadata_revision,
             },
             &snapshot,
             &draft,
@@ -812,9 +822,18 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     assert_eq!(pending.len(), 1, "before any attempt the row is pending");
     assert!(pending[0].import_status.is_none());
 
+    let state = db
+        .load_import_candidate_state(&hash)
+        .await
+        .unwrap()
+        .expect("the identified candidate has state");
+    let read = crate::import::CandidateAsRead {
+        content_hash: hash.clone(),
+        file_edit_revision: state.file_edits.revision,
+        metadata_revision: state.metadata_revision,
+    };
     db.save_import_candidate_failure(
-        &hash,
-        0,
+        &read,
         &crate::import::ImportFailure::error_only("the disk filled", now()),
     )
     .await
@@ -835,7 +854,7 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
         "with no runtime entry of its own"
     );
 
-    db.clear_import_candidate_failure(&hash).await.unwrap();
+    db.clear_import_candidate_failure(&read).await.unwrap();
 
     let pending = tab(&db, TriageTab::Pending).await;
     assert_eq!(pending.len(), 1, "queueing the next attempt puts it back");

@@ -65,8 +65,8 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
         "INSERT INTO scan_candidate_tag_snapshot \
              (watched_folder_path, candidate_path, scan_generation, file_edit_revision, \
               embedded_cover_source_relative_path, embedded_cover_content_type, \
-              embedded_cover_data) \
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
+              embedded_cover_data, revision) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             watched_folder_path,
             candidate_path,
@@ -81,6 +81,7 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
             cover_source,
             cover_content_type,
             cover_data,
+            super::super::candidate_revision::allocate(sql)?,
         ],
     )?;
     for fact in &snapshot.files {
@@ -242,7 +243,13 @@ pub(crate) fn ensure_candidate_state(
          ON CONFLICT (content_hash) DO NOTHING",
         params![content_hash, path],
     )? == 1;
-    if !created {
+    if created {
+        let revision = super::super::candidate_revision::allocate(sql)?;
+        sql.execute(
+            "UPDATE import_candidate_state SET metadata_revision = ? WHERE content_hash = ?",
+            params![revision, content_hash],
+        )?;
+    } else {
         sql.execute(
             "UPDATE import_candidate_state SET folder_path = ? WHERE content_hash = ?",
             params![path, content_hash],

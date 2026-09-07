@@ -35,11 +35,7 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     assert!(
         fixture.preparations.store_verdict(&NewImportCandidateVerdict {
-                candidate: crate::import::CandidateAsRead {
-                    content_hash: fixture.content_hash(&late),
-                    file_edit_revision: 0,
-                    metadata_revision: 0,
-                },
+                candidate: fixture.candidate_as_read(&late).await,
                 folder_path: late.to_string_lossy().into_owned(),
                 verdict: TerminalVerdict::NotFoundAnywhere,
                 signals: settled_signals(Default::default()),

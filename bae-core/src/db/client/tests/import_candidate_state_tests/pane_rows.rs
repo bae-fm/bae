@@ -60,13 +60,9 @@ fn signals_with(durations: SourceDurations) -> Signals {
 }
 
 /// Store a verdict for `hash` carrying `signals`, and say whether it landed.
-async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
+async fn store_verdict(db: &Database, candidate: crate::import::CandidateAsRead, signals: Signals) -> bool {
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
-        candidate: crate::import::CandidateAsRead {
-            content_hash: hash.to_string(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        candidate,
         folder_path: pane_candidate_path(),
         verdict: sample_verdict(),
         signals,
@@ -211,7 +207,7 @@ async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
     let (db, _tmp) = empty_db().await;
     let hash = pane_candidate().content_hash();
 
-    assert!(!store_verdict(&db, &hash, signals_with(SourceDurations::default())).await);
+    assert!(!store_verdict(&db, crate::import::CandidateAsRead { content_hash: hash.clone(), file_edit_revision: 7, metadata_revision: 7 }, signals_with(SourceDurations::default())).await);
     assert!(db
         .load_import_candidate_state(&hash)
         .await
@@ -231,7 +227,7 @@ async fn verdict_stores_only_the_derived_total() {
         slice_unit(1, 400_000),
     ]);
 
-    assert!(store_verdict(&db, &hash, signals_with(durations.clone())).await);
+    assert!(store_verdict(&db, current_candidate_as_read(&db, &hash).await, signals_with(durations.clone())).await);
 
     let state = db
         .load_import_candidate_state(&hash)
@@ -343,7 +339,7 @@ async fn every_settled_signal_shape_round_trips() {
             durations: SourceDurations::new(vec![file_unit("01 Track.flac", 1_000)]),
         };
 
-        assert!(store_verdict(&db, &hash, signals.clone()).await, "{what}");
+        assert!(store_verdict(&db, current_candidate_as_read(&db, &hash).await, signals.clone()).await, "{what}");
 
         let stored = db
             .load_import_candidate_state(&hash)
@@ -393,11 +389,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
         let hash = store_candidate_state(&db, &candidate, &pane_candidate_path()).await;
 
         let error = crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
-                candidate: crate::import::CandidateAsRead {
-                    content_hash: hash.clone(),
-                    file_edit_revision: 0,
-                    metadata_revision: 0,
-                },
+                candidate: current_candidate_as_read(&db, &hash).await,
                 folder_path: pane_candidate_path(),
                 verdict: sample_verdict(),
                 signals: scanning,
@@ -431,9 +423,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
 
-    db.save_import_candidate_failure(
-        &hash,
-        0,
+    db.save_import_candidate_failure(&current_candidate_as_read(&db, &hash).await,
         &ImportFailure::error_only("the folder vanished", fixed_identified_at()),
     )
     .await
@@ -455,9 +445,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         .release_edit()
         .is_blank());
 
-    db.save_import_candidate_failure(
-        &hash,
-        0,
+    db.save_import_candidate_failure(&current_candidate_as_read(&db, &hash).await,
         &ImportFailure::error_only("the disc would not read", fixed_identified_at()),
     )
     .await
@@ -473,7 +461,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         "the second failure replaces the first"
     );
 
-    db.clear_import_candidate_failure(&hash).await.unwrap();
+    db.clear_import_candidate_failure(&current_candidate_as_read(&db, &hash).await).await.unwrap();
     assert!(db
         .load_import_candidate_pane_rows(&hash)
         .await
@@ -486,9 +474,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
 async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    db.save_import_candidate_failure(
-        &hash,
-        0,
+    db.save_import_candidate_failure(&current_candidate_as_read(&db, &hash).await,
         &ImportFailure::error_only("the prior attempt failed", fixed_identified_at()),
     )
     .await
@@ -553,11 +539,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &current_candidate_as_read(&db, &hash).await,
         &cover,
         Some(&image),
     )
@@ -577,6 +559,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
 async fn a_remote_cover_without_exact_bytes_writes_nothing() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
+    let read = current_candidate_as_read(&db, &hash).await;
     let cover = CoverSelection::Remote(
         "https://example.invalid/image".to_string(),
         MetadataSource::Discogs,
@@ -585,11 +568,7 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &read,
         &cover,
         None,
     )
@@ -601,7 +580,7 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
         .await
         .unwrap()
         .expect("the candidate remains");
-    assert_eq!(state.metadata_revision, 0);
+    assert_eq!(state.metadata_revision, read.metadata_revision);
     assert_eq!(
         db.load_import_candidate_pane_rows(&hash)
             .await
@@ -615,6 +594,7 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
 async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
+    let read = current_candidate_as_read(&db, &hash).await;
     let current_cover = CoverSelection::Remote(
         "https://example.invalid/current".to_string(),
         MetadataSource::Discogs,
@@ -626,11 +606,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &read,
         &current_cover,
         Some(&current_image),
     )
@@ -648,16 +624,12 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &read,
         &stale_cover,
         Some(&stale_image),
     )
         .await
-        .expect_err("revision zero is stale after the first selection");
+        .expect_err("the accepted revision is stale after the first selection");
 
     let rows = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     let assets = db
@@ -686,11 +658,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     };
     let revision = crate::import::CandidatePreparations::new(db.clone()).apply_source(
             &host_root("/music"),
-            &crate::import::CandidateAsRead {
-                content_hash: hash.clone(),
-                file_edit_revision: 0,
-                metadata_revision: 0,
-            },
+            &current_candidate_as_read(&db, &hash).await,
             &pane_candidate_path(),
             &crate::import::CandidateMetadataDraft {
                 draft: draft.clone(),
@@ -793,11 +761,7 @@ async fn preparation_round_trips_source_only_artist_answers() {
 
     crate::import::CandidatePreparations::new(db.clone()).apply_source(
         &host_root("/music"),
-        &crate::import::CandidateAsRead {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        &current_candidate_as_read(&db, &hash).await,
         &pane_candidate_path(),
         &crate::import::CandidateMetadataDraft {
             draft: candidate_draft("Release Title", "Artist Name"),

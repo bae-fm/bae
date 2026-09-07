@@ -188,6 +188,50 @@ pub(crate) fn load_candidate_file_tag_snapshot(
     }))
 }
 
+/// Identity available to a new import only while its scan and file decisions are current.
+/// This does not read track tags or embedded image bytes.
+pub(crate) fn file_tag_snapshot_revision(
+    sql: &impl QueryOne,
+    watched_folder_path: &str,
+    candidate_path: &str,
+) -> Result<Option<u64>, DbError> {
+    snapshot_revision_on(sql, watched_folder_path, candidate_path, true)
+}
+
+/// An accepted reading survives an unchanged rewalk. Replacing the reading
+/// allocates another revision; changing file decisions invalidates it separately.
+pub(crate) fn retained_file_tag_snapshot_revision(
+    sql: &impl QueryOne,
+    watched_folder_path: &str,
+    candidate_path: &str,
+) -> Result<Option<u64>, DbError> {
+    snapshot_revision_on(sql, watched_folder_path, candidate_path, false)
+}
+
+fn snapshot_revision_on(
+    sql: &impl QueryOne,
+    watched_folder_path: &str,
+    candidate_path: &str,
+    require_current_scan: bool,
+) -> Result<Option<u64>, DbError> {
+    let revision: Option<i64> = sql
+        .query_row(
+            "SELECT tags.revision FROM scan_candidate_tag_snapshot AS tags \
+         JOIN scan_candidate AS candidate \
+           ON candidate.watched_folder_path = tags.watched_folder_path \
+          AND candidate.path = tags.candidate_path \
+         WHERE tags.watched_folder_path = ?1 AND tags.candidate_path = ?2 \
+           AND (NOT ?3 OR tags.scan_generation = candidate.generation) \
+           AND tags.file_edit_revision = candidate.file_edit_revision",
+            params![watched_folder_path, candidate_path, require_current_scan],
+            |row| row.get(0),
+        )
+        .optional()?;
+    revision
+        .map(|value| to_u64(value, "a file-tag snapshot revision"))
+        .transpose()
+}
+
 fn load_file_tag_facts(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,

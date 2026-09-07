@@ -1,3 +1,19 @@
+async fn current_candidate_as_read(
+    db: &Database,
+    content_hash: &str,
+) -> crate::import::CandidateAsRead {
+    let state = db
+        .load_import_candidate_state(content_hash)
+        .await
+        .unwrap()
+        .expect("the fixture candidate has stored state");
+    crate::import::CandidateAsRead {
+        content_hash: content_hash.to_string(),
+        file_edit_revision: state.file_edits.revision,
+        metadata_revision: state.metadata_revision,
+    }
+}
+
 async fn current_mapping_preparation(
     db: &Database,
     content_hash: &str,

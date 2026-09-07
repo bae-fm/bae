@@ -322,3 +322,408 @@ async fn failed_whole_replacement_preserves_the_previous_snapshot() {
         Some(stored)
     );
 }
+
+#[tokio::test]
+async fn stale_preparation_save_preserves_file_tags_and_embedded_cover() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap();
+    let (candidate, generation) = scanned_candidate(&db, root).await;
+    let key = candidate.path.to_string_lossy().into_owned();
+    let hash = candidate.files.content_hash();
+    let stored = snapshot(generation, candidate.file_edit_revision);
+    db.replace_candidate_file_tag_snapshot(root, &key, &stored)
+        .await
+        .unwrap();
+    let stale = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    let expected = CandidateSaveExpectation {
+        edit_revision: stale.file_edits.revision,
+        metadata_revision: stale.metadata_revision,
+        scanned: Some(ScannedCandidateKey {
+            watched_folder_path: root.to_string(),
+            candidate_path: key.clone(),
+        }),
+    };
+    crate::import::CandidatePreparations::new(db.clone())
+        .set_field(
+            &hash,
+            crate::import::CandidateEditField::AlbumTitle,
+            "Current album",
+        )
+        .await
+        .unwrap();
+    let current = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    assert_ne!(current.metadata_revision, stale.metadata_revision);
+    let mut replacement = stored.clone();
+    replacement.files[0].title = Some("Stale track".into());
+    replacement.embedded_cover.as_mut().unwrap().data = vec![9, 8, 7];
+
+    let result = db
+        .save_candidate_preparation(
+            stale,
+            expected,
+            true,
+            CandidateSaveExtras {
+                file_tag_snapshot: Some(replacement),
+                reshaped_files: None,
+            },
+        )
+        .await
+        .unwrap();
+    assert!(matches!(result, CandidateSaved::Superseded));
+    assert_eq!(
+        db.load_candidate_preparation(&hash).await.unwrap().unwrap(),
+        current
+    );
+    assert_eq!(
+        db.load_candidate_file_tag_snapshot(root, &key)
+            .await
+            .unwrap()
+            .unwrap()
+            .snapshot,
+        Some(stored)
+    );
+}
+
+#[tokio::test]
+async fn recreated_candidate_rejects_the_removed_preparation() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap();
+    let (candidate, _) = scanned_candidate(&db, root).await;
+    let hash = candidate.files.content_hash();
+    let mut stale = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    let expected = CandidateSaveExpectation {
+        edit_revision: stale.file_edits.revision,
+        metadata_revision: stale.metadata_revision,
+        scanned: None,
+    };
+    db.remove_watched_import_folder(root).await.unwrap();
+    assert!(db
+        .load_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .is_none());
+    let (recreated, _) = scanned_candidate(&db, root).await;
+    assert_eq!(recreated.files.content_hash(), hash);
+    let current = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    stale.metadata.draft.album_title = "Removed candidate's draft".into();
+
+    let result = db
+        .save_candidate_preparation(stale, expected, true, CandidateSaveExtras::default())
+        .await
+        .unwrap();
+    assert!(
+        matches!(result, CandidateSaved::Superseded),
+        "a removed candidate's save must not land on its replacement"
+    );
+    assert_eq!(
+        db.load_candidate_preparation(&hash).await.unwrap().unwrap(),
+        current
+    );
+}
+
+#[tokio::test]
+async fn recreated_candidate_keeps_its_failure_when_an_old_attempt_fails() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap();
+    let (candidate, _) = scanned_candidate(&db, root).await;
+    let hash = candidate.files.content_hash();
+    let stale = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    db.remove_watched_import_folder(root).await.unwrap();
+    scanned_candidate(&db, root).await;
+    let current = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    let current_failure = crate::import::ImportFailure {
+        error: "Current attempt failed".into(),
+        failed_at: now(),
+        artist_identity_conflict: None,
+    };
+    db.save_import_candidate_failure(&read_preparation(&current), &current_failure)
+        .await
+        .unwrap();
+    let stale_failure = crate::import::ImportFailure {
+        error: "Removed attempt failed".into(),
+        failed_at: now(),
+        artist_identity_conflict: None,
+    };
+    assert!(
+        db.save_import_candidate_failure(&read_preparation(&stale), &stale_failure)
+            .await
+            .is_err(),
+        "the old attempt must not attach its failure to the recreated candidate"
+    );
+    assert_eq!(
+        db.load_candidate_preparation(&hash).await.unwrap().unwrap(),
+        current
+    );
+    let failure = db
+        .load_import_candidate_pane_rows(&hash)
+        .await
+        .unwrap()
+        .failure
+        .unwrap();
+    assert_eq!(failure, current_failure);
+}
+
+fn read_preparation(
+    preparation: &crate::import::preparation::CandidatePreparation,
+) -> crate::import::CandidateAsRead {
+    crate::import::CandidateAsRead {
+        content_hash: preparation.content_hash.clone(),
+        file_edit_revision: preparation.file_edits.revision,
+        metadata_revision: preparation.metadata_revision,
+    }
+}
+
+#[tokio::test]
+async fn removed_attempt_cannot_clear_a_recreated_candidates_failure() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap();
+    let (candidate, _) = scanned_candidate(&db, root).await;
+    let hash = candidate.files.content_hash();
+    let stale = read_preparation(&db.load_candidate_preparation(&hash).await.unwrap().unwrap());
+    db.remove_watched_import_folder(root).await.unwrap();
+    scanned_candidate(&db, root).await;
+    let current = read_preparation(&db.load_candidate_preparation(&hash).await.unwrap().unwrap());
+    let failure = crate::import::ImportFailure::error_only("Current failure", now());
+    db.save_import_candidate_failure(&current, &failure)
+        .await
+        .unwrap();
+    assert!(db.clear_import_candidate_failure(&stale).await.is_err());
+    assert_eq!(
+        db.load_import_candidate_pane_rows(&hash)
+            .await
+            .unwrap()
+            .failure,
+        Some(failure)
+    );
+}
+
+#[tokio::test]
+async fn exhausted_candidate_revision_preserves_the_stored_preparation() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap();
+    let (candidate, _) = scanned_candidate(&db, root).await;
+    let hash = candidate.files.content_hash();
+    let current = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    db.call(|sql| {
+        sql.execute("UPDATE import_candidate_revision SET last_revision = 9223372036854775807 WHERE singleton = 1", [])?;
+        Ok(())
+    }).await.unwrap();
+    let error = crate::import::CandidatePreparations::new(db.clone())
+        .set_field(
+            &hash,
+            crate::import::CandidateEditField::AlbumTitle,
+            "Rejected title",
+        )
+        .await
+        .expect_err("an exhausted revision cannot store a changed draft");
+    assert!(error.to_string().contains("exhausted"), "{error}");
+    assert_eq!(
+        db.load_candidate_preparation(&hash).await.unwrap().unwrap(),
+        current
+    );
+}
+
+#[tokio::test]
+async fn replacing_a_snapshot_in_the_same_scan_invalidates_the_import_guard() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    let root = root.to_str().unwrap();
+    let (candidate, generation) = scanned_candidate(&db, root).await;
+    let key = candidate.path.to_string_lossy().into_owned();
+    let facts = snapshot(generation, candidate.file_edit_revision);
+    db.replace_candidate_file_tag_snapshot(root, &key, &facts)
+        .await
+        .unwrap();
+    let prep = db
+        .load_candidate_preparation(&candidate.files.content_hash())
+        .await
+        .unwrap()
+        .unwrap();
+    let guard = ImportCommitGuard::Candidate {
+        candidate_key: key.clone(),
+        source: crate::import::release_candidate::ReleaseCandidate::from(candidate).source(),
+        expectation: crate::import::service::ImportExpectation {
+            candidate: read_preparation(&prep),
+            file_tag_snapshot_revision: db
+                .candidate_file_tag_snapshot_revision(root, &key)
+                .await
+                .unwrap(),
+        },
+    };
+    let accepted = guard.clone();
+    db.call(move |sql| {
+        // The guard runs within the finalizer's write transaction.
+        sql.execute(
+            "UPDATE import_candidate_state SET folder_path = folder_path",
+            [],
+        )?;
+        super::super::import_state::require_import_commit_guard(sql, &accepted)
+    })
+    .await
+    .unwrap();
+    db.replace_candidate_file_tag_snapshot(root, &key, &facts)
+        .await
+        .unwrap();
+    let error = db
+        .call(move |sql| {
+            // The guard runs within the finalizer's write transaction.
+            sql.execute(
+                "UPDATE import_candidate_state SET folder_path = folder_path",
+                [],
+            )?;
+            super::super::import_state::require_import_commit_guard(sql, &guard)
+        })
+        .await
+        .expect_err("replacing the stored reading retires the accepted snapshot identity");
+    assert!(
+        error.to_string().contains("file-tag reading changed"),
+        "{error}"
+    );
+}
+
+#[tokio::test]
+async fn snapshot_identity_can_be_read_without_loading_tag_facts() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    let root = root.to_str().unwrap();
+    let (candidate, generation) = scanned_candidate(&db, root).await;
+    let key = candidate.path.to_string_lossy().into_owned();
+    db.replace_candidate_file_tag_snapshot(root, &key, &snapshot(generation, 0))
+        .await
+        .unwrap();
+    let revision = db
+        .candidate_file_tag_snapshot_revision(root, &key)
+        .await
+        .unwrap()
+        .unwrap();
+    db.call(|sql| {
+        sql.execute("UPDATE scan_candidate_file_tag SET year = -1", [])?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        db.candidate_file_tag_snapshot_revision(root, &key)
+            .await
+            .unwrap(),
+        Some(revision)
+    );
+    assert!(
+        db.load_candidate_file_tag_snapshot_at_revision(root, &key, revision)
+            .await
+            .is_err(),
+        "execution still validates the stored bytes after admission reads their identity"
+    );
+}
+
+#[tokio::test]
+async fn changed_snapshot_is_rejected_before_execution_loads_its_bytes() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    let root = root.to_str().unwrap();
+    let (candidate, generation) = scanned_candidate(&db, root).await;
+    let key = candidate.path.to_string_lossy().into_owned();
+    let facts = snapshot(generation, 0);
+    db.replace_candidate_file_tag_snapshot(root, &key, &facts)
+        .await
+        .unwrap();
+    let revision = db
+        .candidate_file_tag_snapshot_revision(root, &key)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        db.load_candidate_file_tag_snapshot_at_revision(root, &key, revision)
+            .await
+            .unwrap(),
+        facts
+    );
+    db.replace_candidate_file_tag_snapshot(root, &key, &facts)
+        .await
+        .unwrap();
+    let error = db
+        .load_candidate_file_tag_snapshot_at_revision(root, &key, revision)
+        .await
+        .unwrap_err();
+    assert!(
+        error.to_string().contains("file-tag reading changed"),
+        "{error}"
+    );
+}
+
+#[tokio::test]
+async fn unchanged_rescan_preserves_an_accepted_file_tag_snapshot() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    let root = root.to_str().unwrap();
+    let (candidate, generation) = scanned_candidate(&db, root).await;
+    let key = candidate.path.to_string_lossy().into_owned();
+    let facts = snapshot(generation, candidate.file_edit_revision);
+    db.replace_candidate_file_tag_snapshot(root, &key, &facts)
+        .await
+        .unwrap();
+    let revision = db
+        .candidate_file_tag_snapshot_revision(root, &key)
+        .await
+        .unwrap()
+        .unwrap();
+    let preparation = db
+        .load_candidate_preparation(&candidate.files.content_hash())
+        .await
+        .unwrap()
+        .unwrap();
+    let guard = ImportCommitGuard::Candidate {
+        candidate_key: key.clone(),
+        source: crate::import::release_candidate::ReleaseCandidate::from(candidate.clone())
+            .source(),
+        expectation: crate::import::service::ImportExpectation {
+            candidate: read_preparation(&preparation),
+            file_tag_snapshot_revision: Some(revision),
+        },
+    };
+
+    let next_generation = db.begin_folder_scan(root).await.unwrap();
+    assert_ne!(next_generation, generation);
+    db.save_folder_scan_item(root, next_generation, &ScanItem::Valid(candidate))
+        .await
+        .unwrap();
+    db.finish_folder_scan(root, next_generation, None)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        db.candidate_file_tag_snapshot_revision(root, &key)
+            .await
+            .unwrap(),
+        None,
+        "new admission still requires a reading from the current scan"
+    );
+    let accepted_read = db
+        .load_candidate_file_tag_snapshot_at_revision(root, &key, revision)
+        .await;
+    let accepted_commit = db
+        .call(move |sql| {
+            // The guard runs within the finalizer's write transaction.
+            sql.execute(
+                "UPDATE import_candidate_state SET folder_path = folder_path",
+                [],
+            )?;
+            super::super::import_state::require_import_commit_guard(sql, &guard)
+        })
+        .await;
+    assert_eq!(
+        accepted_read.expect("an unchanged rewalk preserves the accepted reading"),
+        facts
+    );
+    accepted_commit.expect("an unchanged rewalk preserves the accepted finalization guard");
+}

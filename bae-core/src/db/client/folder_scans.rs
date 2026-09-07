@@ -118,6 +118,42 @@ impl Database {
         .await
     }
 
+    /// The identity of the candidate's current stored reading, without tags or artwork bytes.
+    pub(crate) async fn candidate_file_tag_snapshot_revision(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+    ) -> Result<Option<u64>, DbError> {
+        let root = watched_folder_path.to_owned();
+        let key = candidate_path.to_owned();
+        self.read(move |sql| read::file_tag_snapshot_revision(&sql, &root, &key))
+            .await
+    }
+
+    /// Load the exact reading accepted by an import. Identity and bytes share one transaction.
+    pub(crate) async fn load_candidate_file_tag_snapshot_at_revision(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        revision: u64,
+    ) -> Result<crate::import::file_tag_snapshot::FileTagSnapshot, DbError> {
+        let root = watched_folder_path.to_owned();
+        let key = candidate_path.to_owned();
+        self.read(move |sql| {
+            if read::retained_file_tag_snapshot_revision(&sql, &root, &key)? != Some(revision) {
+                return Err(DbError::Message(format!(
+                    "{key}'s file-tag reading changed after its import was queued"
+                )));
+            }
+            read::load_candidate_file_tag_snapshot(&sql, &root, &key)?
+                .and_then(|stored| stored.snapshot)
+                .ok_or_else(|| {
+                    DbError::Message(format!("{key}'s accepted file-tag reading is missing"))
+                })
+        })
+        .await
+    }
+
     /// Atomically replace a candidate's complete file-tag snapshot if its
     /// durable scan generation and file-decision revision still match what was
     /// read. `false` means the candidate moved before the write; nothing was

@@ -89,6 +89,9 @@ pub struct DbImportCandidateState {
     /// cover mutation advances it so a source projection cannot overwrite a
     /// newer edit.
     pub metadata_revision: u64,
+    /// A metadata write has replaced or edited the discovery draft. Independent
+    /// of provenance: a person can edit fields or artwork without choosing a source.
+    pub metadata_initialized: bool,
 }
 
 /// Everything a person settled about one candidate through its pane, keyed by

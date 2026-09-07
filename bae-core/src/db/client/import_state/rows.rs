@@ -195,6 +195,7 @@ struct StateRow {
     folder_path: String,
     edit_revision: i64,
     metadata_revision: i64,
+    metadata_initialized: bool,
 }
 
 fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
@@ -203,10 +204,12 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
         folder_path: row.get("folder_path")?,
         edit_revision: row.get("edit_revision")?,
         metadata_revision: row.get("metadata_revision")?,
+        metadata_initialized: row.get("metadata_initialized")?,
     })
 }
 
-const STATE_COLUMNS: &str = "content_hash, folder_path, edit_revision, metadata_revision";
+const STATE_COLUMNS: &str =
+    "content_hash, folder_path, edit_revision, metadata_revision, metadata_initialized";
 
 const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, year, \
      format, label, catalog_number, country, barcode, cover_url, cover_thumbnail_url, \
@@ -293,6 +296,7 @@ pub(crate) fn load_states_on(
                 folder_path: state.folder_path,
                 file_edits,
                 metadata_revision,
+                metadata_initialized: state.metadata_initialized,
             },
         );
     }

@@ -87,17 +87,13 @@ fn sample_signals(probed_total_duration_ms: u64) -> crate::signals::Signals {
 }
 
 fn new_candidate_row(
-    content_hash: &str,
+    candidate: crate::import::CandidateAsRead,
     folder_path: &str,
     verdict: &TerminalVerdict,
     probed_total_duration_ms: u64,
 ) -> NewImportCandidateVerdict {
     NewImportCandidateVerdict {
-        candidate: crate::import::CandidateAsRead {
-            content_hash: content_hash.to_string(),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        candidate,
         folder_path: folder_path.to_string(),
         verdict: verdict.clone(),
         signals: sample_signals(probed_total_duration_ms),
@@ -121,8 +117,13 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
     let verdict = sample_verdict();
-    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict, 2_700_000);
-    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    store_candidate_state(&db, &candidate, &host_root("/music/Some Album")).await;
+    let row = new_candidate_row(
+        current_candidate_as_read(&db, &hash).await,
+        &host_root("/music/Some Album"),
+        &verdict,
+        2_700_000,
+    );
 
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
@@ -157,13 +158,13 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
     let (db, _tmp) = empty_db().await;
     let original = track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let original_hash = original.content_hash();
+    store_candidate_state(&db, &original, &host_root("/music/Some Album")).await;
     let row = new_candidate_row(
-        &original_hash,
+        current_candidate_as_read(&db, &original_hash).await,
         &host_root("/music/Some Album"),
         &sample_verdict(),
         2_700_000,
     );
-    store_candidate_state(&db, &original, &row.folder_path).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
         .await
@@ -217,7 +218,12 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
         let candidate = track_files_candidate(&[("01 Track.flac", *size)]);
         assert_eq!(&candidate.content_hash(), content_hash);
         store_candidate_state(&db, &candidate, folder_path).await;
-        let row = new_candidate_row(content_hash, folder_path, &sample_verdict(), 1_000);
+        let row = new_candidate_row(
+            current_candidate_as_read(&db, content_hash).await,
+            folder_path,
+            &sample_verdict(),
+            1_000,
+        );
         crate::import::CandidatePreparations::new(db.clone())
             .store_verdict(&row)
             .await
@@ -272,7 +278,7 @@ async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
     let mut settled = new_candidate_row(
-        &hash,
+        current_candidate_as_read(&db, &hash).await,
         &host_root("/music/Album"),
         &sample_verdict(),
         2_700_000,
@@ -283,13 +289,12 @@ async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_
         .await
         .unwrap();
 
-    let mut re_run = new_candidate_row(
-        &hash,
+    let re_run = new_candidate_row(
+        current_candidate_as_read(&db, &hash).await,
         &host_root("/music/Album"),
         &found_nothing(),
         2_700_000,
     );
-    re_run.candidate.metadata_revision = 1;
     assert_eq!(
         re_run.metadata.provenance, None,
         "nothing was found to pick"
@@ -320,7 +325,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
     let initial = new_candidate_row(
-        &hash,
+        current_candidate_as_read(&db, &hash).await,
         &host_root("/music/Album"),
         &found_nothing(),
         2_700_000,
@@ -339,13 +344,12 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
         .await
         .unwrap();
 
-    let mut re_run = new_candidate_row(
-        &hash,
+    let re_run = new_candidate_row(
+        current_candidate_as_read(&db, &hash).await,
         &host_root("/music/Album"),
         &found_nothing(),
         2_700_000,
     );
-    re_run.candidate.metadata_revision = 2;
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&re_run)
         .await
@@ -371,7 +375,7 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
     let mut first = new_candidate_row(
-        &hash,
+        current_candidate_as_read(&db, &hash).await,
         &host_root("/music/Album"),
         &sample_verdict(),
         2_700_000,
@@ -383,12 +387,11 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
         .unwrap();
 
     let mut second = new_candidate_row(
-        &hash,
+        current_candidate_as_read(&db, &hash).await,
         &host_root("/music/Album"),
         &sample_verdict(),
         2_700_000,
     );
-    second.candidate.metadata_revision = 1;
     second.metadata.provenance = Some(release_pick("mb-rel-second"));
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&second)
@@ -419,7 +422,7 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
     store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
     let mut settled = new_candidate_row(
-        &hash,
+        current_candidate_as_read(&db, &hash).await,
         &host_root("/music/Album"),
         &sample_verdict(),
         2_700_000,
@@ -497,13 +500,18 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
     let at_old_location =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = at_old_location.content_hash();
+    store_candidate_state(
+        &db,
+        &at_old_location,
+        &host_root("/music/Old Location/Some Album"),
+    )
+    .await;
     let row = new_candidate_row(
-        &hash,
+        current_candidate_as_read(&db, &hash).await,
         &host_root("/music/Old Location/Some Album"),
         &sample_verdict(),
         2_700_000,
     );
-    store_candidate_state(&db, &at_old_location, &row.folder_path).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
         .await
@@ -574,7 +582,12 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     );
 
     let verdict = TerminalVerdict::try_from(state).expect("the failure is terminal");
-    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict, 0);
+    let row = new_candidate_row(
+        current_candidate_as_read(&db, &hash).await,
+        &host_root("/music/Some Album"),
+        &verdict,
+        0,
+    );
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
         .await
@@ -741,7 +754,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
 
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&new_candidate_row(
-            &hash,
+            current_candidate_as_read(&db, &hash).await,
             &folder.path().to_string_lossy(),
             &sample_verdict(),
             2_700_000,

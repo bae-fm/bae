@@ -394,11 +394,11 @@ async fn a_late_import_failure_cannot_recreate_state_after_root_removal() {
     db.save_folder_scan_item(&root, generation, &candidate)
         .await
         .unwrap();
+    let read = current_candidate_as_read(&db, &content_hash).await;
     db.remove_watched_import_folder(&root).await.unwrap();
 
     db.save_import_candidate_failure(
-        &content_hash,
-        0,
+        &read,
         &crate::import::ImportFailure::error_only(
             "the source disappeared",
             fixed_identified_at(),

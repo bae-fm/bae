@@ -75,6 +75,12 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     .unwrap()
     .expect("the current scan accepts the candidate");
 
+    let accepted = db
+        .load_import_candidate_state(&content_hash)
+        .await
+        .unwrap()
+        .expect("the scanned candidate has an accepted metadata revision");
+
     crate::import::CandidatePreparations::new(db.clone()).set_field(
         &content_hash,
         crate::import::CandidateEditField::PressingYear,
@@ -94,10 +100,10 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
                 expectation: crate::import::service::ImportExpectation {
                     candidate: crate::import::CandidateAsRead {
                         content_hash,
-                        file_edit_revision: 0,
-                        metadata_revision: 0,
+                        file_edit_revision: accepted.file_edits.revision,
+                        metadata_revision: accepted.metadata_revision,
                     },
-                    file_tag_snapshot: None,
+                    file_tag_snapshot_revision: None,
                 },
             },
             None,

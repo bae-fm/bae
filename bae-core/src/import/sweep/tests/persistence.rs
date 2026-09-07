@@ -67,6 +67,7 @@ fn row_with_verdict(
         file_edits: Default::default(),
         metadata_provenance: None,
         metadata_revision: 0,
+        metadata_initialized: true,
     }
 }
 
@@ -135,12 +136,8 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
     let dir = fixture.disc_id_candidate("Album");
     fixture.scan(1).await;
     let key = dir.to_string_lossy().into_owned();
-    let row = || NewImportCandidateVerdict {
-        candidate: crate::import::CandidateAsRead {
-            content_hash: fixture.content_hash(&dir),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+    let row = |candidate| NewImportCandidateVerdict {
+        candidate,
         folder_path: key.clone(),
         verdict: multi_match_verdict(&["mb-claimed-1"], "rg-claimed-1"),
         signals: settled_signals(fixture.probed_durations(&dir)),
@@ -150,7 +147,7 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
     assert!(
         fixture
             .import
-            .save_candidate_verdict_if_current(&key, &row())
+            .save_candidate_verdict_if_current(&key, &row(fixture.candidate_as_read(&dir).await))
             .await
             .unwrap(),
         "an unclaimed candidate still takes its verdict"
@@ -161,7 +158,7 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
     assert!(
         !fixture
             .import
-            .save_candidate_verdict_if_current(&key, &row())
+            .save_candidate_verdict_if_current(&key, &row(fixture.candidate_as_read(&dir).await))
             .await
             .unwrap(),
         "a claimed candidate refuses a verdict"
@@ -185,11 +182,7 @@ async fn explicit_lookup_for_an_answered_candidate_starts_nothing() {
         .save_candidate_verdict_if_current(
             &dir.to_string_lossy(),
             &NewImportCandidateVerdict {
-                candidate: crate::import::CandidateAsRead {
-                    content_hash: fixture.content_hash(&dir),
-                    file_edit_revision: 0,
-                    metadata_revision: 0,
-                },
+                candidate: fixture.candidate_as_read(&dir).await,
                 folder_path: dir.to_string_lossy().into_owned(),
                 verdict,
                 signals: settled_signals(fixture.probed_durations(&dir)),
