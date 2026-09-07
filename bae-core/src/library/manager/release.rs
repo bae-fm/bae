@@ -796,17 +796,17 @@ fn parsed_for_existing_release(
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
 ) -> Result<crate::import::ParsedAlbum, LibraryError> {
-    match source {
-        crate::import::MetadataSource::MusicBrainz => {
-            payloads.parsed(clock, ids).map_err(LibraryError::from)
-        }
-        crate::import::MetadataSource::Discogs => {
-            let audio_durations = stored_track_durations(tracks)?;
-            payloads
-                .parsed_for_audio(&audio_durations, clock, ids)
-                .map_err(LibraryError::from)
-        }
-    }
+    // Only a Discogs tracklist is laid out against what the audio measures, so
+    // it alone reads the stored durations — and it alone refuses a release
+    // whose files were never measured. A MusicBrainz document states its own
+    // track times.
+    let audio_durations = match source {
+        crate::import::MetadataSource::MusicBrainz => Vec::new(),
+        crate::import::MetadataSource::Discogs => stored_track_durations(tracks)?,
+    };
+    payloads
+        .parsed(&audio_durations, clock, ids)
+        .map_err(LibraryError::from)
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -1,6 +1,6 @@
 //! mDNS discovery of AirPlay receivers on the local network.
 //!
-//! [`AirPlayDiscovery`] browses both `_airplay._tcp.local.` (AirPlay 2 and newer
+//! `AirPlayDiscovery` browses both `_airplay._tcp.local.` (AirPlay 2 and newer
 //! AirPlay 1 gear) and `_raop._tcp.local.` (legacy RAOP) and keeps a live list of
 //! reachable receivers in a `PublishedDevices` — the same
 //! start-with-the-picker / stop-when-it-closes shape as [`crate::cast`]
@@ -21,6 +21,7 @@ use tracing::{debug, warn};
 
 use super::capabilities::{AirPlayCapabilities, Dialect};
 use crate::renderer::discovery::RendererServiceType;
+use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
 
@@ -62,57 +63,25 @@ impl AirPlayDevice {
 /// Browses for AirPlay receivers and publishes the current list. Start and stop
 /// with the picker's visibility; a stopped discovery holds no mDNS daemon and no
 /// browse threads.
-pub struct AirPlayDiscovery {
-    devices: PublishedDevices,
-    running: Option<Running>,
-}
+pub(crate) type AirPlayDiscovery = ProtocolDiscovery<AirPlayBrowse>;
 
-struct Running {
+/// A live AirPlay browse: the mDNS daemon and the threads draining its two
+/// service types.
+pub(crate) struct AirPlayBrowse {
     daemon: ServiceDaemon,
     readers: Vec<JoinHandle<()>>,
 }
 
-impl AirPlayDiscovery {
-    pub fn new() -> Self {
-        Self {
-            devices: PublishedDevices::new(),
-            running: None,
-        }
-    }
-
-    /// Subscribe to the live device list — merged renderer devices, so the
-    /// picker's one forwarder handles AirPlay like Cast and UPnP. The current
-    /// snapshot is available immediately on the returned receiver.
-    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
-        self.devices.subscribe()
-    }
-
-    /// The current device list snapshot.
-    pub fn devices(&self) -> Vec<RendererDevice> {
-        self.devices.current()
-    }
-
-    /// Whether an mDNS daemon and browse threads are live right now. For tests
-    /// that assert browsing is (or is not) reaching the network.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn is_browsing(&self) -> bool {
-        self.running.is_some()
-    }
-
-    /// Begin browsing both service types. Idempotent: a second call while already
-    /// browsing is a no-op.
-    pub fn start(&mut self) {
-        if self.running.is_some() {
-            return;
-        }
+impl Browse for AirPlayBrowse {
+    fn start(devices: &PublishedDevices) -> Option<Self> {
         let daemon = match ServiceDaemon::new() {
             Ok(daemon) => daemon,
             Err(e) => {
                 warn!("airplay discovery: failed to start mDNS daemon: {e}");
-                return;
+                return None;
             }
         };
-        self.devices.clear();
+        devices.clear();
 
         // One shared table both service browses feed, behind a mutex, so a
         // receiver appearing on `_airplay._tcp` and `_raop._tcp` collapses to one
@@ -128,7 +97,7 @@ impl AirPlayDiscovery {
                     continue;
                 }
             };
-            let devices = self.devices.clone();
+            let devices = devices.clone();
             let table = table.clone();
             readers.push(std::thread::spawn(move || {
                 run_browse(service_type, events, table, devices);
@@ -138,37 +107,20 @@ impl AirPlayDiscovery {
             if let Err(e) = daemon.shutdown() {
                 debug!("airplay discovery: daemon shutdown after browse failures: {e}");
             }
-            return;
+            return None;
         }
-        self.running = Some(Running { daemon, readers });
+        Some(Self { daemon, readers })
     }
 
-    /// Stop browsing and release the mDNS daemon. The last published device list
-    /// is kept.
-    pub fn stop(&mut self) {
-        let Some(running) = self.running.take() else {
-            return;
-        };
-        if let Err(e) = running.daemon.shutdown() {
+    fn stop(self) {
+        if let Err(e) = self.daemon.shutdown() {
             warn!("airplay discovery: mDNS daemon shutdown failed: {e}");
         }
-        for reader in running.readers {
+        for reader in self.readers {
             if reader.join().is_err() {
                 warn!("airplay discovery: a browse reader thread panicked");
             }
         }
-    }
-}
-
-impl Default for AirPlayDiscovery {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Drop for AirPlayDiscovery {
-    fn drop(&mut self) {
-        self.stop();
     }
 }
 

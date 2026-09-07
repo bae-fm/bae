@@ -381,7 +381,7 @@ impl ImportServiceHandle {
         let durations = crate::import::probe::source_durations(files)?;
         let audio_durations = crate::import::track_slots::audio_durations(files, &durations)?;
         let mut parsed =
-            payloads.parsed_for_audio(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
+            payloads.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
         crate::import::pane::retain_mapped_source_track_metadata(
             &mut parsed,
             &active.tracks,

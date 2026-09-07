@@ -35,4 +35,5 @@ pub mod stream;
 pub mod tlv8;
 
 pub use capabilities::{AirPlayCapabilities, Dialect, RaopCodec, RaopEncryption, RaopParams};
-pub use discovery::{AirPlayDevice, AirPlayDiscovery};
+pub use discovery::AirPlayDevice;
+pub(crate) use discovery::AirPlayDiscovery;

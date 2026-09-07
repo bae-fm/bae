@@ -12,7 +12,7 @@ pub mod channel;
 pub mod discovery;
 
 pub use channel::RustCastChannel;
-pub use discovery::CastDiscovery;
+pub(crate) use discovery::CastDiscovery;
 
 #[cfg(test)]
 mod tests;

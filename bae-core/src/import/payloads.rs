@@ -255,22 +255,6 @@ impl ReleasePayloads {
         Ok(self.covers()?.into_iter().next())
     }
 
-    /// The picker's and confirmation pane's display shape.
-    pub fn detail(&self) -> Result<ImportSearchReleaseDetail, ImportError> {
-        let covers = self.covers()?;
-        match self.release.source {
-            MetadataSource::MusicBrainz => crate::import::search::build_mb_detail(
-                &self.release.id,
-                &self.musicbrainz_anchor()?,
-                covers,
-            ),
-            MetadataSource::Discogs => Ok(crate::import::search::build_discogs_detail(
-                &self.discogs_anchor()?,
-                covers,
-            )),
-        }
-    }
-
     pub fn detail_for_audio(
         &self,
         audio_durations_ms: &[u64],
@@ -292,36 +276,11 @@ impl ReleasePayloads {
 
     /// The DB-shape album the commit writes, and the editor's seed is projected
     /// from — the same mapping the fetch path runs, over the same documents.
+    ///
+    /// `audio_durations_ms` is what the release's audio actually measures, which
+    /// is how a Discogs tracklist's index/sub-track layout is chosen. A
+    /// MusicBrainz document states its own track times and ignores them.
     pub fn parsed(
-        &self,
-        clock: &dyn coven::Clock,
-        ids: &dyn coven::IdProvider,
-    ) -> Result<ParsedAlbum, ImportError> {
-        match self.release.source {
-            MetadataSource::MusicBrainz => {
-                crate::import::musicbrainz_mapper::map_mb_response_to_db(
-                    &self.musicbrainz_anchor()?,
-                    None,
-                    self.discogs_xref()?,
-                    clock,
-                    ids,
-                )
-            }
-            MetadataSource::Discogs => {
-                let release = self.discogs_anchor()?;
-                let master_year = self.discogs_master_year(&release)?;
-                crate::import::discogs_mapper::map_discogs_to_db(
-                    &release,
-                    master_year,
-                    self.musicbrainz_xref()?.as_ref(),
-                    clock,
-                    ids,
-                )
-            }
-        }
-    }
-
-    pub fn parsed_for_audio(
         &self,
         audio_durations_ms: &[u64],
         clock: &dyn coven::Clock,
@@ -722,7 +681,7 @@ mod tests {
         .expect("the anchor is archived");
 
         let parsed = payloads
-            .parsed(&FixedClock(now()), &SequentialIdProvider::new("album"))
+            .parsed(&[], &FixedClock(now()), &SequentialIdProvider::new("album"))
             .expect("the stored documents map");
         assert_eq!(
             parsed.album.year,

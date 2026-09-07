@@ -271,6 +271,20 @@ impl PlaybackService {
             media_source,
             last_position: position,
         });
+        self.hand_over_to_device(device_name, current, position, target)
+            .await;
+    }
+
+    /// The tail both device handoffs share: announce which device is playing,
+    /// then reissue what the local pipeline was playing at the position it had
+    /// reached. Nothing playing leaves the device armed but idle.
+    async fn hand_over_to_device(
+        &mut self,
+        device_name: String,
+        current: Option<String>,
+        position: Duration,
+        target: PlayTarget,
+    ) {
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::RemoteStatusChanged {
@@ -289,7 +303,6 @@ impl PlaybackService {
                 .await;
             }
             None => {
-                // Nothing was playing: remote playback is armed but idle.
                 self.slot = PlaybackSlot::Stopped;
                 self.sync_audio_state();
                 self.emit_state();
@@ -553,29 +566,8 @@ impl PlaybackService {
         let saved_output = std::mem::replace(&mut self.audio_output, Box::new(airplay_output));
         self.renderer =
             Renderer::AirPlay(AirPlayRenderer::new(control, saved_output, latency_frames));
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged {
-                device_name: Some(device_name),
-            },
-        );
-
-        match current {
-            Some(track_id) => {
-                self.play_track(
-                    &track_id,
-                    TrackStart::Position(position),
-                    target,
-                    TrackTransition::Manual,
-                )
-                .await;
-            }
-            None => {
-                self.slot = PlaybackSlot::Stopped;
-                self.sync_audio_state();
-                self.emit_state();
-            }
-        }
+        self.hand_over_to_device(device_name, current, position, target)
+            .await;
     }
 
     /// End AirPlay playback: drop the AirPlay output (which tears the receiver

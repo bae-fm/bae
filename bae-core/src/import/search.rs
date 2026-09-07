@@ -561,16 +561,6 @@ pub(crate) fn build_mb_detail(
     })
 }
 
-/// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed Discogs
-/// release, for the picker and the confirmation pane.
-pub(crate) fn build_discogs_detail(
-    release: &crate::discogs::DiscogsRelease,
-    cover_art: Vec<RemoteCover>,
-) -> ImportSearchReleaseDetail {
-    let processed = crate::import::discogs_mapper::process_tracklist(&release.tracklist);
-    build_discogs_detail_with_tracks(release, cover_art, &processed)
-}
-
 pub(crate) fn build_discogs_detail_for_audio(
     release: &crate::discogs::DiscogsRelease,
     cover_art: Vec<RemoteCover>,

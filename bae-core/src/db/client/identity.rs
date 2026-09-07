@@ -58,24 +58,8 @@ impl Database {
         let exclude_release_ids = exclude_release_ids.to_vec();
 
         self.read(move |sql| {
-            let placeholders = pressing_pairs
-                .iter()
-                .map(|_| "(?, ?)")
-                .collect::<Vec<_>>()
-                .join(", ");
-            let exclude_predicate = if exclude_release_ids.is_empty() {
-                String::new()
-            } else {
-                format!(
-                    "AND ri.release_id NOT IN ({})",
-                    exclude_release_ids
-                        .iter()
-                        .map(|_| "?")
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            };
-            let query = format!(
+            find_album_by_identity_pairs(
+                &sql,
                 r#"
                     SELECT
                         a.id, a.title, a.artist_id, a.year, a.primary_release_id,
@@ -83,27 +67,12 @@ impl Database {
                     FROM albums a
                     JOIN releases r ON r.album_id = a.id
                     JOIN release_identities ri ON ri.release_id = r.id
-                    WHERE (ri.source, ri.source_release_id) IN ({placeholders})
-                      {exclude_predicate}
-                    LIMIT 1
-                    "#,
-            );
-            let mut binds: Vec<&str> =
-                Vec::with_capacity(pressing_pairs.len() * 2 + exclude_release_ids.len());
-            for (source, release_id) in &pressing_pairs {
-                binds.push(source);
-                binds.push(release_id);
-            }
-            for release_id in &exclude_release_ids {
-                binds.push(release_id);
-            }
-            sql.query_row(
-                &query,
-                coven::rusqlite::params_from_iter(binds.iter()),
+                "#,
+                "source_release_id",
+                &pressing_pairs,
+                &exclude_release_ids,
                 row_to_album,
             )
-            .optional()
-            .map_err(DbError::from)
         })
         .await
     }
@@ -131,49 +100,18 @@ impl Database {
         let exclude_release_ids = exclude_release_ids.to_vec();
 
         self.read(move |sql| {
-            let placeholders = pairs
-                .iter()
-                .map(|_| "(?, ?)")
-                .collect::<Vec<_>>()
-                .join(", ");
-            let exclude_predicate = if exclude_release_ids.is_empty() {
-                String::new()
-            } else {
-                format!(
-                    "AND ri.release_id NOT IN ({})",
-                    exclude_release_ids
-                        .iter()
-                        .map(|_| "?")
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            };
-            let query = format!(
+            find_album_by_identity_pairs(
+                &sql,
                 r#"
                     SELECT r.album_id
                     FROM releases r
                     JOIN release_identities ri ON ri.release_id = r.id
-                    WHERE (ri.source, ri.source_group_id) IN ({placeholders})
-                      {exclude_predicate}
-                    LIMIT 1
-                    "#,
-            );
-            let mut binds: Vec<&str> =
-                Vec::with_capacity(pairs.len() * 2 + exclude_release_ids.len());
-            for (source, group_id) in &pairs {
-                binds.push(source);
-                binds.push(group_id);
-            }
-            for release_id in &exclude_release_ids {
-                binds.push(release_id);
-            }
-            sql.query_row(
-                &query,
-                coven::rusqlite::params_from_iter(binds.iter()),
+                "#,
+                "source_group_id",
+                &pairs,
+                &exclude_release_ids,
                 |row| row.get::<_, String>("album_id"),
             )
-            .optional()
-            .map_err(DbError::from)
         })
         .await
     }
@@ -351,6 +289,61 @@ impl Database {
                 .expect("one library check produces one library status"))
         })
     }
+}
+
+/// The shared body of the two identity lookups above: match `pairs` against
+/// `(ri.source, ri.{id_column})`, skip identity rows belonging to
+/// `exclude_release_ids`, and map the first row the query produces.
+///
+/// `select` is everything the callers differ by — the SELECT list and the
+/// tables joined ahead of `release_identities`, which this completes with the
+/// pair predicate the binds are supplied for.
+fn find_album_by_identity_pairs<T>(
+    sql: &SqlReadContext<'_>,
+    select: &str,
+    id_column: &str,
+    pairs: &[(String, String)],
+    exclude_release_ids: &[String],
+    row_to: impl FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>,
+) -> Result<Option<T>, DbError> {
+    let placeholders = pairs
+        .iter()
+        .map(|_| "(?, ?)")
+        .collect::<Vec<_>>()
+        .join(", ");
+    let exclude_predicate = if exclude_release_ids.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "AND ri.release_id NOT IN ({})",
+            exclude_release_ids
+                .iter()
+                .map(|_| "?")
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    };
+    let query = format!(
+        "{select}
+         WHERE (ri.source, ri.{id_column}) IN ({placeholders})
+           {exclude_predicate}
+         LIMIT 1"
+    );
+    let mut binds: Vec<&str> = Vec::with_capacity(pairs.len() * 2 + exclude_release_ids.len());
+    for (source, source_id) in pairs {
+        binds.push(source);
+        binds.push(source_id);
+    }
+    for release_id in exclude_release_ids {
+        binds.push(release_id);
+    }
+    sql.query_row(
+        &query,
+        coven::rusqlite::params_from_iter(binds.iter()),
+        row_to,
+    )
+    .optional()
+    .map_err(DbError::from)
 }
 
 pub(super) fn check_releases_in_library_on(

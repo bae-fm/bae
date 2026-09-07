@@ -22,6 +22,7 @@ pub mod device;
 pub mod discovery;
 pub mod format;
 pub mod media_source;
+pub(crate) mod protocol_discovery;
 pub(crate) mod published_devices;
 pub mod session;
 

@@ -444,56 +444,62 @@ impl ImportService {
         // writes nothing and returns `None` once a newer scan or decision has
         // taken the root, and that is where this walk stops.
         while let Some(item) = item_rx.recv().await {
+            // How the walk read a folder nothing was stored for. It is the
+            // folder's decision from here on, so the flip control on each
+            // candidate it produced has something to rewrite — and a later
+            // scan reads the folder the same way even if the naming rule
+            // changes under it. A reading is stored as a decision, not as a
+            // scan entry, so it never reaches the write below.
+            let item = match item {
+                ScanItem::Decided { key, decision } => {
+                    library_manager
+                        .record_scanned_folder_release_decision(&key, decision)
+                        .await?;
+                    continue;
+                }
+                item => item,
+            };
+            // Which announcement the item earns, read before the write, which
+            // stores the item as it stands and never changes its variant.
+            let actionable = matches!(item, ScanItem::Valid(_));
+            let Some(persisted) = Self::persist_scan_item(
+                root,
+                generation,
+                &item,
+                library_manager,
+                preparations,
+                clock,
+                ids,
+                folder_state_commit,
+            )
+            .await?
+            else {
+                Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk).await?;
+                return Ok(());
+            };
+            let PersistedScanItem {
+                commit: _commit,
+                item,
+                write,
+            } = persisted;
+            if !write.changed() {
+                continue;
+            }
+            let superseded_keys = write.superseded_keys().to_vec();
+            displaced_keys.extend(superseded_keys.iter().cloned());
+            for candidate_key in superseded_keys {
+                send_event(
+                    event_tx,
+                    crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                        candidate_key,
+                    }),
+                );
+            }
             match item {
-                item @ (ScanItem::Discovered(_) | ScanItem::Valid(_)) => {
-                    let (candidate, actionable) = match item {
-                        ScanItem::Discovered(candidate) => (candidate, false),
-                        ScanItem::Valid(candidate) => (candidate, true),
-                        ScanItem::Invalid(_) | ScanItem::Decided { .. } => {
-                            unreachable!("matched candidate scan item")
-                        }
-                    };
-                    // The walk yields folder facts. Registry skip state and
-                    // imported content hashes are joined here before the item
-                    // is persisted and announced.
-                    let persisted_item = if actionable {
-                        ScanItem::Valid(candidate.clone())
-                    } else {
-                        ScanItem::Discovered(candidate.clone())
-                    };
-                    let Some(persisted) = Self::persist_scan_item(
-                        root,
-                        generation,
-                        &persisted_item,
-                        library_manager,
-                        preparations,
-                        clock,
-                        ids,
-                        folder_state_commit,
-                    )
-                    .await?
-                    else {
-                        Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk)
-                            .await?;
-                        return Ok(());
-                    };
-                    let PersistedScanItem {
-                        commit: _commit,
-                        item: persisted_item,
-                        write,
-                    } = persisted;
-                    let candidate = match persisted_item {
-                        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate,
-                        ScanItem::Invalid(_) | ScanItem::Decided { .. } => {
-                            unreachable!("persisted candidate scan item changed variant")
-                        }
-                    };
-                    if !write.changed() {
-                        continue;
-                    }
-                    let superseded_keys = write.superseded_keys().to_vec();
+                // Registry skip state and imported content hashes are joined
+                // onto the walk's folder facts here, on the way out.
+                ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
                     written_keys.push(candidate.display_path.clone());
-                    displaced_keys.extend(superseded_keys.iter().cloned());
                     let skipped =
                         skipped.contains(&crate::import::watched_folder::candidate_relative_path(
                             &candidate.watched_folder_path,
@@ -502,14 +508,6 @@ impl ImportService {
                     let is_added = library_manager
                         .is_content_hash_imported(&candidate.files.content_hash())
                         .await?;
-                    for candidate_key in superseded_keys {
-                        send_event(
-                            event_tx,
-                            crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                                candidate_key,
-                            }),
-                        );
-                    }
                     send_event(
                         event_tx,
                         crate::import::handle::ImportEvent::Scan(if actionable {
@@ -529,42 +527,7 @@ impl ImportService {
                 }
                 // Invalid candidates have no tab state, so they need no stamping.
                 ScanItem::Invalid(candidate) => {
-                    let persisted_item = ScanItem::Invalid(candidate.clone());
-                    let Some(persisted) = Self::persist_scan_item(
-                        root,
-                        generation,
-                        &persisted_item,
-                        library_manager,
-                        preparations,
-                        clock,
-                        ids,
-                        folder_state_commit,
-                    )
-                    .await?
-                    else {
-                        Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk)
-                            .await?;
-                        return Ok(());
-                    };
-                    let PersistedScanItem {
-                        commit: _commit,
-                        item: _,
-                        write,
-                    } = persisted;
-                    if !write.changed() {
-                        continue;
-                    }
                     written_keys.push(candidate.display_path.clone());
-                    let superseded_keys = write.superseded_keys().to_vec();
-                    for candidate_key in superseded_keys {
-                        displaced_keys.push(candidate_key.clone());
-                        send_event(
-                            event_tx,
-                            crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                                candidate_key,
-                            }),
-                        );
-                    }
                     send_event(
                         event_tx,
                         crate::import::handle::ImportEvent::Scan(ScanEvent::InvalidCandidate(
@@ -572,15 +535,8 @@ impl ImportService {
                         )),
                     );
                 }
-                // How the walk read a folder nothing was stored for. It is the
-                // folder's decision from here on, so the flip control on each
-                // candidate it produced has something to rewrite — and a later
-                // scan reads the folder the same way even if the naming rule
-                // changes under it.
-                ScanItem::Decided { key, decision } => {
-                    library_manager
-                        .record_scanned_folder_release_decision(&key, decision)
-                        .await?;
+                ScanItem::Decided { .. } => {
+                    unreachable!("a folder reading is not stored as a scan entry")
                 }
             }
         }

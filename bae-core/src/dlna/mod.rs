@@ -18,7 +18,7 @@ pub mod discovery;
 pub mod soap;
 
 pub use channel::DlnaChannel;
-pub use discovery::DlnaDiscovery;
+pub(crate) use discovery::DlnaDiscovery;
 
 #[cfg(test)]
 mod tests;

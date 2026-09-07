@@ -1,6 +1,6 @@
 //! mDNS discovery of Cast devices on the local network.
 //!
-//! [`CastDiscovery`] browses `_googlecast._tcp.local.` and keeps a live list of
+//! `CastDiscovery` browses `_googlecast._tcp.local.` and keeps a live list of
 //! reachable devices in a `PublishedDevices`. Browsing is not always-on: the
 //! caller (the device-picker UI) starts it when the picker opens and stops it
 //! when it closes.
@@ -13,6 +13,7 @@ use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
 use crate::renderer::discovery::RendererServiceType;
+use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
 
@@ -20,55 +21,21 @@ use crate::renderer::{RendererConnection, RendererDevice};
 /// [`RendererDevice`]s so the picker shows one merged list. Start and stop
 /// with the picker's visibility; a stopped discovery holds no mDNS daemon and no
 /// browse thread.
-pub struct CastDiscovery {
-    devices: PublishedDevices,
-    /// The running browse: the mDNS daemon and the thread draining its events.
-    /// `None` while stopped.
-    running: Option<Running>,
-}
+pub(crate) type CastDiscovery = ProtocolDiscovery<CastBrowse>;
 
-struct Running {
+/// A live Cast browse: the mDNS daemon and the thread draining its events.
+pub(crate) struct CastBrowse {
     daemon: ServiceDaemon,
     reader: JoinHandle<()>,
 }
 
-impl CastDiscovery {
-    pub fn new() -> Self {
-        Self {
-            devices: PublishedDevices::new(),
-            running: None,
-        }
-    }
-
-    /// Subscribe to the live device list. The current snapshot is available
-    /// immediately on the returned receiver.
-    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
-        self.devices.subscribe()
-    }
-
-    /// The current device list snapshot.
-    pub fn devices(&self) -> Vec<RendererDevice> {
-        self.devices.current()
-    }
-
-    /// Whether an mDNS daemon and browse thread are live right now. For tests
-    /// that assert browsing is (or is not) reaching the network.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn is_browsing(&self) -> bool {
-        self.running.is_some()
-    }
-
-    /// Begin browsing. Idempotent: a second call while already browsing is a
-    /// no-op. Publishes list updates as devices come and go.
-    pub fn start(&mut self) {
-        if self.running.is_some() {
-            return;
-        }
+impl Browse for CastBrowse {
+    fn start(devices: &PublishedDevices) -> Option<Self> {
         let daemon = match ServiceDaemon::new() {
             Ok(daemon) => daemon,
             Err(e) => {
                 warn!("cast discovery: failed to start mDNS daemon: {e}");
-                return;
+                return None;
             }
         };
         let service_type = RendererServiceType::GoogleCast.mdns_service_type();
@@ -81,41 +48,24 @@ impl CastDiscovery {
                         "cast discovery: mDNS daemon shutdown after browse failure: {shutdown_err}"
                     );
                 }
-                return;
+                return None;
             }
         };
-        self.devices.clear();
-        let devices = self.devices.clone();
+        devices.clear();
+        let devices = devices.clone();
         let reader = std::thread::spawn(move || run_browse(events, devices));
-        self.running = Some(Running { daemon, reader });
+        Some(Self { daemon, reader })
     }
 
-    /// Stop browsing and release the mDNS daemon. The last published device list
-    /// is kept.
-    pub fn stop(&mut self) {
-        let Some(running) = self.running.take() else {
-            return;
-        };
+    fn stop(self) {
         // Shutting the daemon down closes the event channel, so the reader
         // thread's loop ends and it can be joined.
-        if let Err(e) = running.daemon.shutdown() {
+        if let Err(e) = self.daemon.shutdown() {
             warn!("cast discovery: mDNS daemon shutdown failed: {e}");
         }
-        if running.reader.join().is_err() {
+        if self.reader.join().is_err() {
             warn!("cast discovery: browse reader thread panicked");
         }
-    }
-}
-
-impl Default for CastDiscovery {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Drop for CastDiscovery {
-    fn drop(&mut self) {
-        self.stop();
     }
 }
 

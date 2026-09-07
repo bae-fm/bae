@@ -233,7 +233,7 @@ pub fn release_pane(
 ) -> Result<PanePick, ImportError> {
     let audio_durations = crate::import::track_slots::audio_durations(files, durations)?;
     let detail = payloads.detail_for_audio(&audio_durations)?;
-    let mut parsed = payloads.parsed_for_audio(&audio_durations, clock, ids)?;
+    let mut parsed = payloads.parsed(&audio_durations, clock, ids)?;
     let seed = parsed_album_to_user_edit(&parsed);
     let source_tracks = source_tracks_of(&seed, &detail);
     let mapping = table_for(

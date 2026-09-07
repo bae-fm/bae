@@ -308,11 +308,8 @@ impl ImportService {
                             "{candidate_key}'s selected release payloads are not prepared"
                         ),
                     })?;
-                let mut parsed = payloads.parsed_for_audio(
-                    &audio_durations,
-                    self.clock.as_ref(),
-                    self.ids.as_ref(),
-                )?;
+                let mut parsed =
+                    payloads.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
                 parsed.identities = crate::import::service::identities_with_partners(
                     library_manager,
                     parsed.identities,

@@ -494,27 +494,6 @@ fn nested_discogs_release() -> crate::discogs::DiscogsRelease {
 }
 
 #[test]
-fn discogs_detail_includes_nested_index_tracks() {
-    let release = nested_discogs_release();
-
-    let detail = build_discogs_detail(&release, Vec::new());
-    let titles: Vec<&str> = detail
-        .tracks
-        .iter()
-        .map(|track| track.title.as_str())
-        .collect();
-
-    assert_eq!(
-        titles,
-        vec![
-            "Suite Title: Movement One",
-            "Suite Title: Movement Two",
-            "Track Title"
-        ]
-    );
-}
-
-#[test]
 fn discogs_detail_collapses_an_index_for_one_matching_audio_file() {
     let release = nested_discogs_release();
 

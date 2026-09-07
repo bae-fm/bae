@@ -1,6 +1,6 @@
 //! SSDP discovery of UPnP MediaRenderers on the local network.
 //!
-//! [`DlnaDiscovery`] mirrors the Cast discovery's shape — a live device list in a
+//! `DlnaDiscovery` mirrors the Cast discovery's shape — a live device list in a
 //! `PublishedDevices`, browsing only while the picker is open. The mechanics
 //! differ: instead of an mDNS daemon, a search thread sends SSDP `M-SEARCH`
 //! datagrams for `MediaRenderer:1`, then fetches and parses each responder's
@@ -16,6 +16,7 @@ use std::time::{Duration, Instant};
 
 use tracing::{debug, warn};
 
+use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
 
@@ -35,87 +36,36 @@ const DESCRIPTION_TIMEOUT: Duration = Duration::from_secs(5);
 /// [`RendererDevice`]s so the picker shows one merged list. Start and stop with
 /// the picker's visibility; a stopped discovery holds no socket and no search
 /// thread.
-pub struct DlnaDiscovery {
-    devices: PublishedDevices,
-    /// The running search: its stop flag and the thread draining responses.
-    /// `None` while stopped.
-    running: Option<Running>,
-}
+pub(crate) type DlnaDiscovery = ProtocolDiscovery<DlnaSearch>;
 
-struct Running {
+/// A live SSDP search: its stop flag and the thread draining responses.
+pub(crate) struct DlnaSearch {
     stop: Arc<AtomicBool>,
     reader: JoinHandle<()>,
 }
 
-impl DlnaDiscovery {
-    pub fn new() -> Self {
-        Self {
-            devices: PublishedDevices::new(),
-            running: None,
-        }
-    }
-
-    /// Subscribe to the live device list. The current snapshot is available
-    /// immediately on the returned receiver.
-    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
-        self.devices.subscribe()
-    }
-
-    /// The current device list snapshot.
-    pub fn devices(&self) -> Vec<RendererDevice> {
-        self.devices.current()
-    }
-
-    /// Whether an SSDP socket and search thread are live right now. For tests
-    /// that assert searching is (or is not) reaching the network.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn is_browsing(&self) -> bool {
-        self.running.is_some()
-    }
-
-    /// Begin searching. Idempotent: a second call while already searching is a
-    /// no-op. Publishes list updates as renderers answer.
-    pub fn start(&mut self) {
-        if self.running.is_some() {
-            return;
-        }
+impl Browse for DlnaSearch {
+    fn start(devices: &PublishedDevices) -> Option<Self> {
         let socket = match open_search_socket() {
             Ok(socket) => socket,
             Err(e) => {
                 warn!("dlna discovery: failed to open SSDP socket: {e}");
-                return;
+                return None;
             }
         };
-        self.devices.clear();
-        let devices = self.devices.clone();
+        devices.clear();
+        let devices = devices.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let reader_stop = stop.clone();
         let reader = std::thread::spawn(move || run_search(socket, reader_stop, devices));
-        self.running = Some(Running { stop, reader });
+        Some(Self { stop, reader })
     }
 
-    /// Stop searching and release the socket. The last published device list is
-    /// kept.
-    pub fn stop(&mut self) {
-        let Some(running) = self.running.take() else {
-            return;
-        };
-        running.stop.store(true, Ordering::Relaxed);
-        if running.reader.join().is_err() {
+    fn stop(self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if self.reader.join().is_err() {
             warn!("dlna discovery: search reader thread panicked");
         }
-    }
-}
-
-impl Default for DlnaDiscovery {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Drop for DlnaDiscovery {
-    fn drop(&mut self) {
-        self.stop();
     }
 }
 
