@@ -3,13 +3,9 @@ import Foundation
 
 // MARK: - CandidateSource
 
-/// Source-specific data for a candidate. Folder candidates carry the watched
-/// folder they were scanned from; re-identify candidates carry the existing
-/// library release id.
+/// A scanned folder or an existing library release being identified again.
 enum CandidateSource: Equatable {
-    case folder(
-        watchedFolderPath: String
-    )
+    case folder
     case releaseReIdentify(releaseId: String)
 }
 
@@ -339,9 +335,7 @@ struct Candidate: Equatable, Identifiable {
     }
 
     init(bridge: BridgeFolderCandidate) {
-        source = .folder(
-            watchedFolderPath: bridge.watchedFolderPath
-        )
+        source = .folder
         key = bridge.folderPath
         displayName = bridge.sourceFolderName
         files = bridge.files
@@ -474,15 +468,6 @@ struct Candidate: Equatable, Identifiable {
     /// its stored row carries them.
     var settledSignals: Signals? {
         detail?.signals.map(Signals.init(bridge:))
-    }
-
-    /// The watched folder this candidate was scanned from — the candidate-list
-    /// group it belongs to. `nil` for re-identify candidates (not grouped).
-    var watchedFolderPath: String? {
-        if case .folder(let watchedFolderPath) = source {
-            return watchedFolderPath
-        }
-        return nil
     }
 
 }
