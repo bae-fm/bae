@@ -4,18 +4,14 @@ struct HighSampleRateTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: String,
-    _capture_stream_rx: CaptureStreamRx,
+    _capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
 impl HighSampleRateTestFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        tracing_init();
-        let temp_dir = TempDir::new()?;
-        let album_dir = temp_dir.path().join("album");
-        std::fs::create_dir_all(&album_dir)?;
-
-        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
+        let (library_manager, album_dir, temp_dir) =
+            support::setup_test_library_with_album_dir().await;
         let runtime_handle = tokio::runtime::Handle::current();
 
         // Copy 96kHz fixture
@@ -31,48 +27,17 @@ impl HighSampleRateTestFixture {
 
         // Create release with one track
         let discogs_release = DiscogsRelease {
-            id: "high-sample-rate-test".to_string(),
-            title: "96kHz Test Album".to_string(),
-            year: Some(2024),
-            format: vec![],
-            country: Some("US".to_string()),
-            label: vec!["Test Label".to_string()],
-            covers: vec![],
-            catno: None,
-            artists: vec![DiscogsArtist {
-                name: "Test Artist".to_string(),
-                id: "test-artist-1".to_string(),
-            }],
-            extraartists: Some(vec![]),
-            tracklist: vec![DiscogsTrack {
-                type_: "track".to_string(),
-                position: "1".to_string(),
-                title: "96kHz Track".to_string(),
-                duration: Some("0:03".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            }],
+            artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
             master_id: Some("test-master-96khz".to_string()),
+            ..support::discogs_test_release(
+                "high-sample-rate-test",
+                "96kHz Test Album",
+                &[("96kHz Track", "0:03")],
+            )
         };
         let release_id_key = seed_discogs_test_release(discogs_release);
 
-        let import_handle =
-            start_test_import(runtime_handle.clone(), library_manager.clone()).await;
-
-        let import_id = uuid::Uuid::new_v4().to_string();
-        import_handle
-            .send_command(support::folder_import(
-                &import_id,
-                album_dir.clone(),
-                support::discogs_release(release_id_key),
-            ))
-            .await
-            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
-        let mut progress_rx = import_handle.subscribe_import(import_id);
-        try_wait_for_import_complete(&mut progress_rx)
-            .await
-            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+        support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
 
         let albums = library_manager.get_albums(&[]).await?;
         let releases = library_manager
@@ -127,29 +92,24 @@ async fn test_high_sample_rate_position_calculation() {
     // Play the 96kHz track (3 seconds duration)
     fixture.playback_handle.play(fixture.track_id.clone());
 
-    // Wait for track to complete and capture final position
-    let deadline = Instant::now() + Duration::from_secs(10);
+    // Wait for track to complete, keeping the last position seen before it.
     let mut final_position_ms: Option<i64> = None;
-    let mut track_completed = false;
-
-    while Instant::now() < deadline {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. })) => {
-                final_position_ms = Some(position_ms);
+    let track_completed =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
+            match event {
+                PlaybackProgress::PositionUpdate { position_ms, .. } => {
+                    final_position_ms = Some(position_ms);
+                    None
+                }
+                PlaybackProgress::TrackCompleted { .. } => Some(()),
+                _ => None,
             }
-            Ok(Some(PlaybackProgress::TrackCompleted { .. })) => {
-                track_completed = true;
-                // Wait a bit for any final position update
-                tokio::time::sleep(Duration::from_millis(100)).await;
-                break;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
+        })
+        .await;
+    // Give any final position update time to arrive behind the completion.
+    tokio::time::sleep(Duration::from_millis(100)).await;
 
-    assert!(track_completed, "Track should complete");
+    assert!(track_completed.is_some(), "Track should complete");
 
     let position_ms = final_position_ms.expect("Should have received position updates");
     debug!("Final position at track completion: {}ms", position_ms);
@@ -217,26 +177,18 @@ async fn test_seek_lands_near_target_position() {
     assert!(seeked.is_some(), "Should receive Seeked event");
 
     // Wait for track to complete and get decode stats
-    let deadline = Instant::now() + Duration::from_secs(10);
-    let mut decode_stats: Option<(u32, u64)> = None;
-
-    while Instant::now() < deadline {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::DecodeStats {
-                error_count,
-                samples_decoded,
-                track_id: stats_track_id,
-            })) => {
-                if stats_track_id == track_id {
-                    decode_stats = Some((error_count, samples_decoded));
-                    break;
-                }
+    let decode_stats =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
+            match event {
+                PlaybackProgress::DecodeStats {
+                    error_count,
+                    samples_decoded,
+                    track_id: stats_track_id,
+                } if stats_track_id == track_id => Some((error_count, samples_decoded)),
+                _ => None,
             }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
+        })
+        .await;
 
     let (_error_count, samples_decoded) =
         decode_stats.expect("Should receive DecodeStats after track completes");
@@ -271,7 +223,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     // Real-time capture: at full speed track 2's decoder finishes the whole
     // track before the seek restarts it at 5s, so its sample count overshoots
     // the boundary (flaky under load). Real-time keeps the decoder on the seek.
-    let mut fixture = CueFlacTestFixture::with_realtime_capture()
+    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
 
@@ -284,21 +236,18 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let _play_stream = fixture.next_capture_stream().await;
 
     // Wait for playback to start
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if matches!(state, PlaybackState::Playing { .. }) {
-                    started = true;
+    let started =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
+            matches!(
+                event,
+                PlaybackProgress::StateChanged {
+                    state: PlaybackState::Playing { .. }
                 }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(started, "Playback should start");
+            )
+            .then_some(())
+        })
+        .await;
+    assert!(started.is_some(), "Playback should start");
 
     // Seek to 5s into track 2
     let seek_position_ms: u64 = 5000;
@@ -312,25 +261,19 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     // Wait for the track's decode stats. Under gapless playback the seeked track
     // advances into the next track within one persistent stream, so it reports
     // its decode stats at the boundary rather than via TrackCompleted.
-    let deadline = Instant::now() + Duration::from_secs(30);
-    let mut decoded_samples: Option<u64> = None;
-    while Instant::now() < deadline && decoded_samples.is_none() {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::DecodeStats {
-                track_id: ref tid,
-                samples_decoded,
-                ..
-            })) => {
-                if *tid == track_id {
-                    decoded_samples = Some(samples_decoded);
-                }
+    let decoded_samples =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(30), |event| {
+            match event {
+                PlaybackProgress::DecodeStats {
+                    track_id: ref tid,
+                    samples_decoded,
+                    ..
+                } if *tid == track_id => Some(samples_decoded),
+                _ => None,
             }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    let decoded_samples = decoded_samples.expect("Track 2 should report decode stats");
+        })
+        .await
+        .expect("Track 2 should report decode stats");
 
     let captured_snapshot: Vec<f32> = captured.lock().unwrap().clone();
 
@@ -398,6 +341,17 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     );
 }
 
+/// The three-track FLAC album imported into a fresh library with no playback
+/// service started — the arrange for the tests below, which each decide when
+/// their own service comes up. The `TempDir` owns the library's files.
+async fn imported_library_without_playback() -> (LibraryManager, TempDir) {
+    let (library_manager, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
+    let _ = generate_test_flac_files(&album_dir);
+    let release_id_key = seed_discogs_test_release(create_test_album());
+    support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
+    (library_manager, temp_dir)
+}
+
 /// Restoring playback state on service start must emit the restored position
 /// as a `Seeked` progress event, since the restored track comes up Paused and
 /// no position ticks will fire to put a position on screen otherwise.
@@ -415,26 +369,8 @@ async fn test_restore_emits_seeked_at_saved_position() {
     tracing_init();
 
     // Build a library + import tracks, but do NOT start a playback service.
-    let temp_dir = TempDir::new().unwrap();
-    let album_dir = temp_dir.path().join("album");
-    std::fs::create_dir_all(&album_dir).unwrap();
-    let (library_manager, _database) = open_test_library(temp_dir.path()).await;
+    let (library_manager, _temp_dir) = imported_library_without_playback().await;
     let runtime_handle = tokio::runtime::Handle::current();
-    let _ = generate_test_flac_files(&album_dir);
-    let discogs_release = create_test_album();
-    let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
-    let import_id = uuid::Uuid::new_v4().to_string();
-    import_handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::discogs_release(release_id_key),
-        ))
-        .await
-        .unwrap();
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let _ = wait_for_import_complete(&mut progress_rx).await;
     let releases = library_manager
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
         .await
@@ -482,26 +418,8 @@ async fn test_restore_emits_seeked_at_saved_position() {
 async fn test_play_persists_then_stop_clears_playback_state() {
     tracing_init();
 
-    let temp_dir = TempDir::new().unwrap();
-    let album_dir = temp_dir.path().join("album");
-    std::fs::create_dir_all(&album_dir).unwrap();
-    let (library_manager, _database) = open_test_library(temp_dir.path()).await;
+    let (library_manager, _temp_dir) = imported_library_without_playback().await;
     let runtime_handle = tokio::runtime::Handle::current();
-    let _ = generate_test_flac_files(&album_dir);
-    let discogs_release = create_test_album();
-    let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
-    let import_id = uuid::Uuid::new_v4().to_string();
-    import_handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::discogs_release(release_id_key),
-        ))
-        .await
-        .unwrap();
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let _ = wait_for_import_complete(&mut progress_rx).await;
     let release_id = library_manager
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
         .await

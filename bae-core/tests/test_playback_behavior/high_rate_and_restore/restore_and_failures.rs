@@ -1,25 +1,9 @@
 async fn restore_test_library() -> RestoreTestLibrary {
-    tracing_init();
-    let temp_dir = TempDir::new().unwrap();
-    let album_dir = temp_dir.path().join("album");
-    std::fs::create_dir_all(&album_dir).unwrap();
-    let (library_manager, _database) = open_test_library(temp_dir.path()).await;
+    let (library_manager, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
-    let discogs_release = create_test_album();
-    let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
-    let import_id = uuid::Uuid::new_v4().to_string();
-    import_handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::discogs_release(release_id_key),
-        ))
-        .await
-        .unwrap();
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let _ = wait_for_import_complete(&mut progress_rx).await;
+    let release_id_key = seed_discogs_test_release(create_test_album());
+    support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
     let releases = library_manager
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
         .await
@@ -217,60 +201,48 @@ async fn test_preview_seek_while_paused_emits_position_update() {
     fixture
         .playback_handle
         .preview_play(bae_core::playback::PreviewTarget::whole_file(preview_path));
-    let mut saw_playing = false;
-    let deadline = Instant::now() + Duration::from_secs(5);
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(200), fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::PreviewStateChanged(
-                bae_core::playback::PreviewState::Playing { .. },
-            ))) => {
-                saw_playing = true;
-                break;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
-    assert!(saw_playing, "preview should reach Playing state");
+    let saw_playing =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
+            matches!(
+                event,
+                PlaybackProgress::PreviewStateChanged(
+                    bae_core::playback::PreviewState::Playing { .. }
+                )
+            )
+            .then_some(())
+        })
+        .await;
+    assert!(saw_playing.is_some(), "preview should reach Playing state");
 
     // Pause — wait for Paused state.
     fixture.playback_handle.preview_toggle_pause();
-    let mut saw_paused = false;
-    let deadline = Instant::now() + Duration::from_secs(3);
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(200), fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::PreviewStateChanged(
-                bae_core::playback::PreviewState::Paused { .. },
-            ))) => {
-                saw_paused = true;
-                break;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
-    assert!(saw_paused, "preview should reach Paused state");
+    let saw_paused =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(3), |event| {
+            matches!(
+                event,
+                PlaybackProgress::PreviewStateChanged(
+                    bae_core::playback::PreviewState::Paused { .. }
+                )
+            )
+            .then_some(())
+        })
+        .await;
+    assert!(saw_paused.is_some(), "preview should reach Paused state");
 
     // Seek to the middle of the file while paused. No ticks fire in the
     // paused state, so the only way the NSView learns the new position is
     // the explicit emit in handle_preview_seek.
     fixture.playback_handle.preview_seek_by_ratio(0.5);
 
-    let mut saw_position_update: Option<u64> = None;
-    let deadline = Instant::now() + Duration::from_secs(3);
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(200), fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::PreviewPositionUpdate { position_ms, .. })) => {
-                saw_position_update = Some(position_ms);
-                break;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
+    let saw_position_update = support::next_matching(
+        &mut fixture.progress_rx,
+        Duration::from_secs(3),
+        |event| match event {
+            PlaybackProgress::PreviewPositionUpdate { position_ms, .. } => Some(position_ms),
+            _ => None,
+        },
+    )
+    .await;
 
     assert!(
         saw_position_update.is_some(),
@@ -288,7 +260,7 @@ struct CloudOnlyPlaybackFixture {
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     cloud: Arc<coven::InMemoryCloudHome>,
     track_ids: Vec<String>,
-    _capture_stream_rx: CaptureStreamRx,
+    _capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 

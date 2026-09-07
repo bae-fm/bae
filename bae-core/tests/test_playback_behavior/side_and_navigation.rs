@@ -838,28 +838,27 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     handle.seek(Duration::from_secs(2));
 
     // The seek lands (Seeked for the same track); no error, no stop.
-    let mut saw_seeked = false;
     let mut saw_error = false;
-    let mut saw_stopped = false;
-    let deadline = Instant::now() + Duration::from_secs(8);
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(200), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::Seeked { track_id, .. })) if track_id == first => {
-                saw_seeked = true;
-                break;
-            }
-            Ok(Some(PlaybackProgress::PlaybackError { .. })) => saw_error = true,
-            Ok(Some(PlaybackProgress::StateChanged {
-                state: PlaybackState::Stopped,
-            })) => {
-                saw_stopped = true;
-                break;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
+    // `Some(true)` is the seek landing, `Some(false)` a stop — either ends the
+    // wait, and an error along the way is recorded without ending it.
+    let outcome =
+        support::next_matching(
+            &mut progress_rx,
+            Duration::from_secs(8),
+            |event| match event {
+                PlaybackProgress::Seeked { track_id, .. } if track_id == first => Some(true),
+                PlaybackProgress::PlaybackError { .. } => {
+                    saw_error = true;
+                    None
+                }
+                PlaybackProgress::StateChanged {
+                    state: PlaybackState::Stopped,
+                } => Some(false),
+                _ => None,
+            },
+        )
+        .await;
+    let (saw_seeked, saw_stopped) = (outcome == Some(true), outcome == Some(false));
     assert!(saw_seeked, "an in-place seek should land and emit Seeked");
     assert!(
         !saw_error,

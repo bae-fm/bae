@@ -7,15 +7,15 @@
 use bae_test_support as support;
 
 use bae_core::db::{Database, LibraryImageType};
-use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{
     ArtistAssignment, CoverSelection, ImportCommand, MetadataProvenance, MetadataSource,
     PressingEdit, ReleaseUserEdit, ScanEvent, StorageMode, TrackArtistAssignments, TrackUserEdit,
 };
 use bae_core::library::LibraryManager;
 use bae_core::musicbrainz::{
-    MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbRelation, MbReleaseGroupRef,
-    MbReleaseResponse, MbTrack, MbUrlResource, MbWork,
+    MbArtistCredit, MbArtistRef, MbRecording, MbRelation, MbReleaseResponse, MbTrack,
+    MbUrlResource, MbWork,
 };
 use bae_core::sync::CloudCipher;
 use coven::EncryptionService;
@@ -278,84 +278,11 @@ fn synthetic_release_id(title: &str) -> String {
 }
 
 fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
+    let tracks: Vec<(&str, &str)> = tracks.iter().map(|title| (*title, "3:00")).collect();
     DiscogsRelease {
-        id: synthetic_release_id(title),
-        title: title.to_string(),
-        year: Some(2024),
-        format: vec![],
         country: None,
         label: vec![],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            id: "discogs-artist-1".to_string(),
-            name: "Artist Name".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: tracks
-            .iter()
-            .enumerate()
-            .map(|(i, t)| DiscogsTrack {
-                type_: "track".to_string(),
-                position: format!("{}", i + 1),
-                title: t.to_string(),
-                duration: Some("3:00".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            })
-            .collect(),
-        master_id: None,
-    }
-}
-
-/// The MusicBrainz release the identity and works tests seed: one "Artist Name"
-/// credit, one CD medium holding a single "Track One" recording, no labels, no
-/// url-rels and no cover art. Callers that need more replace `media[0].tracks`
-/// or `relations` on the returned value.
-fn mb_release(mb_release_id: &str, mb_group_id: &str, title: &str) -> MbReleaseResponse {
-    MbReleaseResponse {
-        id: mb_release_id.to_string(),
-        title: title.to_string(),
-        date: Some("1996".to_string()),
-        country: Some("US".to_string()),
-        barcode: None,
-        artist_credit: vec![MbArtistCredit {
-            name: "Artist Name".to_string(),
-            artist: Some(MbArtistRef {
-                id: Some("mb-artist-1".to_string()),
-                name: Some("Artist Name".to_string()),
-                sort_name: Some("Artist Name".to_string()),
-            }),
-        }],
-        release_group: Some(MbReleaseGroupRef {
-            id: mb_group_id.to_string(),
-            first_release_date: None,
-            relations: None,
-        }),
-        label_info: vec![],
-        media: vec![MbMedium {
-            discs: vec![],
-            format: Some("CD".to_string()),
-            tracks: vec![MbTrack {
-                position: Some(1),
-                number: Some("1".to_string()),
-                title: None,
-                length: None,
-                recording: Some(MbRecording {
-                    id: None,
-                    title: Some("Track One".to_string()),
-                    artist_credit: vec![],
-                    relations: vec![],
-                }),
-                artist_credit: vec![],
-            }],
-        }],
-        relations: vec![],
-        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
-            front: false,
-            darkened: false,
-        },
+        ..support::discogs_test_release(&synthetic_release_id(title), title, &tracks)
     }
 }
 

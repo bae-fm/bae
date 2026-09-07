@@ -65,15 +65,9 @@ fn seed_mb_release_with_works(
     title: &str,
     tracks: Vec<MbTrack>,
 ) -> String {
-    let mut response = mb_release(mb_release_id, mb_group_id, title);
+    let mut response = support::mb_release(mb_release_id, mb_group_id, title);
     response.media[0].tracks = tracks;
-    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
-    bae_core::musicbrainz::seed_release_group_json_cache(
-        mb_group_id,
-        serde_json::json!({ "id": mb_group_id }).to_string(),
-    );
-    mb_release_id.to_string()
+    support::seed_mb_release(response, mb_group_id)
 }
 
 /// Work-graph sibling of `remote_transition_failure_rolls_back_finalized_release`.

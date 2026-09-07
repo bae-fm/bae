@@ -4,7 +4,7 @@
 // for the moniker it replaced, so assertions still read by name.
 const RELEASE_THAT_WAS_DELETED: &str = "763072b0-643f-4469-8ac7-799c4550a769"; // was "release-that-was-deleted"
 
-use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{
@@ -18,10 +18,9 @@ use std::time::{Duration, Instant};
 use support::start_test_import;
 use support::{
     imported_release_setup, open_test_library, samples_as_f32, seed_discogs_test_release,
-    tracing_init, try_wait_for_import_complete, wait_for_import_complete,
+    tracing_init, wait_for_import_complete,
 };
 use tempfile::TempDir;
-use tokio::time::timeout;
 use tracing::debug;
 
 /// Drain StateChanged events from a progress receiver until one satisfies
@@ -35,20 +34,11 @@ async fn wait_for_state_on<F>(
 where
     F: Fn(&PlaybackState) -> bool,
 {
-    let deadline = Instant::now() + timeout_duration;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if predicate(&state) {
-                    return Some(state);
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => panic!("progress channel closed before a matching state arrived"),
-            Err(_) => continue,
-        }
-    }
-    None
+    support::next_matching(progress_rx, timeout_duration, |event| match event {
+        PlaybackProgress::StateChanged { state } if predicate(&state) => Some(state),
+        _ => None,
+    })
+    .await
 }
 
 /// Collect every StateChanged state in arrival order until one satisfies `done`
@@ -61,23 +51,30 @@ async fn collect_states_on<F>(
 where
     F: Fn(&PlaybackState) -> bool,
 {
-    let deadline = Instant::now() + timeout_duration;
     let mut states = Vec::new();
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                let stop = done(&state);
-                states.push(state);
-                if stop {
-                    break;
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => panic!("progress channel closed before the awaited terminal state"),
-            Err(_) => continue,
-        }
-    }
+    support::next_matching(progress_rx, timeout_duration, |event| {
+        let PlaybackProgress::StateChanged { state } = event else {
+            return None;
+        };
+        let stop = done(&state);
+        states.push(state);
+        stop.then_some(())
+    })
+    .await;
     states
+}
+
+/// The next `PositionUpdate`'s track-relative `position_ms`, or `None` if none
+/// arrives within `timeout_duration`.
+async fn next_position(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    timeout_duration: Duration,
+) -> Option<i64> {
+    support::next_matching(progress_rx, timeout_duration, |event| match event {
+        PlaybackProgress::PositionUpdate { position_ms, .. } => Some(position_ms),
+        _ => None,
+    })
+    .await
 }
 
 /// Await the first position update (generous deadline — a fresh load or a seek
@@ -93,33 +90,19 @@ async fn position_after(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     settle: Duration,
 ) -> i64 {
-    let first_deadline = Instant::now() + Duration::from_secs(30);
-    let mut latest = None;
-    while latest.is_none() {
-        if Instant::now() >= first_deadline {
-            panic!("no position update arrived within 30s of requesting one");
+    let mut latest = next_position(progress_rx, Duration::from_secs(30))
+        .await
+        .expect("no position update arrived within 30s of requesting one");
+    // Sample the whole settle window: the predicate never accepts, so this
+    // returns only once the window is spent, with the last position it saw.
+    support::next_matching(progress_rx, settle, |event| {
+        if let PlaybackProgress::PositionUpdate { position_ms, .. } = event {
+            latest = position_ms;
         }
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. })) => {
-                latest = Some(position_ms)
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => panic!("progress channel closed before a position update arrived"),
-            Err(_) => continue,
-        }
-    }
-    let deadline = Instant::now() + settle;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. })) => {
-                latest = Some(position_ms)
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => panic!("progress channel closed while sampling position updates"),
-            Err(_) => continue,
-        }
-    }
-    latest.expect("anchored on a first position update above")
+        None::<()>
+    })
+    .await;
+    latest
 }
 
 /// Wait until the playing position demonstrably advances: anchor on the first
@@ -137,36 +120,16 @@ async fn position_after(
 async fn wait_for_position_advance(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
 ) -> Option<i64> {
-    let first_deadline = Instant::now() + Duration::from_secs(30);
-    let mut anchor = None;
-    while anchor.is_none() {
-        if Instant::now() >= first_deadline {
-            panic!("no position update arrived within 30s of requesting one");
+    let anchor = next_position(progress_rx, Duration::from_secs(30))
+        .await
+        .expect("no position update arrived within 30s of requesting one");
+    support::next_matching(progress_rx, Duration::from_secs(10), |event| match event {
+        PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > anchor => {
+            Some(position_ms)
         }
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. })) => {
-                anchor = Some(position_ms)
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => panic!("progress channel closed before a position update arrived"),
-            Err(_) => continue,
-        }
-    }
-    let anchor = anchor.expect("anchored on a first position update above");
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. }))
-                if position_ms > anchor =>
-            {
-                return Some(position_ms);
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => panic!("progress channel closed while waiting for the position to advance"),
-            Err(_) => continue,
-        }
-    }
-    None
+        _ => None,
+    })
+    .await
 }
 
 /// How long a `play` may take to produce its first audio before the wait is
@@ -210,21 +173,14 @@ async fn wait_for_seeked_on(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> Option<u64> {
-    let deadline = Instant::now() + timeout_duration;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::Seeked { position_ms, .. })) => {
-                return Some(
-                    u64::try_from(position_ms)
-                        .expect("a seek target cannot be inside the pregap countdown"),
-                );
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
-    None
+    support::next_matching(progress_rx, timeout_duration, |event| match event {
+        PlaybackProgress::Seeked { position_ms, .. } => Some(
+            u64::try_from(position_ms)
+                .expect("a seek target cannot be inside the pregap countdown"),
+        ),
+        _ => None,
+    })
+    .await
 }
 
 /// Drain progress events up to the Playing state, returning whether Playing
@@ -238,28 +194,22 @@ async fn wait_for_playing_capturing_queue_on(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> (bool, Vec<bae_core::playback::QueueEntry>) {
-    let deadline = Instant::now() + timeout_duration;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged {
-                state: PlaybackState::Playing { .. },
-            })) => {
-                let mut projection = playback_handle
-                    .subscribe_queue_values()
-                    .borrow()
-                    .clone();
-                let mut entries = projection.manual;
-                if let Some(ctx) = projection.context.take() {
-                    entries.extend(ctx.upcoming);
-                }
-                return (true, entries);
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
+    let entries = support::next_matching(progress_rx, timeout_duration, |event| {
+        let PlaybackProgress::StateChanged {
+            state: PlaybackState::Playing { .. },
+        } = event
+        else {
+            return None;
+        };
+        let mut projection = playback_handle.subscribe_queue_values().borrow().clone();
+        let mut entries = projection.manual;
+        if let Some(ctx) = projection.context.take() {
+            entries.extend(ctx.upcoming);
         }
-    }
-    (false, Vec::new())
+        Some(entries)
+    })
+    .await;
+    (entries.is_some(), entries.unwrap_or_default())
 }
 
 /// Assert that audio keeps flowing: the playing position advances past its
@@ -286,20 +236,15 @@ async fn wait_for_track_position(
     track_id: &str,
     timeout_duration: Duration,
 ) -> Option<i64> {
-    let deadline = Instant::now() + timeout_duration;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::PositionUpdate {
-                position_ms,
-                track_id: tid,
-                ..
-            })) if tid == track_id => return Some(position_ms),
-            Ok(Some(_)) => continue,
-            Ok(None) => return None,
-            Err(_) => continue,
-        }
-    }
-    None
+    support::next_matching(progress_rx, timeout_duration, |event| match event {
+        PlaybackProgress::PositionUpdate {
+            position_ms,
+            track_id: tid,
+            ..
+        } if tid == track_id => Some(position_ms),
+        _ => None,
+    })
+    .await
 }
 
 /// Wait for the next `RepeatModeChanged` and return its mode, or panic on
@@ -308,16 +253,12 @@ async fn wait_for_repeat_mode(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> RepeatMode {
-    let deadline = Instant::now() + timeout_duration;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::RepeatModeChanged { mode })) => return mode,
-            Ok(Some(_)) => continue,
-            Ok(None) => panic!("progress channel closed before a repeat-mode change"),
-            Err(_) => continue,
-        }
-    }
-    panic!("no RepeatModeChanged arrived within the timeout");
+    support::next_matching(progress_rx, timeout_duration, |event| match event {
+        PlaybackProgress::RepeatModeChanged { mode } => Some(mode),
+        _ => None,
+    })
+    .await
+    .expect("no RepeatModeChanged arrived within the timeout")
 }
 
 /// Wait for the next `MuteChanged` and return its flag, or panic on timeout.
@@ -325,16 +266,12 @@ async fn wait_for_mute(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> bool {
-    let deadline = Instant::now() + timeout_duration;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::MuteChanged { is_muted })) => return is_muted,
-            Ok(Some(_)) => continue,
-            Ok(None) => panic!("progress channel closed before a mute change"),
-            Err(_) => continue,
-        }
-    }
-    panic!("no MuteChanged arrived within the timeout");
+    support::next_matching(progress_rx, timeout_duration, |event| match event {
+        PlaybackProgress::MuteChanged { is_muted } => Some(is_muted),
+        _ => None,
+    })
+    .await
+    .expect("no MuteChanged arrived within the timeout")
 }
 
 /// What a track boundary looked like on the wire. A *gapless* handoff crosses
@@ -362,7 +299,6 @@ async fn observe_boundary(
     incoming: &str,
     timeout_duration: Duration,
 ) -> BoundaryOutcome {
-    let deadline = Instant::now() + timeout_duration;
     let mut outcome = BoundaryOutcome {
         decode_stats_for_finishing: false,
         completed_for_finishing: false,
@@ -370,43 +306,39 @@ async fn observe_boundary(
         reached_incoming: false,
         decode_errors: 0,
     };
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(200), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::DecodeStats {
+    support::next_matching(progress_rx, timeout_duration, |event| {
+        match event {
+            PlaybackProgress::DecodeStats {
                 track_id,
                 error_count,
                 ..
-            })) => {
+            } => {
                 outcome.decode_errors += error_count;
                 if track_id == finishing {
                     outcome.decode_stats_for_finishing = true;
                 }
             }
-            Ok(Some(PlaybackProgress::TrackCompleted { track_id })) if track_id == finishing => {
+            PlaybackProgress::TrackCompleted { track_id } if track_id == finishing => {
                 outcome.completed_for_finishing = true;
             }
-            Ok(Some(PlaybackProgress::StateChanged {
+            PlaybackProgress::StateChanged {
                 state: PlaybackState::Loading { track_id, .. },
-            })) if track_id == incoming => {
+            } if track_id == incoming => {
                 outcome.loading_for_incoming = true;
             }
-            Ok(Some(PlaybackProgress::StateChanged {
+            PlaybackProgress::StateChanged {
                 state: PlaybackState::Playing { track_info, .. },
-            })) if track_info.track_id == incoming => {
+            } if track_info.track_id == incoming => {
                 outcome.reached_incoming = true;
-                break;
+                return Some(());
             }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
+            _ => {}
         }
-    }
+        None
+    })
+    .await;
     outcome
 }
-
-/// Capture-stream receiver kept alive so the sink's `create_stream` has a
-/// receiver to hand each stream's buffer to (dropping it fails stream creation).
-type CaptureStreamRx = tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>;
 
 /// Start a playback service backed by a real-time capture sink, so a test runs
 /// with no audio device while the decoder is still paced to wall-clock like the
@@ -415,7 +347,7 @@ type CaptureStreamRx = tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex
 fn start_capture_service(
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
-) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
+) -> (bae_core::playback::PlaybackHandle, support::CaptureStreamRx) {
     start_capture_service_with_restore(library_manager, runtime_handle, true)
 }
 
@@ -426,7 +358,7 @@ fn start_capture_service_with_restore(
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
     restore_playback: bool,
-) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
+) -> (bae_core::playback::PlaybackHandle, support::CaptureStreamRx) {
     let (capture_device, capture_stream_rx) =
         bae_core::playback::RealtimeCaptureAudioDevice::new();
     let handle = library_manager.start_playback_service_with_audio_device(
@@ -589,21 +521,18 @@ impl PlaybackTestFixture {
     }
     /// Wait for a position update with timeout (returns position in ms)
     async fn wait_for_position_update(&mut self, timeout_duration: Duration) -> Option<u64> {
-        let deadline = Instant::now() + timeout_duration;
-        while Instant::now() < deadline {
-            match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
-                Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. })) => {
-                    return Some(
-                        u64::try_from(position_ms)
-                            .expect("this helper expects playback at or after track start"),
-                    );
-                }
-                Ok(Some(_)) => continue,
-                Ok(None) => break,
-                Err(_) => continue,
-            }
-        }
-        None
+        support::next_matching(
+            &mut self.progress_rx,
+            timeout_duration,
+            |event| match event {
+                PlaybackProgress::PositionUpdate { position_ms, .. } => Some(
+                    u64::try_from(position_ms)
+                        .expect("this helper expects playback at or after track start"),
+                ),
+                _ => None,
+            },
+        )
+        .await
     }
     /// Wait for the first position update whose `position_ms` is strictly past
     /// `floor_ms`, or `None` on timeout. Blocks on the real "position has moved
@@ -616,24 +545,21 @@ impl PlaybackTestFixture {
         floor_ms: u64,
         timeout_duration: Duration,
     ) -> Option<u64> {
-        let deadline = Instant::now() + timeout_duration;
-        while Instant::now() < deadline {
-            match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
-                Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. }))
-                    if position_ms
-                        > i64::try_from(floor_ms).expect("position floor exceeds i64 range") =>
-                {
-                    return Some(
+        let floor = i64::try_from(floor_ms).expect("position floor exceeds i64 range");
+        support::next_matching(
+            &mut self.progress_rx,
+            timeout_duration,
+            |event| match event {
+                PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > floor => {
+                    Some(
                         u64::try_from(position_ms)
                             .expect("position past a nonnegative floor is nonnegative"),
-                    );
+                    )
                 }
-                Ok(Some(_)) => continue,
-                Ok(None) => break,
-                Err(_) => continue,
-            }
-        }
-        None
+                _ => None,
+            },
+        )
+        .await
     }
     /// Wait for a Seeked event with timeout (returns position in ms)
     async fn wait_for_seeked(&mut self, timeout_duration: Duration) -> Option<u64> {

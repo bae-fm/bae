@@ -25,13 +25,12 @@
 //! it, so neither needs the `--test-threads=1` flag the suite once required.
 
 #![cfg(feature = "test-utils")]
-use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use bae_core::discogs::models::DiscogsRelease;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_test_support as support;
 use serial_test::serial;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
-use tokio::time::timeout;
 
 /// Let playback reach steady state before measuring: the decoder fills the ring
 /// buffer in an initial burst, which isn't representative of steady playback.
@@ -228,98 +227,36 @@ fn generate_mp3_track_files(dir: &std::path::Path) {
 /// Metadata for the CUE/FLAC album (three 30s tracks).
 fn create_cue_flac_test_album() -> DiscogsRelease {
     DiscogsRelease {
-        id: "cue-flac-cpu-test".to_string(),
-        title: "Test Album".to_string(),
-        year: Some(2024),
-        format: vec![],
         country: Some("Test Country".to_string()),
-        label: vec!["Test Label".to_string()],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            name: "Test Artist".to_string(),
-            id: "test-artist-1".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: vec![
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "1".to_string(),
-                title: "Track One".to_string(),
-                duration: Some("0:30".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "2".to_string(),
-                title: "Track Two".to_string(),
-                duration: Some("0:30".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "3".to_string(),
-                title: "Track Three".to_string(),
-                duration: Some("0:30".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-        ],
+        artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
         master_id: Some("test-master".to_string()),
+        ..support::discogs_test_release(
+            "cue-flac-cpu-test",
+            "Test Album",
+            &[
+                ("Track One", "0:30"),
+                ("Track Two", "0:30"),
+                ("Track Three", "0:30"),
+            ],
+        )
     }
 }
 
 /// Metadata for the MP3 per-track album (three 30s tracks).
 fn create_mp3_test_album() -> DiscogsRelease {
     DiscogsRelease {
-        id: "mp3-cpu-test".to_string(),
-        title: "Test Album MP3".to_string(),
-        year: Some(2024),
-        format: vec![],
         country: Some("Test Country".to_string()),
-        label: vec!["Test Label".to_string()],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            name: "Test Artist".to_string(),
-            id: "test-artist-2".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: vec![
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "1".to_string(),
-                title: "Track 1".to_string(),
-                duration: Some("0:30".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "2".to_string(),
-                title: "Track 2".to_string(),
-                duration: Some("0:30".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "3".to_string(),
-                title: "Track 3".to_string(),
-                duration: Some("0:30".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-        ],
+        artists: vec![support::discogs_artist("test-artist-2", "Test Artist")],
         master_id: Some("test-master-mp3".to_string()),
+        ..support::discogs_test_release(
+            "mp3-cpu-test",
+            "Test Album MP3",
+            &[
+                ("Track 1", "0:30"),
+                ("Track 2", "0:30"),
+                ("Track 3", "0:30"),
+            ],
+        )
     }
 }
 
@@ -408,19 +345,20 @@ fn get_process_cpu_time() -> Duration {
 
 /// Wait (up to `within`) for playback to report it is playing.
 async fn await_playing(fixture: &mut PlaybackTestFixture, within: Duration, label: &str) {
-    let deadline = Instant::now() + within;
-    loop {
-        let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
-            panic!("{label}: playback did not start within {within:?}");
-        };
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged {
-                state: PlaybackState::Playing { .. },
-            })) => return,
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => panic!("{label}: playback did not start within {within:?}"),
-        }
-    }
+    let started = support::next_matching(&mut fixture.progress_rx, within, |event| {
+        matches!(
+            event,
+            PlaybackProgress::StateChanged {
+                state: PlaybackState::Playing { .. }
+            }
+        )
+        .then_some(())
+    })
+    .await;
+    assert!(
+        started.is_some(),
+        "{label}: playback did not start within {within:?}"
+    );
 }
 
 /// This machine's cost to decode one second of this album's audio: CPU-seconds

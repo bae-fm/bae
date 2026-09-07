@@ -1,4 +1,4 @@
-use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
@@ -8,7 +8,7 @@ use bae_test_support as support;
 use coven::{EncryptionService, StoreDir};
 use std::path::Path;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use support::start_test_import;
 use support::{
     assert_captured_matches_reference, open_test_library, samples_as_f32,
@@ -32,49 +32,16 @@ fn copy_cue_ape_fixture(dir: &Path) {
 
 fn create_test_discogs_release() -> DiscogsRelease {
     DiscogsRelease {
-        id: "test-cue-ape".to_string(),
-        title: "Test Album".to_string(),
-        year: Some(2024),
-        format: vec![],
-        country: Some("US".to_string()),
-        label: vec!["Test Label".to_string()],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            id: "discogs-artist-1".to_string(),
-            name: "Artist Name".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: vec![
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "1".to_string(),
-                title: "Track One".to_string(),
-                duration: Some("0:30".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "2".to_string(),
-                title: "Track Two".to_string(),
-                duration: Some("0:30".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "3".to_string(),
-                title: "Track Three".to_string(),
-                duration: Some("0:30".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-        ],
         master_id: Some("test-master".to_string()),
+        ..support::discogs_test_release(
+            "test-cue-ape",
+            "Test Album",
+            &[
+                ("Track One", "0:30"),
+                ("Track Two", "0:30"),
+                ("Track Three", "0:30"),
+            ],
+        )
     }
 }
 
@@ -94,12 +61,10 @@ const EXPECTED_DURATIONS_MS: [i64; 3] = [
 
 const FULL_FILE_DURATION_MS: i64 = 90000;
 
-/// Regression: CUE+APE imports must store per-track durations, not the full file duration.
-///
-/// Bug: `extract_and_store_durations` only entered the CUE duration path for .flac files.
-/// For CUE+APE, all 8 tracks got the full APE file duration (37:29).
-#[tokio::test]
-async fn test_cue_ape_records_correct_durations() {
+/// Import the 3-track CUE/APE fixture into a fresh library, returning the
+/// manager, the imported release id, and the temp root that owns both the
+/// album folder and the database.
+async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
     tracing_init();
     let temp_root = TempDir::new().expect("temp root");
     let album_dir = temp_root.path().join("album");
@@ -109,22 +74,19 @@ async fn test_cue_ape_records_correct_durations() {
     copy_cue_ape_fixture(&album_dir);
 
     let (library_manager, _database) = open_test_library(&db_dir).await;
+    let release_id_key = seed_discogs_test_release(create_test_discogs_release());
+    let release_id =
+        support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
+    (library_manager, release_id, temp_root)
+}
 
-    let runtime_handle = tokio::runtime::Handle::current();
-    let discogs_release = create_test_discogs_release();
-    let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone()).await;
-    let import_id = uuid::Uuid::new_v4().to_string();
-    import_handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::discogs_release(release_id_key),
-        ))
-        .await
-        .expect("send command");
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
+/// Regression: CUE+APE imports must store per-track durations, not the full file duration.
+///
+/// Bug: `extract_and_store_durations` only entered the CUE duration path for .flac files.
+/// For CUE+APE, all 8 tracks got the full APE file duration (37:29).
+#[tokio::test]
+async fn test_cue_ape_records_correct_durations() {
+    let (library_manager, release_id, _temp_root) = import_cue_ape_fixture().await;
     info!("Import completed, release_id: {}", release_id);
 
     let tracks = library_manager
@@ -260,31 +222,7 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
 /// for full-file decode with seek/stop.
 #[tokio::test]
 async fn test_cue_ape_records_track_timing() {
-    tracing_init();
-    let temp_root = TempDir::new().expect("temp root");
-    let album_dir = temp_root.path().join("album");
-    let db_dir = temp_root.path().join("db");
-    std::fs::create_dir_all(&album_dir).expect("album dir");
-    std::fs::create_dir_all(&db_dir).expect("db dir");
-    copy_cue_ape_fixture(&album_dir);
-
-    let (library_manager, _database) = open_test_library(&db_dir).await;
-
-    let runtime_handle = tokio::runtime::Handle::current();
-    let discogs_release = create_test_discogs_release();
-    let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone()).await;
-    let import_id = uuid::Uuid::new_v4().to_string();
-    import_handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::discogs_release(release_id_key),
-        ))
-        .await
-        .expect("send command");
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
+    let (library_manager, release_id, _temp_root) = import_cue_ape_fixture().await;
     let tracks = library_manager
         .get_tracks_for_release(&release_id)
         .await
@@ -350,23 +288,13 @@ struct CueApeTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
-    capture_stream_rx:
-        tokio::sync::mpsc::UnboundedReceiver<std::sync::Arc<std::sync::Mutex<Vec<f32>>>>,
+    capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
 impl CueApeTestFixture {
-    /// Awaits the next capture buffer minted by `create_stream`. Buffers are
-    /// yielded in creation order; tests that exercise auto-advance, seek, or
-    /// next call this once per stream they want to inspect.
-    async fn next_capture_stream(&mut self) -> std::sync::Arc<std::sync::Mutex<Vec<f32>>> {
-        match timeout(Duration::from_secs(5), self.capture_stream_rx.recv()).await {
-            Ok(Some(buf)) => buf,
-            Ok(None) => panic!("capture stream channel closed before a stream was created"),
-            Err(_) => panic!("no capture stream created within 5s"),
-        }
-    }
-
+    /// The 3-track CUE/APE album, imported and playing through a full-speed
+    /// capture sink.
     async fn with_capture() -> Result<Self, Box<dyn std::error::Error>> {
         let (library_manager, imported) = support::imported_release_setup(
             create_test_discogs_release(),
@@ -376,17 +304,14 @@ impl CueApeTestFixture {
             |_| Ok(()),
         )
         .await?;
-        assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
-
-        let (capture_device, capture_stream_rx) = bae_core::playback::CaptureAudioDevice::new();
-        let playback_handle = library_manager.start_playback_service_with_audio_device(
-                tokio::runtime::Handle::current(),
-                100,
-                true,
-                Box::new(capture_device),
-            );
+        assert_eq!(
+            imported.track_ids.len(),
+            3,
+            "Should have 3 tracks from CUE/APE"
+        );
+        let (playback_handle, capture_stream_rx) =
+            support::start_capture_playback(&library_manager, support::TestAudioDevice::Capture);
         let progress_rx = playback_handle.subscribe_progress();
-
         Ok(Self {
             playback_handle,
             progress_rx,
@@ -394,6 +319,10 @@ impl CueApeTestFixture {
             capture_stream_rx,
             _temp_dir: imported.temp_dir,
         })
+    }
+
+    async fn next_capture_stream(&mut self) -> std::sync::Arc<std::sync::Mutex<Vec<f32>>> {
+        support::next_capture_stream(&mut self.capture_stream_rx).await
     }
 }
 
@@ -421,22 +350,12 @@ async fn test_cue_ape_track_playback_matches_reference() {
         let captured = fixture.next_capture_stream().await;
 
         // Wait for playback to start.
-        let deadline = Instant::now() + Duration::from_secs(5);
-        let mut started = false;
-        while Instant::now() < deadline && !started {
-            let remaining = deadline - Instant::now();
-            match timeout(remaining, fixture.progress_rx.recv()).await {
-                Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                    if let PlaybackState::Playing { track_info, .. } = &state {
-                        if track_info.track_id == track_id {
-                            started = true;
-                        }
-                    }
-                }
-                Ok(Some(_)) => continue,
-                Ok(None) | Err(_) => break,
-            }
-        }
+        let started = support::wait_until_playing(
+            &mut fixture.progress_rx,
+            &track_id,
+            Duration::from_secs(5),
+        )
+        .await;
         assert!(started, "{label} should start playing");
 
         let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
@@ -494,21 +413,18 @@ async fn test_cue_ape_seek() {
     let _play_stream = fixture.next_capture_stream().await;
 
     // Wait for playback to start
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if matches!(state, PlaybackState::Playing { .. }) {
-                    started = true;
+    let started =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
+            matches!(
+                event,
+                PlaybackProgress::StateChanged {
+                    state: PlaybackState::Playing { .. }
                 }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(started, "Playback should start");
+            )
+            .then_some(())
+        })
+        .await;
+    assert!(started.is_some(), "Playback should start");
 
     // Seek to 27s — capture the new stream and wait for new audio post-seek
     fixture.playback_handle.seek(Duration::from_secs(27));
@@ -643,22 +559,9 @@ async fn test_cue_ape_auto_advance_no_replay() {
         .add_to_queue(vec![track2_id.clone()]);
 
     // Wait for track 1 to start
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if let PlaybackState::Playing { track_info, .. } = &state {
-                    if track_info.track_id == track1_id {
-                        started = true;
-                    }
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
+    let started =
+        support::wait_until_playing(&mut fixture.progress_rx, &track1_id, Duration::from_secs(5))
+            .await;
     assert!(started, "Track 1 should start playing");
 
     // Seek to 28s into the 30s track so it completes quickly, then gaplessly
@@ -668,23 +571,12 @@ async fn test_cue_ape_auto_advance_no_replay() {
     let captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start via auto-advance, then capture samples.
-    let deadline = Instant::now() + Duration::from_secs(15);
-    let mut track2_started = false;
-    while Instant::now() < deadline {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if let PlaybackState::Playing { track_info, .. } = &state {
-                    if track_info.track_id == track2_id {
-                        track2_started = true;
-                        break;
-                    }
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
+    let track2_started = support::wait_until_playing(
+        &mut fixture.progress_rx,
+        &track2_id,
+        Duration::from_secs(15),
+    )
+    .await;
     assert!(
         track2_started,
         "Track 2 should auto-advance after track 1 completes"

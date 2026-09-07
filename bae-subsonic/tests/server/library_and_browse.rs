@@ -6,7 +6,7 @@ use axum::http::{Request, StatusCode};
 use axum::Router;
 use bae_core::config::SubsonicCredential;
 use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
-use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::release_candidate::CandidateSource;
 use bae_core::import::{
     ImportCommand, MetadataProvenance, MetadataSource, ReleaseFileScope, StorageMode,
@@ -267,37 +267,16 @@ async fn seed_library() -> Library {
 
 fn cue_discogs_release() -> DiscogsRelease {
     DiscogsRelease {
-        id: "test-cue-flac".to_string(),
-        title: "Test Album".to_string(),
-        year: Some(2024),
-        format: vec![],
-        country: Some("US".to_string()),
-        label: vec!["Test Label".to_string()],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            id: "discogs-artist-1".to_string(),
-            name: "Artist Name".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: vec![
-            cue_track("1", "Track One (Silence)"),
-            cue_track("2", "Track Two (White Noise)"),
-            cue_track("3", "Track Three (Brown Noise)"),
-        ],
         master_id: Some("test-master".to_string()),
-    }
-}
-
-fn cue_track(position: &str, title: &str) -> DiscogsTrack {
-    DiscogsTrack {
-        type_: "track".to_string(),
-        position: position.to_string(),
-        title: title.to_string(),
-        duration: Some("0:10".to_string()),
-        artists: vec![],
-        extraartists: None,
-        sub_tracks: vec![],
+        ..support::discogs_test_release(
+            "test-cue-flac",
+            "Test Album",
+            &[
+                ("Track One (Silence)", "0:10"),
+                ("Track Two (White Noise)", "0:10"),
+                ("Track Three (Brown Noise)", "0:10"),
+            ],
+        )
     }
 }
 

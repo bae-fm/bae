@@ -1,34 +1,14 @@
 /// A Discogs release with rich pressing fields, used to assert that a picked
 /// release seeds them.
 fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> DiscogsRelease {
+    let tracks: Vec<(&str, &str)> = tracks.iter().map(|title| (*title, "3:00")).collect();
     DiscogsRelease {
-        id: synthetic_release_id(title),
-        title: title.to_string(),
         year: Some(1996),
         format: vec!["CD".to_string()],
-        country: Some("US".to_string()),
         label: vec!["Label Name".to_string()],
-        covers: vec![],
         catno: Some("CAT-001".to_string()),
-        artists: vec![DiscogsArtist {
-            id: "discogs-artist-1".to_string(),
-            name: "Artist Name".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: tracks
-            .iter()
-            .enumerate()
-            .map(|(i, t)| DiscogsTrack {
-                type_: "track".to_string(),
-                position: format!("{}", i + 1),
-                title: t.to_string(),
-                duration: Some("3:00".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            })
-            .collect(),
         master_id: Some(master_id.to_string()),
+        ..support::discogs_test_release(&synthetic_release_id(title), title, &tracks)
     }
 }
 
@@ -216,7 +196,7 @@ fn seed_mb_with_discogs_xref(
     discogs_release_id: &str,
     title: &str,
 ) -> String {
-    let mut response = mb_release(mb_release_id, mb_group_id, title);
+    let mut response = support::mb_release(mb_release_id, mb_group_id, title);
     response.relations = vec![MbRelation {
         url: Some(MbUrlResource {
             resource: Some(format!(
@@ -428,12 +408,8 @@ async fn a_partner_replaces_an_inferred_identity_of_the_same_source() {
 
 /// Seed an MB release with no Discogs url-rel. Returns the MB release id.
 fn seed_mb_without_xref(mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
-    let response = mb_release(mb_release_id, mb_group_id, title);
-    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
-    bae_core::musicbrainz::seed_release_group_json_cache(
+    support::seed_mb_release(
+        support::mb_release(mb_release_id, mb_group_id, title),
         mb_group_id,
-        serde_json::json!({ "id": mb_group_id }).to_string(),
-    );
-    mb_release_id.to_string()
+    )
 }

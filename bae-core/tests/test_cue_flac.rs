@@ -9,19 +9,17 @@
 //! These tests use storageless imports for simplicity (the CUE/FLAC handling
 //! is independent of storage configuration).
 use bae_core::db::DbAudioSegmentRole;
-use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use bae_core::discogs::models::DiscogsRelease;
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use bae_test_support as support;
 use std::path::Path;
 use std::time::Duration;
-use support::start_test_import;
 use support::{
     assert_captured_matches_reference, open_test_library, samples_as_f32,
-    seed_discogs_test_release, tracing_init, wait_for_import_complete,
+    seed_discogs_test_release, tracing_init,
 };
 use tempfile::TempDir;
-use tokio::time::timeout;
 use tracing::info;
 
 /// CUE/FLAC imports record each track's sample window correctly.
@@ -284,29 +282,22 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let mut progress_rx = playback_handle.subscribe_progress();
     playback_handle.play(track1.id.clone());
 
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-    let mut playback_duration_ms = None;
-    while std::time::Instant::now() < deadline {
-        match tokio::time::timeout(std::time::Duration::from_millis(100), progress_rx.recv()).await
-        {
-            Ok(Some(bae_core::playback::PlaybackProgress::StateChanged { state })) => {
-                if let bae_core::playback::PlaybackState::Playing {
-                    track_info,
-                    duration_ms,
-                    ..
-                } = &state
-                {
-                    if track_info.track_id == track1.id {
-                        playback_duration_ms = Some(*duration_ms);
-                        break;
-                    }
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
+    let playback_duration_ms = support::next_matching(
+        &mut progress_rx,
+        Duration::from_secs(5),
+        |event| match event {
+            bae_core::playback::PlaybackProgress::StateChanged {
+                state:
+                    bae_core::playback::PlaybackState::Playing {
+                        track_info,
+                        duration_ms,
+                        ..
+                    },
+            } if track_info.track_id == track1.id => Some(duration_ms),
+            _ => None,
+        },
+    )
+    .await;
 
     let duration_ms = playback_duration_ms.expect("Should get duration from playback") as i64;
 
@@ -357,19 +348,8 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
     copy_cue_flac_fixture_with_seektable(&album_dir);
     let (library_manager, _database) = open_test_library(&db_dir).await;
     let release_id_key = seed_discogs_test_release(create_test_discogs_release());
-    let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
-    let import_id = uuid::Uuid::new_v4().to_string();
-    import_handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::discogs_release(release_id_key),
-        ))
-        .await
-        .expect("send command");
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
+    let release_id =
+        support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
     (library_manager, release_id)
 }
 
@@ -380,23 +360,13 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
 struct CueFlacCaptureFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     track_ids: Vec<String>,
-    capture_stream_rx:
-        tokio::sync::mpsc::UnboundedReceiver<std::sync::Arc<std::sync::Mutex<Vec<f32>>>>,
+    capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
 impl CueFlacCaptureFixture {
-    /// Awaits the next capture buffer minted by `create_stream`. Buffers are
-    /// yielded in creation order; tests that exercise auto-advance, seek, or
-    /// next call this once per stream they want to inspect.
-    async fn next_capture_stream(&mut self) -> std::sync::Arc<std::sync::Mutex<Vec<f32>>> {
-        match timeout(Duration::from_secs(5), self.capture_stream_rx.recv()).await {
-            Ok(Some(buf)) => buf,
-            Ok(None) => panic!("capture stream channel closed before a stream was created"),
-            Err(_) => panic!("no capture stream created within 5s"),
-        }
-    }
-
+    /// The 3-track CUE/FLAC album, imported and playing through a full-speed
+    /// capture sink.
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let (library_manager, imported) = support::imported_release_setup(
             create_test_discogs_release(),
@@ -411,20 +381,18 @@ impl CueFlacCaptureFixture {
             3,
             "Should have 3 tracks from CUE/FLAC"
         );
-
-        let (capture_device, capture_stream_rx) = bae_core::playback::CaptureAudioDevice::new();
-        let playback_handle = library_manager.start_playback_service_with_audio_device(
-            tokio::runtime::Handle::current(),
-            100,
-            true,
-            Box::new(capture_device),
-        );
+        let (playback_handle, capture_stream_rx) =
+            support::start_capture_playback(&library_manager, support::TestAudioDevice::Capture);
         Ok(Self {
             playback_handle,
             track_ids: imported.track_ids,
             capture_stream_rx,
             _temp_dir: imported.temp_dir,
         })
+    }
+
+    async fn next_capture_stream(&mut self) -> std::sync::Arc<std::sync::Mutex<Vec<f32>>> {
+        support::next_capture_stream(&mut self.capture_stream_rx).await
     }
 }
 
@@ -562,49 +530,16 @@ async fn test_cue_flac_gapless_track_boundary() {
 
 fn create_test_discogs_release() -> DiscogsRelease {
     DiscogsRelease {
-        id: "test-cue-flac".to_string(),
-        title: "Test Album".to_string(),
-        year: Some(2024),
-        format: vec![],
-        country: Some("US".to_string()),
-        label: vec!["Test Label".to_string()],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            id: "discogs-artist-1".to_string(),
-            name: "Artist Name".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: vec![
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "1".to_string(),
-                title: "Track One (Silence)".to_string(),
-                duration: Some("0:10".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "2".to_string(),
-                title: "Track Two (White Noise)".to_string(),
-                duration: Some("0:10".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "3".to_string(),
-                title: "Track Three (Brown Noise)".to_string(),
-                duration: Some("0:10".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-        ],
         master_id: Some("test-master".to_string()),
+        ..support::discogs_test_release(
+            "test-cue-flac",
+            "Test Album",
+            &[
+                ("Track One (Silence)", "0:10"),
+                ("Track Two (White Noise)", "0:10"),
+                ("Track Three (Brown Noise)", "0:10"),
+            ],
+        )
     }
 }
 

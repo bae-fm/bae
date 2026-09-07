@@ -18,22 +18,9 @@ async fn test_cue_ape_next_track() {
     let _track1_play = fixture.next_capture_stream().await;
 
     // Wait for track 1 to start
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if let PlaybackState::Playing { track_info, .. } = &state {
-                    if track_info.track_id == track1_id {
-                        started = true;
-                    }
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
+    let started =
+        support::wait_until_playing(&mut fixture.progress_rx, &track1_id, Duration::from_secs(5))
+            .await;
     assert!(started, "Track 1 should start playing");
 
     // Press Next — track 2's stream replaces track 1's.
@@ -41,23 +28,12 @@ async fn test_cue_ape_next_track() {
     let captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start
-    let deadline = Instant::now() + Duration::from_secs(10);
-    let mut track2_started = false;
-    while Instant::now() < deadline {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if let PlaybackState::Playing { track_info, .. } = &state {
-                    if track_info.track_id == track2_id {
-                        track2_started = true;
-                        break;
-                    }
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
+    let track2_started = support::wait_until_playing(
+        &mut fixture.progress_rx,
+        &track2_id,
+        Duration::from_secs(10),
+    )
+    .await;
     assert!(track2_started, "Track 2 should start after Next");
 
     // Decode XLD reference
@@ -77,21 +53,19 @@ async fn test_cue_ape_next_track() {
     // track's CUE start time. Search within 2s for alignment.
     let max_alignment = sample_rate as usize * channels * 2;
 
-    let track2_sample_count = timeout(Duration::from_secs(10), async {
-        loop {
-            match fixture.progress_rx.recv().await {
-                Some(PlaybackProgress::DecodeStats {
+    let track2_sample_count =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
+            match event {
+                PlaybackProgress::DecodeStats {
                     track_id,
                     samples_decoded,
                     ..
-                }) if track_id == track2_id => break samples_decoded as usize,
-                Some(_) => continue,
-                None => panic!("Track 2 should emit decode stats"),
+                } if track_id == track2_id => Some(samples_decoded as usize),
+                _ => None,
             }
-        }
-    })
-    .await
-    .expect("Track 2 should emit decode stats within 10s");
+        })
+        .await
+        .expect("Track 2 should emit decode stats within 10s");
     assert!(
         track2_sample_count > snippet_len,
         "Track 2 should produce enough samples to compare: {} (needed more than {})",
@@ -194,33 +168,22 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
     // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3".
     // `parse_side_from_position` maps these to side=1 and side=2.
     let discogs_release = DiscogsRelease {
-        id: "test-multi-disc-cue-ape".to_string(),
-        title: "Multi-Disc Album".to_string(),
-        year: Some(2024),
-        format: vec![],
         country: None,
         label: vec![],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            id: "discogs-artist-1".to_string(),
-            name: "Artist Name".to_string(),
-        }],
-        extraartists: Some(vec![]),
+        // Each position carries its disc, which the shared builder's flat 1..n
+        // numbering cannot express, so this tracklist is built here.
         tracklist: (1..=2)
             .flat_map(|disc| {
-                (1..=3).map(move |n| DiscogsTrack {
-                    type_: "track".to_string(),
-                    position: format!("{}-{}", disc, n),
-                    title: format!("Disc {} Track {}", disc, n),
-                    duration: Some("0:30".to_string()),
-                    artists: vec![],
-                    extraartists: None,
-                    sub_tracks: vec![],
+                (1..=3).map(move |n| {
+                    support::discogs_track(
+                        &format!("{disc}-{n}"),
+                        &format!("Disc {disc} Track {n}"),
+                        "0:30",
+                    )
                 })
             })
             .collect(),
-        master_id: None,
+        ..support::discogs_test_release("test-multi-disc-cue-ape", "Multi-Disc Album", &[])
     };
     let release_id_key = seed_discogs_test_release(discogs_release);
     let import_handle =

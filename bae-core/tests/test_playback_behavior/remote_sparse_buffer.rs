@@ -156,7 +156,7 @@ struct RemoteMultiWindowPlayback {
     /// test asserting on its counters needs a template of its own — see
     /// `seek_over_remote_cloud_costs_chunks_not_the_whole_blob`.
     cloud: coven::InMemoryCloudHome,
-    _capture_stream_rx: CaptureStreamRx,
+    _capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 

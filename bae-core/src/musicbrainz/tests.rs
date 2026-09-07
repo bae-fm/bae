@@ -213,16 +213,19 @@ fn a_darkened_release_serves_no_front_cover() {
 // process-global LRUs, so each test uses a unique Discogs release ID to keep
 // another test's seed from bleeding in.
 
-fn make_mb_response(id: &str, release_group_id: Option<&str>) -> MbReleaseResponse {
+/// A bare MusicBrainz release document — no credits, no media, no cover art —
+/// for the fetch paths, which only read its id and release group. Shared by
+/// every seeded cache entry below so they cannot drift apart.
+fn mb_release(release_id: &str, release_group_id: Option<&str>) -> MbReleaseResponse {
     MbReleaseResponse {
-        id: id.to_string(),
-        title: "Test Album".to_string(),
-        date: None,
+        id: release_id.to_string(),
+        title: "Album Title".to_string(),
+        date: Some("1999".to_string()),
         country: None,
         barcode: None,
         artist_credit: vec![],
-        release_group: release_group_id.map(|rg| MbReleaseGroupRef {
-            id: rg.to_string(),
+        release_group: release_group_id.map(|id| MbReleaseGroupRef {
+            id: id.to_string(),
             first_release_date: None,
             relations: None,
         }),
@@ -262,7 +265,7 @@ async fn test_fetch_mb_xref_with_backlink_returns_response_and_metadata() {
     seed_release_cache(
         mb_release_id,
         (
-            make_mb_response(mb_release_id, Some(mb_group_id)),
+            mb_release(mb_release_id, Some(mb_group_id)),
             None,
             r#"{"id":"mb-release-hit-1"}"#.to_string(),
         ),
@@ -317,7 +320,7 @@ async fn test_fetch_mb_xref_release_without_group_still_returns_response() {
     seed_release_cache(
         mb_release_id,
         (
-            make_mb_response(mb_release_id, None),
+            mb_release(mb_release_id, None),
             None,
             r#"{"id":"mb-release-no-rg"}"#.to_string(),
         ),
@@ -367,29 +370,6 @@ fn only_transient_musicbrainz_failures_are_retried() {
 }
 
 // ── fetch_release_with_metadata ─────────────────────────────────────────────
-
-fn mb_release(release_id: &str, release_group_id: Option<&str>) -> MbReleaseResponse {
-    MbReleaseResponse {
-        id: release_id.to_string(),
-        title: "Album Title".to_string(),
-        date: Some("1999".to_string()),
-        country: None,
-        barcode: None,
-        artist_credit: vec![],
-        release_group: release_group_id.map(|id| MbReleaseGroupRef {
-            id: id.to_string(),
-            first_release_date: None,
-            relations: None,
-        }),
-        label_info: vec![],
-        media: vec![],
-        relations: vec![],
-        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
-            front: false,
-            darkened: false,
-        },
-    }
-}
 
 /// The archival pairs every MB import path writes: the release under
 /// `musicbrainz`, its release-group under `musicbrainz_release_group`. Both the

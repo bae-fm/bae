@@ -89,22 +89,17 @@ async fn seek_past_end_of_track_signals_rather_than_hanging() {
     fixture.playback_handle.seek(Duration::from_secs(600));
 
     // seek()'s decoder-ready timeout is 5s; allow margin past it.
-    let deadline = Instant::now() + Duration::from_secs(8);
-    let mut signaled = false;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(200), fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::Seeked { .. }))
-            | Ok(Some(PlaybackProgress::PlaybackError { .. })) => {
-                signaled = true;
-                break;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
+    let signaled =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(8), |event| {
+            matches!(
+                event,
+                PlaybackProgress::Seeked { .. } | PlaybackProgress::PlaybackError { .. }
+            )
+            .then_some(())
+        })
+        .await;
     assert!(
-        signaled,
+        signaled.is_some(),
         "a seek past the end must signal (Seeked or PlaybackError), not freeze silently"
     );
 }
@@ -150,49 +145,17 @@ async fn seek_by_ratio_maps_to_a_proportional_position() {
 /// Create a test album with 2 short tracks
 fn create_test_album() -> DiscogsRelease {
     DiscogsRelease {
-        id: "test-playback-123".to_string(),
-        title: "Playback Test Album".to_string(),
-        year: Some(2024),
-        format: vec![],
-        country: Some("US".to_string()),
-        label: vec!["Test Label".to_string()],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            name: "Test Artist".to_string(),
-            id: "test-artist-1".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: vec![
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "1".to_string(),
-                title: "Test Track 1".to_string(),
-                duration: Some("0:10".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "2".to_string(),
-                title: "Test Track 2".to_string(),
-                duration: Some("0:10".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "3".to_string(),
-                title: "Test Track 3".to_string(),
-                duration: Some("0:10".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-        ],
+        artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
         master_id: Some("test-master-123".to_string()),
+        ..support::discogs_test_release(
+            "test-playback-123",
+            "Playback Test Album",
+            &[
+                ("Test Track 1", "0:10"),
+                ("Test Track 2", "0:10"),
+                ("Test Track 3", "0:10"),
+            ],
+        )
     }
 }
 /// Copy pre-generated FLAC fixtures to test directory
@@ -255,101 +218,36 @@ fn generate_cue_flac_files(dir: &std::path::Path) {
 /// Create a test album matching the CUE/FLAC fixture (3 tracks)
 fn create_cue_flac_test_album() -> DiscogsRelease {
     DiscogsRelease {
-        id: "cue-flac-test-release".to_string(),
-        title: "Test Album".to_string(),
-        year: Some(2024),
-        format: vec![],
         country: Some("Test Country".to_string()),
-        label: vec!["Test Label".to_string()],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            name: "Test Artist".to_string(),
-            id: "test-artist-1".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: vec![
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "1".to_string(),
-                title: "Track One (Silence)".to_string(),
-                duration: Some("0:10".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "2".to_string(),
-                title: "Track Two (White Noise)".to_string(),
-                duration: Some("0:10".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "3".to_string(),
-                title: "Track Three (Brown Noise)".to_string(),
-                duration: Some("0:10".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-        ],
+        artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
         master_id: Some("test-master-cue-flac".to_string()),
+        ..support::discogs_test_release(
+            "cue-flac-test-release",
+            "Test Album",
+            &[
+                ("Track One (Silence)", "0:10"),
+                ("Track Two (White Noise)", "0:10"),
+                ("Track Three (Brown Noise)", "0:10"),
+            ],
+        )
     }
 }
 
 /// Test fixture for CUE/FLAC playback (single FLAC with CUE sheet)
+/// Test fixture for CUE/FLAC playback (single FLAC with CUE sheet). Full-speed
+/// capture pulls as fast as the decoder fills — fast, but a track can fully
+/// decode and gaplessly advance before a follow-up command lands, so seek and
+/// pause tests ask for `TestAudioDevice::RealtimeCapture` instead.
 struct CueFlacTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
-    capture_stream_rx: tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
+    capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
-async fn next_capture_stream_from(
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
-) -> Arc<std::sync::Mutex<Vec<f32>>> {
-    match timeout(Duration::from_secs(5), rx.recv()).await {
-        Ok(Some(buf)) => buf,
-        Ok(None) => panic!("capture stream channel closed before a stream was created"),
-        Err(_) => panic!("no capture stream created within 5s"),
-    }
-}
-
 impl CueFlacTestFixture {
-    /// Awaits the next capture buffer minted by `create_stream`. Buffers are
-    /// yielded in creation order; tests that exercise auto-advance, seek, or
-    /// next call this once per stream they want to inspect.
-    async fn next_capture_stream(&mut self) -> Arc<std::sync::Mutex<Vec<f32>>> {
-        next_capture_stream_from(&mut self.capture_stream_rx).await
-    }
-
-    /// Full-speed capture: the drain pulls as fast as the decoder fills. Fast,
-    /// but a track can fully decode and gaplessly advance before a follow-up
-    /// command lands — use `with_realtime_capture` for seek/pause tests.
-    async fn with_capture() -> Result<Self, Box<dyn std::error::Error>> {
-        let (capture_device, capture_stream_rx) = bae_core::playback::CaptureAudioDevice::new();
-        Self::with_capture_device(Box::new(capture_device), capture_stream_rx).await
-    }
-
-    /// Real-time-paced capture: the drain sleeps each buffer's wall-clock
-    /// duration, so the decoder fills the ring and parks instead of racing
-    /// whole tracks ahead. Required for tests that play, then issue a command
-    /// (seek, pause) that must land on the track under test.
-    async fn with_realtime_capture() -> Result<Self, Box<dyn std::error::Error>> {
-        let (capture_device, capture_stream_rx) =
-            bae_core::playback::RealtimeCaptureAudioDevice::new();
-        Self::with_capture_device(Box::new(capture_device), capture_stream_rx).await
-    }
-
-    async fn with_capture_device(
-        capture_device: Box<dyn bae_core::playback::AudioOutputDevice>,
-        capture_stream_rx: tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    async fn new(device: support::TestAudioDevice) -> Result<Self, Box<dyn std::error::Error>> {
         // Import without storage (local CUE/FLAC playback).
         let (library_manager, imported) = imported_release_setup(
             create_cue_flac_test_album(),
@@ -364,15 +262,9 @@ impl CueFlacTestFixture {
             3,
             "Should have 3 tracks from CUE/FLAC"
         );
-
-        let playback_handle = library_manager.start_playback_service_with_audio_device(
-            tokio::runtime::Handle::current(),
-            100,
-            true,
-            capture_device,
-        );
+        let (playback_handle, capture_stream_rx) =
+            support::start_capture_playback(&library_manager, device);
         let progress_rx = playback_handle.subscribe_progress();
-
         Ok(Self {
             playback_handle,
             progress_rx,
@@ -381,15 +273,24 @@ impl CueFlacTestFixture {
             _temp_dir: imported.temp_dir,
         })
     }
+
+    /// Awaits the next capture buffer minted by `create_stream`. Buffers are
+    /// yielded in creation order; tests that exercise auto-advance, seek, or
+    /// next call this once per stream they want to inspect.
+    async fn next_capture_stream(&mut self) -> Arc<std::sync::Mutex<Vec<f32>>> {
+        support::next_capture_stream(&mut self.capture_stream_rx).await
+    }
 }
 
+/// The side-pause album playing through a capture sink, plus the library
+/// manager the side-pause setting is written through.
 struct SidePauseTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     library_manager: LibraryManager,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     release_id: String,
-    capture_stream_rx: tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
+    capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
@@ -427,16 +328,11 @@ impl SidePauseTestFixture {
         // the decoder rather than arriving during playback. Pacing the sink to
         // wall-clock bounds how fast the boundary can arrive, and a loaded machine
         // can only slow that sink down, never speed it up.
-        let (capture_device, capture_stream_rx) =
-            bae_core::playback::RealtimeCaptureAudioDevice::new();
-        let playback_handle = library_manager.start_playback_service_with_audio_device(
-            tokio::runtime::Handle::current(),
-            100,
-            true,
-            Box::new(capture_device),
+        let (playback_handle, capture_stream_rx) = support::start_capture_playback(
+            &library_manager,
+            support::TestAudioDevice::RealtimeCapture,
         );
         let progress_rx = playback_handle.subscribe_progress();
-
         Ok(Self {
             playback_handle,
             library_manager,
@@ -474,7 +370,7 @@ impl SidePauseTestFixture {
     }
 
     async fn next_capture_stream(&mut self) -> Arc<std::sync::Mutex<Vec<f32>>> {
-        next_capture_stream_from(&mut self.capture_stream_rx).await
+        support::next_capture_stream(&mut self.capture_stream_rx).await
     }
 
     fn play_release_from(&self, start_track_index: usize) {

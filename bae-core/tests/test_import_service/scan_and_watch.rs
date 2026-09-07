@@ -19,22 +19,20 @@ async fn folder_scan_produces_candidates() {
         .unwrap();
 
     let mut candidates = vec![];
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
-    loop {
-        match tokio::time::timeout(std::time::Duration::from_millis(100), scan_rx.recv()).await {
-            Ok(Some(ScanEvent::FolderCandidate { candidate: c, .. })) => {
-                candidates.push(c);
+    support::next_matching(
+        &mut scan_rx,
+        std::time::Duration::from_secs(5),
+        |event| match event {
+            ScanEvent::FolderCandidate { candidate, .. } => {
+                candidates.push(candidate);
+                None
             }
-            Ok(Some(ScanEvent::Finished)) => break,
-            Ok(Some(_)) => {}
-            Ok(None) => break,
-            Err(_) => {
-                if tokio::time::Instant::now() > deadline {
-                    panic!("Scan did not finish within 5s");
-                }
-            }
-        }
-    }
+            ScanEvent::Finished => Some(()),
+            _ => None,
+        },
+    )
+    .await
+    .expect("Scan did not finish within 5s");
 
     // `Collection/` has no disc-indicator subdirs, so it's a navigation
     // container. Each album inside it is its own candidate.
@@ -126,33 +124,22 @@ async fn scan_batch_until(
     what: &str,
     mut done: impl FnMut(&ScanEvent) -> bool,
 ) -> ScanBatch {
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
     let mut added = Vec::new();
     let mut removed = Vec::new();
-    loop {
-        if tokio::time::Instant::now() >= deadline {
-            panic!("timed out after 10s waiting for {what}");
-        }
-        match tokio::time::timeout(std::time::Duration::from_millis(100), rx.recv()).await {
-            Ok(Some(event)) => {
-                let finished = done(&event);
-                match &event {
-                    ScanEvent::FolderCandidate { candidate: c, .. } => {
-                        added.push(c.path.to_string_lossy().into_owned())
-                    }
-                    ScanEvent::CandidateRemoved { candidate_key } => {
-                        removed.push(candidate_key.clone())
-                    }
-                    _ => {}
-                }
-                if finished {
-                    return ScanBatch { added, removed };
-                }
+    support::next_matching(rx, std::time::Duration::from_secs(10), |event| {
+        let finished = done(&event);
+        match &event {
+            ScanEvent::FolderCandidate { candidate: c, .. } => {
+                added.push(c.path.to_string_lossy().into_owned())
             }
-            Ok(None) => panic!("scan channel closed before {what}"),
-            Err(_) => {}
+            ScanEvent::CandidateRemoved { candidate_key } => removed.push(candidate_key.clone()),
+            _ => {}
         }
-    }
+        finished.then_some(())
+    })
+    .await
+    .unwrap_or_else(|| panic!("timed out after 10s waiting for {what}"));
+    ScanBatch { added, removed }
 }
 
 /// Wait for a single scan event matching `pred`, failing loud if none arrives
@@ -205,18 +192,11 @@ async fn wait_for_scan_event(
     what: &str,
     mut pred: impl FnMut(&ScanEvent) -> bool,
 ) {
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
-    loop {
-        if tokio::time::Instant::now() >= deadline {
-            panic!("timed out after 10s waiting for {what}");
-        }
-        match tokio::time::timeout(std::time::Duration::from_millis(100), rx.recv()).await {
-            Ok(Some(event)) if pred(&event) => return,
-            Ok(Some(_)) => {}
-            Ok(None) => panic!("scan channel closed before {what}"),
-            Err(_) => {}
-        }
-    }
+    support::next_matching(rx, std::time::Duration::from_secs(10), |event| {
+        pred(&event).then_some(())
+    })
+    .await
+    .unwrap_or_else(|| panic!("timed out after 10s waiting for {what}"));
 }
 
 /// Collect every scan event that arrives within a fixed window. For the
@@ -227,15 +207,14 @@ async fn drain_scan_events(
     rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
     window: std::time::Duration,
 ) -> Vec<ScanEvent> {
-    let deadline = tokio::time::Instant::now() + window;
     let mut events = Vec::new();
-    while tokio::time::Instant::now() < deadline {
-        match tokio::time::timeout(std::time::Duration::from_millis(50), rx.recv()).await {
-            Ok(Some(event)) => events.push(event),
-            Ok(None) => break,
-            Err(_) => {}
-        }
-    }
+    // The predicate never accepts, so this returns only once the window is
+    // spent — every event that arrived inside it, which is the assertion.
+    support::next_matching(rx, window, |event| {
+        events.push(event);
+        None::<()>
+    })
+    .await;
     events
 }
 

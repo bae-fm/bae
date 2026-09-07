@@ -84,35 +84,18 @@ FILE \"Multi Window Album.flac\" WAVE
 }
 
 fn create_multi_window_cue_album() -> DiscogsRelease {
-    let track = |position: &str, title: &str| DiscogsTrack {
-        type_: "track".to_string(),
-        position: position.to_string(),
-        title: title.to_string(),
-        duration: Some("1:00".to_string()),
-        artists: vec![],
-        extraartists: None,
-        sub_tracks: vec![],
-    };
     DiscogsRelease {
-        id: "multi-window-cue-release".to_string(),
-        title: "Multi Window Album".to_string(),
-        year: Some(2024),
-        format: vec![],
-        country: Some("US".to_string()),
-        label: vec!["Test Label".to_string()],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            name: "Test Artist".to_string(),
-            id: "test-artist-1".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: vec![
-            track("1", "Multi Window One"),
-            track("2", "Multi Window Two"),
-            track("3", "Multi Window Three"),
-        ],
+        artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
         master_id: Some("multi-window-cue-master".to_string()),
+        ..support::discogs_test_release(
+            "multi-window-cue-release",
+            "Multi Window Album",
+            &[
+                ("Multi Window One", "1:00"),
+                ("Multi Window Two", "1:00"),
+                ("Multi Window Three", "1:00"),
+            ],
+        )
     }
 }
 
@@ -236,7 +219,7 @@ struct MultiWindowPlayback {
     track_ids: Vec<String>,
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
-    _capture_stream_rx: CaptureStreamRx,
+    _capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
@@ -540,35 +523,35 @@ async fn seek_into_an_unbuffered_region_emits_resolved_loading_before_seeked() {
     // Seek forward into territory the demand-driven fill has not fetched yet.
     playback.playback_handle.seek(Duration::from_secs(40));
 
-    let deadline = Instant::now() + Duration::from_secs(20);
     let mut saw_loading = false;
-    let mut saw_seeked = false;
-    while Instant::now() < deadline && !saw_seeked {
-        match timeout(Duration::from_millis(200), playback.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged {
+    let saw_seeked = support::next_matching(
+        &mut playback.progress_rx,
+        Duration::from_secs(20),
+        |event| match event {
+            PlaybackProgress::StateChanged {
                 state:
                     PlaybackState::Loading {
                         track_id,
                         resolved: Some(_),
                     },
-            })) if track_id == last_track => {
+            } if track_id == last_track => {
                 saw_loading = true;
+                None
             }
-            Ok(Some(PlaybackProgress::Seeked { track_id, .. })) if track_id == last_track => {
+            PlaybackProgress::Seeked { track_id, .. } if track_id == last_track => {
                 assert!(
                     saw_loading,
                     "a resolved Loading must arrive before Seeked on a seek into an unbuffered region"
                 );
-                saw_seeked = true;
+                Some(())
             }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
+            _ => None,
+        },
+    )
+    .await;
     assert!(saw_loading, "the seek must emit a resolved Loading state");
     assert!(
-        saw_seeked,
+        saw_seeked.is_some(),
         "the seek must emit Seeked once the window lands"
     );
 }
@@ -596,22 +579,20 @@ async fn seek_past_end_of_track_signals_rather_than_hanging_over_sparse_buffer()
     // Track 3's raw timeline is 60s; 600s is far past the end.
     playback.playback_handle.seek(Duration::from_secs(600));
 
-    let deadline = Instant::now() + Duration::from_secs(15);
-    let mut signaled = false;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(200), playback.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::Seeked { .. }))
-            | Ok(Some(PlaybackProgress::PlaybackError { .. })) => {
-                signaled = true;
-                break;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
+    let signaled = support::next_matching(
+        &mut playback.progress_rx,
+        Duration::from_secs(15),
+        |event| {
+            matches!(
+                event,
+                PlaybackProgress::Seeked { .. } | PlaybackProgress::PlaybackError { .. }
+            )
+            .then_some(())
+        },
+    )
+    .await;
     assert!(
-        signaled,
+        signaled.is_some(),
         "a seek past the end must signal (Seeked or PlaybackError), not freeze silently, \
          even when the target is well past everything the sparse buffer has fetched"
     );

@@ -6,7 +6,7 @@
 //! - Local import: files stay in original location
 //! - Local delete preserves files on disk
 use bae_core::db::LibraryImageType;
-use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{CoverSelection, ImportCommand, ImportProgress};
 use bae_core::util::content_type::ContentType;
 use bae_test_support as support;
@@ -413,49 +413,16 @@ async fn run_import_with_cover_test() {
 
 fn create_test_discogs_release() -> DiscogsRelease {
     DiscogsRelease {
-        id: "test-release-storage".to_string(),
-        title: "Storage Test Album".to_string(),
-        year: Some(2024),
-        format: vec![],
-        country: Some("US".to_string()),
-        label: vec!["Test Label".to_string()],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            id: "discogs-artist-1".to_string(),
-            name: "Artist Name".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: vec![
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "1".to_string(),
-                title: "Track One".to_string(),
-                duration: Some("3:00".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "2".to_string(),
-                title: "Track Two".to_string(),
-                duration: Some("4:00".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-            DiscogsTrack {
-                type_: "track".to_string(),
-                position: "3".to_string(),
-                title: "Track Three".to_string(),
-                duration: Some("2:30".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            },
-        ],
         master_id: Some("test-master-storage".to_string()),
+        ..support::discogs_test_release(
+            "test-release-storage",
+            "Storage Test Album",
+            &[
+                ("Track One", "3:00"),
+                ("Track Two", "4:00"),
+                ("Track Three", "2:30"),
+            ],
+        )
     }
 }
 

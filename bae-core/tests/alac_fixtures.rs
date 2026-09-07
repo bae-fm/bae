@@ -6,11 +6,10 @@
 //! `test-fixtures/alac/`). Nothing is mocked: every assertion runs through
 //! the same code paths production uses.
 use bae_test_support as support;
-use support::start_test_import;
 
 use bae_core::audio_codec::{decode_audio, probe_audio_from_path};
 use bae_core::cue_flac::parse_cue_sheet;
-use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::discid::compute_discid_from_categorized;
 use bae_core::import::folder_scanner::{
     collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions,
@@ -19,9 +18,7 @@ use bae_core::import::folder_scanner::{
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use std::path::{Path, PathBuf};
-use support::{
-    open_test_library, seed_discogs_test_release, tracing_init, wait_for_import_complete,
-};
+use support::{open_test_library, seed_discogs_test_release, tracing_init};
 use tempfile::TempDir;
 use tracing::info;
 
@@ -32,34 +29,11 @@ fn fixture_dir() -> PathBuf {
 }
 
 fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsRelease {
+    let tracks: Vec<(&str, &str)> = tracks.iter().map(|title| (*title, "0:02")).collect();
     DiscogsRelease {
-        id: id.to_string(),
-        title: title.to_string(),
-        year: Some(2024),
-        format: vec![],
         country: None,
         label: vec![],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            id: "discogs-artist-1".to_string(),
-            name: "Artist Name".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: tracks
-            .iter()
-            .enumerate()
-            .map(|(i, title)| DiscogsTrack {
-                type_: "track".to_string(),
-                position: format!("{}", i + 1),
-                title: (*title).to_string(),
-                duration: Some("0:02".to_string()),
-                artists: vec![],
-                extraartists: None,
-                sub_tracks: vec![],
-            })
-            .collect(),
-        master_id: None,
+        ..support::discogs_test_release(id, title, &tracks)
     }
 }
 
@@ -81,20 +55,8 @@ async fn import_single_m4a_fixture(
     let discogs_release = make_discogs_release("test-m4a", "Album Title", &["Track One"]);
     let release_id_key = seed_discogs_test_release(discogs_release);
 
-    let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
-    let import_id = uuid::Uuid::new_v4().to_string();
-    import_handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::discogs_release(release_id_key),
-        ))
-        .await
-        .expect("send command");
-
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let (release_id, _) = wait_for_import_complete(&mut progress_rx).await;
+    let release_id =
+        support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
     (library_manager, release_id)
 }
 
@@ -304,19 +266,8 @@ async fn import_cue_alac_pair() {
     );
     let release_id_key = seed_discogs_test_release(discogs_release);
 
-    let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
-    let import_id = uuid::Uuid::new_v4().to_string();
-    import_handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::discogs_release(release_id_key),
-        ))
-        .await
-        .expect("send command");
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let (release_id, _) = wait_for_import_complete(&mut progress_rx).await;
+    let release_id =
+        support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
 
     let tracks = library_manager
         .get_tracks_for_release(&release_id)

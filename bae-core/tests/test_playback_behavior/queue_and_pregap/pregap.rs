@@ -14,7 +14,7 @@
 
 #[tokio::test]
 async fn test_direct_play_skips_pregap() {
-    let mut fixture = CueFlacTestFixture::with_realtime_capture()
+    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
     let pregapped_track_id = fixture.track_ids[1].clone();
@@ -41,7 +41,7 @@ async fn test_direct_play_skips_pregap() {
 
 #[tokio::test]
 async fn test_next_button_skips_pregap() {
-    let mut fixture = CueFlacTestFixture::with_realtime_capture()
+    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
     let first_track_id = fixture.track_ids[0].clone();
@@ -79,7 +79,7 @@ async fn test_next_button_skips_pregap() {
 
 #[tokio::test]
 async fn test_auto_advance_plays_pregap() {
-    let mut fixture = CueFlacTestFixture::with_realtime_capture()
+    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
     let first_track_id = fixture.track_ids[0].clone();
@@ -140,7 +140,7 @@ async fn test_cue_flac_seek() {
     // Real-time capture: a full-speed drain races the decoder past track 2 and
     // gaplessly onto the next track before the seek below lands, leaving the
     // post-seek stream empty (flaky under load — Linux CI hit it ~5%).
-    let mut fixture = CueFlacTestFixture::with_realtime_capture()
+    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
 
@@ -151,21 +151,18 @@ async fn test_cue_flac_seek() {
     let _play_stream = fixture.next_capture_stream().await;
 
     // Wait for playback to start
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if matches!(state, PlaybackState::Playing { .. }) {
-                    started = true;
+    let started =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
+            matches!(
+                event,
+                PlaybackProgress::StateChanged {
+                    state: PlaybackState::Playing { .. }
                 }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(started, "Playback should start");
+            )
+            .then_some(())
+        })
+        .await;
+    assert!(started.is_some(), "Playback should start");
 
     // Seek to 5s into track 2
     fixture.playback_handle.seek(Duration::from_secs(5));
@@ -257,7 +254,7 @@ async fn test_cue_flac_seek() {
 async fn test_direct_play_skips_pregap_cue_flac() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = CueFlacTestFixture::with_capture()
+    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::Capture)
         .await
         .expect("set up CUE/FLAC capture fixture");
 
@@ -268,22 +265,9 @@ async fn test_direct_play_skips_pregap_cue_flac() {
     let captured = fixture.next_capture_stream().await;
 
     // Wait for playback to start
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if let PlaybackState::Playing { track_info, .. } = &state {
-                    if track_info.track_id == track_id {
-                        started = true;
-                    }
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
+    let started =
+        support::wait_until_playing(&mut fixture.progress_rx, &track_id, Duration::from_secs(5))
+            .await;
     assert!(started, "Track 2 should start playing");
 
     // Decode XLD reference for track 2

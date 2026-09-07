@@ -295,21 +295,13 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
     std::fs::copy(&fixture, dir.join("track.opus")).unwrap();
 
     let discogs_key = support::seed_discogs_test_release(DiscogsRelease {
-        id: "test-lossy".to_string(),
-        title: "Lossy Album".to_string(),
-        year: Some(2024),
-        format: vec![],
         country: None,
         label: vec![],
-        covers: vec![],
-        catno: None,
-        artists: vec![DiscogsArtist {
-            id: "discogs-lossy-artist".to_string(),
-            name: "Lossy Artist".to_string(),
-        }],
-        extraartists: Some(vec![]),
-        tracklist: vec![cue_track("1", "Only Track")],
-        master_id: None,
+        artists: vec![support::discogs_artist(
+            "discogs-lossy-artist",
+            "Lossy Artist",
+        )],
+        ..support::discogs_test_release("test-lossy", "Lossy Album", &[("Only Track", "0:10")])
     });
     let import =
         support::start_test_import(tokio::runtime::Handle::current(), manager.clone()).await;

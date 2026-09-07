@@ -115,52 +115,20 @@ fn seed_two_credit_mb_release(mb_release_id: &str, mb_group_id: &str) -> String 
         }),
     };
     let response = MbReleaseResponse {
-        id: mb_release_id.to_string(),
-        title: "Split Album".to_string(),
         date: Some("1999".to_string()),
-        country: Some("US".to_string()),
-        barcode: None,
         artist_credit: vec![
             credit("mb-artist-a", "Artist A"),
             credit("mb-artist-b", "Artist B"),
         ],
-        release_group: Some(MbReleaseGroupRef {
-            id: mb_group_id.to_string(),
-            first_release_date: None,
-            relations: None,
-        }),
-        label_info: vec![],
-        media: vec![MbMedium {
-            discs: vec![],
-            format: Some("CD".to_string()),
-            tracks: vec![MbTrack {
-                position: Some(1),
-                number: Some("1".to_string()),
-                title: None,
-                length: None,
-                recording: Some(MbRecording {
-                    id: None,
-                    title: Some("Track One".to_string()),
-                    artist_credit: vec![],
-                    relations: vec![],
-                }),
-                artist_credit: vec![],
-            }],
-        }],
-        relations: vec![],
         cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
             front: true,
             darkened: false,
         },
+        ..support::mb_release(mb_release_id, mb_group_id, "Split Album")
     };
-    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
-    bae_core::musicbrainz::seed_release_group_json_cache(
-        mb_group_id,
-        serde_json::json!({ "id": mb_group_id }).to_string(),
-    );
-    support::cover_art_archive().serve_front(mb_release_id, support::cover_png());
-    mb_release_id.to_string()
+    let mb_release_id = support::seed_mb_release(response, mb_group_id);
+    support::cover_art_archive().serve_front(&mb_release_id, support::cover_png());
+    mb_release_id
 }
 
 /// A release credited to two artists keeps both through the confirmation editor:
@@ -237,12 +205,17 @@ fn seed_mb_release_with_track_count(
     mb_group_id: &str,
     track_count: usize,
 ) -> String {
+    let tracks = (1..=track_count)
+        .map(|position| {
+            let mut track = support::mb_track(position as i64, &format!("Source Track {position}"));
+            let recording = track.recording.as_mut().expect("a recorded track");
+            recording.id = Some(format!("rec-slots-{position}"));
+            track
+        })
+        .collect();
     let response = MbReleaseResponse {
-        id: mb_release_id.to_string(),
-        title: "Album Title".to_string(),
         date: Some("2004".to_string()),
         country: Some("GB".to_string()),
-        barcode: None,
         artist_credit: vec![MbArtistCredit {
             name: "Artist Name".to_string(),
             artist: Some(MbArtistRef {
@@ -251,45 +224,16 @@ fn seed_mb_release_with_track_count(
                 sort_name: Some("Artist Name".to_string()),
             }),
         }],
-        release_group: Some(MbReleaseGroupRef {
-            id: mb_group_id.to_string(),
-            first_release_date: None,
-            relations: None,
-        }),
-        label_info: vec![],
-        media: vec![MbMedium {
-            discs: vec![],
-            format: Some("CD".to_string()),
-            tracks: (1..=track_count)
-                .map(|position| MbTrack {
-                    position: Some(position as i64),
-                    number: Some(position.to_string()),
-                    title: None,
-                    length: None,
-                    recording: Some(MbRecording {
-                        id: Some(format!("rec-slots-{position}")),
-                        title: Some(format!("Source Track {position}")),
-                        artist_credit: vec![],
-                        relations: vec![],
-                    }),
-                    artist_credit: vec![],
-                })
-                .collect(),
-        }],
-        relations: vec![],
+        media: vec![support::mb_medium(tracks)],
         cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
             front: true,
             darkened: false,
         },
+        ..support::mb_release(mb_release_id, mb_group_id, "Album Title")
     };
-    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
-    bae_core::musicbrainz::seed_release_group_json_cache(
-        mb_group_id,
-        serde_json::json!({ "id": mb_group_id }).to_string(),
-    );
-    support::cover_art_archive().serve_front(mb_release_id, support::cover_png());
-    mb_release_id.to_string()
+    let mb_release_id = support::seed_mb_release(response, mb_group_id);
+    support::cover_art_archive().serve_front(&mb_release_id, support::cover_png());
+    mb_release_id
 }
 
 /// A release's tracks in track order, each with the file its samples come from.
@@ -517,46 +461,23 @@ async fn a_corrected_pairing_survives_the_commit() {
 /// that there is something at it.
 fn seed_mb_release_with_front_cover(mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
     let response = MbReleaseResponse {
-        id: mb_release_id.to_string(),
-        title: title.to_string(),
-        date: Some("1996".to_string()),
         country: None,
-        barcode: None,
         artist_credit: vec![MbArtistCredit {
             name: "Artist Name".to_string(),
             artist: None,
         }],
-        release_group: Some(MbReleaseGroupRef {
-            id: mb_group_id.to_string(),
-            first_release_date: None,
-            relations: None,
-        }),
-        label_info: vec![],
-        media: vec![MbMedium {
-            discs: vec![],
-            format: Some("CD".to_string()),
-            tracks: vec![MbTrack {
-                position: Some(1),
-                number: Some("1".to_string()),
-                title: Some("Track".to_string()),
-                length: None,
-                recording: None,
-                artist_credit: vec![],
-            }],
-        }],
-        relations: vec![],
+        media: vec![support::mb_medium(vec![MbTrack {
+            title: Some("Track".to_string()),
+            recording: None,
+            ..support::mb_track(1, "Track")
+        }])],
         cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
             front: true,
             darkened: false,
         },
+        ..support::mb_release(mb_release_id, mb_group_id, title)
     };
-    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
-    bae_core::musicbrainz::seed_release_group_json_cache(
-        mb_group_id,
-        serde_json::json!({ "id": mb_group_id }).to_string(),
-    );
-    mb_release_id.to_string()
+    support::seed_mb_release(response, mb_group_id)
 }
 
 /// A commit that carries no cover pick lands the cover the confirmation pane
