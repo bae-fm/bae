@@ -191,7 +191,7 @@ fn apply_artist_identity_merge(
     for hash in candidates {
         let revision = super::candidate_revision::allocate(sql)?;
         let changed = sql.execute(
-            "UPDATE import_candidate_state SET metadata_revision = ? WHERE content_hash = ?",
+            "UPDATE import_candidate_state SET metadata_revision = ?, metadata_initialized = 1 WHERE content_hash = ?",
             params![revision, hash],
         )?;
         if changed != 1 {

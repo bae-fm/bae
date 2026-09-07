@@ -119,3 +119,31 @@ async fn migration_twenty_two_rolls_back_when_snapshot_versions_are_exhausted() 
         .unwrap();
     assert_eq!(title, "Preserved track");
 }
+
+#[tokio::test]
+#[serial]
+async fn migration_twenty_two_preserves_metadata_initialization_separately_from_versions() {
+    let temp = tempfile::tempdir().unwrap();
+    let directory = StoreDir::new_ephemeral(temp.path());
+    let handle = open(
+        directory.clone(),
+        "candidate-initialization-migration",
+        all().into_iter().take(21).collect(),
+    )
+    .unwrap();
+    handle.write(|sql| {
+        for (hash, revision) in [("untouched", 0), ("manual", 8), ("sourced", 0)] {
+            sql.execute("INSERT INTO import_candidate_state (content_hash, folder_path, metadata_revision) VALUES (?, ?, ?)", coven::rusqlite::params![hash, format!("/{hash}"), revision])?;
+            sql.execute("INSERT INTO import_candidate_edit (content_hash, album_title, album_year, year, format, label, catalog_number, country, barcode) VALUES (?, '', '', '', '', '', '', '', '')", [hash])?;
+        }
+        sql.execute("INSERT INTO import_candidate_draft_provenance (content_hash, kind, author) VALUES ('sourced', 'file_tags', 'user')", [])?;
+        Ok(())
+    }).await.unwrap();
+    drop(handle);
+    let handle = open(directory, "candidate-initialization-migration", all()).unwrap();
+    handle.read(|sql| {
+        let states: Vec<(String, i64, bool)> = sql.query("SELECT content_hash, metadata_revision, metadata_initialized FROM import_candidate_state ORDER BY content_hash", [], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?;
+        assert_eq!(states, vec![("manual".into(), 8, true), ("sourced".into(), 0, true), ("untouched".into(), 0, false)]);
+        Ok(())
+    }).await.unwrap();
+}

@@ -17,7 +17,7 @@ impl ImportService {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{} has no stored candidate state", candidate.path.display()),
             })?;
-        if state.metadata_revision != 0 || state.metadata_provenance.is_some() {
+        if state.metadata_initialized {
             return Ok(state.metadata_revision);
         }
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();

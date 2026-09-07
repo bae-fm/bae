@@ -67,6 +67,7 @@ fn row_with_verdict(
         file_edits: Default::default(),
         metadata_provenance: None,
         metadata_revision: 0,
+        metadata_initialized: true,
     }
 }
 

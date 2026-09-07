@@ -159,7 +159,7 @@ pub(super) fn save_preparation_on(
     let metadata_revision = if metadata_changed {
         let revision = super::super::candidate_revision::allocate(sql)?;
         sql.execute(
-            "UPDATE import_candidate_state SET metadata_revision = ? WHERE content_hash = ?",
+            "UPDATE import_candidate_state SET metadata_revision = ?, metadata_initialized = 1 WHERE content_hash = ?",
             params![revision, content_hash],
         )?;
         revision as u64

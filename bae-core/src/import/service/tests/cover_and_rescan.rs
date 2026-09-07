@@ -748,3 +748,111 @@ fn announced_candidates(
     }
     announced
 }
+
+#[tokio::test]
+async fn file_tags_discovery_preserves_source_less_field_and_cover_edits() {
+    for edit_cover in [false, true] {
+        let TestService {
+            service,
+            preparations,
+            temp,
+        } = setup_import_service().await;
+        service
+            .library_manager
+            .set_default_import_metadata_source(crate::config::DefaultImportMetadataSource::None)
+            .unwrap();
+        let root = temp.path().join("watched");
+        let album = root.join("Candidate");
+        std::fs::create_dir_all(&album).unwrap();
+        std::fs::write(album.join("01.flac"), flac()).unwrap();
+        write_test_jpeg(&album.join("chosen.jpg"));
+        let root_text = root.to_string_lossy().into_owned();
+        service
+            .library_manager
+            .add_watched_import_folder(&root_text)
+            .await
+            .unwrap();
+        let (event_tx, _events) = tokio::sync::broadcast::channel(256);
+        let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
+        let scan = test_scan_services(
+            &service,
+            &preparations,
+            event_tx,
+            Arc::new(FolderWatcher::new(fs_tx)),
+        );
+        let cancellation = crate::import::folder_scanner::ScanCancellation::new();
+        ImportService::rescan_and_reconcile(&root, &scan, &cancellation)
+            .await
+            .unwrap();
+        let before = service
+            .library_manager
+            .load_import_candidate(&album.to_string_lossy())
+            .await
+            .unwrap()
+            .unwrap();
+        let hash = before.candidate.files().content_hash();
+        if edit_cover {
+            preparations
+                .set_cover(&hash, &CoverSelection::Local("chosen.jpg".into()))
+                .await
+                .unwrap();
+        } else {
+            preparations
+                .set_field(
+                    &hash,
+                    crate::import::CandidateEditField::AlbumTitle,
+                    "User title",
+                )
+                .await
+                .unwrap();
+        }
+        let edited = service
+            .library_manager
+            .load_import_candidate(&album.to_string_lossy())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(edited.metadata_provenance, None);
+        assert!(edited.metadata_revision > before.metadata_revision);
+
+        // A new path has its own discovery default, while identical content
+        // retains the person's existing candidate metadata.
+        let moved = root.join("Moved Candidate");
+        std::fs::rename(&album, &moved).unwrap();
+        service
+            .library_manager
+            .set_default_import_metadata_source(
+                crate::config::DefaultImportMetadataSource::FileTags,
+            )
+            .unwrap();
+        ImportService::rescan_and_reconcile(&root, &scan, &cancellation)
+            .await
+            .unwrap();
+        let discovered = service
+            .library_manager
+            .load_import_candidate(&moved.to_string_lossy())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(discovered.candidate.files().content_hash(), hash);
+        assert_eq!(
+            discovered.initial_metadata_source,
+            crate::config::DefaultImportMetadataSource::FileTags
+        );
+        assert_eq!(discovered.metadata_provenance, None);
+        assert_eq!(discovered.metadata_revision, edited.metadata_revision);
+        assert_eq!(discovered.metadata_draft, edited.metadata_draft);
+        assert_eq!(
+            discovered.cover.as_ref().map(|cover| &cover.selection),
+            edited.cover.as_ref().map(|cover| &cover.selection),
+        );
+        assert!(service
+            .library_manager
+            .load_candidate_file_tag_snapshot(&root_text, &moved.to_string_lossy())
+            .await
+            .unwrap()
+            .unwrap()
+            .snapshot
+            .is_none());
+    }
+}

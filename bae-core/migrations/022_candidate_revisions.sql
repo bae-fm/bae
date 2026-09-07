@@ -1,3 +1,13 @@
+-- Whether discovery may initialize the draft is independent of its revision
+-- identity. Preserve the previous initialization fact before versions are allocated.
+ALTER TABLE import_candidate_state ADD COLUMN metadata_initialized INTEGER NOT NULL
+    DEFAULT 0 CHECK (metadata_initialized IN (0, 1));
+UPDATE import_candidate_state
+SET metadata_initialized = metadata_revision != 0 OR EXISTS (
+    SELECT 1 FROM import_candidate_draft_provenance AS provenance
+    WHERE provenance.content_hash = import_candidate_state.content_hash
+);
+
 -- A candidate can disappear and later return with identical files. Its next
 -- preparation must still have a version no previous operation could retain.
 CREATE TABLE import_candidate_revision (
