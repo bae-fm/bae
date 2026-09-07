@@ -122,6 +122,20 @@ fn signals_with_catalogs(
     }
 }
 
+/// The disc ID computed for five tracks and nothing else scanned: no barcode,
+/// and only the named catalog numbers on offer.
+fn disc_only(catalogs: &[&str]) -> Signals {
+    signals(
+        DiscIdSignal::Computed {
+            disc_id: "d".to_string(),
+            track_count: 5,
+            source_file: None,
+        },
+        BarcodeSignal::Absent,
+        catalogs,
+    )
+}
+
 /// The disc ID computed, with the given barcode codes settled — both providers'
 /// walks start on the first code.
 fn disc_and_codes(disc_id: &str, codes: &[&str]) -> Signals {
@@ -293,15 +307,7 @@ fn barcode_walks_start_only_from_settled() {
 fn disc_only_resolves_to_found_with_provenance() {
     let (state, _) = update(
         started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &[],
-        ),
+        disc_only(&[]),
     );
     let (state, _) = step(
         state,
@@ -759,15 +765,7 @@ fn retry_with_nothing_failed_changes_nothing() {
 fn retry_re_asks_a_failed_disc_id_lookup() {
     let (state, _) = update(
         started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &[],
-        ),
+        disc_only(&[]),
     );
     let (state, _) = step(
         state,
@@ -799,15 +797,7 @@ fn retry_re_asks_a_failed_disc_id_lookup() {
 fn failed_discid_lookup_preserves_track_count() {
     let (state, _) = update(
         started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &[],
-        ),
+        disc_only(&[]),
     );
     let (state, _) = step(
         state,
@@ -840,15 +830,7 @@ fn failed_discid_lookup_preserves_track_count() {
 fn an_unchosen_catalog_number_narrows_nothing() {
     let (state, _) = update(
         started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &["LBL 001"],
-        ),
+        disc_only(&["LBL 001"]),
     );
     let mut r_a = mk_result("rel-a", Some("g-x"));
     r_a.catalog_number = Some("LBL-001".to_string());

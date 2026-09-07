@@ -190,12 +190,6 @@ impl SystemClock {
     }
 }
 
-impl Default for SystemClock {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl MonotonicClock for SystemClock {
     fn elapsed(&self) -> Duration {
         self.start.lock().unwrap().elapsed()

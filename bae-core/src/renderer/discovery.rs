@@ -168,12 +168,6 @@ impl ReportedDiscovery {
     }
 }
 
-impl Default for ReportedDiscovery {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Map a reported service through the same code bae's own browse uses, or `None`
 /// when it lacks what's needed to reach and name the device.
 fn map_reported(service: &ReportedRenderer) -> Option<ReportedEntry> {

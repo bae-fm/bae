@@ -248,10 +248,12 @@ fn cue_backed_audio_format(
         id,
         now,
     )
-    .with_pregap(audio_pregap_ms)
-    .with_generated_pregap(generated_pregap_ms)
-    .with_pregap_samples(audio_pregap_samples)
-    .with_generated_pregap_samples(generated_pregap_samples))
+    .with_pregaps(
+        audio_pregap_ms,
+        generated_pregap_ms,
+        audio_pregap_samples,
+        generated_pregap_samples,
+    ))
 }
 
 /// Build an audio format for a per-track file from the scan's authoritative facts.

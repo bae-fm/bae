@@ -818,23 +818,20 @@ impl DbAudioFormat {
         }
     }
 
-    pub fn with_pregap(mut self, pregap_ms: Option<i64>) -> Self {
+    /// The pregap a CUE-backed track carries: the gap the sheet states and the
+    /// one bae generates, each in milliseconds and in samples. A per-track file
+    /// has none of them.
+    pub fn with_pregaps(
+        mut self,
+        pregap_ms: Option<i64>,
+        generated_pregap_ms: Option<i64>,
+        pregap_samples: Option<i64>,
+        generated_pregap_samples: Option<i64>,
+    ) -> Self {
         self.pregap_ms = pregap_ms;
-        self
-    }
-
-    pub fn with_generated_pregap(mut self, pregap_ms: Option<i64>) -> Self {
-        self.generated_pregap_ms = pregap_ms;
-        self
-    }
-
-    pub fn with_pregap_samples(mut self, pregap_samples: Option<i64>) -> Self {
+        self.generated_pregap_ms = generated_pregap_ms;
         self.pregap_samples = pregap_samples;
-        self
-    }
-
-    pub fn with_generated_pregap_samples(mut self, pregap_samples: Option<i64>) -> Self {
-        self.generated_pregap_samples = pregap_samples;
+        self.generated_pregap_samples = generated_pregap_samples;
         self
     }
 }

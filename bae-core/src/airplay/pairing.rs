@@ -23,6 +23,7 @@ use rand::RngCore;
 
 use super::srp::{sha512, SrpClient, SrpError, SrpGroup};
 use super::tlv8::{state, tlv_type, Tlv8, Tlv8Error, FLAG_TRANSIENT};
+use super::{check_no_error, expect_state};
 
 /// The SRP identity for transient pair-setup — a fixed username and PIN every
 /// receiver accepts (pyatv `TRANSIENT_PIN`).
@@ -122,12 +123,6 @@ impl TransientPairing {
     }
 }
 
-impl Default for TransientPairing {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// A failure during transient pairing.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum PairingError {
@@ -160,21 +155,6 @@ impl From<SrpError> for PairingError {
     }
 }
 
-fn check_no_error(tlv: &Tlv8) -> Result<(), PairingError> {
-    match tlv.get_u8(tlv_type::ERROR) {
-        Some(code) if code != 0 => Err(PairingError::Rejected(code)),
-        _ => Ok(()),
-    }
-}
-
-fn expect_state(tlv: &Tlv8, expected: u8) -> Result<(), PairingError> {
-    let actual = tlv.get_u8(tlv_type::STATE);
-    if actual == Some(expected) {
-        Ok(())
-    } else {
-        Err(PairingError::UnexpectedState { expected, actual })
-    }
-}
 
 #[cfg(test)]
 mod tests {

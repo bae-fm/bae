@@ -140,267 +140,155 @@ impl ContentTypeHint {
 mod tests {
     use super::*;
 
-    #[test]
-    fn from_extension_audio() {
-        assert_eq!(
-            ContentTypeHint::from_extension("flac"),
-            ContentTypeHint::Flac
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("FLAC"),
-            ContentTypeHint::Flac
-        );
-        assert_eq!(ContentTypeHint::from_extension("mp3"), ContentTypeHint::Mp3);
-        assert_eq!(ContentTypeHint::from_extension("MP3"), ContentTypeHint::Mp3);
-        assert_eq!(ContentTypeHint::from_extension("ape"), ContentTypeHint::Ape);
-        assert_eq!(ContentTypeHint::from_extension("APE"), ContentTypeHint::Ape);
-        assert_eq!(
-            ContentTypeHint::from_extension("m4a"),
-            ContentTypeHint::Mp4Container
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("M4A"),
-            ContentTypeHint::Mp4Container
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("wav"),
-            ContentTypeHint::WavContainer
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("aif"),
-            ContentTypeHint::AiffContainer
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("aiff"),
-            ContentTypeHint::AiffContainer
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("aifc"),
-            ContentTypeHint::AiffContainer
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("ogg"),
-            ContentTypeHint::OggContainer
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("oga"),
-            ContentTypeHint::OggContainer
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("opus"),
-            ContentTypeHint::OpusContainer
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("wv"),
-            ContentTypeHint::WavPack
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("dsf"),
-            ContentTypeHint::DsdContainer
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("dff"),
-            ContentTypeHint::DsdContainer
-        );
-    }
+    use ContentType as C;
+    use ContentTypeHint as H;
 
     #[test]
-    fn from_extension_image() {
-        assert_eq!(
-            ContentTypeHint::from_extension("jpg"),
-            ContentTypeHint::Jpeg
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("jpeg"),
-            ContentTypeHint::Jpeg
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("JPG"),
-            ContentTypeHint::Jpeg
-        );
-        assert_eq!(ContentTypeHint::from_extension("png"), ContentTypeHint::Png);
-        assert_eq!(ContentTypeHint::from_extension("gif"), ContentTypeHint::Gif);
-        assert_eq!(
-            ContentTypeHint::from_extension("webp"),
-            ContentTypeHint::Webp
-        );
-        assert_eq!(ContentTypeHint::from_extension("bmp"), ContentTypeHint::Bmp);
-        assert_eq!(ContentTypeHint::from_extension("svg"), ContentTypeHint::Svg);
-    }
-
-    #[test]
-    fn from_extension_text() {
-        assert_eq!(
-            ContentTypeHint::from_extension("txt"),
-            ContentTypeHint::PlainText
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("cue"),
-            ContentTypeHint::PlainText
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("log"),
-            ContentTypeHint::PlainText
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("m3u"),
-            ContentTypeHint::PlainText
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("m3u8"),
-            ContentTypeHint::PlainText
-        );
-    }
-
-    #[test]
-    fn from_extension_pdf() {
-        assert_eq!(ContentTypeHint::from_extension("pdf"), ContentTypeHint::Pdf);
-        assert_eq!(ContentTypeHint::from_extension("PDF"), ContentTypeHint::Pdf);
-    }
-
-    #[test]
-    fn from_extension_unknown_preserves_lowercased_ext() {
-        assert_eq!(
-            ContentTypeHint::from_extension("wav"),
-            ContentTypeHint::WavContainer
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("aac"),
-            ContentTypeHint::Unknown("aac".to_string())
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("aiff"),
-            ContentTypeHint::AiffContainer
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("xyz"),
-            ContentTypeHint::Unknown("xyz".to_string())
-        );
-        // Uppercase in, lowercase preserved.
-        assert_eq!(
-            ContentTypeHint::from_extension("XYZ"),
-            ContentTypeHint::Unknown("xyz".to_string())
-        );
+    fn from_extension_classifies_by_extension() {
+        for (ext, expected) in [
+            ("flac", H::Flac),
+            ("FLAC", H::Flac),
+            ("mp3", H::Mp3),
+            ("MP3", H::Mp3),
+            ("ape", H::Ape),
+            ("APE", H::Ape),
+            ("m4a", H::Mp4Container),
+            ("M4A", H::Mp4Container),
+            ("wav", H::WavContainer),
+            ("aif", H::AiffContainer),
+            ("aiff", H::AiffContainer),
+            ("aifc", H::AiffContainer),
+            ("ogg", H::OggContainer),
+            ("oga", H::OggContainer),
+            ("opus", H::OpusContainer),
+            ("wv", H::WavPack),
+            ("dsf", H::DsdContainer),
+            ("dff", H::DsdContainer),
+            ("jpg", H::Jpeg),
+            ("jpeg", H::Jpeg),
+            ("JPG", H::Jpeg),
+            ("png", H::Png),
+            ("gif", H::Gif),
+            ("webp", H::Webp),
+            ("bmp", H::Bmp),
+            ("svg", H::Svg),
+            ("txt", H::PlainText),
+            ("cue", H::PlainText),
+            ("log", H::PlainText),
+            ("m3u", H::PlainText),
+            ("m3u8", H::PlainText),
+            ("pdf", H::Pdf),
+            ("PDF", H::Pdf),
+            ("aac", H::Unknown("aac".to_string())),
+            ("xyz", H::Unknown("xyz".to_string())),
+            // Uppercase in, lowercase preserved.
+            ("XYZ", H::Unknown("xyz".to_string())),
+        ] {
+            assert_eq!(H::from_extension(ext), expected, "{ext}");
+        }
     }
 
     #[test]
     fn is_audio_membership() {
-        assert!(ContentTypeHint::Flac.is_audio());
-        assert!(ContentTypeHint::Mp3.is_audio());
-        assert!(ContentTypeHint::Ape.is_audio());
-        assert!(ContentTypeHint::Mp4Container.is_audio());
-        assert!(ContentTypeHint::WavContainer.is_audio());
-        assert!(ContentTypeHint::AiffContainer.is_audio());
-        assert!(ContentTypeHint::OggContainer.is_audio());
-        assert!(ContentTypeHint::OpusContainer.is_audio());
-        assert!(ContentTypeHint::WavPack.is_audio());
-        assert!(ContentTypeHint::DsdContainer.is_audio());
-
-        assert!(!ContentTypeHint::Jpeg.is_audio());
-        assert!(!ContentTypeHint::Png.is_audio());
-        assert!(!ContentTypeHint::Gif.is_audio());
-        assert!(!ContentTypeHint::Webp.is_audio());
-        assert!(!ContentTypeHint::Bmp.is_audio());
-        assert!(!ContentTypeHint::Svg.is_audio());
-        assert!(!ContentTypeHint::PlainText.is_audio());
-        assert!(!ContentTypeHint::Pdf.is_audio());
-        assert!(!ContentTypeHint::Unknown("wma".to_string()).is_audio());
+        for hint in [
+            H::Flac,
+            H::Mp3,
+            H::Ape,
+            H::Mp4Container,
+            H::WavContainer,
+            H::AiffContainer,
+            H::OggContainer,
+            H::OpusContainer,
+            H::WavPack,
+            H::DsdContainer,
+        ] {
+            assert!(hint.is_audio(), "{hint:?}");
+        }
+        for hint in [
+            H::Jpeg,
+            H::Png,
+            H::Gif,
+            H::Webp,
+            H::Bmp,
+            H::Svg,
+            H::PlainText,
+            H::Pdf,
+            H::Unknown("wma".to_string()),
+        ] {
+            assert!(!hint.is_audio(), "{hint:?}");
+        }
     }
 
     #[test]
     fn is_image_membership() {
-        assert!(ContentTypeHint::Jpeg.is_image());
-        assert!(ContentTypeHint::Png.is_image());
-        assert!(ContentTypeHint::Gif.is_image());
-        assert!(ContentTypeHint::Webp.is_image());
-        assert!(ContentTypeHint::Bmp.is_image());
-        assert!(ContentTypeHint::Svg.is_image());
-
-        assert!(!ContentTypeHint::Flac.is_image());
-        assert!(!ContentTypeHint::Mp3.is_image());
-        assert!(!ContentTypeHint::Ape.is_image());
-        assert!(!ContentTypeHint::Mp4Container.is_image());
-        assert!(!ContentTypeHint::WavContainer.is_image());
-        assert!(!ContentTypeHint::AiffContainer.is_image());
-        assert!(!ContentTypeHint::OggContainer.is_image());
-        assert!(!ContentTypeHint::OpusContainer.is_image());
-        assert!(!ContentTypeHint::WavPack.is_image());
-        assert!(!ContentTypeHint::DsdContainer.is_image());
-        assert!(!ContentTypeHint::PlainText.is_image());
-        assert!(!ContentTypeHint::Pdf.is_image());
-        assert!(!ContentTypeHint::Unknown("svg2".to_string()).is_image());
+        for hint in [H::Jpeg, H::Png, H::Gif, H::Webp, H::Bmp, H::Svg] {
+            assert!(hint.is_image(), "{hint:?}");
+        }
+        for hint in [
+            H::Flac,
+            H::Mp3,
+            H::Ape,
+            H::Mp4Container,
+            H::WavContainer,
+            H::AiffContainer,
+            H::OggContainer,
+            H::OpusContainer,
+            H::WavPack,
+            H::DsdContainer,
+            H::PlainText,
+            H::Pdf,
+            H::Unknown("svg2".to_string()),
+        ] {
+            assert!(!hint.is_image(), "{hint:?}");
+        }
     }
 
     #[test]
     fn is_raster_image_membership() {
-        assert!(ContentTypeHint::Jpeg.is_raster_image());
-        assert!(ContentTypeHint::Png.is_raster_image());
-        assert!(ContentTypeHint::Gif.is_raster_image());
-        assert!(ContentTypeHint::Webp.is_raster_image());
-        assert!(ContentTypeHint::Bmp.is_raster_image());
-
-        assert!(!ContentTypeHint::Svg.is_raster_image());
-        assert!(!ContentTypeHint::Flac.is_raster_image());
-        assert!(!ContentTypeHint::PlainText.is_raster_image());
-        assert!(!ContentTypeHint::Pdf.is_raster_image());
-        assert!(!ContentTypeHint::Unknown("svg2".to_string()).is_raster_image());
+        for hint in [H::Jpeg, H::Png, H::Gif, H::Webp, H::Bmp] {
+            assert!(hint.is_raster_image(), "{hint:?}");
+        }
+        for hint in [
+            H::Svg,
+            H::Flac,
+            H::PlainText,
+            H::Pdf,
+            H::Unknown("svg2".to_string()),
+        ] {
+            assert!(!hint.is_raster_image(), "{hint:?}");
+        }
     }
 
     #[test]
     fn path_is_raster_image_membership() {
-        assert!(ContentTypeHint::path_is_raster_image(Path::new(
-            "cover.bmp"
-        )));
-        assert!(!ContentTypeHint::path_is_raster_image(Path::new(
-            "cover.svg"
-        )));
-        assert!(!ContentTypeHint::path_is_raster_image(Path::new("README")));
+        assert!(H::path_is_raster_image(Path::new("cover.bmp")));
+        assert!(!H::path_is_raster_image(Path::new("cover.svg")));
+        assert!(!H::path_is_raster_image(Path::new("README")));
     }
 
     #[test]
-    fn image_content_type_promotes_image_hints() {
-        assert_eq!(
-            ContentTypeHint::Jpeg.image_content_type(),
-            Some(ContentType::Jpeg)
-        );
-        assert_eq!(
-            ContentTypeHint::Png.image_content_type(),
-            Some(ContentType::Png)
-        );
-        assert_eq!(
-            ContentTypeHint::Gif.image_content_type(),
-            Some(ContentType::Gif)
-        );
-        assert_eq!(
-            ContentTypeHint::Webp.image_content_type(),
-            Some(ContentType::Webp)
-        );
-        assert_eq!(
-            ContentTypeHint::Bmp.image_content_type(),
-            Some(ContentType::Bmp)
-        );
-        assert_eq!(
-            ContentTypeHint::Svg.image_content_type(),
-            Some(ContentType::Svg)
-        );
-    }
-
-    #[test]
-    fn image_content_type_returns_none_for_non_image_hints() {
-        assert_eq!(ContentTypeHint::Flac.image_content_type(), None);
-        assert_eq!(ContentTypeHint::Mp3.image_content_type(), None);
-        assert_eq!(ContentTypeHint::Mp4Container.image_content_type(), None);
-        assert_eq!(ContentTypeHint::WavContainer.image_content_type(), None);
-        assert_eq!(ContentTypeHint::AiffContainer.image_content_type(), None);
-        assert_eq!(ContentTypeHint::OggContainer.image_content_type(), None);
-        assert_eq!(ContentTypeHint::OpusContainer.image_content_type(), None);
-        assert_eq!(ContentTypeHint::WavPack.image_content_type(), None);
-        assert_eq!(ContentTypeHint::DsdContainer.image_content_type(), None);
-        assert_eq!(ContentTypeHint::PlainText.image_content_type(), None);
-        assert_eq!(ContentTypeHint::Pdf.image_content_type(), None);
-        assert_eq!(
-            ContentTypeHint::Unknown("xyz".to_string()).image_content_type(),
-            None
-        );
+    fn image_content_type_promotes_only_image_hints() {
+        for (hint, expected) in [
+            (H::Jpeg, Some(C::Jpeg)),
+            (H::Png, Some(C::Png)),
+            (H::Gif, Some(C::Gif)),
+            (H::Webp, Some(C::Webp)),
+            (H::Bmp, Some(C::Bmp)),
+            (H::Svg, Some(C::Svg)),
+            (H::Flac, None),
+            (H::Mp3, None),
+            (H::Mp4Container, None),
+            (H::WavContainer, None),
+            (H::AiffContainer, None),
+            (H::OggContainer, None),
+            (H::OpusContainer, None),
+            (H::WavPack, None),
+            (H::DsdContainer, None),
+            (H::PlainText, None),
+            (H::Pdf, None),
+            (H::Unknown("xyz".to_string()), None),
+        ] {
+            assert_eq!(hint.image_content_type(), expected, "{hint:?}");
+        }
     }
 }

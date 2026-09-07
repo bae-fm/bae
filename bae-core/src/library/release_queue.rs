@@ -247,12 +247,6 @@ impl<Extra: Clone, Progress: Clone> ReleaseQueue<Extra, Progress> {
     }
 }
 
-impl<Extra: Clone, Progress: Clone> Default for ReleaseQueue<Extra, Progress> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// A queued operation that has been started: the handle a cancel aborts, and the
 /// future that yields the operation's outcome.
 pub struct RunningOp<Fut> {

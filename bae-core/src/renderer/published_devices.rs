@@ -53,9 +53,3 @@ impl PublishedDevices {
         self.publish(Vec::new());
     }
 }
-
-impl Default for PublishedDevices {
-    fn default() -> Self {
-        Self::new()
-    }
-}

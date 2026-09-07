@@ -137,19 +137,14 @@ impl CandidatePreparations {
                 "a candidate album artist override cannot be empty".into(),
             ));
         }
-        let assignments = assignments.to_vec();
-        let source_discogs_artist_ids = source_discogs_artist_ids.clone();
-        let assets = assets.to_vec();
-        self.edit_candidate(
-            Some(scanned_key(watched_folder_path, candidate_path)),
-            &read.content_hash,
-            Some(read.file_edit_revision),
-            Some(read.metadata_revision),
-            move |prep| {
-                require_prepared(prep)?;
-                prep.metadata.draft.album_artist_assignments = assignments;
-                prep.metadata.source_discogs_artist_ids = source_discogs_artist_ids;
-                prep.metadata.assets.artist_images = assets;
+        self.edit_prepared_candidate(
+            watched_folder_path,
+            candidate_path,
+            read,
+            source_discogs_artist_ids,
+            assets,
+            |prep| {
+                prep.metadata.draft.album_artist_assignments = assignments.to_vec();
                 Ok(())
             },
         )
@@ -185,21 +180,16 @@ impl CandidatePreparations {
         source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
-        let edits = edits.to_vec();
-        let source_discogs_artist_ids = source_discogs_artist_ids.clone();
-        let assets = assets.to_vec();
-        self.edit_candidate(
-            Some(scanned_key(watched_folder_path, candidate_path)),
-            &read.content_hash,
-            Some(read.file_edit_revision),
-            Some(read.metadata_revision),
-            move |prep| {
-                require_prepared(prep)?;
-                for edit in &edits {
+        self.edit_prepared_candidate(
+            watched_folder_path,
+            candidate_path,
+            read,
+            source_discogs_artist_ids,
+            assets,
+            |prep| {
+                for edit in edits {
                     apply_track_edit(&mut prep.metadata.draft, edit)?;
                 }
-                prep.metadata.source_discogs_artist_ids = source_discogs_artist_ids;
-                prep.metadata.assets.artist_images = assets;
                 Ok(())
             },
         )
@@ -221,8 +211,29 @@ impl CandidatePreparations {
                 "a track artist fill must name at least one track".into(),
             ));
         }
-        let track_ids = track_ids.to_vec();
-        let assignments = assignments.clone();
+        self.edit_prepared_candidate(
+            watched_folder_path,
+            candidate_path,
+            read,
+            source_discogs_artist_ids,
+            assets,
+            |prep| fill_track_artists(&mut prep.metadata.draft, track_ids, assignments),
+        )
+        .await
+    }
+
+    /// A pane edit that keeps a candidate's prepared artist answers in step
+    /// with the draft it changes: the candidate must already be prepared, and
+    /// the caller's recomputed artist set lands with `change` as one write.
+    async fn edit_prepared_candidate(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        read: &CandidateAsRead,
+        source_discogs_artist_ids: &std::collections::BTreeSet<String>,
+        assets: &[crate::import::PreparedArtistImage],
+        change: impl FnOnce(&mut CandidatePreparation) -> Result<(), LibraryError>,
+    ) -> Result<u64, LibraryError> {
         let source_discogs_artist_ids = source_discogs_artist_ids.clone();
         let assets = assets.to_vec();
         self.edit_candidate(
@@ -232,7 +243,7 @@ impl CandidatePreparations {
             Some(read.metadata_revision),
             move |prep| {
                 require_prepared(prep)?;
-                fill_track_artists(&mut prep.metadata.draft, &track_ids, &assignments)?;
+                change(prep)?;
                 prep.metadata.source_discogs_artist_ids = source_discogs_artist_ids;
                 prep.metadata.assets.artist_images = assets;
                 Ok(())

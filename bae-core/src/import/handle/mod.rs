@@ -591,15 +591,16 @@ impl ImportServiceHandle {
         })
     }
 
-    /// Recheck the exact candidate revision an edit was prepared from while
-    /// holding `folder_state_commit`.
-    pub(super) async fn editable_candidate_revision_for_commit(
+    /// Take `folder_state_commit` and recheck, while holding it, that the
+    /// candidate still stands at the exact revision the edit was prepared
+    /// from. The caller holds the returned guard across its write.
+    pub(super) async fn commit_lock_for_revision(
         &self,
         key: &str,
         expected_content_hash: &str,
         expected_file_edit_revision: u64,
-    ) -> Result<crate::import::release_candidate::ReleaseCandidate, crate::import::ImportError>
-    {
+    ) -> Result<tokio::sync::MutexGuard<'_, ()>, crate::import::ImportError> {
+        let commit = self.folder_state_commit.lock().await;
         let candidate = self.editable_candidate_for_commit(key).await?;
         if candidate.files().content_hash() != expected_content_hash
             || candidate.file_edit_revision() != expected_file_edit_revision
@@ -608,7 +609,7 @@ impl ImportServiceHandle {
                 detail: format!("{key} changed before its edit could be stored"),
             });
         }
-        Ok(candidate)
+        Ok(commit)
     }
 
     /// Claim `candidate_key` for an import that is about to be queued.

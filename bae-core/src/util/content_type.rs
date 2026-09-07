@@ -226,50 +226,38 @@ impl<'de> Deserialize<'de> for ContentType {
 mod tests {
     use super::*;
 
-    /// Every audio variant's `as_str` MIME must round-trip through `from_mime`.
-    /// If this breaks, stored DB rows read back as `Other(...)` and lose the codec.
-    #[test]
-    fn audio_mime_round_trip() {
-        for ct in [
-            ContentType::Flac,
-            ContentType::Mp3,
-            ContentType::Ape,
-            ContentType::Alac,
-            ContentType::Aac,
-            ContentType::Pcm,
-            ContentType::Opus,
-            ContentType::Vorbis,
-            ContentType::WavPack,
-            ContentType::Dsd,
-        ] {
-            assert_eq!(
-                ContentType::from_mime(ct.as_str()),
-                ct,
-                "round trip failed for {:?}",
-                ct
-            );
-        }
-    }
+    use ContentType as C;
 
+    /// The canonical variant/string mapping. Every variant's `as_str` MIME must
+    /// round-trip through `from_mime` — if that breaks, stored DB rows read back
+    /// as `Other(...)` and lose the codec.
     #[test]
-    fn image_and_other_mime_round_trip() {
-        for ct in [
-            ContentType::Jpeg,
-            ContentType::Png,
-            ContentType::Gif,
-            ContentType::Webp,
-            ContentType::Bmp,
-            ContentType::Svg,
-            ContentType::PlainText,
-            ContentType::Pdf,
-            ContentType::OctetStream,
+    fn mime_display_name_and_extension() {
+        for (ct, mime, display_name, extension) in [
+            (C::Flac, "audio/flac", "FLAC", "flac"),
+            (C::Mp3, "audio/mpeg", "MP3", "mp3"),
+            (C::Ape, "audio/x-ape", "APE", "ape"),
+            (C::Alac, "audio/alac", "ALAC", "m4a"),
+            (C::Aac, "audio/aac", "AAC", "m4a"),
+            (C::Pcm, "audio/pcm", "PCM", "wav"),
+            (C::Opus, "audio/opus", "Opus", "opus"),
+            (C::Vorbis, "audio/vorbis", "Vorbis", "ogg"),
+            (C::WavPack, "audio/wavpack", "WavPack", "wv"),
+            (C::Dsd, "audio/dsd", "DSD", "dsf"),
+            (C::Jpeg, "image/jpeg", "JPEG", "jpg"),
+            (C::Png, "image/png", "PNG", "png"),
+            (C::Gif, "image/gif", "GIF", "gif"),
+            (C::Webp, "image/webp", "WebP", "webp"),
+            (C::Bmp, "image/bmp", "BMP", "bmp"),
+            (C::Svg, "image/svg+xml", "SVG", "svg"),
+            (C::PlainText, "text/plain", "Text", "txt"),
+            (C::Pdf, "application/pdf", "PDF", "pdf"),
+            (C::OctetStream, "application/octet-stream", "Binary", "bin"),
         ] {
-            assert_eq!(
-                ContentType::from_mime(ct.as_str()),
-                ct,
-                "round trip failed for {:?}",
-                ct
-            );
+            assert_eq!(ct.as_str(), mime, "{ct:?}");
+            assert_eq!(C::from_mime(mime), ct, "round trip failed for {ct:?}");
+            assert_eq!(ct.display_name(), display_name, "{ct:?}");
+            assert_eq!(ct.file_extension(), extension, "{ct:?}");
         }
     }
 
@@ -277,123 +265,71 @@ mod tests {
     fn ape_alternative_mime() {
         // "audio/ape" is an informal variant seen in the wild; "audio/x-ape"
         // is what we emit. Both must map to `Ape`.
-        assert_eq!(ContentType::from_mime("audio/ape"), ContentType::Ape);
-        assert_eq!(ContentType::from_mime("audio/x-ape"), ContentType::Ape);
-    }
-
-    #[test]
-    fn new_audio_mimes_are_stable() {
-        assert_eq!(ContentType::Pcm.as_str(), "audio/pcm");
-        assert_eq!(ContentType::Opus.as_str(), "audio/opus");
-        assert_eq!(ContentType::Vorbis.as_str(), "audio/vorbis");
-        assert_eq!(ContentType::WavPack.as_str(), "audio/wavpack");
-        assert_eq!(ContentType::Dsd.as_str(), "audio/dsd");
+        assert_eq!(C::from_mime("audio/ape"), C::Ape);
+        assert_eq!(C::from_mime("audio/x-ape"), C::Ape);
     }
 
     #[test]
     fn unknown_mime_lands_in_other() {
-        assert_eq!(
-            ContentType::from_mime("audio/ogg"),
-            ContentType::Other("audio/ogg".to_string())
-        );
-        assert_eq!(
-            ContentType::from_mime("audio/mp4"),
-            ContentType::Other("audio/mp4".to_string())
-        );
-        assert_eq!(
-            ContentType::from_mime("video/mp4"),
-            ContentType::Other("video/mp4".to_string())
-        );
+        for mime in ["audio/ogg", "audio/mp4", "video/mp4"] {
+            assert_eq!(C::from_mime(mime), C::Other(mime.to_string()));
+        }
     }
 
     #[test]
     fn is_audio_membership() {
-        assert!(ContentType::Flac.is_audio());
-        assert!(ContentType::Mp3.is_audio());
-        assert!(ContentType::Ape.is_audio());
-        assert!(ContentType::Alac.is_audio());
-        assert!(ContentType::Aac.is_audio());
-        assert!(ContentType::Pcm.is_audio());
-        assert!(ContentType::Opus.is_audio());
-        assert!(ContentType::Vorbis.is_audio());
-        assert!(ContentType::WavPack.is_audio());
-        assert!(ContentType::Dsd.is_audio());
-
-        assert!(!ContentType::Jpeg.is_audio());
-        assert!(!ContentType::PlainText.is_audio());
-        assert!(!ContentType::Pdf.is_audio());
-        assert!(!ContentType::OctetStream.is_audio());
-
-        // Forward-compat escape hatch: any `Other("audio/...")` is still audio.
-        assert!(ContentType::Other("audio/opus".to_string()).is_audio());
-        assert!(!ContentType::Other("video/mp4".to_string()).is_audio());
+        for ct in [
+            C::Flac,
+            C::Mp3,
+            C::Ape,
+            C::Alac,
+            C::Aac,
+            C::Pcm,
+            C::Opus,
+            C::Vorbis,
+            C::WavPack,
+            C::Dsd,
+            // Forward-compat escape hatch: any `Other("audio/...")` is still audio.
+            C::Other("audio/opus".to_string()),
+        ] {
+            assert!(ct.is_audio(), "{ct:?}");
+        }
+        for ct in [
+            C::Jpeg,
+            C::PlainText,
+            C::Pdf,
+            C::OctetStream,
+            C::Other("video/mp4".to_string()),
+        ] {
+            assert!(!ct.is_audio(), "{ct:?}");
+        }
     }
 
     #[test]
     fn is_image_membership() {
-        assert!(ContentType::Jpeg.is_image());
-        assert!(ContentType::Png.is_image());
-        assert!(ContentType::Gif.is_image());
-        assert!(ContentType::Webp.is_image());
-        assert!(ContentType::Bmp.is_image());
-        assert!(ContentType::Svg.is_image());
-
-        assert!(!ContentType::Flac.is_image());
-        assert!(!ContentType::PlainText.is_image());
-
-        assert!(ContentType::Other("image/heic".to_string()).is_image());
-        assert!(!ContentType::Other("audio/flac".to_string()).is_image());
+        for ct in [
+            C::Jpeg,
+            C::Png,
+            C::Gif,
+            C::Webp,
+            C::Bmp,
+            C::Svg,
+            C::Other("image/heic".to_string()),
+        ] {
+            assert!(ct.is_image(), "{ct:?}");
+        }
+        for ct in [C::Flac, C::PlainText, C::Other("audio/flac".to_string())] {
+            assert!(!ct.is_image(), "{ct:?}");
+        }
     }
 
     #[test]
     fn lossless_audio_membership() {
-        for content_type in [
-            ContentType::Flac,
-            ContentType::Ape,
-            ContentType::Alac,
-            ContentType::Pcm,
-            ContentType::WavPack,
-            ContentType::Dsd,
-        ] {
-            assert!(content_type.is_lossless_audio(), "{content_type:?}");
+        for ct in [C::Flac, C::Ape, C::Alac, C::Pcm, C::WavPack, C::Dsd] {
+            assert!(ct.is_lossless_audio(), "{ct:?}");
         }
-        for content_type in [
-            ContentType::Mp3,
-            ContentType::Aac,
-            ContentType::Opus,
-            ContentType::Vorbis,
-        ] {
-            assert!(!content_type.is_lossless_audio(), "{content_type:?}");
+        for ct in [C::Mp3, C::Aac, C::Opus, C::Vorbis] {
+            assert!(!ct.is_lossless_audio(), "{ct:?}");
         }
-    }
-
-    #[test]
-    fn display_name() {
-        assert_eq!(ContentType::Flac.display_name(), "FLAC");
-        assert_eq!(ContentType::Mp3.display_name(), "MP3");
-        assert_eq!(ContentType::Ape.display_name(), "APE");
-        assert_eq!(ContentType::Alac.display_name(), "ALAC");
-        assert_eq!(ContentType::Aac.display_name(), "AAC");
-        assert_eq!(ContentType::Pcm.display_name(), "PCM");
-        assert_eq!(ContentType::Opus.display_name(), "Opus");
-        assert_eq!(ContentType::Vorbis.display_name(), "Vorbis");
-        assert_eq!(ContentType::WavPack.display_name(), "WavPack");
-        assert_eq!(ContentType::Dsd.display_name(), "DSD");
-        assert_eq!(ContentType::Jpeg.display_name(), "JPEG");
-    }
-
-    #[test]
-    fn file_extension() {
-        assert_eq!(ContentType::Flac.file_extension(), "flac");
-        assert_eq!(ContentType::Mp3.file_extension(), "mp3");
-        assert_eq!(ContentType::Ape.file_extension(), "ape");
-        assert_eq!(ContentType::Alac.file_extension(), "m4a");
-        assert_eq!(ContentType::Aac.file_extension(), "m4a");
-        assert_eq!(ContentType::Pcm.file_extension(), "wav");
-        assert_eq!(ContentType::Opus.file_extension(), "opus");
-        assert_eq!(ContentType::Vorbis.file_extension(), "ogg");
-        assert_eq!(ContentType::WavPack.file_extension(), "wv");
-        assert_eq!(ContentType::Dsd.file_extension(), "dsf");
-        assert_eq!(ContentType::Jpeg.file_extension(), "jpg");
     }
 }

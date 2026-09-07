@@ -116,12 +116,9 @@ unsafe fn decode_audio_streaming_impl(
         StreamingDecodeError::decode(e)
     })?;
 
-    // A by-byte seek (AVSEEK_FLAG_BYTE) jumps straight to a known frame offset --
-    // no seektable consulted, no binary search reading the file's end -- and the
-    // landed frame's sample comes from its own header, so the `start_at_sample`
-    // trim below still reaches the exact sample. Used for FLAC, whose frame byte
-    // is recorded at import; APE has no per-frame byte positions, so it
-    // sample-seeks via its mandatory index instead.
+    // The by-byte seek is for FLAC, whose frame byte is recorded at import; APE
+    // has no per-frame byte positions, so it sample-seeks via its mandatory
+    // index instead.
     //
     // A sample seek costs one jump for a seektable-bearing FLAC (and for APE/MP4)
     // now that AVFMT_FLAG_FAST_SEEK is set. A FLAC with no seektable can't seek at
@@ -131,20 +128,7 @@ unsafe fn decode_audio_streaming_impl(
     // every CUE/FLAC should carry a seektable (issue #226). Keep the bail-out
     // logged.
     if let Some(byte_pos) = seek_to_byte {
-        let ret = av_seek_frame(
-            fmt_ctx,
-            audio.stream_index,
-            byte_pos as i64,
-            AVSEEK_FLAG_BYTE as c_int,
-        );
-        if ret < 0 {
-            warn!(
-                "byte seek to {byte_pos} failed ({}); decoding from the start",
-                av_err_str(ret)
-            );
-        } else {
-            avcodec_flush_buffers(codec_ctx);
-        }
+        seek_to_byte_or_warn(fmt_ctx, codec_ctx, audio.stream_index, byte_pos);
     } else if let Some(sample_pos) = seek_to_sample {
         let target_ts = sample_pos as i64;
         let ret = avformat_seek_file(

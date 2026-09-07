@@ -619,20 +619,7 @@ unsafe fn decode_buffer_to_sink_impl(
     // sample. The `start_at_sample` trim below makes the first output sample
     // exact either way.
     if let Some(byte_pos) = seek_to_byte {
-        let ret = av_seek_frame(
-            fmt_ctx,
-            audio.stream_index,
-            byte_pos as i64,
-            AVSEEK_FLAG_BYTE as c_int,
-        );
-        if ret < 0 {
-            warn!(
-                "byte seek to {byte_pos} failed ({}); decoding from the start",
-                av_err_str(ret)
-            );
-        } else {
-            avcodec_flush_buffers(codec_ctx);
-        }
+        seek_to_byte_or_warn(fmt_ctx, codec_ctx, audio.stream_index, byte_pos);
     } else if let Some(sample_pos) = seek_to_sample {
         seek_to_sample_or_warn(fmt_ctx, audio.stream_index, sample_pos);
     }
@@ -734,6 +721,35 @@ unsafe fn allocate_swr_context(
     }
 
     Ok(swr_ctx)
+}
+
+/// Jump straight to a recorded frame's byte offset: no seektable consulted, no
+/// binary search reading the file's end. The landed frame states its own first
+/// sample, so the caller's `start_at_sample` trim still reaches the exact
+/// sample. A failure is not fatal — the caller decodes from the start instead,
+/// which is correct but reads more of the file than it needs.
+unsafe fn seek_to_byte_or_warn(
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+    codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
+    stream_index: c_int,
+    byte_pos: u64,
+) {
+    use ffmpeg_sys_next::*;
+
+    let ret = av_seek_frame(
+        fmt_ctx,
+        stream_index,
+        byte_pos as i64,
+        AVSEEK_FLAG_BYTE as c_int,
+    );
+    if ret < 0 {
+        warn!(
+            "byte seek to {byte_pos} failed ({}); decoding from the start",
+            av_err_str(ret)
+        );
+    } else {
+        avcodec_flush_buffers(codec_ctx);
+    }
 }
 
 unsafe fn seek_to_sample_or_warn(

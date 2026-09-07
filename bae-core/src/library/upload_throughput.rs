@@ -336,12 +336,6 @@ impl UploadThroughput {
     }
 }
 
-impl Default for UploadThroughput {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 fn prune(samples: &mut VecDeque<(Instant, u64)>, now: Instant, window: Duration) {
     while let Some(&(t, _)) = samples.front() {
         let age = now

@@ -270,23 +270,11 @@ impl DiskImageCache {
             }
         };
         let Some(header_end) = raw.iter().position(|byte| *byte == b'\n') else {
-            warn!(
-                "Discarding the cached image at {}: it has no header",
-                path.display()
-            );
-            self.remove(&path);
-            return None;
+            return self.discard(&path, "it has no header");
         };
         let header = match std::str::from_utf8(&raw[..header_end]) {
             Ok(header) => header,
-            Err(error) => {
-                warn!(
-                    "Discarding the cached image at {}: its header is invalid: {error}",
-                    path.display()
-                );
-                self.remove(&path);
-                return None;
-            }
+            Err(error) => return self.discard(&path, &format!("its header is invalid: {error}")),
         };
         let entry = if header == "none" {
             DiskImageEntry::Nothing
@@ -298,12 +286,7 @@ impl DiskImageCache {
                 content_type,
             })
         } else {
-            warn!(
-                "Discarding the cached image at {}: its entry kind is invalid",
-                path.display()
-            );
-            self.remove(&path);
-            return None;
+            return self.discard(&path, "its entry kind is invalid");
         };
 
         if let Err(error) = std::fs::File::open(&path).and_then(|file| {
@@ -422,6 +405,17 @@ impl DiskImageCache {
             }
         }
         Ok(entries)
+    }
+
+    /// A cache file that cannot be read back as an entry is deleted; the caller
+    /// then has nothing cached and fetches the image again.
+    fn discard(&self, path: &std::path::Path, reason: &str) -> Option<DiskImageEntry> {
+        warn!(
+            "Discarding the cached image at {}: {reason}",
+            path.display()
+        );
+        self.remove(path);
+        None
     }
 
     fn remove(&self, path: &std::path::Path) -> bool {

@@ -34,6 +34,28 @@ pub mod srp;
 pub mod stream;
 pub mod tlv8;
 
+use pairing::PairingError;
+use tlv8::{tlv_type, Tlv8};
+
 pub use capabilities::{AirPlayCapabilities, Dialect, RaopCodec, RaopEncryption, RaopParams};
 pub use discovery::AirPlayDevice;
 pub(crate) use discovery::AirPlayDiscovery;
+
+/// The receiver's Error TLV, if it sent one: pairing stops on any nonzero
+/// code. Both dialects' pairing steps check this before reading anything else.
+fn check_no_error(tlv: &Tlv8) -> Result<(), PairingError> {
+    match tlv.get_u8(tlv_type::ERROR) {
+        Some(code) if code != 0 => Err(PairingError::Rejected(code)),
+        _ => Ok(()),
+    }
+}
+
+/// The step the receiver's response has to be answering.
+fn expect_state(tlv: &Tlv8, expected: u8) -> Result<(), PairingError> {
+    let actual = tlv.get_u8(tlv_type::STATE);
+    if actual == Some(expected) {
+        Ok(())
+    } else {
+        Err(PairingError::UnexpectedState { expected, actual })
+    }
+}

@@ -807,13 +807,6 @@ impl RealtimeProbeOutput {
     }
 }
 
-#[cfg(feature = "test-utils")]
-impl Default for RealtimeProbeOutput {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// The device the CPU probe measures through: every output it opens paces to
 /// real time and discards its samples.
 #[cfg(feature = "test-utils")]

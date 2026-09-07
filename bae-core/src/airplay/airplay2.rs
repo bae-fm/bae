@@ -29,6 +29,7 @@ use super::ap2_channel::hkdf32;
 use super::pairing::PairingError;
 use super::secure_rng::SecureRng;
 use super::tlv8::{state, tlv_type, Tlv8};
+use super::{check_no_error, expect_state};
 
 /// The nonce prefix for the pair-verify messages: four zero bytes then the label.
 fn pair_verify_nonce(label: &[u8; 8]) -> Nonce {
@@ -164,28 +165,6 @@ impl PairVerify {
         check_no_error(&tlv)?;
         expect_state(&tlv, state::M4)?;
         Ok(shared)
-    }
-}
-
-impl Default for PairVerify {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-fn check_no_error(tlv: &Tlv8) -> Result<(), PairingError> {
-    match tlv.get_u8(tlv_type::ERROR) {
-        Some(code) if code != 0 => Err(PairingError::Rejected(code)),
-        _ => Ok(()),
-    }
-}
-
-fn expect_state(tlv: &Tlv8, expected: u8) -> Result<(), PairingError> {
-    let actual = tlv.get_u8(tlv_type::STATE);
-    if actual == Some(expected) {
-        Ok(())
-    } else {
-        Err(PairingError::UnexpectedState { expected, actual })
     }
 }
 

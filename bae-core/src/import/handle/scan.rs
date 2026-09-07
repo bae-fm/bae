@@ -340,13 +340,13 @@ impl ImportServiceHandle {
                     &current.draft.tracks,
                 );
                 let cover = crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot);
-                let _commit = self.folder_state_commit.lock().await;
-                self.editable_candidate_revision_for_commit(
-                    &candidate_key,
-                    &content_hash,
-                    current.file_edit_revision,
-                )
-                .await?;
+                let _commit = self
+                    .commit_lock_for_revision(
+                        &candidate_key,
+                        &content_hash,
+                        current.file_edit_revision,
+                    )
+                    .await?;
                 return Ok(self
                     .preparations
                     .apply_file_tags(
@@ -397,13 +397,13 @@ impl ImportServiceHandle {
                     metadata.draft.tracks,
                     &current.draft.tracks,
                 );
-                let _commit = self.folder_state_commit.lock().await;
-                self.editable_candidate_revision_for_commit(
-                    &candidate_key,
-                    &content_hash,
-                    current.file_edit_revision,
-                )
-                .await?;
+                let _commit = self
+                    .commit_lock_for_revision(
+                        &candidate_key,
+                        &content_hash,
+                        current.file_edit_revision,
+                    )
+                    .await?;
                 return Ok(self
                     .preparations
                     .apply_source(
@@ -443,13 +443,9 @@ impl ImportServiceHandle {
         let mut draft = candidate.blank_source().draft;
         draft.tracks =
             crate::import::edits::preserve_track_decisions(draft.tracks, &current.draft.tracks);
-        let _commit = self.folder_state_commit.lock().await;
-        self.editable_candidate_revision_for_commit(
-            &candidate_key,
-            &content_hash,
-            current.file_edit_revision,
-        )
-        .await?;
+        let _commit = self
+            .commit_lock_for_revision(&candidate_key, &content_hash, current.file_edit_revision)
+            .await?;
         Ok(self
             .preparations
             .apply_source(
