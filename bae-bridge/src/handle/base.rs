@@ -17,24 +17,19 @@ impl AppHandle {
             .into_iter()
             .map(BridgeSortCriterion::into_core)
             .collect::<Vec<_>>();
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut query = services.subscribe_album_page(&sort, offset, limit);
-            loop {
-                match query.next().await {
-                    Ok(raw) => {
-                        let (rows, total_count) = services.resolve_album_page(raw);
-                        callback.on_value(crate::types::BridgeAlbumPage {
-                            rows: rows.into_iter().map(BridgeAlbum::from_core).collect(),
-                            total_count,
-                        });
-                    }
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
+        self.subscribe_live_query(
+            move |services| services.subscribe_album_page(&sort, offset, limit),
+            move |services, value| match value {
+                Ok(raw) => {
+                    let (rows, total_count) = services.resolve_album_page(raw);
+                    callback.on_value(crate::types::BridgeAlbumPage {
+                        rows: rows.into_iter().map(BridgeAlbum::from_core).collect(),
+                        total_count,
+                    });
                 }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     /// 0-based position of `album_id` under the given sort, or `None` if the
@@ -70,27 +65,22 @@ impl AppHandle {
             .into_iter()
             .map(BridgeComposerSortCriterion::into_core)
             .collect::<Vec<_>>();
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut query = services.subscribe_composer_page(&sort, offset, limit);
-            loop {
-                match query.next().await {
-                    Ok(raw) => {
-                        let (rows, total_count) = services.resolve_composer_page(raw);
-                        callback.on_value(crate::types::BridgeComposerPage {
-                            rows: rows
-                                .into_iter()
-                                .map(BridgeComposerSummary::from_core)
-                                .collect(),
-                            total_count,
-                        });
-                    }
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
+        self.subscribe_live_query(
+            move |services| services.subscribe_composer_page(&sort, offset, limit),
+            move |services, value| match value {
+                Ok(raw) => {
+                    let (rows, total_count) = services.resolve_composer_page(raw);
+                    callback.on_value(crate::types::BridgeComposerPage {
+                        rows: rows
+                            .into_iter()
+                            .map(BridgeComposerSummary::from_core)
+                            .collect(),
+                        total_count,
+                    });
                 }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     pub fn subscribe_composer_detail(
@@ -98,22 +88,17 @@ impl AppHandle {
         artist_id: String,
         callback: Box<dyn crate::types::ComposerDetailCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut query = services.subscribe_composer_detail(&artist_id);
-            loop {
-                match query.next().await {
-                    Ok(projection) => callback.on_value(
-                        services
-                            .resolve_composer_detail_projection(projection)
-                            .map(BridgeComposerDetail::from_core),
-                    ),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_live_query(
+            move |services| services.subscribe_composer_detail(&artist_id),
+            move |services, value| match value {
+                Ok(projection) => callback.on_value(
+                    services
+                        .resolve_composer_detail_projection(projection)
+                        .map(BridgeComposerDetail::from_core),
+                ),
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     pub fn subscribe_work_detail(
@@ -121,22 +106,17 @@ impl AppHandle {
         work_id: String,
         callback: Box<dyn crate::types::WorkDetailCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut query = services.subscribe_work_detail(&work_id);
-            loop {
-                match query.next().await {
-                    Ok(projection) => callback.on_value(
-                        services
-                            .resolve_work_detail_projection(projection)
-                            .map(BridgeWorkDetail::from_core),
-                    ),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_live_query(
+            move |services| services.subscribe_work_detail(&work_id),
+            move |services, value| match value {
+                Ok(projection) => callback.on_value(
+                    services
+                        .resolve_work_detail_projection(projection)
+                        .map(BridgeWorkDetail::from_core),
+                ),
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     pub fn subscribe_artist_page(
@@ -150,27 +130,22 @@ impl AppHandle {
             .into_iter()
             .map(BridgeArtistSortCriterion::into_core)
             .collect::<Vec<_>>();
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut query = services.subscribe_artist_page(&sort, offset, limit);
-            loop {
-                match query.next().await {
-                    Ok(raw) => {
-                        let (rows, total_count) = services.resolve_artist_page(raw);
-                        callback.on_value(crate::types::BridgeArtistPage {
-                            rows: rows
-                                .into_iter()
-                                .map(BridgeArtistSummary::from_core)
-                                .collect(),
-                            total_count,
-                        });
-                    }
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
+        self.subscribe_live_query(
+            move |services| services.subscribe_artist_page(&sort, offset, limit),
+            move |services, value| match value {
+                Ok(raw) => {
+                    let (rows, total_count) = services.resolve_artist_page(raw);
+                    callback.on_value(crate::types::BridgeArtistPage {
+                        rows: rows
+                            .into_iter()
+                            .map(BridgeArtistSummary::from_core)
+                            .collect(),
+                        total_count,
+                    });
                 }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     pub fn subscribe_artist_detail(
@@ -178,22 +153,17 @@ impl AppHandle {
         artist_id: String,
         callback: Box<dyn crate::types::ArtistDetailCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut query = services.subscribe_artist_detail(&artist_id);
-            loop {
-                match query.next().await {
-                    Ok(projection) => callback.on_value(
-                        services
-                            .resolve_artist_detail_projection(projection)
-                            .map(BridgeArtistDetail::from_core),
-                    ),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_live_query(
+            move |services| services.subscribe_artist_detail(&artist_id),
+            move |services, value| match value {
+                Ok(projection) => callback.on_value(
+                    services
+                        .resolve_artist_detail_projection(projection)
+                        .map(BridgeArtistDetail::from_core),
+                ),
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     /// Filesystem path for the user's own external file behind a library file
@@ -222,19 +192,13 @@ impl AppHandle {
         album_id: String,
         callback: Box<dyn crate::types::AlbumDetailCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let service_runtime = runtime.clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_album_detail_values(&service_runtime, album_id);
-            while let Some(value) = values.recv().await {
-                match value {
-                    Ok(value) => callback.on_value(value.map(BridgeAlbumDetail::from_core)),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_channel(
+            move |services, runtime| services.subscribe_album_detail_values(runtime, album_id),
+            move |value| match value {
+                Ok(value) => callback.on_value(value.map(BridgeAlbumDetail::from_core)),
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     pub fn subscribe_release_detail(
@@ -242,19 +206,13 @@ impl AppHandle {
         release_id: String,
         callback: Box<dyn crate::types::ReleaseDetailCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let service_runtime = runtime.clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_release_detail_values(&service_runtime, release_id);
-            while let Some(value) = values.recv().await {
-                match value {
-                    Ok(value) => callback.on_value(value.map(BridgeRelease::from_core)),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_channel(
+            move |services, runtime| services.subscribe_release_detail_values(runtime, release_id),
+            move |value| match value {
+                Ok(value) => callback.on_value(value.map(BridgeRelease::from_core)),
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     pub fn subscribe_storage_projection(
@@ -265,28 +223,24 @@ impl AppHandle {
         limit: u64,
         callback: Box<dyn crate::types::StorageProjectionCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let service_runtime = runtime.clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_storage_values(
-                &service_runtime,
-                sort.into_core(),
-                filter.into_core(),
-                offset,
-                limit,
-            );
-            while let Some(value) = values.recv().await {
-                match value {
-                    Ok(value) => callback.on_value(crate::types::BridgeStorageProjection {
-                        page: BridgeStoragePage::from_core(value.page),
-                        total_size: value.total_size,
-                    }),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_channel(
+            move |services, runtime| {
+                services.subscribe_storage_values(
+                    runtime,
+                    sort.into_core(),
+                    filter.into_core(),
+                    offset,
+                    limit,
+                )
+            },
+            move |value| match value {
+                Ok(value) => callback.on_value(crate::types::BridgeStorageProjection {
+                    page: BridgeStoragePage::from_core(value.page),
+                    total_size: value.total_size,
+                }),
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     pub fn subscribe_library_search(
@@ -294,9 +248,7 @@ impl AppHandle {
         query: String,
         callback: Box<dyn crate::types::LibrarySearchCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
+        self.live_subscription(move |services, _| async move {
             let parsed = bae_core::library::LibrarySearchQuery::parse(&query);
             let Some(parsed) = parsed else {
                 callback.on_value(BridgeSearchResults::from_core(
@@ -314,8 +266,7 @@ impl AppHandle {
                     Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        })
     }
 
     /// Existing library artists matching a name or exact stored ID. A blank
@@ -448,19 +399,13 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::QueueCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let service_runtime = runtime.clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_queue_values(&service_runtime);
-            while let Some(value) = values.recv().await {
-                match value {
-                    Ok(value) => callback.on_value(BridgeQueueSnapshot::from_core(value)),
-                    Err(error) => callback.on_error(BridgeError::internal(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_channel(
+            |services, runtime| services.subscribe_queue_values(runtime),
+            move |value| match value {
+                Ok(value) => callback.on_value(BridgeQueueSnapshot::from_core(value)),
+                Err(error) => callback.on_error(BridgeError::internal(error)),
+            },
+        )
     }
 
     pub fn subscribe_queue_upcoming_page(
@@ -469,40 +414,25 @@ impl AppHandle {
         limit: u32,
         callback: Box<dyn crate::types::QueueUpcomingCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let service_runtime = runtime.clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values =
-                services.subscribe_queue_upcoming_values(&service_runtime, offset, limit);
-            while let Some(value) = values.recv().await {
-                match value {
-                    Ok(value) => callback.on_value(BridgeQueueUpcomingPage::from_core(value)),
-                    Err(error) => callback.on_error(BridgeError::internal(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_channel(
+            move |services, runtime| {
+                services.subscribe_queue_upcoming_values(runtime, offset, limit)
+            },
+            move |value| match value {
+                Ok(value) => callback.on_value(BridgeQueueUpcomingPage::from_core(value)),
+                Err(error) => callback.on_error(BridgeError::internal(error)),
+            },
+        )
     }
 
     pub fn subscribe_playback_values(
         &self,
         callback: Box<dyn crate::types::PlaybackValuesCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_playback_values();
-            callback.on_value(BridgePlaybackValues::from_core(
-                values.borrow_and_update().clone(),
-            ));
-            while values.changed().await.is_ok() {
-                callback.on_value(BridgePlaybackValues::from_core(
-                    values.borrow_and_update().clone(),
-                ));
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_watch(
+            |services| services.subscribe_playback_values(),
+            move |value| callback.on_value(BridgePlaybackValues::from_core(value.clone())),
+        )
     }
 
     /// Resolve a list of IDs (album or track) to track IDs.
@@ -753,20 +683,14 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::DownloadCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_download_values();
-            callback.on_value(crate::types::BridgeDownloadSnapshot::from_core(
-                values.borrow_and_update().clone(),
-            ));
-            while values.changed().await.is_ok() {
+        self.subscribe_watch(
+            |services| services.subscribe_download_values(),
+            move |value| {
                 callback.on_value(crate::types::BridgeDownloadSnapshot::from_core(
-                    values.borrow_and_update().clone(),
-                ));
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+                    value.clone(),
+                ))
+            },
+        )
     }
 
     /// Enqueue releases to pin for offline. They join the in-memory serial

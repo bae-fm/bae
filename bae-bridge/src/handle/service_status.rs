@@ -33,19 +33,6 @@ impl crate::types::BridgeMcpServerError {
     }
 }
 
-#[cfg(feature = "cast")]
-impl crate::types::BridgeCastStatus {
-    pub(super) fn from_core(status: bae_cast::CastStatus) -> Self {
-        use crate::types::BridgeCastStatus;
-        match status {
-            bae_cast::CastStatus::NotCasting => BridgeCastStatus::NotCasting,
-            bae_cast::CastStatus::Casting { device_name } => {
-                BridgeCastStatus::Casting { device_name }
-            }
-        }
-    }
-}
-
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeSubsonicServerStatus {
     pub(super) fn from_core(status: bae_desktop::SubsonicServerStatus) -> Self {

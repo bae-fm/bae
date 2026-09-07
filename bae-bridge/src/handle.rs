@@ -61,6 +61,7 @@ pub use import_list::ImportListSubscription;
 #[cfg(feature = "desktop")]
 mod import_projection;
 mod library_projection;
+mod live;
 mod playback_persistence;
 mod queue_projection;
 mod service_status;

@@ -87,13 +87,6 @@ fn build_airplay_sink(
     }
 }
 
-/// The current cast status, snapshot for the UI.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CastStatus {
-    NotCasting,
-    Casting { device_name: String },
-}
-
 /// A failure starting a cast session.
 #[derive(Debug)]
 pub enum CastError {
@@ -201,11 +194,11 @@ impl EphemeralServer {
     }
 }
 
-/// Owns everything casting needs: device discovery, the ephemeral server (lazily
-/// started on the first cast, stopped when casting ends), and the current status.
-/// A background task follows the playback service's remote-output status to keep
-/// the status and the server lifecycle in step — including a receiver-side end
-/// the service detects on its own.
+/// Owns everything casting needs: device discovery and the ephemeral server
+/// (lazily started on the first cast, stopped when casting ends). A background
+/// task follows the playback service's remote-output status to keep the server
+/// lifecycle in step with it — including a receiver-side end the service detects
+/// on its own.
 ///
 /// The whole of it is gated on the library's `cast_enabled` setting, which the
 /// controller reads from config at each entry point rather than mirroring: while
@@ -218,12 +211,8 @@ pub struct CastController {
     /// a host's browser reports in. Chosen once, per host.
     discovery: Mutex<RendererDiscovery>,
     devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
-    inner: Arc<Mutex<Inner>>,
-}
-
-struct Inner {
-    server: Option<EphemeralServer>,
-    status: CastStatus,
+    /// The ephemeral server, once a cast has started one.
+    server: Arc<Mutex<Option<EphemeralServer>>>,
 }
 
 impl CastController {
@@ -243,10 +232,7 @@ impl CastController {
             services,
             discovery: Mutex::new(discovery),
             devices_tx,
-            inner: Arc::new(Mutex::new(Inner {
-                server: None,
-                status: CastStatus::NotCasting,
-            })),
+            server: Arc::new(Mutex::new(None)),
         });
         for devices in receivers {
             controller.spawn_device_list_forwarder(devices);
@@ -296,33 +282,22 @@ impl CastController {
         });
     }
 
-    /// Follow the playback service's remote-output status: update the
-    /// status, and stop the ephemeral server once casting ends (a user stop or a
-    /// receiver-side end the service surfaced on its own).
+    /// Follow the playback service's remote-output status and stop the ephemeral
+    /// server once casting ends (a user stop or a receiver-side end the service
+    /// surfaced on its own).
     fn spawn_status_follower(&self) {
         let mut progress = self.services.subscribe_playback_progress();
-        let inner = self.inner.clone();
+        let slot = self.server.clone();
         self.runtime.spawn(async move {
             while let Some(event) = progress.recv().await {
-                let PlaybackProgress::RemoteStatusChanged { device_name } = event else {
+                let PlaybackProgress::RemoteStatusChanged { device_name: None } = event else {
                     continue;
                 };
-                match device_name {
-                    Some(name) => {
-                        inner.lock().unwrap().status = CastStatus::Casting { device_name: name };
-                    }
-                    None => {
-                        // Take the server out under the lock, then stop it off the
-                        // lock (its shutdown awaits).
-                        let server = {
-                            let mut guard = inner.lock().unwrap();
-                            guard.status = CastStatus::NotCasting;
-                            guard.server.take()
-                        };
-                        if let Some(server) = server {
-                            server.stop().await;
-                        }
-                    }
+                // Take the server out under the lock, then stop it off the lock
+                // (its shutdown awaits).
+                let server = slot.lock().unwrap().take();
+                if let Some(server) = server {
+                    server.stop().await;
                 }
             }
         });
@@ -380,10 +355,6 @@ impl CastController {
         self.devices_tx.subscribe()
     }
 
-    pub fn status(&self) -> CastStatus {
-        self.inner.lock().unwrap().status.clone()
-    }
-
     /// Play to the device named by `device_id`: build its control channel from
     /// the device's connection (Cast or UPnP), ensure the ephemeral server is
     /// serving, and hand the playback service the channel plus the media source
@@ -407,9 +378,6 @@ impl CastController {
         } = &device.connection
         {
             let sink = build_airplay_sink(*addr, *port, capabilities)?;
-            self.inner.lock().unwrap().status = CastStatus::Casting {
-                device_name: device.name.clone(),
-            };
             self.services
                 .playback_play_on_airplay(sink, device.name, AIRPLAY_LATENCY_FRAMES);
             return Ok(());
@@ -455,9 +423,8 @@ impl CastController {
 
         self.ensure_server().await?;
         let (stream_provider, cover_provider) = {
-            let inner = self.inner.lock().unwrap();
-            let server = inner
-                .server
+            let slot = self.server.lock().unwrap();
+            let server = slot
                 .as_ref()
                 .expect("ensure_server installed the ephemeral server");
             (
@@ -466,9 +433,6 @@ impl CastController {
             )
         };
 
-        self.inner.lock().unwrap().status = CastStatus::Casting {
-            device_name: device.name.clone(),
-        };
         self.services.playback_play_on(
             channel,
             device.name,
@@ -484,13 +448,13 @@ impl CastController {
     }
 
     async fn ensure_server(&self) -> Result<(), CastError> {
-        if self.inner.lock().unwrap().server.is_some() {
+        if self.server.lock().unwrap().is_some() {
             return Ok(());
         }
         let server = EphemeralServer::start(self.services.clone())
             .await
             .map_err(CastError::Serving)?;
-        self.inner.lock().unwrap().server = Some(server);
+        *self.server.lock().unwrap() = Some(server);
         Ok(())
     }
 }

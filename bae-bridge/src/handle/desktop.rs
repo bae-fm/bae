@@ -57,39 +57,23 @@ impl AppHandle {
         callback: Box<dyn crate::types::CastDevicesCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
         let cast = self.cast.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut devices = cast.subscribe_devices();
-            callback.on_value(
-                devices
-                    .borrow_and_update()
-                    .clone()
-                    .into_iter()
-                    .map(crate::types::BridgeCastDevice::from_core)
-                    .collect(),
-            );
-            while devices.changed().await.is_ok() {
+        self.subscribe_watch(
+            move |_| cast.subscribe_devices(),
+            move |devices| {
                 callback.on_value(
                     devices
-                        .borrow_and_update()
-                        .clone()
-                        .into_iter()
+                        .iter()
+                        .cloned()
                         .map(crate::types::BridgeCastDevice::from_core)
                         .collect(),
-                );
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+                )
+            },
+        )
     }
 
     /// Stop casting and return playback to local output.
     pub fn stop_casting(&self) {
         self.cast.stop_casting();
-    }
-
-    /// Whether playback is currently on a Cast device, and which.
-    pub fn get_cast_status(&self) -> crate::types::BridgeCastStatus {
-        crate::types::BridgeCastStatus::from_core(self.cast.status())
     }
 }
 
@@ -269,25 +253,19 @@ impl AppHandle {
         source_group_id: Option<String>,
         callback: Box<dyn crate::types::ReleaseLibraryStatusCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values =
+        self.subscribe_live_query(
+            move |services| {
                 services.subscribe_release_library_status(bae_core::db::LibraryCheck {
                     release_id,
                     source: source.into_core(),
                     source_group_id,
-                });
-            loop {
-                match values.next().await {
-                    Ok(value) => {
-                        callback.on_value(crate::types::BridgeLibraryStatus::from_core(value))
-                    }
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+                })
+            },
+            move |_, value| match value {
+                Ok(value) => callback.on_value(crate::types::BridgeLibraryStatus::from_core(value)),
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     pub async fn add_watched_folder(
@@ -803,20 +781,12 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::OutputCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_output_values();
-            callback.on_value(crate::types::BridgeOutputSnapshot::from_core(
-                values.borrow_and_update().clone(),
-            ));
-            while values.changed().await.is_ok() {
-                callback.on_value(crate::types::BridgeOutputSnapshot::from_core(
-                    values.borrow_and_update().clone(),
-                ));
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_watch(
+            |services| services.subscribe_output_values(),
+            move |value| {
+                callback.on_value(crate::types::BridgeOutputSnapshot::from_core(value.clone()))
+            },
+        )
     }
 
     /// Enqueue a verbatim release export to `target_dir`. It joins the in-memory

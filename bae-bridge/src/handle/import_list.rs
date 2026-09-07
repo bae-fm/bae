@@ -67,21 +67,16 @@ impl AppHandle {
         candidate_key: String,
         callback: Box<dyn crate::types::ImportCandidateCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let service_runtime = runtime.clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values =
-                services.subscribe_import_candidate_values(&service_runtime, candidate_key);
-            while let Some(value) = values.recv().await {
-                match value {
-                    Ok(value) => callback
-                        .on_value(value.map(crate::types::BridgeImportCandidateDetail::from_core)),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_channel(
+            move |services, runtime| {
+                services.subscribe_import_candidate_values(runtime, candidate_key)
+            },
+            move |value| match value {
+                Ok(value) => callback
+                    .on_value(value.map(crate::types::BridgeImportCandidateDetail::from_core)),
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     /// What is in flight for one key right now — the read a view does once
@@ -111,9 +106,7 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::CandidateRuntimeCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
+        self.live_subscription(move |services, _| async move {
             let (initial, mut changes) = services.subscribe_candidate_runtime();
             for (key, runtime) in initial {
                 callback.on_change(crate::types::BridgeCandidateRuntimeChange::Updated {
@@ -138,8 +131,7 @@ impl AppHandle {
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }
             }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        })
     }
 }
 

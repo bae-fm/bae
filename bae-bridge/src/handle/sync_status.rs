@@ -53,56 +53,34 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::ConfigCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_config_changes();
-            callback.on_value(BridgeConfig::from_core(&values.borrow_and_update()));
-            while values.changed().await.is_ok() {
-                callback.on_value(BridgeConfig::from_core(&values.borrow_and_update()));
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_watch(
+            |services| services.subscribe_config_changes(),
+            move |value| callback.on_value(BridgeConfig::from_core(value)),
+        )
     }
 
     pub fn subscribe_sync_status(
         &self,
         callback: Box<dyn crate::types::SyncStatusCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_sync_status_values();
-            callback.on_value(BridgeSyncStatusSnapshot::from_core(
-                values.borrow_and_update().clone(),
-            ));
-            while values.changed().await.is_ok() {
-                callback.on_value(BridgeSyncStatusSnapshot::from_core(
-                    values.borrow_and_update().clone(),
-                ));
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        self.subscribe_watch(
+            |services| services.subscribe_sync_status_values(),
+            move |value| callback.on_value(BridgeSyncStatusSnapshot::from_core(value.clone())),
+        )
     }
 
     pub fn subscribe_eager_cache_fill_status(
         &self,
         callback: Box<dyn crate::types::EagerCacheFillStatusCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
-            let mut values = services.subscribe_eager_cache_fill_status();
-            callback.on_value(crate::types::BridgeEagerCacheFillStatus::from_core(
-                values.borrow_and_update().clone(),
-            ));
-            while values.changed().await.is_ok() {
+        self.subscribe_watch(
+            |services| services.subscribe_eager_cache_fill_status(),
+            move |value| {
                 callback.on_value(crate::types::BridgeEagerCacheFillStatus::from_core(
-                    values.borrow_and_update().clone(),
-                ));
-            }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+                    value.clone(),
+                ))
+            },
+        )
     }
 
     pub fn cancel_eager_cache_fill(&self) {
@@ -128,9 +106,7 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::OutboxCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        let services = self.services.clone();
-        let runtime = self.runtime.handle().clone();
-        let task = crate::operation_runtime::spawn(runtime, move || async move {
+        self.live_subscription(move |services, _| async move {
             let mut values = services.subscribe_outbox_values();
             let current = { values.borrow_and_update().clone() };
             let initial = match current {
@@ -157,8 +133,7 @@ impl AppHandle {
                     }
                 }
             }
-        });
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        })
     }
 
     /// Retry failed uploads now: drain coven's upload queue immediately instead
