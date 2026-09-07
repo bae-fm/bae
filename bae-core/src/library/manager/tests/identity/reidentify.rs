@@ -641,7 +641,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     crate::discogs::client::seed_master_cache(
         discogs_master_id,
         Some(1996),
-        serde_json::json!({ "id": discogs_master_id, "year": 1996 }).to_string(),
+        serde_json::json!({ "id": discogs_master_id.parse::<u64>().unwrap(), "year": 1996 }).to_string(),
     );
     let discogs_raw = serde_json::json!({
         "id": discogs_release_id.parse::<u64>().unwrap(),
