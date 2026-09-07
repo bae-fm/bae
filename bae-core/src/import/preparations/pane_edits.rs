@@ -206,29 +206,6 @@ impl CandidatePreparations {
         .await
     }
 
-    /// Replace the artist assignments of every named track in one transaction.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_track_artists(
-        &self,
-        content_hash: &str,
-        track_ids: &[String],
-        assignments: &TrackArtistAssignments,
-    ) -> Result<u64, LibraryError> {
-        if track_ids.is_empty() {
-            return Err(LibraryError::Import(
-                "a track artist fill must name at least one track".into(),
-            ));
-        }
-        let track_ids = track_ids.to_vec();
-        let assignments = assignments.clone();
-        self.edit_candidate(None, content_hash, None, None, move |prep| {
-            fill_track_artists(&mut prep.metadata.draft, &track_ids, &assignments)?;
-            prep.assets_prepared = false;
-            Ok(())
-        })
-        .await
-    }
-
     pub async fn set_track_artists_prepared(
         &self,
         watched_folder_path: &str,

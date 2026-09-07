@@ -208,16 +208,11 @@ impl PlaybackService {
         self.library_manager.record_telemetry(event);
     }
 
-    /// Restore playback from the device-local resume cache at startup, unless
-    /// "Restore on launch" is off (the row is kept either way — it stays the
-    /// crash-safe resume point). A present-and-valid row replays; a corrupt row
-    /// (DB-structural or a per-lane out-of-domain value) is counted and cleared;
-    /// an absent row or a read failure starts fresh.
-    pub(super) async fn restore_from_cache(&mut self, restore_playback: bool) {
-        if !restore_playback {
-            debug!("restore on launch is off; starting with nothing in playback");
-            return;
-        }
+    /// Restore playback from the device-local resume cache at startup. A
+    /// present-and-valid row replays; a corrupt row (DB-structural or a per-lane
+    /// out-of-domain value) is counted and cleared; an absent row or a read
+    /// failure starts fresh.
+    pub(super) async fn restore_from_cache(&mut self) {
         use crate::db::LoadedPlaybackState;
         match self.library_manager.load_playback_state().await {
             Ok(LoadedPlaybackState::Present(state)) => match PersistedPlayback::from_row(state) {
@@ -755,7 +750,13 @@ impl PlaybackService {
                     first_audio_pending: None,
                     renderer: Renderer::Local,
                 };
-                service.restore_from_cache(restore_playback).await;
+                // "Restore on launch" off starts with nothing in playback; the
+                // row is kept either way — it stays the crash-safe resume point.
+                if restore_playback {
+                    service.restore_from_cache().await;
+                } else {
+                    debug!("restore on launch is off; starting with nothing in playback");
+                }
                 service.run().await;
             });
         });

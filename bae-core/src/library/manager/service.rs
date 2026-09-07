@@ -19,9 +19,7 @@ impl LibraryManager {
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
         remote_images: crate::import::cover_art::RemoteImageCache,
     ) -> Result<Self, coven::DbError> {
-        let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
         let uploads = crate::library::live_uploads::LiveUploads::new();
-
         let (observer, observer_events) =
             crate::sync::upload_observer::ReleaseUploadObserver::new(uploads.clone());
         let observer = Arc::new(observer);
@@ -54,9 +52,72 @@ impl LibraryManager {
                 coven::CovenError::Database(error) => *error,
                 other => coven::DbError::Message(other.to_string()),
             })?;
-        let database = Database::from_handle(handle.clone(), clock.clone(), ids.clone());
-        let sync_status = SyncStatus::new(database.clone());
+        Ok(Self::assemble(
+            Database::from_handle(handle, clock.clone(), ids.clone()),
+            config_handle,
+            clock,
+            ids,
+            diagnostics,
+            runtime_handle,
+            remote_images,
+            cloudkit_ops,
+            uploads,
+            observer,
+            observer_events,
+        ))
+    }
 
+    /// Create a library manager over an already-open database handle. Production
+    /// uses [`Self::open`] so the upload observer is installed into coven before
+    /// sync starts; this constructor remains for tests that exercise database-only
+    /// manager behavior.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        database: Database,
+        config_handle: Arc<ConfigHandle>,
+        clock: ClockRef,
+        ids: IdRef,
+        diagnostics: Diagnostics,
+        runtime_handle: tokio::runtime::Handle,
+        remote_images: crate::import::cover_art::RemoteImageCache,
+    ) -> Self {
+        let uploads = crate::library::live_uploads::LiveUploads::new();
+        let (observer, observer_events) =
+            crate::sync::upload_observer::ReleaseUploadObserver::new(uploads.clone());
+        Self::assemble(
+            database,
+            config_handle,
+            clock,
+            ids,
+            diagnostics,
+            runtime_handle,
+            remote_images,
+            None,
+            uploads,
+            Arc::new(observer),
+            observer_events,
+        )
+    }
+
+    /// The construction both constructors share: everything downstream of an open
+    /// database and a live upload observer, through to a manager with its workers
+    /// running. `cloudkit_ops` is `None` where no CloudKit host was handed in.
+    #[allow(clippy::too_many_arguments)]
+    fn assemble(
+        database: Database,
+        config_handle: Arc<ConfigHandle>,
+        clock: ClockRef,
+        ids: IdRef,
+        diagnostics: Diagnostics,
+        runtime_handle: tokio::runtime::Handle,
+        remote_images: crate::import::cover_art::RemoteImageCache,
+        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+        uploads: crate::library::live_uploads::LiveUploads,
+        observer: Arc<crate::sync::upload_observer::ReleaseUploadObserver>,
+        observer_events: crate::sync::upload_observer::UploadObserverEvents,
+    ) -> Self {
+        let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
+        let sync_status = SyncStatus::new(database.clone());
         let sync = SyncController::new(
             config_handle.clone(),
             database.clone(),
@@ -64,7 +125,6 @@ impl LibraryManager {
             cloudkit_ops,
             diagnostics.clone(),
         );
-
         let manager = LibraryManager {
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             preparations: crate::import::CandidatePreparations::new(database.clone()),
@@ -87,62 +147,6 @@ impl LibraryManager {
                 crate::library::output_snapshot::build_output_snapshot,
             ),
             _upload_observer: observer,
-        };
-        manager.start_upload_observer_events(observer_events);
-        manager.start_queue_workers();
-        Ok(manager)
-    }
-
-    /// Create a library manager over an already-open database handle. Production
-    /// uses [`Self::open`] so the upload observer is installed into coven before
-    /// sync starts; this constructor remains for tests that exercise database-only
-    /// manager behavior.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        database: Database,
-        config_handle: Arc<ConfigHandle>,
-        clock: ClockRef,
-        ids: IdRef,
-        diagnostics: Diagnostics,
-        runtime_handle: tokio::runtime::Handle,
-        remote_images: crate::import::cover_art::RemoteImageCache,
-    ) -> Self {
-        let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
-        let uploads = crate::library::live_uploads::LiveUploads::new();
-        let (observer, observer_events) =
-            crate::sync::upload_observer::ReleaseUploadObserver::new(uploads.clone());
-
-        let sync_status = SyncStatus::new(database.clone());
-
-        let sync = SyncController::new(
-            config_handle.clone(),
-            database.clone(),
-            uploads,
-            None,
-            diagnostics.clone(),
-        );
-        let manager = LibraryManager {
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            preparations: crate::import::CandidatePreparations::new(database.clone()),
-            database,
-            config_handle,
-            remote_images,
-            clock,
-            ids,
-            diagnostics,
-            runtime_handle,
-            event_tx,
-            sync,
-            sync_status,
-            transitions: crate::library::storage_transitions::StorageTransitions::new(),
-            downloads: crate::library::Downloads::new(
-                crate::library::download_snapshot::build_download_snapshot,
-            ),
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            outputs: crate::library::Outputs::new(
-                crate::library::output_snapshot::build_output_snapshot,
-            ),
-            _upload_observer: Arc::new(observer),
         };
         manager.start_upload_observer_events(observer_events);
         manager.start_queue_workers();
@@ -250,21 +254,6 @@ impl LibraryManager {
         self.config_handle
             .update(|c| c.cloud_home.storage = storage)
             .expect("set test home storage mode");
-    }
-
-    /// The cloud object key the read path resolves for a remote file: the row's
-    /// stored `cloud_path` on a browsable home, the hashed-by-id key on an opaque
-    /// one. Exposed so a test can assert the read key matches the stored upload key
-    /// without setting up full playback.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn resolve_track_cloud_key_for_test(&self, file_id: &str) -> String {
-        let blob = self
-            .release_file_row_blob_ref(file_id)
-            .await
-            .expect("blob ref");
-        self.database
-            .blob_cloud_key(blob.blob())
-            .expect("cloud key")
     }
 
     /// Read the injected wall clock without handing its service to callers.

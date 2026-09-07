@@ -219,7 +219,9 @@ impl Database {
         self.inner.handle.evict_blob(blob).await
     }
 
-    #[cfg(any(test, feature = "test-utils"))]
+    /// The cloud object key a blob is stored under. Test-only: a test asserts the
+    /// read key matches the stored upload key.
+    #[cfg(test)]
     pub(crate) fn blob_cloud_key(
         &self,
         blob: &coven::BlobRef,

@@ -772,7 +772,7 @@ async fn corrupt_resume_row_ships_resume_cache_corrupt_anomaly() {
         .expect("save the corrupt row");
 
     let (mut service, _progress_rx) = playback_service_over(manager);
-    service.restore_from_cache(true).await;
+    service.restore_from_cache().await;
 
     diagnostics.flush().await.expect("flush succeeds");
     let events: Vec<crate::diagnostics::DiagnosticEvent> = transport

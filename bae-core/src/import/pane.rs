@@ -29,9 +29,6 @@ pub const IMPORT_TRACK_ID_PREFIX: &str = "import-track";
 /// The row identity they carry when the folder's file tags name them.
 pub const FILE_TAG_TRACK_ID_PREFIX: &str = "file-tag-track";
 
-/// The row identity the mapping table's tracks carry for manual entry.
-pub const MANUAL_TRACK_ID_PREFIX: &str = "manual-track";
-
 /// Stable identities for the one candidate draft, independent of whichever
 /// source last populated it.
 pub const CANDIDATE_TRACK_ID_PREFIX: &str = "candidate-track";
@@ -346,53 +343,6 @@ pub(crate) fn file_tags_pane(
         mapping,
         source_discogs_artist_ids: std::collections::BTreeSet::new(),
     })
-}
-
-/// The pane for metadata entered without consulting tags or online sources.
-/// The form begins blank while the mapping retains only physical track slots.
-pub fn manual_pane(
-    files: &CategorizedFiles,
-    durations: &SourceDurations,
-    overlay: &CandidateEditOverlay,
-    track_edits: &[CandidateTrackEdit],
-) -> PanePick {
-    let tracks = crate::import::track_slots::direct_entry_track_rows(files);
-    let source_tracks: Vec<SourceTrack> = tracks
-        .iter()
-        .map(|edit| SourceTrack {
-            edit: edit.clone(),
-            named_by_source: true,
-            duration_ms: None,
-        })
-        .collect();
-    let mapping = table_for(
-        files,
-        durations,
-        &source_tracks,
-        MANUAL_TRACK_ID_PREFIX,
-        TracklistSource::CandidateFiles,
-        None,
-        track_edits,
-    );
-    let seed = ReleaseUserEdit {
-        album_title: String::new(),
-        album_artist_assignments: Vec::new(),
-        album_year: None,
-        pressing: crate::import::PressingEdit::blank(),
-        tracks,
-    };
-    PanePick {
-        release: None,
-        edit: edit_form(seed, MANUAL_TRACK_ID_PREFIX, overlay),
-        mapping,
-        source_discogs_artist_ids: std::collections::BTreeSet::new(),
-    }
-}
-
-/// The table for a folder nobody has picked a release for: every source unit
-/// the folder offers, with what it becomes left open.
-pub fn unpicked_mapping(files: &CategorizedFiles, durations: &SourceDurations) -> MappingTable {
-    mapping_table(files, None, durations)
 }
 
 /// The edit form: the seed with the stored overlay laid over it.

@@ -484,12 +484,6 @@ impl CandidateRuntime {
         }
     }
 
-    /// Feed one event to the recorder directly, for a test that has no bus.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn record_event_for_test(&self, event: &ImportEvent) {
-        self.record_event(event);
-    }
-
     pub(super) fn record_event(&self, event: &ImportEvent) {
         match event {
             ImportEvent::ImportProgress {

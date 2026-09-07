@@ -221,19 +221,6 @@ impl Database {
         .await
     }
 
-    /// The `cloud_path` for an artist image under `storage`: `None` for an
-    /// opaque home, or `{artist_id}/artist-{blob_id}.{ext}` for a browsable one.
-    /// Keyed by the artist and its blob id alone, so it needs no DB lookup.
-    pub fn artist_image_cloud_path_for_storage(
-        &self,
-        storage: crate::config::HomeStorage,
-        artist_id: &str,
-        blob_id: &str,
-        content_type: &ContentType,
-    ) -> Option<String> {
-        artist_image_cloud_path_for_storage(storage, artist_id, blob_id, content_type)
-    }
-
     /// Where the user's own file for a release file lives on disk, or `None`
     /// when the row carries no external registration.
     ///

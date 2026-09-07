@@ -1011,25 +1011,6 @@ impl Database {
             .await
     }
 
-    /// Test-only: flip a release's `remote` gate column directly (bumping
-    /// `_updated_at`). Production flips it through coven's transitions; tests that
-    /// only need a release in a given storage state set it here.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_remote_for_test(&self, release_id: &str, remote: bool) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            let conn = &sql;
-            conn.execute(
-                "UPDATE releases SET remote = ?, _updated_at = ? WHERE id = ?",
-                params![remote, reg, release_id],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
     /// Test-only: write a path fragment onto an existing row directly, the way a
     /// changeset from another device does. coven applies a pulled row straight into
     /// SQLite, so the validation on the row-write never sees it — which is why

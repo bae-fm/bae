@@ -54,7 +54,6 @@ impl AppServices {
     delegate_sync!(identify, identify_start => start(run: crate::identify::IdentifyRunId, key: String, priority: crate::util::rate_limiter::CallPriority) -> ());
     delegate_sync!(identify, identify_cancel => cancel(key: &str) -> ());
     delegate_sync!(identify, identify_toggle_signal => toggle_signal(key: &str, signal: crate::identify::SignalToggle) -> ());
-    delegate_sync!(identify, identify_rerun => rerun(key: &str) -> ());
     delegate_sync!(extraction, extraction_register_analyzer => register_analyzer(analyzer: std::sync::Arc<dyn crate::signals::ArtworkAnalyzer>) -> ());
     delegate_sync!(extraction, extraction_start => start(key: String, source: crate::signals::ExtractionSource, priority: crate::util::rate_limiter::CallPriority) -> ());
     delegate_sync!(extraction, extraction_cancel => cancel(key: &str) -> ());
