@@ -1,5 +1,7 @@
 use super::*;
 
+/// Every key the two device-pairing progress fns can emit. An explicit array
+/// of all variants feeds the production fn; the keys are never restated here.
 pub(super) fn progress_keys() -> Vec<String> {
     let mut keys = Vec::new();
     for progress in [
@@ -17,34 +19,7 @@ pub(super) fn progress_keys() -> Vec<String> {
         BridgeJoiningDeviceJoinProgress::CatchingUp,
         BridgeJoiningDeviceJoinProgress::SavingLibrary,
     ] {
-        let expected = match progress {
-            BridgeJoiningDeviceJoinProgress::WaitingForApproval => {
-                "core.pairing.join.waiting_for_approval"
-            }
-            BridgeJoiningDeviceJoinProgress::RequestingProviderAccess => {
-                "core.pairing.join.requesting_provider_access"
-            }
-            BridgeJoiningDeviceJoinProgress::WaitingForProviderAccess => {
-                "core.pairing.join.waiting_for_provider_access"
-            }
-            BridgeJoiningDeviceJoinProgress::RegisteringDevice => "core.pairing.registering_device",
-            BridgeJoiningDeviceJoinProgress::WaitingForLibrary => {
-                "core.pairing.join.waiting_for_library"
-            }
-            BridgeJoiningDeviceJoinProgress::DownloadingSnapshot { .. } => {
-                "core.pairing.join.downloading_snapshot"
-            }
-            BridgeJoiningDeviceJoinProgress::InstallingSnapshot => {
-                "core.pairing.join.installing_snapshot"
-            }
-            BridgeJoiningDeviceJoinProgress::WaitingForActivation => {
-                "core.pairing.join.waiting_for_activation"
-            }
-            BridgeJoiningDeviceJoinProgress::CatchingUp => "core.pairing.join.catching_up",
-            BridgeJoiningDeviceJoinProgress::SavingLibrary => "core.pairing.join.saving_library",
-        };
-        assert_eq!(bridge_joining_device_join_progress_key(&progress), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_joining_device_join_progress_key(&progress));
     }
 
     for progress in [
@@ -57,38 +32,9 @@ pub(super) fn progress_keys() -> Vec<String> {
         BridgeAdmittingDeviceJoinProgress::WaitingForJoiningDevice,
         BridgeAdmittingDeviceJoinProgress::ActivatingDevice,
     ] {
-        let expected = match progress {
-            BridgeAdmittingDeviceJoinProgress::PreparingInvitation => {
-                "core.pairing.admit.preparing_invitation"
-            }
-            BridgeAdmittingDeviceJoinProgress::WaitingForProviderAccessRequest => {
-                "core.pairing.admit.waiting_for_provider_access_request"
-            }
-            BridgeAdmittingDeviceJoinProgress::GrantingProviderAccess => {
-                "core.pairing.admit.granting_provider_access"
-            }
-            BridgeAdmittingDeviceJoinProgress::WaitingForRegistrationRequest => {
-                "core.pairing.admit.waiting_for_registration_request"
-            }
-            BridgeAdmittingDeviceJoinProgress::RegisteringDevice => {
-                "core.pairing.registering_device"
-            }
-            BridgeAdmittingDeviceJoinProgress::PreparingLibrary => {
-                "core.pairing.admit.preparing_library"
-            }
-            BridgeAdmittingDeviceJoinProgress::WaitingForJoiningDevice => {
-                "core.pairing.admit.waiting_for_joining_device"
-            }
-            BridgeAdmittingDeviceJoinProgress::ActivatingDevice => {
-                "core.pairing.admit.activating_device"
-            }
-        };
-        assert_eq!(
-            bridge_admitting_device_join_progress_key(progress),
-            expected
-        );
-        keys.push(expected.to_string());
+        keys.push(bridge_admitting_device_join_progress_key(progress));
     }
+
     keys
 }
 

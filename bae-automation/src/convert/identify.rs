@@ -1,8 +1,19 @@
 //! Identify's states and progress, mirrored into the JSON shapes an MCP client
 //! reads. Core's `IdentifyStateView` already made every domain decision — the
 //! matches are folded into their album cards, provenance is keyed by release
-//! id, and an in-flight payload is reduced to a count — so this is a field copy
-//! per variant and nothing else.
+//! id, and an in-flight payload is reduced to a count — so the variants here
+//! are a field copy.
+//!
+//! The copy cannot be replaced by `Serialize` derives on core's view types.
+//! The leaves this tree is built from — `signals::LookupFailure`,
+//! `import::SourceFailure`, `import::MetadataSource` — already carry a
+//! `Serialize`, and it is the on-disk format of `import_candidate_verdict`'s
+//! `failures_json`: externally tagged, `[{"Barcode":{"source":"MusicBrainz",
+//! "failure":{"Provider":{"status":503}}}}]`. This JSON is internally tagged
+//! and snake_case, and a type gets one `Serialize`, so giving core's the MCP
+//! shape would leave every stored failed verdict unreadable. Two shapes, two
+//! types. What is genuinely not a field copy: provenance, which core keys as
+//! `(release_id, ResultProvenance)` pairs and this names inside each entry.
 
 use super::*;
 
@@ -178,8 +189,8 @@ pub(crate) fn automation_result_provenance(
 
 /// Mirror [`bae_core::identify::IdentifyStateView`] into the JSON enum. Core has
 /// already folded the matches into their group cards, keyed the provenance,
-/// reduced the in-flight payloads to counts, and dropped what must not cross —
-/// this is a field copy per variant and nothing else.
+/// reduced the in-flight payloads to counts, and dropped what must not cross,
+/// so every variant is a field copy.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn automation_identify_state(
     state: bae_core::identify::IdentifyState,

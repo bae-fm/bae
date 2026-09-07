@@ -9,9 +9,10 @@
 //!   dead and must be deleted (or, if a real UI direct-reference, added to
 //!   `DIRECT_KEYS`).
 //!
-//! Each keyed enum is covered by an explicit array of every variant AND an
-//! inline exhaustive `match` with no `_` arm, so adding a variant is a compile
-//! error here that forces updating the coverage.
+//! Each keyed enum is covered by an explicit array of every variant, whose
+//! keys the production fn is asked for. The mapping is never restated here, so
+//! there is no second copy to drift: a variant left off an array shows up as
+//! an orphan catalog key the moment its entry lands.
 
 use super::*;
 
@@ -91,10 +92,13 @@ fn loc_cover_choice() -> BridgeCoverChoice {
     }
 }
 
-/// Every key the `bridge_*_key` fns can emit. For each keyed enum an
-/// explicit array of all variants feeds an inline exhaustive `match` that
-/// re-derives the key, asserted equal to the production fn's output — so a
-/// new variant fails to compile here.
+/// Every key the `bridge_*_key` fns can emit. Each keyed enum is walked by an
+/// explicit array of all its variants and the production fn is asked for the
+/// key — the keys are never restated here, so this cannot drift into a second
+/// copy of the mapping. A variant left off an array surfaces as an orphan in
+/// `no_orphan_core_keys` as soon as its catalog entry lands. The assertions
+/// beside the loops carry only what neither catalog direction can see: that a
+/// value names no key, and that two values deliberately name the same one.
 fn produced_keys() -> Vec<String> {
     let mut keys = super::device_pairing_progress_tests::progress_keys();
 
@@ -105,14 +109,7 @@ fn produced_keys() -> Vec<String> {
         BridgeReleaseStorageAction::Unpin,
         BridgeReleaseStorageAction::MakeLocal,
     ] {
-        let expected = match a {
-            BridgeReleaseStorageAction::MakeRemote => "core.transfer.action.make_remote",
-            BridgeReleaseStorageAction::Pin => "core.transfer.action.pin",
-            BridgeReleaseStorageAction::Unpin => "core.transfer.action.unpin",
-            BridgeReleaseStorageAction::MakeLocal => "core.transfer.action.make_local",
-        };
-        assert_eq!(bridge_transfer_action_key(a), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_transfer_action_key(a));
     }
 
     // bridge_sheet_refused_codec_key — one key, no variants to walk.
@@ -122,12 +119,7 @@ fn produced_keys() -> Vec<String> {
     // bridge_upload_phase_bytes_key — each phase names itself beside the
     // bar it labels.
     for phase in [BridgeUploadPhase::Preparing, BridgeUploadPhase::Uploading] {
-        let expected = match phase {
-            BridgeUploadPhase::Preparing => "core.outbox.bytes.preparing",
-            BridgeUploadPhase::Uploading => "core.outbox.bytes.uploading",
-        };
-        assert_eq!(bridge_upload_phase_bytes_key(phase), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_upload_phase_bytes_key(phase));
     }
 
     // bridge_network_folder_watch_key — one key, no variants to walk.
@@ -136,17 +128,11 @@ fn produced_keys() -> Vec<String> {
     // bridge_file_evidence_key — each signal that can name a file words its
     // own hover.
     for signal in [BridgeEvidenceSignal::Barcode, BridgeEvidenceSignal::DiscId] {
-        let expected = match signal {
-            BridgeEvidenceSignal::Barcode => "core.import.evidence.barcode_in_image",
-            BridgeEvidenceSignal::DiscId => "core.import.evidence.disc_id_from_file",
-        };
-        let evidence = BridgeFileEvidence {
+        keys.push(bridge_file_evidence_key(&BridgeFileEvidence {
             signal,
             value: "5099969394522".to_string(),
             file_id: "Back.jpg".to_string(),
-        };
-        assert_eq!(bridge_file_evidence_key(&evidence), expected);
-        keys.push(expected.to_string());
+        }));
     }
 
     // bridge_file_role_key — every role the scan can propose has a name.
@@ -159,28 +145,19 @@ fn produced_keys() -> Vec<String> {
         BridgeFileRole::Document,
         BridgeFileRole::Other,
     ] {
-        let expected = match role {
-            BridgeFileRole::Audio => "core.import.role.audio",
-            BridgeFileRole::TrackSheet { .. } => "core.import.role.track_sheet",
-            BridgeFileRole::Artwork { .. } => "core.import.role.artwork",
-            BridgeFileRole::Document => "core.import.role.document",
-            BridgeFileRole::Other => "core.import.role.other",
-        };
-        assert_eq!(bridge_file_role_key(&role), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_file_role_key(&role));
     }
 
     // bridge_file_role_choice_key — the roles a person can pick between.
     for choice in [BridgeFileRoleChoice::Audio, BridgeFileRoleChoice::NotATrack] {
-        let expected = match choice {
-            // Deliberately the same key the Audio role reads under: the
-            // picker's option and the column's label name one thing.
-            BridgeFileRoleChoice::Audio => "core.import.role.audio",
-            BridgeFileRoleChoice::NotATrack => "core.import.role.not_a_track",
-        };
-        assert_eq!(bridge_file_role_choice_key(choice), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_file_role_choice_key(choice));
     }
+    // The picker's option and the column's label name one thing, so they read
+    // under one key.
+    assert_eq!(
+        bridge_file_role_choice_key(BridgeFileRoleChoice::Audio),
+        bridge_file_role_key(&BridgeFileRole::Audio)
+    );
 
     // bridge_file_becomes_key — one slot, a run of slots, or none. The
     // single-slot case has its own key because "slot 12" and "slots 1-11"
@@ -190,13 +167,7 @@ fn produced_keys() -> Vec<String> {
         BridgeFileBecomes::Slots { first: 1, last: 11 },
         BridgeFileBecomes::NoSlots,
     ] {
-        let expected = match becomes {
-            BridgeFileBecomes::Slots { first, last } if first == last => "core.import.becomes.slot",
-            BridgeFileBecomes::Slots { .. } => "core.import.becomes.slots",
-            BridgeFileBecomes::NoSlots => "core.import.becomes.not_a_track",
-        };
-        assert_eq!(bridge_file_becomes_key(becomes), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_file_becomes_key(becomes));
     }
 
     // bridge_slot_reconciliation_key — the tally above the slot table.
@@ -211,22 +182,12 @@ fn produced_keys() -> Vec<String> {
             tracks: 12,
         },
     ] {
-        // An agreement draws no line, so it names no key.
-        let expected: Option<&str> = match reconciliation {
-            BridgeSlotReconciliation::Agrees { .. } => None,
-            BridgeSlotReconciliation::MoreFiles { .. } => {
-                Some("core.import.reconciliation.more_files")
-            }
-            BridgeSlotReconciliation::MoreTracks { .. } => {
-                Some("core.import.reconciliation.more_tracks")
-            }
-        };
-        assert_eq!(
-            bridge_slot_reconciliation_key(reconciliation).as_deref(),
-            expected
-        );
-        keys.extend(expected.map(str::to_string));
+        keys.extend(bridge_slot_reconciliation_key(reconciliation));
     }
+    // An agreement draws no line, so it names no key.
+    assert!(
+        bridge_slot_reconciliation_key(BridgeSlotReconciliation::Agrees { count: 12 }).is_none()
+    );
 
     // bridge_sheet_binding_offer_key — an offered file needs no reason.
     for o in [
@@ -237,22 +198,12 @@ fn produced_keys() -> Vec<String> {
         BridgeSheetBindingOffer::RefusedTiming,
         BridgeSheetBindingOffer::RefusedUnreadable,
     ] {
-        let expected: Option<&str> = match o {
-            BridgeSheetBindingOffer::Offered => None,
-            BridgeSheetBindingOffer::RefusedCodec { .. } => Some("core.import.sheet.refused_codec"),
-            BridgeSheetBindingOffer::RefusedTiming => Some("core.import.sheet.refused_timing"),
-            BridgeSheetBindingOffer::RefusedUnreadable => {
-                Some("core.import.sheet.refused_unreadable")
-            }
-        };
-        assert_eq!(bridge_sheet_binding_offer_key(o).as_deref(), expected);
-        if let Some(k) = expected {
-            keys.push(k.to_string());
-        }
+        keys.extend(bridge_sheet_binding_offer_key(o));
     }
+    assert!(bridge_sheet_binding_offer_key(BridgeSheetBindingOffer::Offered).is_none());
 
-    // BridgeTrackSide::header_key — Flat carries no key (None). This is what
-    // BridgeTrackGroup::header_key is built from at conversion.
+    // BridgeTrackSide::header_key — this is what BridgeTrackGroup::header_key
+    // is built from at conversion.
     for s in [
         BridgeTrackSide::Sided {
             side_letter: "A".to_string(),
@@ -260,52 +211,29 @@ fn produced_keys() -> Vec<String> {
         BridgeTrackSide::Disc { disc: 1 },
         BridgeTrackSide::Flat,
     ] {
-        let expected: Option<&str> = match s {
-            BridgeTrackSide::Sided { .. } => Some("core.track.side"),
-            BridgeTrackSide::Disc { .. } => Some("core.track.disc"),
-            BridgeTrackSide::Flat => None,
-        };
-        assert_eq!(s.header_key(), expected);
-        if let Some(k) = expected {
-            keys.push(k.to_string());
-        }
+        keys.extend(s.header_key().map(str::to_string));
     }
+    // A flat track list has no header to word.
+    assert!(BridgeTrackSide::Flat.header_key().is_none());
 
     // bridge_audio_channels_key — only 1 and 2 carry words.
-    for (channels, expected) in [
-        (1_i64, Some("core.audio.channels.mono")),
-        (2, Some("core.audio.channels.stereo")),
-    ] {
-        assert_eq!(bridge_audio_channels_key(channels).as_deref(), expected);
-        if let Some(k) = expected {
-            keys.push(k.to_string());
-        }
+    for channels in [1_i64, 2] {
+        keys.extend(bridge_audio_channels_key(channels));
     }
+    assert!(bridge_audio_channels_key(6).is_none());
 
-    // bridge_cloud_provider_label_key — None (local-only) and S3 carry
-    // keys; the brand-name providers pass through (None).
+    // bridge_cloud_provider_label_key — None (local-only) and S3 carry keys.
+    for p in [None, Some(BridgeCloudProvider::S3)] {
+        keys.extend(bridge_cloud_provider_label_key(p));
+    }
+    // The brand-name providers render their own names, so they name no key.
     for p in [
-        None,
-        Some(BridgeCloudProvider::S3),
-        Some(BridgeCloudProvider::GoogleDrive),
-        Some(BridgeCloudProvider::Dropbox),
-        Some(BridgeCloudProvider::OneDrive),
-        Some(BridgeCloudProvider::CloudKit),
+        BridgeCloudProvider::GoogleDrive,
+        BridgeCloudProvider::Dropbox,
+        BridgeCloudProvider::OneDrive,
+        BridgeCloudProvider::CloudKit,
     ] {
-        let expected: Option<&str> = match p {
-            None => Some("core.cloud.local_only"),
-            Some(BridgeCloudProvider::S3) => Some("core.cloud.s3_compatible"),
-            Some(
-                BridgeCloudProvider::GoogleDrive
-                | BridgeCloudProvider::Dropbox
-                | BridgeCloudProvider::OneDrive
-                | BridgeCloudProvider::CloudKit,
-            ) => None,
-        };
-        assert_eq!(bridge_cloud_provider_label_key(p).as_deref(), expected);
-        if let Some(k) = expected {
-            keys.push(k.to_string());
-        }
+        assert!(bridge_cloud_provider_label_key(Some(p)).is_none());
     }
 
     // bridge_invalid_reason_key — every variant carries a key.
@@ -318,13 +246,7 @@ fn produced_keys() -> Vec<String> {
         },
         BridgeInvalidReason::NoValidAudio,
     ] {
-        let expected = match r {
-            BridgeInvalidReason::CorruptAudioFile { .. } => "core.import.invalid.corrupt_audio",
-            BridgeInvalidReason::CorruptImage { .. } => "core.import.invalid.corrupt_image",
-            BridgeInvalidReason::NoValidAudio => "core.import.invalid.no_valid_audio",
-        };
-        assert_eq!(bridge_invalid_reason_key(r.clone()), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_invalid_reason_key(r));
     }
 
     // bridge_needs_you_key — every variant carries a key.
@@ -346,21 +268,7 @@ fn produced_keys() -> Vec<String> {
         BridgeNeedsYou::SourceLengthsUnknown,
         BridgeNeedsYou::LocalDurationUnknown,
     ] {
-        let expected = match needs_you {
-            BridgeNeedsYou::AlreadyInLibrary => "core.import.triage.already_in_library",
-            BridgeNeedsYou::SeveralMatches { .. } => "core.import.triage.several_matches",
-            BridgeNeedsYou::NoMatch => "core.import.triage.no_match",
-            BridgeNeedsYou::NothingToLookUp => "core.import.triage.nothing_to_look_up",
-            BridgeNeedsYou::LookupFailed => "core.import.triage.lookup_failed",
-            BridgeNeedsYou::TrackCountDisagrees { .. } => {
-                "core.import.triage.track_count_disagrees"
-            }
-            BridgeNeedsYou::DurationsDisagree { .. } => "core.import.triage.durations_disagree",
-            BridgeNeedsYou::SourceLengthsUnknown => "core.import.triage.source_lengths_unknown",
-            BridgeNeedsYou::LocalDurationUnknown => "core.import.triage.local_duration_unknown",
-        };
-        assert_eq!(bridge_needs_you_key(&needs_you), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_needs_you_key(&needs_you));
     }
 
     // bridge_prepare_step_key — every variant carries a key.
@@ -368,14 +276,7 @@ fn produced_keys() -> Vec<String> {
         BridgePrepareStep::Queued,
         BridgePrepareStep::ValidatingSourceFiles,
     ] {
-        let expected = match step {
-            BridgePrepareStep::Queued => "core.import.prepare.queued",
-            BridgePrepareStep::ValidatingSourceFiles => {
-                "core.import.prepare.validating_source_files"
-            }
-        };
-        assert_eq!(bridge_prepare_step_key(step), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_prepare_step_key(step));
     }
 
     // bridge_import_phase_key — every variant carries a key.
@@ -384,13 +285,7 @@ fn produced_keys() -> Vec<String> {
         BridgeImportPhase::MeasuringLoudness,
         BridgeImportPhase::Finalizing,
     ] {
-        let expected = match phase {
-            BridgeImportPhase::ReadingFiles => "core.import.phase.reading_files",
-            BridgeImportPhase::MeasuringLoudness => "core.import.phase.measuring_loudness",
-            BridgeImportPhase::Finalizing => "core.import.phase.finalizing",
-        };
-        assert_eq!(bridge_import_phase_key(phase), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_import_phase_key(phase));
     }
 
     // BridgeValidationReason::loc_key — every variant carries a key.
@@ -400,14 +295,7 @@ fn produced_keys() -> Vec<String> {
         BridgeValidationReason::EmptyArtistName,
         BridgeValidationReason::InvalidYear,
     ] {
-        let expected = match reason {
-            BridgeValidationReason::EmptyAlbumTitle => "core.import.validation.empty_album_title",
-            BridgeValidationReason::NoAlbumArtist => "core.import.validation.no_album_artist",
-            BridgeValidationReason::EmptyArtistName => "core.import.validation.empty_artist_name",
-            BridgeValidationReason::InvalidYear => "core.import.validation.invalid_year",
-        };
-        assert_eq!(reason.loc_key(), expected);
-        keys.push(expected.to_string());
+        keys.push(reason.loc_key().to_string());
     }
 
     // bridge_lookup_failure_key — all keyed variants must produce catalog
@@ -430,47 +318,32 @@ fn produced_keys() -> Vec<String> {
     })
     .is_none());
 
-    // bridge_lookup_failure_brief_key — total over the variants, and the
-    // status split lands 429 and 503 on the busy line.
-    for (f, expected) in [
-        (
-            BridgeLookupFailure::Network,
-            "core.lookup.failure.brief.network",
-        ),
-        (
-            BridgeLookupFailure::Provider { status: Some(429) },
-            "core.lookup.failure.brief.busy",
-        ),
-        (
-            BridgeLookupFailure::Provider { status: Some(503) },
-            "core.lookup.failure.brief.busy",
-        ),
-        (
-            BridgeLookupFailure::Provider { status: Some(404) },
-            "core.lookup.failure.brief.provider",
-        ),
-        (
-            BridgeLookupFailure::Provider { status: None },
-            "core.lookup.failure.brief.provider_unknown",
-        ),
-        (
-            BridgeLookupFailure::Timeout,
-            "core.lookup.failure.brief.timeout",
-        ),
-        (
-            BridgeLookupFailure::ArtworkAnalysis,
-            "core.lookup.failure.brief.artwork_analysis",
-        ),
-        (
-            BridgeLookupFailure::Diagnostic {
-                detail: String::new(),
-            },
-            "core.lookup.failure.brief.diagnostic",
-        ),
+    // bridge_lookup_failure_brief_key — total over the variants, with the
+    // status split walked so both sides of it produce their key.
+    for f in [
+        BridgeLookupFailure::Network,
+        BridgeLookupFailure::Provider { status: Some(429) },
+        BridgeLookupFailure::Provider { status: Some(503) },
+        BridgeLookupFailure::Provider { status: Some(404) },
+        BridgeLookupFailure::Provider { status: None },
+        BridgeLookupFailure::Timeout,
+        BridgeLookupFailure::ArtworkAnalysis,
+        BridgeLookupFailure::Diagnostic {
+            detail: String::new(),
+        },
     ] {
-        assert_eq!(bridge_lookup_failure_brief_key(f), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_lookup_failure_brief_key(f));
     }
+    // A 429 and a 503 are both the provider refusing for now, so they read
+    // alike — and neither reads like a 404.
+    assert_eq!(
+        bridge_lookup_failure_brief_key(BridgeLookupFailure::Provider { status: Some(429) }),
+        bridge_lookup_failure_brief_key(BridgeLookupFailure::Provider { status: Some(503) })
+    );
+    assert_ne!(
+        bridge_lookup_failure_brief_key(BridgeLookupFailure::Provider { status: Some(429) }),
+        bridge_lookup_failure_brief_key(BridgeLookupFailure::Provider { status: Some(404) })
+    );
 
     // bridge_error_category_key — every variant carries a key.
     for c in [
@@ -533,60 +406,7 @@ fn produced_keys() -> Vec<String> {
         },
         BridgeErrorCategory::AirPlayUnsupported,
     ] {
-        let expected = match c {
-            BridgeErrorCategory::Database => "core.error.category.database",
-            BridgeErrorCategory::Config => "core.error.category.config",
-            BridgeErrorCategory::Internal => "core.error.category.internal",
-            BridgeErrorCategory::SyncUpdateRequired => "core.error.sync_update_required",
-            BridgeErrorCategory::Import => "core.error.category.import",
-            BridgeErrorCategory::CandidateImportInProgress => {
-                "core.import.error.candidate_import_in_progress"
-            }
-            BridgeErrorCategory::CandidateAlreadyImported => {
-                "core.import.error.candidate_already_imported"
-            }
-            BridgeErrorCategory::Export => "core.error.category.export",
-            BridgeErrorCategory::Save => "core.error.category.save",
-            BridgeErrorCategory::CloudSetup { failure } => match failure {
-                BridgeCloudHomeSetupFailure::Authentication => "core.error.category.credentials",
-                BridgeCloudHomeSetupFailure::PermissionDenied => {
-                    "core.error.cloud_setup.permission_denied"
-                }
-                BridgeCloudHomeSetupFailure::ContainerNotFound => {
-                    "core.error.cloud_setup.container_not_found"
-                }
-                BridgeCloudHomeSetupFailure::RegionMismatch => {
-                    "core.error.cloud_setup.region_mismatch"
-                }
-                BridgeCloudHomeSetupFailure::QuotaExceeded => {
-                    "core.error.cloud_setup.quota_exceeded"
-                }
-                BridgeCloudHomeSetupFailure::InvalidConfiguration => {
-                    "core.error.cloud_setup.invalid_configuration"
-                }
-                BridgeCloudHomeSetupFailure::LocationOccupied => {
-                    "core.error.cloud_setup.location_occupied"
-                }
-                BridgeCloudHomeSetupFailure::Network => "core.error.category.network",
-                BridgeCloudHomeSetupFailure::DeviceIdentityMissing => "core.error.identity_missing",
-                BridgeCloudHomeSetupFailure::SecureStorage => "core.error.category.keyring",
-                BridgeCloudHomeSetupFailure::Internal => "core.error.category.internal",
-            },
-            BridgeErrorCategory::DeviceIdentityMissing => "core.error.identity_missing",
-            BridgeErrorCategory::Credentials => "core.error.category.credentials",
-            BridgeErrorCategory::Network => "core.error.category.network",
-            BridgeErrorCategory::Keyring => "core.error.category.keyring",
-            BridgeErrorCategory::KeyringLocked => "core.error.keyring.locked",
-            BridgeErrorCategory::Membership => "core.error.category.membership",
-            BridgeErrorCategory::DeviceJoin { failure } => match failure {
-                BridgeDeviceJoinFailure::Expired => "core.error.join.expired",
-                BridgeDeviceJoinFailure::OwnerOffline => "core.error.join.owner_offline",
-                BridgeDeviceJoinFailure::OwnerEnded => "core.error.join.owner_ended",
-            },
-            BridgeErrorCategory::AirPlayUnsupported => "core.error.category.airplay_unsupported",
-        };
-        assert_eq!(bridge_error_category_key(c), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_error_category_key(c));
     }
 
     // bridge_entity_not_found_key — every variant carries a key.
@@ -597,15 +417,7 @@ fn produced_keys() -> Vec<String> {
         BridgeEntityKind::Track,
         BridgeEntityKind::File,
     ] {
-        let expected = match e {
-            BridgeEntityKind::Library => "core.error.not_found.library",
-            BridgeEntityKind::Album => "core.error.not_found.album",
-            BridgeEntityKind::Release => "core.error.not_found.release",
-            BridgeEntityKind::Track => "core.error.not_found.track",
-            BridgeEntityKind::File => "core.error.not_found.file",
-        };
-        assert_eq!(bridge_entity_not_found_key(e), expected);
-        keys.push(expected.to_string());
+        keys.push(bridge_entity_not_found_key(e));
     }
 
     // bridge_error_line_key — Cancelled carries no line (None); the other two
@@ -628,7 +440,7 @@ fn produced_keys() -> Vec<String> {
         assert_eq!(bridge_error_line_key(&e), expected);
     }
 
-    // bridge_playback_error_reason_key — Diagnostic carries no key (None).
+    // bridge_playback_error_reason_key — Diagnostic carries no key.
     for r in [
         BridgePlaybackErrorReason::SyncDisconnected,
         BridgePlaybackErrorReason::UploadPending,
@@ -636,18 +448,14 @@ fn produced_keys() -> Vec<String> {
             error: BridgeError::internal(""),
         },
     ] {
-        let expected: Option<&str> = match r {
-            BridgePlaybackErrorReason::SyncDisconnected => {
-                Some("core.playback.error.sync_disconnected")
-            }
-            BridgePlaybackErrorReason::UploadPending => Some("core.playback.error.upload_pending"),
-            BridgePlaybackErrorReason::Diagnostic { .. } => None,
-        };
-        assert_eq!(bridge_playback_error_reason_key(&r).as_deref(), expected);
-        if let Some(k) = expected {
-            keys.push(k.to_string());
-        }
+        keys.extend(bridge_playback_error_reason_key(&r));
     }
+    assert!(
+        bridge_playback_error_reason_key(&BridgePlaybackErrorReason::Diagnostic {
+            error: BridgeError::internal(""),
+        })
+        .is_none()
+    );
 
     keys.extend(
         [
