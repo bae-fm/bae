@@ -38,17 +38,6 @@ pub enum UiErrorCategory {
     Membership,
 }
 
-/// What a `UiError::NotFound` was looking for, so the UI can localize "… not
-/// found". Mirrors `BridgeEntityKind`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UiEntityKind {
-    Library,
-    Album,
-    Release,
-    Track,
-    File,
-}
-
 /// A user-facing error carried on a UI event. The locale never crosses the
 /// bridge: this is a typed reason plus, for diagnostics, the opaque Rust error
 /// chain (`detail`) the UI logs and offers in a copyable disclosure but never
@@ -56,8 +45,6 @@ pub enum UiEntityKind {
 /// turns into a generic per-category line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UiError {
-    /// A specific entity was missing. Keyed; the UI localizes it.
-    NotFound { entity: UiEntityKind, id: String },
     /// A diagnostic failure. The UI shows a generic per-category line; `detail`
     /// is the opaque Rust error chain, never translated.
     Diagnostic {

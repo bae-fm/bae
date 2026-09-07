@@ -100,12 +100,7 @@ impl From<LibraryError> for AutomationError {
 impl From<bae_core::ui::UiError> for AutomationError {
     fn from(value: bae_core::ui::UiError) -> Self {
         use bae_core::ui::{UiError, UiErrorCategory};
-        let (category, detail) = match value {
-            UiError::NotFound { entity, id } => {
-                return Self::NotFound(format!("{entity:?} {id}"));
-            }
-            UiError::Diagnostic { category, detail } => (category, detail),
-        };
+        let UiError::Diagnostic { category, detail } = value;
         match category {
             UiErrorCategory::Database => Self::Database(detail),
             UiErrorCategory::Import => Self::Import(detail),
@@ -143,18 +138,6 @@ mod tests {
         assert!(matches!(
             error,
             AutomationError::Internal(detail) if detail == "admission invariant"
-        ));
-    }
-
-    #[test]
-    fn keyed_ui_absence_remains_not_found() {
-        let error = AutomationError::from(bae_core::ui::UiError::NotFound {
-            entity: bae_core::ui::UiEntityKind::Release,
-            id: "release-id".to_string(),
-        });
-        assert!(matches!(
-            error,
-            AutomationError::NotFound(detail) if detail.contains("release-id")
         ));
     }
 }

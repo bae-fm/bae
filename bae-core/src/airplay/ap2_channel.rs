@@ -41,18 +41,11 @@ pub fn audio_key(shared: &[u8; 32]) -> [u8; 32] {
 }
 
 /// A failure on the encrypted channel — a block whose tag didn't verify.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ChannelError {
+    #[error("encrypted control channel: block failed to decrypt")]
     Decrypt,
 }
-
-impl std::fmt::Display for ChannelError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "encrypted control channel: block failed to decrypt")
-    }
-}
-
-impl std::error::Error for ChannelError {}
 
 /// The sender's half of the HomeKit secure transport over one control
 /// connection: it seals outgoing bytes and reassembles/decrypts incoming ones,

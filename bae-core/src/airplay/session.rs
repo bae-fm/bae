@@ -30,36 +30,17 @@ pub const CHANNELS: u32 = 2;
 const DEFAULT_LATENCY_FRAMES: u32 = 88_200;
 
 /// A failure setting up or running a RAOP session.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum RaopError {
     /// The control connection failed at the socket level.
-    Io(std::io::Error),
+    #[error("RAOP connection error: {0}")]
+    Io(#[from] std::io::Error),
     /// A receiver returned a non-2xx status for a handshake step.
+    #[error("receiver rejected {step} (status {status})")]
     Rejected { step: &'static str, status: u16 },
     /// A SETUP response was missing the ports the sender needs.
+    #[error("SETUP response did not carry the receiver's ports")]
     MissingTransport,
-}
-
-impl std::fmt::Display for RaopError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RaopError::Io(e) => write!(f, "RAOP connection error: {e}"),
-            RaopError::Rejected { step, status } => {
-                write!(f, "receiver rejected {step} (status {status})")
-            }
-            RaopError::MissingTransport => {
-                write!(f, "SETUP response did not carry the receiver's ports")
-            }
-        }
-    }
-}
-
-impl std::error::Error for RaopError {}
-
-impl From<std::io::Error> for RaopError {
-    fn from(e: std::io::Error) -> Self {
-        RaopError::Io(e)
-    }
 }
 
 /// The receiver's UDP ports, parsed from a SETUP response's `Transport` header.

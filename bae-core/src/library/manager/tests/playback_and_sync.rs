@@ -697,10 +697,7 @@ async fn reconnect_sync_connects_when_the_startup_connect_left_nothing_running()
     let crate::ui::UiError::Diagnostic { detail, .. } = manager
         .get_sync_status()
         .error
-        .expect("the retry's failure reaches the sync-failure surfaces")
-    else {
-        panic!("a sync failure carries its Rust error chain as the detail")
-    };
+        .expect("the retry's failure reaches the sync-failure surfaces");
     assert_eq!(
         detail,
         error.to_string(),

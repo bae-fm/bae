@@ -28,11 +28,11 @@ struct DisplayErrorTests {
 
     @Test("a not-found renders its entity's line and has no detail to disclose")
     func notFoundRendersEntityLine() throws {
-        let error = BridgeError.NotFound(entity: .album, id: "album-1")
+        let error = BridgeError.NotFound(entity: .library, id: "library-1")
 
         let displayed = try #require(DisplayError(error as any Error))
 
-        #expect(displayed.line == BridgeEntityKind.album.notFoundLine)
+        #expect(displayed.line == BridgeEntityKind.library.notFoundLine)
         #expect(!displayed.line.contains("BridgeError"))
         #expect(displayed.detail == nil)
     }

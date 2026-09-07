@@ -8,7 +8,6 @@
 
 use crate::playback::source::{PlaybackSource, TrackCrossing, TrackFmt};
 use rtrb::{Consumer, Producer, RingBuffer};
-use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::sync::atomic::{AtomicU32, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -242,24 +241,15 @@ impl AudioDrain {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum AudioError {
+    #[error("Audio device not found")]
     DeviceNotFound,
+    #[error("Stream config error: {0}")]
     StreamConfigError(String),
+    #[error("Stream build error: {0}")]
     StreamBuildError(String),
 }
-impl Display for AudioError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            AudioError::DeviceNotFound => write!(f, "Audio device not found"),
-            AudioError::StreamConfigError(msg) => {
-                write!(f, "Stream config error: {}", msg)
-            }
-            AudioError::StreamBuildError(msg) => write!(f, "Stream build error: {}", msg),
-        }
-    }
-}
-impl std::error::Error for AudioError {}
 
 /// A running audio stream. Drop to stop.
 pub trait AudioStream: 'static {

@@ -4,8 +4,6 @@
 //! encoding (PCM to FLAC/MP3/AAC/Opus/WAV/AIFF, streamed frame by frame into an
 //! output sink), and seektable generation.
 
-use std::fmt;
-
 mod avio;
 mod decode;
 mod encode;
@@ -37,9 +35,11 @@ pub use probe::seek_landing_bytes;
 pub use probe::{probe_audio_from_path, ProbeResult};
 pub use resample::Resampler;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum StreamingDecodeError {
+    #[error("streaming input cancelled")]
     InputCancelled,
+    #[error("{0}")]
     Decode(String),
 }
 
@@ -59,17 +59,6 @@ impl StreamingDecodeError {
         }
     }
 }
-
-impl fmt::Display for StreamingDecodeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InputCancelled => write!(f, "streaming input cancelled"),
-            Self::Decode(message) => f.write_str(message),
-        }
-    }
-}
-
-impl std::error::Error for StreamingDecodeError {}
 
 /// A whole decode: interleaved i32 samples plus the format they're in.
 #[derive(Debug, Clone)]

@@ -11,6 +11,7 @@ bae-mcp = { path = "../bae-mcp" }
 bae-subsonic = { path = "../bae-subsonic" }
 tokio = { version = "1", features = ["rt", "sync"] }
 tracing = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 bae-test-support = { path = "../bae-test-support" }

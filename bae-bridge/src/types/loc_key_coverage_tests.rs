@@ -409,15 +409,7 @@ fn produced_keys() -> Vec<String> {
     }
 
     // bridge_entity_not_found_key — every variant carries a key.
-    for e in [
-        BridgeEntityKind::Library,
-        BridgeEntityKind::Album,
-        BridgeEntityKind::Release,
-        BridgeEntityKind::Track,
-        BridgeEntityKind::File,
-    ] {
-        keys.push(bridge_entity_not_found_key(e));
-    }
+    keys.push(bridge_entity_not_found_key(BridgeEntityKind::Library));
 
     // bridge_error_line_key — Cancelled carries no line (None); the other two
     // agree with the per-part key fns above, so an error has exactly one line
@@ -426,7 +418,7 @@ fn produced_keys() -> Vec<String> {
     for e in [
         BridgeError::Cancelled,
         BridgeError::NotFound {
-            entity: BridgeEntityKind::Album,
+            entity: BridgeEntityKind::Library,
             id: "a".to_string(),
         },
         BridgeError::internal(""),

@@ -88,51 +88,27 @@ fn build_airplay_sink(
 }
 
 /// A failure starting a cast session.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum CastError {
     /// Casting is turned off in settings, so no session may be started.
+    #[error("casting is turned off in settings")]
     Disabled,
     /// No discovered device matches the requested id.
+    #[error("no such Cast device")]
     DeviceNotFound,
     /// The control channel to the device couldn't be opened.
+    #[error("couldn't connect to the Cast device: {0}")]
     Connect(String),
     /// The ephemeral serving couldn't be started (bind / no LAN address).
+    #[error("couldn't start serving audio to the Cast device: {0}")]
     Serving(String),
     /// The AirPlay receiver demands a user PIN, which the sender doesn't support.
+    #[error("this AirPlay receiver needs a PIN, which isn't supported")]
     AirPlayPinRequired,
     /// The RAOP receiver only offers audio encryption the sender can't provide.
+    #[error("this AirPlay receiver requires an encryption the sender can't provide")]
     AirPlayEncryptionUnsupported,
 }
-
-impl std::fmt::Display for CastError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CastError::Disabled => write!(f, "casting is turned off in settings"),
-            CastError::DeviceNotFound => write!(f, "no such Cast device"),
-            CastError::Connect(detail) => {
-                write!(f, "couldn't connect to the Cast device: {detail}")
-            }
-            CastError::Serving(detail) => {
-                write!(
-                    f,
-                    "couldn't start serving audio to the Cast device: {detail}"
-                )
-            }
-            CastError::AirPlayPinRequired => {
-                write!(
-                    f,
-                    "this AirPlay receiver needs a PIN, which isn't supported"
-                )
-            }
-            CastError::AirPlayEncryptionUnsupported => write!(
-                f,
-                "this AirPlay receiver requires an encryption the sender can't provide"
-            ),
-        }
-    }
-}
-
-impl std::error::Error for CastError {}
 
 /// The ephemeral Subsonic server the receiver fetches audio from: the
 /// bae-subsonic router bound on a random LAN port with a per-session credential,

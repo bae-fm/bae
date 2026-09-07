@@ -19,22 +19,13 @@ pub struct DesktopServices {
 
 /// A rejected service-config change: either the config itself (validation, or
 /// the write to disk) or the running server refusing to come up on it.
-#[derive(Debug)]
-pub enum DesktopConfigError<E> {
+#[derive(Debug, thiserror::Error)]
+pub enum DesktopConfigError<E: ServerError> {
+    #[error("{0}")]
     Config(ConfigError),
+    #[error("{}", .0.detail())]
     Server(E),
 }
-
-impl<E: ServerError> std::fmt::Display for DesktopConfigError<E> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Config(error) => write!(f, "{error}"),
-            Self::Server(error) => write!(f, "{}", error.detail()),
-        }
-    }
-}
-
-impl<E: ServerError + std::fmt::Debug> std::error::Error for DesktopConfigError<E> {}
 
 impl DesktopServices {
     pub async fn start(services: AppServices, runtime: Handle) -> Self {

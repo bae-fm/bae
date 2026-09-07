@@ -43,6 +43,8 @@ coven = { git = "https://github.com/bae-fm/coven", rev = "4ec41dea86cf218af556c9
 reqwest = { version = "0.13", default-features = false }
 # Logging
 tracing = "0.1.41"
+# Error enums: `#[derive(Error)]` writes the Display/Error/From impls.
+thiserror = "2"
 
 [profile.release]
 lto = true

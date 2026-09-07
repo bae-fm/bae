@@ -234,13 +234,10 @@ pub enum BridgeErrorCategory {
 }
 
 /// What a `NotFound` was looking for, so the UI can localize "… not found".
+/// Only the bootstrap's missing library is reported this way.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeEntityKind {
     Library,
-    Album,
-    Release,
-    Track,
-    File,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -394,10 +391,6 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
 pub fn bridge_entity_not_found_key(entity: BridgeEntityKind) -> String {
     match entity {
         BridgeEntityKind::Library => "core.error.not_found.library",
-        BridgeEntityKind::Album => "core.error.not_found.album",
-        BridgeEntityKind::Release => "core.error.not_found.release",
-        BridgeEntityKind::Track => "core.error.not_found.track",
-        BridgeEntityKind::File => "core.error.not_found.file",
     }
     .to_string()
 }
@@ -543,18 +536,13 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeEntityKind = bae_core::ui::UiEntityKind,
-    from_core: fn,
-    variants: { Library, Album, Release, Track, File },
-}
-
-mirror_enum! {
-    /// `Cancelled` is the bridge's own: core reports a cancellation through the
-    /// operation's result rather than as a `UiError`.
+    /// `Cancelled` and `NotFound` are the bridge's own: core reports a
+    /// cancellation through the operation's result rather than as a `UiError`,
+    /// and the only missing entity anyone is told about — the library the
+    /// bootstrap could not open — is found before a `UiError` exists.
     BridgeError = bae_core::ui::UiError,
     from_core: pub(crate) fn,
     variants: {
-        NotFound { entity: (BridgeEntityKind), id },
         Diagnostic { category: (BridgeErrorCategory), detail },
     },
 }

@@ -582,9 +582,7 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
         vec![first_new_release.id.clone(), last_new_release.id.clone()]
     );
     assert_eq!(failure.release_ids, vec![active_release.id.clone()]);
-    let crate::ui::UiError::Diagnostic { category, detail } = failure.error else {
-        panic!("storage admission refusals carry a diagnostic error");
-    };
+    let crate::ui::UiError::Diagnostic { category, detail } = failure.error;
     assert_eq!(category, crate::ui::UiErrorCategory::Internal);
     assert!(detail.contains(&active_release.id));
 

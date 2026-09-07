@@ -210,27 +210,18 @@ fn int_bytes(v: u64, width: usize) -> Vec<u8> {
 }
 
 /// A malformed binary plist.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum BplistError {
     /// The `bplist00` header was missing.
+    #[error("not a bplist00 payload")]
     BadHeader,
     /// The message ended before a complete object was read.
+    #[error("truncated bplist")]
     Truncated,
     /// An object marker named a type this codec doesn't handle.
+    #[error("unsupported bplist marker {0:#04x}")]
     UnsupportedType(u8),
 }
-
-impl std::fmt::Display for BplistError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BplistError::BadHeader => write!(f, "not a bplist00 payload"),
-            BplistError::Truncated => write!(f, "truncated bplist"),
-            BplistError::UnsupportedType(m) => write!(f, "unsupported bplist marker {m:#04x}"),
-        }
-    }
-}
-
-impl std::error::Error for BplistError {}
 
 /// Decode a `bplist00` payload to a value tree.
 pub fn decode(bytes: &[u8]) -> Result<Plist, BplistError> {

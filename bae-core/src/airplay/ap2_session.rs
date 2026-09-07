@@ -167,51 +167,19 @@ pub fn parse_stream_ports(response: &Plist) -> Option<Ap2StreamPorts> {
 }
 
 /// A failure driving the AirPlay 2 control channel.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Ap2Error {
-    Io(std::io::Error),
-    Channel(super::ap2_channel::ChannelError),
-    Rejected {
-        step: &'static str,
-        status: u16,
-    },
+    #[error("AirPlay 2 control I/O error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Channel(#[from] super::ap2_channel::ChannelError),
+    #[error("receiver rejected {step} (status {status})")]
+    Rejected { step: &'static str, status: u16 },
+    #[error("AirPlay 2 response body: {0}")]
     BadBody(&'static str),
     /// Transient pair-setup or pair-verify failed.
-    Pairing(PairingError),
-}
-
-impl std::fmt::Display for Ap2Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Ap2Error::Io(e) => write!(f, "AirPlay 2 control I/O error: {e}"),
-            Ap2Error::Channel(e) => write!(f, "{e}"),
-            Ap2Error::Rejected { step, status } => {
-                write!(f, "receiver rejected {step} (status {status})")
-            }
-            Ap2Error::BadBody(what) => write!(f, "AirPlay 2 response body: {what}"),
-            Ap2Error::Pairing(e) => write!(f, "AirPlay 2 pairing failed: {e}"),
-        }
-    }
-}
-
-impl std::error::Error for Ap2Error {}
-
-impl From<PairingError> for Ap2Error {
-    fn from(e: PairingError) -> Self {
-        Ap2Error::Pairing(e)
-    }
-}
-
-impl From<std::io::Error> for Ap2Error {
-    fn from(e: std::io::Error) -> Self {
-        Ap2Error::Io(e)
-    }
-}
-
-impl From<super::ap2_channel::ChannelError> for Ap2Error {
-    fn from(e: super::ap2_channel::ChannelError) -> Self {
-        Ap2Error::Channel(e)
-    }
+    #[error("AirPlay 2 pairing failed: {0}")]
+    Pairing(#[from] PairingError),
 }
 
 /// The AirPlay 2 control connection after pair-verify: RTSP requests sealed onto

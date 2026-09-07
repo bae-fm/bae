@@ -190,7 +190,6 @@ telemetry_value_enum! {
         PreloadStateMissing => "preload_state_missing",
         QueueEntryUnknown => "queue_entry_unknown",
         QueueTrackNoMetadata => "queue_track_no_metadata",
-        ChangesetMissingFk => "changeset_missing_fk",
         AudioFormatOrphaned => "audio_format_orphaned",
         BlobIdInvalid => "blob_id_invalid",
         EncryptionKeyMissing => "encryption_key_missing",

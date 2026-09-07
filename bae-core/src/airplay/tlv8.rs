@@ -136,21 +136,12 @@ impl Tlv8 {
 }
 
 /// A malformed TLV8 message.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum Tlv8Error {
     /// An item's length byte promised more bytes than the message held.
+    #[error("truncated TLV8 item")]
     Truncated,
 }
-
-impl std::fmt::Display for Tlv8Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Tlv8Error::Truncated => write!(f, "truncated TLV8 item"),
-        }
-    }
-}
-
-impl std::error::Error for Tlv8Error {}
 
 #[cfg(test)]
 mod tests {

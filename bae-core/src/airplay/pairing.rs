@@ -129,27 +129,29 @@ impl Default for TransientPairing {
 }
 
 /// A failure during transient pairing.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum PairingError {
     /// A method was called out of sequence.
+    #[error("pairing step called out of sequence")]
     WrongState,
     /// The receiver's TLV8 was malformed.
-    Tlv(Tlv8Error),
+    #[error("malformed pairing message: {0}")]
+    Tlv(#[from] Tlv8Error),
     /// A required TLV field was missing from a response.
+    #[error("pairing response missing {0}")]
     MissingField(&'static str),
     /// The receiver's state byte was not the expected step.
+    #[error("pairing state {actual:?}, expected {expected}")]
     UnexpectedState { expected: u8, actual: Option<u8> },
     /// The receiver returned an Error TLV — most often "authentication" when it
     /// demands a PIN the sender doesn't implement.
+    #[error("receiver rejected pairing (error {0})")]
     Rejected(u8),
-    /// The SRP exchange failed (bad server public value or proof).
+    /// The SRP exchange failed (bad server public value or proof). `SrpError` is
+    /// a plain result enum, not an `Error`, so this carries it by `From` without
+    /// making it this error's `source()`.
+    #[error("SRP failure: {0:?}")]
     Srp(SrpError),
-}
-
-impl From<Tlv8Error> for PairingError {
-    fn from(e: Tlv8Error) -> Self {
-        PairingError::Tlv(e)
-    }
 }
 
 impl From<SrpError> for PairingError {
@@ -157,27 +159,6 @@ impl From<SrpError> for PairingError {
         PairingError::Srp(e)
     }
 }
-
-impl std::fmt::Display for PairingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PairingError::WrongState => write!(f, "pairing step called out of sequence"),
-            PairingError::Tlv(e) => write!(f, "malformed pairing message: {e}"),
-            PairingError::MissingField(field) => {
-                write!(f, "pairing response missing {field}")
-            }
-            PairingError::UnexpectedState { expected, actual } => {
-                write!(f, "pairing state {actual:?}, expected {expected}")
-            }
-            PairingError::Rejected(code) => {
-                write!(f, "receiver rejected pairing (error {code})")
-            }
-            PairingError::Srp(e) => write!(f, "SRP failure: {e:?}"),
-        }
-    }
-}
-
-impl std::error::Error for PairingError {}
 
 fn check_no_error(tlv: &Tlv8) -> Result<(), PairingError> {
     match tlv.get_u8(tlv_type::ERROR) {

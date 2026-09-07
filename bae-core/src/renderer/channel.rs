@@ -14,7 +14,6 @@
 //! a different renderer flavor and is deliberately outside this trait; it belongs
 //! beside `Renderer::Remote` as its own variant, not as a third channel here.
 
-use std::fmt;
 use std::time::Duration;
 
 /// The media a LOAD hands the renderer: the URL it fetches over HTTP and the
@@ -71,29 +70,18 @@ pub struct ReceiverStatus {
 /// link to the device is gone (the Cast app was stopped, the UPnP renderer went
 /// unreachable, the network dropped), which the session reads as the remote
 /// session ending.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum RendererError {
     /// The link could not be established or was lost.
+    #[error("renderer connection failed: {0}")]
     Connection(String),
     /// Preparing the renderer to receive media failed (Cast app launch).
+    #[error("renderer launch failed: {0}")]
     Launch(String),
     /// A media/transport command (load, play, seek, …) failed.
+    #[error("renderer command failed: {0}")]
     Command(String),
 }
-
-impl fmt::Display for RendererError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            RendererError::Connection(detail) => {
-                write!(f, "renderer connection failed: {detail}")
-            }
-            RendererError::Launch(detail) => write!(f, "renderer launch failed: {detail}"),
-            RendererError::Command(detail) => write!(f, "renderer command failed: {detail}"),
-        }
-    }
-}
-
-impl std::error::Error for RendererError {}
 
 /// The operations the session performs against a connected renderer. Each call
 /// blocks on the wire, so the session drives it from its own thread. A
