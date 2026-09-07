@@ -20,20 +20,13 @@ pub fn shape_release_edit(
     }
 }
 
-/// Map bae-core's validation error to its bridge mirror. Kept here, not as a
-/// `From` in bae-core, so bae-core stays unaware of bridge types.
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeValidationReason {
-    pub(super) fn from_core(e: bae_core::import::EditValidationError) -> Self {
-        use crate::types::BridgeValidationReason as R;
-        use bae_core::import::EditValidationError as E;
-        match e {
-            E::EmptyAlbumTitle => R::EmptyAlbumTitle,
-            E::NoAlbumArtist => R::NoAlbumArtist,
-            E::EmptyArtistName => R::EmptyArtistName,
-            E::InvalidYear => R::InvalidYear,
-        }
-    }
+mirror_enum! {
+    /// Kept here, not as a `From` in bae-core, so bae-core stays unaware of
+    /// bridge types.
+    #[cfg(feature = "desktop")]
+    crate::types::BridgeValidationReason = bae_core::import::EditValidationError,
+    from_core: pub(super) fn,
+    variants: { EmptyAlbumTitle, NoAlbumArtist, EmptyArtistName, InvalidYear },
 }
 
 /// The localization key for a validation reason, resolved by the UI against the

@@ -1,6 +1,31 @@
 use super::*;
 use std::collections::BTreeSet;
 
+forward! { async this => {
+    fn locate_import_candidate(
+        view: crate::types::BridgeImportListView,
+        candidate_key: String,
+    ) -> Option<crate::types::BridgeImportCandidateListLocation> {
+        this.services
+            .locate_import_candidate(view.into_core(), &candidate_key)
+            .await
+            .map(|location| {
+                location.map(crate::types::BridgeImportCandidateListLocation::from_core)
+            })
+            .map_err(BridgeError::database_query)
+    }
+
+    fn merge_candidate_artist_identity_conflict(
+        candidate_key: String,
+        surviving_artist_id: String,
+    ) -> () {
+        this.services
+            .import_merge_candidate_artist_identity_conflict(&candidate_key, &surviving_artist_id)
+            .await
+            .map_err(BridgeError::import)
+    }
+} }
+
 /// The import tab's list, reconfigurable by view and by window.
 ///
 /// The same shape as [`AlbumBrowseSubscription`](super::AlbumBrowseSubscription):
@@ -12,7 +37,7 @@ pub struct ImportListSubscription {
     runtime: tokio::runtime::Handle,
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export]
 impl AppHandle {
     pub fn subscribe_import_list(
         &self,
@@ -25,40 +50,6 @@ impl AppHandle {
                 .subscribe_import_list(view.into_core(), &runtime),
             runtime,
         })
-    }
-
-    pub async fn locate_import_candidate(
-        self: std::sync::Arc<Self>,
-        view: crate::types::BridgeImportListView,
-        candidate_key: String,
-    ) -> Result<Option<crate::types::BridgeImportCandidateListLocation>, BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .locate_import_candidate(view.into_core(), &candidate_key)
-                .await
-                .map(|location| {
-                    location.map(crate::types::BridgeImportCandidateListLocation::from_core)
-                })
-                .map_err(BridgeError::database_query)
-        })
-        .await
-    }
-
-    pub async fn merge_candidate_artist_identity_conflict(
-        self: std::sync::Arc<Self>,
-        candidate_key: String,
-        surviving_artist_id: String,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .import_merge_candidate_artist_identity_conflict(
-                    &candidate_key,
-                    &surviving_artist_id,
-                )
-                .await
-                .map_err(BridgeError::import)
-        })
-        .await
     }
 
     /// One candidate as the pane reads it, and every later read of it.

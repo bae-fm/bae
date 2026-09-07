@@ -37,12 +37,71 @@ pub struct AppHandle {
     runtime: AppRuntime,
 }
 
+/// The exported methods that are one call into the services behind the handle.
+///
+/// Two shapes. An `async` method runs its body on the app runtime through
+/// [`AppHandle::run_exported`] and reports a [`BridgeError`]; a `sync` one is a
+/// plain forward. Each block names the handle itself — a macro's own `self` is
+/// not the caller's, so the bodies say `this`.
+///
+/// Both arms write the `#[uniffi::export]` block, because the export is a proc
+/// macro and would otherwise see the macro call rather than the methods.
+macro_rules! forward {
+    (
+        $(#[$block:meta])*
+        async $this:ident => {
+            $(
+                $(#[$method:meta])*
+                fn $name:ident($($arg:ident: $arg_type:ty),* $(,)?) -> $ret:ty $body:block
+            )*
+        }
+    ) => {
+        $(#[$block])*
+        #[uniffi::export(async_runtime = "tokio", cancellable)]
+        impl AppHandle {
+            $(
+                $(#[$method])*
+                pub async fn $name(
+                    self: std::sync::Arc<Self>,
+                    $($arg: $arg_type),*
+                ) -> Result<$ret, BridgeError> {
+                    self.run_exported(move |$this| async move $body).await
+                }
+            )*
+        }
+    };
+    (
+        $(#[$block:meta])*
+        sync $this:ident => {
+            $(
+                $(#[$method:meta])*
+                fn $name:ident($($arg:ident: $arg_type:ty),* $(,)?) $(-> $ret:ty)? $body:block
+            )*
+        }
+    ) => {
+        $(#[$block])*
+        #[uniffi::export]
+        impl AppHandle {
+            $(
+                $(#[$method])*
+                pub fn $name(&self, $($arg: $arg_type),*) $(-> $ret)? {
+                    let $this = self;
+                    $body
+                }
+            )*
+        }
+    };
+}
+
 mod base;
 mod cloud_operations;
 mod collection_subscription;
 mod configuration;
 mod device_pairing;
-pub use collection_subscription::{AlbumBrowseSubscription, ComposerBrowseSubscription};
+pub use collection_subscription::{
+    AlbumBrowseSubscription, BridgeAlbumBrowseSnapshot, BridgeAlbumBrowseWindow,
+    BridgeComposerBrowseSnapshot, BridgeComposerBrowseWindow, ComposerBrowseSubscription,
+};
 pub use device_pairing::BridgeDevicePairingSession;
 #[cfg(feature = "desktop")]
 mod candidate_combination;

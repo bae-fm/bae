@@ -1,6 +1,5 @@
 use super::super::*;
 
-#[cfg(feature = "desktop")]
 impl BridgeMetadataResult {
     pub(crate) fn from_core(r: bae_core::import::search::MetadataResult) -> Self {
         let bae_core::import::search::MetadataResult {
@@ -53,7 +52,6 @@ impl BridgeRemoteCover {
     }
 }
 
-#[cfg(feature = "desktop")]
 fn bridge_remote_cover_selection(
     url: String,
     source: bae_core::import::MetadataSource,
@@ -64,7 +62,6 @@ fn bridge_remote_cover_selection(
     }
 }
 
-#[cfg(feature = "desktop")]
 fn remote_cover_choice_to_bridge(
     selection: &BridgeRemoteCoverSelection,
     thumbnail_url: &str,
@@ -82,7 +79,6 @@ fn remote_cover_choice_to_bridge(
     }
 }
 
-#[cfg(feature = "desktop")]
 impl BridgeReleaseDetail {
     pub(crate) fn from_core(d: bae_core::import::search::ImportSearchReleaseDetail) -> Self {
         // Derived values borrow `&d`; compute them before destructuring `d`.
@@ -133,27 +129,12 @@ impl BridgeReleaseDetail {
     }
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeReleaseTrack {
-    pub(crate) fn from_core(t: bae_core::import::search::ReleaseTrack) -> Self {
-        let bae_core::import::search::ReleaseTrack {
-            title,
-            artist,
-            duration_ms,
-            position,
-            side,
-        } = t;
-        Self {
-            title,
-            artist,
-            duration_ms,
-            position,
-            side,
-        }
-    }
+mirror_struct! {
+    BridgeReleaseTrack = bae_core::import::search::ReleaseTrack,
+    from_core: pub(crate) fn,
+    fields: { title, artist, duration_ms, position, side },
 }
 
-#[cfg(feature = "desktop")]
 impl BridgeCoverChoice {
     pub(crate) fn from_core(choice: bae_core::import::CoverChoice) -> Self {
         let bae_core::import::CoverChoice {
@@ -181,7 +162,6 @@ impl BridgeCoverChoice {
     }
 }
 
-#[cfg(feature = "desktop")]
 impl BridgeCoverImageSource {
     pub(crate) fn from_core(source: bae_core::import::CoverImageSource) -> Self {
         match source {
@@ -194,67 +174,44 @@ impl BridgeCoverImageSource {
     }
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeFileEvidence {
-    pub(crate) fn from_core(evidence: bae_core::import::FileEvidence) -> Self {
-        use bae_core::import::EvidenceSignal;
-        let bae_core::import::FileEvidence {
-            signal,
-            value,
-            file_id,
-        } = evidence;
-        BridgeFileEvidence {
-            signal: match signal {
-                EvidenceSignal::Barcode => BridgeEvidenceSignal::Barcode,
-                EvidenceSignal::DiscId => BridgeEvidenceSignal::DiscId,
-            },
-            value,
-            file_id,
-        }
-    }
+mirror_enum! {
+    BridgeEvidenceSignal = bae_core::import::EvidenceSignal,
+    from_core: fn,
+    variants: { Barcode, DiscId },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeLookupState {
-    fn from_view(v: bae_core::identify::LookupView) -> Self {
-        use bae_core::identify::LookupView;
-        match v {
-            LookupView::LookingUp => BridgeLookupState::LookingUp,
-            LookupView::Found { count } => BridgeLookupState::Found { count },
-            LookupView::NoMatch => BridgeLookupState::NoMatch,
-            LookupView::Failed { failure } => BridgeLookupState::Failed {
-                failure: BridgeLookupFailure::from_core(failure),
-            },
-        }
-    }
+mirror_struct! {
+    BridgeFileEvidence = bae_core::import::FileEvidence,
+    from_core: pub(crate) fn,
+    fields: { signal: (BridgeEvidenceSignal), value, file_id },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeDiscIdStep {
-    fn from_view(v: bae_core::identify::DiscIdStepView) -> Self {
-        use bae_core::identify::DiscIdStepView;
-        match v {
-            DiscIdStepView::Reading => BridgeDiscIdStep::Reading,
-            DiscIdStepView::Absent => BridgeDiscIdStep::Absent,
-            DiscIdStepView::ReadFailed { failure } => BridgeDiscIdStep::ReadFailed {
-                failure: BridgeLookupFailure::from_core(failure),
-            },
-            DiscIdStepView::Read {
-                disc_id,
-                source_file,
-                lookup,
-            } => BridgeDiscIdStep::Read {
-                disc_id,
-                source_file,
-                lookup: BridgeLookupState::from_view(lookup),
-            },
-        }
-    }
+mirror_enum! {
+    BridgeLookupState = bae_core::identify::LookupView,
+    from_core: fn,
+    variants: {
+        LookingUp,
+        Found { count },
+        NoMatch,
+        Failed { failure: (BridgeLookupFailure) },
+    },
 }
 
-#[cfg(feature = "desktop")]
+mirror_enum! {
+    BridgeDiscIdStep = bae_core::identify::DiscIdStepView,
+    from_core: fn,
+    variants: {
+        Reading,
+        Absent,
+        ReadFailed { failure: (BridgeLookupFailure) },
+        Read { disc_id, source_file, lookup: (BridgeLookupState) },
+    },
+}
+
+/// Not a `mirror_enum`: `Failed` renames core's `read` to `images_read`, which
+/// is what a surface says the number is.
 impl BridgeArtworkStep {
-    fn from_view(v: bae_core::identify::ArtworkStepView) -> Self {
+    fn from_core(v: bae_core::identify::ArtworkStepView) -> Self {
         use bae_core::identify::ArtworkStepView;
         match v {
             ArtworkStepView::Absent => BridgeArtworkStep::Absent,
@@ -293,95 +250,69 @@ impl BridgeArtworkStep {
     }
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeBarcodeStep {
-    fn from_view(v: bae_core::identify::BarcodeStepView) -> Self {
-        use bae_core::identify::{BarcodeLookupView, BarcodeStepView};
-        match v {
-            BarcodeStepView::AwaitingArtwork => BridgeBarcodeStep::AwaitingArtwork,
-            BarcodeStepView::Absent => BridgeBarcodeStep::Absent,
-            BarcodeStepView::NoCodes => BridgeBarcodeStep::NoCodes,
-            BarcodeStepView::ScanFailed { failure } => BridgeBarcodeStep::ScanFailed {
-                failure: BridgeLookupFailure::from_core(failure),
-            },
-            BarcodeStepView::Lookups { codes, providers } => BridgeBarcodeStep::Lookups {
-                codes,
-                providers: providers
-                    .into_iter()
-                    .map(|provider| BridgeProviderBarcodeLookup {
-                        source: BridgeMetadataSource::from_core(provider.source),
-                        state: match provider.state {
-                            BarcodeLookupView::Trying {
-                                barcode,
-                                position,
-                                total,
-                            } => BridgeBarcodeLookupState::Trying {
-                                barcode,
-                                position,
-                                total,
-                            },
-                            BarcodeLookupView::Matched { barcode, count } => {
-                                BridgeBarcodeLookupState::Matched { barcode, count }
-                            }
-                            BarcodeLookupView::Exhausted => BridgeBarcodeLookupState::Exhausted,
-                            BarcodeLookupView::Failed { failure } => {
-                                BridgeBarcodeLookupState::Failed {
-                                    failure: BridgeLookupFailure::from_core(failure),
-                                }
-                            }
-                        },
-                    })
-                    .collect(),
-            },
-        }
-    }
+mirror_enum! {
+    BridgeBarcodeLookupState = bae_core::identify::BarcodeLookupView,
+    from_core: fn,
+    variants: {
+        Trying { barcode, position, total },
+        Matched { barcode, count },
+        Exhausted,
+        Failed { failure: (BridgeLookupFailure) },
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeCatalogStep {
-    fn from_view(v: bae_core::identify::CatalogStepView) -> Self {
-        use bae_core::identify::CatalogStepView;
-        match v {
-            CatalogStepView::NoneFound => BridgeCatalogStep::NoneFound,
-            CatalogStepView::Unchosen { available } => BridgeCatalogStep::Unchosen { available },
-            CatalogStepView::Chosen { value, lookups } => BridgeCatalogStep::Chosen {
-                value,
-                lookups: lookups
-                    .into_iter()
-                    .map(|lookup| BridgeProviderLookup {
-                        source: BridgeMetadataSource::from_core(lookup.source),
-                        state: BridgeLookupState::from_view(lookup.state),
-                    })
-                    .collect(),
-            },
-        }
-    }
+mirror_struct! {
+    BridgeProviderBarcodeLookup = bae_core::identify::ProviderBarcodeLookupView,
+    from_core: fn,
+    fields: { source: (BridgeMetadataSource), state: (BridgeBarcodeLookupState) },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeIdentifyRun {
-    fn from_view(v: bae_core::identify::IdentifyRunView) -> Self {
-        let bae_core::identify::IdentifyRunView {
-            providers,
-            disc_id,
-            artwork,
-            barcode,
-            catalog,
-        } = v;
-        BridgeIdentifyRun {
-            providers: providers
-                .into_iter()
-                .map(BridgeMetadataSource::from_core)
-                .collect(),
-            disc_id: BridgeDiscIdStep::from_view(disc_id),
-            artwork: BridgeArtworkStep::from_view(artwork),
-            barcode: BridgeBarcodeStep::from_view(barcode),
-            catalog: BridgeCatalogStep::from_view(catalog),
-        }
-    }
+mirror_enum! {
+    BridgeBarcodeStep = bae_core::identify::BarcodeStepView,
+    from_core: fn,
+    variants: {
+        AwaitingArtwork,
+        Absent,
+        NoCodes,
+        ScanFailed { failure: (BridgeLookupFailure) },
+        Lookups { codes, providers: (each BridgeProviderBarcodeLookup) },
+    },
 }
 
-#[cfg(feature = "desktop")]
+mirror_struct! {
+    BridgeProviderLookup = bae_core::identify::ProviderLookupView,
+    from_core: fn,
+    fields: { source: (BridgeMetadataSource), state: (BridgeLookupState) },
+}
+
+mirror_enum! {
+    BridgeCatalogStep = bae_core::identify::CatalogStepView,
+    from_core: fn,
+    variants: {
+        NoneFound,
+        Unchosen { available },
+        Chosen { value, lookups: (each BridgeProviderLookup) },
+    },
+}
+
+mirror_struct! {
+    BridgeIdentifyRun = bae_core::identify::IdentifyRunView,
+    from_core: fn,
+    fields: {
+        providers: (each BridgeMetadataSource),
+        disc_id: (BridgeDiscIdStep),
+        artwork: (BridgeArtworkStep),
+        barcode: (BridgeBarcodeStep),
+        catalog: (BridgeCatalogStep),
+    },
+}
+
+mirror_struct! {
+    BridgeReleaseGroupSource = bae_core::import::release_group::ReleaseGroupSource,
+    from_core: fn,
+    fields: { source: (BridgeMetadataSource), group_url },
+}
+
 impl BridgeReleaseGroup {
     pub(crate) fn from_core(g: bae_core::import::release_group::ReleaseGroup) -> Self {
         let bae_core::import::release_group::ReleaseGroup {
@@ -403,10 +334,7 @@ impl BridgeReleaseGroup {
             cover_art: cover_art.map(BridgeRemoteCover::from_core),
             sources: sources
                 .into_iter()
-                .map(|source| BridgeReleaseGroupSource {
-                    source: BridgeMetadataSource::from_core(source.source),
-                    group_url: source.group_url,
-                })
+                .map(BridgeReleaseGroupSource::from_core)
                 .collect(),
             year_min,
             year_max,
@@ -425,118 +353,74 @@ impl BridgeReleaseGroup {
     }
 }
 
-#[cfg(feature = "desktop")]
+mirror_enum! {
+    BridgeDiscIdSignal = bae_core::signals::DiscIdSignal,
+    from_core: fn,
+    variants: {
+        Computed { disc_id, track_count, source_file },
+        Absent { track_count },
+        Failed { failure: (BridgeLookupFailure), track_count },
+    },
+}
+
+mirror_enum! {
+    BridgeBarcodeSignal = bae_core::signals::BarcodeSignal,
+    from_core: fn,
+    variants: {
+        Scanning { codes: (each BridgeSourcedValue) },
+        Settled { codes: (each BridgeSourcedValue) },
+        Failed {
+            failure: (BridgeLookupFailure),
+            codes: (each BridgeSourcedValue),
+        },
+        Absent,
+    },
+}
+
+mirror_enum! {
+    BridgeTextSignal = bae_core::signals::TextSignal,
+    from_core: fn,
+    variants: {
+        Scanning { catalogs: (each BridgeSourcedValue), free_text },
+        Settled { catalogs: (each BridgeSourcedValue), free_text },
+        Failed {
+            failure: (BridgeLookupFailure),
+            catalogs: (each BridgeSourcedValue),
+            free_text,
+        },
+    },
+}
+
+/// Not a `mirror_struct`: the measured durations are a Ready-rule input and the
+/// mapping table's lengths, not a badge — the sidebar reads a candidate's
+/// classification, and the pane reads the durations through its own record.
+/// Neither wants them here, so they do not cross.
 impl BridgeSignals {
     pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
-        use bae_core::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
-
-        fn sourced_values(values: Vec<bae_core::signals::SourcedValue>) -> Vec<BridgeSourcedValue> {
-            values
-                .into_iter()
-                .map(BridgeSourcedValue::from_core)
-                .collect()
-        }
-
-        let Signals {
+        let bae_core::signals::Signals {
             disc_id,
             barcode,
             text,
-            // The measured durations are a Ready-rule input and the mapping
-            // table's lengths, not a badge: the sidebar reads a candidate's
-            // classification, and the pane reads the durations through its own
-            // record. Neither wants them here, so they do not cross.
             durations: _,
         } = s;
-
-        let disc_id = match disc_id {
-            DiscIdSignal::Computed {
-                disc_id,
-                track_count,
-                source_file,
-            } => BridgeDiscIdSignal::Computed {
-                disc_id,
-                track_count,
-                source_file,
-            },
-            DiscIdSignal::Absent { track_count } => BridgeDiscIdSignal::Absent { track_count },
-            DiscIdSignal::Failed {
-                failure,
-                track_count,
-            } => BridgeDiscIdSignal::Failed {
-                failure: BridgeLookupFailure::from_core(failure),
-                track_count,
-            },
-        };
-
-        let barcode = match barcode {
-            BarcodeSignal::Scanning { codes } => BridgeBarcodeSignal::Scanning {
-                codes: sourced_values(codes),
-            },
-            BarcodeSignal::Settled { codes } => BridgeBarcodeSignal::Settled {
-                codes: sourced_values(codes),
-            },
-            BarcodeSignal::Failed { failure, codes } => BridgeBarcodeSignal::Failed {
-                failure: BridgeLookupFailure::from_core(failure),
-                codes: sourced_values(codes),
-            },
-            BarcodeSignal::Absent => BridgeBarcodeSignal::Absent,
-        };
-
-        let text = match text {
-            TextSignal::Scanning {
-                catalogs,
-                free_text,
-            } => BridgeTextSignal::Scanning {
-                catalogs: sourced_values(catalogs),
-                free_text,
-            },
-            TextSignal::Settled {
-                catalogs,
-                free_text,
-            } => BridgeTextSignal::Settled {
-                catalogs: sourced_values(catalogs),
-                free_text,
-            },
-            TextSignal::Failed {
-                failure,
-                catalogs,
-                free_text,
-            } => BridgeTextSignal::Failed {
-                failure: BridgeLookupFailure::from_core(failure),
-                catalogs: sourced_values(catalogs),
-                free_text,
-            },
-        };
-
         BridgeSignals {
-            disc_id,
-            barcode,
-            text,
+            disc_id: BridgeDiscIdSignal::from_core(disc_id),
+            barcode: BridgeBarcodeSignal::from_core(barcode),
+            text: BridgeTextSignal::from_core(text),
         }
     }
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeResultProvenance {
-    fn from_core(p: bae_core::identify::ResultProvenance) -> Self {
-        let bae_core::identify::ResultProvenance {
-            by_disc_id,
-            by_barcode,
-            by_catalog,
-        } = p;
-        BridgeResultProvenance {
-            by_disc_id,
-            by_barcode,
-            by_catalog,
-        }
-    }
+mirror_struct! {
+    BridgeResultProvenance = bae_core::identify::ResultProvenance,
+    from_core: fn,
+    fields: { by_disc_id, by_barcode, by_catalog },
 }
 
 /// Mirror [`bae_core::identify::IdentifyStateView`] into the uniffi enum. Core has
 /// already folded the matches into their group cards, keyed the provenance,
 /// reduced the in-flight payloads to counts, and dropped what must not cross —
 /// this is a field copy per variant and nothing else.
-#[cfg(feature = "desktop")]
 impl BridgeIdentifyState {
     pub(crate) fn from_core(s: bae_core::identify::IdentifyState) -> Self {
         use bae_core::identify::IdentifyStateView;
@@ -548,7 +432,7 @@ impl BridgeIdentifyState {
                 library_statuses,
                 provenance,
             } => BridgeIdentifyState::Triangulating {
-                run: BridgeIdentifyRun::from_view(run),
+                run: BridgeIdentifyRun::from_core(run),
                 groups: groups
                     .into_iter()
                     .map(BridgeReleaseGroup::from_core)
@@ -601,7 +485,6 @@ impl BridgeIdentifyState {
     }
 }
 
-#[cfg(feature = "desktop")]
 fn identify_failure(
     failure: bae_core::identify::IdentifyFailure,
 ) -> crate::types::BridgeIdentifyFailure {
@@ -632,7 +515,6 @@ fn identify_failure(
 /// Key library statuses by release id — the UI looks a row's status up by id
 /// rather than re-indexing a flat list. Each status carries its own id, so this
 /// is a re-container, not a re-pairing.
-#[cfg(feature = "desktop")]
 fn status_map(
     statuses: Vec<bae_core::db::LibraryStatus>,
 ) -> std::collections::HashMap<String, BridgeLibraryStatus> {
@@ -656,7 +538,7 @@ mod tests {
     #[test]
     fn failed_artwork_preserves_the_number_of_images_read() {
         assert_eq!(
-            BridgeArtworkStep::from_view(bae_core::identify::ArtworkStepView::Failed {
+            BridgeArtworkStep::from_core(bae_core::identify::ArtworkStepView::Failed {
                 failure: LookupFailure::ArtworkAnalysis,
                 read: 2,
                 total: 5,

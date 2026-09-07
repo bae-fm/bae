@@ -300,19 +300,6 @@ impl BridgeError {
     pub(crate) fn import(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Import, detail)
     }
-    #[cfg(feature = "desktop")]
-    pub(crate) fn candidate_mutation(error: bae_core::import::ImportError) -> Self {
-        let category = match &error {
-            bae_core::import::ImportError::CandidateImportInProgress => {
-                BridgeErrorCategory::CandidateImportInProgress
-            }
-            bae_core::import::ImportError::CandidateAlreadyImported => {
-                BridgeErrorCategory::CandidateAlreadyImported
-            }
-            _ => BridgeErrorCategory::Import,
-        };
-        Self::diagnostic(category, error)
-    }
     /// Desktop-only with the output surface it reports on: iOS/Android compile
     /// out the output queue and the track saver entirely.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -513,75 +500,93 @@ pub enum CloudKitError {
 // bridge can't police a pinned crate's field list — and stay dotted reads.
 // =========================================================================
 
-impl BridgeErrorCategory {
-    pub(crate) fn from_core(category: bae_core::ui::UiErrorCategory) -> Self {
-        use bae_core::ui::UiErrorCategory;
-        match category {
-            UiErrorCategory::Database => BridgeErrorCategory::Database,
-            UiErrorCategory::Config => BridgeErrorCategory::Config,
-            UiErrorCategory::Internal => BridgeErrorCategory::Internal,
-            UiErrorCategory::SyncUpdateRequired => BridgeErrorCategory::SyncUpdateRequired,
-            UiErrorCategory::Import => BridgeErrorCategory::Import,
-            UiErrorCategory::Export => BridgeErrorCategory::Export,
-            UiErrorCategory::Save => BridgeErrorCategory::Save,
-            UiErrorCategory::CloudSetup(failure) => BridgeErrorCategory::CloudSetup {
-                failure: BridgeCloudHomeSetupFailure::from_core(failure),
-            },
-            UiErrorCategory::DeviceIdentityMissing => BridgeErrorCategory::DeviceIdentityMissing,
-            UiErrorCategory::Credentials => BridgeErrorCategory::Credentials,
-            UiErrorCategory::Network => BridgeErrorCategory::Network,
-            UiErrorCategory::Keyring => BridgeErrorCategory::Keyring,
-            UiErrorCategory::KeyringLocked => BridgeErrorCategory::KeyringLocked,
-            UiErrorCategory::Membership => BridgeErrorCategory::Membership,
-        }
+mirror_enum! {
+    /// The bridge enum carries variants core's has no counterpart for — the two
+    /// candidate-mutation refusals, a device-join failure, an AirPlay receiver
+    /// bae cannot drive — so only the outward direction is a mirror.
+    BridgeErrorCategory = bae_core::ui::UiErrorCategory,
+    from_core: pub(crate) fn,
+    variants: {
+        Database,
+        Config,
+        Internal,
+        SyncUpdateRequired,
+        Import,
+        Export,
+        Save,
+        CloudSetup(failure: (BridgeCloudHomeSetupFailure)),
+        DeviceIdentityMissing,
+        Credentials,
+        Network,
+        Keyring,
+        KeyringLocked,
+        Membership,
+    },
+}
+
+mirror_enum! {
+    BridgeCloudHomeSetupFailure = coven::CloudHomeSetupFailure,
+    from_core: fn,
+    variants: {
+        Authentication,
+        PermissionDenied,
+        ContainerNotFound,
+        RegionMismatch,
+        QuotaExceeded,
+        InvalidConfiguration,
+        LocationOccupied,
+        Network,
+        DeviceIdentityMissing,
+        SecureStorage,
+        Internal,
+    },
+}
+
+mirror_enum! {
+    BridgeEntityKind = bae_core::ui::UiEntityKind,
+    from_core: fn,
+    variants: { Library, Album, Release, Track, File },
+}
+
+mirror_enum! {
+    /// `Cancelled` is the bridge's own: core reports a cancellation through the
+    /// operation's result rather than as a `UiError`.
+    BridgeError = bae_core::ui::UiError,
+    from_core: pub(crate) fn,
+    variants: {
+        NotFound { entity: (BridgeEntityKind), id },
+        Diagnostic { category: (BridgeErrorCategory), detail },
+    },
+}
+
+/// A failed config read or write. The `Config` category is what every one of
+/// these reports, so `?` carries them.
+impl From<bae_core::config::ConfigError> for BridgeError {
+    fn from(error: bae_core::config::ConfigError) -> Self {
+        BridgeError::config(error)
     }
 }
 
-impl BridgeCloudHomeSetupFailure {
-    fn from_core(failure: coven::CloudHomeSetupFailure) -> Self {
-        use coven::CloudHomeSetupFailure;
-        match failure {
-            CloudHomeSetupFailure::Authentication => Self::Authentication,
-            CloudHomeSetupFailure::PermissionDenied => Self::PermissionDenied,
-            CloudHomeSetupFailure::ContainerNotFound => Self::ContainerNotFound,
-            CloudHomeSetupFailure::RegionMismatch => Self::RegionMismatch,
-            CloudHomeSetupFailure::QuotaExceeded => Self::QuotaExceeded,
-            CloudHomeSetupFailure::InvalidConfiguration => Self::InvalidConfiguration,
-            CloudHomeSetupFailure::LocationOccupied => Self::LocationOccupied,
-            CloudHomeSetupFailure::Network => Self::Network,
-            CloudHomeSetupFailure::DeviceIdentityMissing => Self::DeviceIdentityMissing,
-            CloudHomeSetupFailure::SecureStorage => Self::SecureStorage,
-            CloudHomeSetupFailure::Internal => Self::Internal,
-        }
-    }
-}
-
-impl BridgeEntityKind {
-    fn from_core(entity: bae_core::ui::UiEntityKind) -> Self {
-        use bae_core::ui::UiEntityKind;
-        match entity {
-            UiEntityKind::Library => BridgeEntityKind::Library,
-            UiEntityKind::Album => BridgeEntityKind::Album,
-            UiEntityKind::Release => BridgeEntityKind::Release,
-            UiEntityKind::Track => BridgeEntityKind::Track,
-            UiEntityKind::File => BridgeEntityKind::File,
-        }
-    }
-}
-
-impl BridgeError {
-    pub(crate) fn from_core(error: bae_core::ui::UiError) -> Self {
-        use bae_core::ui::UiError;
-        match error {
-            UiError::NotFound { entity, id } => BridgeError::NotFound {
-                entity: BridgeEntityKind::from_core(entity),
-                id,
-            },
-            UiError::Diagnostic { category, detail } => BridgeError::Diagnostic {
-                category: BridgeErrorCategory::from_core(category),
-                detail,
-            },
-        }
+/// A refused candidate mutation: an import already running for that candidate,
+/// or one already imported, each named as its own category so a surface can
+/// say which, and anything else as the generic import failure.
+///
+/// Not what [`BridgeError::import`] does — that reports `Import` for whatever
+/// it is handed, and stays the call for the import paths whose failures have no
+/// per-candidate refusal to distinguish.
+#[cfg(feature = "desktop")]
+impl From<bae_core::import::ImportError> for BridgeError {
+    fn from(error: bae_core::import::ImportError) -> Self {
+        let category = match &error {
+            bae_core::import::ImportError::CandidateImportInProgress => {
+                BridgeErrorCategory::CandidateImportInProgress
+            }
+            bae_core::import::ImportError::CandidateAlreadyImported => {
+                BridgeErrorCategory::CandidateAlreadyImported
+            }
+            _ => BridgeErrorCategory::Import,
+        };
+        BridgeError::diagnostic(category, error)
     }
 }
 
@@ -614,30 +619,23 @@ impl From<bae_core::library::CreateLibraryError> for BridgeError {
     }
 }
 
-impl BridgePlaybackErrorReason {
-    pub(crate) fn from_core(reason: bae_core::ui::PlaybackErrorReason) -> Self {
-        use bae_core::ui::PlaybackErrorReason;
-        match reason {
-            PlaybackErrorReason::SyncDisconnected => BridgePlaybackErrorReason::SyncDisconnected,
-            PlaybackErrorReason::UploadPending => BridgePlaybackErrorReason::UploadPending,
-            PlaybackErrorReason::Diagnostic { error } => BridgePlaybackErrorReason::Diagnostic {
-                error: BridgeError::from_core(error),
-            },
-        }
-    }
+mirror_enum! {
+    BridgePlaybackErrorReason = bae_core::ui::PlaybackErrorReason,
+    from_core: pub(crate) fn,
+    variants: {
+        SyncDisconnected,
+        UploadPending,
+        Diagnostic { error: (BridgeError) },
+    },
 }
 
-/// Map the UI's storage-state choice to the core's `StorageMode`. Pinned-ness is
-/// orthogonal — the caller passes the import's `pin` choice separately.
-#[cfg(feature = "desktop")]
-impl BridgeStorageMode {
-    pub(crate) fn into_core(self) -> bae_core::import::StorageMode {
-        use bae_core::import::StorageMode;
-        match self {
-            BridgeStorageMode::Local => StorageMode::Local,
-            BridgeStorageMode::Remote => StorageMode::Remote,
-        }
-    }
+mirror_enum! {
+    /// Map the UI's storage-state choice to the core's `StorageMode`. Pinned-ness
+    /// is orthogonal — the caller passes the import's `pin` choice separately.
+    #[cfg(feature = "desktop")]
+    BridgeStorageMode = bae_core::import::StorageMode,
+    into_core: pub(crate) fn,
+    variants: { Local, Remote },
 }
 
 #[cfg(feature = "desktop")]
@@ -673,154 +671,113 @@ impl BridgeCloudProvider {
     }
 }
 
-impl BridgeMemberRole {
-    pub(crate) fn from_core(role: bae_core::sync::membership::MemberRole) -> Self {
-        use bae_core::sync::membership::MemberRole;
-        match role {
-            MemberRole::Owner => BridgeMemberRole::Owner,
-            MemberRole::Member => BridgeMemberRole::Member,
-            MemberRole::Follower => BridgeMemberRole::Follower,
-        }
-    }
+mirror_enum! {
+    BridgeMemberRole = bae_core::sync::membership::MemberRole,
+    from_core: pub(crate) fn,
+    variants: { Owner, Member, Follower },
 }
 
-impl BridgeMember {
-    fn from_core(m: bae_core::sync::membership::MembershipMember) -> Self {
-        let bae_core::sync::membership::MembershipMember {
-            pubkey,
-            role,
-            is_self,
-            fingerprint,
-            can_remove,
-        } = m;
-        BridgeMember {
-            pubkey,
-            role: BridgeMemberRole::from_core(role),
-            is_self,
-            fingerprint,
-            can_remove,
-        }
-    }
+mirror_struct! {
+    BridgeMember = bae_core::sync::membership::MembershipMember,
+    from_core: fn,
+    fields: { pubkey, role: (BridgeMemberRole), is_self, fingerprint, can_remove },
 }
 
-impl BridgeMembership {
-    pub(crate) fn from_core(membership: bae_core::sync::membership::Membership) -> Self {
-        let bae_core::sync::membership::Membership {
-            members,
-            self_is_owner,
-        } = membership;
-        BridgeMembership {
-            members: members.into_iter().map(BridgeMember::from_core).collect(),
-            self_is_owner,
-        }
-    }
+mirror_struct! {
+    BridgeMembership = bae_core::sync::membership::Membership,
+    from_core: pub(crate) fn,
+    fields: { members: (each BridgeMember), self_is_owner },
 }
 
-/// Only the OAuth sign-in and authorize flows map a bare bridge provider back to
-/// core; gated so non-OAuth builds don't carry a dead mapping.
-#[cfg(feature = "oauth-providers")]
-impl BridgeCloudProvider {
-    pub(crate) fn into_core(self) -> bae_core::config::CloudProvider {
-        use bae_core::config::CloudProvider;
-        match self {
-            BridgeCloudProvider::S3 => CloudProvider::S3,
-            BridgeCloudProvider::GoogleDrive => CloudProvider::GoogleDrive,
-            BridgeCloudProvider::Dropbox => CloudProvider::Dropbox,
-            BridgeCloudProvider::OneDrive => CloudProvider::OneDrive,
-            BridgeCloudProvider::CloudKit => CloudProvider::CloudKit,
-        }
-    }
+mirror_enum! {
+    /// Only the OAuth sign-in and authorize flows map a bare bridge provider back
+    /// to core; gated so non-OAuth builds don't carry a dead mapping.
+    #[cfg(feature = "oauth-providers")]
+    BridgeCloudProvider = bae_core::config::CloudProvider,
+    into_core: pub(crate) fn,
+    variants: { S3, GoogleDrive, Dropbox, OneDrive, CloudKit },
 }
 
-impl BridgeHomeStorage {
-    pub(crate) fn into_core(self) -> bae_core::config::HomeStorage {
-        use bae_core::config::HomeStorage;
-        match self {
-            BridgeHomeStorage::Opaque => HomeStorage::Opaque,
-            BridgeHomeStorage::Browsable => HomeStorage::Browsable,
-        }
-    }
+mirror_enum! {
+    BridgeHomeStorage = bae_core::config::HomeStorage,
+    into_core: pub(crate) fn,
+    variants: { Opaque, Browsable },
 }
 
-impl BridgeStorageSort {
-    pub(crate) fn into_core(self) -> bae_core::db::StorageSortCriterion {
-        let BridgeStorageSort { field, direction } = self;
-        bae_core::db::StorageSortCriterion {
-            field: match field {
-                BridgeStorageSortField::AlbumTitle => bae_core::db::StorageSortField::AlbumTitle,
-                BridgeStorageSortField::ArtistNames => bae_core::db::StorageSortField::ArtistNames,
-                BridgeStorageSortField::Media => bae_core::db::StorageSortField::Media,
-                BridgeStorageSortField::FileCount => bae_core::db::StorageSortField::FileCount,
-                BridgeStorageSortField::TotalSize => bae_core::db::StorageSortField::TotalSize,
-            },
-            direction: match direction {
-                BridgeStorageSortDirection::Ascending => bae_core::db::SortDirection::Ascending,
-                BridgeStorageSortDirection::Descending => bae_core::db::SortDirection::Descending,
-            },
-        }
-    }
+mirror_enum! {
+    BridgeStorageSortField = bae_core::db::StorageSortField,
+    into_core: fn,
+    variants: { AlbumTitle, ArtistNames, Media, FileCount, TotalSize },
 }
 
-impl BridgeStorageFilter {
-    pub(crate) fn into_core(self) -> bae_core::db::StorageFilter {
-        match self {
-            BridgeStorageFilter::All => bae_core::db::StorageFilter::All,
-            BridgeStorageFilter::Remote => bae_core::db::StorageFilter::Remote,
-            BridgeStorageFilter::Local => bae_core::db::StorageFilter::Local,
-            BridgeStorageFilter::Uploading => bae_core::db::StorageFilter::Uploading,
-        }
-    }
+mirror_enum! {
+    BridgeStorageSortDirection = bae_core::db::SortDirection,
+    into_core: fn,
+    variants: { Ascending, Descending },
 }
 
-impl BridgeComposerSortCriterion {
-    pub(crate) fn into_core(self) -> bae_core::db::ComposerSortCriterion {
-        let BridgeComposerSortCriterion { field, direction } = self;
-        bae_core::db::ComposerSortCriterion {
-            field: match field {
-                BridgeComposerSortField::Name => bae_core::db::ComposerSortField::Name,
-                BridgeComposerSortField::WorkCount => bae_core::db::ComposerSortField::WorkCount,
-                BridgeComposerSortField::LinkedReleaseCount => {
-                    bae_core::db::ComposerSortField::LinkedReleaseCount
-                }
-            },
-            direction: direction.into_core(),
-        }
-    }
+mirror_struct! {
+    BridgeStorageSort = bae_core::db::StorageSortCriterion,
+    into_core: pub(crate) fn,
+    fields: {
+        field: (BridgeStorageSortField),
+        direction: (BridgeStorageSortDirection),
+    },
 }
 
-impl BridgeArtistSortCriterion {
-    pub(crate) fn into_core(self) -> bae_core::db::ArtistSortCriterion {
-        let BridgeArtistSortCriterion { field, direction } = self;
-        bae_core::db::ArtistSortCriterion {
-            field: match field {
-                BridgeArtistSortField::Name => bae_core::db::ArtistSortField::Name,
-                BridgeArtistSortField::AlbumCount => bae_core::db::ArtistSortField::AlbumCount,
-            },
-            direction: direction.into_core(),
-        }
-    }
+mirror_enum! {
+    BridgeStorageFilter = bae_core::db::StorageFilter,
+    into_core: pub(crate) fn,
+    variants: { All, Remote, Local, Uploading },
 }
 
-impl BridgeSortDirection {
-    pub(crate) fn into_core(self) -> bae_core::db::SortDirection {
-        match self {
-            BridgeSortDirection::Ascending => bae_core::db::SortDirection::Ascending,
-            BridgeSortDirection::Descending => bae_core::db::SortDirection::Descending,
-        }
-    }
+mirror_enum! {
+    BridgeComposerSortField = bae_core::db::ComposerSortField,
+    into_core: fn,
+    variants: { Name, WorkCount, LinkedReleaseCount },
 }
 
-impl BridgeSortCriterion {
-    pub(crate) fn into_core(self) -> bae_core::db::AlbumSortCriterion {
-        let BridgeSortCriterion { field, direction } = self;
-        bae_core::db::AlbumSortCriterion {
-            field: match field {
-                BridgeSortField::Title => bae_core::db::AlbumSortField::Title,
-                BridgeSortField::Artist => bae_core::db::AlbumSortField::Artist,
-                BridgeSortField::Year => bae_core::db::AlbumSortField::Year,
-                BridgeSortField::DateAdded => bae_core::db::AlbumSortField::DateAdded,
-            },
-            direction: direction.into_core(),
-        }
-    }
+mirror_struct! {
+    BridgeComposerSortCriterion = bae_core::db::ComposerSortCriterion,
+    into_core: pub(crate) fn,
+    fields: {
+        field: (BridgeComposerSortField),
+        direction: (BridgeSortDirection),
+    },
+}
+
+mirror_enum! {
+    BridgeArtistSortField = bae_core::db::ArtistSortField,
+    into_core: fn,
+    variants: { Name, AlbumCount },
+}
+
+mirror_struct! {
+    BridgeArtistSortCriterion = bae_core::db::ArtistSortCriterion,
+    into_core: pub(crate) fn,
+    fields: {
+        field: (BridgeArtistSortField),
+        direction: (BridgeSortDirection),
+    },
+}
+
+mirror_enum! {
+    BridgeSortDirection = bae_core::db::SortDirection,
+    into_core: pub(crate) fn,
+    variants: { Ascending, Descending },
+}
+
+mirror_enum! {
+    BridgeSortField = bae_core::db::AlbumSortField,
+    into_core: fn,
+    variants: { Title, Artist, Year, DateAdded },
+}
+
+mirror_struct! {
+    BridgeSortCriterion = bae_core::db::AlbumSortCriterion,
+    into_core: pub(crate) fn,
+    fields: {
+        field: (BridgeSortField),
+        direction: (BridgeSortDirection),
+    },
 }

@@ -6,106 +6,81 @@ impl AppHandle {
         BridgeConfig::from_core(&self.services.get_config())
     }
 
-    pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), BridgeError> {
-        self.services
-            .set_pause_between_sides(enabled)
-            .map_err(BridgeError::config)
-    }
-
-    pub fn set_max_concurrent_uploads(&self, n: u32) -> Result<(), BridgeError> {
-        self.services
-            .set_max_concurrent_uploads(n)
-            .map_err(BridgeError::config)
-    }
-
-    pub fn set_max_concurrent_downloads(&self, n: u32) -> Result<(), BridgeError> {
-        self.services
-            .set_max_concurrent_downloads(n)
-            .map_err(BridgeError::config)
-    }
-
-    pub fn set_identify_automatically(&self, enabled: bool) -> Result<(), BridgeError> {
-        self.services
-            .set_identify_automatically(enabled)
-            .map_err(BridgeError::config)
-    }
-
-    pub fn set_default_import_metadata_source(
-        &self,
-        source: crate::types::BridgeDefaultImportMetadataSource,
-    ) -> Result<(), BridgeError> {
-        self.services
-            .set_default_import_metadata_source(source.into_core())
-            .map_err(BridgeError::config)
-    }
-
-    pub fn set_show_remaining_time(&self, enabled: bool) -> Result<(), BridgeError> {
-        self.services
-            .set_show_remaining_time(enabled)
-            .map_err(BridgeError::config)
-    }
-
-    pub fn set_library_full_width(&self, enabled: bool) -> Result<(), BridgeError> {
-        self.services
-            .set_library_full_width(enabled)
-            .map_err(BridgeError::config)
-    }
-
-    pub fn set_save_presets(
-        &self,
-        presets: Vec<crate::types::BridgeSavePreset>,
-    ) -> Result<(), BridgeError> {
-        self.services
-            .set_save_presets(
-                presets
-                    .into_iter()
-                    .map(crate::types::BridgeSavePreset::into_core)
-                    .collect(),
-            )
-            .map_err(BridgeError::config)
-    }
-
-    pub fn set_default_track_save_preset(&self, preset_id: String) -> Result<(), BridgeError> {
-        self.services
-            .set_default_track_save_preset(preset_id)
-            .map_err(BridgeError::config)
-    }
-
-    pub fn set_default_release_save_preset(&self, preset_id: String) -> Result<(), BridgeError> {
-        self.services
-            .set_default_release_save_preset(preset_id)
-            .map_err(BridgeError::config)
-    }
-
-    pub fn cloud_home_key_state(&self) -> Result<BridgeCloudHomeKeyState, BridgeError> {
-        Ok(self.services.cloud_home_key_state()?.into())
-    }
-
     pub fn rename_library(&self, library_id: String, name: String) -> Result<(), BridgeError> {
         let name = bae_core::library_name::LibraryName::parse(&name)
             .map_err(|error| BridgeError::config(error.to_string()))?;
         self.services.rename_library(&library_id, &name)?;
         Ok(())
     }
-
-    pub async fn lock_active_library(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services.forget_encryption_key().await?;
-            Ok(())
-        })
-        .await
-    }
-
-    pub async fn unlock_cloud_home(
-        self: std::sync::Arc<Self>,
-        serialized_master_key: String,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .unlock_cloud_home(&serialized_master_key)
-                .await?;
-            Ok(())
-        })
-        .await
-    }
 }
+
+forward! { sync this => {
+    fn set_pause_between_sides(enabled: bool) -> Result<(), BridgeError> {
+        Ok(this.services.set_pause_between_sides(enabled)?)
+    }
+
+    fn set_max_concurrent_uploads(n: u32) -> Result<(), BridgeError> {
+        Ok(this.services.set_max_concurrent_uploads(n)?)
+    }
+
+    fn set_max_concurrent_downloads(n: u32) -> Result<(), BridgeError> {
+        Ok(this.services.set_max_concurrent_downloads(n)?)
+    }
+
+    fn set_identify_automatically(enabled: bool) -> Result<(), BridgeError> {
+        Ok(this.services.set_identify_automatically(enabled)?)
+    }
+
+    fn set_default_import_metadata_source(
+        source: crate::types::BridgeDefaultImportMetadataSource,
+    ) -> Result<(), BridgeError> {
+        Ok(this
+            .services
+            .set_default_import_metadata_source(source.into_core())?)
+    }
+
+    fn set_show_remaining_time(enabled: bool) -> Result<(), BridgeError> {
+        Ok(this.services.set_show_remaining_time(enabled)?)
+    }
+
+    fn set_library_full_width(enabled: bool) -> Result<(), BridgeError> {
+        Ok(this.services.set_library_full_width(enabled)?)
+    }
+
+    fn set_save_presets(
+        presets: Vec<crate::types::BridgeSavePreset>,
+    ) -> Result<(), BridgeError> {
+        Ok(this.services.set_save_presets(
+            presets
+                .into_iter()
+                .map(crate::types::BridgeSavePreset::into_core)
+                .collect(),
+        )?)
+    }
+
+    fn set_default_track_save_preset(preset_id: String) -> Result<(), BridgeError> {
+        Ok(this.services.set_default_track_save_preset(preset_id)?)
+    }
+
+    fn set_default_release_save_preset(preset_id: String) -> Result<(), BridgeError> {
+        Ok(this.services.set_default_release_save_preset(preset_id)?)
+    }
+
+    fn cloud_home_key_state() -> Result<BridgeCloudHomeKeyState, BridgeError> {
+        Ok(this.services.cloud_home_key_state()?.into())
+    }
+} }
+
+forward! { async this => {
+    fn lock_active_library() -> () {
+        this.services.forget_encryption_key().await?;
+        Ok(())
+    }
+
+    fn unlock_cloud_home(serialized_master_key: String) -> () {
+        this.services
+            .unlock_cloud_home(&serialized_master_key)
+            .await?;
+        Ok(())
+    }
+} }

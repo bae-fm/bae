@@ -1,301 +1,100 @@
 use super::super::*;
 
-#[cfg(feature = "desktop")]
-impl BridgeArtistAssignment {
-    pub(crate) fn from_core(assignment: bae_core::import::ArtistAssignment) -> Self {
-        match assignment {
-            bae_core::import::ArtistAssignment::Existing { artist } => Self::Existing {
-                artist: BridgeExistingArtist::from_core(artist),
-            },
-            bae_core::import::ArtistAssignment::New { seed } => Self::New {
-                seed: BridgeNewArtistSeed {
-                    name: seed.name,
-                    sort_name: seed.sort_name,
-                    musicbrainz_artist_id: seed.musicbrainz_artist_id,
-                    discogs_artist_id: seed.discogs_artist_id,
-                },
-            },
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::ArtistAssignment {
-        match self {
-            Self::Existing { artist } => bae_core::import::ArtistAssignment::Existing {
-                artist: artist.into_core(),
-            },
-            Self::New { seed } => bae_core::import::ArtistAssignment::New {
-                seed: bae_core::import::NewArtistSeed {
-                    name: seed.name,
-                    sort_name: seed.sort_name,
-                    musicbrainz_artist_id: seed.musicbrainz_artist_id,
-                    discogs_artist_id: seed.discogs_artist_id,
-                },
-            },
-        }
-    }
+mirror_struct! {
+    BridgeNewArtistSeed = bae_core::import::NewArtistSeed,
+    from_core: fn,
+    into_core: fn,
+    fields: { name, sort_name, musicbrainz_artist_id, discogs_artist_id },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeTrackArtistAssignments {
-    pub(super) fn from_core(assignments: bae_core::import::TrackArtistAssignments) -> Self {
-        match assignments {
-            bae_core::import::TrackArtistAssignments::AlbumArtists => Self::AlbumArtists,
-            bae_core::import::TrackArtistAssignments::Explicit(assignments) => Self::Explicit {
-                assignments: assignments
-                    .into_iter()
-                    .map(BridgeArtistAssignment::from_core)
-                    .collect(),
-            },
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::TrackArtistAssignments {
-        match self {
-            Self::AlbumArtists => bae_core::import::TrackArtistAssignments::AlbumArtists,
-            Self::Explicit { assignments } => bae_core::import::TrackArtistAssignments::Explicit(
-                assignments
-                    .into_iter()
-                    .map(BridgeArtistAssignment::into_core)
-                    .collect(),
-            ),
-        }
-    }
+mirror_enum! {
+    BridgeArtistAssignment = bae_core::import::ArtistAssignment,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        Existing { artist: (BridgeExistingArtist) },
+        New { seed: (BridgeNewArtistSeed) },
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeTrackUserEdit {
-    pub(crate) fn from_core(t: bae_core::import::TrackUserEdit) -> Self {
-        let bae_core::import::TrackUserEdit {
-            title,
-            side,
-            track_number,
-            artist_assignments,
-            file,
-        } = t;
-        Self {
-            title,
-            side,
-            track_number,
-            artist_assignments: BridgeTrackArtistAssignments::from_core(artist_assignments),
-            file: file.map(BridgeAudioFile::from_core),
-        }
-    }
-
-    fn into_core(self) -> bae_core::import::TrackUserEdit {
-        let BridgeTrackUserEdit {
-            title,
-            side,
-            track_number,
-            artist_assignments,
-            file,
-        } = self;
-        bae_core::import::TrackUserEdit {
-            title,
-            side,
-            track_number,
-            artist_assignments: artist_assignments.into_core(),
-            file: file.map(BridgeAudioFile::into_core),
-        }
-    }
+mirror_enum! {
+    BridgeTrackArtistAssignments = bae_core::import::TrackArtistAssignments,
+    from_core: pub(super) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        AlbumArtists,
+        Explicit(assignments: (each BridgeArtistAssignment)),
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeReleaseUserEdit {
-    pub(crate) fn from_core(e: bae_core::import::ReleaseUserEdit) -> Self {
-        let bae_core::import::ReleaseUserEdit {
-            album_title,
-            album_artist_assignments,
-            album_year,
-            pressing,
-            tracks,
-        } = e;
-        BridgeReleaseUserEdit {
-            album_title,
-            album_artist_assignments: album_artist_assignments
-                .into_iter()
-                .map(BridgeArtistAssignment::from_core)
-                .collect(),
-            album_year,
-            pressing: BridgePressingEdit::from_core(pressing),
-            tracks: tracks
-                .into_iter()
-                .map(BridgeTrackUserEdit::from_core)
-                .collect(),
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::ReleaseUserEdit {
-        let BridgeReleaseUserEdit {
-            album_title,
-            album_artist_assignments,
-            album_year,
-            pressing,
-            tracks,
-        } = self;
-        bae_core::import::ReleaseUserEdit {
-            album_title,
-            album_artist_assignments: album_artist_assignments
-                .into_iter()
-                .map(BridgeArtistAssignment::into_core)
-                .collect(),
-            album_year,
-            pressing: pressing.into_core(),
-            tracks: tracks
-                .into_iter()
-                .map(BridgeTrackUserEdit::into_core)
-                .collect(),
-        }
-    }
+mirror_struct! {
+    BridgeTrackUserEdit = bae_core::import::TrackUserEdit,
+    from_core: pub(crate) fn,
+    into_core: fn,
+    fields: {
+        title,
+        side,
+        track_number,
+        artist_assignments: (BridgeTrackArtistAssignments),
+        file: (opt BridgeAudioFile),
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeRawPressingEdit {
-    pub(crate) fn from_core(p: bae_core::import::RawPressingEdit) -> Self {
-        let bae_core::import::RawPressingEdit {
-            year,
-            format,
-            label,
-            catalog_number,
-            country,
-            barcode,
-        } = p;
-        Self {
-            year,
-            format,
-            label,
-            catalog_number,
-            country,
-            barcode,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::RawPressingEdit {
-        let BridgeRawPressingEdit {
-            year,
-            format,
-            label,
-            catalog_number,
-            country,
-            barcode,
-        } = self;
-        bae_core::import::RawPressingEdit {
-            year,
-            format,
-            label,
-            catalog_number,
-            country,
-            barcode,
-        }
-    }
+mirror_struct! {
+    BridgeReleaseUserEdit = bae_core::import::ReleaseUserEdit,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: {
+        album_title,
+        album_artist_assignments: (each BridgeArtistAssignment),
+        album_year,
+        pressing: (BridgePressingEdit),
+        tracks: (each BridgeTrackUserEdit),
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeRawTrackEdit {
-    pub(crate) fn from_core(t: bae_core::import::RawTrackEdit) -> Self {
-        let bae_core::import::RawTrackEdit {
-            id,
-            title,
-            artist_assignments,
-            side,
-            track_number,
-            file,
-        } = t;
-        Self {
-            id,
-            title,
-            artist_assignments: BridgeTrackArtistAssignments::from_core(artist_assignments),
-            side,
-            track_number,
-            file: file.map(BridgeAudioFile::from_core),
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::RawTrackEdit {
-        let BridgeRawTrackEdit {
-            id,
-            title,
-            artist_assignments,
-            side,
-            track_number,
-            file,
-        } = self;
-        bae_core::import::RawTrackEdit {
-            id,
-            title,
-            artist_assignments: artist_assignments.into_core(),
-            side,
-            track_number,
-            file: file.map(BridgeAudioFile::into_core),
-        }
-    }
+mirror_struct! {
+    BridgeRawPressingEdit = bae_core::import::RawPressingEdit,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { year, format, label, catalog_number, country, barcode },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeRawReleaseEdit {
-    pub(crate) fn from_core(e: bae_core::import::RawReleaseEdit) -> Self {
-        let bae_core::import::RawReleaseEdit {
-            album_title,
-            album_artist_assignments,
-            album_year,
-            pressing,
-            tracks,
-        } = e;
-        BridgeRawReleaseEdit {
-            album_title,
-            album_artist_assignments: album_artist_assignments
-                .into_iter()
-                .map(BridgeArtistAssignment::from_core)
-                .collect(),
-            album_year,
-            pressing: BridgeRawPressingEdit::from_core(pressing),
-            tracks: tracks
-                .into_iter()
-                .map(BridgeRawTrackEdit::from_core)
-                .collect(),
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::RawReleaseEdit {
-        let BridgeRawReleaseEdit {
-            album_title,
-            album_artist_assignments,
-            album_year,
-            pressing,
-            tracks,
-        } = self;
-        bae_core::import::RawReleaseEdit {
-            album_title,
-            album_artist_assignments: album_artist_assignments
-                .into_iter()
-                .map(BridgeArtistAssignment::into_core)
-                .collect(),
-            album_year,
-            pressing: pressing.into_core(),
-            tracks: tracks
-                .into_iter()
-                .map(BridgeRawTrackEdit::into_core)
-                .collect(),
-        }
-    }
+mirror_struct! {
+    BridgeRawTrackEdit = bae_core::import::RawTrackEdit,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: {
+        id,
+        title,
+        artist_assignments: (BridgeTrackArtistAssignments),
+        side,
+        track_number,
+        file: (opt BridgeAudioFile),
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeReleaseEditTrackSource {
-    fn from_core(source: bae_core::album_detail::ReleaseEditTrackSource) -> Self {
-        let bae_core::album_detail::ReleaseEditTrackSource {
-            file_id,
-            name,
-            layout,
-        } = source;
-        Self {
-            file_id,
-            name,
-            layout: BridgeSourceAudioLayout::from_core(layout),
-        }
-    }
+mirror_struct! {
+    BridgeRawReleaseEdit = bae_core::import::RawReleaseEdit,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: {
+        album_title,
+        album_artist_assignments: (each BridgeArtistAssignment),
+        album_year,
+        pressing: (BridgeRawPressingEdit),
+        tracks: (each BridgeRawTrackEdit),
+    },
 }
 
-#[cfg(feature = "desktop")]
+mirror_struct! {
+    BridgeReleaseEditTrackSource = bae_core::album_detail::ReleaseEditTrackSource,
+    from_core: fn,
+    fields: { file_id, name, layout: (BridgeSourceAudioLayout) },
+}
+
+/// Not a `mirror_struct`: `side_header_key` is derived from the side rather
+/// than carried by core, so a track row reads a field instead of asking.
 impl BridgeReleaseEditTrackContext {
     fn from_core(context: bae_core::album_detail::ReleaseEditTrackContext) -> Self {
         let bae_core::album_detail::ReleaseEditTrackContext {
@@ -319,37 +118,22 @@ impl BridgeReleaseEditTrackContext {
     }
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeReleaseEditDisplayContext {
-    fn from_core(context: bae_core::album_detail::ReleaseEditDisplayContext) -> Self {
-        let bae_core::album_detail::ReleaseEditDisplayContext {
-            source_audio,
-            tracks,
-        } = context;
-        Self {
-            source_audio: source_audio.map(BridgeSourceAudioSummary::from_core),
-            tracks: tracks
-                .into_iter()
-                .map(BridgeReleaseEditTrackContext::from_core)
-                .collect(),
-        }
-    }
+mirror_struct! {
+    BridgeReleaseEditDisplayContext = bae_core::album_detail::ReleaseEditDisplayContext,
+    from_core: fn,
+    fields: {
+        source_audio: (opt BridgeSourceAudioSummary),
+        tracks: (each BridgeReleaseEditTrackContext),
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeReleaseEditSeed {
-    pub(crate) fn from_core(seed: bae_core::import::ReleaseEditSeed) -> Self {
-        let bae_core::import::ReleaseEditSeed {
-            edit,
-            can_reset_to_source,
-            cover,
-            display,
-        } = seed;
-        Self {
-            edit: BridgeRawReleaseEdit::from_core(edit),
-            can_reset_to_source,
-            cover: cover.map(BridgeImageRef::from_core),
-            display: BridgeReleaseEditDisplayContext::from_core(display),
-        }
-    }
+mirror_struct! {
+    BridgeReleaseEditSeed = bae_core::import::ReleaseEditSeed,
+    from_core: pub(crate) fn,
+    fields: {
+        edit: (BridgeRawReleaseEdit),
+        can_reset_to_source,
+        cover: (opt BridgeImageRef),
+        display: (BridgeReleaseEditDisplayContext),
+    },
 }

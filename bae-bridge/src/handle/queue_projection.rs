@@ -24,26 +24,16 @@ pub(super) async fn pump_ui_events(
     }
 }
 
-impl crate::types::BridgeUploadReleaseGroup {
-    pub(super) fn from_core(g: bae_core::library::UploadReleaseGroup) -> Self {
-        let bae_core::library::UploadReleaseGroup {
-            release_id,
-            display_title,
-            files,
-            progress,
-            throughput_bps,
-        } = g;
-        Self {
-            release_id,
-            display_title,
-            files: files
-                .into_iter()
-                .map(crate::types::BridgeUploadFileOp::from_core)
-                .collect(),
-            progress: crate::types::BridgeUploadProgress::from_core(progress),
-            throughput_bps,
-        }
-    }
+mirror_struct! {
+    crate::types::BridgeUploadReleaseGroup = bae_core::library::UploadReleaseGroup,
+    from_core: pub(super) fn,
+    fields: {
+        release_id,
+        display_title,
+        files: (each crate::types::BridgeUploadFileOp),
+        progress: (crate::types::BridgeUploadProgress),
+        throughput_bps,
+    },
 }
 
 impl crate::types::BridgeUploadFileOp {
@@ -85,54 +75,32 @@ impl crate::types::BridgeUploadFileOp {
     }
 }
 
-impl crate::types::BridgeUploadBar {
-    fn from_core(bar: bae_core::library::UploadBar) -> Self {
-        let bae_core::library::UploadBar {
-            phase,
-            bytes_done,
-            bytes_total,
-        } = bar;
-        Self {
-            phase: crate::types::BridgeUploadPhase::from_core(phase),
-            bytes_done,
-            bytes_total,
-        }
-    }
+mirror_struct! {
+    crate::types::BridgeUploadBar = bae_core::library::UploadBar,
+    from_core: fn,
+    fields: {
+        phase: (crate::types::BridgeUploadPhase),
+        bytes_done,
+        bytes_total,
+    },
 }
 
-impl crate::types::BridgeUploadPhase {
-    fn from_core(phase: bae_core::library::UploadPhase) -> Self {
-        match phase {
-            bae_core::library::UploadPhase::Preparing => Self::Preparing,
-            bae_core::library::UploadPhase::Uploading => Self::Uploading,
-        }
-    }
+mirror_enum! {
+    crate::types::BridgeUploadPhase = bae_core::library::UploadPhase,
+    from_core: fn,
+    variants: { Preparing, Uploading },
 }
 
-impl crate::types::BridgeUploadFileLabel {
-    fn from_core(label: bae_core::library::UploadFileLabel) -> Self {
-        match label {
-            bae_core::library::UploadFileLabel::Filename(name) => Self::Filename { name },
-            bae_core::library::UploadFileLabel::Cover => Self::Cover,
-            bae_core::library::UploadFileLabel::ArtistImage => Self::ArtistImage,
-            bae_core::library::UploadFileLabel::Unwinding => Self::Unwinding,
-        }
-    }
+mirror_enum! {
+    crate::types::BridgeUploadFileLabel = bae_core::library::UploadFileLabel,
+    from_core: fn,
+    variants: { Filename(name), Cover, ArtistImage, Unwinding },
 }
 
-impl crate::types::BridgeDeleteOp {
-    pub(super) fn from_core(op: bae_core::library::DeleteOp) -> Self {
-        let bae_core::library::DeleteOp {
-            namespace,
-            blob_id,
-            created_at,
-        } = op;
-        Self {
-            namespace,
-            blob_id,
-            created_at,
-        }
-    }
+mirror_struct! {
+    crate::types::BridgeDeleteOp = bae_core::library::DeleteOp,
+    from_core: pub(super) fn,
+    fields: { namespace, blob_id, created_at },
 }
 
 impl crate::types::BridgeOutboxSnapshot {
@@ -191,13 +159,10 @@ impl crate::types::BridgeOutboxSnapshot {
     }
 }
 
-impl crate::types::BridgeOutboxPauseState {
-    fn from_core(state: bae_core::library::OutboxPauseState) -> Self {
-        match state {
-            bae_core::library::OutboxPauseState::Running => Self::Running,
-            bae_core::library::OutboxPauseState::Paused => Self::Paused,
-        }
-    }
+mirror_enum! {
+    crate::types::BridgeOutboxPauseState = bae_core::library::OutboxPauseState,
+    from_core: fn,
+    variants: { Running, Paused },
 }
 
 impl crate::types::BridgeUploadProgress {
@@ -258,50 +223,37 @@ impl crate::types::BridgeUploadIssue {
     }
 }
 
-impl crate::types::BridgeUploadActivity {
-    pub(super) fn from_core(a: bae_core::library::UploadActivity) -> Self {
-        use crate::types::BridgeUploadActivity;
-        use bae_core::library::UploadActivity;
-        match a {
-            UploadActivity::Cancelling => BridgeUploadActivity::Cancelling,
-            UploadActivity::Publishing => BridgeUploadActivity::Publishing,
-            UploadActivity::Uploading => BridgeUploadActivity::Uploading,
-            UploadActivity::Preparing => BridgeUploadActivity::Preparing,
-            UploadActivity::Retrying => BridgeUploadActivity::Retrying,
-            UploadActivity::Prepared => BridgeUploadActivity::Prepared,
-            UploadActivity::Queued => BridgeUploadActivity::Queued,
-            UploadActivity::Uploaded => BridgeUploadActivity::Uploaded,
-        }
-    }
+mirror_enum! {
+    crate::types::BridgeUploadActivity = bae_core::library::UploadActivity,
+    from_core: pub(super) fn,
+    variants: {
+        Cancelling,
+        Publishing,
+        Uploading,
+        Preparing,
+        Retrying,
+        Prepared,
+        Queued,
+        Uploaded,
+    },
 }
 
-impl crate::types::BridgeDownloadTransferProgress {
-    pub(crate) fn from_core(p: bae_core::library::DownloadTransferProgress) -> Self {
-        let bae_core::library::DownloadTransferProgress {
-            bytes_done,
-            bytes_total,
-            fraction,
-        } = p;
-        Self {
-            bytes_done,
-            bytes_total,
-            fraction,
-        }
-    }
+mirror_struct! {
+    crate::types::BridgeDownloadTransferProgress = bae_core::library::DownloadTransferProgress,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { bytes_done, bytes_total, fraction },
 }
 
-impl crate::types::BridgeDownloadState {
-    pub(super) fn from_core(state: bae_core::library::DownloadState) -> Self {
-        use crate::types::BridgeDownloadState;
-        use bae_core::library::DownloadState;
-        match state {
-            DownloadState::Queued => BridgeDownloadState::Queued,
-            DownloadState::Active { progress } => BridgeDownloadState::Active {
-                progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
-            },
-            DownloadState::Failed { error } => BridgeDownloadState::Failed { error },
-        }
-    }
+mirror_enum! {
+    crate::types::BridgeDownloadState = bae_core::library::DownloadState,
+    from_core: pub(super) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        Queued,
+        Active { progress: (crate::types::BridgeDownloadTransferProgress) },
+        Failed { error },
+    },
 }
 
 impl crate::types::BridgeDownloadOp {
@@ -508,26 +460,16 @@ impl crate::types::BridgePlaybackContext {
     }
 }
 
-impl crate::types::BridgeQueueSnapshot {
-    pub(super) fn from_core(snapshot: bae_core::queue::ResolvedQueueSnapshot) -> Self {
-        let bae_core::queue::ResolvedQueueSnapshot {
-            manual,
-            context,
-            has_next,
-            has_previous,
-            revision,
-        } = snapshot;
-        crate::types::BridgeQueueSnapshot {
-            manual: manual
-                .into_iter()
-                .map(crate::types::BridgeQueueEntry::from_core)
-                .collect(),
-            context: context.map(crate::types::BridgePlaybackContext::from_core),
-            has_next,
-            has_previous,
-            revision,
-        }
-    }
+mirror_struct! {
+    crate::types::BridgeQueueSnapshot = bae_core::queue::ResolvedQueueSnapshot,
+    from_core: pub(super) fn,
+    fields: {
+        manual: (each crate::types::BridgeQueueEntry),
+        context: (opt crate::types::BridgePlaybackContext),
+        has_next,
+        has_previous,
+        revision,
+    },
 }
 
 impl crate::types::BridgeQueueUpcomingPage {

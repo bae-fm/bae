@@ -452,72 +452,54 @@ fn scope_fields(scope: &coven::CloudKitScope) -> (Option<String>, Option<String>
     }
 }
 
-impl BridgeCloudKitShare {
-    fn into_core(self) -> coven::CloudKitShare {
-        let BridgeCloudKitShare {
-            share_url,
-            owner_name,
-            zone_name,
-        } = self;
-        coven::CloudKitShare {
-            share_url,
-            owner_name,
-            zone_name,
-        }
-    }
+mirror_struct! {
+    BridgeCloudKitShare = coven::CloudKitShare,
+    into_core: fn,
+    fields: { share_url, owner_name, zone_name },
 }
 
-impl BridgeCloudKitProviderIdentity {
-    fn into_core(self) -> coven::CloudKitProviderIdentity {
-        let BridgeCloudKitProviderIdentity {
-            container_id,
-            environment,
-            owner_name,
-            zone_name,
-            current_user_record_name,
-        } = self;
-        coven::CloudKitProviderIdentity {
-            container_id,
-            environment: match environment {
-                BridgeCloudKitEnvironment::Development => coven::CloudKitEnvironment::Development,
-                BridgeCloudKitEnvironment::Production => coven::CloudKitEnvironment::Production,
-            },
-            owner_name,
-            zone_name,
-            current_user_record_name,
-        }
-    }
+mirror_enum! {
+    BridgeCloudKitEnvironment = coven::CloudKitEnvironment,
+    into_core: fn,
+    variants: { Development, Production },
 }
 
-impl BridgeCloudKitAcceptedShare {
-    fn into_core(self) -> coven::CloudKitAcceptedShareRecord {
-        let BridgeCloudKitAcceptedShare {
-            share_record_name,
-            owner_name,
-            zone_name,
-            participant_record_name,
-            permission,
-            acceptance,
-            canonical_record,
-        } = self;
-        coven::CloudKitAcceptedShareRecord {
-            share_record_name,
-            owner_name,
-            zone_name,
-            participant_record_name,
-            permission: match permission {
-                BridgeCloudKitSharePermission::ReadOnly => coven::CloudKitSharePermission::ReadOnly,
-                BridgeCloudKitSharePermission::ReadWrite => {
-                    coven::CloudKitSharePermission::ReadWrite
-                }
-            },
-            acceptance: match acceptance {
-                BridgeCloudKitShareAcceptance::Pending => coven::CloudKitShareAcceptance::Pending,
-                BridgeCloudKitShareAcceptance::Accepted => coven::CloudKitShareAcceptance::Accepted,
-            },
-            canonical_record,
-        }
-    }
+mirror_struct! {
+    BridgeCloudKitProviderIdentity = coven::CloudKitProviderIdentity,
+    into_core: fn,
+    fields: {
+        container_id,
+        environment: (BridgeCloudKitEnvironment),
+        owner_name,
+        zone_name,
+        current_user_record_name,
+    },
+}
+
+mirror_enum! {
+    BridgeCloudKitSharePermission = coven::CloudKitSharePermission,
+    into_core: fn,
+    variants: { ReadOnly, ReadWrite },
+}
+
+mirror_enum! {
+    BridgeCloudKitShareAcceptance = coven::CloudKitShareAcceptance,
+    into_core: fn,
+    variants: { Pending, Accepted },
+}
+
+mirror_struct! {
+    BridgeCloudKitAcceptedShare = coven::CloudKitAcceptedShareRecord,
+    into_core: fn,
+    fields: {
+        share_record_name,
+        owner_name,
+        zone_name,
+        participant_record_name,
+        permission: (BridgeCloudKitSharePermission),
+        acceptance: (BridgeCloudKitShareAcceptance),
+        canonical_record,
+    },
 }
 
 impl BridgeCloudKitRecordVersion {

@@ -9,49 +9,30 @@ pub struct CandidateCombinationReview {
     app: Arc<AppHandle>,
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl AppHandle {
-    pub async fn candidate_source_folders(
-        self: Arc<Self>,
-        key: String,
-    ) -> Result<Vec<String>, BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .import_candidate_source_folders(&key)
-                .await
-                .map_err(BridgeError::import)
-        })
-        .await
+forward! { async this => {
+    fn candidate_source_folders(key: String) -> Vec<String> {
+        this.services
+            .import_candidate_source_folders(&key)
+            .await
+            .map_err(BridgeError::import)
     }
 
-    pub async fn review_candidate_combination(
-        self: Arc<Self>,
-        keys: Vec<String>,
-    ) -> Result<Arc<CandidateCombinationReview>, BridgeError> {
-        self.run_exported(move |this| async move {
-            let inner = this
-                .services
-                .import_review_combination(keys)
-                .await
-                .map_err(BridgeError::import)?;
-            Ok(Arc::new(CandidateCombinationReview { inner, app: this }))
-        })
-        .await
+    fn review_candidate_combination(keys: Vec<String>) -> Arc<CandidateCombinationReview> {
+        let inner = this
+            .services
+            .import_review_combination(keys)
+            .await
+            .map_err(BridgeError::import)?;
+        Ok(Arc::new(CandidateCombinationReview { inner, app: this }))
     }
 
-    pub async fn separate_combined_candidate(
-        self: Arc<Self>,
-        key: String,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .import_separate_combined_candidate(&key)
-                .await
-                .map_err(BridgeError::import)
-        })
-        .await
+    fn separate_combined_candidate(key: String) -> () {
+        this.services
+            .import_separate_combined_candidate(&key)
+            .await
+            .map_err(BridgeError::import)
     }
-}
+} }
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl CandidateCombinationReview {

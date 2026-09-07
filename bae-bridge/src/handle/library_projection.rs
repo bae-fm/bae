@@ -22,24 +22,10 @@ impl BridgeFile {
     }
 }
 
-impl BridgeGalleryItem {
-    pub(super) fn from_core(g: bae_core::album_detail::GalleryItem) -> Self {
-        let bae_core::album_detail::GalleryItem { id, label, source } = g;
-        BridgeGalleryItem {
-            id,
-            label,
-            source: match source {
-                bae_core::album_detail::GallerySource::Cover(image) => {
-                    crate::types::BridgeGallerySource::Cover {
-                        image: crate::types::BridgeImageRef::from_core(image),
-                    }
-                }
-                bae_core::album_detail::GallerySource::ReleaseFile { file_id } => {
-                    crate::types::BridgeGallerySource::ReleaseFile { file_id }
-                }
-            },
-        }
-    }
+mirror_struct! {
+    BridgeGalleryItem = bae_core::album_detail::GalleryItem,
+    from_core: pub(super) fn,
+    fields: { id, label, source: (crate::types::BridgeGallerySource) },
 }
 
 impl BridgeTrack {
@@ -155,23 +141,16 @@ impl BridgeRelease {
     }
 }
 
-impl BridgeAlbumSearchResult {
-    pub(super) fn from_core(a: bae_core::album_detail::AlbumSearchResult) -> Self {
-        let bae_core::album_detail::AlbumSearchResult {
-            id,
-            title,
-            year,
-            artist_name,
-            cover,
-        } = a;
-        BridgeAlbumSearchResult {
-            id,
-            title,
-            year,
-            artist_name,
-            cover: cover.map(crate::types::BridgeImageRef::from_core),
-        }
-    }
+mirror_struct! {
+    BridgeAlbumSearchResult = bae_core::album_detail::AlbumSearchResult,
+    from_core: pub(super) fn,
+    fields: {
+        id,
+        title,
+        year,
+        artist_name,
+        cover: (opt crate::types::BridgeImageRef),
+    },
 }
 
 impl BridgeTrackSearchResult {
@@ -197,89 +176,48 @@ impl BridgeTrackSearchResult {
     }
 }
 
-impl BridgeStoragePage {
-    pub(super) fn from_core(page: bae_core::album_detail::StoragePage) -> Self {
-        let bae_core::album_detail::StoragePage { rows, total_count } = page;
-        BridgeStoragePage {
-            rows: rows.into_iter().map(BridgeStorageRow::from_core).collect(),
-            total_count,
-        }
-    }
+mirror_struct! {
+    BridgeStoragePage = bae_core::album_detail::StoragePage,
+    from_core: pub(super) fn,
+    fields: { rows: (each BridgeStorageRow), total_count },
 }
 
-impl BridgeSearchResults {
-    pub(crate) fn from_core(results: bae_core::album_detail::SearchResults) -> Self {
-        Self {
-            albums: results
-                .albums
-                .into_iter()
-                .map(BridgeAlbumSearchResult::from_core)
-                .collect(),
-            artists: results
-                .artists
-                .into_iter()
-                .map(BridgeArtistSummary::from_core)
-                .collect(),
-            tracks: results
-                .tracks
-                .into_iter()
-                .map(BridgeTrackSearchResult::from_core)
-                .collect(),
-            composers: results
-                .composers
-                .into_iter()
-                .map(BridgeComposerSummary::from_core)
-                .collect(),
-            works: results
-                .works
-                .into_iter()
-                .map(BridgeWorkSummary::from_core)
-                .collect(),
-        }
-    }
+mirror_struct! {
+    BridgeSearchResults = bae_core::album_detail::SearchResults,
+    from_core: pub(crate) fn,
+    fields: {
+        albums: (each BridgeAlbumSearchResult),
+        artists: (each BridgeArtistSummary),
+        tracks: (each BridgeTrackSearchResult),
+        composers: (each BridgeComposerSummary),
+        works: (each BridgeWorkSummary),
+    },
 }
 
-impl BridgeStorageRow {
-    pub(super) fn from_core(raw: bae_core::album_detail::StorageRow) -> Self {
-        let bae_core::album_detail::StorageRow { release, album } = raw;
-        BridgeStorageRow {
-            release: BridgeReleaseSummary::from_core(release),
-            album: BridgeAlbum::from_core(album),
-        }
-    }
+mirror_struct! {
+    BridgeStorageRow = bae_core::album_detail::StorageRow,
+    from_core: pub(super) fn,
+    fields: {
+        release: (BridgeReleaseSummary),
+        album: (BridgeAlbum),
+    },
 }
 
-impl BridgeReleaseSummary {
-    pub(super) fn from_core(s: bae_core::album_detail::ReleaseSummary) -> Self {
-        let bae_core::album_detail::ReleaseSummary {
-            id,
-            album_id,
-            format,
-            storage_state,
-            pinned,
-            storage_actions,
-            transfer_action,
-            file_count,
-            total_size,
-            cover,
-        } = s;
-        BridgeReleaseSummary {
-            id,
-            album_id,
-            format,
-            storage_state: crate::types::BridgeReleaseStorageState::from_core(storage_state),
-            pinned,
-            storage_actions: storage_actions
-                .into_iter()
-                .map(crate::types::BridgeReleaseStorageAction::from_core)
-                .collect(),
-            transfer_action: transfer_action
-                .map(crate::types::BridgeReleaseStorageAction::from_core),
-            file_count,
-            total_size,
-            cover: cover.map(crate::types::BridgeImageRef::from_core),
-        }
-    }
+mirror_struct! {
+    BridgeReleaseSummary = bae_core::album_detail::ReleaseSummary,
+    from_core: pub(super) fn,
+    fields: {
+        id,
+        album_id,
+        format,
+        storage_state: (crate::types::BridgeReleaseStorageState),
+        pinned,
+        storage_actions: (each crate::types::BridgeReleaseStorageAction),
+        transfer_action: (opt crate::types::BridgeReleaseStorageAction),
+        file_count,
+        total_size,
+        cover: (opt crate::types::BridgeImageRef),
+    },
 }
 
 impl BridgeAlbumDetail {
@@ -323,29 +261,19 @@ impl BridgeAlbumDetail {
     }
 }
 
-impl BridgeAlbum {
-    pub(super) fn from_core(a: bae_core::album_detail::AlbumSummary) -> Self {
-        let bae_core::album_detail::AlbumSummary {
-            id,
-            title,
-            year,
-            is_compilation,
-            artist_names,
-            release_ids,
-            primary_release_id,
-            cover,
-        } = a;
-        BridgeAlbum {
-            id,
-            title,
-            year,
-            is_compilation,
-            artist_names,
-            release_ids,
-            primary_release_id,
-            cover: cover.map(crate::types::BridgeImageRef::from_core),
-        }
-    }
+mirror_struct! {
+    BridgeAlbum = bae_core::album_detail::AlbumSummary,
+    from_core: pub(super) fn,
+    fields: {
+        id,
+        title,
+        year,
+        is_compilation,
+        artist_names,
+        release_ids,
+        primary_release_id,
+        cover: (opt crate::types::BridgeImageRef),
+    },
 }
 
 impl BridgeComposerSummary {
@@ -404,14 +332,10 @@ impl BridgeArtistSummary {
     }
 }
 
-impl BridgeArtistDetail {
-    pub(super) fn from_core(d: bae_core::album_detail::ArtistDetail) -> Self {
-        let bae_core::album_detail::ArtistDetail { artist, albums } = d;
-        BridgeArtistDetail {
-            artist: BridgeArtistSummary::from_core(artist),
-            albums: albums.into_iter().map(BridgeAlbum::from_core).collect(),
-        }
-    }
+mirror_struct! {
+    BridgeArtistDetail = bae_core::album_detail::ArtistDetail,
+    from_core: pub(super) fn,
+    fields: { artist: (BridgeArtistSummary), albums: (each BridgeAlbum) },
 }
 
 impl BridgeWorkSummary {
@@ -580,91 +504,48 @@ impl BridgeWorkTrackSummary {
     }
 }
 
-impl BridgeWorkReleaseSummary {
-    pub(super) fn from_core(s: bae_core::album_detail::WorkReleaseSummary) -> Self {
-        let bae_core::album_detail::WorkReleaseSummary {
-            release_id,
-            album_id,
-            album_title,
-            display_name,
-            format,
-            cover,
-        } = s;
-        BridgeWorkReleaseSummary {
-            release_id,
-            album_id,
-            album_title,
-            display_name,
-            format,
-            cover: cover.map(crate::types::BridgeImageRef::from_core),
-        }
-    }
+mirror_struct! {
+    BridgeWorkReleaseSummary = bae_core::album_detail::WorkReleaseSummary,
+    from_core: pub(super) fn,
+    fields: {
+        release_id,
+        album_id,
+        album_title,
+        display_name,
+        format,
+        cover: (opt crate::types::BridgeImageRef),
+    },
 }
 
-impl BridgeComposerWorkGroup {
-    pub(super) fn from_core(group: bae_core::album_detail::ComposerWorkGroup) -> Self {
-        let bae_core::album_detail::ComposerWorkGroup { id, parent, works } = group;
-        BridgeComposerWorkGroup {
-            id,
-            parent: parent.map(BridgeWorkSummary::from_core),
-            works: works
-                .into_iter()
-                .map(BridgeWorkSummary::from_core)
-                .collect(),
-        }
-    }
+mirror_struct! {
+    BridgeComposerWorkGroup = bae_core::album_detail::ComposerWorkGroup,
+    from_core: pub(super) fn,
+    fields: {
+        id,
+        parent: (opt BridgeWorkSummary),
+        works: (each BridgeWorkSummary),
+    },
 }
 
-impl BridgeComposerDetail {
-    pub(super) fn from_core(d: bae_core::album_detail::ComposerDetail) -> Self {
-        let bae_core::album_detail::ComposerDetail {
-            composer,
-            work_groups,
-            unlinked_release_roles,
-            unlinked_track_roles,
-            default_work_id,
-        } = d;
-        BridgeComposerDetail {
-            composer: BridgeComposerSummary::from_core(composer),
-            work_groups: work_groups
-                .into_iter()
-                .map(BridgeComposerWorkGroup::from_core)
-                .collect(),
-            unlinked_release_roles: unlinked_release_roles
-                .into_iter()
-                .map(BridgeReleaseRoleSummary::from_core)
-                .collect(),
-            unlinked_track_roles: unlinked_track_roles
-                .into_iter()
-                .map(BridgeTrackRoleSummary::from_core)
-                .collect(),
-            default_work_id,
-        }
-    }
+mirror_struct! {
+    BridgeComposerDetail = bae_core::album_detail::ComposerDetail,
+    from_core: pub(super) fn,
+    fields: {
+        composer: (BridgeComposerSummary),
+        work_groups: (each BridgeComposerWorkGroup),
+        unlinked_release_roles: (each BridgeReleaseRoleSummary),
+        unlinked_track_roles: (each BridgeTrackRoleSummary),
+        default_work_id,
+    },
 }
 
-impl BridgeWorkDetail {
-    pub(super) fn from_core(d: bae_core::album_detail::WorkDetail) -> Self {
-        let bae_core::album_detail::WorkDetail {
-            work,
-            child_works,
-            releases,
-            tracks,
-        } = d;
-        BridgeWorkDetail {
-            work: BridgeWorkSummary::from_core(work),
-            child_works: child_works
-                .into_iter()
-                .map(BridgeWorkSummary::from_core)
-                .collect(),
-            releases: releases
-                .into_iter()
-                .map(BridgeWorkReleaseSummary::from_core)
-                .collect(),
-            tracks: tracks
-                .into_iter()
-                .map(BridgeWorkTrackSummary::from_core)
-                .collect(),
-        }
-    }
+mirror_struct! {
+    BridgeWorkDetail = bae_core::album_detail::WorkDetail,
+    from_core: pub(super) fn,
+    fields: {
+        work: (BridgeWorkSummary),
+        child_works: (each BridgeWorkSummary),
+        releases: (each BridgeWorkReleaseSummary),
+        tracks: (each BridgeWorkTrackSummary),
+    },
 }

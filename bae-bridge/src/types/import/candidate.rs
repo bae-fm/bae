@@ -9,12 +9,11 @@ pub struct BridgeWatchedFolder {
     pub name: String,
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeWatchedFolder {
-    pub fn from_core(folder: bae_core::import::WatchedFolder) -> Self {
-        let bae_core::import::WatchedFolder { path, name } = folder;
-        Self { path, name }
-    }
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeWatchedFolder = bae_core::import::WatchedFolder,
+    from_core: pub fn,
+    fields: { path, name },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -45,8 +44,8 @@ pub enum BridgeSheetBindingOffer {
     RefusedCodec { codec: String },
     /// The sheet names boundaries outside this file's measured duration.
     RefusedTiming,
-    /// bae can't read the file at all. Localized through
-    /// [`bridge_sheet_refused_unreadable_key`].
+    /// bae can't read the file at all. Localized, like every other refusal,
+    /// through [`bridge_sheet_binding_offer_key`].
     RefusedUnreadable,
 }
 
@@ -90,13 +89,6 @@ pub struct BridgeSheetBindingOption {
 #[uniffi::export]
 pub fn bridge_sheet_refused_codec_key() -> String {
     SHEET_REFUSED_CODEC_KEY.to_string()
-}
-
-/// Localization key for audio bae cannot read, refused as a binding for that
-/// reason rather than for its codec.
-#[uniffi::export]
-pub fn bridge_sheet_refused_unreadable_key() -> String {
-    SHEET_REFUSED_UNREADABLE_KEY.to_string()
 }
 
 pub(crate) const SHEET_REFUSED_CODEC_KEY: &str = "core.import.sheet.refused_codec";
@@ -275,26 +267,28 @@ pub enum BridgeImportStep {
     Running { phase: BridgeImportPhase },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeImportStep {
-    pub(crate) fn from_core(s: bae_core::import::ImportStep) -> Self {
-        use bae_core::import::{ImportPhase, ImportStep, PrepareStep};
-        match s {
-            ImportStep::Preparing(p) => BridgeImportStep::Preparing {
-                step: match p {
-                    PrepareStep::Queued => BridgePrepareStep::Queued,
-                    PrepareStep::ValidatingSourceFiles => BridgePrepareStep::ValidatingSourceFiles,
-                },
-            },
-            ImportStep::Running(phase) => BridgeImportStep::Running {
-                phase: match phase {
-                    ImportPhase::ReadingFiles => BridgeImportPhase::ReadingFiles,
-                    ImportPhase::MeasuringLoudness => BridgeImportPhase::MeasuringLoudness,
-                    ImportPhase::Finalizing => BridgeImportPhase::Finalizing,
-                },
-            },
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgePrepareStep = bae_core::import::PrepareStep,
+    from_core: fn,
+    variants: { Queued, ValidatingSourceFiles },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeImportPhase = bae_core::import::ImportPhase,
+    from_core: fn,
+    variants: { ReadingFiles, MeasuringLoudness, Finalizing },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeImportStep = bae_core::import::ImportStep,
+    from_core: pub(crate) fn,
+    variants: {
+        Preparing(step: (BridgePrepareStep)),
+        Running(phase: (BridgeImportPhase)),
+    },
 }
 
 /// Localization key for a prepare step — resolved by the UI against the `Core`
@@ -319,24 +313,17 @@ pub struct BridgeLibraryStatus {
     pub album_id: Option<String>,
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeLibraryStatus {
-    pub(crate) fn from_core(s: bae_core::db::LibraryStatus) -> Self {
-        let bae_core::db::LibraryStatus {
-            release_id,
-            release_in_library,
-            album_in_library,
-            album_title,
-            album_id,
-        } = s;
-        Self {
-            release_id,
-            release_in_library,
-            album_in_library,
-            album_title,
-            album_id,
-        }
-    }
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeLibraryStatus = bae_core::db::LibraryStatus,
+    from_core: pub(crate) fn,
+    fields: {
+        release_id,
+        release_in_library,
+        album_in_library,
+        album_title,
+        album_id,
+    },
 }
 
 /// A signal the user acted on in the toolbar. The disc ID and the barcode are
@@ -350,16 +337,11 @@ pub enum BridgeSignalToggle {
     Catalog { value: String },
 }
 
-impl BridgeSignalToggle {
+mirror_enum! {
     #[cfg(feature = "desktop")]
-    pub fn into_core(self) -> bae_core::identify::SignalToggle {
-        use bae_core::identify::SignalToggle;
-        match self {
-            Self::Disc => SignalToggle::Disc,
-            Self::Barcode => SignalToggle::Barcode,
-            Self::Catalog { value } => SignalToggle::Catalog(value),
-        }
-    }
+    BridgeSignalToggle = bae_core::identify::SignalToggle,
+    into_core: pub fn,
+    variants: { Disc, Barcode, Catalog(value) },
 }
 
 /// Where a signal value was harvested from — what a badge shows on hover
@@ -375,19 +357,11 @@ pub enum BridgeSignalOrigin {
     TextFile,
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeSignalOrigin {
-    fn from_core(o: bae_core::signals::SignalOrigin) -> Self {
-        use bae_core::signals::SignalOrigin;
-        match o {
-            SignalOrigin::DiscToc => BridgeSignalOrigin::DiscToc,
-            SignalOrigin::CueSheet => BridgeSignalOrigin::CueSheet,
-            SignalOrigin::Artwork => BridgeSignalOrigin::Artwork,
-            SignalOrigin::FolderName => BridgeSignalOrigin::FolderName,
-            SignalOrigin::Filename => BridgeSignalOrigin::Filename,
-            SignalOrigin::TextFile => BridgeSignalOrigin::TextFile,
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeSignalOrigin = bae_core::signals::SignalOrigin,
+    from_core: fn,
+    variants: { DiscToc, CueSheet, Artwork, FolderName, Filename, TextFile },
 }
 
 /// A signal value paired with its origin — a catalog candidate or a barcode
@@ -402,20 +376,11 @@ pub struct BridgeSourcedValue {
     pub origin_path: Option<String>,
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeSourcedValue {
-    pub(crate) fn from_core(s: bae_core::signals::SourcedValue) -> Self {
-        let bae_core::signals::SourcedValue {
-            value,
-            origin,
-            origin_path,
-        } = s;
-        Self {
-            value,
-            origin: BridgeSignalOrigin::from_core(origin),
-            origin_path,
-        }
-    }
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeSourcedValue = bae_core::signals::SourcedValue,
+    from_core: pub(crate) fn,
+    fields: { value, origin: (BridgeSignalOrigin), origin_path },
 }
 
 /// Which kind of signal a toolbar badge represents. Mirrors
@@ -448,18 +413,17 @@ pub enum BridgeLookupFailure {
     Diagnostic { detail: String },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeLookupFailure {
-    pub(crate) fn from_core(f: bae_core::signals::LookupFailure) -> Self {
-        use bae_core::signals::LookupFailure;
-        match f {
-            LookupFailure::Network => BridgeLookupFailure::Network,
-            LookupFailure::Provider { status } => BridgeLookupFailure::Provider { status },
-            LookupFailure::Timeout => BridgeLookupFailure::Timeout,
-            LookupFailure::ArtworkAnalysis => BridgeLookupFailure::ArtworkAnalysis,
-            LookupFailure::Diagnostic { detail } => BridgeLookupFailure::Diagnostic { detail },
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeLookupFailure = bae_core::signals::LookupFailure,
+    from_core: pub(crate) fn,
+    variants: {
+        Network,
+        Provider { status },
+        Timeout,
+        ArtworkAnalysis,
+        Diagnostic { detail },
+    },
 }
 
 /// Localization key for a lookup failure's user-facing line, or `None` for
@@ -554,66 +518,45 @@ pub struct BridgeSignalsToolbar {
     pub signals: Vec<BridgeToolbarSignal>,
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeSignalState {
-    fn from_core(s: bae_core::identify::SignalState) -> Self {
-        use bae_core::identify::SignalState;
-        match s {
-            SignalState::LookingUp => BridgeSignalState::LookingUp,
-            SignalState::Found { count } => BridgeSignalState::Found { count },
-            SignalState::NoMatch => BridgeSignalState::NoMatch,
-            SignalState::Skipped => BridgeSignalState::Skipped,
-            SignalState::Failed { failure } => BridgeSignalState::Failed {
-                failure: BridgeLookupFailure::from_core(failure),
-            },
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeSignalState = bae_core::identify::SignalState,
+    from_core: fn,
+    variants: {
+        LookingUp,
+        Found { count },
+        NoMatch,
+        Skipped,
+        Failed { failure: (BridgeLookupFailure) },
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeSignalOption {
-    fn from_core(o: bae_core::identify::SignalOption) -> Self {
-        let bae_core::identify::SignalOption {
-            value,
-            origin,
-            chosen,
-        } = o;
-        BridgeSignalOption {
-            value,
-            origin: BridgeSignalOrigin::from_core(origin),
-            chosen,
-        }
-    }
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeSignalOption = bae_core::identify::SignalOption,
+    from_core: fn,
+    fields: { value, origin: (BridgeSignalOrigin), chosen },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeToolbarSignal {
-    fn from_core(s: bae_core::identify::ToolbarSignal) -> Self {
-        use bae_core::identify::{SignalKind, ToolbarSignal};
-        let ToolbarSignal {
-            kind,
-            value,
-            origin,
-            state,
-            excluded,
-            options,
-        } = s;
-        BridgeToolbarSignal {
-            kind: match kind {
-                SignalKind::DiscId => BridgeSignalKind::DiscId,
-                SignalKind::Barcode => BridgeSignalKind::Barcode,
-                SignalKind::Catalog => BridgeSignalKind::Catalog,
-            },
-            value,
-            origin: BridgeSignalOrigin::from_core(origin),
-            state: BridgeSignalState::from_core(state),
-            excluded,
-            options: options
-                .into_iter()
-                .map(BridgeSignalOption::from_core)
-                .collect(),
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeSignalKind = bae_core::identify::SignalKind,
+    from_core: fn,
+    variants: { DiscId, Barcode, Catalog },
+}
+
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeToolbarSignal = bae_core::identify::ToolbarSignal,
+    from_core: fn,
+    fields: {
+        kind: (BridgeSignalKind),
+        value,
+        origin: (BridgeSignalOrigin),
+        state: (BridgeSignalState),
+        excluded,
+        options: (each BridgeSignalOption),
+    },
 }
 
 #[cfg(feature = "desktop")]

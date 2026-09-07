@@ -2,6 +2,9 @@
 
 uniffi::setup_scaffolding!();
 
+#[macro_use]
+mod mirror;
+
 #[cfg(target_os = "android")]
 mod android_tls;
 mod bridge_utils;

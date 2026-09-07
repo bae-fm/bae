@@ -196,23 +196,16 @@ fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {
     }
 }
 
-impl BridgeTelemetryEvent {
-    fn into_core(self) -> TelemetryEvent {
-        match self {
-            Self::ScreenOpened { screen } => TelemetryEvent::ScreenOpened {
-                screen: screen.into_core(),
-            },
-        }
-    }
+mirror_enum! {
+    BridgeTelemetryEvent = TelemetryEvent,
+    into_core: fn,
+    variants: { ScreenOpened { screen: (BridgeScreen) } },
 }
 
-impl BridgeScreen {
-    fn into_core(self) -> Screen {
-        match self {
-            Self::Library => Screen::Library,
-            Self::Settings => Screen::Settings,
-        }
-    }
+mirror_enum! {
+    BridgeScreen = Screen,
+    into_core: fn,
+    variants: { Library, Settings },
 }
 
 impl BridgeDiagnosticsConfig {

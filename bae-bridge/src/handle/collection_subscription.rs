@@ -3,7 +3,9 @@ use std::collections::BTreeSet;
 
 /// Album browsing and composer browsing are one subscription over a different
 /// row. A macro rather than a generic: uniffi exports concrete objects and
-/// records, so each row needs its own named type.
+/// records, so each row needs its own named type — the window and snapshot
+/// records included, which is why they are declared here beside the conversion
+/// that fills them.
 macro_rules! browse_subscription {
     (
         object: $object:ident,
@@ -11,8 +13,24 @@ macro_rules! browse_subscription {
         subscribe: $subscribe:ident($criterion:ident),
         snapshot: $snapshot:ident,
         window: $window:ident,
-        row: $core_row:ty => $row:path,
+        row: $core_row:ty => $bridge_row:ty,
     ) => {
+        /// One requested window of the list, with the rows that landed in it.
+        #[derive(Debug, Clone, uniffi::Record)]
+        pub struct $window {
+            pub window: crate::types::BridgeLibraryPageWindow,
+            pub rows: Vec<$bridge_row>,
+        }
+
+        /// Every requested window as of one revision, and what moved.
+        #[derive(Debug, Clone, uniffi::Record)]
+        pub struct $snapshot {
+            pub windows: Vec<$window>,
+            pub total_count: u64,
+            pub request_revision: u64,
+            pub cause: crate::types::BridgeLiveQueryCause,
+        }
+
         #[derive(uniffi::Object)]
         pub struct $object {
             inner: $inner,
@@ -44,15 +62,13 @@ macro_rules! browse_subscription {
                     .map_err(browse_error)
             }
 
-            pub async fn next(
-                self: std::sync::Arc<Self>,
-            ) -> Result<crate::types::$snapshot, BridgeError> {
+            pub async fn next(self: std::sync::Arc<Self>) -> Result<$snapshot, BridgeError> {
                 let runtime = self.runtime.clone();
                 crate::operation_runtime::run(runtime, move || async move {
                     self.inner
                         .next()
                         .await
-                        .map(crate::types::$snapshot::from_core)
+                        .map($snapshot::from_core)
                         .map_err(browse_error)
                 })
                 .await
@@ -68,15 +84,19 @@ macro_rules! browse_subscription {
             }
         }
 
-        impl crate::types::$snapshot {
+        impl $snapshot {
             fn from_core(snapshot: bae_core::library::LibraryBrowseSnapshot<$core_row>) -> Self {
                 Self {
                     windows: snapshot
                         .windows
                         .into_iter()
-                        .map(|window| crate::types::$window {
+                        .map(|window| $window {
                             window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
-                            rows: window.rows.into_iter().map($row).collect(),
+                            rows: window
+                                .rows
+                                .into_iter()
+                                .map(<$bridge_row>::from_core)
+                                .collect(),
                         })
                         .collect(),
                     total_count: snapshot.total_count,
@@ -94,7 +114,7 @@ browse_subscription! {
     subscribe: subscribe_album_browse(BridgeSortCriterion),
     snapshot: BridgeAlbumBrowseSnapshot,
     window: BridgeAlbumBrowseWindow,
-    row: bae_core::album_detail::AlbumSummary => BridgeAlbum::from_core,
+    row: bae_core::album_detail::AlbumSummary => BridgeAlbum,
 }
 
 browse_subscription! {
@@ -103,7 +123,7 @@ browse_subscription! {
     subscribe: subscribe_composer_browse(BridgeComposerSortCriterion),
     snapshot: BridgeComposerBrowseSnapshot,
     window: BridgeComposerBrowseWindow,
-    row: bae_core::album_detail::ComposerSummary => BridgeComposerSummary::from_core,
+    row: bae_core::album_detail::ComposerSummary => BridgeComposerSummary,
 }
 
 fn browse_error(error: bae_core::library::LibraryBrowseSubscriptionError) -> BridgeError {

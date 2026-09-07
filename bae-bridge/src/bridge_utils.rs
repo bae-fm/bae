@@ -6,42 +6,18 @@ use crate::types::{
     BridgeSavePreset, BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
 };
 
-impl BridgeDefaultImportMetadataSource {
-    pub(crate) fn from_core(source: bae_core::config::DefaultImportMetadataSource) -> Self {
-        match source {
-            bae_core::config::DefaultImportMetadataSource::FindOnline => Self::FindOnline,
-            bae_core::config::DefaultImportMetadataSource::FileTags => Self::FileTags,
-            bae_core::config::DefaultImportMetadataSource::None => Self::None,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::config::DefaultImportMetadataSource {
-        match self {
-            Self::FindOnline => bae_core::config::DefaultImportMetadataSource::FindOnline,
-            Self::FileTags => bae_core::config::DefaultImportMetadataSource::FileTags,
-            Self::None => bae_core::config::DefaultImportMetadataSource::None,
-        }
-    }
+mirror_enum! {
+    BridgeDefaultImportMetadataSource = bae_core::config::DefaultImportMetadataSource,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { FindOnline, FileTags, None },
 }
 
-impl BridgeSaveBitDepth {
-    pub(crate) fn from_core(bit_depth: bae_core::config::SaveBitDepth) -> Self {
-        match bit_depth {
-            bae_core::config::SaveBitDepth::Source => BridgeSaveBitDepth::Source,
-            bae_core::config::SaveBitDepth::Bits16 => BridgeSaveBitDepth::Bits16,
-            bae_core::config::SaveBitDepth::Bits24 => BridgeSaveBitDepth::Bits24,
-            bae_core::config::SaveBitDepth::Bits32 => BridgeSaveBitDepth::Bits32,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::config::SaveBitDepth {
-        match self {
-            BridgeSaveBitDepth::Source => bae_core::config::SaveBitDepth::Source,
-            BridgeSaveBitDepth::Bits16 => bae_core::config::SaveBitDepth::Bits16,
-            BridgeSaveBitDepth::Bits24 => bae_core::config::SaveBitDepth::Bits24,
-            BridgeSaveBitDepth::Bits32 => bae_core::config::SaveBitDepth::Bits32,
-        }
-    }
+mirror_enum! {
+    BridgeSaveBitDepth = bae_core::config::SaveBitDepth,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Source, Bits16, Bits24, Bits32 },
 }
 
 impl BridgeSaveCodec {
@@ -92,66 +68,23 @@ impl BridgeSaveCodec {
     }
 }
 
-impl BridgeSavePregapPlacement {
-    pub(crate) fn from_core(placement: bae_core::config::SavePregapPlacement) -> Self {
-        match placement {
-            bae_core::config::SavePregapPlacement::AppendToPreviousExceptHtoa => {
-                BridgeSavePregapPlacement::AppendToPreviousExceptHtoa
-            }
-            bae_core::config::SavePregapPlacement::AppendToPreviousIncludingHtoa => {
-                BridgeSavePregapPlacement::AppendToPreviousIncludingHtoa
-            }
-            bae_core::config::SavePregapPlacement::Exclude => BridgeSavePregapPlacement::Exclude,
-            bae_core::config::SavePregapPlacement::SingleFileWithCue => {
-                BridgeSavePregapPlacement::SingleFileWithCue
-            }
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::config::SavePregapPlacement {
-        match self {
-            BridgeSavePregapPlacement::AppendToPreviousExceptHtoa => {
-                bae_core::config::SavePregapPlacement::AppendToPreviousExceptHtoa
-            }
-            BridgeSavePregapPlacement::AppendToPreviousIncludingHtoa => {
-                bae_core::config::SavePregapPlacement::AppendToPreviousIncludingHtoa
-            }
-            BridgeSavePregapPlacement::Exclude => bae_core::config::SavePregapPlacement::Exclude,
-            BridgeSavePregapPlacement::SingleFileWithCue => {
-                bae_core::config::SavePregapPlacement::SingleFileWithCue
-            }
-        }
-    }
+mirror_enum! {
+    BridgeSavePregapPlacement = bae_core::config::SavePregapPlacement,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        AppendToPreviousExceptHtoa,
+        AppendToPreviousIncludingHtoa,
+        Exclude,
+        SingleFileWithCue,
+    },
 }
 
-impl BridgeSaveFilenameToken {
-    pub(crate) fn from_core(token: bae_core::config::SaveFilenameToken) -> Self {
-        match token {
-            bae_core::config::SaveFilenameToken::Title => BridgeSaveFilenameToken::Title,
-            bae_core::config::SaveFilenameToken::Artist => BridgeSaveFilenameToken::Artist,
-            bae_core::config::SaveFilenameToken::Album => BridgeSaveFilenameToken::Album,
-            bae_core::config::SaveFilenameToken::Year => BridgeSaveFilenameToken::Year,
-            bae_core::config::SaveFilenameToken::TrackNumber => {
-                BridgeSaveFilenameToken::TrackNumber
-            }
-            bae_core::config::SaveFilenameToken::DiscNumber => BridgeSaveFilenameToken::DiscNumber,
-            bae_core::config::SaveFilenameToken::TrackTotal => BridgeSaveFilenameToken::TrackTotal,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::config::SaveFilenameToken {
-        match self {
-            BridgeSaveFilenameToken::Title => bae_core::config::SaveFilenameToken::Title,
-            BridgeSaveFilenameToken::Artist => bae_core::config::SaveFilenameToken::Artist,
-            BridgeSaveFilenameToken::Album => bae_core::config::SaveFilenameToken::Album,
-            BridgeSaveFilenameToken::Year => bae_core::config::SaveFilenameToken::Year,
-            BridgeSaveFilenameToken::TrackNumber => {
-                bae_core::config::SaveFilenameToken::TrackNumber
-            }
-            BridgeSaveFilenameToken::DiscNumber => bae_core::config::SaveFilenameToken::DiscNumber,
-            BridgeSaveFilenameToken::TrackTotal => bae_core::config::SaveFilenameToken::TrackTotal,
-        }
-    }
+mirror_enum! {
+    BridgeSaveFilenameToken = bae_core::config::SaveFilenameToken,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Title, Artist, Album, Year, TrackNumber, DiscNumber, TrackTotal },
 }
 
 // The output queue and its bridge functions are desktop-only (handle.rs gates

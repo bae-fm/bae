@@ -124,42 +124,28 @@ pub enum BridgeMakeReleasesRemoteOutcome {
     },
 }
 
-impl BridgeMakeRemoteReceipt {
-    fn from_core(receipt: bae_core::library::MakeRemoteReceipt) -> Self {
-        let bae_core::library::MakeRemoteReceipt {
-            outbox_revision,
-            release_ids,
-        } = receipt;
-        Self {
-            outbox_revision,
-            release_ids,
-        }
-    }
+mirror_struct! {
+    BridgeMakeRemoteReceipt = bae_core::library::MakeRemoteReceipt,
+    from_core: fn,
+    fields: { outbox_revision, release_ids },
 }
 
-impl BridgeMakeRemoteBatchFailure {
-    fn from_core(failure: bae_core::library::MakeRemoteBatchFailure) -> Self {
-        let bae_core::library::MakeRemoteBatchFailure { release_ids, error } = failure;
-        Self {
-            release_ids,
-            error: BridgeError::from_core(error),
-        }
-    }
+mirror_struct! {
+    BridgeMakeRemoteBatchFailure = bae_core::library::MakeRemoteBatchFailure,
+    from_core: fn,
+    fields: { release_ids, error: (BridgeError) },
 }
 
-impl BridgeMakeReleasesRemoteOutcome {
-    pub(crate) fn from_core(outcome: bae_core::library::MakeReleasesRemoteOutcome) -> Self {
-        use bae_core::library::MakeReleasesRemoteOutcome;
-        match outcome {
-            MakeReleasesRemoteOutcome::Complete { receipt } => Self::Complete {
-                receipt: BridgeMakeRemoteReceipt::from_core(receipt),
-            },
-            MakeReleasesRemoteOutcome::Partial { receipt, failure } => Self::Partial {
-                receipt: receipt.map(BridgeMakeRemoteReceipt::from_core),
-                failure: BridgeMakeRemoteBatchFailure::from_core(failure),
-            },
-        }
-    }
+mirror_enum! {
+    BridgeMakeReleasesRemoteOutcome = bae_core::library::MakeReleasesRemoteOutcome,
+    from_core: pub(crate) fn,
+    variants: {
+        Complete { receipt: (BridgeMakeRemoteReceipt) },
+        Partial {
+            receipt: (opt BridgeMakeRemoteReceipt),
+            failure: (BridgeMakeRemoteBatchFailure),
+        },
+    },
 }
 
 /// Which phase's bytes a progress bar counts. Mirror of bae-core's
@@ -304,34 +290,6 @@ pub struct BridgeDownloadOp {
     pub state: BridgeDownloadState,
 }
 
-impl BridgeDownloadTransferProgress {
-    fn into_core(self) -> bae_core::library::DownloadTransferProgress {
-        let Self {
-            bytes_done,
-            bytes_total,
-            fraction,
-        } = self;
-        bae_core::library::DownloadTransferProgress {
-            bytes_done,
-            bytes_total,
-            fraction,
-        }
-    }
-}
-
-impl BridgeDownloadState {
-    fn into_core(self) -> bae_core::library::DownloadState {
-        use bae_core::library::DownloadState;
-        match self {
-            Self::Queued => DownloadState::Queued,
-            Self::Active { progress } => DownloadState::Active {
-                progress: progress.into_core(),
-            },
-            Self::Failed { error } => DownloadState::Failed { error },
-        }
-    }
-}
-
 impl BridgeDownloadOp {
     fn into_core(self) -> bae_core::library::DownloadOp {
         let Self {
@@ -370,19 +328,16 @@ pub enum BridgeReleaseDownloadStatus {
     Available,
 }
 
-impl BridgeReleaseDownloadStatus {
-    fn from_core(status: bae_core::album_detail::ReleaseDownloadStatus) -> Self {
-        use bae_core::album_detail::ReleaseDownloadStatus;
-        match status {
-            ReleaseDownloadStatus::Downloaded => Self::Downloaded,
-            ReleaseDownloadStatus::Queued => Self::Queued,
-            ReleaseDownloadStatus::Downloading { progress } => Self::Downloading {
-                progress: BridgeDownloadTransferProgress::from_core(progress),
-            },
-            ReleaseDownloadStatus::Failed { error } => Self::Failed { error },
-            ReleaseDownloadStatus::Available => Self::Available,
-        }
-    }
+mirror_enum! {
+    BridgeReleaseDownloadStatus = bae_core::album_detail::ReleaseDownloadStatus,
+    from_core: fn,
+    variants: {
+        Downloaded,
+        Queued,
+        Downloading { progress: (BridgeDownloadTransferProgress) },
+        Failed { error },
+        Available,
+    },
 }
 
 /// The download control's state for one release, or `None` when there is no
@@ -446,11 +401,10 @@ pub struct BridgeCountLabel {
     pub count: u32,
 }
 
-impl BridgeCountLabel {
-    pub(crate) fn from_core(label: bae_core::library::CountLabel) -> Self {
-        let bae_core::library::CountLabel { key, count } = label;
-        Self { key, count }
-    }
+mirror_struct! {
+    BridgeCountLabel = bae_core::library::CountLabel,
+    from_core: pub(crate) fn,
+    fields: { key, count },
 }
 
 /// A queued export's state. Mirror of bae-core's `OutputState`.

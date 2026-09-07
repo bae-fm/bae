@@ -29,15 +29,8 @@ impl ArtworkAnalyzer for ArtworkAnalyzerAdapter {
     }
 }
 
-impl crate::types::BridgeArtworkAnalysis {
-    fn into_core(self) -> ArtworkAnalysis {
-        let crate::types::BridgeArtworkAnalysis {
-            barcodes,
-            text_lines,
-        } = self;
-        ArtworkAnalysis {
-            barcodes,
-            text_lines,
-        }
-    }
+mirror_struct! {
+    crate::types::BridgeArtworkAnalysis = ArtworkAnalysis,
+    into_core: fn,
+    fields: { barcodes, text_lines },
 }

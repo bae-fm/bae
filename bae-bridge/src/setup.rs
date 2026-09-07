@@ -193,8 +193,7 @@ pub fn init_test_keyring() {
 /// yet) and the in-app sidebar / quick switcher call this.
 #[uniffi::export]
 pub fn discover_libraries() -> Result<Vec<BridgeLibrary>, BridgeError> {
-    Config::discover_libraries()
-        .map_err(BridgeError::config)?
+    Config::discover_libraries()?
         .into_iter()
         .map(BridgeLibrary::from_core_info)
         .collect()
@@ -412,27 +411,25 @@ impl BridgeDevicePairingOffer {
     }
 }
 
-impl crate::types::BridgeDevicePairingPhase {
-    fn from_core(phase: coven::DevicePairingPhase) -> Self {
-        match phase {
-            coven::DevicePairingPhase::AwaitingInvitation => Self::AwaitingInvitation,
-            coven::DevicePairingPhase::ProviderAccessPending => Self::ProviderAccessPending,
-            coven::DevicePairingPhase::LibraryInstallationPending => {
-                Self::LibraryInstallationPending
-            }
-        }
-    }
+mirror_enum! {
+    crate::types::BridgeDevicePairingPhase = coven::DevicePairingPhase,
+    from_core: fn,
+    variants: {
+        AwaitingInvitation,
+        ProviderAccessPending,
+        LibraryInstallationPending,
+    },
 }
 
-impl BridgePendingDevicePairingJoin {
-    fn from_core(info: bae_core::library::PendingDevicePairingJoinInfo) -> Self {
-        Self {
-            pairing_code: info.pairing_code,
-            offer: BridgeDevicePairingOffer::from_core(info.offer),
-            fingerprint: info.fingerprint,
-            phase: crate::types::BridgeDevicePairingPhase::from_core(info.phase),
-        }
-    }
+mirror_struct! {
+    BridgePendingDevicePairingJoin = bae_core::library::PendingDevicePairingJoinInfo,
+    from_core: fn,
+    fields: {
+        pairing_code,
+        offer: (BridgeDevicePairingOffer),
+        fingerprint,
+        phase: (crate::types::BridgeDevicePairingPhase),
+    },
 }
 
 /// The pairing attempt retained by coven that can continue without rescanning

@@ -1,73 +1,45 @@
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeMcpServerStatus {
-    pub(super) fn from_core(status: bae_desktop::McpServerStatus) -> Self {
-        use crate::types::BridgeMcpServerStatus;
-        match status {
-            bae_desktop::McpServerStatus::Disabled => BridgeMcpServerStatus::Disabled,
-            bae_desktop::McpServerStatus::Running { url } => BridgeMcpServerStatus::Running { url },
-            bae_desktop::McpServerStatus::Error { error } => BridgeMcpServerStatus::Error {
-                error: crate::types::BridgeMcpServerError::from_core(error),
-            },
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    crate::types::BridgeMcpServerStatus = bae_desktop::McpServerStatus,
+    from_core: pub(super) fn,
+    variants: {
+        Disabled,
+        Running { url },
+        Error { error: (crate::types::BridgeMcpServerError) },
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeMcpServerError {
-    pub(super) fn from_core(error: bae_desktop::McpServerError) -> Self {
-        use crate::types::BridgeMcpServerError;
-        match error {
-            bae_desktop::McpServerError::InvalidConfig { detail } => {
-                BridgeMcpServerError::InvalidConfig { detail }
-            }
-            bae_desktop::McpServerError::TokenUnavailable { detail } => {
-                BridgeMcpServerError::TokenUnavailable { detail }
-            }
-            bae_desktop::McpServerError::BindFailed { detail } => {
-                BridgeMcpServerError::BindFailed { detail }
-            }
-            bae_desktop::McpServerError::ServerFailed { detail } => {
-                BridgeMcpServerError::ServerFailed { detail }
-            }
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    crate::types::BridgeMcpServerError = bae_desktop::McpServerError,
+    from_core: pub(super) fn,
+    variants: {
+        InvalidConfig { detail },
+        TokenUnavailable { detail },
+        BindFailed { detail },
+        ServerFailed { detail },
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeSubsonicServerStatus {
-    pub(super) fn from_core(status: bae_desktop::SubsonicServerStatus) -> Self {
-        use crate::types::BridgeSubsonicServerStatus;
-        match status {
-            bae_desktop::SubsonicServerStatus::Disabled => BridgeSubsonicServerStatus::Disabled,
-            bae_desktop::SubsonicServerStatus::Running { url } => {
-                BridgeSubsonicServerStatus::Running { url }
-            }
-            bae_desktop::SubsonicServerStatus::Error { error } => {
-                BridgeSubsonicServerStatus::Error {
-                    error: crate::types::BridgeSubsonicServerError::from_core(error),
-                }
-            }
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    crate::types::BridgeSubsonicServerStatus = bae_desktop::SubsonicServerStatus,
+    from_core: pub(super) fn,
+    variants: {
+        Disabled,
+        Running { url },
+        Error { error: (crate::types::BridgeSubsonicServerError) },
+    },
 }
 
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeSubsonicServerError {
-    pub(super) fn from_core(error: bae_desktop::SubsonicServerError) -> Self {
-        use crate::types::BridgeSubsonicServerError;
-        match error {
-            bae_desktop::SubsonicServerError::InvalidConfig { detail } => {
-                BridgeSubsonicServerError::InvalidConfig { detail }
-            }
-            bae_desktop::SubsonicServerError::CredentialUnavailable { detail } => {
-                BridgeSubsonicServerError::CredentialUnavailable { detail }
-            }
-            bae_desktop::SubsonicServerError::BindFailed { detail } => {
-                BridgeSubsonicServerError::BindFailed { detail }
-            }
-            bae_desktop::SubsonicServerError::ServerFailed { detail } => {
-                BridgeSubsonicServerError::ServerFailed { detail }
-            }
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    crate::types::BridgeSubsonicServerError = bae_desktop::SubsonicServerError,
+    from_core: pub(super) fn,
+    variants: {
+        InvalidConfig { detail },
+        CredentialUnavailable { detail },
+        BindFailed { detail },
+        ServerFailed { detail },
+    },
 }

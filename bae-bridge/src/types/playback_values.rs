@@ -75,15 +75,13 @@ pub enum BridgePlaybackPauseReason {
     SideEnded { prompt: BridgeSidePausePrompt },
 }
 
-impl BridgePlaybackPauseReason {
-    pub(crate) fn from_core(reason: bae_core::playback::PlaybackPauseReason) -> Self {
-        match reason {
-            bae_core::playback::PlaybackPauseReason::Manual => Self::Manual,
-            bae_core::playback::PlaybackPauseReason::SideEnded(prompt) => Self::SideEnded {
-                prompt: BridgeSidePausePrompt::from_core(prompt),
-            },
-        }
-    }
+mirror_enum! {
+    BridgePlaybackPauseReason = bae_core::playback::PlaybackPauseReason,
+    from_core: pub(crate) fn,
+    variants: {
+        Manual,
+        SideEnded(prompt: (BridgeSidePausePrompt)),
+    },
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -243,48 +241,32 @@ impl BridgePlaybackValueState {
     }
 }
 
-impl BridgePlaybackPosition {
-    fn from_core(position: bae_core::playback::PlaybackPosition) -> Self {
-        Self {
-            track_id: position.track_id,
-            position_ms: position.position_ms,
-            duration_ms: position.duration_ms,
-            progress: position.progress,
-        }
-    }
+mirror_struct! {
+    BridgePlaybackPosition = bae_core::playback::PlaybackPosition,
+    from_core: fn,
+    fields: { track_id, position_ms, duration_ms, progress },
 }
 
-impl BridgeMediaControlPosition {
-    fn from_core(position: bae_core::playback::MediaControlPosition) -> Self {
-        Self {
-            track_id: position.track_id,
-            position_ms: position.position_ms,
-            duration_ms: position.duration_ms,
-            progress: position.progress,
-        }
-    }
+mirror_struct! {
+    BridgeMediaControlPosition = bae_core::playback::MediaControlPosition,
+    from_core: fn,
+    fields: { track_id, position_ms, duration_ms, progress },
 }
 
-impl BridgePreviewState {
-    fn from_core(value: bae_core::playback::PreviewState) -> Self {
-        match value {
-            bae_core::playback::PreviewState::Idle => Self::Idle,
-            bae_core::playback::PreviewState::Playing {
-                target,
-                duration_ms,
-            } => Self::Playing {
-                target: BridgePreviewTarget::from_core(target),
-                duration_ms,
-            },
-            bae_core::playback::PreviewState::Paused {
-                target,
-                duration_ms,
-            } => Self::Paused {
-                target: BridgePreviewTarget::from_core(target),
-                duration_ms,
-            },
-        }
-    }
+mirror_struct! {
+    BridgePreviewValues = bae_core::playback::PreviewValues,
+    from_core: fn,
+    fields: { state: (BridgePreviewState), position_ms, progress },
+}
+
+mirror_enum! {
+    BridgePreviewState = bae_core::playback::PreviewState,
+    from_core: fn,
+    variants: {
+        Idle,
+        Playing { target: (BridgePreviewTarget), duration_ms },
+        Paused { target: (BridgePreviewTarget), duration_ms },
+    },
 }
 
 impl BridgePlaybackValues {
@@ -298,49 +280,36 @@ impl BridgePlaybackValues {
             is_muted: value.is_muted,
             repeat_mode: BridgeRepeatMode::from_core(value.repeat_mode),
             remote_device_name: value.remote_device_name,
-            preview: BridgePreviewValues {
-                state: BridgePreviewState::from_core(value.preview.state),
-                position_ms: value.preview.position_ms,
-                progress: value.preview.progress,
-            },
+            preview: BridgePreviewValues::from_core(value.preview),
             media_control,
         }
     }
 }
 
-impl BridgeMediaControlValues {
-    fn from_core(value: bae_core::playback::MediaControlValues) -> Self {
-        Self {
-            playback: BridgeMediaControlPlayback::from_core(value.playback),
-            volume: value.volume,
-            is_muted: value.is_muted,
-        }
-    }
+mirror_struct! {
+    BridgeMediaControlValues = bae_core::playback::MediaControlValues,
+    from_core: fn,
+    fields: {
+        playback: (BridgeMediaControlPlayback),
+        volume,
+        is_muted,
+    },
 }
 
-impl BridgeMediaControlPlayback {
-    fn from_core(value: bae_core::playback::MediaControlPlayback) -> Self {
-        match value {
-            bae_core::playback::MediaControlPlayback::Library {
-                state,
-                position,
-                seek_revision,
-            } => Self::Library {
-                state: BridgePlaybackValueState::from_core(state),
-                position: position.map(BridgeMediaControlPosition::from_core),
-                seek_revision,
-            },
-            bae_core::playback::MediaControlPlayback::Preview {
-                target,
-                duration_ms,
-                position_ms,
-                is_playing,
-            } => Self::Preview {
-                target: BridgePreviewTarget::from_core(target),
-                duration_ms,
-                position_ms,
-                is_playing,
-            },
-        }
-    }
+mirror_enum! {
+    BridgeMediaControlPlayback = bae_core::playback::MediaControlPlayback,
+    from_core: fn,
+    variants: {
+        Library {
+            state: (BridgePlaybackValueState),
+            position: (opt BridgeMediaControlPosition),
+            seek_revision,
+        },
+        Preview {
+            target: (BridgePreviewTarget),
+            duration_ms,
+            position_ms,
+            is_playing,
+        },
+    },
 }

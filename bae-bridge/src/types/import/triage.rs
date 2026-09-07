@@ -64,16 +64,15 @@ impl BridgeInvalidReason {
     }
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeInvalidReason {
-    pub(crate) fn from_core(r: bae_core::import::InvalidReason) -> Self {
-        use bae_core::import::InvalidReason as R;
-        match r {
-            R::CorruptAudioFile { path } => BridgeInvalidReason::CorruptAudioFile { path },
-            R::CorruptImage { path } => BridgeInvalidReason::CorruptImage { path },
-            R::NoValidAudio => BridgeInvalidReason::NoValidAudio,
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeInvalidReason = bae_core::import::InvalidReason,
+    from_core: pub(crate) fn,
+    variants: {
+        CorruptAudioFile { path },
+        CorruptImage { path },
+        NoValidAudio,
+    },
 }
 
 /// Localization key for an invalid-candidate reason — resolved by the UI against
@@ -408,43 +407,19 @@ pub enum BridgeMetadataProvenance {
     FileTags,
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeMetadataProvenance {
-    pub(crate) fn from_core(pick: bae_core::import::MetadataProvenance) -> Self {
-        match pick {
-            bae_core::import::MetadataProvenance::ExternalRelease {
-                source,
-                release_id,
-                partners,
-            } => Self::ExternalRelease {
-                source: BridgeMetadataSource::from_core(source),
-                release_id,
-                partners: partners
-                    .into_iter()
-                    .map(crate::types::BridgeMetadataRef::from_core)
-                    .collect(),
-            },
-            bae_core::import::MetadataProvenance::FileTags => Self::FileTags,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::MetadataProvenance {
-        match self {
-            Self::ExternalRelease {
-                source,
-                release_id,
-                partners,
-            } => bae_core::import::MetadataProvenance::ExternalRelease {
-                source: source.into_core(),
-                release_id,
-                partners: partners
-                    .into_iter()
-                    .map(crate::types::BridgeMetadataRef::into_core)
-                    .collect(),
-            },
-            Self::FileTags => bae_core::import::MetadataProvenance::FileTags,
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeMetadataProvenance = bae_core::import::MetadataProvenance,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        ExternalRelease {
+            source: (BridgeMetadataSource),
+            release_id,
+            partners: (each crate::types::BridgeMetadataRef),
+        },
+        FileTags,
+    },
 }
 
 /// One candidate's sidebar row.

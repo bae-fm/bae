@@ -18,16 +18,11 @@ pub enum BridgeDiscogsSaveOutcome {
     Rejected,
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeDiscogsSaveOutcome {
-    pub(crate) fn from_core(outcome: bae_core::import::DiscogsSaveOutcome) -> Self {
-        use bae_core::import::DiscogsSaveOutcome;
-        match outcome {
-            DiscogsSaveOutcome::Valid => Self::Valid,
-            DiscogsSaveOutcome::Unvalidated => Self::Unvalidated,
-            DiscogsSaveOutcome::Rejected => Self::Rejected,
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeDiscogsSaveOutcome = bae_core::import::DiscogsSaveOutcome,
+    from_core: pub(crate) fn,
+    variants: { Valid, Unvalidated, Rejected },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -45,20 +40,13 @@ impl BridgeMetadataSource {
     pub fn name(self) -> &'static str {
         self.into_core().display_name()
     }
+}
 
-    pub fn into_core(self) -> bae_core::import::MetadataSource {
-        match self {
-            BridgeMetadataSource::MusicBrainz => bae_core::import::MetadataSource::MusicBrainz,
-            BridgeMetadataSource::Discogs => bae_core::import::MetadataSource::Discogs,
-        }
-    }
-
-    pub fn from_core(source: bae_core::import::MetadataSource) -> Self {
-        match source {
-            bae_core::import::MetadataSource::MusicBrainz => BridgeMetadataSource::MusicBrainz,
-            bae_core::import::MetadataSource::Discogs => BridgeMetadataSource::Discogs,
-        }
-    }
+mirror_enum! {
+    BridgeMetadataSource = bae_core::import::MetadataSource,
+    from_core: pub fn,
+    into_core: pub fn,
+    variants: { MusicBrainz, Discogs },
 }
 
 /// One source's release, named. Mirrors `bae_core::import::MetadataRef`.
@@ -132,20 +120,11 @@ pub enum BridgeLibraryImageType {
     Artist,
 }
 
-impl BridgeLibraryImageType {
-    pub(crate) fn from_core(value: bae_core::db::LibraryImageType) -> Self {
-        match value {
-            bae_core::db::LibraryImageType::Cover => Self::Cover,
-            bae_core::db::LibraryImageType::Artist => Self::Artist,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::db::LibraryImageType {
-        match self {
-            BridgeLibraryImageType::Cover => bae_core::db::LibraryImageType::Cover,
-            BridgeLibraryImageType::Artist => bae_core::db::LibraryImageType::Artist,
-        }
-    }
+mirror_enum! {
+    BridgeLibraryImageType = bae_core::db::LibraryImageType,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Cover, Artist },
 }
 
 /// A reference to a curated library image (a release cover or an artist
@@ -161,32 +140,11 @@ pub struct BridgeImageRef {
     pub image_type: BridgeLibraryImageType,
 }
 
-impl BridgeImageRef {
-    pub fn from_core(r: bae_core::album_detail::ImageRef) -> Self {
-        let bae_core::album_detail::ImageRef {
-            id,
-            version,
-            image_type,
-        } = r;
-        Self {
-            id,
-            version,
-            image_type: BridgeLibraryImageType::from_core(image_type),
-        }
-    }
-
-    pub fn into_core(self) -> bae_core::album_detail::ImageRef {
-        let BridgeImageRef {
-            id,
-            version,
-            image_type,
-        } = self;
-        bae_core::album_detail::ImageRef {
-            id,
-            version,
-            image_type: image_type.into_core(),
-        }
-    }
+mirror_struct! {
+    BridgeImageRef = bae_core::album_detail::ImageRef,
+    from_core: pub fn,
+    into_core: pub fn,
+    fields: { id, version, image_type: (BridgeLibraryImageType) },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -220,14 +178,10 @@ pub enum BridgeReleaseStorageState {
     Remote,
 }
 
-impl BridgeReleaseStorageState {
-    pub fn from_core(state: bae_core::album_detail::ReleaseStorageState) -> Self {
-        use bae_core::album_detail::ReleaseStorageState;
-        match state {
-            ReleaseStorageState::Local => Self::Local,
-            ReleaseStorageState::Remote => Self::Remote,
-        }
-    }
+mirror_enum! {
+    BridgeReleaseStorageState = bae_core::album_detail::ReleaseStorageState,
+    from_core: pub fn,
+    variants: { Local, Remote },
 }
 
 /// A storage transition available from the release "Storage…" sheet.
@@ -240,27 +194,14 @@ pub enum BridgeReleaseStorageAction {
     MakeLocal,
 }
 
+mirror_enum! {
+    BridgeReleaseStorageAction = bae_core::album_detail::ReleaseStorageAction,
+    from_core: pub fn,
+    into_core: pub(super) fn,
+    variants: { MakeRemote, Pin, Unpin, MakeLocal },
+}
+
 impl BridgeReleaseStorageAction {
-    pub fn from_core(action: bae_core::album_detail::ReleaseStorageAction) -> Self {
-        use bae_core::album_detail::ReleaseStorageAction;
-        match action {
-            ReleaseStorageAction::MakeRemote => Self::MakeRemote,
-            ReleaseStorageAction::Pin => Self::Pin,
-            ReleaseStorageAction::Unpin => Self::Unpin,
-            ReleaseStorageAction::MakeLocal => Self::MakeLocal,
-        }
-    }
-
-    pub(super) fn into_core(self) -> bae_core::album_detail::ReleaseStorageAction {
-        use bae_core::album_detail::ReleaseStorageAction;
-        match self {
-            Self::MakeRemote => ReleaseStorageAction::MakeRemote,
-            Self::Pin => ReleaseStorageAction::Pin,
-            Self::Unpin => ReleaseStorageAction::Unpin,
-            Self::MakeLocal => ReleaseStorageAction::MakeLocal,
-        }
-    }
-
     fn transfer_loc_key(self) -> &'static str {
         match self {
             Self::Pin => "core.transfer.action.pin",
@@ -413,25 +354,15 @@ pub enum BridgeTrackSide {
     Flat,
 }
 
-impl BridgeTrackSide {
-    pub(crate) fn from_core(s: bae_core::album_detail::TrackSide) -> Self {
-        use bae_core::album_detail::TrackSide;
-        match s {
-            TrackSide::Sided { side_letter } => Self::Sided { side_letter },
-            TrackSide::Disc { disc } => Self::Disc { disc },
-            TrackSide::Flat => Self::Flat,
-        }
-    }
-
+mirror_enum! {
+    BridgeTrackSide = bae_core::album_detail::TrackSide,
+    from_core: pub(crate) fn,
     #[cfg(feature = "desktop")]
-    pub(crate) fn into_core(self) -> bae_core::album_detail::TrackSide {
-        match self {
-            Self::Sided { side_letter } => bae_core::album_detail::TrackSide::Sided { side_letter },
-            Self::Disc { disc } => bae_core::album_detail::TrackSide::Disc { disc },
-            Self::Flat => bae_core::album_detail::TrackSide::Flat,
-        }
-    }
+    into_core: pub(crate) fn,
+    variants: { Sided { side_letter }, Disc { disc }, Flat },
+}
 
+impl BridgeTrackSide {
     /// Localization key for this side's header word ("Side" / "Disc"), or `None`
     /// for `Flat` (single-disc digital has no header). Pre-computed onto
     /// [`BridgeTrackGroup::header_key`] at conversion; the UI resolves the key
@@ -509,22 +440,13 @@ pub struct BridgeDurationClock {
     pub seconds: u32,
 }
 
-impl BridgeDurationClock {
-    pub(super) fn from_core(clock: bae_core::util::duration::DurationClock) -> Self {
-        let bae_core::util::duration::DurationClock {
-            negative,
-            hours,
-            minutes,
-            seconds,
-        } = clock;
-        Self {
-            negative,
-            hours,
-            minutes,
-            seconds,
-        }
-    }
+mirror_struct! {
+    BridgeDurationClock = bae_core::util::duration::DurationClock,
+    from_core: pub(super) fn,
+    fields: { negative, hours, minutes, seconds },
+}
 
+impl BridgeDurationClock {
     /// The clock for a duration in milliseconds, or `None` when there is nothing
     /// to label (an absent duration, or a negative one — a gap in the data, not
     /// a short track). Pre-computed onto the static row types at conversion.
@@ -551,17 +473,14 @@ pub enum BridgeDurationUnits {
     HoursAndMinutes { hours: u64, minutes: u64 },
 }
 
-impl BridgeDurationUnits {
-    pub(crate) fn from_core(units: bae_core::util::duration::DurationUnits) -> Self {
-        use bae_core::util::duration::DurationUnits;
-        match units {
-            DurationUnits::HoursOnly { hours } => Self::HoursOnly { hours },
-            DurationUnits::MinutesOnly { minutes } => Self::MinutesOnly { minutes },
-            DurationUnits::HoursAndMinutes { hours, minutes } => {
-                Self::HoursAndMinutes { hours, minutes }
-            }
-        }
-    }
+mirror_enum! {
+    BridgeDurationUnits = bae_core::util::duration::DurationUnits,
+    from_core: pub(crate) fn,
+    variants: {
+        HoursOnly { hours },
+        MinutesOnly { minutes },
+        HoursAndMinutes { hours, minutes },
+    },
 }
 
 /// The clock for a duration, or `None` when there is nothing to label — an
@@ -638,38 +557,25 @@ pub enum BridgeSourceAudioSummary {
     },
 }
 
-impl BridgeSourceAudioLayout {
-    pub(crate) fn from_core(layout: bae_core::album_detail::SourceAudioLayout) -> Self {
-        match layout {
-            bae_core::album_detail::SourceAudioLayout::File => Self::File,
-            bae_core::album_detail::SourceAudioLayout::Cue => Self::Cue,
-        }
-    }
+mirror_enum! {
+    BridgeSourceAudioLayout = bae_core::album_detail::SourceAudioLayout,
+    from_core: pub(crate) fn,
+    variants: { File, Cue },
 }
 
-impl BridgeSourceAudioDescriptor {
-    pub(crate) fn from_core(descriptor: bae_core::album_detail::SourceAudioDescriptor) -> Self {
-        Self {
-            layout: BridgeSourceAudioLayout::from_core(descriptor.layout),
-            format: BridgeAudioFormat::from_core(descriptor.format),
-        }
-    }
+mirror_struct! {
+    BridgeSourceAudioDescriptor = bae_core::album_detail::SourceAudioDescriptor,
+    from_core: pub(crate) fn,
+    fields: { layout: (BridgeSourceAudioLayout), format: (BridgeAudioFormat) },
 }
 
-impl BridgeSourceAudioSummary {
-    pub(crate) fn from_core(summary: bae_core::album_detail::SourceAudioSummary) -> Self {
-        match summary {
-            bae_core::album_detail::SourceAudioSummary::Uniform { descriptor } => Self::Uniform {
-                descriptor: BridgeSourceAudioDescriptor::from_core(descriptor),
-            },
-            bae_core::album_detail::SourceAudioSummary::Mixed { descriptors } => Self::Mixed {
-                descriptors: descriptors
-                    .into_iter()
-                    .map(BridgeSourceAudioDescriptor::from_core)
-                    .collect(),
-            },
-        }
-    }
+mirror_enum! {
+    BridgeSourceAudioSummary = bae_core::album_detail::SourceAudioSummary,
+    from_core: pub(crate) fn,
+    variants: {
+        Uniform { descriptor: (BridgeSourceAudioDescriptor) },
+        Mixed { descriptors: (each BridgeSourceAudioDescriptor) },
+    },
 }
 
 #[cfg(test)]
@@ -728,23 +634,12 @@ pub struct BridgeAudioFormat {
     pub channels: i64,
 }
 
-impl BridgeAudioFormat {
-    pub(crate) fn from_core(f: bae_core::album_detail::AudioFormat) -> Self {
-        let bae_core::album_detail::AudioFormat {
-            codec,
-            sample_rate_hz,
-            bits_per_sample,
-            bitrate_kbps,
-            channels,
-        } = f;
-        Self {
-            codec,
-            sample_rate_hz,
-            bits_per_sample,
-            bitrate_kbps,
-            channels,
-        }
-    }
+mirror_struct! {
+    BridgeAudioFormat = bae_core::album_detail::AudioFormat,
+    from_core: pub(crate) fn,
+    #[cfg(feature = "desktop")]
+    into_core: pub(crate) fn,
+    fields: { codec, sample_rate_hz, bits_per_sample, bitrate_kbps, channels },
 }
 
 /// Localization key for a channel count's word ("mono"/"stereo"), or `None` for
@@ -786,17 +681,14 @@ pub enum BridgeGallerySource {
     ReleaseFile { file_id: String },
 }
 
-impl BridgeGallerySource {
-    pub fn into_core(self) -> bae_core::album_detail::GallerySource {
-        match self {
-            BridgeGallerySource::Cover { image } => {
-                bae_core::album_detail::GallerySource::Cover(image.into_core())
-            }
-            BridgeGallerySource::ReleaseFile { file_id } => {
-                bae_core::album_detail::GallerySource::ReleaseFile { file_id }
-            }
-        }
-    }
+mirror_enum! {
+    BridgeGallerySource = bae_core::album_detail::GallerySource,
+    from_core: pub(crate) fn,
+    into_core: pub fn,
+    variants: {
+        Cover(image: (BridgeImageRef)),
+        ReleaseFile { file_id },
+    },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -823,22 +715,11 @@ pub enum BridgeRepeatMode {
     Context,
 }
 
-impl BridgeRepeatMode {
-    pub fn into_core(self) -> bae_core::playback::RepeatMode {
-        match self {
-            Self::Off => bae_core::playback::RepeatMode::Off,
-            Self::Track => bae_core::playback::RepeatMode::Track,
-            Self::Context => bae_core::playback::RepeatMode::Context,
-        }
-    }
-
-    pub fn from_core(mode: bae_core::playback::RepeatMode) -> Self {
-        match mode {
-            bae_core::playback::RepeatMode::Off => Self::Off,
-            bae_core::playback::RepeatMode::Track => Self::Track,
-            bae_core::playback::RepeatMode::Context => Self::Context,
-        }
-    }
+mirror_enum! {
+    BridgeRepeatMode = bae_core::playback::RepeatMode,
+    from_core: pub fn,
+    into_core: pub fn,
+    variants: { Off, Track, Context },
 }
 
 /// The mode a repeat button steps to next. Playback only accepts an absolute

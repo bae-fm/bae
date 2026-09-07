@@ -1,61 +1,40 @@
 use super::*;
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl AppHandle {
-    pub async fn fetch_library_image_bytes(
-        self: std::sync::Arc<Self>,
-        image: crate::types::BridgeImageRef,
-    ) -> Result<Option<Vec<u8>>, BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .read_image_blob(&image.into_core())
-                .await
-                .map_err(BridgeError::database_query)
-        })
-        .await
+forward! { async this => {
+    fn fetch_library_image_bytes(image: crate::types::BridgeImageRef) -> Option<Vec<u8>> {
+        this.services
+            .read_image_blob(&image.into_core())
+            .await
+            .map_err(BridgeError::database_query)
     }
 
-    pub async fn fetch_release_image_bytes(
-        self: std::sync::Arc<Self>,
-        release_id: String,
-        source: BridgeGallerySource,
-    ) -> Result<Vec<u8>, BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .read_gallery_bytes(&release_id, &source.into_core())
-                .await
-                .map_err(BridgeError::database_query)
-        })
-        .await
+    fn fetch_release_image_bytes(release_id: String, source: BridgeGallerySource) -> Vec<u8> {
+        this.services
+            .read_gallery_bytes(&release_id, &source.into_core())
+            .await
+            .map_err(BridgeError::database_query)
     }
-}
+} }
 
-#[cfg(feature = "cloudkit")]
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl AppHandle {
-    pub async fn use_cloudkit(
-        self: std::sync::Arc<Self>,
-        storage: BridgeHomeStorage,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
+forward! {
+    #[cfg(feature = "cloudkit")]
+    async this => {
+        fn use_cloudkit(storage: BridgeHomeStorage) -> () {
             this.services
                 .use_cloudkit(crate::types::BridgeHomeStorage::into_core(storage))
                 .await?;
             Ok(())
-        })
-        .await
+        }
     }
 }
 
-#[cfg(feature = "oauth-providers")]
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl AppHandle {
-    pub async fn sign_in_cloud_provider(
-        self: std::sync::Arc<Self>,
-        provider: BridgeCloudProvider,
-        storage: BridgeHomeStorage,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
+forward! {
+    #[cfg(feature = "oauth-providers")]
+    async this => {
+        fn sign_in_cloud_provider(
+            provider: BridgeCloudProvider,
+            storage: BridgeHomeStorage,
+        ) -> () {
             this.services
                 .sign_in_cloud_provider(
                     crate::types::BridgeCloudProvider::into_core(provider),
@@ -63,7 +42,6 @@ impl AppHandle {
                 )
                 .await?;
             Ok(())
-        })
-        .await
+        }
     }
 }

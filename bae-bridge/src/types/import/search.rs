@@ -35,25 +35,16 @@ pub enum BridgeSearchQuery {
     Barcode { barcode: String },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeSearchQuery {
-    pub(crate) fn into_core(self) -> bae_core::import::SearchQuery {
-        use bae_core::import::SearchQuery;
-        match self {
-            Self::General { artist, album } => SearchQuery::General { artist, album },
-            Self::CatalogNumber { catalog_number } => SearchQuery::CatalogNumber { catalog_number },
-            Self::Barcode { barcode } => SearchQuery::Barcode { barcode },
-        }
-    }
-
-    pub(crate) fn from_core(query: bae_core::import::SearchQuery) -> Self {
-        use bae_core::import::SearchQuery;
-        match query {
-            SearchQuery::General { artist, album } => Self::General { artist, album },
-            SearchQuery::CatalogNumber { catalog_number } => Self::CatalogNumber { catalog_number },
-            SearchQuery::Barcode { barcode } => Self::Barcode { barcode },
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeSearchQuery = bae_core::import::SearchQuery,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        General { artist, album },
+        CatalogNumber { catalog_number },
+        Barcode { barcode },
+    },
 }
 
 /// An album, as one or both sources describe it, with the pressings they

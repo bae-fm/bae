@@ -114,7 +114,6 @@ fn produced_keys() -> Vec<String> {
 
     // bridge_sheet_refused_codec_key — one key, no variants to walk.
     keys.push(bridge_sheet_refused_codec_key());
-    keys.push(bridge_sheet_refused_unreadable_key());
 
     // bridge_upload_phase_bytes_key — each phase names itself beside the
     // bar it labels.

@@ -140,41 +140,18 @@ pub struct BridgeExistingArtist {
     pub discogs_artist_id: Option<String>,
 }
 
-impl BridgeExistingArtist {
-    pub(crate) fn from_core(artist: bae_core::import::ExistingArtist) -> Self {
-        let bae_core::import::ExistingArtist {
-            artist_id,
-            name,
-            sort_name,
-            musicbrainz_artist_id,
-            discogs_artist_id,
-        } = artist;
-        Self {
-            artist_id,
-            name,
-            sort_name,
-            musicbrainz_artist_id,
-            discogs_artist_id,
-        }
-    }
-
+mirror_struct! {
+    BridgeExistingArtist = bae_core::import::ExistingArtist,
+    from_core: pub(crate) fn,
     #[cfg(feature = "desktop")]
-    pub(crate) fn into_core(self) -> bae_core::import::ExistingArtist {
-        let Self {
-            artist_id,
-            name,
-            sort_name,
-            musicbrainz_artist_id,
-            discogs_artist_id,
-        } = self;
-        bae_core::import::ExistingArtist {
-            artist_id,
-            name,
-            sort_name,
-            musicbrainz_artist_id,
-            discogs_artist_id,
-        }
-    }
+    into_core: pub(crate) fn,
+    fields: {
+        artist_id,
+        name,
+        sort_name,
+        musicbrainz_artist_id,
+        discogs_artist_id,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -543,21 +520,20 @@ pub enum BridgeCandidateEditField {
     Barcode,
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeCandidateEditField {
-    pub(crate) fn into_core(self) -> bae_core::import::CandidateEditField {
-        use bae_core::import::CandidateEditField as Field;
-        match self {
-            Self::AlbumTitle => Field::AlbumTitle,
-            Self::AlbumYear => Field::AlbumYear,
-            Self::PressingYear => Field::PressingYear,
-            Self::Format => Field::Format,
-            Self::Label => Field::Label,
-            Self::CatalogNumber => Field::CatalogNumber,
-            Self::Country => Field::Country,
-            Self::Barcode => Field::Barcode,
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeCandidateEditField = bae_core::import::CandidateEditField,
+    into_core: pub(crate) fn,
+    variants: {
+        AlbumTitle,
+        AlbumYear,
+        PressingYear,
+        Format,
+        Label,
+        CatalogNumber,
+        Country,
+        Barcode,
+    },
 }
 
 /// Raw edit-metadata form values, exactly as the editor holds them — text

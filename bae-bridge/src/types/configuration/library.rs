@@ -362,20 +362,21 @@ pub enum BridgeBlockedSyncOperationKind {
     Reclaim,
 }
 
-impl BridgeBlockedSyncOperation {
-    pub(crate) fn from_core(operation: bae_core::library::BlockedSyncOperation) -> Self {
-        use bae_core::library::BlockedSyncOperationKind as Kind;
-        Self {
-            id: operation.id,
-            kind: match operation.kind {
-                Kind::Write => BridgeBlockedSyncOperationKind::Write,
-                Kind::CircleOperation => BridgeBlockedSyncOperationKind::CircleOperation,
-                Kind::Reclaim => BridgeBlockedSyncOperationKind::Reclaim,
-            },
-            description: operation.description,
-            error: operation.error,
-        }
-    }
+mirror_enum! {
+    BridgeBlockedSyncOperationKind = bae_core::library::BlockedSyncOperationKind,
+    from_core: fn,
+    variants: { Write, CircleOperation, Reclaim },
+}
+
+mirror_struct! {
+    BridgeBlockedSyncOperation = bae_core::library::BlockedSyncOperation,
+    from_core: pub(crate) fn,
+    fields: {
+        id,
+        kind: (BridgeBlockedSyncOperationKind),
+        description,
+        error,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
@@ -386,15 +387,10 @@ pub struct BridgeEagerCacheFillProgress {
     pub bytes_total: u64,
 }
 
-impl BridgeEagerCacheFillProgress {
-    fn from_core(progress: bae_core::library::EagerCacheFillProgress) -> Self {
-        Self {
-            files_done: progress.files_done,
-            files_total: progress.files_total,
-            bytes_done: progress.bytes_done,
-            bytes_total: progress.bytes_total,
-        }
-    }
+mirror_struct! {
+    BridgeEagerCacheFillProgress = bae_core::library::EagerCacheFillProgress,
+    from_core: fn,
+    fields: { files_done, files_total, bytes_done, bytes_total },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -468,16 +464,15 @@ pub enum BridgeSyncIndicator {
     Idle,
 }
 
-impl BridgeSyncIndicator {
-    fn from_core(indicator: bae_core::library::SyncIndicator) -> Self {
-        use bae_core::library::SyncIndicator;
-        match indicator {
-            SyncIndicator::Error => Self::Error,
-            SyncIndicator::Syncing => Self::Syncing,
-            SyncIndicator::Synced { last_sync_time } => Self::Synced { last_sync_time },
-            SyncIndicator::Idle => Self::Idle,
-        }
-    }
+mirror_enum! {
+    BridgeSyncIndicator = bae_core::library::SyncIndicator,
+    from_core: fn,
+    variants: {
+        Error,
+        Syncing,
+        Synced { last_sync_time },
+        Idle,
+    },
 }
 
 /// The sync indicator for a status snapshot — the precedence decided in bae-core.

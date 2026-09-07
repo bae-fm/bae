@@ -5,17 +5,10 @@ pub enum BridgeCoverTarget {
     Candidate { candidate_key: String },
 }
 
-impl BridgeCoverTarget {
-    pub(crate) fn into_core(self) -> bae_core::import::cover_art::CoverTarget {
-        match self {
-            Self::Release { release_id } => {
-                bae_core::import::cover_art::CoverTarget::Release(release_id)
-            }
-            Self::Candidate { candidate_key } => {
-                bae_core::import::cover_art::CoverTarget::Candidate(candidate_key)
-            }
-        }
-    }
+mirror_enum! {
+    BridgeCoverTarget = bae_core::import::cover_art::CoverTarget,
+    into_core: pub(crate) fn,
+    variants: { Release(release_id), Candidate(candidate_key) },
 }
 
 /// A missing external identity is distinct from a linked release with no art.
@@ -27,16 +20,11 @@ pub enum BridgeRemoteCoverGallery {
     },
 }
 
-impl BridgeRemoteCoverGallery {
-    pub(crate) fn from_core(gallery: bae_core::import::cover_art::RemoteCoverGallery) -> Self {
-        match gallery {
-            bae_core::import::cover_art::RemoteCoverGallery::Unlinked => Self::Unlinked,
-            bae_core::import::cover_art::RemoteCoverGallery::Linked(covers) => Self::Linked {
-                covers: covers
-                    .into_iter()
-                    .map(super::BridgeRemoteCover::from_core)
-                    .collect(),
-            },
-        }
-    }
+mirror_enum! {
+    BridgeRemoteCoverGallery = bae_core::import::cover_art::RemoteCoverGallery,
+    from_core: pub(crate) fn,
+    variants: {
+        Unlinked,
+        Linked(covers: (each super::BridgeRemoteCover)),
+    },
 }

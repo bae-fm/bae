@@ -12,31 +12,21 @@ pub enum BridgeJoiningDeviceJoinProgress {
     SavingLibrary,
 }
 
-impl BridgeJoiningDeviceJoinProgress {
-    pub(crate) fn from_core(progress: coven::JoiningDeviceJoinProgress) -> Self {
-        match progress {
-            coven::JoiningDeviceJoinProgress::WaitingForApproval => Self::WaitingForApproval,
-            coven::JoiningDeviceJoinProgress::RequestingProviderAccess => {
-                Self::RequestingProviderAccess
-            }
-            coven::JoiningDeviceJoinProgress::WaitingForProviderAccess => {
-                Self::WaitingForProviderAccess
-            }
-            coven::JoiningDeviceJoinProgress::RegisteringDevice => Self::RegisteringDevice,
-            coven::JoiningDeviceJoinProgress::WaitingForLibrary => Self::WaitingForLibrary,
-            coven::JoiningDeviceJoinProgress::DownloadingSnapshot {
-                bytes_done,
-                bytes_total,
-            } => Self::DownloadingSnapshot {
-                bytes_done,
-                bytes_total,
-            },
-            coven::JoiningDeviceJoinProgress::InstallingSnapshot => Self::InstallingSnapshot,
-            coven::JoiningDeviceJoinProgress::WaitingForActivation => Self::WaitingForActivation,
-            coven::JoiningDeviceJoinProgress::CatchingUp => Self::CatchingUp,
-            coven::JoiningDeviceJoinProgress::SavingLibrary => Self::SavingLibrary,
-        }
-    }
+mirror_enum! {
+    BridgeJoiningDeviceJoinProgress = coven::JoiningDeviceJoinProgress,
+    from_core: pub(crate) fn,
+    variants: {
+        WaitingForApproval,
+        RequestingProviderAccess,
+        WaitingForProviderAccess,
+        RegisteringDevice,
+        WaitingForLibrary,
+        DownloadingSnapshot { bytes_done, bytes_total },
+        InstallingSnapshot,
+        WaitingForActivation,
+        CatchingUp,
+        SavingLibrary,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -51,27 +41,19 @@ pub enum BridgeAdmittingDeviceJoinProgress {
     ActivatingDevice,
 }
 
-impl BridgeAdmittingDeviceJoinProgress {
-    pub(crate) fn from_core(progress: coven::AdmittingDeviceJoinProgress) -> Self {
-        match progress {
-            coven::AdmittingDeviceJoinProgress::PreparingInvitation => Self::PreparingInvitation,
-            coven::AdmittingDeviceJoinProgress::WaitingForProviderAccessRequest => {
-                Self::WaitingForProviderAccessRequest
-            }
-            coven::AdmittingDeviceJoinProgress::GrantingProviderAccess => {
-                Self::GrantingProviderAccess
-            }
-            coven::AdmittingDeviceJoinProgress::WaitingForRegistrationRequest => {
-                Self::WaitingForRegistrationRequest
-            }
-            coven::AdmittingDeviceJoinProgress::RegisteringDevice => Self::RegisteringDevice,
-            coven::AdmittingDeviceJoinProgress::PreparingLibrary => Self::PreparingLibrary,
-            coven::AdmittingDeviceJoinProgress::WaitingForJoiningDevice => {
-                Self::WaitingForJoiningDevice
-            }
-            coven::AdmittingDeviceJoinProgress::ActivatingDevice => Self::ActivatingDevice,
-        }
-    }
+mirror_enum! {
+    BridgeAdmittingDeviceJoinProgress = coven::AdmittingDeviceJoinProgress,
+    from_core: pub(crate) fn,
+    variants: {
+        PreparingInvitation,
+        WaitingForProviderAccessRequest,
+        GrantingProviderAccess,
+        WaitingForRegistrationRequest,
+        RegisteringDevice,
+        PreparingLibrary,
+        WaitingForJoiningDevice,
+        ActivatingDevice,
+    },
 }
 
 #[uniffi::export(callback_interface)]

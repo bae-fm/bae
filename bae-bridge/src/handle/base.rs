@@ -1,6 +1,6 @@
 use super::*;
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export]
 impl AppHandle {
     // =========================================================================
     // Library
@@ -30,28 +30,6 @@ impl AppHandle {
                 Err(error) => callback.on_error(BridgeError::database_query(error)),
             },
         )
-    }
-
-    /// 0-based position of `album_id` under the given sort, or `None` if the
-    /// album isn't present.
-    /// Lets the grid load the page containing an album and scroll to it
-    /// without depending on that page already being fetched.
-    pub async fn get_album_index(
-        self: std::sync::Arc<Self>,
-        sort_criteria: Vec<BridgeSortCriterion>,
-        album_id: String,
-    ) -> Result<Option<u64>, BridgeError> {
-        self.run_exported(move |this| async move {
-            let sort: Vec<bae_core::db::AlbumSortCriterion> = sort_criteria
-                .into_iter()
-                .map(BridgeSortCriterion::into_core)
-                .collect();
-            this.services
-                .get_album_index(&sort, &album_id)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))
-        })
-        .await
     }
 
     pub fn subscribe_composer_page(
@@ -166,27 +144,6 @@ impl AppHandle {
         )
     }
 
-    /// Filesystem path for the user's own external file behind a library file
-    /// (including the DiscID re-read of a rip's LOG/CUE evidence; retained
-    /// source-audio facts supply its duration). Returns `Ok(None)` if the
-    /// file has no readable local location (e.g. cloud-only and not cached).
-    /// Returns `Err` on DB failures so callers can distinguish a missing file
-    /// from a broken library state. NOT a substitute for a coven byte read.
-    pub async fn file_path(
-        self: std::sync::Arc<Self>,
-        file_id: String,
-    ) -> Result<Option<String>, BridgeError> {
-        self.run_exported(move |this| async move {
-            let path = this
-                .services
-                .file_local_path(&file_id)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))?;
-            Ok(path.and_then(|p| p.to_str().map(|s| s.to_string())))
-        })
-        .await
-    }
-
     pub fn subscribe_album_detail(
         &self,
         album_id: String,
@@ -269,131 +226,13 @@ impl AppHandle {
         })
     }
 
-    /// Existing library artists matching a name or exact stored ID. A blank
-    /// query is not a search and returns no suggestions.
-    pub async fn search_artists(
-        self: std::sync::Arc<Self>,
-        query: String,
-    ) -> Result<Vec<BridgeArtistSearchResult>, BridgeError> {
-        self.run_exported(move |this| async move {
-            let Some(query) = bae_core::library::LibrarySearchQuery::parse(&query) else {
-                return Ok(Vec::new());
-            };
-            this.services
-                .search_artists(&query)
-                .await
-                .map(|results| {
-                    results
-                        .into_iter()
-                        .map(BridgeArtistSearchResult::from_core)
-                        .collect()
-                })
-                .map_err(BridgeError::database)
-        })
-        .await
-    }
-
     // =========================================================================
     // Playback
     // =========================================================================
 
-    pub fn play_release(&self, release_id: String, start_track_index: Option<u32>, shuffle: bool) {
-        self.services.playback_play_release(
-            release_id,
-            start_track_index.map(|i| i as usize),
-            shuffle,
-        );
-    }
-
-    pub fn play_releases(&self, release_ids: Vec<String>) {
-        self.services.playback_play_releases(release_ids);
-    }
-
-    pub fn play_library_shuffled(&self) {
-        self.services.playback_play_library_shuffled();
-    }
-
-    pub fn pause(&self) {
-        self.services.playback_pause();
-    }
-
-    pub fn resume(&self) {
-        self.services.playback_resume();
-    }
-
-    pub fn stop(&self) {
-        self.services.playback_stop();
-    }
-
-    pub fn next_track(&self) {
-        self.services.playback_next();
-    }
-
-    pub fn previous_track(&self) {
-        self.services.playback_previous();
-    }
-
-    pub fn seek_by_ratio(&self, ratio: f64) {
-        self.services.playback_seek_by_ratio(ratio);
-    }
-
-    pub fn set_volume(&self, volume: f32) {
-        self.services.playback_set_volume(volume);
-    }
-
-    pub async fn get_volume(self: std::sync::Arc<Self>) -> Result<f32, BridgeError> {
-        self.run_exported(move |this| async move { Ok(this.services.playback_get_volume().await) })
-            .await
-    }
-
-    pub fn set_muted(&self, muted: bool) {
-        self.services.playback_set_muted(muted);
-    }
-
-    pub fn preview_play(&self, target: BridgePreviewTarget) {
-        self.services.playback_preview_play(target.into_core());
-    }
-
-    pub fn preview_stop(&self) {
-        self.services.playback_preview_stop();
-    }
-
-    pub fn preview_toggle_pause(&self) {
-        self.services.playback_preview_toggle_pause();
-    }
-
-    pub fn preview_seek_by_ratio(&self, ratio: f64) {
-        self.services.playback_preview_seek_by_ratio(ratio);
-    }
-
-    pub fn set_repeat_mode(&self, mode: BridgeRepeatMode) {
-        let core_mode = mode.into_core();
-        self.services.playback_set_repeat_mode(core_mode);
-    }
-
-    pub fn set_shuffle(&self, on: bool) {
-        self.services.playback_set_shuffle(on);
-    }
-
     // =========================================================================
     // Queue
     // =========================================================================
-
-    pub fn add_to_queue(&self, track_ids: Vec<String>) {
-        self.services.playback_add_to_queue(track_ids);
-    }
-
-    pub fn add_next(&self, track_ids: Vec<String>) {
-        self.services.playback_add_next(track_ids);
-    }
-
-    pub fn add_release_to_queue(&self, release_id: String) {
-        self.services.playback_add_release_to_queue(release_id);
-    }
-
-    pub fn add_release_next(&self, release_id: String) {
-        self.services.playback_add_release_next(release_id);
-    }
 
     pub fn subscribe_queue(
         &self,
@@ -435,250 +274,6 @@ impl AppHandle {
         )
     }
 
-    /// Resolve a list of IDs (album or track) to track IDs.
-    /// Album IDs are expanded to the primary release's tracks.
-    pub async fn resolve_to_track_ids(
-        self: std::sync::Arc<Self>,
-        ids: Vec<String>,
-    ) -> Result<Vec<String>, BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .resolve_to_track_ids(&ids)
-                .await
-                .map_err(BridgeError::database)
-        })
-        .await
-    }
-
-    pub fn insert_in_queue(&self, track_ids: Vec<String>, index: u32) {
-        self.services
-            .playback_insert_in_queue(track_ids, index as usize);
-    }
-
-    pub fn remove_entry(&self, entry_id: String) {
-        self.services.playback_remove_entry(QueueEntryId(entry_id));
-    }
-
-    /// Move the entry `entry_id` to sit immediately before `before_entry_id`.
-    /// `before_entry_id == None` moves it to the end of the queue.
-    pub fn reorder_entry(&self, entry_id: String, before_entry_id: Option<String>) {
-        self.services
-            .playback_reorder_entry(QueueEntryId(entry_id), before_entry_id.map(QueueEntryId));
-    }
-
-    pub fn clear_up_next(&self) {
-        self.services.playback_clear_up_next();
-    }
-
-    pub fn clear_playing_from(&self) {
-        self.services.playback_clear_playing_from();
-    }
-
-    pub fn skip_to_entry(&self, entry_id: String) {
-        self.services.playback_skip_to_entry(QueueEntryId(entry_id));
-    }
-
-    // =========================================================================
-    // Cover art
-    // =========================================================================
-
-    pub async fn change_cover(
-        self: std::sync::Arc<Self>,
-        release_id: String,
-        selection: BridgeCoverSelection,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            use bae_core::library::CoverSelection;
-
-            let core_selection = match selection {
-                BridgeCoverSelection::ReleaseImage { file_id } => {
-                    CoverSelection::ReleaseImage { file_id }
-                }
-                BridgeCoverSelection::RemoteCover { selection } => CoverSelection::RemoteCover {
-                    url: selection.url,
-                    source: selection.source.into_core(),
-                },
-                BridgeCoverSelection::EmbeddedCover { source_file_id } => {
-                    return Err(BridgeError::internal(format!(
-                        "embedded candidate cover {source_file_id} is not a library cover choice"
-                    )))
-                }
-            };
-
-            this.services
-                .change_cover(&release_id, core_selection)
-                .await
-                .map_err(|e| BridgeError::internal(format!("{e}")))
-        })
-        .await
-    }
-
-    pub async fn set_primary_release(
-        self: std::sync::Arc<Self>,
-        album_id: String,
-        release_id: String,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .set_album_primary_release(&album_id, &release_id)
-                .await
-                .map_err(|e| BridgeError::internal(format!("{e}")))
-        })
-        .await
-    }
-
-    // =========================================================================
-    // Storage
-    // =========================================================================
-
-    pub async fn unpin_release(
-        self: std::sync::Arc<Self>,
-        release_id: String,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services.unpin_release(&release_id).await?;
-            Ok(())
-        })
-        .await
-    }
-
-    pub async fn make_releases_remote(
-        self: std::sync::Arc<Self>,
-        release_ids: Vec<String>,
-        pin: bool,
-    ) -> Result<BridgeMakeReleasesRemoteOutcome, BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .make_releases_remote(&release_ids, pin)
-                .await
-                .map(BridgeMakeReleasesRemoteOutcome::from_core)
-                .map_err(BridgeError::from)
-        })
-        .await
-    }
-
-    pub async fn make_release_local(
-        self: std::sync::Arc<Self>,
-        release_id: String,
-        new_path: String,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services
-                .make_release_local(&release_id, &new_path)
-                .await?;
-            Ok(())
-        })
-        .await
-    }
-
-    pub async fn delete_release(
-        self: std::sync::Arc<Self>,
-        release_id: String,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services.delete_release(&release_id).await?;
-            Ok(())
-        })
-        .await
-    }
-
-    // =========================================================================
-    // Sync / membership
-    // =========================================================================
-
-    pub async fn save_sync_config(
-        self: std::sync::Arc<Self>,
-        config_data: BridgeSaveSyncConfig,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            use bae_core::sync::S3ConfigData;
-            this.services
-                .save_s3_config(S3ConfigData {
-                    bucket: config_data.bucket,
-                    region: config_data.region,
-                    endpoint: config_data.endpoint,
-                    key_prefix: config_data.key_prefix,
-                    access_key: config_data.access_key,
-                    secret_key: config_data.secret_key,
-                    storage: crate::types::BridgeHomeStorage::into_core(config_data.storage),
-                })
-                .await?;
-            Ok(())
-        })
-        .await
-    }
-
-    pub async fn disconnect_cloud_provider(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services.disconnect_cloud_provider().await?;
-            Ok(())
-        })
-        .await
-    }
-
-    /// How many releases live only in the cloud and would become unplayable if
-    /// this device disconnected. `0` means nothing is at risk. The UI renders the
-    /// warning sentence itself, from `core.sync.cloud_only_releases` and its own
-    /// locale's plural rules.
-    pub async fn cloud_only_release_count(self: std::sync::Arc<Self>) -> Result<u64, BridgeError> {
-        self.run_exported(
-            move |this| async move { Ok(this.services.cloud_only_release_count().await?) },
-        )
-        .await
-    }
-
-    pub async fn generate_restore_code(self: std::sync::Arc<Self>) -> Result<String, BridgeError> {
-        self.run_exported(
-            move |this| async move { Ok(this.services.generate_restore_code().await?) },
-        )
-        .await
-    }
-
-    /// The library's membership (devices, with this device flagged, and whether
-    /// the running device is an owner). Reads the membership chain from cloud
-    /// storage.
-    pub async fn get_members(
-        self: std::sync::Arc<Self>,
-    ) -> Result<crate::types::BridgeMembership, BridgeError> {
-        self.run_exported(move |this| async move {
-            let membership = this.services.get_members().await?;
-            Ok(crate::types::BridgeMembership::from_core(membership))
-        })
-        .await
-    }
-
-    /// Remove a device from the library and rotate the library key.
-    pub async fn remove_member(
-        self: std::sync::Arc<Self>,
-        public_key_hex: String,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services.remove_member(&public_key_hex).await?;
-            Ok(())
-        })
-        .await
-    }
-
-    /// Forget the active local library on this device: delete its key, clear the
-    /// active pointer, and remove its data directory (the owner's cloud copy is
-    /// untouched). The caller must drop this handle right after — the database
-    /// lives in the removed directory — and re-open / onboard from scratch.
-    pub async fn forget_library(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services.forget_library().await?;
-            info!("Forgot local library");
-            Ok(())
-        })
-        .await
-    }
-
-    // ── Download (pin) queue ─────────────────────────────────────────
-
-    /// The current download-queue snapshot.
-    pub fn get_download_snapshot(&self) -> crate::types::BridgeDownloadSnapshot {
-        crate::types::BridgeDownloadSnapshot::from_core(self.services.download_snapshot())
-    }
-
     pub fn subscribe_downloads(
         &self,
         callback: Box<dyn crate::types::DownloadCallback>,
@@ -692,38 +287,336 @@ impl AppHandle {
             },
         )
     }
+}
+
+forward! { async this => {
+    /// 0-based position of `album_id` under the given sort, or `None` if the
+    /// album isn't present.
+    /// Lets the grid load the page containing an album and scroll to it
+    /// without depending on that page already being fetched.
+    fn get_album_index(
+        sort_criteria: Vec<BridgeSortCriterion>,
+        album_id: String,
+    ) -> Option<u64> {
+        let sort: Vec<bae_core::db::AlbumSortCriterion> = sort_criteria
+            .into_iter()
+            .map(BridgeSortCriterion::into_core)
+            .collect();
+        this.services
+            .get_album_index(&sort, &album_id)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))
+    }
+
+    /// Filesystem path for the user's own external file behind a library file
+    /// (including the DiscID re-read of a rip's LOG/CUE evidence; retained
+    /// source-audio facts supply its duration). Returns `Ok(None)` if the
+    /// file has no readable local location (e.g. cloud-only and not cached).
+    /// Returns `Err` on DB failures so callers can distinguish a missing file
+    /// from a broken library state. NOT a substitute for a coven byte read.
+    fn file_path(file_id: String) -> Option<String> {
+        let path = this
+            .services
+            .file_local_path(&file_id)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
+        Ok(path.and_then(|p| p.to_str().map(|s| s.to_string())))
+    }
+
+    /// Existing library artists matching a name or exact stored ID. A blank
+    /// query is not a search and returns no suggestions.
+    fn search_artists(query: String) -> Vec<BridgeArtistSearchResult> {
+        let Some(query) = bae_core::library::LibrarySearchQuery::parse(&query) else {
+            return Ok(Vec::new());
+        };
+        this.services
+            .search_artists(&query)
+            .await
+            .map(|results| {
+                results
+                    .into_iter()
+                    .map(BridgeArtistSearchResult::from_core)
+                    .collect()
+            })
+            .map_err(BridgeError::database)
+    }
+
+    /// Resolve a list of IDs (album or track) to track IDs.
+    /// Album IDs are expanded to the primary release's tracks.
+    fn resolve_to_track_ids(ids: Vec<String>) -> Vec<String> {
+        this.services
+            .resolve_to_track_ids(&ids)
+            .await
+            .map_err(BridgeError::database)
+    }
+
+    fn change_cover(release_id: String, selection: BridgeCoverSelection) -> () {
+        use bae_core::library::CoverSelection;
+
+        let core_selection = match selection {
+            BridgeCoverSelection::ReleaseImage { file_id } => {
+                CoverSelection::ReleaseImage { file_id }
+            }
+            BridgeCoverSelection::RemoteCover { selection } => CoverSelection::RemoteCover {
+                url: selection.url,
+                source: selection.source.into_core(),
+            },
+            BridgeCoverSelection::EmbeddedCover { source_file_id } => {
+                return Err(BridgeError::internal(format!(
+                    "embedded candidate cover {source_file_id} is not a library cover choice"
+                )))
+            }
+        };
+
+        this.services
+            .change_cover(&release_id, core_selection)
+            .await
+            .map_err(|e| BridgeError::internal(format!("{e}")))
+    }
+
+    fn set_primary_release(album_id: String, release_id: String) -> () {
+        this.services
+            .set_album_primary_release(&album_id, &release_id)
+            .await
+            .map_err(|e| BridgeError::internal(format!("{e}")))
+    }
+
+    fn unpin_release(release_id: String) -> () {
+        Ok(this.services.unpin_release(&release_id).await?)
+    }
+
+    fn make_releases_remote(
+        release_ids: Vec<String>,
+        pin: bool,
+    ) -> BridgeMakeReleasesRemoteOutcome {
+        this.services
+            .make_releases_remote(&release_ids, pin)
+            .await
+            .map(BridgeMakeReleasesRemoteOutcome::from_core)
+            .map_err(BridgeError::from)
+    }
+
+    fn make_release_local(release_id: String, new_path: String) -> () {
+        Ok(this.services.make_release_local(&release_id, &new_path).await?)
+    }
+
+    fn delete_release(release_id: String) -> () {
+        Ok(this.services.delete_release(&release_id).await?)
+    }
+
+    fn save_sync_config(config_data: BridgeSaveSyncConfig) -> () {
+        use bae_core::sync::S3ConfigData;
+        Ok(this
+            .services
+            .save_s3_config(S3ConfigData {
+                bucket: config_data.bucket,
+                region: config_data.region,
+                endpoint: config_data.endpoint,
+                key_prefix: config_data.key_prefix,
+                access_key: config_data.access_key,
+                secret_key: config_data.secret_key,
+                storage: crate::types::BridgeHomeStorage::into_core(config_data.storage),
+            })
+            .await?)
+    }
+
+    fn disconnect_cloud_provider() -> () {
+        Ok(this.services.disconnect_cloud_provider().await?)
+    }
+
+    /// How many releases live only in the cloud and would become unplayable if
+    /// this device disconnected. `0` means nothing is at risk. The UI renders the
+    /// warning sentence itself, from `core.sync.cloud_only_releases` and its own
+    /// locale's plural rules.
+    fn cloud_only_release_count() -> u64 {
+        Ok(this.services.cloud_only_release_count().await?)
+    }
+
+    fn generate_restore_code() -> String {
+        Ok(this.services.generate_restore_code().await?)
+    }
+
+    /// The library's membership (devices, with this device flagged, and whether
+    /// the running device is an owner). Reads the membership chain from cloud
+    /// storage.
+    fn get_members() -> crate::types::BridgeMembership {
+        let membership = this.services.get_members().await?;
+        Ok(crate::types::BridgeMembership::from_core(membership))
+    }
+
+    /// Remove a device from the library and rotate the library key.
+    fn remove_member(public_key_hex: String) -> () {
+        Ok(this.services.remove_member(&public_key_hex).await?)
+    }
+
+    /// Forget the active local library on this device: delete its key, clear the
+    /// active pointer, and remove its data directory (the owner's cloud copy is
+    /// untouched). The caller must drop this handle right after — the database
+    /// lives in the removed directory — and re-open / onboard from scratch.
+    fn forget_library() -> () {
+        this.services.forget_library().await?;
+        info!("Forgot local library");
+        Ok(())
+    }
 
     /// Enqueue releases to pin for offline. They join the in-memory serial
     /// download queue; the worker drains them one at a time. The DB lookups
     /// (resolving each release's title/size for its pane row) happen here; the
     /// deep cloud download runs on the queue worker.
-    pub async fn queue_pin_releases(
-        self: std::sync::Arc<Self>,
-        release_ids: Vec<String>,
-    ) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            this.services.enqueue_pins(release_ids).await;
-            Ok(())
-        })
-        .await
+    fn queue_pin_releases(release_ids: Vec<String>) -> () {
+        this.services.enqueue_pins(release_ids).await;
+        Ok(())
+    }
+} }
+
+forward! { sync this => {
+    // =========================================================================
+    // Playback
+    // =========================================================================
+
+    fn play_release(release_id: String, start_track_index: Option<u32>, shuffle: bool) {
+        this.services.playback_play_release(
+            release_id,
+            start_track_index.map(|i| i as usize),
+            shuffle,
+        );
+    }
+
+    fn play_releases(release_ids: Vec<String>) {
+        this.services.playback_play_releases(release_ids);
+    }
+
+    fn play_library_shuffled() {
+        this.services.playback_play_library_shuffled();
+    }
+
+    fn pause() {
+        this.services.playback_pause();
+    }
+
+    fn resume() {
+        this.services.playback_resume();
+    }
+
+    fn stop() {
+        this.services.playback_stop();
+    }
+
+    fn next_track() {
+        this.services.playback_next();
+    }
+
+    fn previous_track() {
+        this.services.playback_previous();
+    }
+
+    fn seek_by_ratio(ratio: f64) {
+        this.services.playback_seek_by_ratio(ratio);
+    }
+
+    fn set_volume(volume: f32) {
+        this.services.playback_set_volume(volume);
+    }
+
+    fn set_muted(muted: bool) {
+        this.services.playback_set_muted(muted);
+    }
+
+    fn preview_play(target: BridgePreviewTarget) {
+        this.services.playback_preview_play(target.into_core());
+    }
+
+    fn preview_stop() {
+        this.services.playback_preview_stop();
+    }
+
+    fn preview_toggle_pause() {
+        this.services.playback_preview_toggle_pause();
+    }
+
+    fn preview_seek_by_ratio(ratio: f64) {
+        this.services.playback_preview_seek_by_ratio(ratio);
+    }
+
+    fn set_repeat_mode(mode: BridgeRepeatMode) {
+        this.services.playback_set_repeat_mode(mode.into_core());
+    }
+
+    fn set_shuffle(on: bool) {
+        this.services.playback_set_shuffle(on);
+    }
+
+    // =========================================================================
+    // Queue
+    // =========================================================================
+
+    fn add_to_queue(track_ids: Vec<String>) {
+        this.services.playback_add_to_queue(track_ids);
+    }
+
+    fn add_next(track_ids: Vec<String>) {
+        this.services.playback_add_next(track_ids);
+    }
+
+    fn add_release_to_queue(release_id: String) {
+        this.services.playback_add_release_to_queue(release_id);
+    }
+
+    fn add_release_next(release_id: String) {
+        this.services.playback_add_release_next(release_id);
+    }
+
+    fn insert_in_queue(track_ids: Vec<String>, index: u32) {
+        this.services
+            .playback_insert_in_queue(track_ids, index as usize);
+    }
+
+    fn remove_entry(entry_id: String) {
+        this.services.playback_remove_entry(QueueEntryId(entry_id));
+    }
+
+    /// Move the entry `entry_id` to sit immediately before `before_entry_id`.
+    /// `before_entry_id == None` moves it to the end of the queue.
+    fn reorder_entry(entry_id: String, before_entry_id: Option<String>) {
+        this.services
+            .playback_reorder_entry(QueueEntryId(entry_id), before_entry_id.map(QueueEntryId));
+    }
+
+    fn clear_up_next() {
+        this.services.playback_clear_up_next();
+    }
+
+    fn clear_playing_from() {
+        this.services.playback_clear_playing_from();
+    }
+
+    fn skip_to_entry(entry_id: String) {
+        this.services.playback_skip_to_entry(QueueEntryId(entry_id));
+    }
+
+    // ── Download (pin) queue ─────────────────────────────────────────
+
+    /// The current download-queue snapshot.
+    fn get_download_snapshot() -> crate::types::BridgeDownloadSnapshot {
+        crate::types::BridgeDownloadSnapshot::from_core(this.services.download_snapshot())
     }
 
     /// Pause or resume the download queue. In-flight downloads finish; the queue
     /// stops starting new ones until resumed.
-    pub fn set_downloads_paused(&self, paused: bool) {
-        self.services.set_downloads_paused(paused);
+    fn set_downloads_paused(paused: bool) {
+        this.services.set_downloads_paused(paused);
     }
 
     /// Cancel a release's download — drops a queued/failed entry or aborts the
     /// in-flight one (a partial download never lands, so the release stays
     /// cloud-only).
-    pub fn cancel_download(&self, release_id: String) {
-        self.services.cancel_download(&release_id);
+    fn cancel_download(release_id: String) {
+        this.services.cancel_download(&release_id);
     }
 
     /// Retry every failed download now (flips them back to queued and wakes the
     /// worker).
-    pub fn retry_downloads(&self) {
-        self.services.retry_downloads();
+    fn retry_downloads() {
+        this.services.retry_downloads();
     }
-}
+} }

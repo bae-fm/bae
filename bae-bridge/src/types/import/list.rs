@@ -218,99 +218,39 @@ pub struct BridgeCandidateSession {
     pub error: Option<String>,
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeMetadataPresentation {
-    pub(crate) fn from_core(p: bae_core::import::MetadataPresentation) -> Self {
-        use bae_core::import::MetadataPresentation;
-        match p {
-            MetadataPresentation::Draft => Self::Draft,
-            MetadataPresentation::FindOnline => Self::FindOnline,
-            MetadataPresentation::FileTags => Self::FileTags,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::MetadataPresentation {
-        use bae_core::import::MetadataPresentation;
-        match self {
-            Self::Draft => MetadataPresentation::Draft,
-            Self::FindOnline => MetadataPresentation::FindOnline,
-            Self::FileTags => MetadataPresentation::FileTags,
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeMetadataPresentation = bae_core::import::MetadataPresentation,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Draft, FindOnline, FileTags },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeSearchTab {
-    fn from_core(t: bae_core::import::SearchTab) -> Self {
-        use bae_core::import::SearchTab;
-        match t {
-            SearchTab::General => Self::General,
-            SearchTab::CatalogNumber => Self::CatalogNumber,
-            SearchTab::Barcode => Self::Barcode,
-        }
-    }
-
-    fn into_core(self) -> bae_core::import::SearchTab {
-        use bae_core::import::SearchTab;
-        match self {
-            Self::General => SearchTab::General,
-            Self::CatalogNumber => SearchTab::CatalogNumber,
-            Self::Barcode => SearchTab::Barcode,
-        }
-    }
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeSearchTab = bae_core::import::SearchTab,
+    from_core: fn,
+    into_core: fn,
+    variants: { General, CatalogNumber, Barcode },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeSearchForm {
-    fn from_core(f: bae_core::import::SearchForm) -> Self {
-        let bae_core::import::SearchForm {
-            tab,
-            artist,
-            album,
-            catalog,
-            barcode,
-        } = f;
-        Self {
-            tab: BridgeSearchTab::from_core(tab),
-            artist,
-            album,
-            catalog,
-            barcode,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::SearchForm {
-        let Self {
-            tab,
-            artist,
-            album,
-            catalog,
-            barcode,
-        } = self;
-        bae_core::import::SearchForm {
-            tab: tab.into_core(),
-            artist,
-            album,
-            catalog,
-            barcode,
-        }
-    }
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeSearchForm = bae_core::import::SearchForm,
+    from_core: fn,
+    into_core: pub(crate) fn,
+    fields: { tab: (BridgeSearchTab), artist, album, catalog, barcode },
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeCandidateSession {
-    pub(crate) fn from_core(s: bae_core::import::CandidateSession) -> Self {
-        let bae_core::import::CandidateSession {
-            presentation,
-            search,
-            error,
-        } = s;
-        Self {
-            presentation: BridgeMetadataPresentation::from_core(presentation),
-            search: BridgeSearchForm::from_core(search),
-            error,
-        }
-    }
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeCandidateSession = bae_core::import::CandidateSession,
+    from_core: pub(crate) fn,
+    fields: {
+        presentation: (BridgeMetadataPresentation),
+        search: (BridgeSearchForm),
+        error,
+    },
 }
 
 /// An import that failed, as the pane still shows it after a relaunch.
