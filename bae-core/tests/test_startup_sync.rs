@@ -134,6 +134,16 @@ impl CloudKitOps for PendingCloudKit {
         self.unexpected("read_versioned_record")
     }
 
+    fn replace_record_if_version(
+        &self,
+        _scope: &CloudKitScope,
+        _key: &str,
+        _expected: &coven::CloudObjectVersion,
+        _data: Vec<u8>,
+    ) -> Result<coven::ConditionalWriteOutcome, CloudHomeError> {
+        self.unexpected("replace_record_if_version")
+    }
+
     fn begin_atomic_create(
         &self,
         _scope: &CloudKitScope,
