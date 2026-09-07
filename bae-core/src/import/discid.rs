@@ -2,22 +2,12 @@ use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::resolve_cue_audio_paths;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use thiserror::Error;
 use tracing::{debug, trace, warn};
 
 const CD_PREGAP_SECTORS: i32 = 150;
 
-#[derive(Debug, Error)]
-pub enum MetadataDetectionError {
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-}
-
-fn invalid_discid_data(message: impl Into<String>) -> MetadataDetectionError {
-    MetadataDetectionError::Io(std::io::Error::new(
-        std::io::ErrorKind::InvalidData,
-        message.into(),
-    ))
+fn invalid_discid_data(message: impl Into<String>) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::InvalidData, message.into())
 }
 
 fn parse_log_toc_row(line: &str) -> Option<(i32, i32)> {
@@ -42,7 +32,7 @@ fn parse_log_toc_row(line: &str) -> Option<(i32, i32)> {
 
 /// Extract raw `(start_sector, end_sector)` pairs from an EAC/XLD LOG TOC table.
 /// Format: "       10  | 37:42.72 |  4:14.43 |    169722    |   188814"
-fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, MetadataDetectionError> {
+fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, std::io::Error> {
     trace!("Parsing LOG file TOC");
     let mut in_toc_section = false;
     let mut track_sectors = Vec::new();
@@ -107,10 +97,7 @@ fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, Metadat
             log_content.lines().take(30).collect::<Vec<_>>().join("\n")
         };
         debug!("LOG content preview (TOC section):\n{}", preview);
-        return Err(MetadataDetectionError::Io(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "No TOC rows found in LOG file",
-        )));
+        return Err(invalid_discid_data("No TOC rows found in LOG file"));
     }
 
     Ok(track_sectors)
@@ -121,7 +108,7 @@ fn discid_from_raw_offsets(
     raw_track_sectors: &[i32],
     raw_leadout_sector: i32,
     leadout_source: &str,
-) -> Result<String, MetadataDetectionError> {
+) -> Result<String, std::io::Error> {
     let track_offsets: Vec<i32> = raw_track_sectors
         .iter()
         .map(|sector| {
@@ -162,7 +149,7 @@ fn discid_from_raw_offsets(
 
 /// MusicBrainz DiscID from a LOG file alone — the most direct method, since the
 /// sector offsets are in the log and neither the CUE nor the audio is needed.
-pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, MetadataDetectionError> {
+pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, std::io::Error> {
     debug!("Calculating MusicBrainz DiscID from LOG: {:?}", log_path);
     trace!("Reading LOG file: {:?}", log_path);
     let log_content = crate::text_encoding::read_text_file(log_path)?.text;
@@ -214,7 +201,7 @@ fn calculate_mb_discid_from_cue(
     sheet: &CueSheet,
     audio: &[SheetAudioDuration<'_>],
     method_label: &str,
-) -> Result<String, MetadataDetectionError> {
+) -> Result<String, std::io::Error> {
     if sheet.playable_tracks().next().is_none() {
         return Err(invalid_discid_data("CUE has no playable audio tracks"));
     }

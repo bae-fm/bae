@@ -370,7 +370,7 @@ async fn await_decoder_exit(exited: &Arc<std::sync::atomic::AtomicBool>) -> bool
 }
 
 /// `stop()` must cancel the output's `PlaybackSource` before dropping it, so the
-/// outgoing decoder — which `teardown_current_track` only stopped via its AVIO
+/// outgoing decoder — which `teardown_local_playback` only stopped via its AVIO
 /// token — is unparked and exits even when it's blocked writing a full ring.
 /// Dropping the source alone abandons the ring but never sets the sink's cancel
 /// flag, so a ring-parked decoder would spin forever (leaking its thread and
@@ -795,6 +795,5 @@ async fn corrupt_resume_row_ships_resume_cache_corrupt_anomaly() {
 // -- renderer seam: remote playback -------------------------------------------
 
 use crate::renderer::{
-    cast_stream_format, ReceiverStatus, RendererChannel, RendererError, RendererMedia,
-    RendererPlayerState, RendererSessionStatus,
+    cast_stream_format, RendererPlayerState, RendererSessionStatus,
 };

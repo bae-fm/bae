@@ -339,50 +339,11 @@ fn resolved_audio_format_rejects_zero_sample_rate() {
         .contains("track track-id has unusable audio format"));
 }
 
-#[test]
-fn direct_start_skips_audio_and_generated_pregap_segments() {
-    let pregap_buffer = create_sparse_buffer(1_024);
-    let main_buffer = create_sparse_buffer(2_048);
-    let mut prepared = test_prepared_track("track", main_buffer.clone());
-    prepared.generated_pregap_samples = Some(441);
-    prepared.generated_pregap_ms = Some(10);
-    prepared.pregap_ms = Some(1010);
-    prepared.segments = vec![
-        PreparedAudioSegment {
-            role: DbAudioSegmentRole::AudioPregap,
-            file_id: "pregap-file".to_string(),
-            buffer: pregap_buffer,
-            span: crate::db::SegmentSpan {
-                start_sample: 1_000,
-                end_sample: None,
-                start_byte: Some(100),
-                end_byte: None,
-            },
-        },
-        PreparedAudioSegment {
-            role: DbAudioSegmentRole::Main,
-            file_id: "main-file".to_string(),
-            buffer: main_buffer.clone(),
-            span: crate::db::SegmentSpan {
-                start_sample: 44_100,
-                end_sample: Some(88_200),
-                start_byte: Some(2_000),
-                end_byte: Some(4_000),
-            },
-        },
-    ];
-
-    let decode = prepared.decode_params(0, false);
-
-    assert_eq!(decode.leading_silence_frames(), 0);
-    assert_eq!(decode.segment_count(), 1);
-    assert_eq!(decode.segment_buffer_id(0), main_buffer.id());
-    assert_eq!(decode.segment_target_sample(0), 44_100);
-    assert_eq!(decode.segment_seek_to_byte(0), Some(2_000));
-}
-
-#[test]
-fn natural_start_includes_audio_and_generated_pregap_segments() {
+/// A track carrying both a generated pregap and an audio-pregap segment ahead
+/// of its main body, so the same track can be started either way. Returns it
+/// with its two buffers, which the assertions identify the chosen segment by.
+fn prepared_track_with_pregap_segments(
+) -> (PlaybackPreparedTrack, SharedSparseBuffer, SharedSparseBuffer) {
     let pregap_buffer = create_sparse_buffer(1_024);
     let main_buffer = create_sparse_buffer(2_048);
     let mut prepared = test_prepared_track("track", main_buffer.clone());
@@ -404,7 +365,7 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
         PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
             file_id: "main-file".to_string(),
-            buffer: main_buffer,
+            buffer: main_buffer.clone(),
             span: crate::db::SegmentSpan {
                 start_sample: 44_100,
                 end_sample: Some(88_200),
@@ -413,6 +374,25 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
             },
         },
     ];
+    (prepared, pregap_buffer, main_buffer)
+}
+
+#[test]
+fn direct_start_skips_audio_and_generated_pregap_segments() {
+    let (prepared, _pregap_buffer, main_buffer) = prepared_track_with_pregap_segments();
+
+    let decode = prepared.decode_params(0, false);
+
+    assert_eq!(decode.leading_silence_frames(), 0);
+    assert_eq!(decode.segment_count(), 1);
+    assert_eq!(decode.segment_buffer_id(0), main_buffer.id());
+    assert_eq!(decode.segment_target_sample(0), 44_100);
+    assert_eq!(decode.segment_seek_to_byte(0), Some(2_000));
+}
+
+#[test]
+fn natural_start_includes_audio_and_generated_pregap_segments() {
+    let (prepared, pregap_buffer, _main_buffer) = prepared_track_with_pregap_segments();
 
     let decode = prepared.decode_params(0, true);
 

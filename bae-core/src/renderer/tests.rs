@@ -2,90 +2,12 @@
 //! session drives any [`RendererChannel`], so this exercises it without a real
 //! Cast or UPnP device.
 
-use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use super::channel::{
-    ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
-};
+use super::channel::{fake_status as status, FakeChannel, RendererError, RendererPlayerState};
 use super::session::{RendererSession, RendererSessionStatus, StatusCallback};
-
-/// A scriptable fake channel: records the commands the session issues and hands
-/// back queued (or a default) status on each poll. Shared with the test thread
-/// through an `Arc<Mutex<_>>` because the session moves the channel onto its own
-/// thread.
-#[derive(Default)]
-struct FakeState {
-    loads: Vec<RendererMedia>,
-    plays: u32,
-    pauses: u32,
-    seeks: Vec<Duration>,
-    volumes: Vec<f32>,
-    stops: u32,
-    /// Status responses returned by successive polls; once drained, `default`
-    /// is returned. A `Connection` error ends the session.
-    poll_script: VecDeque<Result<ReceiverStatus, RendererError>>,
-    default_status: Option<ReceiverStatus>,
-}
-
-#[derive(Clone)]
-struct FakeChannel {
-    state: Arc<Mutex<FakeState>>,
-}
-
-impl FakeChannel {
-    fn new() -> Self {
-        Self {
-            state: Arc::new(Mutex::new(FakeState::default())),
-        }
-    }
-}
-
-fn status(player_state: RendererPlayerState) -> ReceiverStatus {
-    ReceiverStatus {
-        player_state,
-        position: None,
-        duration: None,
-        volume: Some(1.0),
-    }
-}
-
-impl RendererChannel for FakeChannel {
-    fn load(&mut self, media: &RendererMedia) -> Result<(), RendererError> {
-        self.state.lock().unwrap().loads.push(media.clone());
-        Ok(())
-    }
-    fn play(&mut self) -> Result<(), RendererError> {
-        self.state.lock().unwrap().plays += 1;
-        Ok(())
-    }
-    fn pause(&mut self) -> Result<(), RendererError> {
-        self.state.lock().unwrap().pauses += 1;
-        Ok(())
-    }
-    fn seek(&mut self, position: Duration) -> Result<(), RendererError> {
-        self.state.lock().unwrap().seeks.push(position);
-        Ok(())
-    }
-    fn set_volume(&mut self, level: f32) -> Result<(), RendererError> {
-        self.state.lock().unwrap().volumes.push(level);
-        Ok(())
-    }
-    fn stop(&mut self) -> Result<(), RendererError> {
-        self.state.lock().unwrap().stops += 1;
-        Ok(())
-    }
-    fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
-        let mut state = self.state.lock().unwrap();
-        if let Some(scripted) = state.poll_script.pop_front() {
-            return scripted;
-        }
-        Ok(state
-            .default_status
-            .unwrap_or_else(|| status(RendererPlayerState::Playing)))
-    }
-}
+use super::RendererMedia;
 
 /// Collects the statuses the session reports, and lets a test wait for one that
 /// matches a predicate.

@@ -223,7 +223,6 @@ async fn download_queue_values_report_each_driven_file_progress() {
     progress_tx
         .send(TransferProgress::Complete {
             release_id: release_id.clone(),
-            outcome: crate::storage::transfer::TransferOutcome::Complete,
         })
         .expect("the transfer driver is listening");
     driver.await.unwrap().unwrap();

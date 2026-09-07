@@ -30,7 +30,6 @@ pub mod loudness;
 pub mod migrations;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod musicbrainz;
-pub mod network;
 pub mod oauth;
 pub mod playback;
 pub mod queue;

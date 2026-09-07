@@ -128,7 +128,7 @@ pub enum FolderReleaseDecisionAuthor {
 /// The parts are the child folders that hold audio, and only those. A `covers`
 /// or `Scans` folder alongside `CD1` and `CD2` is a sidecar the release
 /// carries, not a third part that failed to number itself, and the caller
-/// leaves it out (`audio_bearing_child_names`).
+/// leaves it out (`part_folder_names`).
 pub fn heuristic_folder_release_decision(
     holds_audio_directly: bool,
     part_folder_names: &[String],

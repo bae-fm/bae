@@ -368,7 +368,7 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     generate_album_files(&album, &["01 Track.flac"]);
     let root_key = root.to_string_lossy().into_owned();
 
-    f.db.rename_candidate_file_edit_table_for_test()
+    f.db.rename_host_table_for_test("import_candidate_file_edit")
         .await
         .unwrap();
     f.handle.add_watched_folder(root_key.clone()).await.unwrap();

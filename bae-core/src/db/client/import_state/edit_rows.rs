@@ -55,7 +55,7 @@ pub(super) fn insert_file_edits(
         let (sheet_disc, sheet_disc_number) = match edits.sheet_discs.get(relative_path) {
             None => (None, None),
             Some(SheetDisc::Ignored) => (Some("ignored"), None),
-            Some(SheetDisc::Disc { number }) => (Some("disc"), Some(number)),
+            Some(SheetDisc::Disc { number }) => (Some("disc"), Some(*number)),
         };
         sql.execute(
             "INSERT INTO import_candidate_file_edit \

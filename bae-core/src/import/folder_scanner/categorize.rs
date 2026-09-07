@@ -343,6 +343,7 @@ pub(super) fn settle_sheet_discs(files: &mut [CandidateFile], edits: &SheetDiscE
         };
         *disc = edits
             .get(&entry.file.relative_path)
+            .copied()
             .unwrap_or(SheetDisc::Disc { number: position });
     }
 }

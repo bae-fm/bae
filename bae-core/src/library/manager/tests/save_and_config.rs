@@ -141,25 +141,12 @@ async fn has_queued_delete(manager: &LibraryManager, namespace: &str, blob_id: &
 /// are renameable: coven's SQL authorizer refuses a host statement that alters one
 /// of its reserved tables, so a cleanup step coven owns is failed by handing it
 /// input it refuses instead (see the rollback tests below).
-async fn rename_table_for_test(manager: &LibraryManager, from: &str, to: &str) {
-    match (from, to) {
-        ("release_files", "release_files_unavailable") => manager
-            .database
-            .rename_release_files_table_for_test()
-            .await
-            .unwrap(),
-        ("tracks", "tracks_unavailable") => manager
-            .database
-            .rename_tracks_table_for_test()
-            .await
-            .unwrap(),
-        ("covers", "covers_unavailable") => manager
-            .database
-            .rename_covers_table_for_test()
-            .await
-            .unwrap(),
-        _ => panic!("unsupported table sabotage: {from} -> {to}"),
-    }
+async fn rename_table_for_test(manager: &LibraryManager, table: &str) {
+    manager
+        .database
+        .rename_host_table_for_test(table)
+        .await
+        .unwrap();
 }
 
 async fn store_test_cover_image(manager: &LibraryManager, release_id: &str) {

@@ -758,13 +758,10 @@ mod tests {
         assert!(cue.contains("REM DATE 2024\n"));
     }
 
-    /// Exercises the real `write_tags` against an encoded FLAC: every known tag
-    /// and the cover image are embedded.
-    #[test]
-    fn write_tags_writes_every_known_field() {
-        use lofty::prelude::*;
-        use lofty::tag::TagType;
-
+    /// Encode a short FLAC and run the real `write_tags` over it with `cover`.
+    /// Returns the temp dir — which has to outlive the read-back — and the
+    /// tagged file's path.
+    fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::path::PathBuf) {
         crate::audio_codec::init();
         let samples: Vec<i32> = (0..4410)
             .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
@@ -779,15 +776,6 @@ mod tests {
         )
         .unwrap();
 
-        let cover_bytes = {
-            let img = image::RgbImage::from_pixel(8, 8, image::Rgb([120, 40, 200]));
-            let mut buf = std::io::Cursor::new(Vec::new());
-            image::DynamicImage::ImageRgb8(img)
-                .write_to(&mut buf, image::ImageFormat::Png)
-                .unwrap();
-            buf.into_inner()
-        };
-
         let tags = SaveTags {
             title: "Track Title".to_string(),
             artist: "Artist Name".to_string(),
@@ -797,19 +785,38 @@ mod tests {
         };
 
         let dir = tempfile::TempDir::new().unwrap();
-
         let path = dir.path().join("tagged.flac");
         std::fs::write(&path, &flac).unwrap();
         write_tags(
             &path,
-            TagType::VorbisComments,
+            lofty::tag::TagType::VorbisComments,
             &tags,
             Some(3),
             10,
             true,
-            Some(&cover_bytes),
+            cover,
         )
         .unwrap();
+        (dir, path)
+    }
+
+    /// Exercises the real `write_tags` against an encoded FLAC: every known tag
+    /// and the cover image are embedded.
+    #[test]
+    fn write_tags_writes_every_known_field() {
+        use lofty::prelude::*;
+        use lofty::tag::TagType;
+
+        let cover_bytes = {
+            let img = image::RgbImage::from_pixel(8, 8, image::Rgb([120, 40, 200]));
+            let mut buf = std::io::Cursor::new(Vec::new());
+            image::DynamicImage::ImageRgb8(img)
+                .write_to(&mut buf, image::ImageFormat::Png)
+                .unwrap();
+            buf.into_inner()
+        };
+
+        let (_dir, path) = write_tags_to_encoded_flac(Some(&cover_bytes));
 
         let tagged = lofty::read_from_path(&path).unwrap();
         let tag = tagged
@@ -831,41 +838,7 @@ mod tests {
         use lofty::prelude::*;
         use lofty::tag::TagType;
 
-        crate::audio_codec::init();
-        let samples: Vec<i32> = (0..4410)
-            .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
-            .collect();
-        let flac = crate::audio_codec::encode_i32(
-            crate::audio_codec::EncodeFormat::Flac {
-                bits_per_sample: 16,
-            },
-            &samples,
-            44100,
-            1,
-        )
-        .unwrap();
-
-        let tags = SaveTags {
-            title: "Track Title".to_string(),
-            artist: "Artist Name".to_string(),
-            album: "Album Title".to_string(),
-            year: Some(2001),
-            disc: Some(1),
-        };
-
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("tagged.flac");
-        std::fs::write(&path, &flac).unwrap();
-        write_tags(
-            &path,
-            TagType::VorbisComments,
-            &tags,
-            Some(3),
-            10,
-            true,
-            None,
-        )
-        .unwrap();
+        let (_dir, path) = write_tags_to_encoded_flac(None);
 
         let tagged = lofty::read_from_path(&path).unwrap();
         let tag = tagged

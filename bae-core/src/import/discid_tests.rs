@@ -9,13 +9,9 @@ fn fixture(rel: &str) -> PathBuf {
         .join(rel)
 }
 
-fn assert_invalid_data(result: Result<String, MetadataDetectionError>) {
+fn assert_invalid_data(result: Result<String, std::io::Error>) {
     let error = result.expect_err("out-of-range sector should return an error");
-    match error {
-        MetadataDetectionError::Io(error) => {
-            assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
-        }
-    }
+    assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
 }
 
 fn write_log_with_toc(end_sector: i32) -> tempfile::NamedTempFile {
@@ -477,11 +473,7 @@ fn parse_log_toc_row_accepts_valid_and_rejects_malformed() {
 fn extract_log_toc_sectors_errors_without_toc_rows() {
     let log = "Some header line\nRandom prose\nNo TOC table anywhere\n";
     let err = extract_log_toc_sectors(log).expect_err("a LOG with no TOC rows must error");
-    match err {
-        MetadataDetectionError::Io(e) => {
-            assert_eq!(e.kind(), std::io::ErrorKind::InvalidData);
-        }
-    }
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
 }
 
 #[test]

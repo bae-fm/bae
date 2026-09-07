@@ -119,16 +119,6 @@ impl Packetizer {
         packet
     }
 
-    /// The next packet's RTP timestamp — what a sync packet advertises as "now".
-    pub fn next_timestamp(&self) -> u32 {
-        self.timestamp
-    }
-
-    /// The next packet's sequence number.
-    pub fn next_sequence(&self) -> u16 {
-        self.sequence
-    }
-
     /// Re-anchor after a FLUSH: the next packet carries the marker bit again so
     /// the receiver treats the resumed stream as a fresh start. The RTP timestamp
     /// keeps advancing — the sync packet re-establishes the mapping.
@@ -521,11 +511,14 @@ mod tests {
             ]
         );
         // Two frames advanced the timestamp by 2; the next packet clears marker.
-        assert_eq!(p.next_sequence(), 101);
-        assert_eq!(p.next_timestamp(), 1002);
         let pkt2 = p.packet(&[0, 0, 0, 0]);
         assert_eq!(pkt2[1], 0x60, "later packets clear the marker");
         assert_eq!(&pkt2[2..4], &[0x00, 0x65], "sequence advanced to 101");
+        assert_eq!(
+            &pkt2[4..8],
+            &[0x00, 0x00, 0x03, 0xEA],
+            "two stereo frames advanced the timestamp to 1002"
+        );
     }
 
     /// Encryption changes the payload but not the RTP header.

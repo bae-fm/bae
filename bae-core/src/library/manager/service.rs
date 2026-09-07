@@ -414,10 +414,13 @@ impl LibraryManager {
                     }
                     if let Some(raw) = last_sync_update {
                         if state.last_sync_time_raw.as_deref() != Some(raw.as_str()) {
-                            match crate::util::time::rfc3339_to_epoch_millis(&raw) {
-                                Ok(ms) => {
+                            // The parse error is handled, not swallowed: an
+                            // unparseable timestamp is surfaced rather than
+                            // becoming a wrong instant.
+                            match chrono::DateTime::parse_from_rfc3339(&raw) {
+                                Ok(parsed) => {
                                     state.last_sync_time_raw = Some(raw);
-                                    state.last_sync_time = Some(ms);
+                                    state.last_sync_time = Some(parsed.timestamp_millis());
                                     changed = true;
                                 }
                                 Err(e) => {
@@ -515,7 +518,7 @@ impl LibraryManager {
 
     /// The current outbox processing snapshot — queue depth, per-item state, and
     /// a pre-formatted summary. Seeds the Storage Manager panel before the first
-    /// `OutboxChanged` event arrives.
+    /// value arrives on the outbox stream.
     pub async fn outbox_snapshot(&self) -> Result<crate::library::OutboxSnapshot, LibraryError> {
         self.sync.outbox_snapshot().await
     }

@@ -9,7 +9,7 @@ use super::*;
 
 impl LibraryManager {
     /// Rename a library by id. The active library renames through the reactive
-    /// `ConfigState`, so current subscribers see it; any other library isn't loaded
+    /// `ConfigHandle`, so current subscribers see it; any other library isn't loaded
     /// in memory, so its `config.yaml` is edited on disk instead. The name is
     /// already validated non-blank by its type.
     pub fn rename_library(

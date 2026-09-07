@@ -1,65 +1,3 @@
-/// Shared, scriptable state for the fake renderer channel: the commands the
-/// session issued and the status each poll returns. The service drives any
-/// `RendererChannel`, so this one fake covers the transport routing for both
-/// renderer flavors.
-#[derive(Default)]
-struct FakeRendererState {
-    loads: Vec<RendererMedia>,
-    seeks: Vec<std::time::Duration>,
-    pauses: u32,
-    plays: u32,
-    stops: u32,
-    volumes: Vec<f32>,
-}
-
-#[derive(Clone)]
-struct FakeRendererChannel {
-    state: Arc<Mutex<FakeRendererState>>,
-}
-
-impl FakeRendererChannel {
-    fn new() -> Self {
-        Self {
-            state: Arc::new(Mutex::new(FakeRendererState::default())),
-        }
-    }
-}
-
-impl RendererChannel for FakeRendererChannel {
-    fn load(&mut self, media: &RendererMedia) -> Result<(), RendererError> {
-        self.state.lock().unwrap().loads.push(media.clone());
-        Ok(())
-    }
-    fn play(&mut self) -> Result<(), RendererError> {
-        self.state.lock().unwrap().plays += 1;
-        Ok(())
-    }
-    fn pause(&mut self) -> Result<(), RendererError> {
-        self.state.lock().unwrap().pauses += 1;
-        Ok(())
-    }
-    fn seek(&mut self, position: std::time::Duration) -> Result<(), RendererError> {
-        self.state.lock().unwrap().seeks.push(position);
-        Ok(())
-    }
-    fn set_volume(&mut self, level: f32) -> Result<(), RendererError> {
-        self.state.lock().unwrap().volumes.push(level);
-        Ok(())
-    }
-    fn stop(&mut self) -> Result<(), RendererError> {
-        self.state.lock().unwrap().stops += 1;
-        Ok(())
-    }
-    fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
-        Ok(ReceiverStatus {
-            player_state: RendererPlayerState::Playing,
-            position: None,
-            duration: None,
-            volume: Some(1.0),
-        })
-    }
-}
-
 /// Poll `predicate` until it holds or a 2s deadline passes.
 fn wait_until(predicate: impl Fn() -> bool) -> bool {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
@@ -143,7 +81,7 @@ fn test_stream_provider() -> crate::renderer::MediaUrlProvider {
     Arc::new(|track_id: &str, _format| Ok(format!("http://renderer.local/stream?id={track_id}")))
 }
 
-fn remote_connect(channel: FakeRendererChannel) -> RemoteConnect {
+fn remote_connect(channel: FakeChannel) -> RemoteConnect {
     RemoteConnect::new(
         Box::new(channel),
         "Living Room".to_string(),
@@ -185,7 +123,7 @@ async fn play_on_reissues_current_track_at_position() {
     );
     *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::from_secs(30));
 
-    let channel = FakeRendererChannel::new();
+    let channel = FakeChannel::new();
     let state = channel.state.clone();
     service.handle_play_on(remote_connect(channel)).await;
 
@@ -240,7 +178,7 @@ async fn remote_finished_advances_queue_and_loads_next() {
     );
     *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
-    let channel = FakeRendererChannel::new();
+    let channel = FakeChannel::new();
     let state = channel.state.clone();
     service.handle_play_on(remote_connect(channel)).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
@@ -290,7 +228,7 @@ async fn remote_status_feeds_progress() {
         TrackPhase::Playing,
     );
 
-    let channel = FakeRendererChannel::new();
+    let channel = FakeChannel::new();
     service.handle_play_on(remote_connect(channel)).await;
     // Drain the setup events.
     while rx.try_recv().is_ok() {}
@@ -346,7 +284,7 @@ async fn stop_remote_stops_device_and_returns_to_local() {
         TrackPhase::Playing,
     );
 
-    let channel = FakeRendererChannel::new();
+    let channel = FakeChannel::new();
     let state = channel.state.clone();
     service.handle_play_on(remote_connect(channel)).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
@@ -399,7 +337,7 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
         TrackPhase::Playing,
     );
 
-    let channel = FakeRendererChannel::new();
+    let channel = FakeChannel::new();
     let state = channel.state.clone();
     service.handle_play_on(remote_connect(channel)).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
@@ -436,7 +374,7 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
 async fn remote_over_fake() -> (
     TempDir,
     PlaybackService,
-    Arc<Mutex<FakeRendererState>>,
+    Arc<Mutex<FakeChannelState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
     let (home, mut service, rx) = remote_service(&[(
@@ -458,7 +396,7 @@ async fn remote_over_fake() -> (
     );
     *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
-    let channel = FakeRendererChannel::new();
+    let channel = FakeChannel::new();
     let state = channel.state.clone();
     service.handle_play_on(remote_connect(channel)).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));

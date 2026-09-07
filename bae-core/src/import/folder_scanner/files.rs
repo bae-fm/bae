@@ -165,35 +165,51 @@ pub enum SheetDisc {
     Ignored,
 }
 
-/// Every disc assignment the user has decided for one candidate, keyed by the
-/// sheet's [`ScannedFile::relative_path`].
+/// Every decision of one kind the user has made for one candidate, keyed by
+/// the file's [`ScannedFile::relative_path`].
 ///
-/// A sheet *absent* from this is not a decision — it takes its own position
-/// among the folder's bound sheets, in `relative_path` order.
-#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+/// A file *absent* from this is not a decision — whatever the scan proposed
+/// stands. Undoing a decision is therefore a value of its own (each alias below
+/// names the one it uses), never a removed entry: re-guessing after someone
+/// said the guess was wrong is the one answer certainly not asked for.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
-pub struct SheetDiscEdits(BTreeMap<String, SheetDisc>);
+pub struct Edits<V>(BTreeMap<String, V>);
 
-impl SheetDiscEdits {
-    /// The user's decision for one sheet, or `None` when they have made none.
-    pub fn get(&self, sheet_file_id: &str) -> Option<SheetDisc> {
-        self.0.get(sheet_file_id).copied()
+// Derived `Default` would demand `V: Default`, and none of the decisions has a
+// default value — an absent entry is what "no decision" means.
+impl<V> Default for Edits<V> {
+    fn default() -> Self {
+        Self(BTreeMap::new())
+    }
+}
+
+impl<V> Edits<V> {
+    /// The user's decision for one file, or `None` when they have made none.
+    pub fn get(&self, file_id: &str) -> Option<&V> {
+        self.0.get(file_id)
     }
 
-    /// Record one sheet's decision, replacing any previous one.
-    pub fn set(&mut self, sheet_file_id: String, disc: SheetDisc) {
-        self.0.insert(sheet_file_id, disc);
+    /// Record one file's decision, replacing any previous one.
+    pub fn set(&mut self, file_id: String, decision: V) {
+        self.0.insert(file_id, decision);
     }
 
-    /// Every decision, in sheet-id order — what the store writes as rows.
-    pub fn iter(&self) -> impl Iterator<Item = (&str, SheetDisc)> {
-        self.0.iter().map(|(id, disc)| (id.as_str(), *disc))
+    /// Every decision, in file-id order — what the store writes as rows.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &V)> {
+        self.0.iter().map(|(id, decision)| (id.as_str(), decision))
     }
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
+
+/// Every disc assignment the user has decided for one candidate.
+///
+/// A sheet *absent* from this is not a decision — it takes its own position
+/// among the folder's bound sheets, in `relative_path` order.
+pub type SheetDiscEdits = Edits<SheetDisc>;
 
 /// A role a person can put a file in, as opposed to the whole [`FileRole`] the
 /// scan proposes.
@@ -214,37 +230,13 @@ pub enum FileRoleChoice {
     NotATrack,
 }
 
-/// Every file role the user has decided for one candidate, keyed by the file's
-/// [`ScannedFile::relative_path`].
+/// Every file role the user has decided for one candidate.
 ///
 /// A file *absent* from this is not a decision — the scan's proposal stands.
 /// Both variants are therefore stored: putting a file back is as much a
 /// decision as taking it out, and re-guessing after either one is the answer
 /// that is certainly not what was asked for.
-#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(transparent)]
-pub struct FileRoleEdits(BTreeMap<String, FileRoleChoice>);
-
-impl FileRoleEdits {
-    /// The user's decision for one file, or `None` when they have made none.
-    pub fn get(&self, file_id: &str) -> Option<FileRoleChoice> {
-        self.0.get(file_id).copied()
-    }
-
-    /// Record one file's decision, replacing any previous one.
-    pub fn set(&mut self, file_id: String, choice: FileRoleChoice) {
-        self.0.insert(file_id, choice);
-    }
-
-    /// Every decision, in file-id order — what the store writes as rows.
-    pub fn iter(&self) -> impl Iterator<Item = (&str, FileRoleChoice)> {
-        self.0.iter().map(|(id, choice)| (id.as_str(), *choice))
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
+pub type FileRoleEdits = Edits<FileRoleChoice>;
 
 /// One track sheet's binding as the *user* set it — the second writer of
 /// [`SheetBinding`], alongside the scan.
@@ -263,36 +255,12 @@ pub enum UserSheetBinding {
     Cleared,
 }
 
-/// Every sheet binding the user has decided for one candidate, keyed by the
-/// sheet's [`ScannedFile::relative_path`].
+/// Every sheet binding the user has decided for one candidate.
 ///
 /// A sheet *absent* from this is not a decision — it means nobody has touched
 /// that sheet and the scan's proposal stands. That is why clearing stores
 /// [`UserSheetBinding::Cleared`] rather than removing the entry.
-#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(transparent)]
-pub struct SheetBindingEdits(BTreeMap<String, UserSheetBinding>);
-
-impl SheetBindingEdits {
-    /// The user's decision for one sheet, or `None` when they have made none.
-    pub fn get(&self, sheet_file_id: &str) -> Option<&UserSheetBinding> {
-        self.0.get(sheet_file_id)
-    }
-
-    /// Record one sheet's decision, replacing any previous one.
-    pub fn set(&mut self, sheet_file_id: String, binding: UserSheetBinding) {
-        self.0.insert(sheet_file_id, binding);
-    }
-
-    /// Every decision, in sheet-id order — what the store writes as rows.
-    pub fn iter(&self) -> impl Iterator<Item = (&str, &UserSheetBinding)> {
-        self.0.iter().map(|(id, binding)| (id.as_str(), binding))
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
+pub type SheetBindingEdits = Edits<UserSheetBinding>;
 
 /// Everything the user has settled about one candidate's files: which audio
 /// each track sheet describes, which disc each sheet's entries become, and

@@ -6,6 +6,19 @@
 
 use super::*;
 
+/// A preference the UI writes and nothing else reacts to: the write *is* the
+/// whole operation, and the config value stream re-renders whoever reads it.
+/// Setters that also validate, or that hand the new value to something already
+/// running, are written out below instead.
+macro_rules! pref_setter {
+    ($(#[$doc:meta])* $name:ident, $field:ident: $ty:ty) => {
+        $(#[$doc])*
+        pub fn $name(&self, value: $ty) -> Result<(), crate::config::ConfigError> {
+            self.config_handle.update(|config| config.prefs.$field = value)
+        }
+    };
+}
+
 impl LibraryManager {
     pub fn get_config(&self) -> crate::config::Config {
         self.config_handle.config().clone()
@@ -17,10 +30,36 @@ impl LibraryManager {
         self.config_handle.subscribe()
     }
 
-    pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update(|c| c.prefs.pause_between_sides = enabled)
-    }
+    pref_setter!(set_pause_between_sides, pause_between_sides: bool);
+
+    pref_setter!(
+        /// Whether the seek bar's leading label counts down the time remaining
+        /// instead of showing the time elapsed.
+        set_show_remaining_time,
+        show_remaining_time: bool
+    );
+
+    pref_setter!(
+        /// Whether the library page spans the window's full width instead of
+        /// centering its content in a width-capped column.
+        set_library_full_width,
+        library_full_width: bool
+    );
+
+    pref_setter!(set_identify_automatically, identify_automatically: bool);
+
+    pref_setter!(
+        set_default_import_metadata_source,
+        default_import_metadata_source: crate::config::DefaultImportMetadataSource
+    );
+
+    pref_setter!(
+        /// Whether casting to a network receiver is available. Turning it off
+        /// is what ends an active session: the desktop cast controller follows
+        /// this field, stops browsing, and disconnects.
+        set_cast_enabled,
+        cast_enabled: bool
+    );
 
     /// How many blob uploads coven's upload drain runs at once. Rejected outside
     /// 1..=[`MAX_CONCURRENT_TRANSFERS`](crate::config::MAX_CONCURRENT_TRANSFERS):
@@ -58,47 +97,6 @@ impl LibraryManager {
     /// setters above has taken effect as.
     pub fn transfer_limits(&self) -> coven::TransferLimits {
         self.database.transfer_limits()
-    }
-
-    /// Whether the seek bar's leading label counts down the time remaining
-    /// instead of showing the time elapsed. No playback side effect — unlike
-    /// `pause_between_sides`, nothing is staged on it — so the write is the whole
-    /// operation; the config value stream re-renders the bar.
-    pub fn set_show_remaining_time(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update(|c| c.prefs.show_remaining_time = enabled)
-    }
-
-    /// Whether the library page spans the window's full width instead of
-    /// centering its content in a width-capped column. Pure display
-    /// preference: the config value stream re-renders the page after the write.
-    pub fn set_library_full_width(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update(|c| c.prefs.library_full_width = enabled)
-    }
-
-    pub fn set_identify_automatically(
-        &self,
-        enabled: bool,
-    ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update(|config| config.prefs.identify_automatically = enabled)
-    }
-
-    pub fn set_default_import_metadata_source(
-        &self,
-        source: crate::config::DefaultImportMetadataSource,
-    ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update(|config| config.prefs.default_import_metadata_source = source)
-    }
-
-    /// Whether casting to a network receiver is available. Turning it off is
-    /// what ends an active session: the desktop cast controller follows this
-    /// field, stops browsing, and disconnects.
-    pub fn set_cast_enabled(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update(|c| c.prefs.cast_enabled = enabled)
     }
 
     pub fn save_presets(&self) -> Vec<crate::config::SavePreset> {

@@ -679,7 +679,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
     assert_eq!(current.revision, 1);
     assert_eq!(
         current.sheet_discs.get("alpha.cue"),
-        Some(SheetDisc::Disc { number: 2 })
+        Some(&SheetDisc::Disc { number: 2 })
     );
 
     // A subsequent scan reads the same decisions, so the folder's audio

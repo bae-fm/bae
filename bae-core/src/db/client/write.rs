@@ -114,7 +114,7 @@ pub(super) fn insert_album_artist_row(
 
 /// `source_folder_name` is the folder an export reconstructs under the user's
 /// target directory, so it is held to the same fragment policy as a file's name
-/// (see [`insert_file_row`]).
+/// (see [`with_file_row_params`]).
 pub(super) fn insert_release_row(
     conn: &SqlContext<'_, '_>,
     release: &DbRelease,

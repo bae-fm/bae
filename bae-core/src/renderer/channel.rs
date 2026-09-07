@@ -112,3 +112,86 @@ pub trait RendererChannel: Send {
     /// Read the renderer's current status.
     fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError>;
 }
+
+/// A scriptable fake channel, shared by every test that needs one: it records
+/// the commands the session issued and hands back queued — or default — status
+/// on each poll. Held behind an `Arc<Mutex<_>>` because the session moves the
+/// channel onto its own thread while the test keeps reading what arrived.
+#[cfg(test)]
+#[derive(Default)]
+pub(crate) struct FakeChannelState {
+    pub(crate) loads: Vec<RendererMedia>,
+    pub(crate) plays: u32,
+    pub(crate) pauses: u32,
+    pub(crate) seeks: Vec<Duration>,
+    pub(crate) volumes: Vec<f32>,
+    pub(crate) stops: u32,
+    /// Status responses returned by successive polls; once drained,
+    /// `default_status` is returned. A `Connection` error ends the session.
+    pub(crate) poll_script: std::collections::VecDeque<Result<ReceiverStatus, RendererError>>,
+    /// What a poll returns once the script is drained. `None` means playing.
+    pub(crate) default_status: Option<ReceiverStatus>,
+}
+
+#[cfg(test)]
+#[derive(Clone)]
+pub(crate) struct FakeChannel {
+    pub(crate) state: std::sync::Arc<std::sync::Mutex<FakeChannelState>>,
+}
+
+#[cfg(test)]
+impl FakeChannel {
+    pub(crate) fn new() -> Self {
+        Self {
+            state: std::sync::Arc::new(std::sync::Mutex::new(FakeChannelState::default())),
+        }
+    }
+}
+
+/// A status carrying `player_state` and nothing a test has to care about.
+#[cfg(test)]
+pub(crate) fn fake_status(player_state: RendererPlayerState) -> ReceiverStatus {
+    ReceiverStatus {
+        player_state,
+        position: None,
+        duration: None,
+        volume: Some(1.0),
+    }
+}
+
+#[cfg(test)]
+impl RendererChannel for FakeChannel {
+    fn load(&mut self, media: &RendererMedia) -> Result<(), RendererError> {
+        self.state.lock().unwrap().loads.push(media.clone());
+        Ok(())
+    }
+    fn play(&mut self) -> Result<(), RendererError> {
+        self.state.lock().unwrap().plays += 1;
+        Ok(())
+    }
+    fn pause(&mut self) -> Result<(), RendererError> {
+        self.state.lock().unwrap().pauses += 1;
+        Ok(())
+    }
+    fn seek(&mut self, position: Duration) -> Result<(), RendererError> {
+        self.state.lock().unwrap().seeks.push(position);
+        Ok(())
+    }
+    fn set_volume(&mut self, level: f32) -> Result<(), RendererError> {
+        self.state.lock().unwrap().volumes.push(level);
+        Ok(())
+    }
+    fn stop(&mut self) -> Result<(), RendererError> {
+        self.state.lock().unwrap().stops += 1;
+        Ok(())
+    }
+    fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
+        let mut state = self.state.lock().unwrap();
+        if let Some(scripted) = state.poll_script.pop_front() {
+            return scripted;
+        }
+        Ok(state
+            .default_status
+            .unwrap_or_else(|| fake_status(RendererPlayerState::Playing)))
+    }
+}

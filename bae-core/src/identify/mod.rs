@@ -25,8 +25,7 @@
 //! [`ready`] reads that stored verdict back and says what the queue needs from
 //! the user for that candidate — derived on every read, never stored.
 
-pub mod barcode;
-pub mod catalog;
+pub mod code;
 pub mod combine;
 pub mod discid;
 pub mod ready;

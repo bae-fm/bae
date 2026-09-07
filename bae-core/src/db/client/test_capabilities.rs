@@ -88,35 +88,12 @@ impl Database {
         ))
     }
 
-    pub async fn rename_release_files_table_for_test(&self) -> Result<(), DbError> {
-        self.rename_host_table_for_test("release_files", "release_files_unavailable")
-            .await
-    }
-
-    pub async fn rename_tracks_table_for_test(&self) -> Result<(), DbError> {
-        self.rename_host_table_for_test("tracks", "tracks_unavailable")
-            .await
-    }
-
-    pub async fn rename_covers_table_for_test(&self) -> Result<(), DbError> {
-        self.rename_host_table_for_test("covers", "covers_unavailable")
-            .await
-    }
-
-    /// Take away the table a folder scan reads the user's stored file
-    /// decisions from, the way a database left behind by an older build is
-    /// missing what the current one reads.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn rename_candidate_file_edit_table_for_test(&self) -> Result<(), DbError> {
-        self.rename_host_table_for_test(
-            "import_candidate_file_edit",
-            "import_candidate_file_edit_unavailable",
-        )
-        .await
-    }
-
-    async fn rename_host_table_for_test(&self, from: &str, to: &str) -> Result<(), DbError> {
-        let statement = format!("ALTER TABLE {from} RENAME TO {to}");
+    /// Take one of bae's own tables away, the way a database left behind by an
+    /// older build is missing what the current one reads. The table keeps its
+    /// rows under `{table}_unavailable`, so the read that needed it fails
+    /// rather than silently seeing nothing.
+    pub async fn rename_host_table_for_test(&self, table: &str) -> Result<(), DbError> {
+        let statement = format!("ALTER TABLE {table} RENAME TO {table}_unavailable");
         self.call_sql(move |sql| {
             sql.execute(&statement, [])?;
             Ok(())

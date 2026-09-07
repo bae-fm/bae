@@ -33,7 +33,7 @@ use crate::library::{DownloadTransferProgress, LibraryError, LibraryManager};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
-type TransferResult = Result<TransferOutcome, Box<dyn std::error::Error + Send + Sync>>;
+type TransferResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
 
 /// Read one release file's whole plaintext through coven's locality-aware read:
@@ -63,24 +63,9 @@ pub async fn read_release_file_bytes(
 #[derive(Debug, Clone)]
 pub enum TransferProgress {
     Started,
-    Progress {
-        progress: DownloadTransferProgress,
-    },
-    Complete {
-        release_id: String,
-        outcome: TransferOutcome,
-    },
-    Failed {
-        release_id: String,
-        error: String,
-    },
-}
-
-/// The terminal fact a foreground pin, unpin, or make-Local command hands back
-/// to its caller.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TransferOutcome {
-    Complete,
+    Progress { progress: DownloadTransferProgress },
+    Complete { release_id: String },
+    Failed { release_id: String, error: String },
 }
 
 /// Pin, unpin, and make-Local service for releases.
@@ -118,7 +103,7 @@ impl TransferService {
                         send_progress(&tx, TransferProgress::Progress { progress });
                     })
                     .await?;
-                Ok(TransferOutcome::Complete)
+                Ok(())
             },
         );
         let abort = task.abort_handle();
@@ -150,7 +135,7 @@ impl TransferService {
                 library_manager
                     .unpin_release_blobs(&unpinned_release_id)
                     .await?;
-                Ok(TransferOutcome::Complete)
+                Ok(())
             },
         );
         rx
@@ -183,7 +168,7 @@ impl TransferService {
                 library_manager
                     .coven_make_local(&localized_release_id, &new_path, &cancel)
                     .await?;
-                Ok(TransferOutcome::Complete)
+                Ok(())
             },
         );
         rx
@@ -306,13 +291,12 @@ where
                 file_count,
                 "release transfer started"
             );
-            let outcome = run(tx.clone()).await?;
+            run(tx.clone()).await?;
             transfer.complete(file_count);
             send_progress(
                 &tx,
                 TransferProgress::Complete {
                     release_id: transfer.release_id.clone(),
-                    outcome,
                 },
             );
             Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())

@@ -99,7 +99,7 @@ impl PlaybackService {
         // Drop the old stream first, so the device is released / the old capture
         // thread joins before the new one binds. Cancel its source before dropping
         // it: a format-change rebuild discards the outgoing track's source, whose
-        // decoder `teardown_current_track` stopped only via its AVIO token — and a
+        // decoder `teardown_local_playback` stopped only via its AVIO token — and a
         // decoder parked writing a full ring unparks only on the sink's cancel
         // flag, so without this it would park forever. (The device-change handler
         // took `self.output` out before calling here and passes that same source

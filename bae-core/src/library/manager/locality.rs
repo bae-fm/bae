@@ -183,8 +183,8 @@ impl LibraryManager {
     /// Enqueue releases to pin for offline. Skips ids already in the queue (in any
     /// state) or already pinned; for each new one, resolves its title / file_count /
     /// total_size from its storage summary so the Downloads pane can render the row
-    /// without a re-query. Wakes the parked worker and emits a fresh
-    /// `DownloadQueueChanged`.
+    /// without a re-query. Wakes the parked worker and publishes a fresh
+    /// snapshot on the downloads value stream.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) {
         // One timestamp for the whole batch — read the clock once, not per row.
         let enqueued_at = self.clock.now().timestamp_millis();
@@ -233,7 +233,7 @@ impl LibraryManager {
 
     /// Pause or resume the download queue. While paused the worker parks instead
     /// of starting the next release; the in-flight one runs to completion.
-    /// Resuming wakes the worker. Emits a fresh `DownloadQueueChanged`.
+    /// Resuming wakes the worker. Emits a fresh snapshot.
     pub fn set_downloads_paused(&self, paused: bool) {
         self.downloads.set_paused(paused);
     }
@@ -250,7 +250,7 @@ impl LibraryManager {
     }
 
     /// Flip every failed download back to queued and wake the worker to retry
-    /// them. Emits a fresh `DownloadQueueChanged`.
+    /// them. Emits a fresh snapshot.
     pub fn retry_downloads(&self) {
         self.downloads.retry_failed();
     }
@@ -266,8 +266,9 @@ impl LibraryManager {
     /// also publishes the action the storage row reads — and then joining the pin
     /// task, so a panicked pin reports the panic rather than "the channel closed".
     ///
-    /// Success needs no follow-up here: `pin_release_blobs` committed the new
-    /// state, so the release subscription updates its `pinned` flag.
+    /// Success needs no follow-up here: `pin_release_blobs_with_progress`
+    /// committed the new state, so the release subscription updates its
+    /// `pinned` flag.
     /// Completion and failure reach diagnostics from inside the transfer
     /// (`StorageTransferCompleted` / `StorageTransferFailed`), so there is nothing
     /// to report on the way out.
@@ -304,11 +305,8 @@ impl LibraryManager {
     pub async fn unpin_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.unpin_release(release_id.to_string());
-        let outcome = self
-            .drive_transfer(release_id, ReleaseStorageAction::Unpin, rx, None)
-            .await?;
-        assert_eq!(outcome, crate::storage::transfer::TransferOutcome::Complete);
-        Ok(())
+        self.drive_transfer(release_id, ReleaseStorageAction::Unpin, rx, None)
+            .await
     }
 
     /// Move Local releases to Cloud. Each release is admitted independently so
@@ -411,16 +409,13 @@ impl LibraryManager {
             new_path.to_string(),
             cancel.clone(),
         );
-        let outcome = self
-            .drive_transfer(
-                release_id,
-                ReleaseStorageAction::MakeLocal,
-                rx,
-                Some(cancel),
-            )
-            .await?;
-        assert_eq!(outcome, crate::storage::transfer::TransferOutcome::Complete);
-        Ok(())
+        self.drive_transfer(
+            release_id,
+            ReleaseStorageAction::MakeLocal,
+            rx,
+            Some(cancel),
+        )
+        .await
     }
 
     /// Cancel the in-progress transition for a release, whatever it is. The
@@ -476,7 +471,7 @@ impl LibraryManager {
         action: ReleaseStorageAction,
         mut rx: tokio::sync::mpsc::UnboundedReceiver<crate::storage::transfer::TransferProgress>,
         cancel: Option<crate::library::CancellationToken>,
-    ) -> Result<crate::storage::transfer::TransferOutcome, LibraryError> {
+    ) -> Result<(), LibraryError> {
         use crate::storage::transfer::TransferProgress;
 
         // The bridge transfer future is abortable. The guard clears the
@@ -504,7 +499,7 @@ impl LibraryManager {
                         );
                     }
                 }
-                TransferProgress::Complete { outcome, .. } => break Ok(outcome),
+                TransferProgress::Complete { .. } => break Ok(()),
                 TransferProgress::Failed { error, .. } => break Err(LibraryError::Storage(error)),
             }
         };

@@ -61,8 +61,8 @@ impl LibraryManager {
     /// Shared enqueue body for both release-level outputs. Skips ids already in
     /// the queue (any state); otherwise resolves its title / file_count /
     /// total_size from its storage summary so the Exporting pane can render the
-    /// row without a re-query. Wakes the parked worker and emits a fresh
-    /// `OutputQueueChanged`.
+    /// row without a re-query. Wakes the parked worker and publishes a fresh
+    /// snapshot on the exports value stream.
     async fn enqueue_output(
         &self,
         release_id: &str,
@@ -106,7 +106,7 @@ impl LibraryManager {
 
     /// Pause or resume the export queue. While paused the worker parks instead of
     /// starting the next release; the in-flight one runs to completion. Resuming
-    /// wakes the worker. Emits a fresh `OutputQueueChanged`.
+    /// wakes the worker. Emits a fresh snapshot.
     pub fn set_outputs_paused(&self, paused: bool) {
         self.outputs.set_paused(paused);
     }
@@ -121,7 +121,7 @@ impl LibraryManager {
     }
 
     /// Flip every failed export back to queued and wake the worker to retry them.
-    /// Emits a fresh `OutputQueueChanged`.
+    /// Emits a fresh snapshot.
     pub fn retry_outputs(&self) {
         self.outputs.retry_failed();
     }

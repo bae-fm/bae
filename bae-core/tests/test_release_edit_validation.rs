@@ -87,39 +87,42 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
     }
 }
 
+/// Every shape the write path refuses: a blank album title — empty or
+/// whitespace-only, one keystroke apart — and an album with no named artist,
+/// whether none was supplied or the one that was is blank. Each is rejected and
+/// leaves the stored row untouched.
 #[tokio::test]
-async fn empty_album_title_is_rejected_on_the_write_path() {
-    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
-    let (album_id, release_id) = seed(&db).await;
+async fn invalid_edits_are_rejected_on_the_write_path() {
+    for (case, album_title, album_artist_seed_names) in [
+        ("an empty album title", "", &["Artist Alpha"][..]),
+        (
+            "a whitespace-only album title",
+            "   ",
+            &["Artist Alpha"][..],
+        ),
+        ("an artist-less album", "Album Alpha", &[][..]),
+        ("a blank album artist name", "Album Alpha", &["  "][..]),
+    ] {
+        let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
+        let (album_id, release_id) = seed(&db).await;
 
-    let result = manager
-        .apply_release_metadata_user_edit(&release_id, &wire_edit("", &["Artist Alpha"]))
-        .await;
+        let result = manager
+            .apply_release_metadata_user_edit(
+                &release_id,
+                &wire_edit(album_title, album_artist_seed_names),
+            )
+            .await;
 
-    assert!(
-        matches!(result, Err(LibraryError::Edit(_))),
-        "an empty album title must be rejected, got {result:?}",
-    );
-    let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
-    assert_eq!(
-        album.title, "Original Album",
-        "a rejected edit must not have written",
-    );
-}
-
-/// Whitespace-only is the same blank, one keystroke away.
-#[tokio::test]
-async fn whitespace_only_album_title_is_rejected_on_the_write_path() {
-    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
-    let (album_id, release_id) = seed(&db).await;
-
-    let result = manager
-        .apply_release_metadata_user_edit(&release_id, &wire_edit("   ", &["Artist Alpha"]))
-        .await;
-
-    assert!(matches!(result, Err(LibraryError::Edit(_))));
-    let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
-    assert_eq!(album.title, "Original Album");
+        assert!(
+            matches!(result, Err(LibraryError::Edit(_))),
+            "{case} must be rejected, got {result:?}",
+        );
+        let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
+        assert_eq!(
+            album.title, "Original Album",
+            "{case}: a rejected edit must not have written",
+        );
+    }
 }
 
 /// The editor trims what the user types before it ever reaches the write. A
@@ -140,36 +143,6 @@ async fn an_untrimmed_album_title_is_stored_trimmed() {
 
     let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Album Alpha");
-}
-
-#[tokio::test]
-async fn an_artist_less_edit_is_rejected_on_the_write_path() {
-    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
-    let (album_id, release_id) = seed(&db).await;
-
-    let result = manager
-        .apply_release_metadata_user_edit(&release_id, &wire_edit("Album Alpha", &[]))
-        .await;
-
-    assert!(matches!(result, Err(LibraryError::Edit(_))));
-    let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
-    assert_eq!(album.title, "Original Album");
-}
-
-/// A blank artist name is the artist-less case wearing a string: the edit names
-/// one artist, and the name is empty.
-#[tokio::test]
-async fn a_blank_artist_name_is_rejected_on_the_write_path() {
-    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
-    let (album_id, release_id) = seed(&db).await;
-
-    let result = manager
-        .apply_release_metadata_user_edit(&release_id, &wire_edit("Album Alpha", &["  "]))
-        .await;
-
-    assert!(matches!(result, Err(LibraryError::Edit(_))));
-    let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
-    assert_eq!(album.title, "Original Album");
 }
 
 /// The artist names a user edit does supply are trimmed.

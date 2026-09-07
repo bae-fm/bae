@@ -550,7 +550,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_f
     );
     manager.add_file(&file).await.unwrap();
 
-    rename_table_for_test(&manager, "release_files", "release_files_unavailable").await;
+    rename_table_for_test(&manager, "release_files").await;
 
     let error = manager.delete_release(&release.id).await.unwrap_err();
     assert!(matches!(error, LibraryError::Database(_)));
@@ -660,7 +660,7 @@ async fn delete_album_fails_before_rows_are_deleted_when_track_lookup_fails() {
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
 
-    rename_table_for_test(&manager, "tracks", "tracks_unavailable").await;
+    rename_table_for_test(&manager, "tracks").await;
 
     let error = manager.delete_album(&album.id).await.unwrap_err();
     assert!(matches!(error, LibraryError::Database(_)));
@@ -680,7 +680,7 @@ async fn delete_album_fails_before_rows_are_deleted_when_file_cleanup_lookup_fai
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
 
-    rename_table_for_test(&manager, "release_files", "release_files_unavailable").await;
+    rename_table_for_test(&manager, "release_files").await;
 
     let error = manager.delete_album(&album.id).await.unwrap_err();
     assert!(matches!(error, LibraryError::Database(_)));
@@ -783,7 +783,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_cover_lookup_fails() 
     manager.database.insert_release(&release).await.unwrap();
     store_test_cover_image(&manager, &release.id).await;
 
-    rename_table_for_test(&manager, "covers", "covers_unavailable").await;
+    rename_table_for_test(&manager, "covers").await;
 
     let error = manager.delete_release(&release.id).await.unwrap_err();
     assert!(matches!(error, LibraryError::Database(_)));

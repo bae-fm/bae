@@ -4,6 +4,7 @@ use crate::playback::audio_output::{
     AudioOutputControls, AudioState, AudioStream,
 };
 use crate::playback::create_track_stream_pair;
+use crate::renderer::channel::{FakeChannel, FakeChannelState};
 // Preview retains the per-track `StreamPipeline`; the test builds one for the
 // preview-teardown test via `test_pipeline`.
 use crate::playback::stream_pipeline::StreamPipeline;
