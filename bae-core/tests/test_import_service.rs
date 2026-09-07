@@ -117,8 +117,7 @@ async fn assert_release_has_external_ref(f: &ImportFixture, release_id: &str) {
 }
 
 fn generate_album_files(dir: &Path, filenames: &[&str]) {
-    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/flac/01 Test Track 1.flac");
+    let fixture = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
     let flac = fs::read(&fixture).expect("FLAC fixture missing");
     for name in filenames {
         fs::write(dir.join(name), &flac).unwrap();
@@ -126,7 +125,7 @@ fn generate_album_files(dir: &Path, filenames: &[&str]) {
 }
 
 fn copy_cue_flac_fixture(dir: &Path) {
-    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
+    let fixture = bae_test_support::fixture_dir!("cue_flac");
     for name in ["Test Album.cue", "Test Album.flac"] {
         fs::copy(fixture.join(name), dir.join(name)).expect("copy CUE fixture");
     }
@@ -156,8 +155,7 @@ fn generate_tagged_album_files(
     use lofty::tag::items::Timestamp;
     use lofty::tag::{Tag, TagType};
 
-    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/flac/01 Test Track 1.flac");
+    let fixture = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
     let flac = fs::read(&fixture).expect("FLAC fixture missing");
 
     for t in tracks {
@@ -217,8 +215,7 @@ fn generate_tagged_album_files_with_embedded_cover(
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
 
-    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/flac/01 Test Track 1.flac");
+    let fixture = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
     let flac = fs::read(&fixture).expect("FLAC fixture missing");
 
     for t in tracks {
@@ -309,6 +306,56 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
             })
             .collect(),
         master_id: None,
+    }
+}
+
+/// The MusicBrainz release the identity and works tests seed: one "Artist Name"
+/// credit, one CD medium holding a single "Track One" recording, no labels, no
+/// url-rels and no cover art. Callers that need more replace `media[0].tracks`
+/// or `relations` on the returned value.
+fn mb_release(mb_release_id: &str, mb_group_id: &str, title: &str) -> MbReleaseResponse {
+    MbReleaseResponse {
+        id: mb_release_id.to_string(),
+        title: title.to_string(),
+        date: Some("1996".to_string()),
+        country: Some("US".to_string()),
+        barcode: None,
+        artist_credit: vec![MbArtistCredit {
+            name: "Artist Name".to_string(),
+            artist: Some(MbArtistRef {
+                id: Some("mb-artist-1".to_string()),
+                name: Some("Artist Name".to_string()),
+                sort_name: Some("Artist Name".to_string()),
+            }),
+        }],
+        release_group: Some(MbReleaseGroupRef {
+            id: mb_group_id.to_string(),
+            first_release_date: None,
+            relations: None,
+        }),
+        label_info: vec![],
+        media: vec![MbMedium {
+            discs: vec![],
+            format: Some("CD".to_string()),
+            tracks: vec![MbTrack {
+                position: Some(1),
+                number: Some("1".to_string()),
+                title: None,
+                length: None,
+                recording: Some(MbRecording {
+                    id: None,
+                    title: Some("Track One".to_string()),
+                    artist_credit: vec![],
+                    relations: vec![],
+                }),
+                artist_credit: vec![],
+            }],
+        }],
+        relations: vec![],
+        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
     }
 }
 

@@ -437,20 +437,7 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
 #[serial(musicbrainz)]
 async fn restating_a_file_decision_changes_nothing() {
     let fixture = Fixture::new("edit-noop").await;
-    let dir = fixture.root.join("Album");
-    std::fs::create_dir_all(&dir).unwrap();
-    for name in [
-        "Test Album.cue",
-        "Test Album.flac",
-        "02 Test Artist - Track Two (White Noise).flac",
-        "03 Test Artist - Track Three (Brown Noise).flac",
-    ] {
-        std::fs::copy(
-            Path::new("tests/fixtures/cue_flac").join(name),
-            dir.join(name),
-        )
-        .unwrap();
-    }
+    let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
     fixture
         .archive("mb-noop-1", "rg-noop-1", &[500, 500])

@@ -432,9 +432,7 @@ async fn reset_discogs_returns_full_pressing_data_from_cache() {
 // ── File tags (Unknown) ─────────────────────────────────────────────────
 
 fn fixtures_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
+    bae_test_support::fixture_dir!()
 }
 
 #[tokio::test]

@@ -28,7 +28,7 @@ async fn release_detail_has_no_cover_without_a_cover_row() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     let detail = manager
         .find_release_detail(&release.id)
         .await
@@ -53,7 +53,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
     let mut release = create_test_release(&album.id);
     release.remote = false;
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     // An image file whose stored filename is a traversal token. bae's own write
     // path validates the fragment and refuses it, which is why the value has to
@@ -108,7 +108,7 @@ async fn release_cover_version_moves_when_the_cover_row_is_reupserted() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     add_cover_row(&manager, &release.id).await;
     let before = manager
@@ -148,8 +148,8 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release1).await.unwrap();
-    manager.database.insert_release(&release2).await.unwrap();
+    insert_release(&manager, &release1).await;
+    insert_release(&manager, &release2).await;
     // release1 is the album's primary, so its cover is the album-level cover.
     manager
         .set_album_primary_release(&album.id, &release1.id)
@@ -202,7 +202,7 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     // No cover row yet: the detail carries no cover reference.
     let detail = manager
@@ -280,7 +280,7 @@ async fn find_release_detail_returns_some_for_known_id() {
     release.pressing.format = None;
     release.release_name = None;
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     let detail = manager
         .find_release_detail(&release.id)
@@ -301,7 +301,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     let source = |content_type, layout, codec: &str, bitrate_kbps: Option<i64>| {
         crate::album_detail::SourceAudioFile {
@@ -365,7 +365,7 @@ async fn find_release_detail_surfaces_seeded_tracks() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     // Seed two tracks; the detail resolver must surface both with their
     // titles and track numbers (not just report emptiness).
@@ -420,7 +420,7 @@ async fn display_artist_is_set_only_for_a_compilation() {
             Utc::now(),
         );
         manager.database.insert_album(&album).await.unwrap();
-        manager.database.insert_release(&release).await.unwrap();
+        insert_release(&manager, &release).await;
         manager.database.insert_artist(&guest).await.unwrap();
         manager.database.insert_track(&track).await.unwrap();
         manager
@@ -455,7 +455,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     // An image file for the release with no local copy on this device — the
     // release's images live only in the cloud here.
@@ -503,7 +503,7 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
     let mut release = create_test_release(&album.id);
     release.remote = false;
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     // An oversized non-JPEG release image on disk, registered as the release's
     // user-provided file so `change_cover` reads it back through coven.
@@ -577,7 +577,7 @@ async fn change_cover_twice_replaces_the_cover_blob() {
     let mut release = create_test_release(&album.id);
     release.remote = false;
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     // Two visibly different release images, so the two stored thumbnails differ.
     let source_dir = TempDir::new().unwrap();
@@ -701,7 +701,7 @@ async fn replacing_a_cover_on_a_browsable_home_writes_a_distinct_cloud_key() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     let jpeg = |rgb: [u8; 3]| {
         let img = ::image::RgbImage::from_pixel(400, 400, ::image::Rgb(rgb));
@@ -798,8 +798,8 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
     let release2 = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release1).await.unwrap();
-    manager.database.insert_release(&release2).await.unwrap();
+    insert_release(&manager, &release1).await;
+    insert_release(&manager, &release2).await;
 
     let old = crate::db::DbTrack::new_test(
         &release1.id,
@@ -862,7 +862,7 @@ async fn find_release_detail_display_name_uses_year_format_fallback() {
     release.pressing.year = Some(2024);
     release.pressing.format = Some("CD".to_string());
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     let detail = manager
         .find_release_detail(&release.id)
@@ -881,7 +881,7 @@ async fn find_release_detail_display_name_prefers_release_name() {
     release.pressing.year = Some(2024);
     release.pressing.format = Some("CD".to_string());
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     let detail = manager
         .find_release_detail(&release.id)
@@ -902,8 +902,8 @@ async fn find_release_detail_uses_position_for_second_release() {
     release2.pressing.year = None;
     release2.pressing.format = None;
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release1).await.unwrap();
-    manager.database.insert_release(&release2).await.unwrap();
+    insert_release(&manager, &release1).await;
+    insert_release(&manager, &release2).await;
 
     let detail2 = manager
         .find_release_detail(&release2.id)

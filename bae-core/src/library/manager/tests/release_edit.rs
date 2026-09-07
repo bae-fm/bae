@@ -74,7 +74,7 @@ async fn release_edit_seed_uses_persisted_track_ids() {
     let release = create_test_release(&album.id);
     let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", Some(1));
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
     add_track_audio_sources(
         &manager,
@@ -97,7 +97,7 @@ async fn release_edit_reset_preserves_persisted_track_ids() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     insert_n_tracks(&manager.database, &release.id, 2).await;
     let persisted_ids = manager
         .database
@@ -152,7 +152,7 @@ async fn release_edit_seed_refuses_a_track_without_stored_audio() {
     let release = create_test_release(&album.id);
     let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", Some(1));
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
 
     let error = manager
@@ -173,7 +173,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     let mut second = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Second Track", Some(1));
     second.side = 2;
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager.database.insert_track(&first).await.unwrap();
     manager.database.insert_track(&second).await.unwrap();
     add_track_audio_sources(
@@ -235,7 +235,7 @@ async fn release_metadata_edit_preserves_identity_provenance_and_audio() {
     release.metadata_provenance = Some(crate::import::MetadataProvenance::FileTags);
     let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", Some(1));
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
     add_track_audio_sources(
         &manager,

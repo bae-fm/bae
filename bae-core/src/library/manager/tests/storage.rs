@@ -8,7 +8,7 @@ async fn seed_albums(manager: &LibraryManager, count: usize) -> (Vec<DbAlbum>, V
         album.title = format!("Album {i}");
         let release = create_test_release(&album.id);
         manager.database.insert_album(&album).await.unwrap();
-        manager.database.insert_release(&release).await.unwrap();
+        insert_release(manager, &release).await;
         albums.push(album);
         releases.push(release);
     }
@@ -152,7 +152,7 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     let mut local = create_test_release(&local_album.id);
     local.remote = false;
     manager.database.insert_album(&local_album).await.unwrap();
-    manager.database.insert_release(&local).await.unwrap();
+    insert_release(&manager, &local).await;
 
     let page = manager
         .get_storage_page(
@@ -230,7 +230,7 @@ async fn storage_page_rows_have_no_actions_without_cloud_home() {
     let mut release = create_test_release(&album.id);
     release.remote = false;
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     let page = manager
         .get_storage_page(
@@ -257,16 +257,8 @@ async fn storage_page_local_filter_matches_local_path() {
 
     manager.database.insert_album(&album_remote).await.unwrap();
     manager.database.insert_album(&album_local).await.unwrap();
-    manager
-        .database
-        .insert_release(&remote_release)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release(&local_release)
-        .await
-        .unwrap();
+    insert_release(&manager, &remote_release).await;
+    insert_release(&manager, &local_release).await;
 
     let local = manager
         .get_storage_page(
@@ -318,7 +310,7 @@ async fn storage_count_matches_filtered_page_total() {
             inserted_local = Some(release.id.clone());
         }
         manager.database.insert_album(&album).await.unwrap();
-        manager.database.insert_release(&release).await.unwrap();
+        insert_release(&manager, &release).await;
     }
 
     assert_eq!(
@@ -395,16 +387,8 @@ async fn storage_total_size_matches_page_total_size_sum() {
 
     manager.database.insert_album(&album_local).await.unwrap();
     manager.database.insert_album(&album_remote).await.unwrap();
-    manager
-        .database
-        .insert_release(&release_local)
-        .await
-        .unwrap();
-    manager
-        .database
-        .insert_release(&release_remote)
-        .await
-        .unwrap();
+    insert_release(&manager, &release_local).await;
+    insert_release(&manager, &release_remote).await;
 
     for (release_id, file_size) in [(&release_local.id, 1_000i64), (&release_remote.id, 100)] {
         let file = DbFile {
@@ -504,9 +488,7 @@ async fn unpin_release_unpins_the_cover_with_its_files() {
     manager.coven_make_remote(&release.id, true).await.unwrap();
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, 2, "the file and the cover both upload");
-    let file_id = manager.database.get_files_for_release(&release.id).await.unwrap()[0]
-        .id
-        .clone();
+    let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(
         blob_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
         "make-Remote with pin leaves the release file pinned"
@@ -573,9 +555,7 @@ async fn pin_release_pins_the_cover_and_counts_its_bytes() {
         .await
         .unwrap();
 
-    let file_id = manager.database.get_files_for_release(&release.id).await.unwrap()[0]
-        .id
-        .clone();
+    let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(
         blob_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
         "the release file pinned"

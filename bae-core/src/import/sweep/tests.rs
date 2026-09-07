@@ -555,6 +555,26 @@ impl Fixture {
             .sum()
     }
 
+    /// Copy the whole cue_flac fixture — the sheet, its container, and the two
+    /// loose reference tracks — into `<root>/<name>`, and return that folder.
+    fn seed_cue_album(&self, name: &str) -> PathBuf {
+        let dir = self.root.join(name);
+        std::fs::create_dir_all(&dir).unwrap();
+        for file in [
+            "Test Album.cue",
+            "Test Album.flac",
+            "02 Test Artist - Track Two (White Noise).flac",
+            "03 Test Artist - Track Three (Brown Noise).flac",
+        ] {
+            std::fs::copy(
+                Path::new("tests/fixtures/cue_flac").join(file),
+                dir.join(file),
+            )
+            .unwrap();
+        }
+        dir
+    }
+
     /// Watch the root and wait for the scan to surface every candidate, so a
     /// sweep started after this sees a populated queue.
     async fn scan(&self, expected: usize) {

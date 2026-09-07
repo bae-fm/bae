@@ -1,3 +1,22 @@
+/// The opener the queued-upload tests share: a manager on a connected test
+/// cloud holding one "Test Album" release whose single 1000-byte `a.flac` is
+/// queued for upload. Returns the release and the id of that queued file;
+/// `folder` names the source directory under the temp dir.
+#[cfg(feature = "test-utils")]
+async fn queued_upload_fixture(folder: &str) -> (LibraryManager, TempDir, DbRelease, String) {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join(folder),
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    let file_id = release_files(&manager, &release.id).await[0].id.clone();
+    (manager, temp_dir, release, file_id)
+}
+
 /// A Remote track whose bytes must come from the cloud, read with no provider
 /// connected, reports `SyncDisconnected` — the reconnect-sync state — not a
 /// generic diagnostic. coven raises `NoCloudHome` for the cloud miss; the
@@ -18,11 +37,7 @@ async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
     .await;
     manager.disconnect_cloud_provider().await.unwrap();
 
-    let files = manager
-        .database
-        .get_files_for_release(&release_id)
-        .await
-        .unwrap();
+    let files = release_files(&manager, &release_id).await;
     let file = files.first().expect("the release has a file");
     let reason = playback_error_reason_for_file(&manager, file).await;
     assert!(
@@ -43,11 +58,7 @@ async fn pending_upload_with_missing_source_reports_upload_pending() {
     connect_test_cloud(&manager).await;
     let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
 
-    let files = manager
-        .database
-        .get_files_for_release(&release.id)
-        .await
-        .unwrap();
+    let files = release_files(&manager, &release.id).await;
     let file = files
         .iter()
         .find(|f| f.original_filename == "b.flac")
@@ -70,11 +81,7 @@ async fn missing_source_without_pending_upload_stays_diagnostic() {
     manager.database.insert_album(&album).await.unwrap();
     let release = insert_local_release_without_local_files(&manager, &album.id).await;
 
-    let files = manager
-        .database
-        .get_files_for_release(&release.id)
-        .await
-        .unwrap();
+    let files = release_files(&manager, &release.id).await;
     let file = files.first().expect("the release has a file");
     let reason = playback_error_reason_for_file(&manager, file).await;
     assert!(
@@ -135,11 +142,7 @@ async fn storage_page_uploading_filter_matches_the_upload_queue() {
     let album_quiet = create_test_album();
     let release_quiet = create_test_release(&album_quiet.id);
     manager.database.insert_album(&album_quiet).await.unwrap();
-    manager
-        .database
-        .insert_release(&release_quiet)
-        .await
-        .unwrap();
+    insert_release(&manager, &release_quiet).await;
 
     let uploading = insert_release_with_queued_uploads(
         &manager,
@@ -202,11 +205,7 @@ async fn publishing_release_cannot_report_a_successful_cancel() {
     manager.coven_make_remote(&release.id, false).await.unwrap();
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
     assert_eq!(
-        manager
-            .database
-            .make_remote_progress_for_release(&release.id)
-            .await
-            .unwrap(),
+        make_remote_progress(&manager, &release.id).await,
         Some(coven::MakeRemoteProgress::Publishing)
     );
 
@@ -259,23 +258,8 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let (manager, temp_dir, release, file_id) = queued_upload_fixture("queued").await;
     let source_dir = temp_dir.path().join("queued");
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &source_dir,
-        "Test Album",
-        &[("a.flac", &vec![b'a'; 1000])],
-    )
-    .await;
-    let file_id = manager
-        .database
-        .get_files_for_release(&release.id)
-        .await
-        .unwrap()[0]
-        .id
-        .clone();
 
     // Freshly queued: per-release count is 1 queued, joined to the album title.
     let snap = manager.outbox_snapshot().await.unwrap();
@@ -353,16 +337,7 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn cancelling_an_upload_then_deleting_its_release_leaves_no_orphan() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let source_dir = temp_dir.path().join("queued");
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &source_dir,
-        "Test Album",
-        &[("a.flac", &vec![b'a'; 1000])],
-    )
-    .await;
+    let (manager, _temp_dir, release, _file_id) = queued_upload_fixture("queued").await;
     assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
 
     manager.cancel_release_upload(&release.id).await.unwrap();
@@ -386,16 +361,7 @@ async fn cancelling_an_upload_then_deleting_its_release_leaves_no_orphan() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn deleting_a_release_mid_upload_leaves_no_orphan() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let source_dir = temp_dir.path().join("queued");
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &source_dir,
-        "Test Album",
-        &[("a.flac", &vec![b'a'; 1000])],
-    )
-    .await;
+    let (manager, _temp_dir, release, _file_id) = queued_upload_fixture("queued").await;
     assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
 
     manager.delete_release(&release.id).await.unwrap();
@@ -427,16 +393,7 @@ async fn deleting_a_release_mid_upload_leaves_no_orphan() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_failed_import_rollback_leaves_no_orphan() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let source_dir = temp_dir.path().join("rolled-back");
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &source_dir,
-        "Test Album",
-        &[("a.flac", &vec![b'a'; 1000])],
-    )
-    .await;
+    let (manager, _temp_dir, release, _file_id) = queued_upload_fixture("rolled-back").await;
     assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
 
     manager
@@ -727,11 +684,8 @@ async fn outbox_subscription_reacts_to_release_display_context_changes() {
         "the queue keeps the name the work was queued under",
     );
 
-    let file = manager
-        .database
-        .get_files_for_release(&release.id)
+    let file = release_files(&manager, &release.id)
         .await
-        .unwrap()
         .into_iter()
         .next()
         .expect("release file");
@@ -854,22 +808,7 @@ async fn connected_test_manager_uses_the_production_upload_observer() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn preparation_observer_advances_snapshot_bytes_done() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("queued"),
-        "Test Album",
-        &[("a.flac", &vec![b'a'; 1000])],
-    )
-    .await;
-    let file_id = manager
-        .database
-        .get_files_for_release(&release.id)
-        .await
-        .unwrap()[0]
-        .id
-        .clone();
+    let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
 
     manager
         .observe_blob_preparation_started_for_test(&file_id)
@@ -888,22 +827,7 @@ async fn preparation_observer_advances_snapshot_bytes_done() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn one_upload_observer_callback_publishes_one_outbox_revision() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("queued"),
-        "Test Album",
-        &[("a.flac", &vec![b'a'; 1000])],
-    )
-    .await;
-    let file_id = manager
-        .database
-        .get_files_for_release(&release.id)
-        .await
-        .unwrap()[0]
-        .id
-        .clone();
+    let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
     let before = manager.outbox_snapshot().await.unwrap().revision;
 
     manager
@@ -920,22 +844,7 @@ async fn one_upload_observer_callback_publishes_one_outbox_revision() {
 #[tokio::test]
 #[should_panic(expected = "preparation progress arrived without a preparation-start state")]
 async fn preparation_progress_requires_preparation_start() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("queued"),
-        "Test Album",
-        &[("a.flac", &vec![b'a'; 1000])],
-    )
-    .await;
-    let file_id = manager
-        .database
-        .get_files_for_release(&release.id)
-        .await
-        .unwrap()[0]
-        .id
-        .clone();
+    let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
 
     manager
         .observe_blob_preparation_progress_for_test(&file_id, 300, 1000)
@@ -947,22 +856,7 @@ async fn preparation_progress_requires_preparation_start() {
 #[tokio::test]
 #[should_panic(expected = "preparation progress changed its exact plaintext total")]
 async fn preparation_progress_must_match_source_total() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("queued"),
-        "Test Album",
-        &[("a.flac", &vec![b'a'; 1000])],
-    )
-    .await;
-    let file_id = manager
-        .database
-        .get_files_for_release(&release.id)
-        .await
-        .unwrap()[0]
-        .id
-        .clone();
+    let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
 
     manager
         .observe_blob_preparation_started_for_test(&file_id)

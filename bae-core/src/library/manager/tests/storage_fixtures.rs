@@ -82,11 +82,8 @@ struct ReleaseRef {
 #[cfg(feature = "test-utils")]
 impl ReleaseRef {
     async fn of(manager: &LibraryManager, id: String) -> Self {
-        let album_id = manager
-            .database
-            .find_release_by_id(&id)
+        let album_id = find_release(manager, &id)
             .await
-            .unwrap()
             .expect("the release exists")
             .album_id;
         Self { id, album_id }
@@ -193,13 +190,7 @@ async fn make_remote_release_under_sync_loop(
 async fn wait_for_landed_make_remote(manager: &LibraryManager, release_id: &str) {
     wait_for_settled_uploads(manager, release_id).await;
     assert!(
-        manager
-            .database
-            .find_release_by_id(release_id)
-            .await
-            .unwrap()
-            .unwrap()
-            .remote,
+        find_release(manager, release_id).await.unwrap().remote,
         "every upload landed, so the release is Remote"
     );
 }
@@ -219,42 +210,17 @@ async fn insert_partially_uploaded_make_remote_release(
     .await;
 
     manager.coven_make_remote(&release.id, true).await.unwrap();
-    assert!(manager
-        .database
-        .make_remote_progress_for_release(&release.id)
-        .await
-        .unwrap()
-        .is_some());
-    assert_eq!(
-        manager
-            .database
-            .queued_upload_count_for_test()
-            .await
-            .unwrap(),
-        2
-    );
+    assert!(make_remote_progress(manager, &release.id).await.is_some());
+    assert_eq!(queued_upload_count(manager).await, 2);
 
     std::fs::remove_file(source_dir.join("b.flac")).unwrap();
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, 1);
     assert!(
-        !manager
-            .database
-            .find_release_by_id(&release.id)
-            .await
-            .unwrap()
-            .unwrap()
-            .remote,
+        !find_release(manager, &release.id).await.unwrap().remote,
         "the release must still be Local while one upload is unresolved"
     );
-    assert_eq!(
-        manager
-            .database
-            .queued_delete_count_for_test()
-            .await
-            .unwrap(),
-        0
-    );
+    assert_eq!(queued_delete_count(manager).await, 0);
     release
 }
 
@@ -281,7 +247,7 @@ async fn insert_local_release_in_album(
 ) -> DbRelease {
     let mut release = create_test_release(album_id);
     release.remote = false;
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(manager, &release).await;
     std::fs::create_dir_all(dir).unwrap();
     let created_at = Utc::now();
     for (index, (name, bytes)) in files.iter().enumerate() {
@@ -312,7 +278,7 @@ async fn insert_local_release_without_local_files(
 ) -> DbRelease {
     let mut release = create_test_release(album_id);
     release.remote = false;
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(manager, &release).await;
     let file = DbFile::new(
         &release.id,
         "track1.flac",

@@ -216,56 +216,15 @@ fn seed_mb_with_discogs_xref(
     discogs_release_id: &str,
     title: &str,
 ) -> String {
-    let response = MbReleaseResponse {
-        id: mb_release_id.to_string(),
-        title: title.to_string(),
-        date: Some("1996".to_string()),
-        country: Some("US".to_string()),
-        barcode: None,
-        artist_credit: vec![MbArtistCredit {
-            name: "Artist Name".to_string(),
-            artist: Some(MbArtistRef {
-                id: Some("mb-artist-1".to_string()),
-                name: Some("Artist Name".to_string()),
-                sort_name: Some("Artist Name".to_string()),
-            }),
-        }],
-        release_group: Some(MbReleaseGroupRef {
-            id: mb_group_id.to_string(),
-            first_release_date: None,
-            relations: None,
+    let mut response = mb_release(mb_release_id, mb_group_id, title);
+    response.relations = vec![MbRelation {
+        url: Some(MbUrlResource {
+            resource: Some(format!(
+                "https://www.discogs.com/release/{discogs_release_id}"
+            )),
         }),
-        label_info: vec![],
-        media: vec![MbMedium {
-            discs: vec![],
-            format: Some("CD".to_string()),
-            tracks: vec![MbTrack {
-                position: Some(1),
-                number: Some("1".to_string()),
-                title: None,
-                length: None,
-                recording: Some(MbRecording {
-                    id: None,
-                    title: Some("Track One".to_string()),
-                    artist_credit: vec![],
-                    relations: vec![],
-                }),
-                artist_credit: vec![],
-            }],
-        }],
-        relations: vec![MbRelation {
-            url: Some(MbUrlResource {
-                resource: Some(format!(
-                    "https://www.discogs.com/release/{discogs_release_id}"
-                )),
-            }),
-            ..MbRelation::default()
-        }],
-        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
-            front: false,
-            darkened: false,
-        },
-    };
+        ..MbRelation::default()
+    }];
     let discogs_url = Some(format!(
         "https://www.discogs.com/release/{}",
         discogs_release_id
@@ -469,49 +428,7 @@ async fn a_partner_replaces_an_inferred_identity_of_the_same_source() {
 
 /// Seed an MB release with no Discogs url-rel. Returns the MB release id.
 fn seed_mb_without_xref(mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
-    let response = MbReleaseResponse {
-        id: mb_release_id.to_string(),
-        title: title.to_string(),
-        date: Some("1996".to_string()),
-        country: Some("US".to_string()),
-        barcode: None,
-        artist_credit: vec![MbArtistCredit {
-            name: "Artist Name".to_string(),
-            artist: Some(MbArtistRef {
-                id: Some("mb-artist-1".to_string()),
-                name: Some("Artist Name".to_string()),
-                sort_name: Some("Artist Name".to_string()),
-            }),
-        }],
-        release_group: Some(MbReleaseGroupRef {
-            id: mb_group_id.to_string(),
-            first_release_date: None,
-            relations: None,
-        }),
-        label_info: vec![],
-        media: vec![MbMedium {
-            discs: vec![],
-            format: Some("CD".to_string()),
-            tracks: vec![MbTrack {
-                position: Some(1),
-                number: Some("1".to_string()),
-                title: None,
-                length: None,
-                recording: Some(MbRecording {
-                    id: None,
-                    title: Some("Track One".to_string()),
-                    artist_credit: vec![],
-                    relations: vec![],
-                }),
-                artist_credit: vec![],
-            }],
-        }],
-        relations: vec![],
-        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
-            front: false,
-            darkened: false,
-        },
-    };
+    let response = mb_release(mb_release_id, mb_group_id, title);
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
     bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
     bae_core::musicbrainz::seed_release_group_json_cache(

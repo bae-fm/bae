@@ -171,30 +171,10 @@ async fn test_cue_flac_seek() {
     fixture.playback_handle.seek(Duration::from_secs(5));
     let captured = fixture.next_capture_stream().await;
 
-    // Wait for seek confirmation
-    let deadline = Instant::now() + Duration::from_secs(10);
-    let mut seeked = false;
-    while Instant::now() < deadline && !seeked {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::Seeked {
-                track_id: ref sid, ..
-            })) => {
-                if *sid == track_id {
-                    seeked = true;
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(seeked, "Should receive Seeked event");
+    support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
     // Decode XLD reference for track 2 (white noise)
-    let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_flac");
+    let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
@@ -309,10 +289,7 @@ async fn test_direct_play_skips_pregap_cue_flac() {
     // Decode XLD reference for track 2
     // XLD splits at INDEX 01, so the reference already starts at INDEX 01 (no pregap).
     // Direct play also starts at INDEX 01. Compare captured audio directly against reference.
-    let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_flac");
+    let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");

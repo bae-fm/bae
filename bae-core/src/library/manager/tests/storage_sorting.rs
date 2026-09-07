@@ -22,7 +22,7 @@ async fn storage_page_sort_by_artist_names() {
         album.artist_id = artist_id.to_string();
         let release = create_test_release(&album.id);
         manager.database.insert_album(&album).await.unwrap();
-        manager.database.insert_release(&release).await.unwrap();
+        insert_release(&manager, &release).await;
     }
 
     let asc = crate::db::StorageSortCriterion {
@@ -62,7 +62,7 @@ async fn storage_page_sort_by_media_nulls_last() {
         let mut release = create_test_release(&album.id);
         release.pressing.format = media.map(str::to_string);
         manager.database.insert_album(&album).await.unwrap();
-        manager.database.insert_release(&release).await.unwrap();
+        insert_release(&manager, &release).await;
     }
 
     let asc = crate::db::StorageSortCriterion {
@@ -88,7 +88,7 @@ async fn storage_page_sort_by_file_count() {
         album.title = title.to_string();
         let release = create_test_release(&album.id);
         manager.database.insert_album(&album).await.unwrap();
-        manager.database.insert_release(&release).await.unwrap();
+        insert_release(&manager, &release).await;
         for i in 0..*file_count {
             let file = DbFile {
                 id: bae_test_support::test_uuid(&format!("{}-file-{i}", release.id)),
@@ -125,7 +125,7 @@ async fn storage_page_sort_by_total_size() {
         album.title = title.to_string();
         let release = create_test_release(&album.id);
         manager.database.insert_album(&album).await.unwrap();
-        manager.database.insert_release(&release).await.unwrap();
+        insert_release(&manager, &release).await;
         let file = DbFile {
             id: bae_test_support::test_uuid(&format!("{}-file", release.id)),
             release_id: release.id.clone(),

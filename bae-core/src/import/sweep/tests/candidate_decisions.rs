@@ -2,20 +2,7 @@
 #[serial(musicbrainz)]
 async fn a_claimed_candidate_refuses_sheet_and_role_decisions() {
     let fixture = Fixture::new("claimed-file-decisions").await;
-    let dir = fixture.root.join("Album");
-    std::fs::create_dir_all(&dir).unwrap();
-    for name in [
-        "Test Album.cue",
-        "Test Album.flac",
-        "02 Test Artist - Track Two (White Noise).flac",
-        "03 Test Artist - Track Three (Brown Noise).flac",
-    ] {
-        std::fs::copy(
-            Path::new("tests/fixtures/cue_flac").join(name),
-            dir.join(name),
-        )
-        .unwrap();
-    }
+    let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
     fixture
         .archive("mb-claimed-1", "rg-claimed-1", &[500, 500])
@@ -66,20 +53,7 @@ async fn a_claimed_candidate_refuses_sheet_and_role_decisions() {
 #[serial(musicbrainz)]
 async fn a_cleared_sheet_can_be_bound_again() {
     let fixture = Fixture::new("rebind-after-clear").await;
-    let dir = fixture.root.join("Album");
-    std::fs::create_dir_all(&dir).unwrap();
-    for name in [
-        "Test Album.cue",
-        "Test Album.flac",
-        "02 Test Artist - Track Two (White Noise).flac",
-        "03 Test Artist - Track Three (Brown Noise).flac",
-    ] {
-        std::fs::copy(
-            Path::new("tests/fixtures/cue_flac").join(name),
-            dir.join(name),
-        )
-        .unwrap();
-    }
+    let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
     fixture
         .archive("mb-rebind-1", "rg-rebind-1", &[500, 500])

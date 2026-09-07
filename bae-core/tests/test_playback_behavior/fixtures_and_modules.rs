@@ -199,10 +199,7 @@ fn create_test_album() -> DiscogsRelease {
 /// Fixtures should be generated using scripts/generate_test_flac.sh
 fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
     use std::fs;
-    let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("flac");
+    let fixture_dir = bae_test_support::fixture_dir!("flac");
     let fixture_files = vec![
         "01 Test Track 1.flac",
         "02 Test Track 2.flac",
@@ -228,10 +225,7 @@ fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
 /// Fixtures should be generated using scripts/generate_cue_flac_fixture.sh
 fn generate_cue_flac_files(dir: &std::path::Path) {
     use std::fs;
-    let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_flac");
+    let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
 
     // Copy FLAC file
     let flac_src = fixture_dir.join("Test Album.flac");

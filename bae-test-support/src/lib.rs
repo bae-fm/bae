@@ -7,6 +7,23 @@
 //! crate's public API, so neither lint has to be silenced for the binaries that
 //! happen not to call a given one.
 
+/// The calling crate's `tests/fixtures` directory, with any path segments
+/// given joined onto it: `fixture_dir!("cue_flac")` is
+/// `<manifest>/tests/fixtures/cue_flac`.
+///
+/// A macro rather than a function because `CARGO_MANIFEST_DIR` has to expand at
+/// the call site — every `bae-core/tests/*.rs` binary is its own crate, and a
+/// function here would resolve the variable to bae-test-support's manifest.
+#[macro_export]
+macro_rules! fixture_dir {
+    ($($segment:expr),* $(,)?) => {
+        ::std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("fixtures")
+            $(.join($segment))*
+    };
+}
+
 /// The FLAC fixture tree lives in bae-core, so it is reached relative to the
 /// workspace root — `CARGO_MANIFEST_DIR` here is this crate, not bae-core.
 fn bae_core_fixtures() -> std::path::PathBuf {
@@ -359,6 +376,29 @@ pub async fn wait_for_import_complete(
         }
     }
     panic!("Progress channel closed without completion");
+}
+
+/// Wait up to ten seconds for playback to confirm a seek on `track_id`,
+/// discarding every other progress event, and assert the confirmation arrived.
+pub async fn wait_for_seek(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::playback::PlaybackProgress>,
+    track_id: &str,
+) {
+    use bae_core::playback::PlaybackProgress;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let mut seeked = false;
+    while std::time::Instant::now() < deadline && !seeked {
+        let remaining = deadline - std::time::Instant::now();
+        match tokio::time::timeout(remaining, progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::Seeked {
+                track_id: ref seeked_id,
+                ..
+            })) => seeked = seeked_id.as_str() == track_id,
+            Ok(Some(_)) => continue,
+            Ok(None) | Err(_) => break,
+        }
+    }
+    assert!(seeked, "Should receive Seeked event");
 }
 
 /// Like `wait_for_import_complete` but returns Result instead of panicking.

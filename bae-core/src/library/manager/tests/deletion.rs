@@ -134,7 +134,7 @@ async fn work_detail_release_rows_are_display_ready() {
     };
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
     manager
         .database
@@ -168,17 +168,13 @@ async fn test_delete_release_with_single_release_deletes_album() {
     let release = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     manager.delete_release(&release.id).await.unwrap();
 
-    let album_result = manager.database.find_album_by_id(&album.id).await.unwrap();
+    let album_result = find_album(&manager, &album.id).await;
     assert!(album_result.is_none());
-    let releases = manager
-        .database
-        .get_releases_for_album(&album.id)
-        .await
-        .unwrap();
+    let releases = album_releases(&manager, &album.id).await;
     assert!(releases.is_empty());
 }
 
@@ -188,7 +184,7 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     let artist = manager
         .database
@@ -251,18 +247,14 @@ async fn test_delete_release_with_multiple_releases_preserves_album() {
     let release2 = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release1).await.unwrap();
-    manager.database.insert_release(&release2).await.unwrap();
+    insert_release(&manager, &release1).await;
+    insert_release(&manager, &release2).await;
 
     manager.delete_release(&release1.id).await.unwrap();
 
-    let album_result = manager.database.find_album_by_id(&album.id).await.unwrap();
+    let album_result = find_album(&manager, &album.id).await;
     assert!(album_result.is_some());
-    let releases = manager
-        .database
-        .get_releases_for_album(&album.id)
-        .await
-        .unwrap();
+    let releases = album_releases(&manager, &album.id).await;
     assert_eq!(releases.len(), 1);
     assert_eq!(releases[0].id, release2.id);
 }
@@ -279,9 +271,9 @@ async fn delete_releases_with_content_hash_removes_only_matching() {
     other.content_hash = Some("hash-other".to_string());
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&matching1).await.unwrap();
-    manager.database.insert_release(&matching2).await.unwrap();
-    manager.database.insert_release(&other).await.unwrap();
+    insert_release(&manager, &matching1).await;
+    insert_release(&manager, &matching2).await;
+    insert_release(&manager, &other).await;
 
     manager
         .delete_releases_with_content_hash("hash-shared")
@@ -291,11 +283,7 @@ async fn delete_releases_with_content_hash_removes_only_matching() {
     // Both releases carrying the re-imported folder's hash are gone; the
     // unrelated release survives. This is the overwrite the import worker
     // performs before inserting a re-import of the same folder tree.
-    let remaining = manager
-        .database
-        .get_releases_for_album(&album.id)
-        .await
-        .unwrap();
+    let remaining = album_releases(&manager, &album.id).await;
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].id, other.id);
 }
@@ -314,25 +302,16 @@ async fn delete_release_tombstones_remote_cloud_blobs() {
     // owed to a cloud object that exists, which is the whole point.
     let release1 =
         make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
-    let file_id = manager
-        .database
-        .get_files_for_release(&release1)
-        .await
-        .unwrap()[0]
-        .id
-        .clone();
+    let file_id = release_files(&manager, &release1).await[0].id.clone();
     // A sibling release in the same album, so delete_release takes the
     // album-survives branch.
-    let album_id = manager
-        .database
-        .find_release_by_id(&release1)
+    let album_id = find_release(&manager, &release1)
         .await
-        .unwrap()
         .expect("the release exists")
         .album_id;
     let mut release2 = create_test_release(&album_id);
     release2.remote = false;
-    manager.database.insert_release(&release2).await.unwrap();
+    insert_release(&manager, &release2).await;
 
     manager.delete_release(&release1).await.unwrap();
 
@@ -354,41 +333,22 @@ async fn delete_release_cancels_in_flight_make_remote() {
 
     manager.delete_release(&release.id).await.unwrap();
 
-    assert!(manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(find_release(&manager, &release.id).await.is_none());
     // The delete records the unwind rather than performing it: the object
     // already in the cloud has to be taken back out, and only a drain can do
     // that. Until it runs the queue is intact and says what it is doing.
     assert_eq!(
-        manager
-            .database
-            .make_remote_progress_for_release(&release.id)
-            .await
-            .unwrap(),
+        make_remote_progress(&manager, &release.id).await,
         Some(coven::MakeRemoteProgress::Cancelling),
         "the deleted release's transition is being unwound"
     );
     manager.drain_uploads_for_test().await.unwrap();
 
     assert!(
-        manager
-            .database
-            .queued_upload_count_for_test()
-            .await
-            .unwrap()
-            == 0,
+        queued_upload_count(&manager).await == 0,
         "the drain took the deleted release's uploads out of the queue"
     );
-    assert!(manager
-        .database
-        .make_remote_progress_for_release(&release.id)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(make_remote_progress(&manager, &release.id).await.is_none());
     // The object that already reached the cloud is removed outright, not left
     // as a queued tombstone: the make-Remote never published, so nothing else
     // can reference it and the cancel's own unwind deletes it.
@@ -397,12 +357,7 @@ async fn delete_release_cancels_in_flight_make_remote() {
         "the uploaded object is deleted from the cloud"
     );
     assert!(
-        manager
-            .database
-            .queued_delete_count_for_test()
-            .await
-            .unwrap()
-            == 0,
+        queued_delete_count(&manager).await == 0,
         "an unpublished object needs no tombstone"
     );
 }
@@ -423,18 +378,9 @@ async fn delete_release_survives_a_cloud_that_refuses_the_cleanup() {
         .await
         .expect("the delete does not wait on the cloud");
 
-    assert!(manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(find_release(&manager, &release.id).await.is_none());
     assert_eq!(
-        manager
-            .database
-            .make_remote_progress_for_release(&release.id)
-            .await
-            .unwrap(),
+        make_remote_progress(&manager, &release.id).await,
         Some(coven::MakeRemoteProgress::Cancelling),
         "and the unwind is still owed"
     );
@@ -450,38 +396,19 @@ async fn delete_album_cancels_in_flight_make_remote() {
 
     manager.delete_album(&release.album_id).await.unwrap();
 
-    assert!(manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(find_release(&manager, &release.id).await.is_none());
     assert_eq!(
-        manager
-            .database
-            .make_remote_progress_for_release(&release.id)
-            .await
-            .unwrap(),
+        make_remote_progress(&manager, &release.id).await,
         Some(coven::MakeRemoteProgress::Cancelling),
         "each deleted release's transition is being unwound"
     );
     manager.drain_uploads_for_test().await.unwrap();
 
     assert!(
-        manager
-            .database
-            .queued_upload_count_for_test()
-            .await
-            .unwrap()
-            == 0,
+        queued_upload_count(&manager).await == 0,
         "the drain took the deleted album's uploads out of the queue"
     );
-    assert!(manager
-        .database
-        .make_remote_progress_for_release(&release.id)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(make_remote_progress(&manager, &release.id).await.is_none());
     // The object that already reached the cloud is removed outright, not left
     // as a queued tombstone: the make-Remote never published, so nothing else
     // can reference it and the cancel's own unwind deletes it.
@@ -490,12 +417,7 @@ async fn delete_album_cancels_in_flight_make_remote() {
         "the uploaded object is deleted from the cloud"
     );
     assert!(
-        manager
-            .database
-            .queued_delete_count_for_test()
-            .await
-            .unwrap()
-            == 0,
+        queued_delete_count(&manager).await == 0,
         "an unpublished object needs no tombstone"
     );
 }
@@ -515,18 +437,9 @@ async fn delete_album_survives_a_cloud_that_refuses_the_cleanup() {
         .await
         .expect("the delete does not wait on the cloud");
 
-    assert!(manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(find_release(&manager, &release.id).await.is_none());
     assert_eq!(
-        manager
-            .database
-            .make_remote_progress_for_release(&release.id)
-            .await
-            .unwrap(),
+        make_remote_progress(&manager, &release.id).await,
         Some(coven::MakeRemoteProgress::Cancelling),
         "and the unwind is still owed"
     );
@@ -538,7 +451,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_f
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     let file = DbFile::new(
         &release.id,
@@ -554,12 +467,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_f
 
     let error = manager.delete_release(&release.id).await.unwrap_err();
     assert!(matches!(error, LibraryError::Database(_)));
-    assert!(manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(find_release(&manager, &release.id).await.is_some());
 }
 
 /// The row deletes and the blob cleanup share one transaction, so a cleanup step
@@ -575,7 +483,7 @@ async fn delete_release_rolls_back_when_an_external_ref_clear_is_refused() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     let file = DbFile::new(
         &release.id,
@@ -600,12 +508,7 @@ async fn delete_release_rolls_back_when_an_external_ref_clear_is_refused() {
         .await
         .expect_err("clearing a ref on an undeclared blob table is refused");
 
-    assert!(manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(find_release(&manager, &release.id).await.is_some());
 }
 
 /// The tombstone half of the rollback above. A blob with no committed cloud
@@ -618,7 +521,7 @@ async fn delete_release_rolls_back_when_a_blob_tombstone_is_refused() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     store_test_cover_image(&manager, &release.id).await;
 
     let cover_blob = manager
@@ -644,12 +547,7 @@ async fn delete_release_rolls_back_when_a_blob_tombstone_is_refused() {
         .await
         .expect_err("tombstoning a blob with no cloud object is refused");
 
-    assert!(manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(find_release(&manager, &release.id).await.is_some());
 }
 
 #[tokio::test]
@@ -658,18 +556,13 @@ async fn delete_album_fails_before_rows_are_deleted_when_track_lookup_fails() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     rename_table_for_test(&manager, "tracks").await;
 
     let error = manager.delete_album(&album.id).await.unwrap_err();
     assert!(matches!(error, LibraryError::Database(_)));
-    assert!(manager
-        .database
-        .find_album_by_id(&album.id)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(find_album(&manager, &album.id).await.is_some());
 }
 
 #[tokio::test]
@@ -678,18 +571,13 @@ async fn delete_album_fails_before_rows_are_deleted_when_file_cleanup_lookup_fai
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     rename_table_for_test(&manager, "release_files").await;
 
     let error = manager.delete_album(&album.id).await.unwrap_err();
     assert!(matches!(error, LibraryError::Database(_)));
-    assert!(manager
-        .database
-        .find_album_by_id(&album.id)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(find_album(&manager, &album.id).await.is_some());
 }
 
 /// The playing track's cover reference is what the UI caches its art under, so
@@ -711,7 +599,7 @@ async fn playback_track_info_carries_the_cover_version() {
         Utc::now(),
     );
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
     manager
         .database
@@ -755,7 +643,7 @@ async fn playback_info_from_track_release_rejects_missing_album() {
         Utc::now(),
     );
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
     manager
         .database
@@ -780,19 +668,14 @@ async fn delete_release_fails_before_rows_are_deleted_when_cover_lookup_fails() 
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     store_test_cover_image(&manager, &release.id).await;
 
     rename_table_for_test(&manager, "covers").await;
 
     let error = manager.delete_release(&release.id).await.unwrap_err();
     assert!(matches!(error, LibraryError::Database(_)));
-    assert!(manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(find_release(&manager, &release.id).await.is_some());
 }
 
 /// Deleting a release cascade-deletes its `covers` row (the FK on `covers.id`
@@ -820,7 +703,7 @@ async fn delete_release_removes_its_cover_image() {
     // A sibling release so the album survives the single-release delete.
     let mut release2 = create_test_release(&release1.album_id);
     release2.remote = false;
-    manager.database.insert_release(&release2).await.unwrap();
+    insert_release(&manager, &release2).await;
 
     // Give release1 a cover: a `covers` row plus its blob in one coven batch.
     manager
@@ -934,17 +817,13 @@ async fn test_delete_album_deletes_all_releases() {
     let release2 = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release1).await.unwrap();
-    manager.database.insert_release(&release2).await.unwrap();
+    insert_release(&manager, &release1).await;
+    insert_release(&manager, &release2).await;
 
     manager.delete_album(&album.id).await.unwrap();
 
-    let album_result = manager.database.find_album_by_id(&album.id).await.unwrap();
+    let album_result = find_album(&manager, &album.id).await;
     assert!(album_result.is_none());
-    let releases = manager
-        .database
-        .get_releases_for_album(&album.id)
-        .await
-        .unwrap();
+    let releases = album_releases(&manager, &album.id).await;
     assert!(releases.is_empty());
 }

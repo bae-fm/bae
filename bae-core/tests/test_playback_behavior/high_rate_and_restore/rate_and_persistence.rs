@@ -19,11 +19,7 @@ impl HighSampleRateTestFixture {
         let runtime_handle = tokio::runtime::Handle::current();
 
         // Copy 96kHz fixture
-        let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests")
-            .join("fixtures")
-            .join("flac")
-            .join("96khz_test.flac");
+        let fixture_path = bae_test_support::fixture_dir!("flac", "96khz_test.flac");
         let test_path = album_dir.join("01 96kHz Track.flac");
         std::fs::copy(&fixture_path, &test_path).unwrap_or_else(|_| {
             panic!(
@@ -311,24 +307,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
         .seek(Duration::from_millis(seek_position_ms));
     let captured = fixture.next_capture_stream().await;
 
-    // Wait for seek confirmation
-    let deadline = Instant::now() + Duration::from_secs(10);
-    let mut seeked = false;
-    while Instant::now() < deadline && !seeked {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::Seeked {
-                track_id: ref sid, ..
-            })) => {
-                if *sid == track_id {
-                    seeked = true;
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(seeked, "Should receive Seeked event");
+    support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
     // Wait for the track's decode stats. Under gapless playback the seeked track
     // advances into the next track within one persistent stream, so it reports
@@ -356,10 +335,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let captured_snapshot: Vec<f32> = captured.lock().unwrap().clone();
 
     // Decode reference and compare at the seek position
-    let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_flac");
+    let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");

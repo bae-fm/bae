@@ -4,7 +4,7 @@ async fn insert_pinnable_release(manager: &LibraryManager) -> String {
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(manager, &release).await;
     let file = DbFile {
         id: bae_test_support::test_uuid(&format!("{}-file", release.id)),
         release_id: release.id.clone(),

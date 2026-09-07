@@ -460,11 +460,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
 }
 
 fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
-    let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("flac")
-        .join("01 Test Track 1.flac");
+    let fixture_path = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
     let flac_template = std::fs::read(&fixture_path)
         .expect("Failed to read FLAC fixture - run scripts/generate_test_flac.sh");
     let files = [

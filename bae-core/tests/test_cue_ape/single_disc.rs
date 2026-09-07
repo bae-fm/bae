@@ -20,10 +20,7 @@ use tracing::info;
 
 fn copy_cue_ape_fixture(dir: &Path) {
     use std::fs;
-    let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_ape");
+    let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
     let ape_data = fs::read(fixture_dir.join("Test Album.ape"))
         .unwrap_or_else(|_| panic!("CUE/APE fixture not found at {:?}", fixture_dir));
     let cue_data = fs::read(fixture_dir.join("Test Album.cue"))
@@ -191,10 +188,7 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
 
     tracing_init();
 
-    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_ape");
+    let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
 
     let ape_path = fixture_dir.join("Test Album.ape");
     let ref_path = fixture_dir.join("02 Test Artist - Track Two.flac");
@@ -473,10 +467,7 @@ async fn test_cue_ape_track_playback_matches_reference() {
         }
         assert!(started, "{label} should start playing");
 
-        let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests")
-            .join("fixtures")
-            .join("cue_ape");
+        let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
         let reference_data =
             std::fs::read(fixture_dir.join(reference_file)).expect("read reference");
         let reference =
@@ -551,32 +542,12 @@ async fn test_cue_ape_seek() {
     fixture.playback_handle.seek(Duration::from_secs(27));
     let captured = fixture.next_capture_stream().await;
 
-    // Wait for seek confirmation
-    let deadline = Instant::now() + Duration::from_secs(10);
-    let mut seeked = false;
-    while Instant::now() < deadline && !seeked {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::Seeked {
-                track_id: ref sid, ..
-            })) => {
-                if *sid == track_id {
-                    seeked = true;
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(seeked, "Should receive Seeked event");
+    support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
     // Snapshot captured samples after seek has had time to produce audio.
     // The seek allocated its own buffer, so the captured samples start at the
     // seek position (not the original play position).
-    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_ape");
+    let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
     let reference =
@@ -748,10 +719,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     );
 
     // === GROUND TRUTH: XLD-split reference FLAC ===
-    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_ape");
+    let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
     let reference =

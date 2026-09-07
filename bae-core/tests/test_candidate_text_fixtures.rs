@@ -73,7 +73,7 @@ struct Expected {
 }
 
 fn fixtures_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/candidate_text")
+    bae_test_support::fixture_dir!("candidate_text")
 }
 
 fn load_fixture(path: &Path) -> Fixture {

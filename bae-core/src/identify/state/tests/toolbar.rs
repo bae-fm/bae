@@ -1,6 +1,33 @@
 // The toolbar projection: what each badge reads while a run is going and
 // once it has settled.
 
+/// The opener the catalog-number tests share: a run over `providers` given a
+/// computed disc id for five tracks, no barcode and one catalog number on
+/// offer, with the disc-id lookup already answered by two releases of one
+/// group. Leaves the state `Found`, with "LBL 001" offered but not checked.
+fn state_with_catalog_offered(providers: Vec<MetadataSource>) -> IdentifyState {
+    let (state, _) = update(
+        started_with(providers),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "disc-hash".to_string(),
+                track_count: 5,
+                source_file: None,
+            },
+            BarcodeSignal::Absent,
+            &["LBL 001"],
+        ),
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
+            track_count: 5,
+        },
+    );
+    state
+}
+
 #[test]
 fn toolbar_while_triangulating_shows_spinners() {
     let (state, _) = update(
@@ -91,25 +118,7 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
 /// intersection the other signals are already in.
 #[test]
 fn choosing_a_catalog_number_looks_it_up_and_intersects() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &["LBL 001"],
-        ),
-    );
-    let (state, _) = step(
-        state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
-            track_count: 5,
-        },
-    );
+    let state = state_with_catalog_offered(vec![MB]);
     assert!(matches!(state, IdentifyState::Found { .. }));
 
     let (state, effects) = step(
@@ -171,25 +180,7 @@ fn choosing_a_catalog_number_looks_it_up_and_intersects() {
 /// leaves the combine again.
 #[test]
 fn checking_the_chosen_catalog_number_again_clears_it() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &["LBL 001"],
-        ),
-    );
-    let (state, _) = step(
-        state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
-            track_count: 5,
-        },
-    );
+    let state = state_with_catalog_offered(vec![MB]);
     let (state, _) = step(
         state,
         IdentifyEvent::SignalToggled {
@@ -561,25 +552,7 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
 /// beside them.
 #[test]
 fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
-    let (state, _) = update(
-        started_with(vec![MB, DG]),
-        signals(
-            DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                track_count: 5,
-                source_file: None,
-            },
-            BarcodeSignal::Absent,
-            &["LBL 001"],
-        ),
-    );
-    let (state, _) = step(
-        state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
-            track_count: 5,
-        },
-    );
+    let state = state_with_catalog_offered(vec![MB, DG]);
     let (state, effects) = step(
         state,
         IdentifyEvent::SignalToggled {

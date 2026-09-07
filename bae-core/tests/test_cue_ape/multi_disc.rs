@@ -61,10 +61,7 @@ async fn test_cue_ape_next_track() {
     assert!(track2_started, "Track 2 should start after Next");
 
     // Decode XLD reference
-    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_ape");
+    let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
     let reference =
@@ -155,10 +152,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
     // Reuse the 90s / 3-track CUE+APE fixture, once per disc, renamed to
     // `CDImage.*` so both discs share the same bare filename (a common
     // multi-disc rip layout).
-    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_ape");
+    let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
     let ape_bytes = std::fs::read(fixture_dir.join("Test Album.ape")).expect("read ape fixture");
     let cue_body = "PERFORMER \"Test Artist\"\n\
                     TITLE \"Disc Title\"\n\

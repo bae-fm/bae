@@ -32,12 +32,7 @@ async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
         if tick % 50 == 0 {
             manager.database.sync_now();
         }
-        if !manager
-            .database
-            .has_pending_uploads_for_release(release_id)
-            .await
-            .unwrap()
-        {
+        if !has_pending_uploads(manager, release_id).await {
             return;
         }
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
@@ -57,7 +52,7 @@ async fn insert_export_release_rows(
     release.remote = false;
     release.source_folder_name = Some(folder_name.to_string());
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(manager, &release).await;
     std::fs::create_dir_all(source_dir).unwrap();
     let created_at = Utc::now();
     let mut inserted_files = Vec::with_capacity(files.len());
@@ -184,11 +179,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
         .unwrap()
         .unwrap();
     assert!(before.remote);
-    assert!(!manager
-        .database
-        .has_pending_uploads_for_release(&release_id)
-        .await
-        .unwrap());
+    assert!(!has_pending_uploads(&manager, &release_id).await);
 
     let target = temp_dir.path().join("export-out");
     manager
@@ -226,11 +217,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
         .unwrap();
     assert!(after.remote, "export leaves the release Remote");
     assert!(
-        !manager
-            .database
-            .has_pending_uploads_for_release(&release_id)
-            .await
-            .unwrap(),
+        !has_pending_uploads(&manager, &release_id).await,
         "export enqueues no cloud uploads"
     );
 }
@@ -436,7 +423,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     release.remote = false;
     release.source_folder_name = Some("Album Title".to_string());
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
 
     let files: &[(&str, &[u8])] = &[("01.flac", b"first-ok"), ("02.flac", b"second-fails")];
     for (name, bytes) in files {

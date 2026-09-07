@@ -199,8 +199,8 @@ async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) 
     let mut rel2 = create_test_release(&album.id);
     rel2.id = REL_2.to_string();
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&rel1).await.unwrap();
-    manager.database.insert_release(&rel2).await.unwrap();
+    insert_release(manager, &rel1).await;
+    insert_release(manager, &rel2).await;
 
     let track = |release_id: &str, id: &str, side: i32, number: i32| {
         let t = DbTrack {
@@ -432,7 +432,7 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(manager, &release).await;
     let mut track_ids = Vec::with_capacity(count);
     for i in 0..count {
         let track_id = bae_test_support::test_uuid(&format!("track-{i}"));
@@ -618,28 +618,15 @@ async fn cancelling_an_upload_leaves_no_in_flight_import_behind() {
     manager.cancel_release_upload(&release.id).await.unwrap();
 
     assert!(
-        manager
-            .database
-            .make_remote_progress_for_release(&release.id)
-            .await
-            .unwrap()
-            .is_none(),
+        make_remote_progress(&manager, &release.id).await.is_none(),
         "the cancel clears coven's make-Remote intent"
     );
     assert!(
-        manager
-            .database
-            .queued_upload_count_for_test()
-            .await
-            .unwrap()
-            == 0,
+        queued_upload_count(&manager).await == 0,
         "no upload is left queued, so nothing reads as still importing"
     );
-    let after = manager
-        .database
-        .find_release_by_id(&release.id)
+    let after = find_release(&manager, &release.id)
         .await
-        .unwrap()
         .expect("the release survives the cancel");
     assert!(!after.remote, "the cancelled release stays Local");
 }

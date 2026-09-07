@@ -71,7 +71,7 @@ async fn make_remote_enqueues_cover_then_files_in_display_order() {
     manager.database.insert_album(&album).await.unwrap();
     let mut release = create_test_release(&album.id);
     release.remote = false;
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     let source_dir = temp_dir.path().join("ordered-upload");
     std::fs::create_dir_all(&source_dir).unwrap();
     let created_at = Utc::now();
@@ -115,11 +115,7 @@ async fn make_remote_enqueues_cover_then_files_in_display_order() {
         .store_library_image_blob(&cover, cover_bytes)
         .await
         .unwrap();
-    let files = manager
-        .database
-        .get_files_for_release(&release.id)
-        .await
-        .unwrap();
+    let files = release_files(&manager, &release.id).await;
 
     manager.coven_make_remote(&release.id, false).await.unwrap();
 

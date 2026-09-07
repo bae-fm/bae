@@ -100,6 +100,76 @@ async fn assemble_test_manager(temp_dir: TempDir, config: Config) -> (LibraryMan
     (manager, temp_dir)
 }
 
+// One-line reads and writes against the manager's database. Spelled out at a
+// call site each is `manager.database.x(..).await.unwrap()`, which rustfmt
+// breaks across five lines.
+async fn find_release(manager: &LibraryManager, release_id: &str) -> Option<DbRelease> {
+    manager
+        .database
+        .find_release_by_id(release_id)
+        .await
+        .unwrap()
+}
+
+async fn find_album(manager: &LibraryManager, album_id: &str) -> Option<DbAlbum> {
+    manager.database.find_album_by_id(album_id).await.unwrap()
+}
+
+async fn release_files(manager: &LibraryManager, release_id: &str) -> Vec<DbFile> {
+    manager
+        .database
+        .get_files_for_release(release_id)
+        .await
+        .unwrap()
+}
+
+async fn album_releases(manager: &LibraryManager, album_id: &str) -> Vec<DbRelease> {
+    manager
+        .database
+        .get_releases_for_album(album_id)
+        .await
+        .unwrap()
+}
+
+async fn make_remote_progress(
+    manager: &LibraryManager,
+    release_id: &str,
+) -> Option<coven::MakeRemoteProgress> {
+    manager
+        .database
+        .make_remote_progress_for_release(release_id)
+        .await
+        .unwrap()
+}
+
+async fn has_pending_uploads(manager: &LibraryManager, release_id: &str) -> bool {
+    manager
+        .database
+        .has_pending_uploads_for_release(release_id)
+        .await
+        .unwrap()
+}
+
+async fn queued_upload_count(manager: &LibraryManager) -> usize {
+    manager
+        .database
+        .queued_upload_count_for_test()
+        .await
+        .unwrap()
+}
+
+async fn queued_delete_count(manager: &LibraryManager) -> usize {
+    manager
+        .database
+        .queued_delete_count_for_test()
+        .await
+        .unwrap()
+}
+
+async fn insert_release(manager: &LibraryManager, release: &DbRelease) {
+    manager.database.insert_release(release).await.unwrap();
+}
+
 include!("tests/save_and_config.rs");
 include!("tests/deletion.rs");
 include!("tests/release_details.rs");

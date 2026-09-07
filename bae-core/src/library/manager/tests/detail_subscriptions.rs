@@ -22,7 +22,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
     manager.database.insert_album(&album).await.unwrap();
     for _ in 0..25 {
         let release = create_test_release(&album.id);
-        manager.database.insert_release(&release).await.unwrap();
+        insert_release(&manager, &release).await;
     }
 
     let mut load = Vec::new();

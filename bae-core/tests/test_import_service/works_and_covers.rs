@@ -65,37 +65,8 @@ fn seed_mb_release_with_works(
     title: &str,
     tracks: Vec<MbTrack>,
 ) -> String {
-    let response = MbReleaseResponse {
-        id: mb_release_id.to_string(),
-        title: title.to_string(),
-        date: Some("1996".to_string()),
-        country: Some("US".to_string()),
-        barcode: None,
-        artist_credit: vec![MbArtistCredit {
-            name: "Artist Name".to_string(),
-            artist: Some(MbArtistRef {
-                id: Some("mb-artist-1".to_string()),
-                name: Some("Artist Name".to_string()),
-                sort_name: Some("Artist Name".to_string()),
-            }),
-        }],
-        release_group: Some(MbReleaseGroupRef {
-            id: mb_group_id.to_string(),
-            first_release_date: None,
-            relations: None,
-        }),
-        label_info: vec![],
-        media: vec![MbMedium {
-            discs: vec![],
-            format: Some("CD".to_string()),
-            tracks,
-        }],
-        relations: vec![],
-        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
-            front: false,
-            darkened: false,
-        },
-    };
+    let mut response = mb_release(mb_release_id, mb_group_id, title);
+    response.media[0].tracks = tracks;
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
     bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
     bae_core::musicbrainz::seed_release_group_json_cache(
