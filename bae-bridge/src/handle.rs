@@ -1,9 +1,5 @@
 use bae_core::library::AppServices;
 use bae_core::playback::QueueEntryId;
-#[cfg(feature = "desktop")]
-use bae_core::signals::ExtractionSource;
-#[cfg(feature = "desktop")]
-use bae_core::util::rate_limiter::CallPriority;
 use tracing::info;
 
 #[cfg(feature = "oauth-providers")]

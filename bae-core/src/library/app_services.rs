@@ -718,13 +718,7 @@ impl AppServices {
     delegate_async!(manager, get_artist_page => get_artist_page(sort: &[crate::db::ArtistSortCriterion], offset: u64, limit: u64) -> Result<Vec<crate::album_detail::ArtistSummary>, crate::library::LibraryError>);
     delegate_async!(manager, get_artist_detail => get_artist_detail(artist_id: &str) -> Result<Option<crate::album_detail::ArtistDetail>, crate::library::LibraryError>);
     delegate_async!(manager, search_artists => search_artists(query: &crate::library::LibrarySearchQuery) -> Result<Vec<crate::album_detail::ArtistSearchResult>, crate::library::LibraryError>);
-    delegate_async!(manager, get_album_page => get_album_page(sort: &[crate::db::AlbumSortCriterion], offset: u64, limit: u64) -> Result<Vec<crate::album_detail::AlbumSummary>, crate::library::LibraryError>);
     delegate_async!(manager, get_album_index => get_album_index(sort: &[crate::db::AlbumSortCriterion], album_id: &str) -> Result<Option<u64>, crate::library::LibraryError>);
-    delegate_async!(manager, get_album_count => get_album_count() -> Result<u64, crate::library::LibraryError>);
-    delegate_async!(manager, get_composer_count => get_composer_count() -> Result<u64, crate::library::LibraryError>);
-    delegate_async!(manager, get_composer_page => get_composer_page(sort: &[crate::db::ComposerSortCriterion], offset: u64, limit: u64) -> Result<Vec<crate::album_detail::ComposerSummary>, crate::library::LibraryError>);
-    delegate_async!(manager, get_composer_detail => get_composer_detail(artist_id: &str) -> Result<Option<crate::album_detail::ComposerDetail>, crate::library::LibraryError>);
-    delegate_async!(manager, get_work_detail => get_work_detail(work_id: &str) -> Result<Option<crate::album_detail::WorkDetail>, crate::library::LibraryError>);
     delegate_async!(manager, find_album_detail => find_album_detail(album_id: &str) -> Result<Option<crate::album_detail::AlbumDetail>, crate::library::LibraryError>);
     delegate_async!(manager, find_release_detail => find_release_detail(release_id: &str) -> Result<Option<crate::album_detail::ReleaseDetail>, crate::library::LibraryError>);
     delegate_async!(manager, get_albums => get_albums(sort: &[crate::db::AlbumSortCriterion]) -> Result<Vec<crate::db::DbAlbum>, crate::library::LibraryError>);
@@ -734,9 +728,6 @@ impl AppServices {
     delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<crate::db::DbFile>, crate::library::LibraryError>);
     delegate_async!(manager, get_file_by_id => get_file_by_id(file_id: &str) -> Result<Option<crate::db::DbFile>, crate::library::LibraryError>);
     delegate_async!(manager, file_local_path => file_local_path(file_id: &str) -> Result<Option<std::path::PathBuf>, crate::library::LibraryError>);
-    delegate_async!(manager, get_storage_page => get_storage_page(sort: &crate::db::StorageSortCriterion, filter: crate::db::StorageFilter, offset: u64, limit: u64) -> Result<crate::album_detail::StoragePage, crate::library::LibraryError>);
-    delegate_async!(manager, get_storage_count => get_storage_count(filter: crate::db::StorageFilter) -> Result<u64, crate::library::LibraryError>);
-    delegate_async!(manager, get_storage_total_size => get_storage_total_size(filter: crate::db::StorageFilter) -> Result<u64, crate::library::LibraryError>);
     delegate_async!(manager, get_library_image => get_library_image(id: &str, image_type: &crate::db::LibraryImageType) -> Result<Option<crate::db::DbLibraryImage>, crate::library::LibraryError>);
     delegate_async!(manager, read_image_blob => read_image_blob(image: &crate::album_detail::ImageRef) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
     delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &crate::album_detail::GallerySource) -> Result<Vec<u8>, crate::library::LibraryError>);

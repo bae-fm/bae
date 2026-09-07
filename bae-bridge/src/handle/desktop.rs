@@ -158,14 +158,8 @@ impl AppHandle {
     /// through the same identify channel — the UI consumes them by candidate
     /// key the same way it does for folder imports.
     pub fn auto_identify_release(&self, candidate_key: String, release_id: String) {
-        let run = self.services.identify_new_run();
         self.services
-            .identify_start(run, candidate_key.clone(), CallPriority::Interactive);
-        self.services.extraction_start(
-            candidate_key,
-            ExtractionSource::Release { release_id },
-            CallPriority::Interactive,
-        );
+            .identify_release_for_lookup(candidate_key, release_id);
     }
 
     /// Stop a candidate's identify pipeline: cancels the identify driver and
@@ -174,8 +168,7 @@ impl AppHandle {
     /// a key with nothing running. Called when the UI tears the candidate down
     /// (the re-identify sheet closing).
     pub fn cancel_auto_identify(&self, candidate_key: String) {
-        self.services.identify_cancel(&candidate_key);
-        self.services.extraction_cancel(&candidate_key);
+        self.services.cancel_identify(&candidate_key);
     }
 
     /// Toggle a signal in a candidate's toolbar — include or exclude it from

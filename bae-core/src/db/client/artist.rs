@@ -162,10 +162,6 @@ impl Database {
         .await
     }
 
-    pub async fn get_composer_count(&self) -> Result<u64, DbError> {
-        self.read(|sql| composer_count_on(&sql)).await
-    }
-
     pub async fn get_composer_page(
         &self,
         sort: &[ComposerSortCriterion],

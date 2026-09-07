@@ -50,13 +50,8 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &str, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &str, track_ids: Vec<String>, assignments: crate::import::TrackArtistAssignments) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_drop_candidate_track => drop_candidate_track(candidate_key: &str, track_id: String) -> Result<(), crate::import::ImportError>);
-    delegate_sync!(identify, identify_new_run => new_run() -> crate::identify::IdentifyRunId);
-    delegate_sync!(identify, identify_start => start(run: crate::identify::IdentifyRunId, key: String, priority: crate::util::rate_limiter::CallPriority) -> ());
-    delegate_sync!(identify, identify_cancel => cancel(key: &str) -> ());
     delegate_sync!(identify, identify_toggle_signal => toggle_signal(key: &str, signal: crate::identify::SignalToggle) -> ());
     delegate_sync!(extraction, extraction_register_analyzer => register_analyzer(analyzer: std::sync::Arc<dyn crate::signals::ArtworkAnalyzer>) -> ());
-    delegate_sync!(extraction, extraction_start => start(key: String, source: crate::signals::ExtractionSource, priority: crate::util::rate_limiter::CallPriority) -> ());
-    delegate_sync!(extraction, extraction_cancel => cancel(key: &str) -> ());
 
     pub(crate) fn subscribe_import_events(
         &self,
@@ -73,6 +68,35 @@ impl AppServices {
     /// verdict by.
     pub fn identify_folder_for_lookup(&self, candidate_key: String) {
         self.inner.sweep.identify_for_explicit_lookup(candidate_key);
+    }
+
+    /// Identify an existing library release after the person opens the
+    /// re-identify sheet. Extraction resolves the disc ID and artwork from the
+    /// library rather than from a scanned folder, so — unlike
+    /// [`Self::identify_folder_for_lookup`] — this does not go through the
+    /// sweep: there is no candidate folder to key a stored verdict by.
+    pub fn identify_release_for_lookup(&self, candidate_key: String, release_id: String) {
+        let run = self.inner.identify.new_run();
+        self.inner.identify.start(
+            run,
+            candidate_key.clone(),
+            crate::util::rate_limiter::CallPriority::Interactive,
+        );
+        self.inner.extraction.start(
+            candidate_key,
+            crate::signals::ExtractionSource::Release { release_id },
+            crate::util::rate_limiter::CallPriority::Interactive,
+        );
+    }
+
+    /// Stop a candidate's identification: both the identify driver and the
+    /// in-flight signal extraction behind it. The inverse of
+    /// [`Self::identify_folder_for_lookup`] and
+    /// [`Self::identify_release_for_lookup`]; a no-op for a key with nothing
+    /// running.
+    pub fn cancel_identify(&self, candidate_key: &str) {
+        self.inner.identify.cancel(candidate_key);
+        self.inner.extraction.cancel(candidate_key);
     }
 
     /// Re-run a candidate's identification from the toolbar. Dispatches on
