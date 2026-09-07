@@ -7,6 +7,7 @@ use axum::Router;
 use bae_core::config::SubsonicCredential;
 use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use bae_core::import::release_candidate::CandidateSource;
 use bae_core::import::{
     ImportCommand, MetadataProvenance, MetadataSource, ReleaseFileScope, StorageMode,
 };
@@ -198,8 +199,10 @@ async fn seed_library() -> Library {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "pt".to_string(),
-            folder: pt_dir,
-            scope: ReleaseFileScope::Recursive,
+            source: CandidateSource::Folder {
+                path: pt_dir,
+                scope: ReleaseFileScope::Recursive,
+            },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -234,8 +237,10 @@ async fn seed_library() -> Library {
         .send_command(ImportCommand {
             import_id: cue_id.clone(),
             candidate_key: "cue".to_string(),
-            folder: cue_dir,
-            scope: ReleaseFileScope::Recursive,
+            source: CandidateSource::Folder {
+                path: cue_dir,
+                scope: ReleaseFileScope::Recursive,
+            },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -268,8 +273,7 @@ fn cue_discogs_release() -> DiscogsRelease {
         format: vec![],
         country: Some("US".to_string()),
         label: vec!["Test Label".to_string()],
-        cover_image: None,
-        thumb: None,
+        covers: vec![],
         catno: None,
         artists: vec![DiscogsArtist {
             id: "discogs-artist-1".to_string(),

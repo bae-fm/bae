@@ -301,8 +301,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         format: vec![],
         country: None,
         label: vec![],
-        cover_image: None,
-        thumb: None,
+        covers: vec![],
         catno: None,
         artists: vec![DiscogsArtist {
             id: "discogs-lossy-artist".to_string(),
@@ -319,8 +318,10 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "lossy".to_string(),
-            folder: dir,
-            scope: ReleaseFileScope::Recursive,
+            source: CandidateSource::Folder {
+                path: dir,
+                scope: ReleaseFileScope::Recursive,
+            },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
