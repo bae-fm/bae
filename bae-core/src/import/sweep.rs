@@ -51,10 +51,12 @@ use tokio_util::task::TaskTracker;
 use tracing::{debug, info, warn};
 
 mod handle;
+mod pass;
 mod plan;
 mod settle;
 
 pub use handle::QueueSweepHandle;
+use pass::Pass;
 use plan::*;
 use settle::*;
 
@@ -167,7 +169,7 @@ pub fn start(
                             run_pass(&loop_context, &loop_token, &mut event_rx, &mut config).await;
                         } else {
                             loop_context.release_all();
-                            emit_progress(&loop_context, 0, 0);
+                            announce_empty_queue(&loop_context);
                         }
                         continue;
                     }
@@ -287,16 +289,6 @@ impl Drop for AutomaticQueueGuard {
     }
 }
 
-/// What a pass has to do, decided against the stored rows before any of it
-/// starts.
-struct Plan {
-    /// Candidates with neither applied metadata provenance nor a usable stored verdict.
-    identify: VecDeque<IdentifyJob>,
-    /// How many of `total` already hold provenance or a verdict.
-    identified: u32,
-    total: u32,
-}
-
 enum PassOutcome {
     Complete,
     Replan,
@@ -321,7 +313,7 @@ async fn run_pass_once(
 ) -> PassOutcome {
     if !config.borrow().identify_automatically {
         context.release_all();
-        emit_progress(context, 0, 0);
+        announce_empty_queue(context);
         return PassOutcome::Complete;
     }
     let candidates = match new_candidates(context).await {
@@ -333,12 +325,6 @@ async fn run_pass_once(
             return PassOutcome::Complete;
         }
     };
-    let total = candidates.len() as u32;
-    let mut known_identities: HashMap<String, CandidateIdentity> = candidates
-        .iter()
-        .map(|candidate| (candidate.key().into_owned(), candidate_identity(candidate)))
-        .collect();
-
     let stored = match context.library_manager.load_import_candidate_states().await {
         Ok(stored) => stored,
         Err(e) => {
@@ -350,49 +336,25 @@ async fn run_pass_once(
             return PassOutcome::Complete;
         }
     };
-    let mut answered_keys: HashSet<String> = candidates
-        .iter()
-        .filter(|candidate| usable_stored_answer(&stored, candidate).is_some())
-        .map(|candidate| candidate.key().into_owned())
-        .collect();
-    let mut answered_identities: HashSet<CandidateIdentity> = candidates
-        .iter()
-        .filter(|candidate| usable_stored_answer(&stored, candidate).is_some())
-        .map(candidate_identity)
-        .collect();
 
-    let Plan {
-        identify: mut pending,
-        mut identified,
-        mut total,
-    } = plan(candidates, &stored, total);
-    emit_progress(context, identified, total);
-
-    if pending.is_empty() {
-        context
-            .import
-            .replace_automatic_identification_queue(std::iter::empty());
+    let mut pass = Pass::new(candidates, &stored);
+    pass.announce(context);
+    pass.publish_queue(context);
+    if pass.is_idle() {
         return PassOutcome::Complete;
     }
-
-    context.import.replace_automatic_identification_queue(
-        pending.iter().flat_map(IdentifyJob::candidate_keys),
-    );
     let _automatic_queue = AutomaticQueueGuard(context.import.clone());
-
-    let mut in_flight: HashMap<String, InFlight> = HashMap::new();
-    let mut finishing_members: HashMap<CandidateIdentity, Vec<ReleaseCandidate>> = HashMap::new();
     let mut finishing = JoinSet::<Finished>::new();
 
     loop {
-        while in_flight.len() + finishing.len() < MAX_IN_FLIGHT {
+        while pass.in_flight_count() + finishing.len() < MAX_IN_FLIGHT {
             if !config.borrow().identify_automatically {
                 context.release_all();
                 finishing.shutdown().await;
-                emit_progress(context, 0, 0);
+                announce_empty_queue(context);
                 return PassOutcome::Complete;
             }
-            let Some(mut job) = pending.pop_front() else {
+            let Some(mut job) = pass.next_job() else {
                 break;
             };
             let Some(representative_index) = job
@@ -420,9 +382,7 @@ async fn run_pass_once(
                     warn!(
                             "sweep: cannot read the metadata revision for {key} ({error}); aborting pass"
                         );
-                    for running_key in in_flight.keys() {
-                        context.release(running_key);
-                    }
+                    pass.release_in_flight(context);
                     finishing.shutdown().await;
                     return PassOutcome::Complete;
                 }
@@ -441,27 +401,17 @@ async fn run_pass_once(
                 },
                 CallPriority::Background,
             );
-            in_flight.insert(
-                key,
-                InFlight {
-                    job,
-                    run,
-                    signals: None,
-                    expected_metadata_revision,
-                },
-            );
+            pass.track(key, job, run, expected_metadata_revision);
         }
 
-        if in_flight.is_empty() && pending.is_empty() && finishing.is_empty() {
+        if pass.is_idle() && finishing.is_empty() {
             return PassOutcome::Complete;
         }
 
         tokio::select! {
             biased;
             _ = token.cancelled() => {
-                for key in in_flight.keys() {
-                    context.release(key);
-                }
+                pass.release_in_flight(context);
                 finishing.shutdown().await;
                 return PassOutcome::Complete;
             }
@@ -473,7 +423,7 @@ async fn run_pass_once(
                 {
                     context.release_all();
                     finishing.shutdown().await;
-                    emit_progress(context, 0, 0);
+                    announce_empty_queue(context);
                     return PassOutcome::Complete;
                 }
             }
@@ -481,14 +431,10 @@ async fn run_pass_once(
                 match result {
                     Ok(done) => {
                         context.release(&done.representative_key);
-                        let deferred = finishing_members
-                            .remove(&done.identity)
-                            .expect("finishing identity is registered before its task starts");
+                        let deferred = pass.take_finishing_members(&done.identity);
                         let stored = matches!(&done.outcome, FinishCandidateOutcome::Stored);
                         match done.outcome {
                             FinishCandidateOutcome::Stored => {
-                                answered_identities.insert(done.identity.clone());
-                                pending.retain(|job| job.identity != done.identity);
                                 for key in &done.candidate_keys {
                                     context.import.clear_automatic_identification(key);
                                 }
@@ -497,7 +443,7 @@ async fn run_pass_once(
                                 for candidate in
                                     done.current_candidates.into_iter().chain(deferred)
                                 {
-                                    enqueue_automatic_candidate(context, &mut pending, candidate);
+                                    pass.enqueue(context, candidate);
                                 }
                             }
                             FinishCandidateOutcome::Failed { error } => {
@@ -515,16 +461,7 @@ async fn run_pass_once(
                                 }
                             }
                         }
-                        let newly_answered = known_identities
-                            .iter()
-                            .filter(|(_, identity)| *identity == &done.identity)
-                            .map(|(key, _)| key)
-                            .filter(|key| stored && answered_keys.insert((*key).clone()))
-                            .count() as u32;
-                        if newly_answered > 0 {
-                            identified = identified.saturating_add(newly_answered).min(total);
-                            emit_progress(context, identified, total);
-                        } else {
+                        if !(stored && pass.answer_identity(context, &done.identity)) {
                             debug!(
                                 "sweep: {} finished without a current stored verdict",
                                 done.representative_key
@@ -539,62 +476,10 @@ async fn run_pass_once(
             }
             event = bus.recv() => match event {
                 Some(Ok(ImportEvent::SignalsUpdated { candidate_key, signals, .. })) => {
-                    if let Some(entry) = in_flight.get_mut(&candidate_key) {
-                        entry.signals = Some(signals);
-                    }
+                    pass.record_signals(&candidate_key, signals);
                 }
                 Some(Ok(ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. })) => {
-                    // Terminal means the machine stopped moving, including on
-                    // an explicit failure verdict. Either way the candidate's
-                    // slot is free now.
-                    // A state from another run of the same candidate -- an
-                    // earlier one still broadcasting -- is not this pass's.
-                    let ours = in_flight
-                        .get(&candidate_key)
-                        .filter(|entry| entry.run == run);
-                    if let Some(entry) = ours {
-                        for member_key in entry.job.candidate_keys() {
-                            if member_key != candidate_key {
-                                context.import.report_identification(&member_key, &state);
-                            }
-                        }
-                    }
-                    let settled = (state.is_terminal() && ours.is_some())
-                    .then(|| in_flight.remove(&candidate_key))
-                    .flatten();
-                    if let Some(entry) = settled {
-                        let identity = entry.job.identity.clone();
-                        finishing_members.insert(identity.clone(), Vec::new());
-                        let representative_key = candidate_key.clone();
-                        let context = context.clone();
-                        let child = token.child_token();
-                        finishing.spawn(async move {
-                            let candidate_keys = entry.job.candidate_keys().collect();
-                            let outcome = finish_candidate(&context, &entry, state, &child).await;
-                            let current_candidates = if matches!(
-                                &outcome,
-                                FinishCandidateOutcome::Stored
-                            ) {
-                                Vec::new()
-                            } else {
-                                let mut current = Vec::new();
-                                for candidate in &entry.job.candidates {
-                                    let key = candidate.key();
-                                    if usable_current_candidate(&context, &key, &identity).await {
-                                        current.push(candidate.clone());
-                                    }
-                                }
-                                current
-                            };
-                            Finished {
-                                representative_key,
-                                identity,
-                                candidate_keys,
-                                current_candidates,
-                                outcome,
-                            }
-                        });
-                    }
+                    pass.settle(context, token, &mut finishing, &candidate_key, run, state);
                 }
                 Some(Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { .. }))) => {
                     // A chosen source owns this candidate now. Cancel every
@@ -613,48 +498,7 @@ async fn run_pass_once(
                 // with it every later scan. The removal is an event, so react to
                 // it rather than waiting out a clock.
                 Some(Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }))) => {
-                    context.import.clear_automatic_identification(&candidate_key);
-                    remove_finishing_member(&mut finishing_members, &candidate_key);
-                    let running_representative = in_flight.iter().find_map(|(representative, entry)| {
-                        entry
-                            .job
-                            .candidates
-                            .iter()
-                            .any(|candidate| candidate.key() == candidate_key)
-                            .then(|| representative.clone())
-                    });
-                    if let Some(representative) = running_representative {
-                        let mut entry = in_flight
-                            .remove(&representative)
-                            .expect("located in-flight job still exists");
-                        entry.job.candidates.retain(|candidate| {
-                            candidate.key() != candidate_key
-                        });
-                        if representative == candidate_key {
-                            context.release(&representative);
-                            if !entry.job.candidates.is_empty() {
-                                pending.push_front(entry.job);
-                            }
-                        } else if !entry.job.candidates.is_empty() {
-                            in_flight.insert(representative, entry);
-                        }
-                    }
-                    pending.retain_mut(|job| {
-                        job.candidates.retain(|candidate| {
-                            candidate.key() != candidate_key
-                        });
-                        !job.candidates.is_empty()
-                    });
-                    if forget_candidate(
-                        &candidate_key,
-                        &mut known_identities,
-                        &mut answered_keys,
-                        &mut answered_identities,
-                        &mut identified,
-                        &mut total,
-                    ) {
-                        emit_progress(context, identified.min(total), total);
-                    }
+                    pass.drop_candidate(context, &candidate_key);
                 }
                 Some(Ok(ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }))) => {
                     let candidate_key = candidate.path.to_string_lossy().into_owned();
@@ -669,125 +513,64 @@ async fn run_pass_once(
                     // out of. Asked against live state rather than the event,
                     // because the claim that supersedes it carries no event.
                     let Some(candidate) = sweepable_candidate(context, &candidate_key).await else {
-                        detach_candidate(
-                            context,
-                            &candidate_key,
-                            &mut in_flight,
-                            &mut pending,
-                        );
-                        remove_finishing_member(&mut finishing_members, &candidate_key);
-                        if forget_candidate(
-                            &candidate_key,
-                            &mut known_identities,
-                            &mut answered_keys,
-                            &mut answered_identities,
-                            &mut identified,
-                            &mut total,
-                        ) {
-                            emit_progress(context, identified.min(total), total);
-                        }
+                        pass.drop_candidate(context, &candidate_key);
                         continue;
                     };
                     let identity = candidate_identity(&candidate);
-                    if known_identities.get(&candidate_key) == Some(&identity) {
+                    if pass.counts(&candidate_key, &identity) {
                         continue;
                     }
-                    forget_candidate(
-                        &candidate_key,
-                        &mut known_identities,
-                        &mut answered_keys,
-                        &mut answered_identities,
-                        &mut identified,
-                        &mut total,
-                    );
-                    known_identities.insert(candidate_key.clone(), identity.clone());
-                    total = total.saturating_add(1);
-                    detach_candidate(
-                        context,
-                        &candidate_key,
-                        &mut in_flight,
-                        &mut pending,
-                    );
-                    remove_finishing_member(&mut finishing_members, &candidate_key);
+                    pass.recount(context, &candidate_key, identity.clone());
                     let stored_now = match current_stored_answer(context, &candidate).await {
                         Ok(stored) => stored,
                         Err(error) => {
                             warn!(
                                 "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
                             );
-                            for key in in_flight.keys() {
-                                context.release(key);
-                            }
+                            pass.release_in_flight(context);
                             finishing.shutdown().await;
                             return PassOutcome::Complete;
                         }
                     };
                     // Already answered — either on disk, or by a candidate this
                     // pass settled that hashes the same.
-                    if stored_now || answered_identities.contains(&identity) {
-                        answered_identities.insert(identity.clone());
-                        answered_keys.insert(candidate_key);
-                        identified = identified.saturating_add(1).min(total);
-                    } else if let Some(members) = finishing_members.get_mut(&identity) {
-                        members.push(candidate);
+                    if stored_now || pass.answered(&identity) {
+                        pass.mark_answered(candidate_key, identity);
                     } else {
-                        enqueue_automatic_candidate(context, &mut pending, candidate);
+                        pass.defer_or_enqueue(context, &identity, candidate);
                     }
-                    emit_progress(context, identified.min(total), total);
+                    pass.announce(context);
                 }
                 Some(Ok(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
                     candidate_key,
                     skipped,
                 }))) => {
-                    detach_candidate(
-                        context,
-                        &candidate_key,
-                        &mut in_flight,
-                        &mut pending,
-                    );
-                    remove_finishing_member(&mut finishing_members, &candidate_key);
                     if skipped {
-                        if forget_candidate(
-                            &candidate_key,
-                            &mut known_identities,
-                            &mut answered_keys,
-                            &mut answered_identities,
-                            &mut identified,
-                            &mut total,
-                        ) {
-                            emit_progress(context, identified.min(total), total);
-                        }
-                    } else if let Some(candidate) = sweepable_candidate(context, &candidate_key).await {
-                        let identity = candidate_identity(&candidate);
-                        if known_identities
-                            .insert(candidate_key.clone(), identity.clone())
-                            .is_none()
-                        {
-                            total = total.saturating_add(1);
-                        }
-                        let stored_now =
-                            match current_stored_answer(context, &candidate).await {
-                                Ok(stored) => stored,
-                                Err(error) => {
-                                    warn!(
-                                        "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
-                                    );
-                                    for key in in_flight.keys() {
-                                        context.release(key);
+                        pass.drop_candidate(context, &candidate_key);
+                    } else {
+                        pass.detach(context, &candidate_key);
+                        if let Some(candidate) = sweepable_candidate(context, &candidate_key).await {
+                            let identity = candidate_identity(&candidate);
+                            pass.count(candidate_key.clone(), identity.clone());
+                            let stored_now =
+                                match current_stored_answer(context, &candidate).await {
+                                    Ok(stored) => stored,
+                                    Err(error) => {
+                                        warn!(
+                                            "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
+                                        );
+                                        pass.release_in_flight(context);
+                                        finishing.shutdown().await;
+                                        return PassOutcome::Complete;
                                     }
-                                    finishing.shutdown().await;
-                                    return PassOutcome::Complete;
-                                }
-                            };
-                        if stored_now {
-                            answered_identities.insert(identity);
-                            if answered_keys.insert(candidate_key.clone()) {
-                                identified = identified.saturating_add(1).min(total);
+                                };
+                            if stored_now {
+                                pass.mark_answered(candidate_key, identity);
+                            } else {
+                                pass.enqueue(context, candidate);
                             }
-                        } else {
-                            enqueue_automatic_candidate(context, &mut pending, candidate);
+                            pass.announce(context);
                         }
-                        emit_progress(context, identified.min(total), total);
                     }
                 }
                 // The folder is a different shape now. A run already under way
@@ -798,49 +581,13 @@ async fn run_pass_once(
                 Some(Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }))) => {
                     let candidate = ReleaseCandidate::from(candidate);
                     let candidate_key = candidate.key().into_owned();
-                    detach_candidate(
-                        context,
-                        &candidate_key,
-                        &mut in_flight,
-                        &mut pending,
-                    );
-                    remove_finishing_member(&mut finishing_members, &candidate_key);
-                    forget_candidate(
-                        &candidate_key,
-                        &mut known_identities,
-                        &mut answered_keys,
-                        &mut answered_identities,
-                        &mut identified,
-                        &mut total,
-                    );
                     let identity = candidate_identity(&candidate);
-                    known_identities.insert(candidate_key.clone(), identity.clone());
-                    total = total.saturating_add(1);
-                    if let Some(members) = finishing_members.get_mut(&identity) {
-                        members.push(candidate);
-                    } else {
-                        enqueue_automatic_candidate(context, &mut pending, candidate);
-                    }
-                    emit_progress(context, identified.min(total), total);
+                    pass.recount(context, &candidate_key, identity.clone());
+                    pass.defer_or_enqueue(context, &identity, candidate);
+                    pass.announce(context);
                 }
                 Some(Ok(ImportEvent::ImportProgress { candidate_key, .. })) => {
-                    detach_candidate(
-                        context,
-                        &candidate_key,
-                        &mut in_flight,
-                        &mut pending,
-                    );
-                    remove_finishing_member(&mut finishing_members, &candidate_key);
-                    if forget_candidate(
-                        &candidate_key,
-                        &mut known_identities,
-                        &mut answered_keys,
-                        &mut answered_identities,
-                        &mut identified,
-                        &mut total,
-                    ) {
-                        emit_progress(context, identified.min(total), total);
-                    }
+                    pass.drop_candidate(context, &candidate_key);
                 }
                 Some(Ok(_)) => {}
                 Some(Err(broadcast::error::RecvError::Lagged(n))) => {
@@ -850,21 +597,13 @@ async fn run_pass_once(
                     // candidates back to the queue and run them again: nothing
                     // durable was written, so replaying them whole is the only
                     // shape that cannot leave a wrong answer behind.
-                    warn!("sweep: import bus lagged by {n} events; replaying {} in-flight candidates", in_flight.len());
+                    warn!("sweep: import bus lagged by {n} events; replaying {} in-flight candidates", pass.in_flight_count());
                     context.library_manager.record_telemetry(
                         crate::diagnostics::TelemetryEvent::Anomaly {
                             kind: crate::diagnostics::AnomalyKind::EventBusLagged,
                         },
                     );
-                    for (key, entry) in in_flight.drain() {
-                        context.release(&key);
-                        for candidate_key in entry.job.candidate_keys() {
-                            context
-                                .import
-                                .requeue_automatic_identification(&candidate_key);
-                        }
-                        pending.push_back(entry.job);
-                    }
+                    pass.replay_in_flight(context);
                 }
                 Some(Err(broadcast::error::RecvError::Closed)) | None => {
                     return PassOutcome::Complete;
@@ -872,16 +611,6 @@ async fn run_pass_once(
             },
         }
     }
-}
-
-fn enqueue_automatic_candidate(
-    context: &SweepContext,
-    pending: &mut VecDeque<IdentifyJob>,
-    candidate: ReleaseCandidate,
-) {
-    let key = candidate.key().into_owned();
-    enqueue_candidate(pending, candidate);
-    context.import.requeue_automatic_identification(&key);
 }
 
 #[cfg(test)]
@@ -947,15 +676,11 @@ async fn candidate_metadata_revision(
         })
 }
 
-/// Announce how much of the queue has been answered.
-///
-/// Both numbers are the sweep's, not the UI's: the total is how many candidates
-/// the sweep is responsible for, which is a domain fact about the queue and not
-/// something a view can infer from the rows it happens to be holding.
-fn emit_progress(context: &SweepContext, identified: u32, total: u32) {
-    context
-        .import
-        .announce_queue_identify_progress(identified, total);
+/// Announce that the sweep is answering nothing: automatic identification is
+/// off, or the pass gave up before it counted a queue. [`Pass::announce`] is
+/// what reports a queue it does have.
+fn announce_empty_queue(context: &SweepContext) {
+    context.import.announce_queue_identify_progress(0, 0);
 }
 
 #[cfg(test)]
