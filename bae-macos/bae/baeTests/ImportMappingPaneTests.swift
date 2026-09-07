@@ -155,7 +155,7 @@ struct ImportMappingPaneTests {
             edit: MappingFixtures.blankEdit
         )
         let candidate = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
+            store.editorCandidate
         )
         let size = NSSize(width: 1_000, height: 760)
         let (window, host) = SnapshotTestSupport.hostInWindow(
@@ -450,7 +450,7 @@ extension ImportMappingPaneTests {
             mapping: MappingFixtures.thirteenFileTable
         )
         let before = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]?.detail
+            store.editorCandidate?.detail
         )
         let writes = SessionWriteRecorder()
         store.sessionWriter = .recording { writes.record($0) }
@@ -471,7 +471,7 @@ extension ImportMappingPaneTests {
         try await Task.sleep(for: .milliseconds(50))
 
         let candidate = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
+            store.editorCandidate
         )
         #expect(
             !writes.errors(forKey: MappingFixtures.candidateKey)
@@ -525,7 +525,7 @@ extension ImportMappingPaneTests {
         // The store holds no copy of the form: it still reads what core last
         // answered with.
         #expect(
-            store.selectedCandidates[MappingFixtures.candidateKey]?
+            store.editorCandidate?
                 .edit?
                 .pressing.year == MappingFixtures.albumEdit.pressing.year
         )
@@ -657,7 +657,7 @@ extension ImportMappingPaneTests {
             )
         )
         var candidate = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
+            store.editorCandidate
         )
         #expect(candidate.metadataProvenance == .fileTags)
         #expect(candidate.mapping.trackMappings.count == 2)
@@ -681,7 +681,7 @@ extension ImportMappingPaneTests {
             )
         )
         candidate = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
+            store.editorCandidate
         )
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)
         #expect(candidate.mapping.trackMappings.count == 13)

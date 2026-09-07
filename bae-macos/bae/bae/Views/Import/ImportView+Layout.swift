@@ -62,6 +62,8 @@ extension ImportView {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear { importStore.editorVisibility.send(true) }
+        .onDisappear { importStore.editorVisibility.send(false) }
     }
 
     @ViewBuilder

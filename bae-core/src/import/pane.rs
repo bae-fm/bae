@@ -232,6 +232,7 @@ pub fn release_pane(
     ids: &dyn coven::IdProvider,
 ) -> Result<PanePick, ImportError> {
     let audio_durations = crate::import::track_slots::audio_durations(files, durations)?;
+    let payloads = payloads.parse()?;
     let detail = payloads.detail_for_audio(&audio_durations)?;
     let mut parsed = payloads.parsed(&audio_durations, clock, ids)?;
     let seed = parsed_album_to_user_edit(&parsed);

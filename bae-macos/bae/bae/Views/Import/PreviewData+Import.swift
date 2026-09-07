@@ -345,11 +345,13 @@
         ) -> ImportPreviewFixture {
             let store = ImportStore()
             store.applySummary(summary)
-            for candidate in releaseQueueCandidates {
-                store.selectedCandidates[candidate.key] = candidate
-            }
             return ImportPreviewFixture(
                 store: store,
+                candidates: Dictionary(
+                    uniqueKeysWithValues: releaseQueueCandidates.map {
+                        ($0.key, $0)
+                    }
+                ),
                 itemsByTab: [.pending: items, .done: [], .skipped: []]
             )
         }
@@ -444,6 +446,7 @@
             )
             return ImportPreviewFixture(
                 store: scene.store,
+                candidates: scene.candidates,
                 itemsByTab: scene.itemsByTab
             )
         }

@@ -8,7 +8,8 @@
 //! together. The list interleaves group headers with three kinds of entry, so
 //! the ordering and the offsets are worked out in Rust by
 //! [`crate::import::list::flatten`]. Only the entries inside the requested
-//! windows are then loaded whole.
+//! windows are then read as owned inputs. Provider decoding and audio projection
+//! run on the bounded processing workers after the SQLite transaction returns.
 
 mod window;
 
@@ -94,7 +95,7 @@ pub struct CandidateStateListRow {
 pub struct ImportQueueRows {
     /// The watched roots in their stored order — the list's outer ordering.
     pub watched_folders: Vec<WatchedFolder>,
-    pub folder_scan_statuses: Vec<WatchedFolderScanStatus>,
+    pub folder_scan_statuses: Vec<(WatchedFolder, FolderScanStatus)>,
     pub candidates: Vec<ScanCandidateListRow>,
     /// `(watched_folder_path, relative_candidate_path)` of every skipped row.
     pub skipped: HashSet<(String, String)>,
@@ -232,7 +233,7 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
 fn scan_statuses(
     sql: &SqlReadContext<'_>,
     watched_folders: &[WatchedFolder],
-) -> Result<Vec<WatchedFolderScanStatus>, DbError> {
+) -> Result<Vec<(WatchedFolder, FolderScanStatus)>, DbError> {
     let order: HashMap<&str, usize> = watched_folders
         .iter()
         .enumerate()
@@ -277,21 +278,13 @@ fn scan_statuses(
                 )))
             }
         };
-        let on_network_volume =
-            crate::import::volume::volume_kind(std::path::Path::new(&watched_folder_path))
-                == crate::import::volume::VolumeKind::Network;
-        statuses.push(WatchedFolderScanStatus {
-            watched_folder_path,
-            watched_folder_name: watched_folder.name.clone(),
-            status,
-            on_network_volume,
-        });
+        statuses.push((watched_folder.clone(), status));
     }
-    statuses.sort_by(|left, right| {
+    statuses.sort_by(|(left, _), (right, _)| {
         order
-            .get(left.watched_folder_path.as_str())
-            .cmp(&order.get(right.watched_folder_path.as_str()))
-            .then_with(|| left.watched_folder_path.cmp(&right.watched_folder_path))
+            .get(left.path.as_str())
+            .cmp(&order.get(right.path.as_str()))
+            .then_with(|| left.path.cmp(&right.path))
     });
     Ok(statuses)
 }
@@ -384,15 +377,58 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
 fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateStateListRow>, DbError> {
     let mut drafts = super::import_state::load_drafts_on(sql, None)?;
     let mut covers = super::import_state::load_covers_on(sql, None)?;
+    let mut verdicts = load_verdict_summaries_on(sql, None)?;
+
+    let mut provenances = load_provenance_on(sql, None)?;
+    let mut states = HashMap::new();
+    for (content_hash, edit_revision) in sql.query(
+        "SELECT content_hash, edit_revision FROM import_candidate_state",
+        [],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+    )? {
+        let verdict = verdicts.remove(&content_hash);
+        let metadata_provenance = provenances
+            .remove(&content_hash)
+            .map(|(provenance, _)| provenance);
+        let metadata_draft = drafts.remove(&content_hash).ok_or_else(|| {
+            DbError::Message(format!(
+                "candidate {content_hash} has no editable metadata draft"
+            ))
+        })?;
+        let release_edit = metadata_draft.release_edit();
+        let metadata_draft_valid = release_edit.shape().is_ok();
+        let metadata_summary =
+            crate::import::TriageMetadataSummary::of(&release_edit, metadata_provenance.clone());
+        let selected_cover = covers.remove(&content_hash);
+        states.insert(
+            content_hash,
+            CandidateStateListRow {
+                edit_revision: to_u64(edit_revision, "a candidate's edit revision")?,
+                probed_total_duration_ms: verdict.as_ref().map_or(0, |(_, probed)| *probed),
+                verdict: verdict.map(|(summary, _)| summary),
+                metadata_provenance,
+                metadata_draft_valid,
+                metadata_summary,
+                selected_cover,
+            },
+        );
+    }
+    Ok(states)
+}
+
+pub(super) fn load_verdict_summaries_on(
+    sql: &SqlReadContext<'_>,
+    only: Option<&str>,
+) -> Result<HashMap<String, (VerdictSummary, u64)>, DbError> {
     // Every match row, not a count and a lead row: how many *pressings* a
     // verdict named is what the Ready rule asks, and two sources' records of
     // one pressing pair by fields no `COUNT(*)` can see.
-    let mut matches = load_matches_on(sql, None)?;
+    let mut matches = load_matches_on(sql, only)?;
     let mut verdicts: HashMap<String, (VerdictSummary, u64)> = HashMap::new();
     for row in sql.query(
         "SELECT content_hash, kind, track_count, probed_total_duration_ms \
-         FROM import_candidate_verdict",
-        [],
+         FROM import_candidate_verdict WHERE :only IS NULL OR content_hash = :only",
+        named_params! { ":only": only },
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -432,65 +468,99 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         );
     }
 
-    let mut provenances = load_provenance_on(sql, None)?;
-    let mut states = HashMap::new();
-    for (content_hash, edit_revision) in sql.query(
-        "SELECT content_hash, edit_revision FROM import_candidate_state",
-        [],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
-    )? {
-        let verdict = verdicts.remove(&content_hash);
-        let metadata_provenance = provenances
-            .remove(&content_hash)
-            .map(|(provenance, _)| provenance);
-        let metadata_draft = drafts.remove(&content_hash).ok_or_else(|| {
-            DbError::Message(format!(
-                "candidate {content_hash} has no editable metadata draft"
-            ))
-        })?;
-        let release_edit = metadata_draft.release_edit();
-        let metadata_draft_valid = release_edit.shape().is_ok();
-        let metadata_summary =
-            crate::import::TriageMetadataSummary::of(&release_edit, metadata_provenance.clone());
-        let selected_cover = covers.remove(&content_hash);
-        states.insert(
-            content_hash,
-            CandidateStateListRow {
-                edit_revision: to_u64(edit_revision, "a candidate's edit revision")?,
-                probed_total_duration_ms: verdict.as_ref().map_or(0, |(_, probed)| *probed),
-                verdict: verdict.map(|(summary, _)| summary),
-                metadata_provenance,
-                metadata_draft_valid,
-                metadata_summary,
-                selected_cover,
-            },
-        );
-    }
-    Ok(states)
+    Ok(verdicts)
 }
 
-/// One read of the list for `request`.
-fn load_import_list_on(
-    sql: &SqlReadContext<'_>,
-    request: &ImportListRequest,
-) -> Result<ImportListProjection, DbError> {
-    let rows = load_import_queue_on(sql)?;
-    let flat = flatten(&rows, request).map_err(|error| DbError::Message(error.to_string()))?;
-    let windows = request
-        .windows
-        .iter()
-        .map(|window| {
-            Ok(ImportListWindow {
-                window: window.clone(),
-                items: window::materialise(sql, window, &flat, &rows)?,
-            })
+/// Owned window rows from the same snapshot that placed their positions.
+pub(super) struct ImportListRows {
+    total_count: u64,
+    windows: Vec<(
+        crate::library::LibraryPageWindow,
+        Vec<window::WindowItemRows>,
+    )>,
+    summary: crate::import::ImportQueueSummary<(WatchedFolder, FolderScanStatus)>,
+}
+
+/// The list's SQL extraction and owned-result processing share one query.
+/// Its filesystem capability runs where the query resolves folder volume facts.
+pub(super) struct ImportListQuery {
+    volume_kind: fn(&std::path::Path) -> crate::import::volume::VolumeKind,
+}
+
+impl ImportListQuery {
+    pub(super) fn new(
+        volume_kind: fn(&std::path::Path) -> crate::import::volume::VolumeKind,
+    ) -> Self {
+        Self { volume_kind }
+    }
+    pub(super) fn read(
+        &self,
+        sql: &SqlReadContext<'_>,
+        request: &ImportListRequest,
+    ) -> Result<ImportListRows, DbError> {
+        let rows = load_import_queue_on(sql)?;
+        let flat = flatten(&rows, request).map_err(|error| DbError::Message(error.to_string()))?;
+        let windows = request
+            .windows
+            .iter()
+            .map(|page| Ok((page.clone(), window::materialise(sql, page, &flat, &rows)?)))
+            .collect::<Result<Vec<_>, DbError>>()?;
+        Ok(ImportListRows {
+            total_count: flat.items.len() as u64,
+            windows,
+            summary: flat.summary,
         })
-        .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(ImportListProjection {
-        total_count: flat.items.len() as u64,
-        windows,
-        summary: flat.summary,
-    })
+    }
+
+    pub(super) fn process(&self, rows: ImportListRows) -> Result<ImportListProjection, DbError> {
+        let mut parsed = HashMap::new();
+        let windows = rows
+            .windows
+            .into_iter()
+            .map(|(window, items)| {
+                Ok(ImportListWindow {
+                    window,
+                    items: window::process_window(items, &mut parsed)?,
+                })
+            })
+            .collect::<Result<Vec<_>, DbError>>()?;
+        let crate::import::ImportQueueSummary {
+            counts,
+            watched_folders,
+            folder_scan_statuses,
+            folder_scan_activity,
+            group_keys,
+            ready,
+            first_unidentified,
+        } = rows.summary;
+        let folder_scan_statuses = folder_scan_statuses
+            .into_iter()
+            .map(|(folder, status)| {
+                let on_network_volume = (self.volume_kind)(std::path::Path::new(&folder.path))
+                    == crate::import::volume::VolumeKind::Network;
+                WatchedFolderScanStatus {
+                    watched_folder_path: folder.path,
+                    watched_folder_name: folder.name,
+                    status,
+                    on_network_volume,
+                }
+            })
+            .collect();
+        let summary = crate::import::ImportQueueSummary {
+            counts,
+            watched_folders,
+            folder_scan_statuses,
+            folder_scan_activity,
+            group_keys,
+            ready,
+            first_unidentified,
+        };
+        Ok(ImportListProjection {
+            total_count: rows.total_count,
+            windows,
+            summary,
+        })
+    }
 }
 
 impl Database {
@@ -502,11 +572,13 @@ impl Database {
         &self,
         initial: ImportListRequest,
     ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection> {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, move |request, sql| {
-                load_import_list_on(&sql, request).map_err(CovenError::from)
-            })
+        let reader = ImportListQuery::new(crate::import::volume::volume_kind);
+        let processor = ImportListQuery::new(crate::import::volume::volume_kind);
+        self.inner.handle.subscribe_reconfigurable_processed(
+            initial,
+            move |request, sql| reader.read(&sql, request).map_err(CovenError::from),
+            move |_, rows| processor.process(rows).map_err(CovenError::from),
+        )
     }
 
     /// One read of the list, for a caller with no subscription.
@@ -514,8 +586,16 @@ impl Database {
         &self,
         request: ImportListRequest,
     ) -> Result<ImportListProjection, DbError> {
-        self.read(move |sql| load_import_list_on(&sql, &request))
+        let reader = ImportListQuery::new(crate::import::volume::volume_kind);
+        let processor = ImportListQuery::new(crate::import::volume::volume_kind);
+        self.inner
+            .handle
+            .read_processed(
+                move |sql| reader.read(&sql, &request).map_err(CovenError::from),
+                move |rows| processor.process(rows).map_err(CovenError::from),
+            )
             .await
+            .map_err(Self::coven_error)
     }
 
     pub(crate) async fn locate_import_candidate(
@@ -539,9 +619,10 @@ impl Database {
         key: &str,
     ) -> coven::LiveQuery<Option<ImportCandidateDetailProjection>> {
         let key = key.to_string();
-        self.inner.handle.subscribe(move |sql| {
-            window::load_candidate_detail_on(&sql, &key).map_err(CovenError::from)
-        })
+        self.inner.handle.subscribe_processed(
+            move |sql| window::load_candidate_detail_rows_on(&sql, &key).map_err(CovenError::from),
+            |rows| window::process_candidate_detail(rows).map_err(CovenError::from),
+        )
     }
 
     /// Every candidate the queue sweep is responsible for: settled folders,
@@ -563,8 +644,16 @@ impl Database {
         key: &str,
     ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
         let key = key.to_string();
-        self.read(move |sql| window::load_candidate_detail_on(&sql, &key))
+        self.inner
+            .handle
+            .read_processed(
+                move |sql| {
+                    window::load_candidate_detail_rows_on(&sql, &key).map_err(CovenError::from)
+                },
+                |rows| window::process_candidate_detail(rows).map_err(CovenError::from),
+            )
             .await
+            .map_err(Self::coven_error)
     }
 }
 

@@ -24,20 +24,7 @@ use coven::IdProvider;
 use std::collections::HashSet;
 use tracing::{debug, warn};
 
-/// Extract the leading numeric Discogs release ID from a Discogs release URL.
-///
-/// MB editors store these URLs in three shapes:
-///   - bare numeric: `https://www.discogs.com/release/12345`
-///   - trailing slash: `https://www.discogs.com/release/12345/`
-///   - slug suffix: `https://www.discogs.com/release/12345-Album-Title`
-///
-/// Returns `None` if the last path segment doesn't start with digits.
-pub(crate) fn extract_discogs_release_id(url: &str) -> Option<String> {
-    let trimmed = url.trim_end_matches('/');
-    let last = trimmed.rsplit('/').next()?;
-    let id: String = last.chars().take_while(|c| c.is_ascii_digit()).collect();
-    (!id.is_empty()).then_some(id)
-}
+pub(crate) use crate::provider_document::extract_discogs_release_id;
 
 fn mb_relation_is(relation: &MbRelation, target_type: &str, relation_type: &str) -> bool {
     relation.target_type.as_deref() == Some(target_type)

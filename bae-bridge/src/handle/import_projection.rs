@@ -570,3 +570,30 @@ impl crate::types::BridgeImportFailure {
         }
     }
 }
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeImportSelection {
+    pub(super) fn from_core(value: bae_core::import::selection::ImportSelection) -> Self {
+        Self {
+            candidate_keys: value.candidate_keys,
+            can_combine: value.can_combine,
+            offers: value
+                .offers
+                .into_iter()
+                .map(|offer| crate::types::BridgeImportCandidateActionOffer {
+                    action: crate::types::BridgeCandidateAction::from_core(offer.action),
+                    candidates: offer
+                        .candidates
+                        .into_iter()
+                        .map(
+                            |candidate| crate::types::BridgeImportCandidateActionTarget {
+                                key: candidate.key,
+                                display_name: candidate.display_name,
+                            },
+                        )
+                        .collect(),
+                })
+                .collect(),
+        }
+    }
+}

@@ -108,7 +108,56 @@ pub fn all() -> Vec<coven::Migration> {
             "candidate_verdict_and_provenance",
             include_str!("../migrations/020_candidate_verdict_and_provenance.sql"),
         ),
+        coven::Migration::run(
+            21,
+            "source_document_references",
+            migrate_source_document_references,
+        ),
     ]
+}
+
+fn migrate_source_document_references(
+    sql: &coven::MigrationContext<'_>,
+) -> Result<(), coven::DbError> {
+    let documents = sql.query(
+        "SELECT source, source_release_id, json FROM source_release_payloads",
+        [],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        },
+    )?;
+    let decoded = documents
+        .into_iter()
+        .map(|(source, id, json)| {
+            crate::provider_document::decode(&source, &id, &json)
+                .map(|facts| (source, id, facts))
+                .map_err(coven::DbError::Message)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    sql.execute_batch(include_str!(
+        "../migrations/021_source_document_references.sql"
+    ))?;
+    for (source, id, facts) in decoded {
+        let (document_id, group_id) = match facts.release {
+            Some(release) => (Some(release.id), release.group_id),
+            None => (None, None),
+        };
+        sql.execute(
+            "UPDATE source_release_payloads SET source_group_id = ?, document_release_id = ? WHERE source = ? AND source_release_id = ?",
+            coven::rusqlite::params![group_id, document_id, source, id],
+        )?;
+        for (target_source, target_id) in facts.references {
+            sql.execute(
+                "INSERT INTO source_document_reference (source, source_release_id, target_source, target_id) VALUES (?, ?, ?, ?)",
+                coven::rusqlite::params![source, id, target_source, target_id],
+            )?;
+        }
+    }
+    Ok(())
 }
 
 fn migrate_import_metadata_seeds(sql: &coven::MigrationContext<'_>) -> Result<(), coven::DbError> {

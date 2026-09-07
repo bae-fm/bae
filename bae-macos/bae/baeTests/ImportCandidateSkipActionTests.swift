@@ -1,3 +1,4 @@
+import BaeKit
 import Foundation
 import Testing
 
@@ -21,6 +22,10 @@ struct ImportCandidateSkipActionTests {
         let failed = PreviewData.importTabCandidate.key
         let successful = PreviewData.importTabDisagreementCandidate.key
         uiStore.setFolderCandidateSelection([failed, successful])
+        store.selection = selection(
+            keys: [failed, successful],
+            skipTargets: [failed, successful].sorted()
+        )
         let importer = Importer(setCandidateSkipped: { key, _ in
             if key == failed { throw CocoaError(.fileWriteNoPermission) }
         })
@@ -48,6 +53,14 @@ struct ImportCandidateSkipActionTests {
             "candidate:stale",
         ]
         uiStore.setFolderCandidateSelection(selected)
+        importStore.selection = selection(
+            keys: selected,
+            skipTargets: [
+                PreviewData.importTabCandidate.key,
+                PreviewData.importTabDisagreementCandidate.key,
+            ]
+            .sorted()
+        )
         let importer = Importer(setCandidateSkipped: { key, skipped in
             #expect(skipped)
             await recorder.record(key)
@@ -61,9 +74,8 @@ struct ImportCandidateSkipActionTests {
         .start()?
         .value
 
-        // The eligible pair, and only it: a row already skipped offers Unskip
-        // rather than Skip, and a key the list no longer holds offers nothing.
-        // The action works through them in key order.
+        // The action uses exactly the dedicated query's Skip targets, in the
+        // order supplied by core, without deriving eligibility from list rows.
         #expect(
             await recorder.keys
                 == [
@@ -96,6 +108,27 @@ struct ImportCandidateSkipActionTests {
         .value
 
         #expect(await recorder.keys.isEmpty)
+    }
+
+    private func selection(
+        keys: Set<String>,
+        skipTargets: [String]
+    ) -> BridgeImportSelection {
+        BridgeImportSelection(
+            candidateKeys: keys.sorted(),
+            offers: [
+                BridgeImportCandidateActionOffer(
+                    action: .skip,
+                    candidates: skipTargets.map {
+                        BridgeImportCandidateActionTarget(
+                            key: $0,
+                            displayName: $0
+                        )
+                    }
+                )
+            ],
+            canCombine: false
+        )
     }
 
     @Test("Skip selected (%lld) is translated in every shipping locale")

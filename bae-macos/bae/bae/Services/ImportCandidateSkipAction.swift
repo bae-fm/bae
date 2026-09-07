@@ -32,11 +32,8 @@ struct ImportCandidateSkipAction {
         )
     }
 
-    /// The selected candidates whose own read says they accept the absolute
-    /// Skip command. Reading it off each selected candidate's row makes a
-    /// stale selection and a row whose import has started ineligible without
-    /// teaching either action surface lifecycle rules.
-    private var eligibleCandidates: [Candidate] {
+    /// The dedicated selected-key query's targets for the Skip command.
+    private var eligibleCandidates: [BridgeImportCandidateActionTarget] {
         ImportCandidateSelection(importStore: importStore, uiStore: uiStore)
             .candidates(for: .skip)
     }

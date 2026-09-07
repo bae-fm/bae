@@ -562,7 +562,7 @@ extension MappingFixtures {
     /// The mapping table the store's one candidate holds.
     @MainActor
     static func mapping(of store: ImportStore) -> BridgeMappingTable {
-        store.selectedCandidates[candidateKey]?.mapping
+        store.editorCandidate?.mapping
             ?? BridgeMappingTable(
                 images: [],
                 trackSections: [],
@@ -576,7 +576,7 @@ extension MappingFixtures {
     /// import.
     @MainActor
     static func isCommittable(_ store: ImportStore) -> Bool {
-        guard let candidate = store.selectedCandidates[candidateKey],
+        guard let candidate = store.editorCandidate,
             var edit = candidate.edit
         else { return false }
         edit.tracks = bridgeMappingTracks(table: candidate.mapping)

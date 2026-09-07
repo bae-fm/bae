@@ -41,7 +41,10 @@ pub(crate) struct Flattened {
     pub(crate) items: Vec<ItemRef>,
     pub(crate) headers: Vec<GroupHeaderRow>,
     pub(crate) rows: Vec<PlacedRow>,
-    pub(crate) summary: ImportQueueSummary,
+    pub(crate) summary: ImportQueueSummary<(
+        crate::import::watched_folder::WatchedFolder,
+        crate::import::FolderScanStatus,
+    )>,
 }
 
 /// One entry of the queue before the tab filter and the grouping runs.
@@ -550,7 +553,10 @@ fn summarise(
     ordered: &[OrderedEntry],
     placed: &[PlacedRow],
     counts: TriageTabCounts,
-) -> ImportQueueSummary {
+) -> ImportQueueSummary<(
+    crate::import::watched_folder::WatchedFolder,
+    crate::import::FolderScanStatus,
+)> {
     let mut group_keys = Vec::new();
     let mut seen_groups = HashSet::new();
     let mut ready = Vec::new();
@@ -588,10 +594,10 @@ fn summarise(
     let active_scans: Vec<ActiveFolderScan> = rows
         .folder_scan_statuses
         .iter()
-        .filter_map(|folder| match folder.status {
+        .filter_map(|(folder, status)| match *status {
             crate::import::FolderScanStatus::Scanning { found_count } => Some(ActiveFolderScan {
-                watched_folder_path: folder.watched_folder_path.clone(),
-                watched_folder_name: folder.watched_folder_name.clone(),
+                watched_folder_path: folder.path.clone(),
+                watched_folder_name: folder.name.clone(),
                 found_count,
             }),
             crate::import::FolderScanStatus::Complete

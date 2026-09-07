@@ -19,6 +19,7 @@ use coven::FixedClock;
 use std::path::PathBuf;
 
 mod dates;
+mod selection;
 
 fn now() -> DateTime<Utc> {
     DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")

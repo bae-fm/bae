@@ -56,6 +56,8 @@ mod import_content_hash;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_list;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod import_selection;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_state;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use import_list::{
@@ -95,7 +97,7 @@ pub use release_projection::{ReleaseDetailProjection, StoragePageProjection};
 use write::*;
 
 struct DatabaseInner {
-    /// The top-level coven handle owns the connection and exposes the host SQL
+    /// The top-level coven handle owns the connections and exposes the host SQL
     /// path. Writes to synced tables are captured by coven's attached session.
     handle: CovenHandle,
     /// Wall clock for `created_at` and status timestamps bound into write SQL.
@@ -109,7 +111,7 @@ struct DatabaseInner {
     ids: IdRef,
 }
 
-/// Database client over coven's owned connection. Writes to synced tables are
+/// Database client over coven's owned SQL capabilities. Writes to synced tables are
 /// captured by coven's attached session for changeset sync.
 ///
 /// coven also owns connection pragmas such as `foreign_keys` and `journal_mode`:
@@ -151,9 +153,9 @@ impl Database {
 
     // ── The three SQL entry points ────────────────────────────────────────
     //
-    // `read`     — pure reads, on coven's read-only companion connection: no
-    //              changeset journal, concurrent with the writer rather than
-    //              queued behind it. The closure cannot write — a
+    // `read`     — pure reads, on coven's bounded pool of read-only connections:
+    //              one snapshot transaction per operation, concurrent with other
+    //              reads and the writer. The closure cannot write — a
     //              `SqlReadContext` offers only `query`/`query_row`, and the
     //              connection behind it is SQLITE_OPEN_READONLY.
     // `call`     — writes that do not stamp `_updated_at` (INSERT/DELETE, or an
@@ -162,11 +164,11 @@ impl Database {
     // `call_sql` — writes that stamp `_updated_at` from coven's SQL context.
     //
     // Read-your-writes holds: every `call`/`call_sql` write commits before its
-    // future resolves and the WAL reader sees the last committed state, so a
+    // future resolves and a newly begun read sees that committed state, so a
     // `read` after an awaited write is correct. A closure that reads and then
     // conditionally writes is a write — it belongs on `call`, not `read`.
 
-    /// Run a pure read on coven's read-only companion connection. See the entry
+    /// Run a pure read through coven's bounded read-only connection pool. See the entry
     /// points note above.
     async fn read<R>(
         &self,

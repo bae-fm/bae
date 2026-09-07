@@ -164,7 +164,7 @@ struct ImportPreviewDataTests {
             #expect(!rows.isEmpty)
             #expect(
                 rows.allSatisfy {
-                    scene.store.selectedCandidates[$0.candidateKey] != nil
+                    scene.candidates[$0.candidateKey] != nil
                 }
             )
         }

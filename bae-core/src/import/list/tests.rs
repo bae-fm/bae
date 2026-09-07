@@ -31,12 +31,13 @@ fn queue() -> ImportQueueRows {
             path: root(),
             name: "music".to_string(),
         }],
-        folder_scan_statuses: vec![WatchedFolderScanStatus {
-            watched_folder_path: root(),
-            watched_folder_name: "music".to_string(),
-            status: FolderScanStatus::Complete,
-            on_network_volume: false,
-        }],
+        folder_scan_statuses: vec![(
+            WatchedFolder {
+                path: root(),
+                name: "music".to_string(),
+            },
+            FolderScanStatus::Complete,
+        )],
         ..ImportQueueRows::default()
     }
 }

@@ -209,7 +209,7 @@ fn option_to_raw(value: &Option<String>) -> String {
     value.clone().unwrap_or_default()
 }
 
-fn parse_optional_year(raw: &str) -> Result<Option<i32>, EditValidationError> {
+pub(crate) fn parse_optional_year(raw: &str) -> Result<Option<i32>, EditValidationError> {
     match raw.trim() {
         "" => Ok(None),
         text => text

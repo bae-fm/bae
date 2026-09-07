@@ -73,6 +73,13 @@ impl LibraryManager {
         self.database.subscribe_import_candidate(key)
     }
 
+    pub(crate) fn subscribe_import_selection(
+        &self,
+        keys: std::collections::BTreeSet<String>,
+    ) -> coven::LiveQuery<crate::import::selection::ImportSelectionProjection> {
+        self.database.subscribe_import_selection(keys)
+    }
+
     /// Record the pane's per-candidate state between visits.
     pub(crate) async fn save_import_candidate_session(
         &self,

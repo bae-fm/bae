@@ -274,7 +274,7 @@ struct ImportStoreCandidateDetailTests {
             )
         )
 
-        let read = try #require(store.selectedCandidates["/w1/a"])
+        let read = try #require(store.editorCandidate)
         #expect(read.displayName == "A")
         // With no run live the resumed state is what the pane shows.
         #expect(read.resumedIdentifyState == .notFoundAnywhere)
@@ -304,7 +304,7 @@ struct ImportStoreCandidateDetailTests {
                 )
             )
         existing.fileTagsPreview = .loaded(MappingFixtures.albumSeed)
-        store.selectedCandidates["/w1/a"] = existing
+        store.editorCandidate = existing
 
         // Same key, renamed + skip flipped, and the pane's stored session
         // moved on.
@@ -319,7 +319,7 @@ struct ImportStoreCandidateDetailTests {
             )
         )
 
-        let merged = try #require(store.selectedCandidates["/w1/a"])
+        let merged = try #require(store.editorCandidate)
         // The work this pane holds in memory survives; the read only re-read
         // the folder.
         #expect(merged.libraryStatuses["rel-1"] != nil)
@@ -395,7 +395,7 @@ struct ImportStoreSidebarCoverTests {
                     cover: choice
                 )
             )
-            store.selectedCandidates.removeValue(forKey: key)
+            store.clearEditor()
 
             #expect(
                 store.sidebarCover(for: row)

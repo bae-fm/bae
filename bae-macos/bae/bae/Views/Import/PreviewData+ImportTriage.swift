@@ -556,13 +556,17 @@
             let store = ImportStore()
             store.applySummary(importTabSummary)
             let rows = importTabRowsByKey()
-            for var candidate in importTabCandidates {
-                candidate.row = rows[candidate.key]
-                store.selectedCandidates[candidate.key] = candidate
-            }
+            let candidates = Dictionary(
+                uniqueKeysWithValues: importTabCandidates.map { candidate in
+                    var candidate = candidate
+                    candidate.row = rows[candidate.key]
+                    return (candidate.key, candidate)
+                }
+            )
             store.queueIdentifyProgress = (identified: 112, total: 130)
             return ImportPreviewFixture(
                 store: store,
+                candidates: candidates,
                 itemsByTab: [
                     .pending: importTabItems(.pending),
                     .done: importTabItems(.done),

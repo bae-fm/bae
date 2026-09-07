@@ -2,9 +2,11 @@
 //! event bus, and the list and per-candidate subscriptions.
 
 use super::*;
+
+mod value_subscription;
 use crate::import::{
-    ImportCandidateDetail, ImportCandidateDetailProjection, ImportListProjection,
-    ImportListRequest, ImportListSubscription, ImportListView, TriageRuntimeFacts,
+    ImportCandidateDetail, ImportListProjection, ImportListRequest, ImportListSubscription,
+    ImportListView, TriageRuntimeFacts,
 };
 
 impl AppServices {
@@ -261,94 +263,61 @@ impl AppServices {
     ) -> tokio::sync::mpsc::UnboundedReceiver<
         Result<Option<ImportCandidateDetail>, crate::library::LibraryError>,
     > {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let (initial_runtime, mut changes) = self.subscribe_candidate_runtime();
-        let mut query = self.inner.manager.subscribe_import_candidate(&key);
+        let query = self.inner.manager.subscribe_import_candidate(&key);
+        self.subscribe_import_values(
+            runtime_handle,
+            [key.clone()].into_iter().collect(),
+            query,
+            move |projection, facts| {
+                projection.clone().map(
+                    |projection: crate::import::ImportCandidateDetailProjection| {
+                        projection
+                            .resolve(facts.get(&key).unwrap_or(&TriageRuntimeFacts::default()))
+                    },
+                )
+            },
+        )
+    }
+
+    /// One bulk value for exactly these selected keys, including keys outside
+    /// the sidebar's loaded pages.
+    pub fn subscribe_import_selection_values(
+        &self,
+        runtime_handle: &tokio::runtime::Handle,
+        keys: std::collections::BTreeSet<String>,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<
+        Result<crate::import::selection::ImportSelection, crate::library::LibraryError>,
+    > {
+        let query = self.inner.manager.subscribe_import_selection(keys.clone());
+        self.subscribe_import_values(runtime_handle, keys, query, |projection, facts| {
+            projection.resolve(facts)
+        })
+    }
+
+    fn subscribe_import_values<P, V>(
+        &self,
+        runtime: &tokio::runtime::Handle,
+        keys: std::collections::BTreeSet<String>,
+        query: coven::LiveQuery<P>,
+        resolve: impl Fn(&P, &std::collections::BTreeMap<String, TriageRuntimeFacts>) -> V
+            + Send
+            + 'static,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<Result<V, crate::library::LibraryError>>
+    where
+        P: Clone + PartialEq + Send + 'static,
+        V: PartialEq + Clone + Send + 'static,
+    {
+        let (initial, changes) = self.subscribe_candidate_runtime();
         let import = self.inner.import.clone();
-        runtime_handle.spawn(async move {
-            let initial = initial_runtime.get(&key);
-            let mut facts = initial.map(TriageRuntimeFacts::of).unwrap_or_default();
-            let mut projection: Option<ImportCandidateDetailProjection> = None;
-            let deliver = |projection: &Option<ImportCandidateDetailProjection>,
-                           facts: &TriageRuntimeFacts| {
-                projection
-                    .clone()
-                    .map(|projection| projection.resolve(facts))
-            };
-            loop {
-                tokio::select! {
-                    value = query.next() => match value {
-                        Ok(value) => {
-                            projection = value;
-                            if tx
-                                .send(Ok(deliver(&projection, &facts)))
-                                .is_err()
-                            {
-                                return;
-                            }
-                        }
-                        Err(error) => {
-                            let error = match error {
-                                coven::CovenError::Database(error) => *error,
-                                other => coven::DbError::Message(other.to_string()),
-                            };
-                            if tx
-                                .send(Err(crate::library::LibraryError::Database(error)))
-                                .is_err()
-                            {
-                                return;
-                            }
-                        }
-                    },
-                    change = changes.recv() => {
-                        let next = match change {
-                            Ok(crate::import::CandidateRuntimeChange::Updated {
-                                key: changed,
-                                runtime,
-                            }) => {
-                                if changed != key {
-                                    continue;
-                                }
-                                Some(runtime)
-                            }
-                            Ok(crate::import::CandidateRuntimeChange::Removed { key: changed }) => {
-                                if changed != key {
-                                    continue;
-                                }
-                                None
-                            }
-                            Ok(crate::import::CandidateRuntimeChange::Reset { mut runtimes }) => {
-                                runtimes.remove(&key)
-                            }
-                            Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
-                                tracing::warn!(
-                                    "the selected candidate dropped {count} runtime changes; \
-                                     re-reading its runtime"
-                                );
-                                import.candidate_runtimes().remove(&key)
-                            }
-                            Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
-                        };
-                        let next_facts = next
-                            .as_ref()
-                            .map(TriageRuntimeFacts::of)
-                            .unwrap_or_default();
-                        if next_facts == facts {
-                            continue;
-                        }
-                        facts = next_facts;
-                        if projection.is_some()
-                            && tx
-                                .send(Ok(deliver(&projection, &facts)))
-                                .is_err()
-                        {
-                            return;
-                        }
-                    },
-                }
-            }
-        });
-        rx
+        value_subscription::subscribe(
+            runtime,
+            keys,
+            query,
+            initial,
+            changes,
+            move || import.candidate_runtimes(),
+            resolve,
+        )
     }
 }
 

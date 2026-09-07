@@ -24,6 +24,8 @@ mod progress;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use progress::*;
 mod raw_release_edit;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use raw_release_edit::parse_optional_year;
 pub use raw_release_edit::{
     CandidateDraft, CandidateTrack, EditValidationError, RawPressingEdit, RawReleaseEdit,
     RawReleaseEditOf, RawTrackEdit, TrackFileAuthor,
@@ -569,30 +571,41 @@ impl ReleaseUserEdit {
     /// tags carries deliberate blanks for the user to fill, and takes the write
     /// path that doesn't gate.
     pub fn validate(&self) -> Result<(), EditValidationError> {
-        if self.album_title.trim().is_empty() {
-            return Err(EditValidationError::EmptyAlbumTitle);
-        }
-        if self.album_artist_assignments.is_empty() {
-            return Err(EditValidationError::NoAlbumArtist);
-        }
-        for assignment in self
-            .album_artist_assignments
-            .iter()
-            .chain(
-                self.tracks
-                    .iter()
-                    .flat_map(|track| match &track.artist_assignments {
-                        TrackArtistAssignments::AlbumArtists => [].as_slice(),
-                        TrackArtistAssignments::Explicit(assignments) => assignments.as_slice(),
-                    }),
-            )
-        {
-            if assignment.is_blank() {
-                return Err(EditValidationError::EmptyArtistName);
-            }
-        }
-        Ok(())
+        validate_release_metadata(
+            &self.album_title,
+            self.album_artist_assignments.len(),
+            self.album_artist_assignments
+                .iter()
+                .chain(
+                    self.tracks
+                        .iter()
+                        .flat_map(|track| match &track.artist_assignments {
+                            TrackArtistAssignments::AlbumArtists => [].as_slice(),
+                            TrackArtistAssignments::Explicit(assignments) => assignments.as_slice(),
+                        }),
+                )
+                .any(ArtistAssignment::is_blank),
+        )
     }
+}
+
+/// Metadata validity depends on album identity and credited artists, not track
+/// titles, file bindings, or provider documents.
+pub(crate) fn validate_release_metadata(
+    album_title: &str,
+    album_artist_count: usize,
+    has_blank_artist: bool,
+) -> Result<(), EditValidationError> {
+    if album_title.trim().is_empty() {
+        return Err(EditValidationError::EmptyAlbumTitle);
+    }
+    if album_artist_count == 0 {
+        return Err(EditValidationError::NoAlbumArtist);
+    }
+    if has_blank_artist {
+        return Err(EditValidationError::EmptyArtistName);
+    }
+    Ok(())
 }
 
 impl ArtistAssignment {

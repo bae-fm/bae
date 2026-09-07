@@ -16,6 +16,33 @@ pub enum CombinationAction {
     Separate,
 }
 
+impl CombinationAction {
+    pub(crate) fn available(
+        self,
+        actionable: bool,
+        is_added: bool,
+        facts: &super::TriageRuntimeFacts,
+    ) -> Option<Self> {
+        if is_added
+            || facts.importing
+            || matches!(
+                facts.identification,
+                Some(
+                    super::IdentificationStatus::Queued
+                        | super::IdentificationStatus::Running
+                        | super::IdentificationStatus::Finalizing
+                )
+            )
+        {
+            return None;
+        }
+        match self {
+            Self::Combine => actionable.then_some(self),
+            Self::Separate => Some(self),
+        }
+    }
+}
+
 /// The source revisions shown by the review. Reordering uses this exact set;
 /// commit compares it with storage before creating the combined candidate.
 #[derive(Debug, Clone)]

@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import Foundation
 
 private final class OutputValueSink: OutputCallback, @unchecked Sendable {
@@ -60,80 +61,122 @@ private final class ImportCandidateSink: ImportCandidateCallback,
     }
 }
 
-/// The reads behind the selected import candidates: one per selected key,
-/// opened when the key is selected and closed when it leaves the selection.
-/// A read that says the folder is gone drops the key from the selection, which
-/// is what clears a row the scan removed.
+private final class ImportSelectionSink: ImportSelectionCallback,
+    @unchecked Sendable
+{
+    let apply: @MainActor @Sendable (BridgeImportSelection) -> Void
+    let fail: @MainActor @Sendable (BridgeError) -> Void
+    init(
+        apply: @escaping @MainActor @Sendable (BridgeImportSelection) -> Void,
+        fail: @escaping @MainActor @Sendable (BridgeError) -> Void
+    ) {
+        self.apply = apply
+        self.fail = fail
+    }
+    func onValue(value: BridgeImportSelection) {
+        Task { @MainActor in apply(value) }
+    }
+    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
+}
+
+/// One selected-key query and the editor read for the single visible pane.
 @MainActor
 final class ImportSelectionObservations {
     private struct Observation {
         let identity: UUID
         let subscription: LiveSubscription
     }
-
     private let appHandle: AppHandle
     private let importStore: ImportStore
     private let uiStore: UiStore
-    private var observations: [String: Observation] = [:]
+    private var keys: Set<String> = []
+    private var selection: Observation?
+    private var editor: Observation?
+    private var editorKey: String?
+    private var editorVisible = false
 
-    init(
-        appHandle: AppHandle,
-        importStore: ImportStore,
-        uiStore: UiStore
-    ) {
+    init(appHandle: AppHandle, importStore: ImportStore, uiStore: UiStore) {
         self.appHandle = appHandle
         self.importStore = importStore
         self.uiStore = uiStore
     }
 
     func selectionChanged(_ keys: Set<String>) {
-        for key in observations.keys where !keys.contains(key) {
-            observations.removeValue(forKey: key)?.subscription.cancel()
-            importStore.selectedCandidates.removeValue(forKey: key)
-        }
-        for key in keys where observations[key] == nil {
-            observe(key)
-        }
+        guard self.keys != keys else { return }
+        self.keys = keys
+        selection?.subscription.cancel()
+        selection = nil
+        importStore.selection = nil
+        updateEditor()
+        guard !keys.isEmpty else { return }
+        let identity = UUID()
+        let subscription = appHandle.subscribeImportSelection(
+            candidateKeys: Array(keys),
+            callback: ImportSelectionSink(
+                apply: { [weak self] value in
+                    guard let self, self.selection?.identity == identity else {
+                        return
+                    }
+                    self.importStore.selection = value
+                    self.uiStore.removeFolderCandidateSelection(
+                        keys.subtracting(value.candidateKeys)
+                    )
+                },
+                fail: { [weak self] error in
+                    guard let self, self.selection?.identity == identity else {
+                        return
+                    }
+                    self.uiStore.showError(error)
+                }
+            )
+        )
+        selection = Observation(identity: identity, subscription: subscription)
     }
 
-    private func observe(_ key: String) {
+    func setEditorVisible(_ visible: Bool) {
+        editorVisible = visible
+        updateEditor()
+    }
+
+    private func updateEditor() {
+        let key = editorVisible && keys.count == 1 ? keys.first : nil
+        guard editorKey != key else { return }
+        editor?.subscription.cancel()
+        editor = nil
+        editorKey = key
+        importStore.clearEditor()
+        guard let key else { return }
         let identity = UUID()
         let subscription = appHandle.subscribeImportCandidate(
             candidateKey: key,
             callback: ImportCandidateSink(
                 apply: { [weak self] detail in
-                    self?.deliver(detail, key: key, identity: identity)
+                    guard let self, self.editor?.identity == identity else {
+                        return
+                    }
+                    guard let detail else {
+                        self.uiStore.removeFolderCandidateSelection([key])
+                        return
+                    }
+                    self.importStore.applyCandidateDetail(
+                        key: key,
+                        detail: detail
+                    )
                 },
                 fail: { [weak self] error in
-                    self?.uiStore.showError(error)
+                    guard let self, self.editor?.identity == identity else {
+                        return
+                    }
+                    self.uiStore.showError(error)
                 }
             )
         )
-        observations[key] = Observation(
-            identity: identity,
-            subscription: subscription
-        )
-    }
-
-    private func deliver(
-        _ detail: BridgeImportCandidateDetail?,
-        key: String,
-        identity: UUID
-    ) {
-        guard observations[key]?.identity == identity else { return }
-        guard let detail else {
-            // The key names no scanned folder any more, so nothing can be done
-            // with it: drop it from the selection, which closes this read.
-            uiStore.removeFolderCandidateSelection([key])
-            return
-        }
-        importStore.applyCandidateDetail(key: key, detail: detail)
+        editor = Observation(identity: identity, subscription: subscription)
     }
 
     deinit {
-        for observation in observations.values {
-            observation.subscription.cancel()
-        }
+        selection?.subscription.cancel()
+        editor?.subscription.cancel()
     }
 }
 
@@ -148,6 +191,7 @@ final class DesktopSubscriptions {
     private let uiStore: UiStore
     private let selection: ImportSelectionObservations
     private var subscriptions: [LiveSubscription] = []
+    private var editorVisibility: AnyCancellable?
 
     init(
         appHandle: AppHandle,
@@ -220,9 +264,14 @@ final class DesktopSubscriptions {
                 }
             ),
         ]
-        uiStore.onFolderCandidateSelectionChanged = { [selection] keys in
-            selection.selectionChanged(keys)
+        uiStore.onFolderCandidateSelectionChanged = { [weak selection] keys in
+            selection?.selectionChanged(keys)
         }
+        editorVisibility = importStore.editorVisibility.sink {
+            [selection] visible in
+            selection.setEditorVisible(visible)
+        }
+        selection.selectionChanged(uiStore.selectedFolderCandidates)
         importList.startLoad()
     }
 }
