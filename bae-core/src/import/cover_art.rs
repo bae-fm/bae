@@ -1,6 +1,7 @@
 use crate::import::{ImportError, MetadataSource};
 use crate::retry::{exponential_backoff, is_transient_status, retry_classified, ClassifiedAttempt};
 use crate::util::content_type::ContentType;
+use crate::util::test_base_url::TestBaseUrl;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
@@ -32,54 +33,22 @@ pub enum RemoteCoverGallery {
 /// by the entity's MusicBrainz id, so an image's address is knowable without
 /// asking the archive anything.
 #[cfg(not(any(test, feature = "test-utils")))]
-const COVER_ART_ARCHIVE: &str = "https://coverartarchive.org";
+pub(crate) static ARCHIVE: TestBaseUrl = TestBaseUrl::new("https://coverartarchive.org");
 
-#[cfg(not(any(test, feature = "test-utils")))]
-fn archive_base() -> String {
-    COVER_ART_ARCHIVE.to_string()
-}
-
-/// The redirectable form of [`archive_base`], compiled only into test builds —
-/// the same seam the MusicBrainz client carries, for the same reason: the
-/// addresses are built by free functions over a fixed host, so the override is
-/// a static and production pays neither the lock nor the branch.
-///
-/// Its default is a port nothing listens on, not the live archive: a cover
-/// address is derived from a release id, so any fixture whose release document
-/// says the archive holds a front image would otherwise reach the real service.
-/// A test that wants bytes served answers them itself through
-/// [`set_base_url_for_test`].
+/// Test builds start at a port nothing listens on rather than the live archive:
+/// a cover address is derived from a release id, so any fixture whose release
+/// document says the archive holds a front image would otherwise reach the real
+/// service. A test that wants bytes served answers them itself, after pointing
+/// this at its own server.
 #[cfg(any(test, feature = "test-utils"))]
-fn archive_base() -> String {
-    BASE_URL_OVERRIDE
-        .lock()
-        .expect("Cover Art Archive base URL mutex poisoned")
-        .clone()
-        .unwrap_or_else(|| UNSERVED_ARCHIVE.to_string())
-}
+pub(crate) static ARCHIVE: TestBaseUrl = TestBaseUrl::new("http://127.0.0.1:9");
 
-/// Where a test build's cover addresses point until a test says otherwise.
-#[cfg(any(test, feature = "test-utils"))]
-const UNSERVED_ARCHIVE: &str = "http://127.0.0.1:9";
-
-#[cfg(any(test, feature = "test-utils"))]
-static BASE_URL_OVERRIDE: Mutex<Option<String>> = Mutex::new(None);
-
-/// Point every Cover Art Archive address at `url` (`None` restores the
-/// unserved default), so a test can answer image requests from a local server.
-/// Process-wide, like the MusicBrainz base it mirrors.
+/// Point every Cover Art Archive address at `url` (`None` restores the unserved
+/// default), so a test outside this crate can answer image requests from a local
+/// server.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn set_base_url_for_test(url: Option<String>) {
-    *BASE_URL_OVERRIDE
-        .lock()
-        .expect("Cover Art Archive base URL mutex poisoned") = url;
-}
-
-/// Where cover addresses currently point, for a test asserting on one it did
-/// not build itself.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn archive_base_for_test() -> String {
-    archive_base()
+    ARCHIVE.set_for_test(url);
 }
 
 /// A remote cover art option from an external source: where the full image and
@@ -117,7 +86,7 @@ impl RemoteCover {
     }
 
     fn cover_art_archive(entity: &str, id: &str, label: impl FnOnce(&str) -> String) -> Self {
-        let base = archive_base();
+        let base = ARCHIVE.get();
         Self {
             url: format!("{base}/{entity}/{id}/front"),
             thumbnail_url: format!("{base}/{entity}/{id}/front-250"),

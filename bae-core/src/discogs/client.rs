@@ -4,6 +4,7 @@ use crate::import::cover_art::RemoteCover;
 use crate::retry::retry_with_backoff_if;
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_LOOKUP_CAPACITY};
+use crate::util::test_base_url::TestBaseUrl;
 use reqwest::{Client, Error as ReqwestError, Response, StatusCode};
 use serde::Deserialize;
 use std::time::Duration;
@@ -393,40 +394,17 @@ pub enum DiscogsKeySignal {
 /// the library manager's Discogs operation session.
 pub type DiscogsValidationObserver = std::sync::Arc<dyn Fn(DiscogsKeySignal) + Send + Sync>;
 
-/// Where every Discogs request goes.
-const API_BASE_URL: &str = "https://api.discogs.com";
+/// Where every Discogs request goes. Each operation session builds its client on
+/// demand, so a test redirect is read at construction.
+pub(crate) static API_BASE_URL: TestBaseUrl = TestBaseUrl::new("https://api.discogs.com");
 
-#[cfg(not(any(test, feature = "test-utils")))]
-fn api_base_url() -> String {
-    API_BASE_URL.to_string()
-}
-
-/// The redirectable form of [`API_BASE_URL`], compiled only into test builds —
-/// the same seam `musicbrainz::set_base_url_for_test` gives that client. Each
-/// operation session builds its client on demand, so the override is read at
-/// construction.
-#[cfg(any(test, feature = "test-utils"))]
-fn api_base_url() -> String {
-    BASE_URL_OVERRIDE
-        .lock()
-        .expect("Discogs base URL mutex poisoned")
-        .clone()
-        .unwrap_or_else(|| API_BASE_URL.to_string())
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-static BASE_URL_OVERRIDE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
-
-/// Point every Discogs request built after this call at `url` (`None` restores
-/// the live API), so a test never reaches the real service — and never spends a
-/// fixture's fake key on a real auth check, which would come back 401 and mark
-/// the stored key rejected for everything after it. Process-wide, like the
-/// caches it sits next to.
+/// Point every Discogs client built after this call at `url` (`None` restores
+/// the live API), so a test outside this crate never reaches the real service —
+/// and never spends a fixture's fake key on a real auth check, which would come
+/// back 401 and mark the stored key rejected for everything after it.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn set_base_url_for_test(url: Option<String>) {
-    *BASE_URL_OVERRIDE
-        .lock()
-        .expect("Discogs base URL mutex poisoned") = url;
+    API_BASE_URL.set_for_test(url);
 }
 
 pub struct DiscogsClient {
@@ -454,7 +432,7 @@ impl DiscogsClient {
                 .build()
                 .expect("Failed to build HTTP client"),
             api_key,
-            base_url: api_base_url(),
+            base_url: API_BASE_URL.get(),
             observer,
         }
     }

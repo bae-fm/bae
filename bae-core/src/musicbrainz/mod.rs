@@ -14,6 +14,7 @@ use std::time::Duration;
 use crate::import::{PayloadSource, SourcePayload};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_LOOKUP_CAPACITY};
+use crate::util::test_base_url::TestBaseUrl;
 use thiserror::Error;
 use tracing::{debug, warn};
 
@@ -41,40 +42,12 @@ pub(crate) fn reset_rate_limiter_for_test() {
 }
 
 /// Where every MusicBrainz web-service request goes.
-const BASE_URL: &str = "https://musicbrainz.org/ws/2";
+pub(crate) static BASE_URL: TestBaseUrl = TestBaseUrl::new("https://musicbrainz.org/ws/2");
 
 /// One web-service URL. `path` is everything after `ws/2/`, query string
 /// included.
-#[cfg(not(any(test, feature = "test-utils")))]
 fn ws2(path: &str) -> String {
-    format!("{BASE_URL}/{path}")
-}
-
-/// The redirectable form of [`ws2`], compiled only into test builds. The
-/// Discogs client carries the same seam as a per-client `base_url` field; this
-/// module cannot, because its entry points are free functions over one static
-/// client — so the override is a static, and production never pays for the lock
-/// or the branch.
-#[cfg(any(test, feature = "test-utils"))]
-fn ws2(path: &str) -> String {
-    let base = BASE_URL_OVERRIDE
-        .lock()
-        .expect("MusicBrainz base URL mutex poisoned");
-    let base = base.as_deref().unwrap_or(BASE_URL);
-    format!("{base}/{path}")
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-static BASE_URL_OVERRIDE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
-
-/// Point every MusicBrainz request at `url` (`None` restores the live service),
-/// so a test can answer them from a local server. Process-wide, like the
-/// limiter and the caches it sits next to: serialize the tests that set it.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn set_base_url_for_test(url: Option<String>) {
-    *BASE_URL_OVERRIDE
-        .lock()
-        .expect("MusicBrainz base URL mutex poisoned") = url;
+    format!("{}/{path}", BASE_URL.get())
 }
 
 /// Retry only what a retry can fix. `NotFound` is MusicBrainz's answer, not a
@@ -85,9 +58,11 @@ pub fn set_base_url_for_test(url: Option<String>) {
 fn should_retry_mb(error: &MusicBrainzError) -> bool {
     match error {
         MusicBrainzError::Network(_) | MusicBrainzError::Timeout => true,
-        MusicBrainzError::Provider { status } => {
-            matches!(status, Some(429) | Some(500..=599) | None)
-        }
+        // No readable status means reqwest classified a send error as carrying
+        // one it couldn't produce — repeat it like any transport failure.
+        MusicBrainzError::Provider { status } => status.is_none_or(|status| {
+            reqwest::StatusCode::from_u16(status).is_ok_and(crate::retry::is_transient_status)
+        }),
         MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => false,
     }
 }

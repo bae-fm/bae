@@ -37,29 +37,12 @@ impl LibraryManager {
             .map_err(|error| LibraryError::Storage(error.to_string()))
     }
 
-    /// Configure coven's per-namespace cache budgets for this device: the bulk for
-    /// `release_files` (audio), a small reserved slice each for `covers` and
-    /// `artist_images`, so each namespace evicts against its own budget and audio
-    /// pressure never wipes the cover cache. Device-local; set once at startup.
+    /// Apply [`crate::sync::CACHE_BUDGETS`] to coven for this device.
+    /// Device-local; set once at startup.
     pub(crate) async fn configure_cache_budgets(&self) -> Result<(), LibraryError> {
-        self.database
-            .set_cache_budget(
-                crate::sync::RELEASE_FILES_NAMESPACE,
-                crate::sync::RELEASE_FILES_CACHE_BUDGET,
-            )
-            .await?;
-        self.database
-            .set_cache_budget(
-                crate::sync::COVERS_NAMESPACE,
-                crate::sync::COVERS_CACHE_BUDGET,
-            )
-            .await?;
-        self.database
-            .set_cache_budget(
-                crate::sync::ARTIST_IMAGES_NAMESPACE,
-                crate::sync::ARTIST_IMAGES_CACHE_BUDGET,
-            )
-            .await?;
+        for (namespace, budget) in crate::sync::CACHE_BUDGETS {
+            self.database.set_cache_budget(namespace, budget).await?;
+        }
         Ok(())
     }
 

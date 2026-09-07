@@ -89,37 +89,19 @@ pub(super) fn discogs_identity(release: &DiscogsRelease) -> ReleaseIdentity {
 /// (`crate::musicbrainz::fetch_mb_xref`), when one was. It contributes a second
 /// `ReleaseIdentity` row, so future MB-rooted imports of the same release group
 /// attach to this album.
+///
+/// `audio_durations_ms` is what the folder's audio measures, which is how the
+/// tracklist's index/sub-track layout is chosen; `None` takes the leaf tracks.
 pub fn map_discogs_to_db(
     release: &DiscogsRelease,
     master_year: Option<u32>,
     mb_xref: Option<&MbReleaseResponse>,
+    audio_durations_ms: Option<&[u64]>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
-    let tracks = process_tracklist(&release.tracklist);
-    map_discogs_to_db_with_tracks(release, master_year, mb_xref, &tracks, clock, ids)
-}
-
-pub(crate) fn map_discogs_to_db_for_audio(
-    release: &DiscogsRelease,
-    master_year: Option<u32>,
-    mb_xref: Option<&MbReleaseResponse>,
-    audio_durations_ms: &[u64],
-    clock: &dyn Clock,
-    ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, ImportError> {
-    let tracks = process_tracklist_for_audio(&release.tracklist, audio_durations_ms);
-    map_discogs_to_db_with_tracks(release, master_year, mb_xref, &tracks, clock, ids)
-}
-
-fn map_discogs_to_db_with_tracks(
-    release: &DiscogsRelease,
-    master_year: Option<u32>,
-    mb_xref: Option<&MbReleaseResponse>,
-    processed: &[ProcessedTrack<'_>],
-    clock: &dyn Clock,
-    ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, ImportError> {
+    let processed = process_tracklist(&release.tracklist, audio_durations_ms);
+    let processed = &processed[..];
     // With no artists list, fall back to the artist half of the "Artist - Album"
     // title split.
     let mut release_refs: Vec<ArtistRef> = if release.artists.is_empty() {
@@ -320,35 +302,27 @@ struct CandidateLayout<'a> {
     expanded_groups: usize,
 }
 
-/// The source's leaf tracks, independent of a particular folder.
-pub(crate) fn process_tracklist(
-    tracklist: &[crate::discogs::DiscogsTrack],
-) -> Vec<ProcessedTrack<'_>> {
-    select_tracklist(tracklist, TrackLayoutTarget::Expanded)
-}
-
-/// The source layout whose playable rows best fit the candidate's audio. Count
-/// decides first; ordered per-track durations decide between equal-count
-/// layouts; an unresolved tie keeps the more expanded source description.
-pub(crate) fn process_tracklist_for_audio<'a>(
+/// The source layout whose playable rows best fit `audio_durations_ms`: count
+/// decides first, ordered per-track durations decide between equal-count
+/// layouts, and an unresolved tie keeps the more expanded source description.
+/// `None` — no folder to fit — takes the source's leaf tracks.
+pub(crate) fn process_tracklist<'a>(
     tracklist: &'a [crate::discogs::DiscogsTrack],
-    audio_durations_ms: &[u64],
+    audio_durations_ms: Option<&[u64]>,
 ) -> Vec<ProcessedTrack<'a>> {
-    select_tracklist(tracklist, TrackLayoutTarget::Audio(audio_durations_ms))
+    let layouts = candidate_layouts(tracklist, audio_durations_ms, 0);
+    layouts
+        .into_values()
+        .min_by(|left, right| compare_layouts(left, right, audio_durations_ms))
+        .expect("Discogs layout generation always yields a candidate")
+        .tracks
 }
 
-enum TrackLayoutTarget<'a> {
-    Expanded,
-    Audio(&'a [u64]),
-}
-
-impl TrackLayoutTarget<'_> {
-    fn audio_from(&self, offset: usize) -> &[u64] {
-        match self {
-            Self::Expanded => &[],
-            Self::Audio(audio) if offset < audio.len() => &audio[offset..],
-            Self::Audio(_) => &[],
-        }
+/// The durations still unmatched once a layout starts at `offset`.
+fn audio_from(audio: Option<&[u64]>, offset: usize) -> &[u64] {
+    match audio {
+        Some(audio) if offset < audio.len() => &audio[offset..],
+        _ => &[],
     }
 }
 
@@ -362,43 +336,27 @@ enum LayoutEntry<'a> {
 }
 
 impl<'a> LayoutEntry<'a> {
-    fn options(
-        &self,
-        target: &TrackLayoutTarget<'_>,
-        audio_offset: usize,
-    ) -> Vec<CandidateLayout<'a>> {
+    fn options(&self, audio: Option<&[u64]>, audio_offset: usize) -> Vec<CandidateLayout<'a>> {
         match self {
-            Self::Index(index) => index_layouts(index, target, audio_offset),
+            Self::Index(index) => index_layouts(index, audio, audio_offset),
             Self::Heading { heading, children } => heading_layouts(heading, children),
             Self::Track(track) => vec![fixed_track_layout(track)],
         }
     }
 }
 
-fn select_tracklist<'a>(
-    tracklist: &'a [crate::discogs::DiscogsTrack],
-    target: TrackLayoutTarget<'_>,
-) -> Vec<ProcessedTrack<'a>> {
-    let layouts = candidate_layouts(tracklist, &target, 0);
-    layouts
-        .into_values()
-        .min_by(|left, right| compare_layouts(left, right, &target))
-        .expect("Discogs layout generation always yields a candidate")
-        .tracks
-}
-
 fn compare_layouts(
     left: &CandidateLayout<'_>,
     right: &CandidateLayout<'_>,
-    target: &TrackLayoutTarget<'_>,
+    audio: Option<&[u64]>,
 ) -> std::cmp::Ordering {
-    match target {
-        TrackLayoutTarget::Expanded => right
+    match audio {
+        None => right
             .tracks
             .len()
             .cmp(&left.tracks.len())
             .then_with(|| right.expanded_groups.cmp(&left.expanded_groups)),
-        TrackLayoutTarget::Audio(audio) => left
+        Some(audio) => left
             .tracks
             .len()
             .abs_diff(audio.len())
@@ -447,7 +405,7 @@ fn compare_duration_fit(
 
 fn candidate_layouts<'a>(
     entries: &'a [crate::discogs::DiscogsTrack],
-    target: &TrackLayoutTarget<'_>,
+    audio: Option<&[u64]>,
     audio_offset: usize,
 ) -> std::collections::BTreeMap<usize, CandidateLayout<'a>> {
     let mut layouts = std::collections::BTreeMap::from([(
@@ -490,7 +448,7 @@ fn candidate_layouts<'a>(
         };
         let mut combined = std::collections::BTreeMap::new();
         for prefix in layouts.values() {
-            for option in layout_entry.options(target, audio_offset + prefix.tracks.len()) {
+            for option in layout_entry.options(audio, audio_offset + prefix.tracks.len()) {
                 let mut tracks = prefix.tracks.clone();
                 tracks.extend(option.tracks);
                 keep_better_layout(
@@ -499,7 +457,7 @@ fn candidate_layouts<'a>(
                         tracks,
                         expanded_groups: prefix.expanded_groups + option.expanded_groups,
                     },
-                    target,
+                    audio,
                     audio_offset,
                 );
             }
@@ -566,7 +524,7 @@ fn heading_layouts<'a>(
 fn keep_better_layout<'a>(
     layouts: &mut std::collections::BTreeMap<usize, CandidateLayout<'a>>,
     candidate: CandidateLayout<'a>,
-    target: &TrackLayoutTarget<'_>,
+    audio: Option<&[u64]>,
     audio_offset: usize,
 ) {
     let count = candidate.tracks.len();
@@ -575,7 +533,7 @@ fn keep_better_layout<'a>(
             if compare_duration_fit(
                 &candidate.tracks,
                 &current.tracks,
-                target.audio_from(audio_offset),
+                audio_from(audio, audio_offset),
             )
             .then_with(|| current.expanded_groups.cmp(&candidate.expanded_groups))
                 != std::cmp::Ordering::Less => {}
@@ -587,10 +545,10 @@ fn keep_better_layout<'a>(
 
 fn index_layouts<'a>(
     index: &'a crate::discogs::DiscogsTrack,
-    target: &TrackLayoutTarget<'_>,
+    audio: Option<&[u64]>,
     audio_offset: usize,
 ) -> Vec<CandidateLayout<'a>> {
-    let child_layouts = candidate_layouts(&index.sub_tracks, target, audio_offset);
+    let child_layouts = candidate_layouts(&index.sub_tracks, audio, audio_offset);
     let expanded = child_layouts
         .into_values()
         .map(|mut layout| {

@@ -1,8 +1,8 @@
 //! Complete Cover Art Archive galleries, fetched only when a picker opens.
 
 use super::{
-    archive_base, push_unique_cover, send_artwork_request, ImportError, MetadataSource,
-    RemoteCover, RETRY_BASE_DELAY,
+    push_unique_cover, send_artwork_request, ImportError, MetadataSource, RemoteCover,
+    RETRY_BASE_DELAY,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -27,7 +27,7 @@ pub async fn musicbrainz_gallery(
     release_id: &str,
     group_id: Option<&str>,
 ) -> Result<Vec<RemoteCover>, ImportError> {
-    let base = archive_base();
+    let base = super::ARCHIVE.get();
     fetch_gallery_set(&base, release_id, group_id).await
 }
 

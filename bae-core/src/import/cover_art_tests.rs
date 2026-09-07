@@ -10,7 +10,7 @@ fn test_png() -> Vec<u8> {
 
 #[test]
 fn cover_art_archive_addresses_are_derived_from_the_entity_id() {
-    let base = archive_base();
+    let base = ARCHIVE.get();
 
     let release = RemoteCover::musicbrainz_release("rel-1");
     assert_eq!(release.url, format!("{base}/release/rel-1/front"));

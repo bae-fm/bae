@@ -172,11 +172,10 @@ fn fetch_device(client: &reqwest::blocking::Client, location: &str) -> Option<Re
     parse_device_description(&xml, location)
 }
 
-/// A stable, de-duplicated device list: one entry per UDN, sorted by name for a
-/// stable UI.
+/// A stable, de-duplicated device list: one entry per UDN, in picker order.
 fn snapshot(by_id: &HashMap<String, RendererDevice>) -> Vec<RendererDevice> {
     let mut devices: Vec<RendererDevice> = by_id.values().cloned().collect();
-    devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+    crate::renderer::discovery::sort_for_picker(&mut devices);
     devices
 }
 

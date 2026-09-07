@@ -16,7 +16,7 @@ fn map(
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("d");
-    map_discogs_to_db(release, master_year, mb_xref, &clock, &ids)
+    map_discogs_to_db(release, master_year, mb_xref, None, &clock, &ids)
 }
 
 fn map_for_audio(
@@ -30,7 +30,14 @@ fn map_for_audio(
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("d");
-    map_discogs_to_db_for_audio(release, master_year, None, audio_durations_ms, &clock, &ids)
+    map_discogs_to_db(
+        release,
+        master_year,
+        None,
+        Some(audio_durations_ms),
+        &clock,
+        &ids,
+    )
 }
 
 #[test]
@@ -564,7 +571,7 @@ fn test_no_master_id_with_mb_xref_yields_two_identity_rows() {
 
 #[test]
 fn process_tracklist_empty_yields_no_tracks() {
-    assert!(process_tracklist(&[]).is_empty());
+    assert!(process_tracklist(&[], None).is_empty());
 }
 
 #[test]
@@ -572,7 +579,7 @@ fn process_tracklist_drops_headings_with_no_subtracks() {
     // Headings only contribute a track once sub-tracks accumulate under
     // them. Headings with nothing beneath (here, back-to-back) are dropped.
     let tracklist = vec![make_heading("Disc One"), make_heading("Disc Two")];
-    assert!(process_tracklist(&tracklist).is_empty());
+    assert!(process_tracklist(&tracklist, None).is_empty());
 }
 
 #[test]
@@ -583,7 +590,7 @@ fn heading_subtracks_expand_to_matching_audio_rows() {
     second.duration = Some("2:00".to_string());
     let tracklist = vec![make_heading("Suite Title"), first, second];
 
-    let tracks = process_tracklist_for_audio(&tracklist, &[60_000, 120_000]);
+    let tracks = process_tracklist(&tracklist, Some(&[60_000, 120_000]));
 
     assert_eq!(tracks.len(), 2);
     assert_eq!(tracks[0].title, "Suite Title: Part One");
@@ -603,7 +610,7 @@ fn process_tracklist_filters_index_entries() {
         sub_tracks: vec![],
     };
     let tracklist = [index, make_track("A1", "Real Track")];
-    let result = process_tracklist(&tracklist);
+    let result = process_tracklist(&tracklist, None);
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].title, "Real Track");
 }

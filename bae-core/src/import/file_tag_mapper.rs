@@ -347,15 +347,6 @@ pub fn map_cue_sheets_to_db(
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
-    map_cue_sheets(sheets, folder_name, clock, ids)
-}
-
-fn map_cue_sheets(
-    sheets: &[&CueSheet],
-    folder_name: Option<&str>,
-    clock: &dyn Clock,
-    ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, ImportError> {
     Ok(assemble_parsed_album(
         cue_sheets_ir(sheets, folder_name)?,
         clock,

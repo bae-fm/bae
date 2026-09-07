@@ -285,7 +285,7 @@ async fn a_settled_candidate_uses_archived_metadata_and_prepares_its_cover() {
             .collect::<Vec<_>>(),
         vec![format!(
             "{}/release-group/rg-offline-1/front",
-            crate::import::cover_art::archive_base_for_test()
+            crate::import::cover_art::ARCHIVE.get()
         )],
         "the pressing states no front image of its own, so the album's is the \
          only option — and it is read off the stored document, not asked for"

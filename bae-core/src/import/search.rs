@@ -470,29 +470,16 @@ pub async fn lookup_by_discid(
     Ok(mb_discid_releases_to_metadata(discid, releases))
 }
 
-/// A Discogs release's tracklist. Headings and index entries are not tracks and
-/// Nested index rows are expanded to their playable leaves when no local audio
-/// layout is available. A playable row with no parseable duration leaves the
-/// total unknown while the count still stands.
-pub(crate) fn discogs_source_tracks(release: &crate::discogs::DiscogsRelease) -> SourceTracks {
-    let tracks = crate::import::discogs_mapper::process_tracklist(&release.tracklist);
-    source_tracks_from_discogs_layout(&tracks)
-}
-
-pub(crate) fn discogs_source_tracks_for_audio(
+/// A Discogs release's tracklist. Headings and index entries are not tracks;
+/// nested index rows are expanded to their playable leaves when
+/// `audio_durations_ms` offers no layout to fit. A playable row with no
+/// parseable duration leaves the total unknown while the count still stands.
+pub(crate) fn discogs_source_tracks(
     release: &crate::discogs::DiscogsRelease,
-    audio_durations_ms: &[u64],
+    audio_durations_ms: Option<&[u64]>,
 ) -> SourceTracks {
-    let tracks = crate::import::discogs_mapper::process_tracklist_for_audio(
-        &release.tracklist,
-        audio_durations_ms,
-    );
-    source_tracks_from_discogs_layout(&tracks)
-}
-
-fn source_tracks_from_discogs_layout(
-    tracks: &[crate::import::discogs_mapper::ProcessedTrack<'_>],
-) -> SourceTracks {
+    let tracks =
+        crate::import::discogs_mapper::process_tracklist(&release.tracklist, audio_durations_ms);
     if tracks.is_empty() {
         return SourceTracks::Nothing;
     }
@@ -500,11 +487,6 @@ fn source_tracks_from_discogs_layout(
         count: tracks.len() as u32,
         total_duration_ms: tracks.iter().map(|track| track.duration_ms).sum(),
     }
-}
-
-/// Parse a Discogs-style duration string ("3:45") to milliseconds.
-pub fn parse_duration_to_ms(duration: &str) -> Option<u64> {
-    crate::import::discogs_mapper::parse_duration_to_ms(duration)
 }
 
 /// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed MB response,
@@ -561,23 +543,13 @@ pub(crate) fn build_mb_detail(
     })
 }
 
-pub(crate) fn build_discogs_detail_for_audio(
+pub(crate) fn build_discogs_detail(
     release: &crate::discogs::DiscogsRelease,
     cover_art: Vec<RemoteCover>,
-    audio_durations_ms: &[u64],
+    audio_durations_ms: Option<&[u64]>,
 ) -> ImportSearchReleaseDetail {
-    let processed = crate::import::discogs_mapper::process_tracklist_for_audio(
-        &release.tracklist,
-        audio_durations_ms,
-    );
-    build_discogs_detail_with_tracks(release, cover_art, &processed)
-}
-
-fn build_discogs_detail_with_tracks(
-    release: &crate::discogs::DiscogsRelease,
-    cover_art: Vec<RemoteCover>,
-    processed: &[crate::import::discogs_mapper::ProcessedTrack<'_>],
-) -> ImportSearchReleaseDetail {
+    let processed =
+        crate::import::discogs_mapper::process_tracklist(&release.tracklist, audio_durations_ms);
     let format_string = if release.format.is_empty() {
         None
     } else {

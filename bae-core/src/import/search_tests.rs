@@ -1,5 +1,6 @@
 use super::*;
 use crate::discogs::client::DiscogsSearchResult;
+use crate::import::discogs_mapper::parse_duration_to_ms;
 use crate::musicbrainz::{
     MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
 };
@@ -497,7 +498,7 @@ fn nested_discogs_release() -> crate::discogs::DiscogsRelease {
 fn discogs_detail_collapses_an_index_for_one_matching_audio_file() {
     let release = nested_discogs_release();
 
-    let detail = build_discogs_detail_for_audio(&release, Vec::new(), &[300_000, 240_000]);
+    let detail = build_discogs_detail(&release, Vec::new(), Some(&[300_000, 240_000]));
     let titles: Vec<&str> = detail
         .tracks
         .iter()
@@ -541,7 +542,7 @@ fn discogs_detail_selects_each_index_layout_from_ordered_durations() {
     )
     .expect("two nested Discogs indexes parse");
 
-    let detail = build_discogs_detail_for_audio(&release, Vec::new(), &[60_000, 120_000, 540_000]);
+    let detail = build_discogs_detail(&release, Vec::new(), Some(&[60_000, 120_000, 540_000]));
     let titles: Vec<&str> = detail
         .tracks
         .iter()
@@ -596,8 +597,11 @@ fn nested_index_durations_align_after_preceding_tracks() {
     )
     .expect("nested Discogs indexes parse");
 
-    let detail =
-        build_discogs_detail_for_audio(&release, Vec::new(), &[600_000, 60_000, 120_000, 540_000]);
+    let detail = build_discogs_detail(
+        &release,
+        Vec::new(),
+        Some(&[600_000, 60_000, 120_000, 540_000]),
+    );
     let titles: Vec<&str> = detail
         .tracks
         .iter()

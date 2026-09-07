@@ -137,23 +137,14 @@ pub fn import_status_of(
 /// The runtime facts a row's placement reads: a change to any other part of
 /// a candidate's runtime — a progress tick within a running import — leaves
 /// the queue as projected.
-#[derive(Debug, Clone, PartialEq)]
+/// The default is a key nothing is running for: no identification work exists
+/// and no import has claimed it.
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct TriageRuntimeFacts {
     pub identification: Option<IdentificationStatus>,
     /// Whether an import owns this candidate right now. How far it has got is
     /// the runtime's, read by the leaf that draws the bar.
     pub importing: bool,
-}
-
-impl Default for TriageRuntimeFacts {
-    /// A key nothing is running for: no identification work exists and no
-    /// import has claimed it.
-    fn default() -> Self {
-        Self {
-            identification: None,
-            importing: false,
-        }
-    }
 }
 
 impl TriageRuntimeFacts {

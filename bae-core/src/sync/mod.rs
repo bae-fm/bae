@@ -60,16 +60,17 @@ pub const COVERS_NAMESPACE: &str = "covers";
 /// Cloud namespace for the bae-produced artist image blob (1:1 with an artist).
 pub const ARTIST_IMAGES_NAMESPACE: &str = "artist_images";
 
-/// This device's cache budget (bytes) for Remote `release_files` blobs — the bulk
-/// of the cache, since audio dominates. Each namespace evicts against its own
-/// budget, so audio pressure never wipes the cover cache.
-pub const RELEASE_FILES_CACHE_BUDGET: u64 = 20 * 1024 * 1024 * 1024; // 20 GiB
-/// The reserved cache budget for Remote `covers` blobs (grid art). A `CacheEager`
-/// cover evicted under pressure shows a placeholder and re-fetches on the next
-/// pull — covers are not pinned.
-pub const COVERS_CACHE_BUDGET: u64 = 512 * 1024 * 1024; // 512 MiB
-/// The reserved cache budget for Remote `artist_images` blobs.
-pub const ARTIST_IMAGES_CACHE_BUDGET: u64 = 256 * 1024 * 1024; // 256 MiB
+/// This device's cache budget (bytes) per namespace. Each namespace evicts
+/// against its own budget, so audio pressure never wipes the cover cache:
+/// `release_files` takes the bulk since audio dominates, and `covers` (grid art)
+/// and `artist_images` each keep a reserved slice. A `CacheEager` cover evicted
+/// under pressure shows a placeholder and re-fetches on the next pull — covers
+/// are not pinned.
+pub const CACHE_BUDGETS: [(&str, u64); 3] = [
+    (RELEASE_FILES_NAMESPACE, 20 * 1024 * 1024 * 1024), // 20 GiB
+    (COVERS_NAMESPACE, 512 * 1024 * 1024),              // 512 MiB
+    (ARTIST_IMAGES_NAMESPACE, 256 * 1024 * 1024),       // 256 MiB
+];
 
 /// The tables coven captures into changesets for incremental sync.
 ///

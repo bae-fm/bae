@@ -2,7 +2,7 @@
 //!
 //! Every one of them drives the real pipeline — folder scan, extraction,
 //! identify reducer, the shared rate limiter, the real MusicBrainz client — and
-//! fakes only the provider, at the wire. `set_base_url_for_test` points the
+//! fakes only the provider, at the wire. `set_for_test` points the
 //! client at a local server that answers the same URLs the live service does and
 //! counts what was asked for, so "did the sweep re-fetch this?" is answered by
 //! request counts rather than by a stub the sweep was handed.
@@ -443,11 +443,11 @@ impl Fixture {
         let (identify, extraction) = import.start_candidate_services();
 
         let provider = FakeProvider::start().await;
-        crate::musicbrainz::set_base_url_for_test(Some(provider.base_url.clone()));
-        crate::import::cover_art::set_base_url_for_test(Some(provider.base_url.clone()));
+        crate::musicbrainz::BASE_URL.set_for_test(Some(provider.base_url.clone()));
+        crate::import::cover_art::ARCHIVE.set_for_test(Some(provider.base_url.clone()));
         // Pointed at the fake whether or not this test enables Discogs, so no
         // fixture can spend its fake key on the real API.
-        crate::discogs::client::set_base_url_for_test(Some(provider.base_url.clone()));
+        crate::discogs::client::API_BASE_URL.set_for_test(Some(provider.base_url.clone()));
         crate::musicbrainz::reset_rate_limiter_for_test();
 
         let root = temp.path().join("watched");
@@ -846,9 +846,9 @@ impl Drop for Fixture {
     fn drop(&mut self) {
         // The base URL is process-wide; leaving it pointed at a dead port would
         // make the next test's live-service assumption silently wrong.
-        crate::musicbrainz::set_base_url_for_test(None);
-        crate::import::cover_art::set_base_url_for_test(None);
-        crate::discogs::client::set_base_url_for_test(None);
+        crate::musicbrainz::BASE_URL.set_for_test(None);
+        crate::import::cover_art::ARCHIVE.set_for_test(None);
+        crate::discogs::client::API_BASE_URL.set_for_test(None);
         self.sweep.stop();
         self.import.stop_and_join();
     }

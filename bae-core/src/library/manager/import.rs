@@ -3,7 +3,6 @@
 use super::*;
 
 impl LibraryManager {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn set_combined_candidate_skipped(
         &self,
         key: &str,
@@ -15,7 +14,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn load_release_candidate(
         &self,
         key: &str,
@@ -23,7 +21,6 @@ impl LibraryManager {
         Ok(self.database.load_release_candidate(key).await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn combine_candidates(
         &self,
         key: String,
@@ -37,12 +34,10 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn separate_combined_candidate(&self, key: &str) -> Result<(), LibraryError> {
         Ok(self.database.separate_combined_candidate(key).await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn subscribe_import_list(
         &self,
         initial: crate::import::ImportListRequest,
@@ -53,7 +48,6 @@ impl LibraryManager {
         self.database.subscribe_import_list(initial)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn load_import_list(
         &self,
         request: crate::import::ImportListRequest,
@@ -61,7 +55,6 @@ impl LibraryManager {
         Ok(self.database.load_import_list(request).await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn locate_import_candidate(
         &self,
         request: crate::import::ImportListRequest,
@@ -73,7 +66,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn subscribe_import_candidate(
         &self,
         key: &str,
@@ -82,7 +74,6 @@ impl LibraryManager {
     }
 
     /// Record the pane's per-candidate state between visits.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn save_import_candidate_session(
         &self,
         content_hash: &str,
@@ -94,7 +85,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn load_import_candidate(
         &self,
         key: &str,
@@ -103,14 +93,12 @@ impl LibraryManager {
     }
 
     /// Every candidate the queue sweep is responsible for, with its files.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn load_sweepable_candidates(
         &self,
     ) -> Result<Vec<crate::import::FolderCandidate>, LibraryError> {
         Ok(self.database.load_sweepable_candidates().await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn start_import_service(
         &self,
         runtime_handle: tokio::runtime::Handle,
@@ -147,7 +135,6 @@ impl LibraryManager {
         Ok(())
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn load_release_payloads(
         &self,
         release: &crate::import::MetadataRef,
@@ -155,7 +142,6 @@ impl LibraryManager {
         crate::import::payloads::load(&self.database, release).await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn store_release_payloads(
         &self,
         payloads: &crate::import::payloads::ReleasePayloads,
@@ -163,14 +149,12 @@ impl LibraryManager {
         crate::import::payloads::store(&self.database, payloads, self.clock.now()).await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_watched_import_folders(
         &self,
     ) -> Result<Vec<crate::import::WatchedFolder>, LibraryError> {
         Ok(self.database.load_watched_import_folders().await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn is_release_candidate_skipped(
         &self,
         candidate: &crate::import::release_candidate::ReleaseCandidate,
@@ -181,7 +165,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_skipped_import_candidates(
         &self,
         watched_folder_path: &str,
@@ -192,12 +175,10 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, LibraryError> {
         Ok(self.database.add_watched_import_folder(path).await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn remove_watched_import_folder(
         &self,
         path: &str,
@@ -205,7 +186,6 @@ impl LibraryManager {
         Ok(self.database.remove_watched_import_folder(path).await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn set_import_candidate_skipped(
         &self,
         watched_folder_path: &str,
@@ -218,12 +198,10 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn begin_folder_scan(&self, watched_folder_path: &str) -> Result<u64, LibraryError> {
         Ok(self.database.begin_folder_scan(watched_folder_path).await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn record_folder_scan_directories(
         &self,
         watched_folder_path: &str,
@@ -235,7 +213,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_folder_scan_directories(
         &self,
         watched_folder_path: &str,
@@ -246,7 +223,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn save_folder_scan_item_with_date(
         &self,
         watched_folder_path: &str,
@@ -271,10 +247,7 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(all(
-        any(test, feature = "test-utils"),
-        not(any(target_os = "ios", target_os = "android"))
-    ))]
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn save_folder_scan_item(
         &self,
         watched_folder_path: &str,
@@ -285,7 +258,6 @@ impl LibraryManager {
             .await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn finish_folder_scan(
         &self,
         watched_folder_path: &str,
@@ -305,7 +277,6 @@ impl LibraryManager {
         Ok(self.database.load_folder_scan_snapshots().await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_folder_scan_items(
         &self,
         watched_folder_path: &str,
@@ -316,14 +287,12 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_all_folder_scan_items(
         &self,
     ) -> Result<Vec<crate::import::folder_scanner::ScanItem>, LibraryError> {
         Ok(self.database.load_all_folder_scan_items().await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_folder_scan_item(
         &self,
         entry_key: &str,
@@ -331,7 +300,6 @@ impl LibraryManager {
         Ok(self.database.load_folder_scan_item(entry_key).await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn load_candidate_file_tag_snapshot(
         &self,
         watched_folder_path: &str,
@@ -343,7 +311,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn replace_candidate_file_tag_snapshot(
         &self,
         watched_folder_path: &str,
@@ -363,7 +330,6 @@ impl LibraryManager {
     /// Track rows come straight off `tracks_to_files` — each `TrackFile` owns the
     /// `DbTrack` (with its populated `duration_ms`) that gets inserted. There is no
     /// parallel list of tracks or durations.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
         &self,
@@ -419,14 +385,12 @@ impl LibraryManager {
     /// Every stored candidate row, keyed by content hash. The queue is a few
     /// hundred rows at most, so the sweep reads it whole and decides in memory
     /// which candidates still need identifying.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, crate::db::DbImportCandidateState>, LibraryError> {
         Ok(self.database.load_import_candidate_states().await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_import_candidate_state(
         &self,
         content_hash: &str,
@@ -438,7 +402,6 @@ impl LibraryManager {
     }
 
     /// Everything a person settled about one candidate through its pane.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_import_candidate_pane_rows(
         &self,
         content_hash: &str,
@@ -449,7 +412,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_import_candidate_preparation(
         &self,
         content_hash: &str,
@@ -460,7 +422,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_import_candidate_prepared_assets(
         &self,
         content_hash: &str,
@@ -473,7 +434,6 @@ impl LibraryManager {
 
     /// Record that an import of this candidate failed, so the pane still
     /// offers Retry after a relaunch.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn save_import_candidate_failure(
         &self,
         content_hash: &str,
@@ -486,7 +446,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn clear_import_candidate_failure(
         &self,
         content_hash: &str,
@@ -500,14 +459,12 @@ impl LibraryManager {
     /// Every candidate's user-set file decisions, keyed by content hash — what
     /// a folder scan needs so the roles it reports are the ones the user
     /// settled, not only the ones its filenames propose.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_stored_candidate_edits(
         &self,
     ) -> Result<crate::import::folder_scanner::StoredCandidateEdits, LibraryError> {
         Ok(self.database.load_stored_candidate_edits().await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_candidate_file_edits(
         &self,
         content_hash: &str,
@@ -518,7 +475,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn set_folder_release_decision(
         &self,
         key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
@@ -536,7 +492,6 @@ impl LibraryManager {
 
     /// Store the reading a scan settled on for one folder. Never disturbs the
     /// scan that produced it, and never replaces the user's own answer.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn record_scanned_folder_release_decision(
         &self,
         key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
@@ -548,7 +503,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn set_folder_release_decisions(
         &self,
         decisions: &[(
@@ -565,7 +519,6 @@ impl LibraryManager {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn load_folder_release_decisions(
         &self,
         watched_folder_path: &str,

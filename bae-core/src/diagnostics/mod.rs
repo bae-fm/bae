@@ -548,9 +548,7 @@ async fn send_with_retry(
 pub fn should_retry(error: &DiagnosticsError) -> bool {
     match error {
         DiagnosticsError::Transport(_) => true,
-        DiagnosticsError::Status(status) => {
-            status.is_server_error() || *status == StatusCode::TOO_MANY_REQUESTS
-        }
+        DiagnosticsError::Status(status) => crate::retry::is_transient_status(*status),
         DiagnosticsError::SpawnWorker(_)
         | DiagnosticsError::BuildRuntime(_)
         | DiagnosticsError::IncompleteConfig

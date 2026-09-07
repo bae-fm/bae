@@ -586,7 +586,7 @@ pub struct ReleaseUploadProgress {
 
 /// Complete snapshot of the cloud outbox. One source of truth for everything
 /// upload-related the UI renders.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct OutboxSnapshot {
     /// Monotonic publication number assigned by the owning sync controller.
     /// Import completion carries the revision that first represented its
@@ -612,23 +612,10 @@ pub struct OutboxSnapshot {
     pub eta_seconds: Option<u64>,
 }
 
-impl Default for OutboxSnapshot {
-    fn default() -> Self {
-        Self {
-            revision: 0,
-            upload_groups: Vec::new(),
-            deletes: Vec::new(),
-            total: UploadProgress::default(),
-            pause_state: OutboxPauseState::Running,
-            throughput_bps: 0,
-            eta_seconds: None,
-        }
-    }
-}
-
 /// The absolute pause state of the cloud upload pipeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum OutboxPauseState {
+    #[default]
     Running,
     Paused,
 }

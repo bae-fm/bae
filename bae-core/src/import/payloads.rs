@@ -155,17 +155,6 @@ impl ReleasePayloads {
 
     /// What the source says about this release's own tracklist — the half of the
     /// Ready rule the folder's probed durations are checked against.
-    pub fn source_tracks(&self) -> Result<SourceTracks, ImportError> {
-        match self.release.source {
-            MetadataSource::MusicBrainz => Ok(crate::import::search::mb_source_tracks(
-                &self.musicbrainz_anchor()?,
-            )),
-            MetadataSource::Discogs => Ok(crate::import::search::discogs_source_tracks(
-                &self.discogs_anchor()?,
-            )),
-        }
-    }
-
     pub fn source_tracks_for_audio(
         &self,
         audio_durations_ms: &[u64],
@@ -174,9 +163,9 @@ impl ReleasePayloads {
             MetadataSource::MusicBrainz => Ok(crate::import::search::mb_source_tracks(
                 &self.musicbrainz_anchor()?,
             )),
-            MetadataSource::Discogs => Ok(crate::import::search::discogs_source_tracks_for_audio(
+            MetadataSource::Discogs => Ok(crate::import::search::discogs_source_tracks(
                 &self.discogs_anchor()?,
-                audio_durations_ms,
+                Some(audio_durations_ms),
             )),
         }
     }
@@ -266,10 +255,10 @@ impl ReleasePayloads {
                 &self.musicbrainz_anchor()?,
                 covers,
             ),
-            MetadataSource::Discogs => Ok(crate::import::search::build_discogs_detail_for_audio(
+            MetadataSource::Discogs => Ok(crate::import::search::build_discogs_detail(
                 &self.discogs_anchor()?,
                 covers,
-                audio_durations_ms,
+                Some(audio_durations_ms),
             )),
         }
     }
@@ -299,11 +288,11 @@ impl ReleasePayloads {
             MetadataSource::Discogs => {
                 let release = self.discogs_anchor()?;
                 let master_year = self.discogs_master_year(&release)?;
-                crate::import::discogs_mapper::map_discogs_to_db_for_audio(
+                crate::import::discogs_mapper::map_discogs_to_db(
                     &release,
                     master_year,
                     self.musicbrainz_xref()?.as_ref(),
-                    audio_durations_ms,
+                    Some(audio_durations_ms),
                     clock,
                     ids,
                 )
