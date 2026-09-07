@@ -30,33 +30,12 @@ env:
 jobs:
   calculate-version:
     name: Calculate Version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.calc.outputs.version }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-        ref: ${{ inputs.commit || github.sha }}
-
-    - name: Determine version
-      id: calc
-      run: |
-        # Explicit input wins; otherwise auto-increment the last component of the
-        # latest ios-v* tag (independent of macos-v* / android-v*). First → 0.1.
-        if [[ -n "${{ inputs.version }}" ]]; then
-          VERSION="${{ inputs.version }}"
-        else
-          LATEST=$(git tag -l "ios-v*" | sed 's/^ios-v//' | sort -V | tail -1)
-          if [[ -z "$LATEST" ]]; then
-            VERSION="0.1"
-          else
-            VERSION="${LATEST%.*}.$(( ${LATEST##*.} + 1 ))"
-          fi
-        fi
-        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-        echo "::notice::iOS release version $VERSION (build ${{ github.run_number }})"
+    uses: ./.github/workflows/calculate-version.yml
+    with:
+      prefix: ios-v
+      label: iOS
+      version: ${{ inputs.version }}
+      ref: ${{ inputs.commit || github.sha }}
 
   build:
     name: Build iOS (${{ matrix.edition }})

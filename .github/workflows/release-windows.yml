@@ -27,41 +27,11 @@ concurrency:
 jobs:
   calculate-version:
     name: Calculate Version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.calc.outputs.version }}
-      pack_version: ${{ steps.calc.outputs.pack_version }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-
-    - name: Determine version
-      id: calc
-      run: |
-        # Explicit input wins; otherwise auto-increment the last component of the
-        # latest windows-v* tag (independent of the other platforms). First → 0.1.
-        if [[ -n "${{ inputs.version }}" ]]; then
-          VERSION="${{ inputs.version }}"
-        else
-          LATEST=$(git tag -l "windows-v*" | sed 's/^windows-v//' | sort -V | tail -1)
-          if [[ -z "$LATEST" ]]; then
-            VERSION="0.1"
-          else
-            VERSION="${LATEST%.*}.$(( ${LATEST##*.} + 1 ))"
-          fi
-        fi
-        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-        # Velopack requires a full SemVer; the tag stays windows-v0.N but the
-        # package version is normalized to 0.N.0.
-        if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
-          PACK_VERSION="$VERSION.0"
-        else
-          PACK_VERSION="$VERSION"
-        fi
-        echo "pack_version=$PACK_VERSION" >> "$GITHUB_OUTPUT"
-        echo "::notice::Windows release version $VERSION (pack $PACK_VERSION, build ${{ github.run_number }})"
+    uses: ./.github/workflows/calculate-version.yml
+    with:
+      prefix: windows-v
+      label: Windows
+      version: ${{ inputs.version }}
 
   build:
     name: Build ${{ matrix.arch.name }} package

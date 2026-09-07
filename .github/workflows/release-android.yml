@@ -20,33 +20,11 @@ concurrency:
 jobs:
   calculate-version:
     name: Calculate Version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.calc.outputs.version }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-
-    - name: Determine version
-      id: calc
-      run: |
-        # Explicit input wins; otherwise auto-increment the last component of the
-        # latest android-v* tag (independent of macos-v*). First release → 0.1.
-        if [[ -n "${{ inputs.version }}" ]]; then
-          VERSION="${{ inputs.version }}"
-        else
-          LATEST=$(git tag -l "android-v*" | sed 's/^android-v//' | sort -V | tail -1)
-          if [[ -z "$LATEST" ]]; then
-            VERSION="0.1"
-          else
-            VERSION="${LATEST%.*}.$(( ${LATEST##*.} + 1 ))"
-          fi
-        fi
-
-        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-        echo "::notice::Android release version $VERSION (build ${{ github.run_number }})"
+    uses: ./.github/workflows/calculate-version.yml
+    with:
+      prefix: android-v
+      label: Android
+      version: ${{ inputs.version }}
 
   build:
     name: Build signed APK

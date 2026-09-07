@@ -22,34 +22,12 @@ env:
 jobs:
   calculate-version:
     name: Calculate Version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.calc.outputs.version }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-        ref: ${{ inputs.commit || github.sha }}
-
-    - name: Determine version
-      id: calc
-      run: |
-        # Explicit input wins; otherwise auto-increment the last component of the
-        # latest macos-v* tag (independent of android-v*). First release → 0.1.
-        if [[ -n "${{ inputs.version }}" ]]; then
-          VERSION="${{ inputs.version }}"
-        else
-          LATEST=$(git tag -l "macos-v*" | sed 's/^macos-v//' | sort -V | tail -1)
-          if [[ -z "$LATEST" ]]; then
-            VERSION="0.1"
-          else
-            VERSION="${LATEST%.*}.$(( ${LATEST##*.} + 1 ))"
-          fi
-        fi
-
-        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-        echo "::notice::macOS release version $VERSION (build ${{ github.run_number }})"
+    uses: ./.github/workflows/calculate-version.yml
+    with:
+      prefix: macos-v
+      label: macOS
+      version: ${{ inputs.version }}
+      ref: ${{ inputs.commit || github.sha }}
 
   ci:
     name: CI
