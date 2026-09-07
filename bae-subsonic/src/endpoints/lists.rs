@@ -221,18 +221,7 @@ pub(crate) async fn search3(state: AppState, params: Params) -> Result<Option<El
 
             // Artists.
             for summary in page(&results.artists, &artists) {
-                let artist = &summary.raw.artist;
-                let count = artist_release_count(services, &artist.id).await?;
-                payload = payload.child(
-                    artist_id3(
-                        &artist.id,
-                        &artist.name,
-                        count,
-                        artist.musicbrainz_artist_id.clone(),
-                        summary.image.is_some(),
-                    )
-                    .to_element(),
-                );
+                payload = payload.child(artist_summary_child(services, summary).await?);
             }
 
             // Albums: each bae-album hit expands to its releases (a Subsonic
@@ -280,6 +269,24 @@ fn page<'a, T>(items: &'a [T], window: &Window) -> impl Iterator<Item = &'a T> {
     items.iter().skip(window.offset).take(window.count)
 }
 
+/// One artist's `<artist>` element. The release count is a per-artist query, so
+/// it is read here rather than by the caller assembling the list.
+async fn artist_summary_child(
+    services: &AppServices,
+    summary: &bae_core::album_detail::ArtistSummary,
+) -> Result<Element, SubError> {
+    let artist = &summary.raw.artist;
+    let count = artist_release_count(services, &artist.id).await?;
+    Ok(artist_id3(
+        &artist.id,
+        &artist.name,
+        count,
+        artist.musicbrainz_artist_id.clone(),
+        summary.image.is_some(),
+    )
+    .to_element())
+}
+
 /// The empty-query result: the whole library, each kind paged by its window.
 async fn whole_library(
     services: &AppServices,
@@ -297,19 +304,8 @@ async fn whole_library(
         .get_artist_page(&sort, artists.offset as u64, artists.count as u64)
         .await
         .map_err(lib_err)?;
-    for summary in artist_page {
-        let artist = &summary.raw.artist;
-        let count = artist_release_count(services, &artist.id).await?;
-        payload = payload.child(
-            artist_id3(
-                &artist.id,
-                &artist.name,
-                count,
-                artist.musicbrainz_artist_id.clone(),
-                summary.image.is_some(),
-            )
-            .to_element(),
-        );
+    for summary in &artist_page {
+        payload = payload.child(artist_summary_child(services, summary).await?);
     }
 
     // Albums (releases).

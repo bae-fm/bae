@@ -110,7 +110,7 @@ mod release_metadata_update_input {
 
     #[test]
     fn an_empty_album_title_fails_the_edit_rule() {
-        let wire = release_user_edit(edit("", &["Artist Alpha"]));
+        let wire = edit("", &["Artist Alpha"]).into_core();
         assert_eq!(
             wire.validate(),
             Err(bae_core::import::EditValidationError::EmptyAlbumTitle),
@@ -119,7 +119,7 @@ mod release_metadata_update_input {
 
     #[test]
     fn an_artist_less_edit_fails_the_edit_rule() {
-        let wire = release_user_edit(edit("Album Alpha", &[]));
+        let wire = edit("Album Alpha", &[]).into_core();
         assert_eq!(
             wire.validate(),
             Err(bae_core::import::EditValidationError::NoAlbumArtist),
@@ -130,7 +130,9 @@ mod release_metadata_update_input {
     /// trims the same input rather than erroring on it.
     #[test]
     fn an_untrimmed_album_title_normalizes() {
-        let wire = release_user_edit(edit("  Album Alpha  ", &["  Artist Alpha  "])).normalized();
+        let wire = edit("  Album Alpha  ", &["  Artist Alpha  "])
+            .into_core()
+            .normalized();
         assert_eq!(wire.validate(), Ok(()));
         assert_eq!(wire.album_title, "Album Alpha");
         assert_eq!(
@@ -153,7 +155,7 @@ mod release_metadata_update_input {
             artist: artist.clone(),
         }];
 
-        let round_trip = automation_release_user_edit(release_user_edit(edit));
+        let round_trip = AutomationReleaseUserEdit::from_core(edit.into_core());
         let AutomationArtistAssignment::Existing {
             artist: round_trip_artist,
         } = &round_trip.album_artist_assignments[0]
@@ -189,7 +191,7 @@ mod release_metadata_update_input {
 /// JSON a client reads must not have moved.
 #[test]
 fn release_storage_state_and_actions_serialize_snake_case() {
-    let summary = automation_release_summary(bae_core::album_detail::ReleaseSummary {
+    let summary = AutomationReleaseSummary::from_core(bae_core::album_detail::ReleaseSummary {
         id: "rel-1".to_string(),
         album_id: "alb-1".to_string(),
         format: Some("FLAC".to_string()),
@@ -219,7 +221,7 @@ fn release_storage_state_and_actions_serialize_snake_case() {
 
 #[test]
 fn a_local_release_serializes_its_state_and_absent_transfer() {
-    let summary = automation_release_summary(bae_core::album_detail::ReleaseSummary {
+    let summary = AutomationReleaseSummary::from_core(bae_core::album_detail::ReleaseSummary {
         id: "rel-2".to_string(),
         album_id: "alb-1".to_string(),
         format: None,
@@ -240,12 +242,12 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
 #[test]
 fn import_step_and_phase_serialize_snake_case() {
     let preparing =
-        automation_import_step(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles));
+        AutomationImportStep::from_core(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles));
     let json = serde_json::to_value(preparing).unwrap();
     assert_eq!(json["kind"], "preparing");
     assert_eq!(json["step"], "validating_source_files");
 
-    let running = automation_import_step(ImportStep::Running(ImportPhase::ReadingFiles));
+    let running = AutomationImportStep::from_core(ImportStep::Running(ImportPhase::ReadingFiles));
     let json = serde_json::to_value(running).unwrap();
     assert_eq!(json["kind"], "running");
     assert_eq!(json["phase"], "reading_files");
@@ -493,7 +495,7 @@ mod identify_mirrors {
             options: Vec::new(),
         };
 
-        let json = serde_json::to_value(automation_toolbar_signal(signal)).unwrap();
+        let json = serde_json::to_value(AutomationToolbarSignal::from_core(signal)).unwrap();
         assert_eq!(json["kind"], "disc_id");
         assert_eq!(json["origin"], "disc_toc");
         assert_eq!(json["state"]["kind"], "failed");
@@ -527,7 +529,7 @@ mod identify_mirrors {
             durations: bae_core::import::probe::SourceDurations::totalling(2_400_000),
         };
 
-        let json = serde_json::to_value(automation_signals(signals)).unwrap();
+        let json = serde_json::to_value(AutomationSignals::from_core(signals)).unwrap();
         assert_eq!(json["disc_id"]["kind"], "computed");
         assert_eq!(json["disc_id"]["disc_id"], "disc-hash");
         assert_eq!(json["disc_id"]["track_count"], 10);

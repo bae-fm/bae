@@ -17,180 +17,178 @@
 
 use super::*;
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn automation_lookup_state(view: bae_core::identify::LookupView) -> AutomationLookupState {
-    use bae_core::identify::LookupView;
-    match view {
-        LookupView::LookingUp => AutomationLookupState::LookingUp,
-        LookupView::Found { count } => AutomationLookupState::Found { count },
-        LookupView::NoMatch => AutomationLookupState::NoMatch,
-        LookupView::Failed { failure } => AutomationLookupState::Failed {
-            failure: automation_lookup_failure(failure),
-        },
-    }
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationLookupState = bae_core::identify::LookupView,
+    from_core: pub(crate) fn,
+    variants: {
+        LookingUp,
+        Found { count },
+        NoMatch,
+        Failed { failure: (AutomationLookupFailure) },
+    },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn automation_disc_id_step(view: bae_core::identify::DiscIdStepView) -> AutomationDiscIdStep {
-    use bae_core::identify::DiscIdStepView;
-    match view {
-        DiscIdStepView::Reading => AutomationDiscIdStep::Reading,
-        DiscIdStepView::Absent => AutomationDiscIdStep::Absent,
-        DiscIdStepView::ReadFailed { failure } => AutomationDiscIdStep::ReadFailed {
-            failure: automation_lookup_failure(failure),
-        },
-        DiscIdStepView::Read {
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationDiscIdStep = bae_core::identify::DiscIdStepView,
+    from_core: pub(crate) fn,
+    variants: {
+        Reading,
+        Absent,
+        ReadFailed { failure: (AutomationLookupFailure) },
+        Read {
             disc_id,
             source_file,
-            lookup,
-        } => AutomationDiscIdStep::Read {
-            disc_id,
-            source_file,
-            lookup: automation_lookup_state(lookup),
+            lookup: (AutomationLookupState),
         },
-    }
+    },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn automation_artwork_step(view: bae_core::identify::ArtworkStepView) -> AutomationArtworkStep {
-    use bae_core::identify::ArtworkStepView;
-    match view {
-        ArtworkStepView::Absent => AutomationArtworkStep::Absent,
-        ArtworkStepView::Reading {
-            current,
-            position,
-            total,
-            barcodes,
-            catalogs,
-        } => AutomationArtworkStep::Reading {
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationArtworkStep = bae_core::identify::ArtworkStepView,
+    from_core: pub(crate) fn,
+    variants: {
+        Absent,
+        Reading {
             current,
             position,
             total,
             barcodes,
             catalogs,
         },
-        ArtworkStepView::Read {
-            images,
-            barcodes,
-            catalogs,
-        } => AutomationArtworkStep::Read {
-            images,
-            barcodes,
-            catalogs,
-        },
-        ArtworkStepView::Failed {
-            failure,
-            read,
-            total,
-        } => AutomationArtworkStep::Failed {
-            failure: automation_lookup_failure(failure),
+        Read { images, barcodes, catalogs },
+        Failed {
+            failure: (AutomationLookupFailure),
             read,
             total,
         },
-    }
+    },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn automation_barcode_step(view: bae_core::identify::BarcodeStepView) -> AutomationBarcodeStep {
-    use bae_core::identify::{BarcodeLookupView, BarcodeStepView};
-    match view {
-        BarcodeStepView::AwaitingArtwork => AutomationBarcodeStep::AwaitingArtwork,
-        BarcodeStepView::Absent => AutomationBarcodeStep::Absent,
-        BarcodeStepView::NoCodes => AutomationBarcodeStep::NoCodes,
-        BarcodeStepView::ScanFailed { failure } => AutomationBarcodeStep::ScanFailed {
-            failure: automation_lookup_failure(failure),
-        },
-        BarcodeStepView::Lookups { codes, providers } => AutomationBarcodeStep::Lookups {
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationBarcodeLookupState = bae_core::identify::BarcodeLookupView,
+    from_core: pub(crate) fn,
+    variants: {
+        Trying { barcode, position, total },
+        Matched { barcode, count },
+        Exhausted,
+        Failed { failure: (AutomationLookupFailure) },
+    },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationProviderBarcodeLookup = bae_core::identify::ProviderBarcodeLookupView,
+    from_core: pub(crate) fn,
+    fields: { source: (into), state: (AutomationBarcodeLookupState) },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationBarcodeStep = bae_core::identify::BarcodeStepView,
+    from_core: pub(crate) fn,
+    variants: {
+        AwaitingArtwork,
+        Absent,
+        NoCodes,
+        ScanFailed { failure: (AutomationLookupFailure) },
+        Lookups {
             codes,
-            providers: providers
-                .into_iter()
-                .map(|provider| AutomationProviderBarcodeLookup {
-                    source: provider.source.into(),
-                    state: match provider.state {
-                        BarcodeLookupView::Trying {
-                            barcode,
-                            position,
-                            total,
-                        } => AutomationBarcodeLookupState::Trying {
-                            barcode,
-                            position,
-                            total,
-                        },
-                        BarcodeLookupView::Matched { barcode, count } => {
-                            AutomationBarcodeLookupState::Matched { barcode, count }
-                        }
-                        BarcodeLookupView::Exhausted => AutomationBarcodeLookupState::Exhausted,
-                        BarcodeLookupView::Failed { failure } => {
-                            AutomationBarcodeLookupState::Failed {
-                                failure: automation_lookup_failure(failure),
-                            }
-                        }
-                    },
-                })
-                .collect(),
+            providers: (each AutomationProviderBarcodeLookup),
         },
+    },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationProviderLookup = bae_core::identify::ProviderLookupView,
+    from_core: pub(crate) fn,
+    fields: { source: (into), state: (AutomationLookupState) },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationCatalogStep = bae_core::identify::CatalogStepView,
+    from_core: pub(crate) fn,
+    variants: {
+        NoneFound,
+        Unchosen { available },
+        Chosen { value, lookups: (each AutomationProviderLookup) },
+    },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationIdentifyRun = bae_core::identify::IdentifyRunView,
+    from_core: pub(crate) fn,
+    fields: {
+        providers: (each into),
+        disc_id: (AutomationDiscIdStep),
+        artwork: (AutomationArtworkStep),
+        barcode: (AutomationBarcodeStep),
+        catalog: (AutomationCatalogStep),
+    },
+}
+
+impl AutomationIdentifyFailure {
+    /// Not a copy: core carries the source and the failure of a per-provider
+    /// lookup as one `SourceFailure` payload, which this names as two fields.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn from_core(failure: bae_core::identify::IdentifyFailure) -> Self {
+        use bae_core::identify::IdentifyFailure;
+        match failure {
+            IdentifyFailure::DiscId(failure) => Self::DiscId {
+                failure: AutomationLookupFailure::from_core(failure),
+            },
+            IdentifyFailure::BarcodeScan(failure) => Self::BarcodeScan {
+                failure: AutomationLookupFailure::from_core(failure),
+            },
+            IdentifyFailure::Barcode(failure) => Self::Barcode {
+                source: failure.source.into(),
+                failure: AutomationLookupFailure::from_core(failure.failure),
+            },
+            IdentifyFailure::Catalog(failure) => Self::Catalog {
+                source: failure.source.into(),
+                failure: AutomationLookupFailure::from_core(failure.failure),
+            },
+            IdentifyFailure::ReleaseDetails(failure) => Self::ReleaseDetails {
+                failure: AutomationLookupFailure::from_core(failure),
+            },
+        }
     }
 }
 
+/// Not a copy: core keys provenance as `(release_id, ResultProvenance)` pairs,
+/// which this names inside each entry.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn automation_catalog_step(view: bae_core::identify::CatalogStepView) -> AutomationCatalogStep {
-    use bae_core::identify::CatalogStepView;
-    match view {
-        CatalogStepView::NoneFound => AutomationCatalogStep::NoneFound,
-        CatalogStepView::Unchosen { available } => AutomationCatalogStep::Unchosen { available },
-        CatalogStepView::Chosen { value, lookups } => AutomationCatalogStep::Chosen {
-            value,
-            lookups: lookups
-                .into_iter()
-                .map(|lookup| AutomationProviderLookup {
-                    source: lookup.source.into(),
-                    state: automation_lookup_state(lookup.state),
-                })
-                .collect(),
-        },
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn automation_identify_run(view: bae_core::identify::IdentifyRunView) -> AutomationIdentifyRun {
-    let bae_core::identify::IdentifyRunView {
-        providers,
-        disc_id,
-        artwork,
-        barcode,
-        catalog,
-    } = view;
-    AutomationIdentifyRun {
-        providers: providers.into_iter().map(Into::into).collect(),
-        disc_id: automation_disc_id_step(disc_id),
-        artwork: automation_artwork_step(artwork),
-        barcode: automation_barcode_step(barcode),
-        catalog: automation_catalog_step(catalog),
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn automation_result_provenance(
-    release_id: String,
-    provenance: bae_core::identify::ResultProvenance,
-) -> AutomationResultProvenance {
-    let bae_core::identify::ResultProvenance {
-        by_disc_id,
-        by_barcode,
-        by_catalog,
-    } = provenance;
-    AutomationResultProvenance {
-        release_id,
-        by_disc_id,
-        by_barcode,
-        by_catalog,
-    }
+fn automation_provenance(
+    provenance: Vec<(String, bae_core::identify::ResultProvenance)>,
+) -> Vec<AutomationResultProvenance> {
+    provenance
+        .into_iter()
+        .map(|(release_id, provenance)| {
+            let bae_core::identify::ResultProvenance {
+                by_disc_id,
+                by_barcode,
+                by_catalog,
+            } = provenance;
+            AutomationResultProvenance {
+                release_id,
+                by_disc_id,
+                by_barcode,
+                by_catalog,
+            }
+        })
+        .collect()
 }
 
 /// Mirror [`bae_core::identify::IdentifyStateView`] into the JSON enum. Core has
 /// already folded the matches into their group cards, keyed the provenance,
 /// reduced the in-flight payloads to counts, and dropped what must not cross,
-/// so every variant is a field copy.
+/// so every variant is a field copy — except provenance, whose pairs this names.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn automation_identify_state(
     state: bae_core::identify::IdentifyState,
@@ -204,16 +202,16 @@ pub(crate) fn automation_identify_state(
             library_statuses,
             provenance,
         } => AutomationIdentifyState::Triangulating {
-            run: automation_identify_run(run),
-            groups: groups.into_iter().map(automation_release_group).collect(),
+            run: AutomationIdentifyRun::from_core(run),
+            groups: groups
+                .into_iter()
+                .map(AutomationReleaseGroup::from_core)
+                .collect(),
             library_statuses: library_statuses
                 .into_iter()
-                .map(automation_library_status)
+                .map(AutomationLibraryStatus::from_core)
                 .collect(),
-            provenance: provenance
-                .into_iter()
-                .map(|(release_id, p)| automation_result_provenance(release_id, p))
-                .collect(),
+            provenance: automation_provenance(provenance),
         },
         IdentifyStateView::Found {
             groups,
@@ -221,16 +219,16 @@ pub(crate) fn automation_identify_state(
             track_count,
             provenance,
         } => AutomationIdentifyState::Found {
-            groups: groups.into_iter().map(automation_release_group).collect(),
+            groups: groups
+                .into_iter()
+                .map(AutomationReleaseGroup::from_core)
+                .collect(),
             library_statuses: library_statuses
                 .into_iter()
-                .map(automation_library_status)
+                .map(AutomationLibraryStatus::from_core)
                 .collect(),
             track_count,
-            provenance: provenance
-                .into_iter()
-                .map(|(release_id, p)| automation_result_provenance(release_id, p))
-                .collect(),
+            provenance: automation_provenance(provenance),
         },
         IdentifyStateView::NotFoundAnywhere => AutomationIdentifyState::NotFoundAnywhere,
         IdentifyStateView::ManualOnly { track_count } => {
@@ -244,17 +242,17 @@ pub(crate) fn automation_identify_state(
         } => AutomationIdentifyState::Failed {
             failures: failures
                 .into_iter()
-                .map(automation_identify_failure)
+                .map(AutomationIdentifyFailure::from_core)
                 .collect(),
-            groups: groups.into_iter().map(automation_release_group).collect(),
+            groups: groups
+                .into_iter()
+                .map(AutomationReleaseGroup::from_core)
+                .collect(),
             library_statuses: library_statuses
                 .into_iter()
-                .map(automation_library_status)
+                .map(AutomationLibraryStatus::from_core)
                 .collect(),
-            provenance: provenance
-                .into_iter()
-                .map(|(release_id, p)| automation_result_provenance(release_id, p))
-                .collect(),
+            provenance: automation_provenance(provenance),
         },
     }
 }

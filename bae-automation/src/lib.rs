@@ -1,5 +1,8 @@
 #![deny(unreachable_pub, dead_code)]
 
+#[macro_use]
+extern crate bae_mirror;
+
 use bae_core::album_detail::{
     AudioFormat, FileDetail, GalleryItem, GallerySource, ImageRef, ReleaseDetail,
     ReleaseStorageAction, ReleaseStorageState, SearchResults, TrackDetail, TrackPosition,

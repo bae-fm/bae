@@ -1,10 +1,12 @@
-//! Macros for the mirrored halves of a bridge type's conversions.
+//! Macros for the mirrored halves of a surface type's conversions.
 //!
-//! A `Bridge*` record or enum restates a bae-core type field for field so
-//! uniffi has a concrete type to export, and the conversion between the two is
-//! a name-for-name copy with the nested conversions applied. The copy is what
-//! these macros write; the shapes themselves stay declared by hand, so a
-//! variant or field added in bae-core still fails to compile here.
+//! A surface crate restates a bae-core type field for field when it needs a
+//! shape of its own — `Bridge*` records and enums so uniffi has a concrete
+//! type to export, `Automation*` records and enums so the MCP surface has its
+//! own JSON — and the conversion between the two is a name-for-name copy with
+//! the nested conversions applied. The copy is what these macros write; the
+//! shapes themselves stay declared by hand, so a variant or field added in
+//! bae-core still fails to compile in the surface crate.
 //!
 //! The generated bodies destructure exhaustively — no `..` in any struct or
 //! enum-variant pattern — which is what makes a new bae-core field a build
@@ -16,18 +18,32 @@
 //! # Field and payload converters
 //!
 //! A name on its own moves the value. A parenthesized converter names the
-//! bridge type on the other side of a nested conversion:
+//! surface type on the other side of a nested conversion:
 //!
 //! - `pressing: (BridgePressingEdit)` — the value converts on its own
 //! - `tracks: (each BridgeTrackUserEdit)` — every element of a collection
 //!   converts; the container is whatever the two sides declare, which is a
 //!   `Vec` on most fields and a set on some
 //! - `cover: (opt BridgeImageRef)` — an `Option` of one
+//!
+//! `into` in place of a type name reaches the other side through the `From`
+//! impl the two types already have rather than through `from_core`/`into_core`
+//! — `source: (into)`, `providers: (each into)`, `action: (opt into)`.
 
 /// One field or payload crossing outward, with its nested conversion applied.
+#[macro_export]
 macro_rules! mirror_from {
     ($value:expr) => {
         $value
+    };
+    ($value:expr, (into)) => {
+        $value.into()
+    };
+    ($value:expr, (each into)) => {
+        $value.into_iter().map(Into::into).collect()
+    };
+    ($value:expr, (opt into)) => {
+        $value.map(Into::into)
     };
     ($value:expr, (each $bridge:path)) => {
         $value.into_iter().map(<$bridge>::from_core).collect()
@@ -41,9 +57,19 @@ macro_rules! mirror_from {
 }
 
 /// One field or payload crossing inward, with its nested conversion applied.
+#[macro_export]
 macro_rules! mirror_into {
     ($value:expr) => {
         $value
+    };
+    ($value:expr, (into)) => {
+        $value.into()
+    };
+    ($value:expr, (each into)) => {
+        $value.into_iter().map(Into::into).collect()
+    };
+    ($value:expr, (opt into)) => {
+        $value.map(Into::into)
     };
     ($value:expr, (each $bridge:path)) => {
         $value.into_iter().map(<$bridge>::into_core).collect()
@@ -56,7 +82,7 @@ macro_rules! mirror_into {
     };
 }
 
-/// The field-for-field copy between a `Bridge*` record and its bae-core struct.
+/// The field-for-field copy between a surface record and its bae-core struct.
 ///
 /// ```ignore
 /// mirror_struct! {
@@ -75,6 +101,7 @@ macro_rules! mirror_into {
 /// Either direction may stand alone; each carries its own visibility and, if it
 /// needs one, its own attributes. Asking for both writes one impl block per
 /// direction.
+#[macro_export]
 macro_rules! mirror_struct {
     (
         $(#[$attr:meta])*
@@ -85,14 +112,14 @@ macro_rules! mirror_struct {
         into_core: $into_vis:vis fn,
         fields: { $($fields:tt)* } $(,)?
     ) => {
-        mirror_struct! {
+        $crate::mirror_struct! {
             $(#[$attr])*
             $bridge = $core,
             $(#[$from_attr])*
             from_core: $from_vis fn,
             fields: { $($fields)* }
         }
-        mirror_struct! {
+        $crate::mirror_struct! {
             $(#[$attr])*
             $bridge = $core,
             $(#[$into_attr])*
@@ -113,7 +140,7 @@ macro_rules! mirror_struct {
             $from_vis fn from_core(value: $core) -> Self {
                 type Core = $core;
                 let Core { $($field),* } = value;
-                Self { $($field: mirror_from!($field $(, $conv)?)),* }
+                Self { $($field: $crate::mirror_from!($field $(, $conv)?)),* }
             }
         }
     };
@@ -130,13 +157,13 @@ macro_rules! mirror_struct {
             $into_vis fn into_core(self) -> $core {
                 type Core = $core;
                 let Self { $($field),* } = self;
-                Core { $($field: mirror_into!($field $(, $conv)?)),* }
+                Core { $($field: $crate::mirror_into!($field $(, $conv)?)),* }
             }
         }
     };
 }
 
-/// The variant-for-variant copy between a `Bridge*` enum and its bae-core enum.
+/// The variant-for-variant copy between a surface enum and its bae-core enum.
 ///
 /// ```ignore
 /// mirror_enum! {
@@ -156,6 +183,7 @@ macro_rules! mirror_struct {
 /// `Name { field, … }` for a struct variant, and `Name(field: …)` where
 /// bae-core carries one unnamed payload — uniffi has no tuple variants, so the
 /// bridge side names it.
+#[macro_export]
 macro_rules! mirror_enum {
     (
         $(#[$attr:meta])*
@@ -166,14 +194,14 @@ macro_rules! mirror_enum {
         into_core: $into_vis:vis fn,
         variants: { $($variants:tt)* } $(,)?
     ) => {
-        mirror_enum! {
+        $crate::mirror_enum! {
             $(#[$attr])*
             $bridge = $core,
             $(#[$from_attr])*
             from_core: $from_vis fn,
             variants: { $($variants)* }
         }
-        mirror_enum! {
+        $crate::mirror_enum! {
             $(#[$attr])*
             $bridge = $core,
             $(#[$into_attr])*
@@ -205,8 +233,8 @@ macro_rules! mirror_enum {
                             $(( $payload ))?
                             $({ $($field),* })?
                         => Self::$variant
-                            $({ $payload: mirror_from!($payload $(, $payload_conv)?) })?
-                            $({ $($field: mirror_from!($field $(, $conv)?)),* })?,
+                            $({ $payload: $crate::mirror_from!($payload $(, $payload_conv)?) })?
+                            $({ $($field: $crate::mirror_from!($field $(, $conv)?)),* })?,
                     )*
                 }
             }
@@ -236,8 +264,8 @@ macro_rules! mirror_enum {
                             $({ $payload })?
                             $({ $($field),* })?
                         => Core::$variant
-                            $(( mirror_into!($payload $(, $payload_conv)?) ))?
-                            $({ $($field: mirror_into!($field $(, $conv)?)),* })?,
+                            $(( $crate::mirror_into!($payload $(, $payload_conv)?) ))?
+                            $({ $($field: $crate::mirror_into!($field $(, $conv)?)),* })?,
                     )*
                 }
             }

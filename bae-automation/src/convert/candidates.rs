@@ -39,29 +39,32 @@ pub(crate) fn automation_candidate_from_folder(
         source_audio: candidate
             .files()
             .source_audio_summary()
-            .map(automation_source_audio_summary),
+            .map(AutomationSourceAudioSummary::from_core),
         content_hash: candidate.files().content_hash(),
         runtime: AutomationCandidateRuntime {
             toolbar: identify
                 .toolbar()
                 .into_iter()
-                .map(automation_toolbar_signal)
+                .map(AutomationToolbarSignal::from_core)
                 .collect(),
             identify_state: automation_identify_state(identify),
-            signals: folder.signals.clone().map(automation_signals),
+            signals: folder.signals.clone().map(AutomationSignals::from_core),
             import_status: automation_import_status(
                 folder.row.import_status.as_ref(),
                 live.and_then(|live| live.import.as_ref()),
             ),
         },
-        picked_release: folder.release.clone().map(automation_release_detail),
+        picked_release: folder
+            .release
+            .clone()
+            .map(AutomationReleaseDetail::from_core),
         file_evidence: folder
             .file_evidence
             .iter()
             .cloned()
-            .map(automation_file_evidence)
+            .map(AutomationFileEvidence::from_core)
             .collect(),
-        edit: Some(automation_release_user_edit(shaped_edit(
+        edit: Some(AutomationReleaseUserEdit::from_core(shaped_edit(
             &folder.metadata_draft,
             &folder.mapping,
         ))),
@@ -75,36 +78,28 @@ pub(crate) fn automation_candidate_from_folder(
     }
 }
 
-fn automation_source_audio_summary(
-    summary: bae_core::album_detail::SourceAudioSummary,
-) -> AutomationSourceAudioSummary {
-    match summary {
-        bae_core::album_detail::SourceAudioSummary::Uniform { descriptor } => {
-            AutomationSourceAudioSummary::Uniform {
-                descriptor: automation_source_audio_descriptor(descriptor),
-            }
-        }
-        bae_core::album_detail::SourceAudioSummary::Mixed { descriptors } => {
-            AutomationSourceAudioSummary::Mixed {
-                descriptors: descriptors
-                    .into_iter()
-                    .map(automation_source_audio_descriptor)
-                    .collect(),
-            }
-        }
-    }
+mirror_enum! {
+    AutomationSourceAudioLayout = bae_core::album_detail::SourceAudioLayout,
+    from_core: pub(crate) fn,
+    variants: { File, Cue },
 }
 
-fn automation_source_audio_descriptor(
-    descriptor: bae_core::album_detail::SourceAudioDescriptor,
-) -> AutomationSourceAudioDescriptor {
-    AutomationSourceAudioDescriptor {
-        layout: match descriptor.layout {
-            bae_core::album_detail::SourceAudioLayout::File => AutomationSourceAudioLayout::File,
-            bae_core::album_detail::SourceAudioLayout::Cue => AutomationSourceAudioLayout::Cue,
-        },
-        format: automation_audio_format(descriptor.format),
-    }
+mirror_struct! {
+    AutomationSourceAudioDescriptor = bae_core::album_detail::SourceAudioDescriptor,
+    from_core: pub(crate) fn,
+    fields: {
+        layout: (AutomationSourceAudioLayout),
+        format: (AutomationAudioFormat),
+    },
+}
+
+mirror_enum! {
+    AutomationSourceAudioSummary = bae_core::album_detail::SourceAudioSummary,
+    from_core: pub(crate) fn,
+    variants: {
+        Uniform { descriptor: (AutomationSourceAudioDescriptor) },
+        Mixed { descriptors: (each AutomationSourceAudioDescriptor) },
+    },
 }
 
 /// The metadata a commit of this candidate would write: the form's album
@@ -175,7 +170,7 @@ pub(crate) fn automation_import_status(
             progress_percent: in_flight.and_then(|in_flight| in_flight.progress_percent),
             step: in_flight
                 .and_then(|in_flight| in_flight.step)
-                .map(automation_import_step),
+                .map(AutomationImportStep::from_core),
         },
         TriageImportStatus::Complete { release } => AutomationImportStatus::Complete {
             release_id: release.release_id.clone(),
@@ -187,13 +182,11 @@ pub(crate) fn automation_import_status(
     })
 }
 
-pub(crate) fn automation_import_step(step: ImportStep) -> AutomationImportStep {
-    match step {
-        ImportStep::Preparing(step) => AutomationImportStep::Preparing {
-            step: automation_prepare_step(step),
-        },
-        ImportStep::Running(phase) => AutomationImportStep::Running {
-            phase: automation_import_phase(phase),
-        },
-    }
+mirror_enum! {
+    AutomationImportStep = ImportStep,
+    from_core: pub(crate) fn,
+    variants: {
+        Preparing(step: (AutomationPrepareStep)),
+        Running(phase: (AutomationImportPhase)),
+    },
 }

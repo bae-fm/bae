@@ -197,7 +197,7 @@ impl Automation {
             .services
             .import_search_with_status(query, source)
             .await?;
-        Ok(automation_search_results(results))
+        Ok(AutomationSearchResults::from_core(results))
     }
 
     /// Replace a candidate's metadata from one source and record its provenance.
@@ -213,7 +213,7 @@ impl Automation {
         self.services
             .import_select_candidate_metadata_provenance(
                 candidate.key().to_string(),
-                metadata_provenance(provenance),
+                provenance.into_core(),
             )
             .await?;
         Ok(EmptyResponse {})
@@ -228,7 +228,7 @@ impl Automation {
     ) -> Result<EmptyResponse, AutomationError> {
         let candidate = self.get_candidate(candidate_key).await?;
         self.services
-            .import_set_candidate_edit_field(candidate.key(), candidate_edit_field(field), value)
+            .import_set_candidate_edit_field(candidate.key(), field.into_core(), value)
             .await?;
         Ok(EmptyResponse {})
     }
@@ -255,7 +255,7 @@ impl Automation {
             .services
             .import_preview_file_tags_for_folder(candidate_key)
             .await?;
-        Ok(automation_release_user_edit(edit))
+        Ok(AutomationReleaseUserEdit::from_core(edit))
     }
 
     pub async fn start_import(
@@ -266,7 +266,7 @@ impl Automation {
             .services
             .import_start_import(
                 &request.candidate_key,
-                storage_mode(request.storage_mode),
+                request.storage_mode.into_core(),
                 request.pin,
             )
             .await?;
@@ -280,7 +280,7 @@ impl Automation {
         self.services
             .find_release_detail(&release_id)
             .await?
-            .map(automation_release)
+            .map(AutomationRelease::from_core)
             .ok_or_else(|| AutomationError::not_found(format!("release '{release_id}' not found")))
     }
 
@@ -381,7 +381,7 @@ impl Automation {
         self.services
             .find_release_detail(release_id)
             .await?
-            .map(|detail| automation_release_summary(detail.summary))
+            .map(|detail| AutomationReleaseSummary::from_core(detail.summary))
             .ok_or_else(|| AutomationError::not_found(format!("release '{release_id}' not found")))
     }
 
@@ -408,7 +408,7 @@ impl Automation {
         self.services
             .reset_metadata_to_source(&release_id)
             .await
-            .map(automation_release_user_edit)
+            .map(AutomationReleaseUserEdit::from_core)
             .map_err(AutomationError::from)
     }
 
@@ -418,7 +418,7 @@ impl Automation {
         edit: AutomationReleaseUserEdit,
     ) -> Result<(), AutomationError> {
         self.services
-            .apply_release_metadata_user_edit(&release_id, &release_user_edit(edit))
+            .apply_release_metadata_user_edit(&release_id, &edit.into_core())
             .await?;
         Ok(())
     }
@@ -433,7 +433,7 @@ impl Automation {
             Some(query) => self.services.search_library(&query).await?,
             None => SearchResults::default(),
         };
-        Ok(automation_library_search_results(results))
+        Ok(AutomationLibrarySearchResults::from_core(results))
     }
 
     pub async fn call_tool(

@@ -895,6 +895,7 @@ name = "bae-automation"
 version = "0.1.0"
 dependencies = [
  "bae-core",
+ "bae-mirror",
  "bae-test-support",
  "coven",
  "schemars",
@@ -912,6 +913,7 @@ dependencies = [
  "bae-core",
  "bae-desktop",
  "bae-loc",
+ "bae-mirror",
  "coven",
  "jni",
  "libsqlite3-sys",
@@ -1043,6 +1045,10 @@ dependencies = [
  "tokio",
  "tracing",
 ]
+
+[[package]]
+name = "bae-mirror"
+version = "0.1.0"
 
 [[package]]
 name = "bae-subsonic"

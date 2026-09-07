@@ -1,0 +1,80 @@
+name: Calculate Version
+
+# The release version for one platform's tag line. Each platform versions
+# independently — macos-v*, ios-v*, android-v*, windows-v* — so `prefix` picks
+# the line to read the latest tag from and to advance.
+
+on:
+  workflow_call:
+    inputs:
+      prefix:
+        description: "Tag prefix for this platform's version line, e.g. macos-v"
+        required: true
+        type: string
+      label:
+        description: 'Platform name for the run notice, e.g. macOS'
+        required: true
+        type: string
+      version:
+        description: 'Explicit version; blank auto-increments from the latest tag'
+        required: false
+        type: string
+        default: ''
+      ref:
+        description: "Commit to read the tags from; blank means the caller's SHA"
+        required: false
+        type: string
+        default: ''
+    outputs:
+      version:
+        description: 'The 0.N release version'
+        value: ${{ jobs.calculate.outputs.version }}
+      pack_version:
+        description: 'The same version as a full SemVer (0.N becomes 0.N.0)'
+        value: ${{ jobs.calculate.outputs.pack_version }}
+
+jobs:
+  calculate:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.calc.outputs.version }}
+      pack_version: ${{ steps.calc.outputs.pack_version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        ref: ${{ inputs.ref || github.sha }}
+
+    - name: Determine version
+      id: calc
+      env:
+        PREFIX: ${{ inputs.prefix }}
+        LABEL: ${{ inputs.label }}
+        REQUESTED: ${{ inputs.version }}
+        RUN_NUMBER: ${{ github.run_number }}
+      run: |
+        # Explicit input wins; otherwise auto-increment the last component of
+        # the latest tag on this platform's line. First release → 0.1.
+        if [[ -n "$REQUESTED" ]]; then
+          VERSION="$REQUESTED"
+        else
+          LATEST=$(git tag -l "$PREFIX*" | sed "s/^$PREFIX//" | sort -V | tail -1)
+          if [[ -z "$LATEST" ]]; then
+            VERSION="0.1"
+          else
+            VERSION="${LATEST%.*}.$(( ${LATEST##*.} + 1 ))"
+          fi
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+        # Velopack (Windows) requires a full SemVer; the tag stays <prefix>0.N
+        # but the package version is normalized to 0.N.0.
+        if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+          PACK_VERSION="$VERSION.0"
+        else
+          PACK_VERSION="$VERSION"
+        fi
+        echo "pack_version=$PACK_VERSION" >> "$GITHUB_OUTPUT"
+        echo "::notice::$LABEL release version $VERSION (pack $PACK_VERSION, build $RUN_NUMBER)"

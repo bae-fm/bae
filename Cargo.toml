@@ -7,6 +7,7 @@ members = [
     "bae-desktop",
     "bae-loc",
     "bae-mcp",
+    "bae-mirror",
     "bae-subsonic",
     "bae-test-support",
     "bae-uniffi-bindgen",

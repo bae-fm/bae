@@ -3,7 +3,7 @@
 uniffi::setup_scaffolding!();
 
 #[macro_use]
-mod mirror;
+extern crate bae_mirror;
 
 #[cfg(target_os = "android")]
 mod android_tls;

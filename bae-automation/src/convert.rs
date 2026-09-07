@@ -161,6 +161,8 @@ pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, Metada
     }
 }
 
+/// Not a copy: core's `ExternalRelease` carries the source and release id as
+/// one `MetadataRef`, which the automation shape spells as two fields.
 pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
     match choice {
         AutomationReleaseReseed::ExternalRelease {
@@ -169,382 +171,276 @@ pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
             partners,
         } => ReleaseReseed::ExternalRelease {
             release_ref: MetadataRef::new(release_id, source.into()),
-            partners: partners.into_iter().map(metadata_ref).collect(),
+            partners: partners
+                .into_iter()
+                .map(AutomationMetadataRef::into_core)
+                .collect(),
         },
         AutomationReleaseReseed::FileTags => ReleaseReseed::FileTags,
     }
 }
 
-pub(super) fn metadata_provenance(provenance: AutomationMetadataProvenance) -> MetadataProvenance {
-    match provenance {
-        AutomationMetadataProvenance::ExternalRelease {
-            source,
-            release_id,
-            partners,
-        } => MetadataProvenance::ExternalRelease {
-            source: source.into(),
-            release_id,
-            partners: partners.into_iter().map(metadata_ref).collect(),
-        },
-        AutomationMetadataProvenance::FileTags => MetadataProvenance::FileTags,
+impl AutomationMetadataRef {
+    /// Not a copy: core names the release id `id`.
+    pub(crate) fn from_core(release_ref: MetadataRef) -> Self {
+        Self {
+            source: release_ref.source.into(),
+            release_id: release_ref.id,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> MetadataRef {
+        MetadataRef::new(self.release_id, self.source.into())
     }
 }
 
-fn metadata_ref(release_ref: AutomationMetadataRef) -> MetadataRef {
-    MetadataRef::new(release_ref.release_id, release_ref.source.into())
+mirror_enum! {
+    AutomationMetadataProvenance = MetadataProvenance,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        ExternalRelease {
+            source: (into),
+            release_id,
+            partners: (each AutomationMetadataRef),
+        },
+        FileTags,
+    },
 }
 
-/// The claim core settled, going out — the direction `metadata_provenance`
-/// doesn't cover.
-pub(super) fn automation_metadata_provenance(
-    provenance: MetadataProvenance,
-) -> AutomationMetadataProvenance {
-    match provenance {
-        MetadataProvenance::ExternalRelease {
-            source,
-            release_id,
-            partners,
-        } => AutomationMetadataProvenance::ExternalRelease {
-            source: source.into(),
-            release_id,
-            partners: partners
+mirror_enum! {
+    AutomationCandidateEditField = CandidateEditField,
+    into_core: pub(crate) fn,
+    variants: {
+        AlbumTitle,
+        AlbumYear,
+        PressingYear,
+        Format,
+        Label,
+        CatalogNumber,
+        Country,
+        Barcode,
+    },
+}
+
+mirror_enum! {
+    AutomationEvidenceSignal = bae_core::import::EvidenceSignal,
+    from_core: pub(crate) fn,
+    variants: { Barcode, DiscId },
+}
+
+mirror_struct! {
+    AutomationFileEvidence = bae_core::import::FileEvidence,
+    from_core: pub(crate) fn,
+    fields: {
+        signal: (AutomationEvidenceSignal),
+        value,
+        file_id,
+    },
+}
+
+mirror_struct! {
+    AutomationSearchResults = GroupedSearchResults,
+    from_core: pub(crate) fn,
+    fields: {
+        groups: (each AutomationReleaseGroup),
+        statuses: (each AutomationLibraryStatus),
+    },
+}
+
+mirror_struct! {
+    AutomationReleaseGroupSource = bae_core::import::release_group::ReleaseGroupSource,
+    from_core: pub(crate) fn,
+    fields: { source: (into), group_url },
+}
+
+impl AutomationPressing {
+    /// Not a copy: `pick` is what core derives from the row's releases — what
+    /// picking the row claims — rather than a field it stores.
+    pub(crate) fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
+        Self {
+            pick: AutomationMetadataProvenance::from_core(pressing.pick()),
+            releases: pressing
+                .releases
                 .into_iter()
-                .map(|partner| AutomationMetadataRef {
-                    source: partner.source.into(),
-                    release_id: partner.id,
-                })
+                .map(AutomationMetadataResult::from_core)
                 .collect(),
-        },
-        MetadataProvenance::FileTags => AutomationMetadataProvenance::FileTags,
-    }
-}
-
-pub(super) fn candidate_edit_field(field: AutomationCandidateEditField) -> CandidateEditField {
-    match field {
-        AutomationCandidateEditField::AlbumTitle => CandidateEditField::AlbumTitle,
-        AutomationCandidateEditField::AlbumYear => CandidateEditField::AlbumYear,
-        AutomationCandidateEditField::PressingYear => CandidateEditField::PressingYear,
-        AutomationCandidateEditField::Format => CandidateEditField::Format,
-        AutomationCandidateEditField::Label => CandidateEditField::Label,
-        AutomationCandidateEditField::CatalogNumber => CandidateEditField::CatalogNumber,
-        AutomationCandidateEditField::Country => CandidateEditField::Country,
-        AutomationCandidateEditField::Barcode => CandidateEditField::Barcode,
-    }
-}
-
-pub(super) fn automation_file_evidence(
-    evidence: bae_core::import::FileEvidence,
-) -> AutomationFileEvidence {
-    let bae_core::import::FileEvidence {
-        signal,
-        value,
-        file_id,
-    } = evidence;
-    AutomationFileEvidence {
-        signal: match signal {
-            bae_core::import::EvidenceSignal::Barcode => AutomationEvidenceSignal::Barcode,
-            bae_core::import::EvidenceSignal::DiscId => AutomationEvidenceSignal::DiscId,
-        },
-        value,
-        file_id,
-    }
-}
-
-pub(super) fn automation_search_results(results: GroupedSearchResults) -> AutomationSearchResults {
-    AutomationSearchResults {
-        groups: results
-            .groups
-            .into_iter()
-            .map(automation_release_group)
-            .collect(),
-        statuses: results
-            .statuses
-            .into_iter()
-            .map(automation_library_status)
-            .collect(),
-    }
-}
-
-pub(super) fn automation_release_group(group: ReleaseGroup) -> AutomationReleaseGroup {
-    AutomationReleaseGroup {
-        id: group.id,
-        title: group.title,
-        artist: group.artist,
-        label: group.label,
-        cover_art: group.cover_art.map(automation_remote_cover),
-        sources: group
-            .sources
-            .into_iter()
-            .map(|source| AutomationReleaseGroupSource {
-                source: source.source.into(),
-                group_url: source.group_url,
-            })
-            .collect(),
-        year_min: group.year_min,
-        year_max: group.year_max,
-        pressings: group
-            .pressings
-            .into_iter()
-            .map(|pressing| AutomationPressing {
-                pick: automation_metadata_provenance(pressing.pick()),
-                releases: pressing
-                    .releases
-                    .into_iter()
-                    .map(automation_metadata_result)
-                    .collect(),
-            })
-            .collect(),
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_identify_failure(
-    failure: bae_core::identify::IdentifyFailure,
-) -> AutomationIdentifyFailure {
-    use bae_core::identify::IdentifyFailure;
-    match failure {
-        IdentifyFailure::DiscId(failure) => AutomationIdentifyFailure::DiscId {
-            failure: automation_lookup_failure(failure),
-        },
-        IdentifyFailure::BarcodeScan(failure) => AutomationIdentifyFailure::BarcodeScan {
-            failure: automation_lookup_failure(failure),
-        },
-        IdentifyFailure::Barcode(failure) => AutomationIdentifyFailure::Barcode {
-            source: failure.source.into(),
-            failure: automation_lookup_failure(failure.failure),
-        },
-        IdentifyFailure::Catalog(failure) => AutomationIdentifyFailure::Catalog {
-            source: failure.source.into(),
-            failure: automation_lookup_failure(failure.failure),
-        },
-        IdentifyFailure::ReleaseDetails(failure) => AutomationIdentifyFailure::ReleaseDetails {
-            failure: automation_lookup_failure(failure),
-        },
-    }
-}
-
-pub(super) fn automation_metadata_result(result: MetadataResult) -> AutomationMetadataResult {
-    AutomationMetadataResult {
-        source: result.source.into(),
-        release_id: result.release_id,
-        title: result.title,
-        artist: result.artist,
-        year: result.year,
-        format: result.format,
-        label: result.label,
-        catalog_number: result.catalog_number,
-        country: result.country,
-        barcode: result.barcode,
-        cover_art: result.cover_art.map(automation_remote_cover),
-        source_group_id: result.source_group_id,
-    }
-}
-
-pub(super) fn automation_library_status(status: LibraryStatus) -> AutomationLibraryStatus {
-    AutomationLibraryStatus {
-        release_id: status.release_id,
-        release_in_library: status.release_in_library,
-        album_in_library: status.album_in_library,
-        album_title: status.album_title,
-        album_id: status.album_id,
-    }
-}
-
-pub(super) fn automation_remote_cover(cover: RemoteCover) -> AutomationRemoteCover {
-    AutomationRemoteCover {
-        url: cover.url,
-        thumbnail_url: cover.thumbnail_url,
-        label: cover.label,
-        source: cover.source.into(),
-    }
-}
-
-pub(super) fn automation_release_detail(
-    detail: ImportSearchReleaseDetail,
-) -> AutomationReleaseDetail {
-    AutomationReleaseDetail {
-        release_id: detail.release_id,
-        source: detail.source.into(),
-        source_group_id: detail.source_group_id,
-        title: detail.title,
-        artist: detail.artist,
-        year: detail.year,
-        format: detail.format,
-        label: detail.label,
-        catalog_number: detail.catalog_number,
-        country: detail.country,
-        barcode: detail.barcode,
-        track_count: detail.track_count,
-        tracks: detail
-            .tracks
-            .into_iter()
-            .map(|track| AutomationReleaseTrack {
-                title: track.title,
-                artist: track.artist,
-                duration_ms: track.duration_ms,
-                position: track.position,
-                side: track.side,
-            })
-            .collect(),
-        cover_art: detail
-            .cover_art
-            .into_iter()
-            .map(automation_remote_cover)
-            .collect(),
-    }
-}
-
-pub(super) fn automation_release_user_edit(
-    edit: bae_core::import::ReleaseUserEdit,
-) -> AutomationReleaseUserEdit {
-    AutomationReleaseUserEdit {
-        album_title: edit.album_title,
-        album_artist_assignments: edit
-            .album_artist_assignments
-            .into_iter()
-            .map(automation_artist_assignment)
-            .collect(),
-        album_year: edit.album_year,
-        pressing: AutomationPressingEdit {
-            year: edit.pressing.year,
-            format: edit.pressing.format,
-            label: edit.pressing.label,
-            catalog_number: edit.pressing.catalog_number,
-            country: edit.pressing.country,
-            barcode: edit.pressing.barcode,
-        },
-        tracks: edit
-            .tracks
-            .into_iter()
-            .map(|track| AutomationTrackUserEdit {
-                title: track.title,
-                side: track.side,
-                track_number: track.track_number,
-                artist_assignments: automation_track_artist_assignments(track.artist_assignments),
-            })
-            .collect(),
-    }
-}
-
-pub(super) fn release_user_edit(
-    edit: AutomationReleaseUserEdit,
-) -> bae_core::import::ReleaseUserEdit {
-    bae_core::import::ReleaseUserEdit {
-        album_title: edit.album_title,
-        album_artist_assignments: edit
-            .album_artist_assignments
-            .into_iter()
-            .map(artist_assignment)
-            .collect(),
-        album_year: edit.album_year,
-        pressing: PressingEdit {
-            year: edit.pressing.year,
-            format: edit.pressing.format,
-            label: edit.pressing.label,
-            catalog_number: edit.pressing.catalog_number,
-            country: edit.pressing.country,
-            barcode: edit.pressing.barcode,
-        },
-        tracks: edit
-            .tracks
-            .into_iter()
-            .map(|track| TrackUserEdit {
-                title: track.title,
-                side: track.side,
-                track_number: track.track_number,
-                artist_assignments: track_artist_assignments(track.artist_assignments),
-                // Automation edits a release's metadata, never which of the
-                // folder's audio backs each track; an import it starts gets the
-                // track slots the folder and the tracklist produce.
-                file: None,
-            })
-            .collect(),
-    }
-}
-
-fn automation_artist_assignment(
-    assignment: bae_core::import::ArtistAssignment,
-) -> AutomationArtistAssignment {
-    match assignment {
-        bae_core::import::ArtistAssignment::Existing { artist } => {
-            AutomationArtistAssignment::Existing {
-                artist: AutomationExistingArtist {
-                    artist_id: artist.artist_id,
-                    name: artist.name,
-                    sort_name: artist.sort_name,
-                    musicbrainz_artist_id: artist.musicbrainz_artist_id,
-                    discogs_artist_id: artist.discogs_artist_id,
-                },
-            }
-        }
-        bae_core::import::ArtistAssignment::New { seed } => AutomationArtistAssignment::New {
-            seed: AutomationNewArtistSeed {
-                name: seed.name,
-                sort_name: seed.sort_name,
-                musicbrainz_artist_id: seed.musicbrainz_artist_id,
-                discogs_artist_id: seed.discogs_artist_id,
-            },
-        },
-    }
-}
-
-fn artist_assignment(assignment: AutomationArtistAssignment) -> bae_core::import::ArtistAssignment {
-    match assignment {
-        AutomationArtistAssignment::Existing { artist } => {
-            bae_core::import::ArtistAssignment::Existing {
-                artist: bae_core::import::ExistingArtist {
-                    artist_id: artist.artist_id,
-                    name: artist.name,
-                    sort_name: artist.sort_name,
-                    musicbrainz_artist_id: artist.musicbrainz_artist_id,
-                    discogs_artist_id: artist.discogs_artist_id,
-                },
-            }
-        }
-        AutomationArtistAssignment::New { seed } => bae_core::import::ArtistAssignment::New {
-            seed: bae_core::import::NewArtistSeed {
-                name: seed.name,
-                sort_name: seed.sort_name,
-                musicbrainz_artist_id: seed.musicbrainz_artist_id,
-                discogs_artist_id: seed.discogs_artist_id,
-            },
-        },
-    }
-}
-
-fn automation_track_artist_assignments(
-    assignments: bae_core::import::TrackArtistAssignments,
-) -> AutomationTrackArtistAssignments {
-    match assignments {
-        bae_core::import::TrackArtistAssignments::AlbumArtists => {
-            AutomationTrackArtistAssignments::AlbumArtists
-        }
-        bae_core::import::TrackArtistAssignments::Explicit(assignments) => {
-            AutomationTrackArtistAssignments::Explicit {
-                assignments: assignments
-                    .into_iter()
-                    .map(automation_artist_assignment)
-                    .collect(),
-            }
         }
     }
 }
 
-fn track_artist_assignments(
-    assignments: AutomationTrackArtistAssignments,
-) -> bae_core::import::TrackArtistAssignments {
-    match assignments {
-        AutomationTrackArtistAssignments::AlbumArtists => {
-            bae_core::import::TrackArtistAssignments::AlbumArtists
-        }
-        AutomationTrackArtistAssignments::Explicit { assignments } => {
-            bae_core::import::TrackArtistAssignments::Explicit(
-                assignments.into_iter().map(artist_assignment).collect(),
-            )
+mirror_struct! {
+    AutomationReleaseGroup = ReleaseGroup,
+    from_core: pub(crate) fn,
+    fields: {
+        id,
+        title,
+        artist,
+        label,
+        cover_art: (opt AutomationRemoteCover),
+        sources: (each AutomationReleaseGroupSource),
+        year_min,
+        year_max,
+        pressings: (each AutomationPressing),
+    },
+}
+
+impl AutomationMetadataResult {
+    /// Not a copy: core's `source_tracks` is the settle marker for a stored
+    /// verdict, not something an MCP client reads.
+    pub(crate) fn from_core(result: MetadataResult) -> Self {
+        Self {
+            source: result.source.into(),
+            release_id: result.release_id,
+            title: result.title,
+            artist: result.artist,
+            year: result.year,
+            format: result.format,
+            label: result.label,
+            catalog_number: result.catalog_number,
+            country: result.country,
+            barcode: result.barcode,
+            cover_art: result.cover_art.map(AutomationRemoteCover::from_core),
+            source_group_id: result.source_group_id,
         }
     }
 }
 
+mirror_struct! {
+    AutomationLibraryStatus = LibraryStatus,
+    from_core: pub(crate) fn,
+    fields: {
+        release_id,
+        release_in_library,
+        album_in_library,
+        album_title,
+        album_id,
+    },
+}
+
+mirror_struct! {
+    AutomationRemoteCover = RemoteCover,
+    from_core: pub(crate) fn,
+    fields: { url, thumbnail_url, label, source: (into) },
+}
+
+mirror_struct! {
+    AutomationReleaseTrack = bae_core::import::search::ReleaseTrack,
+    from_core: pub(crate) fn,
+    fields: { title, artist, duration_ms, position, side },
+}
+
+mirror_struct! {
+    AutomationReleaseDetail = ImportSearchReleaseDetail,
+    from_core: pub(crate) fn,
+    fields: {
+        release_id,
+        source: (into),
+        source_group_id,
+        title,
+        artist,
+        year,
+        format,
+        label,
+        catalog_number,
+        country,
+        barcode,
+        track_count,
+        tracks: (each AutomationReleaseTrack),
+        cover_art: (each AutomationRemoteCover),
+    },
+}
+
+mirror_struct! {
+    AutomationPressingEdit = PressingEdit,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { year, format, label, catalog_number, country, barcode },
+}
+
+mirror_struct! {
+    AutomationReleaseUserEdit = bae_core::import::ReleaseUserEdit,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: {
+        album_title,
+        album_artist_assignments: (each AutomationArtistAssignment),
+        album_year,
+        pressing: (AutomationPressingEdit),
+        tracks: (each AutomationTrackUserEdit),
+    },
+}
+
+impl AutomationTrackUserEdit {
+    /// Not a copy: core's `file` says which of the folder's audio backs the
+    /// track, which automation neither reads nor sets.
+    pub(crate) fn from_core(track: TrackUserEdit) -> Self {
+        Self {
+            title: track.title,
+            side: track.side,
+            track_number: track.track_number,
+            artist_assignments: AutomationTrackArtistAssignments::from_core(
+                track.artist_assignments,
+            ),
+        }
+    }
+
+    pub(crate) fn into_core(self) -> TrackUserEdit {
+        TrackUserEdit {
+            title: self.title,
+            side: self.side,
+            track_number: self.track_number,
+            artist_assignments: self.artist_assignments.into_core(),
+            // Automation edits a release's metadata, never which of the
+            // folder's audio backs each track; an import it starts gets the
+            // track slots the folder and the tracklist produce.
+            file: None,
+        }
+    }
+}
+
+mirror_struct! {
+    AutomationExistingArtist = bae_core::import::ExistingArtist,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: {
+        artist_id,
+        name,
+        sort_name,
+        musicbrainz_artist_id,
+        discogs_artist_id,
+    },
+}
+
+mirror_struct! {
+    AutomationNewArtistSeed = bae_core::import::NewArtistSeed,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { name, sort_name, musicbrainz_artist_id, discogs_artist_id },
+}
+
+mirror_enum! {
+    AutomationArtistAssignment = bae_core::import::ArtistAssignment,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        Existing { artist: (AutomationExistingArtist) },
+        New { seed: (AutomationNewArtistSeed) },
+    },
+}
+
+mirror_enum! {
+    AutomationTrackArtistAssignments = bae_core::import::TrackArtistAssignments,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        AlbumArtists,
+        Explicit(assignments: (each AutomationArtistAssignment)),
+    },
+}
+
+/// Not a copy: core's `Remote` carries the URL and the source as two unnamed
+/// payloads, which the automation shape names.
 pub(super) fn cover_selection(selection: AutomationCoverSelection) -> CoverSelection {
     match selection {
         AutomationCoverSelection::Remote { url, source } => {
@@ -554,391 +450,371 @@ pub(super) fn cover_selection(selection: AutomationCoverSelection) -> CoverSelec
     }
 }
 
-pub(super) fn storage_mode(mode: AutomationStorageMode) -> StorageMode {
-    match mode {
-        AutomationStorageMode::Local => StorageMode::Local,
-        AutomationStorageMode::Remote => StorageMode::Remote,
-    }
+mirror_enum! {
+    AutomationStorageMode = StorageMode,
+    into_core: pub(crate) fn,
+    variants: { Local, Remote },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_lookup_failure(
-    failure: bae_core::signals::LookupFailure,
-) -> AutomationLookupFailure {
-    use bae_core::signals::LookupFailure;
-    match failure {
-        LookupFailure::Network => AutomationLookupFailure::Network,
-        LookupFailure::Provider { status } => AutomationLookupFailure::Provider { status },
-        LookupFailure::Timeout => AutomationLookupFailure::Timeout,
-        LookupFailure::ArtworkAnalysis => AutomationLookupFailure::ArtworkAnalysis,
-        LookupFailure::Diagnostic { detail } => AutomationLookupFailure::Diagnostic { detail },
-    }
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationLookupFailure = bae_core::signals::LookupFailure,
+    from_core: pub(crate) fn,
+    variants: {
+        Network,
+        Provider { status },
+        Timeout,
+        ArtworkAnalysis,
+        Diagnostic { detail },
+    },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_signal_origin(
-    origin: bae_core::signals::SignalOrigin,
-) -> AutomationSignalOrigin {
-    use bae_core::signals::SignalOrigin;
-    match origin {
-        SignalOrigin::DiscToc => AutomationSignalOrigin::DiscToc,
-        SignalOrigin::CueSheet => AutomationSignalOrigin::CueSheet,
-        SignalOrigin::Artwork => AutomationSignalOrigin::Artwork,
-        SignalOrigin::FolderName => AutomationSignalOrigin::FolderName,
-        SignalOrigin::Filename => AutomationSignalOrigin::Filename,
-        SignalOrigin::TextFile => AutomationSignalOrigin::TextFile,
-    }
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationSignalOrigin = bae_core::signals::SignalOrigin,
+    from_core: pub(crate) fn,
+    variants: { DiscToc, CueSheet, Artwork, FolderName, Filename, TextFile },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_sourced_value(
-    value: bae_core::signals::SourcedValue,
-) -> AutomationSourcedValue {
-    AutomationSourcedValue {
-        value: value.value,
-        origin: automation_signal_origin(value.origin),
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_sourced_values(
-    values: Vec<bae_core::signals::SourcedValue>,
-) -> Vec<AutomationSourcedValue> {
-    values.into_iter().map(automation_sourced_value).collect()
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_disc_id_signal(
-    signal: bae_core::signals::DiscIdSignal,
-) -> AutomationDiscIdSignal {
-    use bae_core::signals::DiscIdSignal;
-    match signal {
-        DiscIdSignal::Computed {
-            disc_id,
-            track_count,
-            ..
-        } => AutomationDiscIdSignal::Computed {
-            disc_id,
-            track_count,
-        },
-        DiscIdSignal::Absent { track_count } => AutomationDiscIdSignal::Absent { track_count },
-        DiscIdSignal::Failed {
-            failure,
-            track_count,
-        } => AutomationDiscIdSignal::Failed {
-            failure: automation_lookup_failure(failure),
-            track_count,
-        },
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_barcode_signal(
-    signal: bae_core::signals::BarcodeSignal,
-) -> AutomationBarcodeSignal {
-    use bae_core::signals::BarcodeSignal;
-    match signal {
-        BarcodeSignal::Scanning { codes } => AutomationBarcodeSignal::Scanning {
-            codes: automation_sourced_values(codes),
-        },
-        BarcodeSignal::Settled { codes } => AutomationBarcodeSignal::Settled {
-            codes: automation_sourced_values(codes),
-        },
-        BarcodeSignal::Failed { failure, codes } => AutomationBarcodeSignal::Failed {
-            failure: automation_lookup_failure(failure),
-            codes: automation_sourced_values(codes),
-        },
-        BarcodeSignal::Absent => AutomationBarcodeSignal::Absent,
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_text_signal(
-    signal: bae_core::signals::TextSignal,
-) -> AutomationTextSignal {
-    use bae_core::signals::TextSignal;
-    match signal {
-        TextSignal::Scanning {
-            catalogs,
-            free_text,
-        } => AutomationTextSignal::Scanning {
-            catalogs: automation_sourced_values(catalogs),
-            free_text,
-        },
-        TextSignal::Settled {
-            catalogs,
-            free_text,
-        } => AutomationTextSignal::Settled {
-            catalogs: automation_sourced_values(catalogs),
-            free_text,
-        },
-        TextSignal::Failed {
-            failure,
-            catalogs,
-            free_text,
-        } => AutomationTextSignal::Failed {
-            failure: automation_lookup_failure(failure),
-            catalogs: automation_sourced_values(catalogs),
-            free_text,
-        },
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_signals(signals: bae_core::signals::Signals) -> AutomationSignals {
-    AutomationSignals {
-        disc_id: automation_disc_id_signal(signals.disc_id),
-        barcode: automation_barcode_signal(signals.barcode),
-        text: automation_text_signal(signals.text),
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_signal_kind(kind: bae_core::identify::SignalKind) -> AutomationSignalKind {
-    use bae_core::identify::SignalKind;
-    match kind {
-        SignalKind::DiscId => AutomationSignalKind::DiscId,
-        SignalKind::Barcode => AutomationSignalKind::Barcode,
-        SignalKind::Catalog => AutomationSignalKind::Catalog,
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_signal_state(
-    state: bae_core::identify::SignalState,
-) -> AutomationSignalState {
-    use bae_core::identify::SignalState;
-    match state {
-        SignalState::LookingUp => AutomationSignalState::LookingUp,
-        SignalState::Found { count } => AutomationSignalState::Found { count },
-        SignalState::NoMatch => AutomationSignalState::NoMatch,
-        SignalState::Skipped => AutomationSignalState::Skipped,
-        SignalState::Failed { failure } => AutomationSignalState::Failed {
-            failure: automation_lookup_failure(failure),
-        },
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_signal_option(
-    option: bae_core::identify::SignalOption,
-) -> AutomationSignalOption {
-    AutomationSignalOption {
-        value: option.value,
-        origin: automation_signal_origin(option.origin),
-        chosen: option.chosen,
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_toolbar_signal(
-    signal: bae_core::identify::ToolbarSignal,
-) -> AutomationToolbarSignal {
-    AutomationToolbarSignal {
-        kind: automation_signal_kind(signal.kind),
-        value: signal.value,
-        origin: automation_signal_origin(signal.origin),
-        state: automation_signal_state(signal.state),
-        excluded: signal.excluded,
-        options: signal
-            .options
-            .into_iter()
-            .map(automation_signal_option)
-            .collect(),
-    }
-}
-
-pub(super) fn automation_prepare_step(step: PrepareStep) -> AutomationPrepareStep {
-    match step {
-        PrepareStep::Queued => AutomationPrepareStep::Queued,
-        PrepareStep::ValidatingSourceFiles => AutomationPrepareStep::ValidatingSourceFiles,
-    }
-}
-
-pub(super) fn automation_import_phase(phase: ImportPhase) -> AutomationImportPhase {
-    match phase {
-        ImportPhase::ReadingFiles => AutomationImportPhase::ReadingFiles,
-        ImportPhase::MeasuringLoudness => AutomationImportPhase::MeasuringLoudness,
-        ImportPhase::Finalizing => AutomationImportPhase::Finalizing,
-    }
-}
-
-pub(super) fn automation_release(release: ReleaseDetail) -> AutomationRelease {
-    AutomationRelease {
-        summary: automation_release_summary(release.summary),
-        display_name: release.display_name,
-        year: release.year,
-        label: release.label,
-        catalog_number: release.catalog_number,
-        country: release.country,
-        total_duration_ms: release.total_duration_ms,
-        tracks: release
-            .tracks
-            .into_iter()
-            .map(automation_track_detail)
-            .collect(),
-        track_groups: release
-            .track_groups
-            .into_iter()
-            .map(|group| AutomationTrackGroup {
-                side: automation_track_side(group.side),
-                tracks: group
-                    .tracks
-                    .into_iter()
-                    .map(automation_track_detail)
-                    .collect(),
-            })
-            .collect(),
-        files: release
-            .files
-            .into_iter()
-            .map(automation_file_detail)
-            .collect(),
-        image_files: release
-            .image_files
-            .into_iter()
-            .map(automation_file_detail)
-            .collect(),
-        gallery_items: release
-            .gallery_items
-            .into_iter()
-            .map(automation_gallery_item)
-            .collect(),
-    }
-}
-
-pub(super) fn automation_release_summary(
-    summary: bae_core::album_detail::ReleaseSummary,
-) -> AutomationReleaseSummary {
-    AutomationReleaseSummary {
-        id: summary.id,
-        album_id: summary.album_id,
-        format: summary.format,
-        storage_state: summary.storage_state.into(),
-        pinned: summary.pinned,
-        storage_actions: summary
-            .storage_actions
-            .into_iter()
-            .map(Into::into)
-            .collect(),
-        transfer_action: summary.transfer_action.map(Into::into),
-        file_count: summary.file_count,
-        total_size: summary.total_size,
-        cover: summary.cover.map(automation_image_ref),
-    }
-}
-
-pub(super) fn automation_image_ref(image: ImageRef) -> AutomationImageRef {
-    AutomationImageRef {
-        id: image.id,
-        version: image.version,
-    }
-}
-
-pub(super) fn automation_track_detail(track: TrackDetail) -> AutomationTrackDetail {
-    AutomationTrackDetail {
-        id: track.id,
-        title: track.title,
-        side: track.side,
-        track_number: track.track_number,
-        duration_ms: track.duration_ms,
-        artist_names: track.artist_names,
-        position_text: track.position_text,
-        position: automation_track_position(track.position),
-    }
-}
-
-pub(super) fn automation_track_position(position: TrackPosition) -> AutomationTrackPosition {
-    match position {
-        TrackPosition::Sided {
-            side_letter,
-            number,
-        } => AutomationTrackPosition::Sided {
-            side_letter,
-            number,
-        },
-        TrackPosition::SidedUnnumbered { side_letter } => {
-            AutomationTrackPosition::SidedUnnumbered { side_letter }
+impl AutomationSourcedValue {
+    /// Not a copy: core's `origin_path` points at the file the value was read
+    /// off, which the automation shape does not carry.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn from_core(value: bae_core::signals::SourcedValue) -> Self {
+        Self {
+            value: value.value,
+            origin: AutomationSignalOrigin::from_core(value.origin),
         }
-        TrackPosition::Disc { disc, number } => AutomationTrackPosition::Disc { disc, number },
-        TrackPosition::DiscUnnumbered { disc } => AutomationTrackPosition::DiscUnnumbered { disc },
-        TrackPosition::Flat { number } => AutomationTrackPosition::Flat { number },
-        TrackPosition::Unnumbered => AutomationTrackPosition::Unnumbered,
     }
 }
 
-pub(super) fn automation_track_side(side: TrackSide) -> AutomationTrackSide {
-    match side {
-        TrackSide::Sided { side_letter } => AutomationTrackSide::Sided { side_letter },
-        TrackSide::Disc { disc } => AutomationTrackSide::Disc { disc },
-        TrackSide::Flat => AutomationTrackSide::Flat,
-    }
-}
-
-pub(super) fn automation_file_detail(file: FileDetail) -> AutomationFileDetail {
-    AutomationFileDetail {
-        id: file.id,
-        original_filename: file.original_filename,
-        file_size: file.file_size,
-        is_image: file.is_image,
-        content_type: file.content_type,
-        audio_format: file
-            .source_audio
-            .map(|source_audio| automation_audio_format(source_audio.format)),
-    }
-}
-
-pub(super) fn automation_audio_format(format: AudioFormat) -> AutomationAudioFormat {
-    AutomationAudioFormat {
-        codec: format.codec,
-        sample_rate_hz: format.sample_rate_hz,
-        bits_per_sample: format.bits_per_sample,
-        bitrate_kbps: format.bitrate_kbps,
-        channels: format.channels,
-    }
-}
-
-pub(super) fn automation_gallery_item(item: GalleryItem) -> AutomationGalleryItem {
-    AutomationGalleryItem {
-        id: item.id,
-        label: item.label,
-        source: match item.source {
-            GallerySource::Cover(image) => AutomationGallerySource::Cover {
-                image: automation_image_ref(image),
-            },
-            GallerySource::ReleaseFile { file_id } => {
-                AutomationGallerySource::ReleaseFile { file_id }
-            }
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationBarcodeSignal = bae_core::signals::BarcodeSignal,
+    from_core: pub(crate) fn,
+    variants: {
+        Scanning { codes: (each AutomationSourcedValue) },
+        Settled { codes: (each AutomationSourcedValue) },
+        Failed {
+            failure: (AutomationLookupFailure),
+            codes: (each AutomationSourcedValue),
         },
+        Absent,
+    },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationTextSignal = bae_core::signals::TextSignal,
+    from_core: pub(crate) fn,
+    variants: {
+        Scanning { catalogs: (each AutomationSourcedValue), free_text },
+        Settled { catalogs: (each AutomationSourcedValue), free_text },
+        Failed {
+            failure: (AutomationLookupFailure),
+            catalogs: (each AutomationSourcedValue),
+            free_text,
+        },
+    },
+}
+
+impl AutomationDiscIdSignal {
+    /// Not a copy: core's `Computed` names the LOG or CUE the disc ID came
+    /// from, which the automation shape does not carry.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn from_core(signal: bae_core::signals::DiscIdSignal) -> Self {
+        use bae_core::signals::DiscIdSignal;
+        match signal {
+            DiscIdSignal::Computed {
+                disc_id,
+                track_count,
+                ..
+            } => Self::Computed {
+                disc_id,
+                track_count,
+            },
+            DiscIdSignal::Absent { track_count } => Self::Absent { track_count },
+            DiscIdSignal::Failed {
+                failure,
+                track_count,
+            } => Self::Failed {
+                failure: AutomationLookupFailure::from_core(failure),
+                track_count,
+            },
+        }
     }
 }
 
-pub(super) fn automation_library_search_results(
-    results: SearchResults,
-) -> AutomationLibrarySearchResults {
-    AutomationLibrarySearchResults {
-        albums: results
-            .albums
-            .into_iter()
-            .map(|album| AutomationAlbumSearchResult {
-                id: album.id,
-                title: album.title,
-                year: album.year,
-                artist_name: album.artist_name,
-                cover: album.cover.map(automation_image_ref),
-            })
-            .collect(),
-        tracks: results
-            .tracks
-            .into_iter()
-            .map(|track| AutomationTrackSearchResult {
-                id: track.id,
-                title: track.title,
-                duration_ms: track.duration_ms,
-                album_id: track.album_id,
-                album_title: track.album_title,
-                artist_name: track.artist_name,
-            })
-            .collect(),
+impl AutomationSignals {
+    /// Not a copy: core's `durations` are what the Ready rule narrows with, not
+    /// a lookup input a client reads.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn from_core(signals: bae_core::signals::Signals) -> Self {
+        Self {
+            disc_id: AutomationDiscIdSignal::from_core(signals.disc_id),
+            barcode: AutomationBarcodeSignal::from_core(signals.barcode),
+            text: AutomationTextSignal::from_core(signals.text),
+        }
+    }
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationSignalKind = bae_core::identify::SignalKind,
+    from_core: pub(crate) fn,
+    variants: { DiscId, Barcode, Catalog },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationSignalState = bae_core::identify::SignalState,
+    from_core: pub(crate) fn,
+    variants: {
+        LookingUp,
+        Found { count },
+        NoMatch,
+        Skipped,
+        Failed { failure: (AutomationLookupFailure) },
+    },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationSignalOption = bae_core::identify::SignalOption,
+    from_core: pub(crate) fn,
+    fields: { value, origin: (AutomationSignalOrigin), chosen },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationToolbarSignal = bae_core::identify::ToolbarSignal,
+    from_core: pub(crate) fn,
+    fields: {
+        kind: (AutomationSignalKind),
+        value,
+        origin: (AutomationSignalOrigin),
+        state: (AutomationSignalState),
+        excluded,
+        options: (each AutomationSignalOption),
+    },
+}
+
+mirror_enum! {
+    AutomationPrepareStep = PrepareStep,
+    from_core: pub(crate) fn,
+    variants: { Queued, ValidatingSourceFiles },
+}
+
+mirror_enum! {
+    AutomationImportPhase = ImportPhase,
+    from_core: pub(crate) fn,
+    variants: { ReadingFiles, MeasuringLoudness, Finalizing },
+}
+
+impl AutomationRelease {
+    /// Not a copy: core's `source_audio` summary belongs to the candidate view,
+    /// which reads it off the folder rather than off a stored release.
+    pub(crate) fn from_core(release: ReleaseDetail) -> Self {
+        Self {
+            summary: AutomationReleaseSummary::from_core(release.summary),
+            display_name: release.display_name,
+            year: release.year,
+            label: release.label,
+            catalog_number: release.catalog_number,
+            country: release.country,
+            total_duration_ms: release.total_duration_ms,
+            tracks: release
+                .tracks
+                .into_iter()
+                .map(AutomationTrackDetail::from_core)
+                .collect(),
+            track_groups: release
+                .track_groups
+                .into_iter()
+                .map(AutomationTrackGroup::from_core)
+                .collect(),
+            files: release
+                .files
+                .into_iter()
+                .map(AutomationFileDetail::from_core)
+                .collect(),
+            image_files: release
+                .image_files
+                .into_iter()
+                .map(AutomationFileDetail::from_core)
+                .collect(),
+            gallery_items: release
+                .gallery_items
+                .into_iter()
+                .map(AutomationGalleryItem::from_core)
+                .collect(),
+        }
+    }
+}
+
+impl AutomationTrackGroup {
+    /// Not a copy: core's per-group `total_duration_ms` is a display total the
+    /// automation shape leaves to the client.
+    pub(crate) fn from_core(group: bae_core::album_detail::TrackGroup) -> Self {
+        Self {
+            side: AutomationTrackSide::from_core(group.side),
+            tracks: group
+                .tracks
+                .into_iter()
+                .map(AutomationTrackDetail::from_core)
+                .collect(),
+        }
+    }
+}
+
+mirror_struct! {
+    AutomationReleaseSummary = bae_core::album_detail::ReleaseSummary,
+    from_core: pub(crate) fn,
+    fields: {
+        id,
+        album_id,
+        format,
+        storage_state: (into),
+        pinned,
+        storage_actions: (each into),
+        transfer_action: (opt into),
+        file_count,
+        total_size,
+        cover: (opt AutomationImageRef),
+    },
+}
+
+impl AutomationImageRef {
+    /// Not a copy: core's `image_type` says which image table the id lives in,
+    /// which the automation fetch does not take.
+    pub(crate) fn from_core(image: ImageRef) -> Self {
+        Self {
+            id: image.id,
+            version: image.version,
+        }
+    }
+}
+
+impl AutomationTrackDetail {
+    /// Not a copy: core's `display_artist` is the row-label decision for a
+    /// compilation, which is a rendering call rather than a fact.
+    pub(crate) fn from_core(track: TrackDetail) -> Self {
+        Self {
+            id: track.id,
+            title: track.title,
+            side: track.side,
+            track_number: track.track_number,
+            duration_ms: track.duration_ms,
+            artist_names: track.artist_names,
+            position_text: track.position_text,
+            position: AutomationTrackPosition::from_core(track.position),
+        }
+    }
+}
+
+mirror_enum! {
+    AutomationTrackPosition = TrackPosition,
+    from_core: pub(crate) fn,
+    variants: {
+        Sided { side_letter, number },
+        SidedUnnumbered { side_letter },
+        Disc { disc, number },
+        DiscUnnumbered { disc },
+        Flat { number },
+        Unnumbered,
+    },
+}
+
+mirror_enum! {
+    AutomationTrackSide = TrackSide,
+    from_core: pub(crate) fn,
+    variants: {
+        Sided { side_letter },
+        Disc { disc },
+        Flat,
+    },
+}
+
+impl AutomationFileDetail {
+    /// Not a copy: the automation shape carries the source file's format
+    /// directly, where core nests it under the whole scan record.
+    pub(crate) fn from_core(file: FileDetail) -> Self {
+        Self {
+            id: file.id,
+            original_filename: file.original_filename,
+            file_size: file.file_size,
+            is_image: file.is_image,
+            content_type: file.content_type,
+            audio_format: file
+                .source_audio
+                .map(|source_audio| AutomationAudioFormat::from_core(source_audio.format)),
+        }
+    }
+}
+
+mirror_struct! {
+    AutomationAudioFormat = AudioFormat,
+    from_core: pub(crate) fn,
+    fields: {
+        codec,
+        sample_rate_hz,
+        bits_per_sample,
+        bitrate_kbps,
+        channels,
+    },
+}
+
+mirror_enum! {
+    AutomationGallerySource = GallerySource,
+    from_core: pub(crate) fn,
+    variants: {
+        Cover(image: (AutomationImageRef)),
+        ReleaseFile { file_id },
+    },
+}
+
+mirror_struct! {
+    AutomationGalleryItem = GalleryItem,
+    from_core: pub(crate) fn,
+    fields: { id, label, source: (AutomationGallerySource) },
+}
+
+impl AutomationLibrarySearchResults {
+    /// Not a copy: core's search also answers with artists, composers and
+    /// works, which the automation surface does not expose.
+    pub(crate) fn from_core(results: SearchResults) -> Self {
+        Self {
+            albums: results
+                .albums
+                .into_iter()
+                .map(AutomationAlbumSearchResult::from_core)
+                .collect(),
+            tracks: results
+                .tracks
+                .into_iter()
+                .map(AutomationTrackSearchResult::from_core)
+                .collect(),
+        }
+    }
+}
+
+mirror_struct! {
+    AutomationAlbumSearchResult = bae_core::album_detail::AlbumSearchResult,
+    from_core: pub(crate) fn,
+    fields: { id, title, year, artist_name, cover: (opt AutomationImageRef) },
+}
+
+impl AutomationTrackSearchResult {
+    /// Not a copy: a track hit's cover is its release's, which the album hit
+    /// beside it already carries.
+    pub(crate) fn from_core(track: bae_core::album_detail::TrackSearchResult) -> Self {
+        Self {
+            id: track.id,
+            title: track.title,
+            duration_ms: track.duration_ms,
+            album_id: track.album_id,
+            album_title: track.album_title,
+            artist_name: track.artist_name,
+        }
     }
 }

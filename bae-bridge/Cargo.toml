@@ -18,6 +18,7 @@ crate-type = ["lib", "staticlib", "cdylib"]
 bae-desktop = { path = "../bae-desktop", optional = true }
 bae-cast = { path = "../bae-cast", optional = true }
 bae-core = { path = "../bae-core" }
+bae-mirror = { path = "../bae-mirror" }
 # The CloudKit adapter implements coven's CloudKitOps, so it names coven types
 # directly (same pinned instance bae-core uses, via the workspace dep).
 coven = { workspace = true }
