@@ -34,7 +34,7 @@
             runtime: BridgeCandidateRuntimeSnapshot? = nil
         ) -> some View {
             let store = ImportStore()
-            store.selectedCandidates[candidate.key] = candidate
+            store.editorCandidate = candidate
             return ImportMappingPane(
                 candidate: candidate,
                 runtime: runtime,

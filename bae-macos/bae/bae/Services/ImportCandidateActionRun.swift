@@ -24,7 +24,7 @@ final class ImportCandidateActionRun {
     @discardableResult
     func start(
         action: BridgeCandidateAction,
-        candidates: [Candidate],
+        candidates: [BridgeImportCandidateActionTarget],
         uiStore: UiStore,
         before: @escaping @MainActor () async -> Void,
         operation: @escaping @MainActor (String) async throws -> Void
@@ -49,7 +49,7 @@ final class ImportCandidateActionRun {
     @MainActor
     func perform(
         action: BridgeCandidateAction,
-        candidates: [Candidate],
+        candidates: [BridgeImportCandidateActionTarget],
         uiStore: UiStore,
         operation: (String) async throws -> Void
     ) async {
@@ -101,50 +101,23 @@ final class ImportCandidateActionRun {
     }
 }
 
-/// Intersects the UI's selection with the commands each current row offers.
+/// Reads the dedicated core selection value. An action keeps only its targets.
 @MainActor
 struct ImportCandidateSelection {
     let importStore: ImportStore
     let uiStore: UiStore
 
-    var canCombine: Bool {
-        let keys = uiStore.selectedFolderCandidates
-        return keys.count >= 2
-            && keys.allSatisfy {
-                importStore.selectedCandidates[$0]?.detail?.candidate
-                    .compositionAction == .combine
-            }
+    private var current: BridgeImportSelection? {
+        guard let value = importStore.selection,
+            Set(value.candidateKeys) == uiStore.selectedFolderCandidates
+        else { return nil }
+        return value
     }
-
-    var offers: [ImportCandidateActionOffer] {
-        let actions: [BridgeCandidateAction] = [
-            .importReady, .identify, .retryIdentification,
-            .useFileMetadata, .clearMetadata, .skip, .restore,
-        ]
-        return actions.compactMap { action in
-            let eligible = candidates(for: action)
-            return eligible.isEmpty
-                ? nil
-                : ImportCandidateActionOffer(
-                    action: action,
-                    candidates: eligible
-                )
-        }
+    var canCombine: Bool { current?.canCombine == true }
+    var offers: [BridgeImportCandidateActionOffer] { current?.offers ?? [] }
+    func candidates(for action: BridgeCandidateAction)
+        -> [BridgeImportCandidateActionTarget]
+    {
+        current?.offers.first(where: { $0.action == action })?.candidates ?? []
     }
-
-    func candidates(for action: BridgeCandidateAction) -> [Candidate] {
-        uiStore.selectedFolderCandidates.sorted()
-            .compactMap { key in
-                guard let candidate = importStore.selectedCandidates[key],
-                    candidate.row?.actions.contains(action) == true
-                else { return nil }
-                return candidate
-            }
-    }
-}
-
-struct ImportCandidateActionOffer: Identifiable {
-    let action: BridgeCandidateAction
-    let candidates: [Candidate]
-    var id: BridgeCandidateAction { action }
 }

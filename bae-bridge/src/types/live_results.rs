@@ -207,3 +207,10 @@ pub trait ReleaseLibraryStatusCallback: Send + Sync {
     fn on_value(&self, value: BridgeLibraryStatus);
     fn on_error(&self, error: BridgeError);
 }
+
+#[cfg(feature = "desktop")]
+#[uniffi::export(callback_interface)]
+pub trait ImportSelectionCallback: Send + Sync {
+    fn on_value(&self, value: BridgeImportSelection);
+    fn on_error(&self, error: BridgeError);
+}

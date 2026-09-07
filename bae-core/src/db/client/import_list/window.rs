@@ -2,8 +2,9 @@
 //!
 //! Everything expensive about the import tab lives here: a candidate's
 //! resolved boundaries, a boundary's tree, and the archived documents behind a
-//! pick. All three are read for the entries inside a requested window and for
-//! the one key a selection names — never for the queue.
+//! pick. All three are read for entries inside a requested window or the visible
+//! album editor. Bulk selection uses its own facts query. Provider parsing and
+//! audio projection run over these owned inputs after the read returns.
 
 use super::super::folder_scans::load_resolved_boundaries;
 use super::super::identity::check_releases_in_library_on;
@@ -27,17 +28,29 @@ use crate::import::{CoverSelection, RawReleaseEdit};
 use crate::library::LibraryPageWindow;
 use std::path::PathBuf;
 
-/// The items one window holds, loaded whole.
+/// Owned window input; provider models and audio projections are constructed on
+/// the processing worker after the transaction has returned.
+pub(super) enum WindowItemRows {
+    Projected(ImportListItem),
+    Candidate {
+        row: crate::import::TriageRow,
+        is_group_member: bool,
+        files: Option<CategorizedFiles>,
+        payloads: Option<crate::import::payloads::ReleasePayloads>,
+        selected_cover: Option<crate::import::CoverImageSource>,
+    },
+}
+
 pub(super) fn materialise(
     sql: &SqlReadContext<'_>,
     window: &LibraryPageWindow,
     flat: &Flattened,
     rows: &ImportQueueRows,
-) -> Result<Vec<ImportListItem>, DbError> {
+) -> Result<Vec<WindowItemRows>, DbError> {
     window_refs(&flat.items, window)
         .iter()
         .map(|item| match item {
-            ItemRef::Header(index) => Ok(flat.headers[*index].item()),
+            ItemRef::Header(index) => Ok(WindowItemRows::Projected(flat.headers[*index].item())),
             ItemRef::Candidate {
                 index,
                 is_group_member,
@@ -45,21 +58,9 @@ pub(super) fn materialise(
                 let placed = &flat.rows[*index];
                 let scanned = &rows.candidates[placed.index];
                 let mut row = placed.row.clone();
-                // A resolved boundary is the row's offer to read its folder
-                // the other way, which is a question about a folder nobody has
-                // imported yet. Past that point the reading is settled and the
-                // row is flat, so the read is not made at all.
                 if row.placement.tab() == crate::import::TriageTab::Pending {
                     row.resolved_boundaries =
                         resolved_boundaries(sql, &scanned.watched_folder_path, &scanned.path)?;
-                }
-                // A decided identity outranks the verdict's lead: a manual
-                // search settles a folder on a release the verdict never
-                // named. With nothing archived behind the pick the row leads
-                // with its folder name rather than someone else's release.
-                if let Some(seed) = row.metadata_provenance.clone() {
-                    let audio_durations = candidate_audio_durations(sql, &row.candidate_key)?;
-                    row.matched = picked_release(sql, &seed, &audio_durations)?;
                 }
                 let content_hash = scanned.content_hash.as_deref().ok_or_else(|| {
                     DbError::Message(format!("candidate {} has no content hash", scanned.path))
@@ -69,11 +70,48 @@ pub(super) fn materialise(
                     .get(content_hash)
                     .filter(|state| state.edit_revision == scanned.file_edit_revision)
                     .and_then(|state| state.selected_cover.as_ref());
-                row.cover_thumbnail =
-                    effective_row_cover_source(sql, scanned, selected, row.matched.as_ref())?;
-                Ok(ImportListItem::Candidate {
+                let selected_cover = selected
+                    .map(|cover| row_cover_source(sql, scanned, cover))
+                    .transpose()?;
+                let payloads = match row.metadata_provenance.as_ref() {
+                    Some(MetadataProvenance::ExternalRelease {
+                        source, release_id, ..
+                    }) => load_release_payloads_on(
+                        sql,
+                        &MetadataRef::new(release_id.clone(), *source),
+                    )
+                    .map_err(|error| DbError::Message(error.to_string()))?,
+                    Some(MetadataProvenance::FileTags) | None => None,
+                };
+                let needs_files = row.metadata_provenance.is_some()
+                    || (selected.is_none()
+                        && row
+                            .matched
+                            .as_ref()
+                            .and_then(|matched| matched.cover_thumbnail_url.as_ref())
+                            .is_none());
+                let files = if needs_files {
+                    Some(
+                        load_candidate_on(sql, &row.candidate_key)?
+                            .ok_or_else(|| {
+                                DbError::Message(format!(
+                                    "candidate {} vanished while reading its list files",
+                                    row.candidate_key
+                                ))
+                            })?
+                            .candidate
+                            .files()
+                            .clone(),
+                    )
+                } else {
+                    None
+                };
+                Ok(WindowItemRows::Candidate {
                     row,
                     is_group_member: *is_group_member,
+                    files,
+                    payloads,
+                    selected_cover,
                 })
             }
             ItemRef::Invalid {
@@ -81,7 +119,7 @@ pub(super) fn materialise(
                 is_group_member,
             } => {
                 let scanned = &rows.candidates[*index];
-                Ok(ImportListItem::Invalid {
+                Ok(WindowItemRows::Projected(ImportListItem::Invalid {
                     candidate: InvalidCandidate {
                         path: PathBuf::from(&scanned.path),
                         name: scanned.name.clone(),
@@ -100,37 +138,81 @@ pub(super) fn materialise(
                         })?,
                     },
                     is_group_member: *is_group_member,
-                })
+                }))
             }
         })
         .collect()
 }
 
-fn effective_row_cover_source(
-    sql: &SqlReadContext<'_>,
-    candidate: &ScanCandidateListRow,
-    selected: Option<&CoverSelection>,
-    matched: Option<&MatchedRelease>,
-) -> Result<Option<crate::import::CoverImageSource>, DbError> {
-    if let Some(cover) = selected {
-        return row_cover_source(sql, candidate, cover).map(Some);
-    }
-    if let Some(url) = matched.and_then(|release| release.cover_thumbnail_url.as_ref()) {
-        return Ok(Some(crate::import::CoverImageSource::Remote {
-            url: url.clone(),
-        }));
-    }
-    let stored = load_candidate_on(sql, &candidate.path)?.ok_or_else(|| {
-        DbError::Message(format!(
-            "candidate {} vanished while materialising its cover",
-            candidate.path
-        ))
-    })?;
-    let candidate = stored.candidate;
-    Ok(
-        crate::import::local_artwork::default_local_cover_choice(candidate.files())
-            .map(|cover| cover.thumbnail),
-    )
+pub(super) fn process_window(
+    rows: Vec<WindowItemRows>,
+    parsed: &mut HashMap<MetadataRef, crate::import::payloads::ParsedReleasePayloads>,
+) -> Result<Vec<ImportListItem>, DbError> {
+    rows.into_iter()
+        .map(|item| {
+            let WindowItemRows::Candidate {
+                mut row,
+                is_group_member,
+                files,
+                payloads,
+                selected_cover,
+            } = item
+            else {
+                let WindowItemRows::Projected(item) = item else {
+                    unreachable!()
+                };
+                return Ok(item);
+            };
+            if let Some(pick) = &row.metadata_provenance {
+                let files = files
+                    .as_ref()
+                    .expect("a picked row fetches its audio files");
+                let durations = crate::import::probe::source_durations(files)
+                    .map_err(|error| DbError::Message(error.to_string()))?;
+                let audio = crate::import::track_slots::audio_durations(files, &durations)
+                    .map_err(|error| DbError::Message(error.to_string()))?;
+                row.matched = match (pick, payloads) {
+                    (
+                        MetadataProvenance::ExternalRelease {
+                            source, release_id, ..
+                        },
+                        Some(raw),
+                    ) => {
+                        let key = MetadataRef::new(release_id.clone(), *source);
+                        let documents = match parsed.entry(key) {
+                            std::collections::hash_map::Entry::Occupied(entry) => entry.into_mut(),
+                            std::collections::hash_map::Entry::Vacant(entry) => entry.insert(
+                                raw.parse()
+                                    .map_err(|error| DbError::Message(error.to_string()))?,
+                            ),
+                        };
+                        let detail = documents
+                            .detail_for_audio(&audio)
+                            .map_err(|error| DbError::Message(error.to_string()))?;
+                        Some(MatchedRelease::of_pick(*source, &detail))
+                    }
+                    _ => None,
+                };
+            }
+            row.cover_thumbnail = selected_cover
+                .or_else(|| {
+                    row.matched
+                        .as_ref()
+                        .and_then(|matched| matched.cover_thumbnail_url.as_ref())
+                        .map(|url| crate::import::CoverImageSource::Remote { url: url.clone() })
+                })
+                .or_else(|| {
+                    files
+                        .as_ref()
+                        .and_then(crate::import::local_artwork::default_local_cover_choice)
+                        .map(|cover| cover.thumbnail)
+                });
+            Ok(ImportListItem::Candidate {
+                row,
+                is_group_member,
+            })
+        })
+        .collect()
 }
 
 fn row_cover_source(
@@ -204,61 +286,30 @@ fn resolved_boundaries(
     )
 }
 
-/// The picked release as its own archived documents describe it. `None` when
-/// the folder is read as its own tags, and when nothing archived the documents
-/// behind a release pick.
-fn picked_release(
-    sql: &SqlReadContext<'_>,
-    pick: &MetadataProvenance,
-    audio_durations_ms: &[u64],
-) -> Result<Option<MatchedRelease>, DbError> {
-    let MetadataProvenance::ExternalRelease {
-        source, release_id, ..
-    } = pick
-    else {
-        return Ok(None);
-    };
-    let message = |error: crate::import::ImportError| DbError::Message(error.to_string());
-    let Some(payloads) =
-        load_release_payloads_on(sql, &MetadataRef::new(release_id.clone(), *source))
-            .map_err(message)?
-    else {
-        return Ok(None);
-    };
-    let detail = payloads
-        .detail_for_audio(audio_durations_ms)
-        .map_err(message)?;
-    Ok(Some(MatchedRelease::of_pick(*source, &detail)))
+/// Owned input from one tracked SQLite transaction. Provider projection and
+/// mapping execute after releasing the read worker and its transaction.
+pub(super) struct CandidateDetailRows {
+    stored: super::super::import_combinations::StoredReleaseCandidate,
+    current: Option<DbImportCandidateState>,
+    pane_rows: DbCandidatePaneRows,
+    skipped: bool,
+    imported_release: Option<ImportedRelease>,
+    initial_metadata_source: crate::config::DefaultImportMetadataSource,
+    metadata_revision: u64,
+    payloads: Option<crate::import::payloads::ReleasePayloads>,
+    statuses: Vec<LibraryStatus>,
+    picked_library_status: Option<LibraryStatus>,
+    embedded_cover: Option<crate::import::file_tag_snapshot::EmbeddedCoverFact>,
 }
 
-fn candidate_audio_durations(
-    sql: &SqlReadContext<'_>,
-    candidate_key: &str,
-) -> Result<Vec<u64>, DbError> {
-    let stored = load_candidate_on(sql, candidate_key)?.ok_or_else(|| {
-        DbError::Message(format!(
-            "candidate {candidate_key} vanished while materialising its picked release"
-        ))
-    })?;
-    let candidate = stored.candidate;
-    let durations = crate::import::probe::source_durations(candidate.files())
-        .map_err(|error| DbError::Message(error.to_string()))?;
-    crate::import::track_slots::audio_durations(candidate.files(), &durations)
-        .map_err(|error| DbError::Message(error.to_string()))
-}
-
-/// One candidate, whole, before its runtime is folded in. `None` when the key
-/// names no scanned folder — which is what clears a selection.
-pub(super) fn load_candidate_detail_on(
+pub(super) fn load_candidate_detail_rows_on(
     sql: &SqlReadContext<'_>,
     key: &str,
-) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
+) -> Result<Option<CandidateDetailRows>, DbError> {
     let Some(stored) = load_candidate_on(sql, key)? else {
         return Ok(None);
     };
-    let actionable = stored.actionable;
-    let source_error = stored.error;
-    let candidate = stored.candidate;
+    let candidate = &stored.candidate;
     let content_hash = candidate.files().content_hash();
 
     let skipped = skipped_on(sql, &candidate)?;
@@ -282,9 +333,7 @@ pub(super) fn load_candidate_detail_on(
     let picked = current
         .as_ref()
         .and_then(|state| state.metadata_provenance.clone());
-    let durations = crate::import::probe::source_durations(candidate.files())
-        .map_err(|error| DbError::Message(error.to_string()))?;
-    let signals = current.as_ref().and_then(|state| state.signals.clone());
+
     let pane_rows = load_pane_rows_on(sql, &content_hash)?;
     let (initial_metadata_source, metadata_revision) = sql.query_row(
         "SELECT c.initial_metadata_source, s.metadata_revision \
@@ -298,55 +347,38 @@ pub(super) fn load_candidate_detail_on(
     let metadata_revision = u64::try_from(metadata_revision)
         .map_err(|_| DbError::Message("candidate metadata revision is negative".to_string()))?;
 
-    let mut answer = None;
-    let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
-    let mut matched = None;
-    if let Some(identify) = identify {
-        let statuses = library_statuses(sql, &identify.verdict)?;
-        // The check answers for every release the verdict names, so a lookup
-        // cannot miss: `check_releases_in_library_on` returns one status per
-        // check and the checks are exactly those releases.
-        let status_of = |result: &MetadataResult| {
-            statuses
-                .iter()
-                .find(|status| status.release_id == result.release_id)
-                .expect("the library check covers every release the verdict names")
-                .clone()
-        };
-        answer = Some(classify(
-            &identify.verdict,
-            identify.probed_total_duration_ms,
-            &statuses,
-        ));
-        matched = MatchedRelease::of_summary(&VerdictSummary::of(&identify.verdict));
-        resumed_identify_state = identify.verdict.clone().resume_state(&status_of);
-    }
-    if let Some(pick) = picked.as_ref() {
-        let audio_durations =
-            crate::import::track_slots::audio_durations(candidate.files(), &durations)
-                .map_err(|error| DbError::Message(error.to_string()))?;
-        matched = picked_release(sql, pick, &audio_durations)?;
-    }
-
-    let pane = pane_of(sql, &candidate, picked.as_ref(), &durations, &pane_rows)?;
-    let picked_library_status = match pane.release.as_ref() {
-        Some(release) => check_releases_in_library_on(
-            sql,
-            &[LibraryCheck {
-                source: release.source,
-                release_id: release.release_id.clone(),
-                source_group_id: release.source_group_id.clone(),
-            }],
-        )?
-        .into_iter()
-        .next(),
-        None => None,
+    let statuses = match identify {
+        Some(identify) => library_statuses(sql, &identify.verdict)?,
+        None => Vec::new(),
     };
-    let remote_covers = pane
-        .release
-        .as_ref()
-        .map(|release| release.cover_art.clone())
-        .unwrap_or_default();
+    let (payloads, picked_library_status) = match picked.as_ref() {
+        Some(MetadataProvenance::ExternalRelease {
+            source, release_id, ..
+        }) => {
+            let release = MetadataRef::new(release_id.clone(), *source);
+            let payloads = load_release_payloads_on(sql, &release)
+                .map_err(|error| DbError::Message(error.to_string()))?
+                .ok_or_else(|| {
+                    DbError::Message(format!(
+                        "{} is picked for {} but nothing stored its lookups",
+                        release.id,
+                        candidate.key()
+                    ))
+                })?;
+            let status = check_releases_in_library_on(
+                sql,
+                &[LibraryCheck {
+                    source: *source,
+                    release_id: payloads.source_release_id().to_string(),
+                    source_group_id: payloads.source_group_id().map(str::to_string),
+                }],
+            )?
+            .into_iter()
+            .next();
+            (Some(payloads), status)
+        }
+        Some(MetadataProvenance::FileTags) | None => (None, None),
+    };
     let embedded_cover = match pane_rows.cover.as_ref() {
         Some(CoverSelection::Embedded(source_file_id)) => {
             let snapshot = super::super::folder_scans::load_candidate_file_tag_snapshot(
@@ -377,6 +409,90 @@ pub(super) fn load_candidate_detail_on(
         }
         _ => None,
     };
+    Ok(Some(CandidateDetailRows {
+        stored,
+        current,
+        pane_rows,
+        skipped,
+        imported_release,
+        initial_metadata_source,
+        metadata_revision,
+        payloads,
+        statuses,
+        picked_library_status,
+        embedded_cover,
+    }))
+}
+
+pub(super) fn process_candidate_detail(
+    rows: Option<CandidateDetailRows>,
+) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
+    let Some(CandidateDetailRows {
+        stored,
+        current,
+        pane_rows,
+        skipped,
+        imported_release,
+        initial_metadata_source,
+        metadata_revision,
+        payloads,
+        statuses,
+        picked_library_status,
+        embedded_cover,
+    }) = rows
+    else {
+        return Ok(None);
+    };
+    let actionable = stored.actionable;
+    let source_error = stored.error;
+    let candidate = stored.candidate;
+    let identify = current.as_ref().and_then(|state| state.identify.as_ref());
+    let picked = current
+        .as_ref()
+        .and_then(|state| state.metadata_provenance.clone());
+    let signals = current.as_ref().and_then(|state| state.signals.clone());
+    let durations = crate::import::probe::source_durations(candidate.files())
+        .map_err(|error| DbError::Message(error.to_string()))?;
+    let mut answer = None;
+    let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
+    let mut matched = None;
+    if let Some(identify) = identify {
+        // The check answers for every release the verdict names, so a lookup
+        // cannot miss: `check_releases_in_library_on` returns one status per
+        // check and the checks are exactly those releases.
+        let status_of = |result: &MetadataResult| {
+            statuses
+                .iter()
+                .find(|status| status.release_id == result.release_id)
+                .expect("the library check covers every release the verdict names")
+                .clone()
+        };
+        answer = Some(classify(
+            &identify.verdict,
+            identify.probed_total_duration_ms,
+            &statuses,
+        ));
+        matched = MatchedRelease::of_summary(&VerdictSummary::of(&identify.verdict));
+        resumed_identify_state = identify.verdict.clone().resume_state(&status_of);
+    }
+    let pane = pane_of(
+        payloads.as_ref(),
+        &candidate,
+        picked.as_ref(),
+        &durations,
+        &pane_rows,
+    )?;
+    if picked.is_some() {
+        matched = pane
+            .release
+            .as_ref()
+            .map(|release| MatchedRelease::of_pick(release.source, release));
+    }
+    let remote_covers = pane
+        .release
+        .as_ref()
+        .map(|release| release.cover_art.clone())
+        .unwrap_or_default();
     let cover = chosen_cover(
         candidate.files(),
         pane_rows.cover.as_ref(),
@@ -398,6 +514,7 @@ pub(super) fn load_candidate_detail_on(
         imported_release,
         release: pane.release,
         picked_library_status,
+        metadata_draft_valid: pane_rows.draft.release_edit().shape().is_ok(),
         metadata_draft: pane.edit,
         mapping: pane.mapping,
         cover,
@@ -417,42 +534,26 @@ struct PaneValue {
     mapping: MappingTable,
 }
 
-#[allow(clippy::too_many_arguments)]
 fn pane_of(
-    sql: &SqlReadContext<'_>,
+    payloads: Option<&crate::import::payloads::ReleasePayloads>,
     candidate: &ReleaseCandidate,
     picked: Option<&MetadataProvenance>,
     durations: &SourceDurations,
     rows: &DbCandidatePaneRows,
 ) -> Result<PaneValue, DbError> {
-    let release = match picked {
-        Some(MetadataProvenance::ExternalRelease {
-            source, release_id, ..
-        }) => {
-            let release = MetadataRef::new(release_id.clone(), *source);
-            // A stored pick always has readable documents: the pick write
-            // archives them first. Serving half a pane instead would hide the
-            // break rather than state it.
-            let payloads = load_release_payloads_on(sql, &release)
-                .map_err(|error| DbError::Message(error.to_string()))?
-                .ok_or_else(|| {
-                    DbError::Message(format!(
-                        "{} is picked for {} but nothing stored its lookups",
-                        release.id,
-                        candidate.key()
-                    ))
-                })?;
-            Some(
-                payloads
-                    .detail_for_audio(
-                        &crate::import::track_slots::audio_durations(candidate.files(), durations)
-                            .map_err(|error| DbError::Message(error.to_string()))?,
-                    )
-                    .map_err(|error| DbError::Message(error.to_string()))?,
-            )
-        }
-        Some(MetadataProvenance::FileTags) | None => None,
-    };
+    let release = payloads
+        .map(|payloads| {
+            let parsed = payloads
+                .parse()
+                .map_err(|error| DbError::Message(error.to_string()))?;
+            parsed
+                .detail_for_audio(
+                    &crate::import::track_slots::audio_durations(candidate.files(), durations)
+                        .map_err(|error| DbError::Message(error.to_string()))?,
+                )
+                .map_err(|error| DbError::Message(error.to_string()))
+        })
+        .transpose()?;
     let pick =
         crate::import::pane::draft_pane(release, candidate.files(), durations, &rows.draft, picked);
     Ok(PaneValue {

@@ -252,10 +252,10 @@ pub struct FirstUnidentifiedRowRef {
 /// Everything the chrome around the list shows, computed in the same pass as
 /// the items so none of it can drift from them.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ImportQueueSummary {
+pub struct ImportQueueSummary<ScanStatus = WatchedFolderScanStatus> {
     pub counts: TriageTabCounts,
     pub watched_folders: Vec<WatchedFolder>,
-    pub folder_scan_statuses: Vec<WatchedFolderScanStatus>,
+    pub folder_scan_statuses: Vec<ScanStatus>,
     /// The current walks, already filtered and totalled for the filter-bar
     /// activity control. Absent as soon as no root is scanning.
     pub folder_scan_activity: Option<FolderScanActivity>,
@@ -338,6 +338,8 @@ pub struct ImportCandidateDetailProjection {
     pub picked_library_status: Option<LibraryStatus>,
     /// The candidate's one editable metadata draft.
     pub metadata_draft: RawReleaseEdit,
+    /// Readiness of the committed draft, excluding tracks the person dropped.
+    pub metadata_draft_valid: bool,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: MappingTable,
@@ -386,6 +388,7 @@ impl ImportCandidateDetailProjection {
             release,
             picked_library_status,
             metadata_draft,
+            metadata_draft_valid,
             mapping,
             cover,
             remote_covers,
@@ -417,7 +420,6 @@ impl ImportCandidateDetailProjection {
             (None, Some(status)) => CandidateAnswer::Identification(status),
             (None, None) => CandidateAnswer::Unidentified,
         };
-        let metadata_draft_valid = metadata_draft.clone().shape().is_ok();
         let placement = place(
             skipped,
             is_added,
@@ -454,28 +456,11 @@ impl ImportCandidateDetailProjection {
             metadata_provenance: metadata_provenance.clone().filter(|_| actionable),
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
-        let composition_action = if is_added
-            || facts.importing
-            || matches!(
-                facts.identification,
-                Some(
-                    super::triage::IdentificationStatus::Queued
-                        | super::triage::IdentificationStatus::Running
-                        | super::triage::IdentificationStatus::Finalizing
-                )
-            ) {
-            None
-        } else {
-            match &candidate {
-                ReleaseCandidate::Folder(_) if actionable => {
-                    Some(super::combination::CombinationAction::Combine)
-                }
-                ReleaseCandidate::Folder(_) => None,
-                ReleaseCandidate::Combined(_) => {
-                    Some(super::combination::CombinationAction::Separate)
-                }
-            }
-        };
+        let composition_action = match &candidate {
+            ReleaseCandidate::Folder(_) => super::combination::CombinationAction::Combine,
+            ReleaseCandidate::Combined(_) => super::combination::CombinationAction::Separate,
+        }
+        .available(actionable, is_added, facts);
         ImportCandidateDetail {
             composition_action,
             candidate,

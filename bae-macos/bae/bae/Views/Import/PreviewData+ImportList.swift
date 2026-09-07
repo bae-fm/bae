@@ -7,14 +7,58 @@
     /// tab names, which is what a live list would have delivered.
     struct ImportPreviewFixture {
         let store: ImportStore
+        /// Fake editor responses belong to the preview's source, not its store.
+        let candidates: [String: Candidate]
         let itemsByTab: [BridgeTriageTab: [BridgeImportListItem]]
 
         @MainActor
         func slot(uiStore: UiStore) -> ImportListSlot {
-            ImportListSlot.preview(
+            applySelection(uiStore.selectedFolderCandidates)
+            uiStore.onFolderCandidateSelectionChanged = { applySelection($0) }
+            return ImportListSlot.preview(
                 importStore: store,
                 uiStore: uiStore,
                 items: itemsByTab[uiStore.importCandidateTab] ?? []
+            )
+        }
+
+        @MainActor
+        func applySelection(_ keys: Set<String>) {
+            store.editorCandidate =
+                keys.count == 1 ? keys.first.flatMap { candidates[$0] } : nil
+            // These fixed rows already carry the fake core's action answers.
+            let rows = itemsByTab.values.flatMap { $0 }
+                .compactMap { item -> BridgeTriageRow? in
+                    guard case .candidate(_, let row, _) = item,
+                        keys.contains(row.candidateKey)
+                    else { return nil }
+                    return row
+                }
+                .sorted { $0.candidateKey < $1.candidateKey }
+            let offers = [
+                BridgeCandidateAction.importReady, .identify,
+                .retryIdentification, .useFileMetadata, .clearMetadata, .skip,
+                .restore,
+            ]
+            .compactMap { action -> BridgeImportCandidateActionOffer? in
+                let targets = rows.filter { $0.actions.contains(action) }
+                    .map {
+                        BridgeImportCandidateActionTarget(
+                            key: $0.candidateKey,
+                            displayName: $0.folderName
+                        )
+                    }
+                return targets.isEmpty
+                    ? nil
+                    : BridgeImportCandidateActionOffer(
+                        action: action,
+                        candidates: targets
+                    )
+            }
+            store.selection = BridgeImportSelection(
+                candidateKeys: rows.map(\.candidateKey),
+                offers: offers,
+                canCombine: false
             )
         }
     }

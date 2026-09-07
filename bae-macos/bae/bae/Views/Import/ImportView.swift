@@ -60,7 +60,7 @@ struct ImportView: View {
         else {
             return nil
         }
-        return importStore.selectedCandidates[key]
+        return importStore.candidate(forKey: key)
     }
 
     func commitAndEndEditing() async {
@@ -201,13 +201,7 @@ struct ImportView: View {
         Task {
             do {
                 try await importer.removeWatchedFolder(path)
-                let removed = Set(
-                    uiStore.selectedFolderCandidates.filter {
-                        importStore.selectedCandidates[$0]?.watchedFolderPath
-                            == path
-                    }
-                )
-                uiStore.removeFolderCandidateSelection(removed)
+
             }
             catch {
                 if let line = error.displayLine {

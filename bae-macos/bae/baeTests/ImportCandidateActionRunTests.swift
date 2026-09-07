@@ -15,7 +15,12 @@ struct ImportCandidateActionRunTests {
         let entered = AsyncStream<Void>.makeStream()
         let submitted = uiStore.candidateActionRun.start(
             action: .skip,
-            candidates: [candidate],
+            candidates: [
+                BridgeImportCandidateActionTarget(
+                    key: candidate.key,
+                    displayName: candidate.displayName
+                )
+            ],
             uiStore: uiStore,
             before: {},
             operation: { _ in
@@ -28,7 +33,12 @@ struct ImportCandidateActionRunTests {
         await iterator.next()
         let duplicate = uiStore.candidateActionRun.start(
             action: .skip,
-            candidates: [candidate],
+            candidates: [
+                BridgeImportCandidateActionTarget(
+                    key: candidate.key,
+                    displayName: candidate.displayName
+                )
+            ],
             uiStore: uiStore,
             before: {},
             operation: { _ in
@@ -56,7 +66,12 @@ struct ImportCandidateActionRunTests {
         var attempted: [String] = []
         await uiStore.candidateActionRun.perform(
             action: .skip,
-            candidates: candidates,
+            candidates: candidates.map {
+                BridgeImportCandidateActionTarget(
+                    key: $0.key,
+                    displayName: $0.displayName
+                )
+            },
             uiStore: uiStore
         ) { key in
             attempted.append(key)
@@ -85,7 +100,12 @@ struct ImportCandidateActionRunTests {
         var attempted: [String] = []
         await uiStore.candidateActionRun.perform(
             action: .clearMetadata,
-            candidates: candidates,
+            candidates: candidates.map {
+                BridgeImportCandidateActionTarget(
+                    key: $0.key,
+                    displayName: $0.displayName
+                )
+            },
             uiStore: uiStore
         ) { key in
             attempted.append(key)
@@ -108,7 +128,12 @@ struct ImportCandidateActionRunTests {
         uiStore.setFolderCandidateSelection([candidate.key])
         await uiStore.candidateActionRun.perform(
             action: .skip,
-            candidates: [candidate],
+            candidates: [
+                BridgeImportCandidateActionTarget(
+                    key: candidate.key,
+                    displayName: candidate.displayName
+                )
+            ],
             uiStore: uiStore
         ) { _ in
             uiStore.setFolderCandidateSelection([other.key])
@@ -124,6 +149,7 @@ struct ImportCandidateActionRunTests {
             PreviewData.importTabCandidate.key,
             PreviewData.importTabDisagreementCandidate.key,
         ])
+        scene.applySelection(uiStore.selectedFolderCandidates)
         let selection = ImportCandidateSelection(
             importStore: scene.store,
             uiStore: uiStore

@@ -86,6 +86,10 @@ pub mod track_slots;
 pub mod triage;
 mod types;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use types::{parse_optional_year, validate_release_metadata};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod selection;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod worker_thread;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -481,7 +481,7 @@ struct ImportSearchFlowLibraryStatusTests {
     func resultStatusUpdatesAndCancels() async throws {
         let store = ImportStore()
         let candidate = PreviewData.folderCandidates[0]
-        store.selectedCandidates[candidate.key] = candidate
+        store.editorCandidate = candidate
         let harness = ReleaseStatusHarness()
         let importer = Importer(
             subscribeReleaseLibraryStatus: harness.subscribe
@@ -510,7 +510,7 @@ struct ImportSearchFlowLibraryStatusTests {
                 .albumId == "album-live"
         }
 
-        store.selectedCandidates.removeValue(forKey: candidate.key)
+        store.clearEditor()
         #expect(harness.subscription(releaseId: "rel-live")?.cancelled == true)
     }
 
@@ -518,7 +518,7 @@ struct ImportSearchFlowLibraryStatusTests {
     func sameKeyReplacementRejectsOldCallbacks() async throws {
         let store = ImportStore()
         let candidate = PreviewData.folderCandidates[0]
-        store.selectedCandidates[candidate.key] = candidate
+        store.editorCandidate = candidate
         let harness = ReleaseStatusHarness()
         let importer = Importer(
             subscribeReleaseLibraryStatus: harness.subscribe

@@ -6,18 +6,8 @@ import os.log
 
 private let importStoreLogger = Logger.bae("ImportStore")
 
-/// Session state for the import flow. Mixed-writer: core drives the list, the
-/// per-candidate reads and preview state through value subscriptions, while
-/// views drive user-set fields (presentation, selected cover) via
-/// `mutateCandidate(forKey:_:)`. The single-writer rule applies per field, not
-/// per store.
-///
-/// The list itself is paged: `items` holds the entries the sidebar has loaded,
-/// keyed by the stable key core computes, and `selectedCandidates` holds the
-/// whole folder for each row the user selected. Keys are unique across the
-/// selected folders and the re-identify sessions (a folder path or
-/// `reidentify:{releaseId}`), so the cross-type helpers below look a candidate
-/// up by key without knowing its source.
+/// Session state for the visible album editor and independent re-identify
+/// sheets. Bulk selection carries only the value its own core query delivers.
 @Observable
 class ImportStore {
     /// The list entries the sidebar has loaded, by stable key. The paged list
@@ -87,10 +77,15 @@ class ImportStore {
         reportedScanFailures = current
     }
 
-    /// The selected rows' folders, read by key. A selection opens one
-    /// subscription per key; the key leaves when its read says the folder is
-    /// gone.
-    var selectedCandidates: OrderedDictionary<String, Candidate> = [:]
+    /// Full metadata and mapping for the one visible album editor.
+    var editorCandidate: Candidate?
+    /// The current selected-key query value, absent while its request changes.
+    var selection: BridgeImportSelection?
+    @ObservationIgnored
+    let editorVisibility = CurrentValueSubject<Bool, Never>(false)
+
+    func clearEditor() { editorCandidate = nil }
+
     /// Where a folder candidate's session writes go: core stores them with
     /// the candidate and the next detail carries them back. A re-identify
     /// session has no stored candidate, so its session stays in memory here.
@@ -146,11 +141,11 @@ class ImportStore {
         CandidateSignalsEvent, Never
     >()
 
-    /// Look up a candidate by key across both source dicts. Used when the
-    /// caller doesn't know (or doesn't care about) the candidate's source —
-    /// the shared search/confirmation flow.
+    /// Shared search and confirmation flows address either the visible editor
+    /// or an independent re-identify session by its key.
     func candidate(forKey key: String) -> Candidate? {
-        selectedCandidates[key] ?? reIdentifyCandidates[key]
+        if editorCandidate?.key == key { return editorCandidate }
+        return reIdentifyCandidates[key]
     }
 
     // MARK: - The paged list
@@ -183,7 +178,7 @@ class ImportStore {
         detail: BridgeImportCandidateDetail
     ) {
         var incoming = Candidate(detail: detail)
-        if let existing = selectedCandidates[key] {
+        if let existing = editorCandidate, existing.key == key {
             incoming = incoming.withSessionState(from: existing)
         }
         let deliveredSession = incoming.metadataApplicationSession.flatMap {
@@ -194,7 +189,7 @@ class ImportStore {
             session.recordDetailDelivery(revision: detail.metadataRevision)
             return session
         }
-        selectedCandidates[key] = incoming
+        editorCandidate = incoming
         if let deliveredSession {
             finishMetadataApplicationIfConfirmed(
                 key: key,
@@ -335,13 +330,13 @@ extension ImportStore {
         }
     }
 
-    private func mutateSelectedCandidate(
+    private func mutateEditorCandidate(
         key: String,
         _ mutate: (inout Candidate) -> Void
     ) {
-        if var candidate = selectedCandidates[key] {
+        if var candidate = editorCandidate, candidate.key == key {
             mutate(&candidate)
-            selectedCandidates[key] = candidate
+            editorCandidate = candidate
         }
     }
 
@@ -363,7 +358,7 @@ extension ImportStore {
             mutateReIdentifyCandidate(key: key, mutate)
         }
         else {
-            mutateSelectedCandidate(key: key, mutate)
+            mutateEditorCandidate(key: key, mutate)
         }
     }
 

@@ -258,9 +258,10 @@ pub(super) struct UrlLookupRelease {
 
 /// The first Discogs release URL among a set of MB relations, if any.
 pub(super) fn first_discogs_release_url(relations: &[MbRelation]) -> Option<String> {
-    relations
-        .iter()
-        .filter_map(|r| r.url.as_ref()?.resource.as_deref())
-        .find(|resource| resource.contains("discogs.com/release/"))
-        .map(str::to_string)
+    crate::provider_document::first_discogs_release_url(
+        relations
+            .iter()
+            .filter_map(|relation| relation.url.as_ref()?.resource.as_deref()),
+    )
+    .map(str::to_string)
 }

@@ -245,17 +245,30 @@ fn image_covers(images: Option<Vec<Image>>, entity: &str, id: u64) -> Vec<Remote
     covers
 }
 
-/// Artwork from an archived master document, using the release image parser.
+/// A master's parsed year and image choices, shared by all import projections.
+pub(crate) struct DiscogsMaster {
+    pub(crate) year: Option<u32>,
+    pub(crate) covers: Vec<RemoteCover>,
+}
+
+pub(crate) fn parse_discogs_master(raw_json: &str) -> Result<DiscogsMaster, DiscogsError> {
+    #[derive(Deserialize)]
+    struct MasterResponse {
+        id: u64,
+        year: Option<u32>,
+        images: Option<Vec<Image>>,
+    }
+    let master: MasterResponse = serde_json::from_str(raw_json)?;
+    Ok(DiscogsMaster {
+        year: master.year,
+        covers: image_covers(master.images, "m", master.id),
+    })
+}
+
 pub(crate) fn parse_discogs_master_covers(
     raw_json: &str,
 ) -> Result<Vec<RemoteCover>, DiscogsError> {
-    #[derive(Deserialize)]
-    struct MasterImages {
-        id: u64,
-        images: Option<Vec<Image>>,
-    }
-    let master: MasterImages = serde_json::from_str(raw_json)?;
-    Ok(image_covers(master.images, "m", master.id))
+    Ok(parse_discogs_master(raw_json)?.covers)
 }
 #[derive(Debug, Deserialize)]
 struct TrackResponse {

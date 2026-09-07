@@ -12,10 +12,10 @@ struct ImportCandidateBulkSelectionPane: View {
     var storageCloud: Bool
     @Binding
     var storagePinned: Bool
-    let onPerform: (ImportCandidateActionOffer) -> Void
+    let onPerform: (BridgeImportCandidateActionOffer) -> Void
     let onCombine: () -> Void
     @State
-    private var confirmation: ImportCandidateActionOffer?
+    private var confirmation: BridgeImportCandidateActionOffer?
 
     var body: some View {
         ScrollView {
@@ -45,7 +45,8 @@ struct ImportCandidateBulkSelectionPane: View {
                         importStore: importStore,
                         uiStore: uiStore
                     )
-                    .offers
+                    .offers,
+                    id: \.action
                 ) { offer in
                     Button {
                         if offer.action == .useFileMetadata

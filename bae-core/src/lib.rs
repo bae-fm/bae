@@ -33,6 +33,7 @@ pub mod musicbrainz;
 pub mod network;
 pub mod oauth;
 pub mod playback;
+mod provider_document;
 pub mod queue;
 pub mod renderer;
 pub mod retry;

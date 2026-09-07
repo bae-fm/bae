@@ -79,6 +79,28 @@ impl AppHandle {
         )
     }
 
+    /// Actions for the selected keys without opening their album editors.
+    pub fn subscribe_import_selection(
+        &self,
+        candidate_keys: Vec<String>,
+        callback: Box<dyn crate::types::ImportSelectionCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        self.subscribe_channel(
+            move |services, runtime| {
+                services.subscribe_import_selection_values(
+                    runtime,
+                    candidate_keys.into_iter().collect(),
+                )
+            },
+            move |value| match value {
+                Ok(value) => {
+                    callback.on_value(crate::types::BridgeImportSelection::from_core(value))
+                }
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
+    }
+
     /// What is in flight for one key right now — the read a view does once
     /// when it appears, after it has subscribed to the changes.
     pub fn candidate_runtime(

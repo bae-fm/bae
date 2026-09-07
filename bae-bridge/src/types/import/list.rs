@@ -327,3 +327,23 @@ pub struct BridgeArtistIdentityConflict {
     pub discogs_artist: BridgeExistingArtist,
     pub musicbrainz_artist: BridgeExistingArtist,
 }
+
+/// The selected keys' available actions, independent of album editor data.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeImportSelection {
+    pub candidate_keys: Vec<String>,
+    pub offers: Vec<BridgeImportCandidateActionOffer>,
+    pub can_combine: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeImportCandidateActionTarget {
+    pub key: String,
+    pub display_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeImportCandidateActionOffer {
+    pub action: BridgeCandidateAction,
+    pub candidates: Vec<BridgeImportCandidateActionTarget>,
+}

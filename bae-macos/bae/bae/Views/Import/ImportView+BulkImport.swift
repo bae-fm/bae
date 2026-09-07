@@ -9,14 +9,14 @@ extension ImportView {
         )
         .candidates(for: .importReady)
         performCandidateAction(
-            ImportCandidateActionOffer(
+            BridgeImportCandidateActionOffer(
                 action: .importReady,
                 candidates: candidates
             )
         )
     }
 
-    func performCandidateAction(_ offer: ImportCandidateActionOffer) {
+    func performCandidateAction(_ offer: BridgeImportCandidateActionOffer) {
         let storageMode = configStore.config.importStorageMode(
             cloud: storageCloud
         )
