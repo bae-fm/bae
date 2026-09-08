@@ -70,6 +70,20 @@ enum SnapshotTestSupport {
 
 }
 
+extension Collection<String> {
+    /// Whether any of these lines carries `text`.
+    ///
+    /// Text recognition reads a line as it was drawn, glyphs included: a
+    /// section header's symbol, an error's warning triangle, a checkbox's box
+    /// — each shares a baseline with its words and comes back glued to them,
+    /// and how much of the glyph survives depends on the machine that drew
+    /// the pixels. A check that the words were drawn asks whether a line
+    /// carries them, not whether one equals them.
+    func carrying(_ text: String) -> Bool {
+        contains { $0.contains(text) }
+    }
+}
+
 private final class SnapshotTestWindow: NSWindow {
     override var canBecomeKey: Bool { true }
 }

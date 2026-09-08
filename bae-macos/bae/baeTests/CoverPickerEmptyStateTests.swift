@@ -40,18 +40,18 @@ struct CoverPickerEmptyStateTests {
             $0.topCandidates(1).first?.string
         }
         #expect(
-            labels.contains(String(localized: "No remote covers found"))
+            labels.carrying(String(localized: "No remote covers found"))
                 == (remoteItems == .linked([]))
         )
         #expect(
-            labels.contains(String(localized: "No linked release"))
+            labels.carrying(String(localized: "No linked release"))
                 == (remoteItems == .unlinked)
         )
         if case .failed = remoteItems {
-            #expect(labels.contains("Artwork lookup failed"))
+            #expect(labels.carrying("Artwork lookup failed"))
         }
         if case .loading = remoteItems {
-            #expect(labels.contains(String(localized: "Fetching covers...")))
+            #expect(labels.carrying(String(localized: "Fetching covers...")))
         }
     }
 
@@ -84,14 +84,15 @@ struct CoverPickerEmptyStateTests {
         let labels = observations.compactMap {
             $0.topCandidates(1).first?.string
         }
-        #expect(labels.contains(String(localized: "Release Files")))
-        #expect(!labels.contains(String(localized: "Refresh")))
+        #expect(labels.carrying(String(localized: "Release Files")))
+        #expect(!labels.carrying(String(localized: "Refresh")))
         let buttonLabel = String(localized: "Find release…")
             .replacingOccurrences(of: "…", with: "...")
         let button = try #require(
             observations.first {
                 $0.topCandidates(1).first?.string
-                    .replacingOccurrences(of: "…", with: "...") == buttonLabel
+                    .replacingOccurrences(of: "…", with: "...")
+                    .contains(buttonLabel) == true
             }
         )
         let point = NSPoint(

@@ -16,7 +16,9 @@ struct FindOnlineSourceSwitchTests {
 
     /// One checkbox per source, named by the source. The names are brands, so
     /// they read the same in every language and the header can be checked for
-    /// them literally.
+    /// them literally — by containment, because SwiftUI's checkbox is an
+    /// AppKit button with no title and no accessibility name, so the name is
+    /// drawn beside the box and comes back glued to it ("v Discogs").
     @Test("the header names every source core reports")
     func theHeaderNamesEverySource() async throws {
         let lines = try await FindOnlineRendering.text(

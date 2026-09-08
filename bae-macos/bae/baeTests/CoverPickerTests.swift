@@ -170,8 +170,8 @@ struct CoverPickerTests {
         try VNImageRequestHandler(data: png, options: [:]).perform([request])
         let results = try #require(request.results)
         let labels = results.compactMap { $0.topCandidates(1).first?.string }
-        #expect(labels.contains(String(localized: "Remote Sources")))
-        #expect(labels.contains(String(localized: "Release Files")))
-        #expect(labels.contains(bridgeMetadataSourceName(source: .musicBrainz)))
+        #expect(labels.carrying(String(localized: "Remote Sources")))
+        #expect(labels.carrying(String(localized: "Release Files")))
+        #expect(labels.carrying(bridgeMetadataSourceName(source: .musicBrainz)))
     }
 }

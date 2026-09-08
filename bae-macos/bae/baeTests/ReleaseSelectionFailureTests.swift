@@ -137,13 +137,14 @@ struct ReleaseSelectionFailureTests {
         message: String,
         pressing: Pressing
     ) throws {
-        #expect(
-            observations.filter { $0.topCandidates(1).first?.string == message }
-                .count == 1
-        )
-        let errorLine = try #require(
-            observations.first { $0.topCandidates(1).first?.string == message }
-        )
+        // Matched by containment: the line draws a warning symbol beside its
+        // words, and recognition returns the two glued together.
+        func carriesMessage(_ observation: VNRecognizedTextObservation) -> Bool
+        {
+            observation.topCandidates(1).first?.string.contains(message) == true
+        }
+        #expect(observations.filter(carriesMessage).count == 1)
+        let errorLine = try #require(observations.first(where: carriesMessage))
         let catalog = try #require(pressing.lead.catalogNumber)
         let facts = try #require(
             observations.first {
@@ -161,7 +162,8 @@ struct ReleaseSelectionFailureTests {
     ) throws {
         let retry = try #require(
             observations.first {
-                $0.topCandidates(1).first?.string == String(localized: "Retry")
+                $0.topCandidates(1).first?.string
+                    .contains(String(localized: "Retry")) == true
             }
         )
         let point = NSPoint(

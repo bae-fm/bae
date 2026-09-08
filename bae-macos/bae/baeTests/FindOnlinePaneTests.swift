@@ -583,8 +583,11 @@ enum FindOnlineRendering {
     /// Every line of text a view draws, read off its pixels: these panes draw
     /// their own controls rather than hanging AppKit ones in the view tree, so
     /// what they say is in what they drew.
+    /// Read off the window's own surface: text captured against
+    /// transparency loses all but its coloured parts, which is a header read
+    /// back as its blue link and nothing else.
     static func text(_ view: some View, size: NSSize) async throws -> [String] {
-        let (window, host) = host(view, size: size)
+        let (window, host) = host(view.windowBackground(), size: size)
         defer { withExtendedLifetime(window) {} }
         await SnapshotTestSupport.settle(host)
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)

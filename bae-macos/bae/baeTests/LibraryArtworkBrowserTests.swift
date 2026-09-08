@@ -32,10 +32,10 @@ struct LibraryArtworkBrowserTests {
         }
         var observations = try await text(in: host, size: size)
         #expect(
-            labels(observations).contains(String(localized: "Current Cover"))
+            labels(observations).carrying(String(localized: "Current Cover"))
         )
         #expect(
-            !labels(observations).contains(String(localized: "Use This Cover"))
+            !labels(observations).carrying(String(localized: "Use This Cover"))
         )
         try click(
             "Browse all images",
@@ -44,7 +44,7 @@ struct LibraryArtworkBrowserTests {
             size: size
         )
         observations = try await text(in: host, size: size)
-        #expect(labels(observations).contains(String(localized: "Images")))
+        #expect(labels(observations).carrying(String(localized: "Images")))
         #expect(saved == nil)
         // Advance the shared cursor to the provider booklet in grid mode.
         window.sendEvent(
@@ -57,7 +57,7 @@ struct LibraryArtworkBrowserTests {
         await SnapshotTestSupport.settle(host)
         _ = host.performKeyEquivalent(with: try key(window, " ", code: 49))
         observations = try await text(in: host, size: size)
-        #expect(labels(observations).contains("Discogs"))
+        #expect(labels(observations).carrying("Discogs"))
         _ = host.performKeyEquivalent(with: try key(window, "\r", code: 36))
         #expect(saved == nil)
         try click(
@@ -155,7 +155,7 @@ struct LibraryArtworkBrowserTests {
         let observations = try await text(in: host, size: size)
         #expect(
             labels(observations)
-                .contains(String(localized: "No linked release"))
+                .carrying(String(localized: "No linked release"))
         )
         try click(
             "Find release…",
@@ -279,23 +279,23 @@ extension LibraryArtworkBrowserTests {
         }
         let visible = labels(try await text(in: host, size: size))
         #expect(
-            visible.contains(String(localized: "No remote covers found"))
+            visible.carrying(String(localized: "No remote covers found"))
                 == (remoteItems == .linked([]))
         )
         #expect(
-            visible.contains(String(localized: "No linked release"))
+            visible.carrying(String(localized: "No linked release"))
                 == (remoteItems == .unlinked)
         )
         #expect(
-            visible.contains(String(localized: "Fetching covers..."))
+            visible.carrying(String(localized: "Fetching covers..."))
                 == remoteItems.isLoading
         )
         #expect(
-            visible.contains(String(localized: "No cover art available"))
+            visible.carrying(String(localized: "No cover art available"))
                 == !remoteItems.isLoading
         )
         if case .failed = remoteItems {
-            #expect(visible.contains("Lookup failed"))
+            #expect(visible.carrying("Lookup failed"))
         }
     }
 }
@@ -391,6 +391,13 @@ extension LibraryArtworkBrowserTests {
         return try #require(request.results)
     }
 
+    /// Click where `label` was drawn.
+    ///
+    /// These buttons are drawn by SwiftUI: the AppKit control behind one
+    /// carries no title and publishes no accessibility name, so where its
+    /// words landed is the only handle on it. Matched by containment, because
+    /// a button that draws a symbol beside its words comes back with the two
+    /// glued together.
     private func click(
         _ label: String,
         observations: [VNRecognizedTextObservation],
@@ -402,8 +409,10 @@ extension LibraryArtworkBrowserTests {
         let observation = try #require(
             observations.first {
                 $0.topCandidates(1).first?.string
-                    .replacingOccurrences(of: "…", with: "...") == localized
-            }
+                    .replacingOccurrences(of: "…", with: "...")
+                    .contains(localized) == true
+            },
+            "\(localized) is not among \(labels(observations))"
         )
         let point = NSPoint(
             x: observation.boundingBox.midX * size.width,
