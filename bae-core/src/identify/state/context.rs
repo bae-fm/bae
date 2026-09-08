@@ -1,10 +1,10 @@
 //! What a settled identify run carries forward: the raw signals it ran
 //! against, the user's exclusions, and every provider's answer.
 //!
-//! Held apart from the reducer because it is what makes a re-combine free: a
-//! re-run reads it instead of re-fetching, and lifting a settled state into a
-//! stored verdict reads it to tell "nothing was learned" apart from "the
-//! lookup ran and found nothing".
+//! Held apart from the reducer because it is what makes a re-combine free:
+//! each answer that lands folds into it instead of re-fetching what the others
+//! found, and lifting a settled state into a stored verdict reads it to tell
+//! "nothing was learned" apart from "the lookup ran and found nothing".
 //!
 //! One type per signal, each holding that signal's input, whether the current
 //! selection uses it, what its lookup returned, and how it failed — the four
@@ -77,12 +77,6 @@ impl DiscIdEvidence {
             DiscidProgress::Failed { failure, .. } => Some(failure.clone()),
             _ => None,
         };
-    }
-
-    /// Drop what the last lookup left, for a re-run that replaces it.
-    pub(super) fn clear_lookup(&mut self) {
-        self.results.clear();
-        self.failure = None;
     }
 
     /// `results` as the current selection sees them: nothing when the user
@@ -196,16 +190,6 @@ impl BarcodeEvidence {
         self.walks = progress.walks();
     }
 
-    /// Drop what the last lookup left, for a re-run that replaces it. The scan
-    /// failure stays: it says the codes were never readable, which the re-run
-    /// has to honour rather than settle as a no-match.
-    pub(super) fn clear_lookup(&mut self) {
-        self.results.clear();
-        self.failures.clear();
-        self.matched = None;
-        self.walks.clear();
-    }
-
     /// The codes the walks ask, each once, in the order they were first seen.
     pub fn code_values(&self) -> Vec<String> {
         unique_values(&self.codes)
@@ -303,15 +287,6 @@ impl CatalogEvidence {
         }
     }
 
-    /// Clear what the last catalog lookups left, for a re-run that replaces
-    /// them. What is chosen stays chosen.
-    pub(super) fn clear_lookup(&mut self) {
-        for chosen in &mut self.chosen {
-            chosen.results.clear();
-            chosen.failures.clear();
-        }
-    }
-
     /// Whether the run looks `value` up.
     pub fn is_chosen(&self, value: &str) -> bool {
         self.chosen.iter().any(|chosen| chosen.value == value)
@@ -379,19 +354,18 @@ fn unique_values(sightings: &[SourcedValue]) -> Vec<String> {
     out
 }
 
-/// Everything a settled state needs to re-derive its outcome when the run
-/// re-runs — carried unchanged through every non-`Idle` state.
+/// Everything a state needs to re-derive its outcome as answers land —
+/// carried unchanged through every non-`Idle` state.
 ///
-/// The three signals' evidence drives the toolbar badges and the `ReRun`
-/// re-dispatch, and the results each one recorded let a re-combine happen
-/// without re-fetching. What the run was told to ask about survives every new
-/// snapshot: it is the person's decision about the candidate, not something a
-/// snapshot states.
+/// The three signals' evidence drives the toolbar badges, and the results each
+/// one recorded let a re-combine happen without re-fetching. What the run was
+/// told to ask about survives every new snapshot: it is the person's decision
+/// about the candidate, not something a snapshot states.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SignalsContext {
     /// The providers this run asks — MusicBrainz, and Discogs when it is
-    /// configured. Fixed when the run starts (or re-runs), so a lookup that
-    /// starts later, like a chosen catalog number's, asks the same ones.
+    /// configured. Fixed when the run starts, so a lookup that starts later,
+    /// like a chosen catalog number's, asks the same ones.
     pub providers: Vec<MetadataSource>,
     /// Where the artwork pass has got to, from the latest snapshot. Progress
     /// a surface shows, not an input the lookups read; a context stood up

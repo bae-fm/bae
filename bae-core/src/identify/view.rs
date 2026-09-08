@@ -1,8 +1,8 @@
 //! The identify state, shaped for the surfaces that render it.
 //!
 //! [`IdentifyState`] is the reducer's working shape. It carries the whole
-//! [`SignalsContext`] through every state so a
-//! re-run can re-combine without re-fetching, and it keeps
+//! [`SignalsContext`] through every state so each landing answer re-combines
+//! without re-fetching, and it keeps
 //! `matches`, `library_statuses` and `provenance` as three index-aligned
 //! vectors because that is what `combine` hands it.
 //!

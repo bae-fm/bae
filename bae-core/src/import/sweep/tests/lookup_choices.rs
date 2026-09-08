@@ -86,11 +86,13 @@ async fn changing_the_choices_supersedes_the_run_and_frees_the_sweep_s_slot() {
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
     let mut events = fixture.import.subscribe_events();
+    let mut restart = fixture.import.subscribe_events();
 
     let context = fixture.context();
     let token = CancellationToken::new();
     let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
     wait_for_request(&fixture.provider, "/discid/", 1).await;
+    let sweeps_run = await_run_state(&mut restart, &key, |_, _| true).await;
 
     // What a person changing a choice does: the whole value is stored, and the
     // run that reads it is started.
@@ -107,6 +109,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_the_sweep_s_slot() {
         .await
         .unwrap();
     fixture.sweep.rerun_for_explicit_lookup(key.clone());
+    await_run_state(&mut restart, &key, |run, _| run != sweeps_run).await;
     fixture.provider.release();
 
     // The pass returns rather than waiting forever on the run it lost.
@@ -128,10 +131,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_the_sweep_s_slot() {
             _ => None,
         })
         .collect();
-    let superseded = runs
-        .first()
-        .expect("the sweep's run broadcast at least one state")
-        .0;
+    let superseded = sweeps_run;
     assert!(
         runs.iter()
             .any(|(run, state)| *run == superseded && matches!(state, IdentifyState::Idle)),

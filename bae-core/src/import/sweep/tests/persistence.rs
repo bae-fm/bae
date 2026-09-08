@@ -297,11 +297,10 @@ async fn explicit_lookup_during_an_active_run_keeps_the_existing_run() {
     );
 }
 
-/// A driver being torn down after settling broadcasts `Idle` on its way out —
-/// the sweep cancels its own drivers once they settle. The recorded runtime
-/// keeps the terminal state: the candidate's answer doesn't stop being its
-/// answer because the machinery that produced it exited. A genuine mid-run
-/// cancel still resets.
+/// The recorded runtime keeps a terminal state when an `Idle` for the same run
+/// follows it: the candidate's answer doesn't stop being its answer because
+/// something behind it announced an ending. A genuine mid-run cancel still
+/// resets.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {

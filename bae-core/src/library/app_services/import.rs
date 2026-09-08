@@ -123,30 +123,17 @@ impl AppServices {
         self.inner.extraction.cancel(candidate_key);
     }
 
-    /// Re-run a candidate's identification from the toolbar. Dispatches on
-    /// where the run lives: a live driver re-combines from its retained
-    /// signals; a candidate showing a resumed verdict has no driver, so a
-    /// fresh interactive run replaces the stored answer. Re-identify keys
-    /// always have a live driver while their sheet is open, so they take the
-    /// first arm.
+    /// Identify a folder candidate again, reading what the candidate says its
+    /// lookup asks about and the sources the library asks now. A run takes its
+    /// inputs once, at its start, so asking for it again is asking for a new
+    /// run: whatever is going for this candidate is cancelled and a fresh
+    /// interactive run replaces it, along with any stored answer.
+    ///
+    /// This is also what re-asking a failed provider is. Every lookup goes out
+    /// again; the response cache answers the ones that had already succeeded,
+    /// so what is bought is exactly what failed.
     pub fn rerun_identify(&self, candidate_key: String) {
-        if self.inner.identify.is_running(&candidate_key) {
-            self.inner.identify.rerun(&candidate_key);
-        } else {
-            self.inner.sweep.rerun_for_explicit_lookup(candidate_key);
-        }
-    }
-
-    /// Re-ask only the lookups that failed, keeping every answer that landed.
-    /// A live driver retries its failed providers in place; a candidate
-    /// showing a resumed verdict has no driver and no per-provider answers
-    /// to keep, so a fresh interactive run replaces the stored answer.
-    pub fn retry_failed_identify(&self, candidate_key: String) {
-        if self.inner.identify.is_running(&candidate_key) {
-            self.inner.identify.retry_failed(&candidate_key);
-        } else {
-            self.inner.sweep.rerun_for_explicit_lookup(candidate_key);
-        }
+        self.inner.sweep.rerun_for_explicit_lookup(candidate_key);
     }
 
     /// Every key with something in flight right now.

@@ -20,9 +20,9 @@ use crate::signals::{ArtworkScan, BarcodeSignal, LookupFailure, SignalOrigin, Si
 
 /// One candidate's identify state.
 ///
-/// Every state but `Idle` carries a [`SignalsContext`], so the toolbar projection
-/// always has its signal values and the user can re-run from any settled
-/// state.
+/// Every state but `Idle` carries a [`SignalsContext`], so the toolbar
+/// projection always has its signal values and a settled state can be read
+/// back as the run that produced it.
 #[derive(Clone, Debug, PartialEq)]
 pub enum IdentifyState {
     Idle,
@@ -101,8 +101,9 @@ impl IdentifyState {
         }
     }
 
-    /// Whether the machine has stopped moving on its own: nothing is in flight,
-    /// so only the user (a re-run, a retry of what failed) can change it now.
+    /// Whether the machine has stopped moving on its own: nothing is in
+    /// flight, so this run has nothing left to do. The driver ends here, and
+    /// what a person asks for next is a run of its own.
     ///
     /// A lookup failure is terminal too; conversion preserves it as a failed
     /// verdict rather than misclassifying its partial evidence.
@@ -265,33 +266,6 @@ pub enum IdentifyEvent {
         for_catalog: String,
         outcome: LookupOutcome,
     },
-
-    /// The user asked to replay the lookups. The reducer resets to `Triangulating`
-    /// and re-dispatches from the retained signals, keeping the choices the run
-    /// started with. `providers` is re-read, so a provider configured since the
-    /// last run joins it.
-    ReRun {
-        providers: Vec<MetadataSource>,
-    },
-
-    /// The sources this library asks changed while the run was alive — one was
-    /// switched off, in the Find online header or in Settings. The run
-    /// re-dispatches over the new list whatever it was doing, which is the
-    /// whole point of the switch: a run still waiting on the source the person
-    /// has just stopped asking would otherwise wait for an answer nobody wants.
-    ///
-    /// Unlike [`Self::ReRun`], which is a person replaying a settled run and is
-    /// ignored mid-flight, this applies while the run is still triangulating.
-    /// Answers from the dropped source land on no cell and are dropped.
-    ProvidersChanged {
-        providers: Vec<MetadataSource>,
-    },
-
-    /// The user asked to re-ask only what failed. Every lookup that answered
-    /// keeps its answer; a failed provider walks the barcodes again from the
-    /// first, a failed catalog-number lookup is asked again, and a failed
-    /// disc-ID lookup runs again when there is a disc ID to ask about.
-    RetryFailed,
 }
 
 /// The side effects the service performs — the provider lookups, one per
@@ -318,30 +292,6 @@ pub enum Effect {
 pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effect>) {
     if matches!(event, IdentifyEvent::Cancelled) {
         return (IdentifyState::Idle, vec![]);
-    }
-
-    // Re-run, a changed provider list and retry all act on the carried
-    // `SignalsContext`, so they're handled once here rather than per state.
-    // `ReRun` is ignored during triangulation — those lookups are already in
-    // flight. `ProvidersChanged` is not: the list they were dispatched against
-    // is the thing that changed.
-    match event {
-        IdentifyEvent::ReRun { providers }
-            if !matches!(state, IdentifyState::Triangulating { .. }) =>
-        {
-            if let Some(context) = state.context() {
-                return rerun(context.clone(), providers);
-            }
-            return (state, vec![]);
-        }
-        IdentifyEvent::ProvidersChanged { providers } => {
-            if let Some(context) = state.context() {
-                return rerun(context.clone(), providers);
-            }
-            return (state, vec![]);
-        }
-        IdentifyEvent::RetryFailed => return retry_failed(state),
-        _ => {}
     }
 
     match (state, event) {
@@ -655,78 +605,9 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     (re_derive(context), vec![])
 }
 
-/// The three pipes and the context a state carries into `Triangulating` when
-/// a new lookup starts from it: the live ones mid-run, else the settled ones
-/// stood back up from the context.
-struct Pipes {
-    discid: DiscidProgress,
-    barcode: BarcodeProgress,
-    catalog: CatalogProgress,
-    context: SignalsContext,
-}
-
-fn pipes_of(state: IdentifyState) -> Option<Pipes> {
-    match state {
-        IdentifyState::Triangulating {
-            discid,
-            barcode,
-            catalog,
-            context,
-        } => Some(Pipes {
-            discid,
-            barcode,
-            catalog,
-            context,
-        }),
-        IdentifyState::Found { context, .. }
-        | IdentifyState::NotFoundAnywhere { context }
-        | IdentifyState::ManualOnly { context, .. }
-        | IdentifyState::Failed { context, .. } => Some(Pipes {
-            discid: settled_discid_progress(&context),
-            barcode: settled_barcode_progress(&context),
-            catalog: settled_catalog_progress(&context),
-            context,
-        }),
-        IdentifyState::Idle => None,
-    }
-}
-
-/// Re-ask exactly the lookups that failed, keeping every answer that landed.
-/// Mid-run the failed walks restart in place; from a settled state the pipes
-/// stand back up from the context first. A state with nothing failed is left
-/// as it is.
-fn retry_failed(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
-    let Some(Pipes {
-        mut discid,
-        mut barcode,
-        mut catalog,
-        context,
-    }) = pipes_of(state)
-    else {
-        return (IdentifyState::Idle, vec![]);
-    };
-
-    let mut effects = Vec::new();
-    retry_failed_discid_lookup(&mut discid, &context.disc.signal, &mut effects);
-    retry_failed_barcode_lookups(&mut barcode, &mut effects);
-    retry_failed_catalog_lookups(&mut catalog, &mut effects);
-
-    let next = IdentifyState::Triangulating {
-        discid,
-        barcode,
-        catalog,
-        context,
-    };
-    if effects.is_empty() {
-        settle_if_ready(next)
-    } else {
-        (next, effects)
-    }
-}
-
-/// Re-combine over the non-excluded signals and lift the outcome into a state. The
-/// one combine path: the triangulation settle and the re-run completion both
-/// arrive here once the results are in the context.
+/// Re-combine over the non-excluded signals and lift the outcome into a state.
+/// The one combine path: every way triangulation settles arrives here once the
+/// results are in the context.
 ///
 /// Both sides empty — because the lookups found nothing, or because the user
 /// excluded the signals that did — lands on `NotFoundAnywhere`.
@@ -777,53 +658,6 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
     }
 }
 
-/// Reset to `Triangulating` and re-dispatch the lookups from the retained
-/// signals, keeping the choices the run started with.
-fn rerun(
-    mut context: SignalsContext,
-    providers: Vec<MetadataSource>,
-) -> (IdentifyState, Vec<Effect>) {
-    // The prior results go; the new lookups replace them as they land.
-    context.providers = providers;
-    context.disc.clear_lookup();
-    context.barcode.clear_lookup();
-    context.catalog.clear_lookup();
-
-    let mut effects = Vec::new();
-
-    let discid = start_discid_progress(
-        &context.disc.signal,
-        context.disc.excluded,
-        &context.providers,
-        &mut effects,
-    );
-    let barcode = start_barcode_progress(
-        context.barcode.code_values(),
-        context.barcode.had_source,
-        context.barcode.scan_failure.as_ref(),
-        context.barcode.excluded,
-        &context.providers,
-        &mut effects,
-    );
-    let catalog = start_catalog_progress(
-        &context.catalog.chosen_values(),
-        &context.providers,
-        &mut effects,
-    );
-
-    let next = IdentifyState::Triangulating {
-        discid,
-        barcode,
-        catalog,
-        context,
-    };
-    if effects.is_empty() {
-        settle_if_ready(next)
-    } else {
-        (next, effects)
-    }
-}
-
 mod context;
 mod progress;
 
@@ -833,9 +667,8 @@ pub use context::{
 };
 use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
-    discid_progress_state, retry_failed_barcode_lookups, retry_failed_catalog_lookups,
-    retry_failed_discid_lookup, settled_identity_state, settled_track_count,
-    start_barcode_progress, start_catalog_progress, start_discid_progress,
+    discid_progress_state, settled_identity_state, settled_track_count, start_barcode_progress,
+    start_catalog_progress, start_discid_progress,
 };
 /// The pipes a settled context stands back up as — what the view lays a
 /// settled run out from.

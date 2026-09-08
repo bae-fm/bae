@@ -194,19 +194,21 @@ forward! {
             this.services.cancel_identify(&candidate_key);
         }
 
-        /// Re-run a candidate's lookups from the toolbar. A live driver resets to
-        /// triangulating and re-dispatches from its retained signals, preserving
-        /// exclusions; a candidate showing a resumed stored verdict has no driver,
-        /// and a fresh interactive run replaces the stored answer.
+        /// Identify a folder candidate again, over what the candidate says its
+        /// lookup asks about and the sources the library asks now. A run reads
+        /// its inputs once, at its start, so this cancels whatever is going for
+        /// the candidate and starts a new interactive run in its place, over
+        /// any stored answer.
+        ///
+        /// Re-asking the providers that failed is the same command: every
+        /// lookup goes out again, and the response cache answers the ones that
+        /// had already succeeded.
+        ///
+        /// A library release being re-identified has no candidate row to read
+        /// those inputs from, so its sheet starts its runs with
+        /// `auto_identify_release` instead.
         fn rerun_identify_for_candidate(candidate_key: String) {
             this.services.rerun_identify(candidate_key);
-        }
-
-        /// Re-ask only the lookups that failed, keeping what every other provider
-        /// found. A live driver retries in place; a candidate showing a resumed
-        /// verdict has no live answers to keep, so a fresh run replaces it.
-        fn retry_failed_identify_for_candidate(candidate_key: String) {
-            this.services.retry_failed_identify(candidate_key);
         }
 
         /// Submit a candidate's typed search. Fire-and-forget like

@@ -5,7 +5,7 @@
 //!
 //! [`IdentifyState`] is the reducer's own working shape: it carries a full
 //! [`SignalsContext`] (raw signal inputs, the user's exclusions) through every
-//! state so a re-run can re-combine without re-fetching, and it has
+//! state so each landing answer re-combines without re-fetching, and it has
 //! `Idle` and `Triangulating` variants that are mid-flight, not a verdict at
 //! all. None of that belongs on disk. [`TerminalVerdict`] is the shape that
 //! does: only the four states identification can actually end on, holding only

@@ -36,10 +36,12 @@ extension ImportView {
                         pin: pin
                     )
                 )
-            case .identify:
+            // Re-asking what failed is the same command as identifying
+            // again: the run reads the candidate's inputs afresh, and the
+            // response cache answers the lookups that had succeeded. The two
+            // actions differ in what the row offers, not in what core does.
+            case .identify, .retryIdentification:
                 importer.rerunIdentifyForCandidate(key)
-            case .retryIdentification:
-                importer.retryFailedIdentifyForCandidate(key)
             case .useFileMetadata:
                 _ = try await importer.applyCandidateFileTags(key)
             case .clearMetadata:

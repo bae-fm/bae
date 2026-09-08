@@ -436,12 +436,12 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
 
 /// A candidate the sweep is done with leaves nothing of the sweep's behind.
 ///
-/// `run_driver` only ends via `Cancelled`, so a settled driver the sweep does
-/// not cancel parks a task, a bus-relay task, and a live broadcast receiver that
-/// every later `IdentifyStateChanged` — a whole `IdentifyState`, result vectors
-/// and all — is deep-cloned into. Over a queue swept unattended on every launch
-/// that fan-out is quadratic in its size. The sweep never toggles a signal or
-/// re-runs, so it has no use for the driver once the verdict is written.
+/// The driver ends at its own verdict, so nothing has to cancel it, and the
+/// sweep gives the key up in the same breath. A driver left registered past its
+/// answer would park a task, a bus-relay task, and a live broadcast receiver
+/// that every later `IdentifyStateChanged` — a whole `IdentifyState`, result
+/// vectors and all — is deep-cloned into; over a queue swept unattended on
+/// every launch that fan-out is quadratic in its size.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_finished_candidate_leaves_no_driver_behind() {
@@ -469,7 +469,7 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
     );
     assert!(
         !fixture.identify.is_running(&key),
-        "and its driver is gone rather than parked for a toggle the sweep will never send"
+        "and its driver is gone: the run ended at the verdict it reached"
     );
     assert!(
         fixture.context().ours.lock().unwrap().is_empty(),
@@ -540,39 +540,49 @@ async fn a_candidate_the_sweep_failed_then_the_user_reran_is_left_alone() {
 /// The guard the priority exists for. A candidate someone is looking up is
 /// left alone — `identify.start` supersedes, so taking it would cancel their
 /// Interactive run and restart it in the background.
+///
+/// The held lookup is what makes the run in flight rather than merely recent:
+/// a driver is registered for exactly as long as its run is working, so the
+/// pass has to be timed against a lookup that has not come back yet.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn the_sweep_leaves_a_candidate_the_user_is_looking_up_alone() {
     let fixture = Fixture::new("user-owns-it").await;
-    // A slow OCR pass keeps the user's run in flight across the sweep.
-    fixture.extraction.register_analyzer(Arc::new(SlowAnalyzer {
-        delay: Duration::from_millis(1_500),
-    }));
-    let dir = fixture.barcode_candidate("Opened");
+    let dir = fixture.disc_id_candidate("Opened");
+    let key = dir.to_string_lossy().into_owned();
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-opened-1", "rg-opened-1", &[probed, 0]),
+    );
+    fixture.provider.hold("/discid/");
     fixture.scan(1).await;
 
     // Explicit Lookup registers the user's driver before the sweep plans.
     fixture.start_explicit_lookup_and_await_run(&dir).await;
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
     assert!(
-        fixture.identify.is_running(&dir.to_string_lossy()),
+        fixture.identify.is_running(&key),
         "the user's run is in flight"
     );
 
     fixture.sweep_once().await;
 
     assert!(
-        !fixture
-            .context()
-            .ours
-            .lock()
-            .unwrap()
-            .contains(dir.to_string_lossy().as_ref()),
+        !fixture.context().ours.lock().unwrap().contains(&key),
         "the sweep never took ownership of a candidate it does not own"
     );
     assert!(
-        fixture.identify.is_running(&dir.to_string_lossy()),
+        fixture.identify.is_running(&key),
         "and it did not cancel the run out from under them"
     );
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        1,
+        "nor asked the provider a second time for the same candidate"
+    );
+    fixture.provider.release();
 }
 
 /// Teardown writes nothing. The token is re-checked immediately before the

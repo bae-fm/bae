@@ -87,8 +87,19 @@ impl SweepContext {
         self.identify.is_running(key) && !self.ours.lock().unwrap().contains(key)
     }
 
+    /// Stop everything the sweep started for `key` and stop counting it as
+    /// ours. For a candidate the sweep is giving up on mid-run.
     fn release(&self, key: &str) {
         self.identify.cancel(key);
+        self.extraction.cancel(key);
+        self.ours.lock().unwrap().remove(key);
+    }
+
+    /// The run answered and ended on its own, so there is no driver left to
+    /// cancel — only the extraction that fed it, and the ownership mark.
+    /// Cancelling identify here would tear down whatever run has taken the key
+    /// since the answer landed.
+    fn release_settled(&self, key: &str) {
         self.extraction.cancel(key);
         self.ours.lock().unwrap().remove(key);
     }
@@ -436,7 +447,7 @@ async fn run_pass_once(
             Some(result) = finishing.join_next() => {
                 match result {
                     Ok(done) => {
-                        context.release(&done.representative_key);
+                        context.release_settled(&done.representative_key);
                         let deferred = pass.take_finishing_members(&done.identity);
                         let stored = matches!(&done.outcome, FinishCandidateOutcome::Stored);
                         match done.outcome {

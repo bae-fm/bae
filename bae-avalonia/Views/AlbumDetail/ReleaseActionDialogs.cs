@@ -176,11 +176,16 @@ internal sealed class ReleaseActionDialogs
                 _app.Import.AutoIdentifyRelease(key, releaseId, choices);
             }
 
+            // A run reads its inputs once, at its start, so running again is
+            // starting a new run rather than steering the old one. A library
+            // release has no candidate row those inputs could be read from —
+            // this dialog holds them — so the re-run goes out the same way the
+            // first one did.
             void Rerun()
             {
                 _app.Import.ClearCandidateSearch(key);
                 results.ResumePipeline();
-                _ = _app.Import.RerunIdentifyForCandidate(key);
+                _app.Import.AutoIdentifyRelease(key, releaseId, choices);
             }
 
             // Replace the list, keeping the selection when the rows have not

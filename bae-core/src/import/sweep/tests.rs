@@ -139,6 +139,34 @@ impl FakeProvider {
     }
 }
 
+/// The id of the next run of `key` whose broadcast state `accept` answers.
+///
+/// The rendezvous a restart needs: a run ends at its own verdict, so a test
+/// that releases a held lookup before the replacement run exists is racing the
+/// run it means to supersede. Waiting for the replacement's first state is
+/// waiting for the cancel that `IdentifyServiceHandle::start` does first.
+async fn await_run_state(
+    events: &mut tokio::sync::broadcast::Receiver<ImportEvent>,
+    key: &str,
+    accept: impl Fn(IdentifyRunId, &IdentifyState) -> bool,
+) -> IdentifyRunId {
+    tokio::time::timeout(Duration::from_secs(20), async {
+        loop {
+            match events.recv().await.expect("the import event bus stays open") {
+                ImportEvent::IdentifyStateChanged {
+                    candidate_key,
+                    run,
+                    state,
+                    ..
+                } if candidate_key == key && accept(run, &state) => return run,
+                _ => continue,
+            }
+        }
+    })
+    .await
+    .expect("a run of the candidate broadcasts the awaited state")
+}
+
 async fn wait_for_request(provider: &FakeProvider, needle: &str, count: usize) {
     tokio::time::timeout(Duration::from_secs(10), async {
         while provider.count_containing(needle) < count {

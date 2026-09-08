@@ -75,8 +75,6 @@ private struct ImportOperations: Sendable {
     let setCandidateLookupChoices:
         @Sendable (String, BridgeLookupChoices) async throws -> Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
-    /// Re-ask only the lookups that failed, keeping what the others found.
-    let retryFailedIdentifyForCandidate: @Sendable (String) -> Void
     let setCandidatePresentation:
         @Sendable (String, BridgeMetadataPresentation) async throws -> Void
     let setCandidateSearchForm:
@@ -219,9 +217,6 @@ extension ImportOperations {
             },
             rerunIdentifyForCandidate: {
                 handle.rerunIdentifyForCandidate(candidateKey: $0)
-            },
-            retryFailedIdentifyForCandidate: {
-                handle.retryFailedIdentifyForCandidate(candidateKey: $0)
             },
             setCandidatePresentation: {
                 try await handle.setCandidatePresentation(
@@ -406,8 +401,6 @@ final class Importer: Sendable, Observable {
             Void = { _, _ in },
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
-        retryFailedIdentifyForCandidate:
-            @escaping @Sendable (String) -> Void = { _ in },
         setCandidatePresentation:
             @escaping @Sendable (String, BridgeMetadataPresentation)
             async throws ->
@@ -492,7 +485,6 @@ final class Importer: Sendable, Observable {
             subscribeReleaseLibraryStatus: subscribeReleaseLibraryStatus,
             setCandidateLookupChoices: setCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
-            retryFailedIdentifyForCandidate: retryFailedIdentifyForCandidate,
             setCandidatePresentation: setCandidatePresentation,
             setCandidateSearchForm: setCandidateSearchForm,
             setCandidatePaneError: setCandidatePaneError,
@@ -678,13 +670,15 @@ extension Importer {
         try await operations.setCandidateLookupChoices(candidateKey, choices)
     }
 
+    /// Identify a folder candidate again, over what the candidate says its
+    /// lookup asks about and the sources the library asks now. Whatever is
+    /// running for it is superseded, and any stored answer is replaced.
+    ///
+    /// Re-asking the providers that failed is this same command: every lookup
+    /// goes out again, and core's response cache answers the ones that had
+    /// already succeeded.
     func rerunIdentifyForCandidate(_ candidateKey: String) {
         operations.rerunIdentifyForCandidate(candidateKey)
-    }
-
-    /// Re-ask only the lookups that failed, keeping what the others found.
-    func retryFailedIdentifyForCandidate(_ candidateKey: String) {
-        operations.retryFailedIdentifyForCandidate(candidateKey)
     }
 
     /// Record which surface the pane's metadata slot shows for a candidate.

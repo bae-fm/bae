@@ -36,9 +36,9 @@ fn broadcast_state_change(tx: &broadcast::Sender<ImportEvent>, event: ImportEven
 }
 
 /// The providers a run asks: every source this library has switched on and can
-/// reach. A projection of `metadata_sources()`, read when the run starts and
-/// again on a re-run, so a key added or a source switched on since joins the
-/// next run.
+/// reach. A projection of `metadata_sources()`, read once when the run starts,
+/// so a key added or a source switched on since joins the next run rather than
+/// this one.
 fn run_providers(library_manager: &LibraryManager) -> Vec<MetadataSource> {
     crate::import::asked_sources(&library_manager.metadata_sources())
 }
@@ -74,9 +74,9 @@ struct IdentifyServiceInner {
 }
 
 /// One identify run of one candidate. A candidate is identified once at a
-/// time, but a settled run's driver stays alive for the toolbar and still
-/// broadcasts its state, so a consumer waiting on a later run of the same
-/// candidate tells the two apart by this id rather than by the candidate.
+/// time, but a run that ends and the run that replaces it broadcast on the
+/// same bus under the same key, so a consumer waiting on one of them tells
+/// the two apart by this id rather than by the candidate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IdentifyRunId(u64);
 
@@ -91,9 +91,10 @@ impl IdentifyRunId {
 
 struct CandidateDriver {
     token: CancellationToken,
-    /// Into the running driver's event channel — where `rerun` and
-    /// `retry_failed` push the bridge's events.
-    inbox: mpsc::UnboundedSender<IdentifyEvent>,
+    /// Which run this driver is. A driver deregisters itself on its way out
+    /// only while it is still the registered one, so a run a later `start`
+    /// superseded cannot evict its successor.
+    run: IdentifyRunId,
 }
 
 impl IdentifyServiceHandle {
@@ -180,14 +181,11 @@ impl IdentifyServiceHandle {
         }
 
         let token = CancellationToken::new();
-        // Create the inbox up front so a `rerun` arriving before the driver
-        // task lands still finds somewhere to go.
-        let (event_tx, event_rx) = mpsc::unbounded_channel::<IdentifyEvent>();
         self.inner.drivers.lock().unwrap().insert(
             key.clone(),
             CandidateDriver {
                 token: token.clone(),
-                inbox: event_tx.clone(),
+                run,
             },
         );
 
@@ -197,15 +195,13 @@ impl IdentifyServiceHandle {
 
         let inner = self.inner.clone();
         self.inner.runtime_handle.spawn(async move {
-            run_driver(
-                inner, run, key, priority, choices, token, event_tx, event_rx, bus_rx,
-            )
-            .await;
+            run_driver(inner, run, key, priority, choices, token, bus_rx).await;
         });
     }
 
-    /// Whether a driver is registered for `key` — a run is in flight, or has
-    /// settled and is still alive to receive a re-run.
+    /// Whether a run is in flight for `key`. A run that reached its verdict
+    /// and one that was cancelled are both gone: the driver deregisters
+    /// itself the moment it stops working.
     ///
     /// The queue sweep asks before starting one, because
     /// [`IdentifyServiceHandle::start`] supersedes: sweeping a candidate the
@@ -213,6 +209,13 @@ impl IdentifyServiceHandle {
     /// background priority, which is the opposite of what the priority is for.
     pub fn is_running(&self, key: &str) -> bool {
         self.inner.drivers.lock().unwrap().contains_key(key)
+    }
+
+    /// Every key with a run in flight right now. What a change to the inputs
+    /// every run reads — the library's provider list — has to act on: those
+    /// runs answer the list as it was, and nothing else does.
+    pub fn running_keys(&self) -> Vec<String> {
+        self.inner.drivers.lock().unwrap().keys().cloned().collect()
     }
 
     /// Cancel an in-flight identify. Drops the driver task on the next
@@ -223,86 +226,19 @@ impl IdentifyServiceHandle {
             driver.token.cancel();
         }
     }
-
-    /// Re-run a candidate's lookups: the driver resets to `Triangulating` and
-    /// re-dispatches from the retained signals, keeping the choices the run
-    /// started with. A no-op when the candidate isn't running.
-    pub fn rerun(&self, key: &str) {
-        let providers = run_providers(&self.inner.library_manager);
-        self.push_event(key, IdentifyEvent::ReRun { providers }, "rerun");
-    }
-
-    /// The sources this library asks have changed: re-lay every live run over
-    /// the list as it now stands.
-    ///
-    /// Every driver, not only the candidate whose pane the switch was flicked
-    /// on. The switch is the library's, so a run in the background waiting on a
-    /// source nobody is asking any more is exactly as wrong as the open one.
-    ///
-    /// The provider list is read once here rather than per driver, so every run
-    /// is re-laid over the same list.
-    pub fn rerun_all(&self) {
-        let providers = run_providers(&self.inner.library_manager);
-        let drivers: Vec<(String, mpsc::UnboundedSender<IdentifyEvent>)> = self
-            .inner
-            .drivers
-            .lock()
-            .unwrap()
-            .iter()
-            .map(|(key, driver)| (key.clone(), driver.inbox.clone()))
-            .collect();
-        for (key, inbox) in drivers {
-            let event = IdentifyEvent::ProvidersChanged {
-                providers: providers.clone(),
-            };
-            if inbox.send(event).is_err() {
-                debug!("rerun_all: driver for {key} already stopped");
-            }
-        }
-    }
-
-    /// Re-ask only the lookups that failed, keeping what every other provider
-    /// found. A no-op when the candidate isn't running.
-    pub fn retry_failed(&self, key: &str) {
-        self.push_event(key, IdentifyEvent::RetryFailed, "retry_failed");
-    }
-
-    /// Push an event into a running driver's inbox. With no live driver the event
-    /// is dropped, which is the right no-op for a stale UI action.
-    fn push_event(&self, key: &str, event: IdentifyEvent, op: &str) {
-        let inbox = self
-            .inner
-            .drivers
-            .lock()
-            .unwrap()
-            .get(key)
-            .map(|driver| driver.inbox.clone());
-        if let Some(tx) = inbox {
-            if tx.send(event).is_err() {
-                debug!("{op}: driver for {key} already stopped");
-            }
-        }
-    }
 }
 
-fn remove_driver_if_current(
-    inner: &IdentifyServiceInner,
-    key: &str,
-    inbox: &mpsc::UnboundedSender<IdentifyEvent>,
-) {
+fn remove_driver_if_current(inner: &IdentifyServiceInner, key: &str, run: IdentifyRunId) {
     let mut drivers = inner.drivers.lock().unwrap();
-    if drivers
-        .get(key)
-        .is_some_and(|driver| driver.inbox.same_channel(inbox))
-    {
+    if drivers.get(key).is_some_and(|driver| driver.run == run) {
         drivers.remove(key);
     }
 }
 
 /// The driver loop for one candidate. Each iteration pops an event, feeds it to
 /// the pure reducer, broadcasts the new state, and spawns the effects the reducer
-/// asked for — whose results come back as further events. Ends on cancellation.
-#[allow(clippy::too_many_arguments)]
+/// asked for — whose results come back as further events. Ends when the reducer
+/// stops moving: on the run's terminal state, or on cancellation.
 async fn run_driver(
     inner: Arc<IdentifyServiceInner>,
     run: IdentifyRunId,
@@ -310,14 +246,19 @@ async fn run_driver(
     priority: CallPriority,
     choices: LookupChoices,
     token: CancellationToken,
-    event_tx: mpsc::UnboundedSender<IdentifyEvent>,
-    mut event_rx: mpsc::UnboundedReceiver<IdentifyEvent>,
     mut bus_rx: broadcast::Receiver<ImportEvent>,
 ) {
+    let (event_tx, mut event_rx) = mpsc::unbounded_channel::<IdentifyEvent>();
+
     // Relay this candidate's `Signals` snapshots off the import bus into the
     // reducer, which turns the disc ID and barcodes into lookups and narrows by
     // catalog. Fire-and-forget: a missed snapshot delays a signal, never breaks
     // the pipeline.
+    //
+    // It holds a broadcast receiver every import event is cloned into, so it
+    // stops the moment the loop it feeds does — on its own closed channel as
+    // well as on the token, because a run that reached its verdict ends
+    // without one.
     let relay_token = token.clone();
     let relay_event_tx = event_tx.clone();
     let relay_key = key.clone();
@@ -326,6 +267,7 @@ async fn run_driver(
             tokio::select! {
                 biased;
                 _ = relay_token.cancelled() => return,
+                _ = relay_event_tx.closed() => return,
                 msg = bus_rx.recv() => match msg {
                     Ok(ImportEvent::SignalsUpdated {
                         candidate_key,
@@ -387,12 +329,13 @@ async fn run_driver(
             },
         );
 
-        // The driver ends only on `Idle`, which is reached only via `Cancelled`.
-        // `Found` / `Conflict` / `NotFoundAnywhere` / `ManualOnly` do NOT end it:
-        // the user can still re-run or retry what failed from the toolbar, and
-        // the driver has to be alive to receive that.
-        if matches!(state, IdentifyState::Idle) {
-            remove_driver_if_current(&inner, &key, &event_tx);
+        // The run is over the moment the reducer stops moving: a terminal state
+        // is its answer, `Idle` is its cancellation. The driver deregisters and
+        // returns either way — a run reads its inputs once, at its start, so
+        // anything a person asks for afterwards is a new run with inputs of its
+        // own rather than a message to this one.
+        if state.is_terminal() || matches!(state, IdentifyState::Idle) {
+            remove_driver_if_current(&inner, &key, run);
             return;
         }
 
@@ -582,35 +525,87 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn remove_driver_if_current_only_evicts_the_registered_inbox() {
+    async fn remove_driver_if_current_only_evicts_the_registered_run() {
         let (inner, _tmp) = setup_inner().await;
-        let (tx_registered, _rx_registered) = mpsc::unbounded_channel::<IdentifyEvent>();
-        let (tx_stale, _rx_stale) = mpsc::unbounded_channel::<IdentifyEvent>();
+        let registered = IdentifyRunId(1);
+        let superseded = IdentifyRunId(2);
 
         inner.drivers.lock().unwrap().insert(
             "k".to_string(),
             CandidateDriver {
                 token: CancellationToken::new(),
-                inbox: tx_registered.clone(),
+                run: registered,
             },
         );
 
-        // A superseding driver's inbox (different channel) must not evict the
-        // one currently registered — that's the "if current" guard.
-        remove_driver_if_current(&inner, "k", &tx_stale);
+        // A run a later `start` superseded must not evict the one currently
+        // registered — that's the "if current" guard.
+        remove_driver_if_current(&inner, "k", superseded);
         assert!(inner.drivers.lock().unwrap().contains_key("k"));
 
         // Removing an unknown key is a no-op.
-        remove_driver_if_current(&inner, "absent", &tx_registered);
+        remove_driver_if_current(&inner, "absent", registered);
         assert!(inner.drivers.lock().unwrap().contains_key("k"));
 
-        // The registered inbox evicts it.
-        remove_driver_if_current(&inner, "k", &tx_registered);
+        // The registered run evicts it.
+        remove_driver_if_current(&inner, "k", registered);
         assert!(!inner.drivers.lock().unwrap().contains_key("k"));
     }
 
+    /// Wait for `k`'s driver to leave the registry, so a test asserts against
+    /// the state a returned driver left rather than racing it.
+    async fn await_deregistered(inner: &Arc<IdentifyServiceInner>) {
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while inner.drivers.lock().unwrap().contains_key("k") {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .expect("the driver deregisters itself");
+    }
+
+    /// Read `k`'s broadcast states until `wanted` answers one, or the wait
+    /// runs out.
+    async fn await_state<T>(
+        bus_rx: &mut broadcast::Receiver<ImportEvent>,
+        wanted: impl Fn(&IdentifyState) -> Option<T>,
+    ) -> Option<T> {
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                match bus_rx.recv().await {
+                    Ok(ImportEvent::IdentifyStateChanged {
+                        candidate_key,
+                        state,
+                        ..
+                    }) if candidate_key == "k" => {
+                        if let Some(found) = wanted(&state) {
+                            return Some(found);
+                        }
+                    }
+                    Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(broadcast::error::RecvError::Closed) => return None,
+                }
+            }
+        })
+        .await
+        .ok()
+        .flatten()
+    }
+
+    fn settled_signals_event() -> ImportEvent {
+        ImportEvent::SignalsUpdated {
+            candidate_key: "k".to_string(),
+            signals: absent_signals(),
+            artwork: crate::signals::ArtworkScan::Absent,
+            priority: CallPriority::Interactive,
+        }
+    }
+
+    /// The run's verdict is where the run ends. Nobody cancels it and no
+    /// `Idle` follows: the driver deregisters itself on the terminal state,
+    /// so "a driver is registered" means "work is in flight" and nothing else.
     #[tokio::test(flavor = "multi_thread")]
-    async fn driver_settles_manual_only_and_cancel_deregisters() {
+    async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
         let (inner, _tmp) = setup_inner().await;
         let handle = IdentifyServiceHandle {
             inner: inner.clone(),
@@ -623,46 +618,66 @@ mod tests {
             CallPriority::Interactive,
             LookupChoices::default(),
         );
-
         // Feed the signals over the bus, as the extraction service would.
-        inner
-            .event_tx
-            .send(ImportEvent::SignalsUpdated {
-                candidate_key: "k".to_string(),
-                signals: absent_signals(),
-                artwork: crate::signals::ArtworkScan::Absent,
-                priority: CallPriority::Interactive,
-            })
-            .unwrap();
+        inner.event_tx.send(settled_signals_event()).unwrap();
 
-        let mut saw_manual_only = false;
-        for _ in 0..50 {
-            match tokio::time::timeout(Duration::from_secs(2), bus_rx.recv()).await {
-                Ok(Ok(ImportEvent::IdentifyStateChanged {
-                    candidate_key,
-                    state,
-                    ..
-                })) if candidate_key == "k" => {
-                    if matches!(state, IdentifyState::ManualOnly { .. }) {
-                        saw_manual_only = true;
-                        break;
-                    }
-                }
-                Ok(Ok(_)) => continue,
-                Ok(Err(broadcast::error::RecvError::Lagged(_))) => continue,
-                Ok(Err(broadcast::error::RecvError::Closed)) => break,
-                Err(_) => break,
-            }
-        }
         assert!(
-            saw_manual_only,
-            "driver should broadcast a terminal ManualOnly state"
+            await_state(&mut bus_rx, |state| {
+                matches!(state, IdentifyState::ManualOnly { .. }).then_some(())
+            })
+            .await
+            .is_some(),
+            "the run broadcasts its terminal ManualOnly state"
+        );
+        await_deregistered(&inner).await;
+        assert!(
+            !handle.is_running("k"),
+            "the run that answered is not still in flight"
         );
 
-        // ManualOnly doesn't end the driver: it stays alive for a re-run.
-        assert!(inner.drivers.lock().unwrap().contains_key("k"));
+        // And nothing follows it: a terminal state is not chased by the `Idle`
+        // a teardown would broadcast.
+        assert!(
+            await_state(&mut bus_rx, |state| {
+                matches!(state, IdentifyState::Idle).then_some(())
+            })
+            .await
+            .is_none(),
+            "the settled run broadcast nothing after its verdict"
+        );
+    }
 
+    /// A cancel mid-run is the other way out: `Idle` says the run wrote
+    /// nothing, and the driver is gone behind it.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_cancel_mid_run_broadcasts_idle_and_deregisters() {
+        let (inner, _tmp) = setup_inner().await;
+        let handle = IdentifyServiceHandle {
+            inner: inner.clone(),
+        };
+        let mut bus_rx = inner.event_tx.subscribe();
+
+        handle.start(
+            handle.new_run(),
+            "k".to_string(),
+            CallPriority::Interactive,
+            LookupChoices::default(),
+        );
+        assert!(handle.is_running("k"), "the run is in flight");
+        assert_eq!(handle.running_keys(), vec!["k".to_string()]);
+
+        // No signals: the run sits in `Triangulating` until the cancel lands.
         handle.cancel("k");
-        assert!(!inner.drivers.lock().unwrap().contains_key("k"));
+
+        assert!(
+            await_state(&mut bus_rx, |state| {
+                matches!(state, IdentifyState::Idle).then_some(())
+            })
+            .await
+            .is_some(),
+            "the cancelled run broadcasts Idle"
+        );
+        await_deregistered(&inner).await;
+        assert!(handle.running_keys().is_empty());
     }
 }

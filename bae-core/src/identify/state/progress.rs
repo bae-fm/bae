@@ -654,10 +654,9 @@ pub(super) fn start_discid_progress(
     }
 }
 
-/// Start (or restart) every provider's walk through the codes. A scan that
-/// failed has no codes to walk and never gets a lookup, so it settles as the
-/// failure it is rather than as the no-match an empty list would otherwise
-/// read as — which is what a re-run over a failed scan used to produce.
+/// Start every provider's walk through the codes. A scan that failed has no
+/// codes to walk and never gets a lookup, so it settles as the failure it is
+/// rather than as the no-match an empty list would otherwise read as.
 ///
 /// `codes` is each code once, in the order the walks ask them.
 pub(super) fn start_barcode_progress(
@@ -743,75 +742,6 @@ pub(super) fn start_catalog_progress(
             .iter()
             .map(|value| start_catalog_lookup(value, providers, effects))
             .collect(),
-    }
-}
-
-// ── Retrying what failed ────────────────────────────────────────────────────
-
-/// Put every failed barcode walk back to its first code and ask again. What
-/// the other providers found stays as it is.
-pub(super) fn retry_failed_barcode_lookups(
-    progress: &mut BarcodeProgress,
-    effects: &mut Vec<Effect>,
-) {
-    let BarcodeProgress::Lookups { codes, providers } = progress else {
-        return;
-    };
-    for provider in providers.iter_mut() {
-        if matches!(provider.state, BarcodeLookupState::Failed { .. }) {
-            effects.push(Effect::LookupBarcode {
-                source: provider.source,
-                barcode: codes[0].clone(),
-            });
-            provider.state = BarcodeLookupState::Trying { index: 0 };
-        }
-    }
-}
-
-/// Ask again every provider whose lookup of any chosen number failed.
-pub(super) fn retry_failed_catalog_lookups(
-    progress: &mut CatalogProgress,
-    effects: &mut Vec<Effect>,
-) {
-    let CatalogProgress::Lookups { values } = progress else {
-        return;
-    };
-    for lookup in values.iter_mut() {
-        for provider in lookup.providers.iter_mut() {
-            if matches!(provider.state, LookupState::Failed { .. }) {
-                effects.push(Effect::LookupCatalog {
-                    source: provider.source,
-                    catalog: lookup.value.clone(),
-                });
-                provider.state = LookupState::LookingUp;
-            }
-        }
-    }
-}
-
-/// Ask the disc-ID source about the disc ID again, when the failure was the
-/// lookup's and not the derivation's: a disc ID that could not be computed has
-/// nothing to ask about. A run that never asked has nothing to re-ask either,
-/// so only a `Failed` lookup is retried.
-pub(super) fn retry_failed_discid_lookup(
-    progress: &mut DiscidProgress,
-    signal: &DiscIdSignal,
-    effects: &mut Vec<Effect>,
-) {
-    if !matches!(progress, DiscidProgress::Failed { .. }) {
-        return;
-    }
-    if let DiscIdSignal::Computed {
-        disc_id,
-        track_count,
-        ..
-    } = signal
-    {
-        effects.push(Effect::LookupDiscid {
-            disc_id: disc_id.clone(),
-            track_count: *track_count,
-        });
-        *progress = DiscidProgress::LookingUp;
     }
 }
 

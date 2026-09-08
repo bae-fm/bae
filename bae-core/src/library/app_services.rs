@@ -704,11 +704,11 @@ impl AppServices {
     /// Written here rather than delegated, because switching a source off is
     /// not only a preference: everything already asking it has to stop. The
     /// live searches close that source's part, dropping the results it had
-    /// found and the answer it still has out; every live identify run re-lays
-    /// itself over the sources that are left, so a run waiting on the source
-    /// nobody is asking any more finishes on the rest. This is the one object
-    /// that holds the config, the searches, and the runs, which is why the
-    /// order lives here.
+    /// found and the answer it still has out; every live identify run is
+    /// replaced by one that reads the list as it now stands, so no run is left
+    /// waiting on the source nobody is asking. This is the one object that
+    /// holds the config, the searches, and the runs, which is why the order
+    /// lives here.
     ///
     /// Switching a source *on* re-runs nothing: the next run or search asks it.
     /// Re-dispatching a settled run because a source became available would
@@ -727,7 +727,17 @@ impl AppServices {
                 // Searches first: a landing that races the switch then finds a
                 // part that has stopped looking, and is dropped.
                 self.inner.import.stop_asking_source(source);
-                self.inner.identify.rerun_all();
+                // A run reads the provider list once, at its start, so every
+                // run in flight is answering the list as it was. Each is
+                // superseded by a run that reads the list as it now is — every
+                // one of them, not only the candidate whose pane the switch was
+                // flicked on, because a background run waiting on a source
+                // nobody asks is exactly as wrong as the open one. A candidate
+                // that already settled has no run to supersede; the sweep
+                // re-plans those when its own config watcher fires.
+                for key in self.inner.identify.running_keys() {
+                    self.inner.sweep.rerun_for_explicit_lookup(key);
+                }
             }
         }
         Ok(())

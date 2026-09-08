@@ -112,8 +112,21 @@ extension ImportSearchFlow {
             onIdentify: {
                 services.importer.identifyForExplicitLookup(key)
             },
+            // Re-asking what failed is asking for the run again: it reads
+            // its inputs afresh, and the response cache answers the lookups
+            // that had already succeeded. Where those inputs live is what
+            // differs — the same split `onToggleCatalog` makes.
             onRetryFailed: {
-                services.importer.retryFailedIdentifyForCandidate(key)
+                switch input.candidate.source {
+                case .releaseReIdentify(let releaseId):
+                    services.importer.autoIdentifyRelease(
+                        key,
+                        releaseId,
+                        input.candidate.lookupChoices
+                    )
+                case .folder:
+                    services.importer.rerunIdentifyForCandidate(key)
+                }
             },
             onSelect: onSelect,
         )
