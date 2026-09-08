@@ -124,14 +124,15 @@ internal sealed class ImportService
     public Func<string, Task<bool>> RerunIdentifyForCandidate { get; init; }
         = _ => throw new InvalidOperationException("ImportService stub: RerunIdentifyForCandidate not wired");
 
-    /// <summary>Toggle a signal in or out of a candidate's triangulation.</summary>
-    public Func<string, string, string, Task<bool>> ToggleSignalForCandidate { get; init; }
-        = (_, _, _) => throw new InvalidOperationException("ImportService stub: ToggleSignalForCandidate not wired");
+    /// <summary>Record what a candidate's identification asks about — the
+    /// whole value — and start the run that reads it.</summary>
+    public Func<string, BridgeLookupChoices, Task<(bool Current, string? Error)>> SetCandidateLookupChoices { get; init; }
+        = (_, _) => throw new InvalidOperationException("ImportService stub: SetCandidateLookupChoices not wired");
 
     /// <summary>Start the auto-identify pipeline for a release under a candidate key
     /// (the re-identify dialog runs one against the release's own files).</summary>
-    public Func<string, string, bool> AutoIdentifyRelease { get; init; }
-        = (_, _) => throw new InvalidOperationException("ImportService stub: AutoIdentifyRelease not wired");
+    public Func<string, string, BridgeLookupChoices, bool> AutoIdentifyRelease { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("ImportService stub: AutoIdentifyRelease not wired");
 
     /// <summary>Stop the identify driver and any in-flight artwork OCR for a
     /// candidate key, on dialog close.</summary>
@@ -286,10 +287,12 @@ internal sealed class ImportService
                 NativeBae.IdentifyFolderForLookup(handle, candidateKey)),
         RerunIdentifyForCandidate = candidateKey =>
             session.RunForCurrentHandle(handle => NativeBae.RerunIdentifyForCandidate(handle, candidateKey)),
-        ToggleSignalForCandidate = (candidateKey, kind, value) =>
-            session.RunForCurrentHandle(handle => NativeBae.ToggleSignalForCandidate(handle, candidateKey, kind, value)),
-        AutoIdentifyRelease = (candidateKey, releaseId) =>
-            session.WithCurrentHandle(handle => NativeBae.AutoIdentifyRelease(handle, candidateKey, releaseId)),
+        SetCandidateLookupChoices = (candidateKey, choices) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.SetCandidateLookupChoices(handle, candidateKey, choices)),
+        AutoIdentifyRelease = (candidateKey, releaseId, choices) =>
+            session.WithCurrentHandle(handle =>
+                NativeBae.AutoIdentifyRelease(handle, candidateKey, releaseId, choices)),
         CancelAutoIdentify = candidateKey =>
             session.WithCurrentHandle(handle => NativeBae.CancelAutoIdentify(handle, candidateKey)),
         StartCandidateSearch = (candidateKey, query) =>

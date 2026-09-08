@@ -380,33 +380,21 @@ pub(super) async fn has_stored_verdict(
         .is_some())
 }
 
-/// Watch a run a person started and store the first verdict it reaches.
+/// Watch one run a person started and store the verdict it reaches.
 ///
-/// **The first that stores.** Once one verdict is stored the watch ends: a
-/// signal the user then toggles off is them filtering their
-/// own view, not a durable fact about the folder, and persisting it would leave
-/// the next launch showing a queue narrowed by exclusions nobody remembers
-/// making.
+/// **This run's verdict, and then the watch ends.** A person changing what
+/// their candidate's identification asks about does not steer this run — it
+/// supersedes it, with a run of its own and a recorder of its own — so this
+/// one has exactly one answer to store.
 pub(super) async fn record_explicit_lookup_verdict(
     context: &SweepContext,
     run: IdentifyRunId,
     candidate_key: String,
     candidate: ReleaseCandidate,
+    expected_metadata_revision: u64,
     token: &CancellationToken,
 ) {
-    // Subscribe before reading the revision, so no state change can land in
-    // between.
     let mut bus = context.import.subscribe_events();
-    let expected_metadata_revision =
-        match super::candidate_metadata_revision(context, &candidate).await {
-            Ok(revision) => revision,
-            Err(error) => {
-                context
-                    .import
-                    .fail_identification(&candidate_key, error.to_string());
-                return;
-            }
-        };
     let mut entry = ExplicitLookupInFlight {
         candidate,
         signals: None,

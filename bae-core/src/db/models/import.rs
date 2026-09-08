@@ -77,6 +77,10 @@ pub struct DbImportCandidateState {
     /// The signals identification settled on, or `None` when nothing has
     /// extracted them.
     pub signals: Option<crate::signals::Signals>,
+    /// What a person decided this candidate's identification asks about. Every
+    /// run of it reads this at its start; the default is what a candidate
+    /// nobody has decided anything about runs with.
+    pub lookup_choices: crate::import::LookupChoices,
     /// The user's decisions about this candidate's files: which audio each
     /// track sheet describes, and which files are the release's tracks.
     pub file_edits: crate::import::folder_scanner::CandidateFileEdits,

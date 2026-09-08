@@ -168,9 +168,21 @@ forward! {
         /// the release's disc ID and artwork from the library. Events stream
         /// through the same identify channel — the UI consumes them by candidate
         /// key the same way it does for folder imports.
-        fn auto_identify_release(candidate_key: String, release_id: String) {
-            this.services
-                .identify_release_for_lookup(candidate_key, release_id);
+        ///
+        /// A library release is not a scanned candidate, so there is nowhere to
+        /// store what its run asks about: the caller holds `choices` for as
+        /// long as its session lasts and hands them back with every run it
+        /// starts, including the one a changed choice asks for.
+        fn auto_identify_release(
+            candidate_key: String,
+            release_id: String,
+            choices: crate::types::BridgeLookupChoices,
+        ) {
+            this.services.identify_release_for_lookup(
+                candidate_key,
+                release_id,
+                choices.into_core(),
+            );
         }
 
         /// Stop a candidate's identify pipeline: cancels the identify driver and
@@ -180,19 +192,6 @@ forward! {
         /// (the re-identify sheet closing).
         fn cancel_auto_identify(candidate_key: String) {
             this.services.cancel_identify(&candidate_key);
-        }
-
-        /// Toggle a signal in a candidate's toolbar — include or exclude it from
-        /// triangulation. The identify driver flips the signal and re-combines
-        /// over the surviving signals, emitting the resulting state through the
-        /// same event channel. Idempotent: a no-op when the candidate isn't
-        /// running.
-        fn toggle_signal_for_candidate(
-            candidate_key: String,
-            signal: crate::types::BridgeSignalToggle,
-        ) {
-            this.services
-                .identify_toggle_signal(&candidate_key, signal.into_core());
         }
 
         /// Re-run a candidate's lookups from the toolbar. A live driver resets to
@@ -472,6 +471,20 @@ forward! {
             Ok(this
                 .services
                 .import_set_candidate_search_form(&candidate_key, search.into_core())
+                .await?)
+        }
+
+        /// Record what a candidate's identification asks about — the whole
+        /// value, computed by the caller from the detail's current one — and
+        /// start the run that reads it. A run already going for this candidate
+        /// is superseded.
+        fn set_candidate_lookup_choices(
+            candidate_key: String,
+            choices: crate::types::BridgeLookupChoices,
+        ) -> () {
+            Ok(this
+                .services
+                .import_set_candidate_lookup_choices(candidate_key, choices.into_core())
                 .await?)
         }
 

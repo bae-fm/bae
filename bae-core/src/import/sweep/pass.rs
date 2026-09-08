@@ -231,6 +231,13 @@ impl Pass {
     ///
     /// A state from another run of the same candidate — an earlier one still
     /// broadcasting — is not this pass's.
+    ///
+    /// `Idle` is this run ending with no answer, which happens when someone
+    /// started a newer run for the same candidate: a person changing what its
+    /// identification asks about. The job leaves its slot and is not queued
+    /// again — the candidate belongs to that run now, and if it does not, the
+    /// next pass plans it afresh from the stored row. Nothing is cancelled
+    /// here: the key names the newer run.
     pub(super) fn settle(
         &mut self,
         context: &SweepContext,
@@ -243,6 +250,17 @@ impl Pass {
         let Some(ours) = self.in_flight.get(key).filter(|entry| entry.run == run) else {
             return;
         };
+        if matches!(state, IdentifyState::Idle) {
+            let entry = self
+                .in_flight
+                .remove(key)
+                .expect("the located in-flight job still exists");
+            context.disown(key);
+            for member_key in entry.job.candidate_keys() {
+                context.import.clear_automatic_identification(&member_key);
+            }
+            return;
+        }
         for member_key in ours.job.candidate_keys() {
             if member_key != key {
                 context.import.report_identification(&member_key, &state);

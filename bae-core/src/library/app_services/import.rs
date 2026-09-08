@@ -50,7 +50,6 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &str, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &str, track_ids: Vec<String>, assignments: crate::import::TrackArtistAssignments) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_drop_candidate_track => drop_candidate_track(candidate_key: &str, track_id: String) -> Result<(), crate::import::ImportError>);
-    delegate_sync!(identify, identify_toggle_signal => toggle_signal(key: &str, signal: crate::identify::SignalToggle) -> ());
     delegate_sync!(extraction, extraction_register_analyzer => register_analyzer(analyzer: std::sync::Arc<dyn crate::signals::ArtworkAnalyzer>) -> ());
 
     pub(crate) fn subscribe_import_events(
@@ -70,17 +69,42 @@ impl AppServices {
         self.inner.sweep.identify_for_explicit_lookup(candidate_key);
     }
 
+    /// Record what a candidate's identification asks about, and run it again
+    /// reading that: a run takes its choices at its start, so a person
+    /// changing one is asking for a run that reads it. Any run already going
+    /// for this candidate is superseded.
+    pub async fn import_set_candidate_lookup_choices(
+        &self,
+        candidate_key: String,
+        choices: crate::import::LookupChoices,
+    ) -> Result<(), crate::import::ImportError> {
+        self.inner
+            .import
+            .set_candidate_lookup_choices(&candidate_key, choices)
+            .await?;
+        self.inner.sweep.rerun_for_explicit_lookup(candidate_key);
+        Ok(())
+    }
+
     /// Identify an existing library release after the person opens the
     /// re-identify sheet. Extraction resolves the disc ID and artwork from the
     /// library rather than from a scanned folder, so — unlike
     /// [`Self::identify_folder_for_lookup`] — this does not go through the
-    /// sweep: there is no candidate folder to key a stored verdict by.
-    pub fn identify_release_for_lookup(&self, candidate_key: String, release_id: String) {
+    /// sweep: there is no candidate folder to key a stored verdict by, and so
+    /// nowhere to store what the run asks about. The sheet holds `choices`
+    /// itself and hands them back with each run it starts.
+    pub fn identify_release_for_lookup(
+        &self,
+        candidate_key: String,
+        release_id: String,
+        choices: crate::import::LookupChoices,
+    ) {
         let run = self.inner.identify.new_run();
         self.inner.identify.start(
             run,
             candidate_key.clone(),
             crate::util::rate_limiter::CallPriority::Interactive,
+            choices,
         );
         self.inner.extraction.start(
             candidate_key,

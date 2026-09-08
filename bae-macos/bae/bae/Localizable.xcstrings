@@ -25920,6 +25920,197 @@
         }
       }
     },
+    "Couldn't change what identification looks up: %@" : {
+      "comment" : "Import pane: storing what a candidate's identification looks up failed; arg is the system error description",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر تغيير ما يبحث عنه التحديد: %@"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не можа да се промени какво търси идентифицирането: %@"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "শনাক্তকরণ কী খোঁজে তা বদলানো যায়নি: %@"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nepodařilo se změnit, co identifikace vyhledává: %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es konnte nicht geändert werden, wonach die Identifizierung sucht: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't change what identification looks up: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cambiar lo que busca la identificación: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de modifier ce que l'identification recherche : %@"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ઓળખ શું શોધે છે તે બદલી શકાયું નહીં: %@"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן לשנות את מה שהזיהוי מחפש: %@"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पहचान क्या खोजती है, यह बदला नहीं जा सका: %@"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće promijeniti što identifikacija traži: %@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile cambiare cosa cerca l'identificazione: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別が検索する対象を変更できませんでした: %@"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಗುರುತಿಸುವಿಕೆ ಏನನ್ನು ಹುಡುಕುತ್ತದೆ ಎಂಬುದನ್ನು ಬದಲಾಯಿಸಲಾಗಲಿಲ್ಲ: %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "식별이 검색하는 대상을 변경할 수 없습니다: %@"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "തിരിച്ചറിയൽ എന്താണ് തിരയുന്നത് എന്നത് മാറ്റാനായില്ല: %@"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ओळख काय शोधते ते बदलता आले नाही: %@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kon niet wijzigen waar de identificatie naar zoekt: %@"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਪਛਾਣ ਕੀ ਖੋਜਦੀ ਹੈ, ਇਹ ਬਦਲਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się zmienić, czego szuka identyfikacja: %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível alterar o que a identificação busca: %@"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "அடையாளம் காணல் எதைத் தேடுகிறது என்பதை மாற்ற முடியவில்லை: %@"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "గుర్తింపు దేని కోసం వెతుకుతుందో మార్చలేకపోయాం: %@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปลี่ยนสิ่งที่การระบุค้นหาไม่ได้: %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanımlamanın neyi aradığı değiştirilemedi: %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося змінити, що шукає ідентифікація: %@"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "شناخت کیا تلاش کرتی ہے، یہ تبدیل نہیں کیا جا سکا: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể thay đổi những gì việc nhận dạng tra cứu: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法更改识别所查找的内容：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法更改識別所查詢的內容：%@"
+          }
+        }
+      }
+    },
     "Couldn't change which disc %@ is: %@" : {
       "comment" : "Import mapping table: assigning a track sheet to one of the release's discs failed; args are the sheet's file name and the system error description",
       "localizations" : {

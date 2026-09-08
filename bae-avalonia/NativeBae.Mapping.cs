@@ -459,13 +459,42 @@ internal static partial class NativeBae
     private static BridgeStorageMode StorageMode(string storageMode) =>
         storageMode == "cloud" ? BridgeStorageMode.Remote : BridgeStorageMode.Local;
 
-    private static BridgeSignalToggle SignalToggle(string kind, string value) =>
-        kind switch
+    /// <summary>What the candidate's identification asks about after the
+    /// person acts on one badge: the whole value, with that one part turned
+    /// over. A signal flips between left out and asked about; a catalog number
+    /// joins the numbers the run looks up or leaves them.</summary>
+    internal static BridgeLookupChoices Toggling(
+        BridgeLookupChoices current, string kind, string value)
+    {
+        switch (kind)
         {
-            "disc_id" => new BridgeSignalToggle.Disc(),
-            "barcode" => new BridgeSignalToggle.Barcode(),
-            _ => new BridgeSignalToggle.Catalog(value),
-        };
+            case "disc_id":
+                return new BridgeLookupChoices(
+                    DiscIdExcluded: !current.DiscIdExcluded,
+                    BarcodeExcluded: current.BarcodeExcluded,
+                    ChosenCatalogs: current.ChosenCatalogs);
+            case "barcode":
+                return new BridgeLookupChoices(
+                    DiscIdExcluded: current.DiscIdExcluded,
+                    BarcodeExcluded: !current.BarcodeExcluded,
+                    ChosenCatalogs: current.ChosenCatalogs);
+            default:
+                var chosen = new List<string>(current.ChosenCatalogs);
+                if (!chosen.Remove(value))
+                {
+                    chosen.Add(value);
+                }
+                return new BridgeLookupChoices(
+                    DiscIdExcluded: current.DiscIdExcluded,
+                    BarcodeExcluded: current.BarcodeExcluded,
+                    ChosenCatalogs: chosen);
+        }
+    }
+
+    /// <summary>The choices a session with no candidate row to store them on
+    /// starts from: nothing left out, nothing chosen.</summary>
+    internal static BridgeLookupChoices NoLookupChoices() =>
+        new(DiscIdExcluded: false, BarcodeExcluded: false, ChosenCatalogs: []);
 
     private static BridgeReleaseUserEdit ReleaseUserEdit(BridgeRawReleaseEdit edit) =>
         BaeBridgeMethods.ShapeReleaseEdit(edit) switch

@@ -170,6 +170,10 @@ pub struct BridgeImportCandidateDetail {
     pub cover: Option<BridgeCoverChoice>,
     /// The signals identification settled on, or `None` before it has.
     pub signals: Option<BridgeSignals>,
+    /// What this candidate's identification asks about. Written through
+    /// `set_candidate_lookup_choices`, which also starts the run that reads
+    /// it; the next value of this carries it back.
+    pub lookup_choices: BridgeLookupChoices,
     /// The last import of this candidate that failed.
     pub failure: Option<BridgeImportFailure>,
     /// Where the pane was when the person last left this candidate, or where

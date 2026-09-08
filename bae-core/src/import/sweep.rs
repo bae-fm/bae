@@ -39,6 +39,7 @@ use super::release_candidate::ReleaseCandidate;
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::{IdentifyRunId, IdentifyServiceHandle, IdentifyState, TerminalVerdict};
 use crate::import::search::MetadataResult;
+use crate::import::LookupChoices;
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionServiceHandle, ExtractionSource};
 use crate::util::rate_limiter::CallPriority;
@@ -89,6 +90,13 @@ impl SweepContext {
     fn release(&self, key: &str) {
         self.identify.cancel(key);
         self.extraction.cancel(key);
+        self.ours.lock().unwrap().remove(key);
+    }
+
+    /// Stop counting `key` as ours without cancelling anything. For the one
+    /// case where the run is already gone and something else holds the key: a
+    /// cancel here would tear down whoever took it over.
+    fn disown(&self, key: &str) {
         self.ours.lock().unwrap().remove(key);
     }
 
@@ -374,26 +382,28 @@ async fn run_pass_once(
             job.candidates.swap(0, representative_index);
             let candidate = job.representative().clone();
             let key = candidate.key().into_owned();
-            let expected_metadata_revision = match candidate_metadata_revision(context, &candidate)
-                .await
-            {
-                Ok(revision) => revision,
+            let start = match candidate_run_start(context, &candidate).await {
+                Ok(start) => start,
                 Err(error) => {
                     warn!(
-                            "sweep: cannot read the metadata revision for {key} ({error}); aborting pass"
+                            "sweep: cannot read what {key} runs from ({error}); aborting pass"
                         );
                     pass.release_in_flight(context);
                     finishing.shutdown().await;
                     return PassOutcome::Complete;
                 }
             };
+            let CandidateRunStart {
+                metadata_revision: expected_metadata_revision,
+                choices,
+            } = start;
             context.ours.lock().unwrap().insert(key.clone());
             // Identify first: it takes its bus subscription synchronously, so
             // extraction's first snapshot cannot be emitted into a void.
             let run = context.identify.new_run();
             context
                 .identify
-                .start(run, key.clone(), CallPriority::Background);
+                .start(run, key.clone(), CallPriority::Background, choices);
             context.extraction.start(
                 key.clone(),
                 ExtractionSource::Candidate {
@@ -655,15 +665,28 @@ async fn sweepable_candidate(context: &SweepContext, key: &str) -> Option<Releas
     }
 }
 
-async fn candidate_metadata_revision(
+/// What one run of a candidate begins from.
+struct CandidateRunStart {
+    /// The editable metadata revision the run answers. A later edit makes its
+    /// terminal result stale even when the candidate's files did not change.
+    metadata_revision: u64,
+    /// What the person decided this candidate's identification asks about.
+    choices: LookupChoices,
+}
+
+/// Read both in one go, off the one stored row that states them.
+async fn candidate_run_start(
     context: &SweepContext,
     candidate: &ReleaseCandidate,
-) -> Result<u64, crate::library::LibraryError> {
+) -> Result<CandidateRunStart, crate::library::LibraryError> {
     context
         .library_manager
         .load_import_candidate_state(&candidate.files().content_hash())
         .await?
-        .map(|state| state.metadata_revision)
+        .map(|state| CandidateRunStart {
+            metadata_revision: state.metadata_revision,
+            choices: state.lookup_choices,
+        })
         .ok_or_else(|| {
             crate::library::LibraryError::Internal(format!(
                 "candidate {} has no persisted state row",

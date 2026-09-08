@@ -118,6 +118,11 @@ pub fn all() -> Vec<coven::Migration> {
             "candidate_narrowed_out_matches",
             include_str!("../migrations/022_candidate_narrowed_out_matches.sql"),
         ),
+        coven::Migration::sql(
+            23,
+            "candidate_lookup_choices",
+            include_str!("../migrations/023_candidate_lookup_choices.sql"),
+        ),
     ]
 }
 

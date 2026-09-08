@@ -85,6 +85,18 @@ impl LibraryManager {
             .await?)
     }
 
+    /// Record what a candidate's identification asks about.
+    pub(crate) async fn save_import_candidate_lookup_choices(
+        &self,
+        content_hash: &str,
+        choices: &crate::import::LookupChoices,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .save_import_candidate_lookup_choices(content_hash, choices)
+            .await?)
+    }
+
     pub(crate) async fn load_import_candidate(
         &self,
         key: &str,

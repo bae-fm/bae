@@ -36,8 +36,14 @@ internal sealed partial class ImportMappingPane
         {
             column.Children.Add(SignalBadgeRow.Build(
                 signals,
-                (kind, value) => _ = _app.Import.ToggleSignalForCandidate(
-                    signalKey, kind, value),
+                // The badge acts on one part; what goes back is the whole
+                // value, and core starts the run that reads it.
+                (kind, value) => _ = _app.Import.SetCandidateLookupChoices(
+                    signalKey,
+                    NativeBae.Toggling(
+                        _candidate?.LookupChoices ?? NativeBae.NoLookupChoices(),
+                        kind,
+                        value)),
                 () => _ = _app.Import.RerunIdentifyForCandidate(signalKey)));
         }
         var matches = EffectiveMatches;

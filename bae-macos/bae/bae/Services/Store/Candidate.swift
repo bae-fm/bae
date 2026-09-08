@@ -245,6 +245,28 @@ struct CandidateSessionState: Equatable {
     }
 }
 
+// MARK: - BridgeLookupChoices
+
+extension BridgeLookupChoices {
+    /// This value with `catalog` among the numbers the run looks up, or
+    /// without it when it already was. The whole value is what a control
+    /// sends back, so the change it makes is made here.
+    func choosing(_ catalog: String) -> BridgeLookupChoices {
+        var chosen = chosenCatalogs
+        if let index = chosen.firstIndex(of: catalog) {
+            chosen.remove(at: index)
+        }
+        else {
+            chosen.append(catalog)
+        }
+        return BridgeLookupChoices(
+            discIdExcluded: discIdExcluded,
+            barcodeExcluded: barcodeExcluded,
+            chosenCatalogs: chosen
+        )
+    }
+}
+
 // MARK: - Candidate
 
 /// A scanned import candidate, including all dynamic state the UI needs while
@@ -282,6 +304,16 @@ struct Candidate: Equatable, Identifiable {
     /// Where the pane was when the person last left this candidate. A folder
     /// candidate's comes with its detail; a re-identify session's lives here.
     var session = CandidateSessionState()
+    /// What this candidate's identification asks about: the signals its runs
+    /// leave out and the catalog numbers they look up. A folder candidate's is
+    /// stored with it and comes back on its detail; a re-identify session has
+    /// no candidate row to store one on, so its own lives here for as long as
+    /// the sheet does.
+    var lookupChoices = BridgeLookupChoices(
+        discIdExcluded: false,
+        barcodeExcluded: false,
+        chosenCatalogs: []
+    )
     /// The current metadata selection attempt. Its release row owns loading
     /// and failure feedback while the pane keeps showing the stored draft.
     var metadataApplication: CandidateMetadataApplication?
@@ -359,6 +391,7 @@ struct Candidate: Equatable, Identifiable {
         row = detail.row
         self.detail = detail
         session = CandidateSessionState(bridge: detail.session)
+        lookupChoices = detail.lookupChoices
     }
 
     /// This row over `existing`'s session state: the list re-read the folder,

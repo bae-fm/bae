@@ -2,7 +2,7 @@
 //!
 //! [`IdentifyState`] is the reducer's working shape. It carries the whole
 //! [`SignalsContext`] through every state so a
-//! toggle or a re-run can re-combine without re-fetching, and it keeps
+//! re-run can re-combine without re-fetching, and it keeps
 //! `matches`, `library_statuses` and `provenance` as three index-aligned
 //! vectors because that is what `combine` hands it.
 //!
@@ -541,6 +541,27 @@ fn barcode_step(
             failure: failure.clone(),
         },
         BarcodeProgress::Skipped => BarcodeStepView::Absent,
+        // The codes are the run's and nobody was asked about them: every row
+        // stands with its cells saying so, rather than reading as a lookup
+        // that found nothing.
+        BarcodeProgress::NotAsked { codes } => BarcodeStepView::Rows {
+            scanning: false,
+            rows: codes
+                .iter()
+                .map(|code| SignalValueRow {
+                    sources: sources_of(&context.barcode.codes, code),
+                    cells: context
+                        .providers
+                        .iter()
+                        .map(|&source| ProviderCell {
+                            source,
+                            lookup: LookupView::NotAsked,
+                        })
+                        .collect(),
+                    value: code.clone(),
+                })
+                .collect(),
+        },
         BarcodeProgress::Lookups { codes, providers } => BarcodeStepView::Rows {
             scanning,
             rows: codes

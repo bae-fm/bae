@@ -348,6 +348,8 @@ pub struct ImportCandidateDetailProjection {
     pub remote_covers: Vec<RemoteCover>,
     /// The signals identification settled on, or `None` before it has.
     pub signals: Option<Signals>,
+    /// What this candidate's identification asks about, as the person left it.
+    pub lookup_choices: crate::import::LookupChoices,
     /// The last import of this candidate that failed.
     pub failure: Option<ImportFailure>,
     /// Where the pane was when the person last left this candidate. `None`
@@ -390,6 +392,7 @@ impl ImportCandidateDetailProjection {
             cover,
             remote_covers,
             signals,
+            lookup_choices,
             failure,
             session: _,
         } = self;
@@ -496,6 +499,7 @@ impl ImportCandidateDetailProjection {
             cover,
             remote_covers,
             signals,
+            lookup_choices,
             failure,
             session,
         }
@@ -528,6 +532,10 @@ pub struct ImportCandidateDetail {
     pub cover: Option<CoverChoice>,
     pub remote_covers: Vec<RemoteCover>,
     pub signals: Option<Signals>,
+    /// What this candidate's identification asks about: the signals its runs
+    /// leave out and the catalog numbers they look up. A control that changes
+    /// one sends the whole value back, computed from this.
+    pub lookup_choices: crate::import::LookupChoices,
     pub failure: Option<ImportFailure>,
     /// Where the pane was when the person last left this candidate, or where
     /// it opens for one nobody has touched.

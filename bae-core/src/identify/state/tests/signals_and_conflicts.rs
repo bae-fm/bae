@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::MetadataSource;
+use crate::import::{LookupChoices, MetadataSource};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
@@ -35,11 +35,57 @@ fn started() -> IdentifyState {
     started_with(vec![MB])
 }
 
-/// `Started` with the given providers in the run.
+/// `Started` with the given providers in the run, and nothing chosen or
+/// excluded.
 fn started_with(providers: Vec<MetadataSource>) -> IdentifyState {
-    let (state, effects) = step(IdentifyState::Idle, IdentifyEvent::Started { providers });
-    assert!(effects.is_empty(), "Started dispatches no effects");
+    let (state, effects) = started_with_choices(providers, LookupChoices::default());
+    assert!(
+        effects.is_empty(),
+        "with nothing chosen, Started dispatches no effects"
+    );
     state
+}
+
+/// `Started` with what the person decided this candidate's identification
+/// asks about. The chosen numbers' lookups go out with the run, so this hands
+/// back the effects too.
+fn started_with_choices(
+    providers: Vec<MetadataSource>,
+    choices: LookupChoices,
+) -> (IdentifyState, Vec<Effect>) {
+    step(
+        IdentifyState::Idle,
+        IdentifyEvent::Started { providers, choices },
+    )
+}
+
+/// The choices a run reads when the person excluded one signal and chose no
+/// catalog number.
+fn excluding(disc_id: bool, barcode: bool) -> LookupChoices {
+    LookupChoices {
+        disc_id_excluded: disc_id,
+        barcode_excluded: barcode,
+        chosen_catalogs: Vec::new(),
+    }
+}
+
+/// The choices a run reads when the person chose catalog numbers and excluded
+/// nothing.
+fn choosing(catalogs: &[&str]) -> LookupChoices {
+    LookupChoices {
+        disc_id_excluded: false,
+        barcode_excluded: false,
+        chosen_catalogs: catalogs.iter().map(|value| value.to_string()).collect(),
+    }
+}
+
+/// The badge for one signal, out of the toolbar a state projects.
+fn badge(state: &IdentifyState, kind: SignalKind) -> ToolbarSignal {
+    state
+        .toolbar()
+        .into_iter()
+        .find(|signal| signal.kind == kind)
+        .unwrap_or_else(|| panic!("the toolbar carries a {kind:?} badge"))
 }
 
 fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>) {

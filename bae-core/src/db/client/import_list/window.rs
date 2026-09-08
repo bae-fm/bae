@@ -337,6 +337,10 @@ pub(super) fn load_candidate_detail_on(
         .as_ref()
         .and_then(|state| state.metadata_provenance.clone());
     let signals = current.as_ref().and_then(|state| state.signals.clone());
+    let lookup_choices = current
+        .as_ref()
+        .map(|state| state.lookup_choices.clone())
+        .unwrap_or_default();
     let pane_rows = load_pane_rows_on(sql, &content_hash)?;
     let (initial_metadata_source, metadata_revision) = sql.query_row(
         "SELECT c.initial_metadata_source, s.metadata_revision \
@@ -437,7 +441,7 @@ pub(super) fn load_candidate_detail_on(
             resumed_identify_state = identify
                 .verdict
                 .clone()
-                .resume_state(signals.as_ref(), &status_of);
+                .resume_state(signals.as_ref(), &lookup_choices, &status_of);
         }
         if picked.is_some() {
             matched = release
@@ -482,6 +486,7 @@ pub(super) fn load_candidate_detail_on(
             cover,
             remote_covers,
             signals,
+            lookup_choices,
             failure: pane_rows.failure,
             session: pane_rows.session,
         })

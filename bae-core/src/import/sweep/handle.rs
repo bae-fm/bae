@@ -67,7 +67,10 @@ impl QueueSweepHandle {
                 if has_stored_verdict || this.context.identify.is_running(&candidate_key) {
                     return;
                 }
-                this.start_explicit_lookup_run(candidate_key, candidate);
+                let Some(start) = run_start(&this.context, &candidate).await else {
+                    return;
+                };
+                this.start_explicit_lookup_run(candidate_key, candidate, start);
             },
             &self.runtime_handle,
         );
@@ -86,21 +89,37 @@ impl QueueSweepHandle {
                     );
                     return;
                 };
-                this.start_explicit_lookup_run(candidate_key, candidate);
+                let Some(start) = run_start(&this.context, &candidate).await else {
+                    return;
+                };
+                this.start_explicit_lookup_run(candidate_key, candidate, start);
             },
             &self.runtime_handle,
         );
     }
 
-    fn start_explicit_lookup_run(&self, candidate_key: String, candidate: ReleaseCandidate) {
+    fn start_explicit_lookup_run(
+        &self,
+        candidate_key: String,
+        candidate: ReleaseCandidate,
+        start: CandidateRunStart,
+    ) {
         self.context
             .import
             .queue_explicit_identification(&candidate_key);
         let run = self.context.identify.new_run();
-        self.record_explicit_lookup(run, candidate_key.clone(), candidate.clone());
-        self.context
-            .identify
-            .start(run, candidate_key.clone(), CallPriority::Interactive);
+        self.record_explicit_lookup(
+            run,
+            candidate_key.clone(),
+            candidate.clone(),
+            start.metadata_revision,
+        );
+        self.context.identify.start(
+            run,
+            candidate_key.clone(),
+            CallPriority::Interactive,
+            start.choices,
+        );
         self.context.extraction.start(
             candidate_key,
             ExtractionSource::Candidate {
@@ -117,6 +136,7 @@ impl QueueSweepHandle {
         run: IdentifyRunId,
         candidate_key: String,
         candidate: ReleaseCandidate,
+        expected_metadata_revision: u64,
     ) {
         let context = self.context.clone();
         let token = self.token.child_token();
@@ -125,10 +145,37 @@ impl QueueSweepHandle {
         }
         self.tasks.spawn_on(
             async move {
-                record_explicit_lookup_verdict(&context, run, candidate_key, candidate, &token)
-                    .await;
+                record_explicit_lookup_verdict(
+                    &context,
+                    run,
+                    candidate_key,
+                    candidate,
+                    expected_metadata_revision,
+                    &token,
+                )
+                .await;
             },
             &self.runtime_handle,
         );
+    }
+}
+
+/// What a run of `candidate` starts from, or nothing when the stored row it
+/// states cannot be read. A run started without it would ask about signals the
+/// person took out and answer a metadata revision nobody checked, so it does
+/// not start at all.
+async fn run_start(
+    context: &SweepContext,
+    candidate: &ReleaseCandidate,
+) -> Option<CandidateRunStart> {
+    match candidate_run_start(context, candidate).await {
+        Ok(start) => Some(start),
+        Err(error) => {
+            warn!(
+                "cannot start Lookup for {}: its stored state does not read ({error})",
+                candidate.key()
+            );
+            None
+        }
     }
 }

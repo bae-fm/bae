@@ -306,7 +306,19 @@ extension ReIdentifySheet {
         // (disc ID + artwork resolved from the library). Resolution failures
         // are logged in core, not surfaced — identify lands in ManualOnly when
         // nothing resolves, the same as a folder with no signals.
-        importer.autoIdentifyRelease(key, releaseId)
+        // A library release has no candidate row to store what its run asks
+        // about, so the seeded session's own choices are what the run reads —
+        // and what a chip toggled here hands back with the run it restarts.
+        importer.autoIdentifyRelease(
+            key,
+            releaseId,
+            importStore.reIdentifyCandidates[key]?.lookupChoices
+                ?? BridgeLookupChoices(
+                    discIdExcluded: false,
+                    barcodeExcluded: false,
+                    chosenCatalogs: []
+                )
+        )
     }
 
     fileprivate func commit(_ choice: BridgeReleaseReseed) {

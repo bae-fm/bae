@@ -69,11 +69,45 @@ extension ImportSearchFlow {
             },
             onRetrySearch: { services.importer.retryCandidateSearch(key) },
             onOpenSettings: openSettings,
+            // The chip acts on one number; what goes back is the whole value
+            // of what this candidate's identification asks about, and the run
+            // that reads it starts from there.
             onToggleCatalog: { value in
-                services.importer.toggleSignalForCandidate(
-                    key,
-                    .catalog(value: value)
-                )
+                let choices = input.candidate.lookupChoices.choosing(value)
+                switch input.candidate.source {
+                // A library release has no candidate row to store a choice on,
+                // so the sheet's session holds it and the restarted run reads
+                // it from there.
+                case .releaseReIdentify(let releaseId):
+                    importStore.mutateCandidate(forKey: key) {
+                        $0.lookupChoices = choices
+                    }
+                    services.importer.autoIdentifyRelease(
+                        key,
+                        releaseId,
+                        choices
+                    )
+                // Core stores it and starts the run; the candidate's next
+                // detail carries it back.
+                case .folder:
+                    Task { @MainActor in
+                        do {
+                            try await services.importer
+                                .setCandidateLookupChoices(key, choices)
+                        }
+                        catch is CancellationError {}
+                        catch {
+                            guard let line = error.displayLine else { return }
+                            importStore.recordPaneError(
+                                String(
+                                    localized:
+                                        "Couldn't change what identification looks up: \(line)"
+                                ),
+                                forKey: key
+                            )
+                        }
+                    }
+                }
             },
             onIdentify: {
                 services.importer.identifyForExplicitLookup(key)

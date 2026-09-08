@@ -481,6 +481,11 @@
                     mapping: mapping,
                     cover: cover,
                     signals: nil,
+                    lookupChoices: BridgeLookupChoices(
+                        discIdExcluded: false,
+                        barcodeExcluded: false,
+                        chosenCatalogs: []
+                    ),
                     failure: failure,
                     session: BridgeCandidateSession(
                         presentation: presentation,

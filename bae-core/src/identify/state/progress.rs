@@ -138,6 +138,11 @@ pub enum BarcodeProgress {
         codes: Vec<String>,
         providers: Vec<ProviderBarcodeLookup>,
     },
+    /// The candidate has barcodes and the person left them out of the run, so
+    /// no provider was asked about any of them. Settled: nothing is in flight
+    /// and nothing was found, which is different from having asked and found
+    /// nothing.
+    NotAsked { codes: Vec<String> },
     /// Reading the candidate's barcodes failed, so no provider was ever asked.
     /// Not a provider's failure, and not a skip either: there was artwork to
     /// read and reading it did not work.
@@ -154,6 +159,7 @@ impl BarcodeProgress {
                 providers.iter().all(|p| p.state.is_settled())
             }
             BarcodeProgress::NoCodes
+            | BarcodeProgress::NotAsked { .. }
             | BarcodeProgress::ScanFailed { .. }
             | BarcodeProgress::Skipped => true,
         }
@@ -351,13 +357,8 @@ impl CatalogProgress {
         }
     }
 
-    /// This progress without `value`'s lookup: what taking a number out of
-    /// the run leaves. Nothing left to look up is the resting state.
-    pub(super) fn without(self, value: &str) -> Self {
-        self.keeping(|lookup| lookup.value != value)
-    }
-
-    /// This progress with only the lookups `keep` admits.
+    /// This progress with only the lookups `keep` admits. Nothing left to look
+    /// up is the resting state.
     pub(super) fn keeping(self, keep: impl Fn(&CatalogLookup) -> bool) -> Self {
         match self {
             CatalogProgress::Lookups { mut values } => {
@@ -370,16 +371,6 @@ impl CatalogProgress {
             }
             CatalogProgress::Skipped => CatalogProgress::Skipped,
         }
-    }
-
-    /// This progress with one more number's lookup.
-    pub(super) fn with(self, lookup: CatalogLookup) -> Self {
-        let mut values = match self {
-            CatalogProgress::Lookups { values } => values,
-            CatalogProgress::Skipped => Vec::new(),
-        };
-        values.push(lookup);
-        CatalogProgress::Lookups { values }
     }
 }
 
@@ -411,7 +402,7 @@ pub(super) fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState 
         BarcodeProgress::ScanFailed { failure } => SignalState::Failed {
             failure: failure.clone(),
         },
-        BarcodeProgress::Skipped => SignalState::Skipped,
+        BarcodeProgress::NotAsked { .. } | BarcodeProgress::Skipped => SignalState::Skipped,
     }
 }
 
@@ -465,6 +456,12 @@ pub(crate) fn settled_discid_progress(context: &SignalsContext) -> DiscidProgres
             failure: failure.clone(),
             track_count,
         },
+        // A disc ID the run was told to leave out was never asked about, so it
+        // stands back up as the unasked question it is rather than as a lookup
+        // that found nothing.
+        DiscIdSignal::Computed { .. } if context.disc.excluded => {
+            DiscidProgress::NotAsked { track_count }
+        }
         DiscIdSignal::Computed { .. } => DiscidProgress::Done {
             results: context.disc.results.clone(),
             track_count,
@@ -487,6 +484,11 @@ pub(crate) fn settled_barcode_progress(context: &SignalsContext) -> BarcodeProgr
             BarcodeProgress::NoCodes
         } else {
             BarcodeProgress::Skipped
+        };
+    }
+    if barcode.excluded {
+        return BarcodeProgress::NotAsked {
+            codes: barcode.code_values(),
         };
     }
     let codes = barcode.code_values();
@@ -614,6 +616,7 @@ pub(super) fn found_or_no_match(count: u32) -> SignalState {
 
 pub(super) fn start_discid_progress(
     signal: &DiscIdSignal,
+    excluded: bool,
     providers: &[MetadataSource],
     effects: &mut Vec<Effect>,
 ) -> DiscidProgress {
@@ -623,10 +626,11 @@ pub(super) fn start_discid_progress(
             track_count,
             ..
         } => {
-            // One source answers disc IDs. A run that is not asking it has no
-            // disc-ID lookup to dispatch, and says so rather than waiting on
-            // an answer that is never coming.
-            if !providers.contains(&MetadataSource::DISC_ID_SOURCE) {
+            // One source answers disc IDs. A run that is not asking it — or
+            // that the person took the disc ID out of — has no disc-ID lookup
+            // to dispatch, and says so rather than waiting on an answer that
+            // is never coming.
+            if excluded || !providers.contains(&MetadataSource::DISC_ID_SOURCE) {
                 return DiscidProgress::NotAsked {
                     track_count: *track_count,
                 };
@@ -660,6 +664,7 @@ pub(super) fn start_barcode_progress(
     codes: Vec<String>,
     had_source: bool,
     scan_failure: Option<&LookupFailure>,
+    excluded: bool,
     providers: &[MetadataSource],
     effects: &mut Vec<Effect>,
 ) -> BarcodeProgress {
@@ -667,6 +672,12 @@ pub(super) fn start_barcode_progress(
         return BarcodeProgress::ScanFailed {
             failure: failure.clone(),
         };
+    }
+    if excluded && !codes.is_empty() {
+        // The person left the barcodes out, so nobody is asked about them —
+        // and the codes are still the run's, so they stay listed with nothing
+        // run against them.
+        return BarcodeProgress::NotAsked { codes };
     }
     if codes.is_empty() {
         // Nothing to look up. Whether that settles as "looked, found no match" or

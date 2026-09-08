@@ -2,6 +2,7 @@
 //! off it, its draft's provenance, and its file decisions.
 
 use super::edit_rows::{apply_file_edit_row, read_file_edit_row};
+use super::lookup_choice_rows::load_lookup_choices_on;
 use super::signal_rows::load_signals_on;
 use super::verdict_rows::{
     identification_of, read_match_row, read_verdict_row, unreadable, StoredMatches, VERDICT_COLUMNS,
@@ -308,12 +309,14 @@ pub(crate) fn load_states_rows_on(
     let edits = load_edits_on(sql, only)?;
     let signals = load_signals_on(sql, only)?;
     let provenances = load_provenance_rows_on(sql, only)?;
+    let lookup_choices = load_lookup_choices_on(sql, only)?;
 
     Ok(move || {
         let mut verdicts = verdicts()?;
         let mut edits = edits()?;
         let mut signals = signals()?;
         let mut provenances = provenances()?;
+        let mut lookup_choices = lookup_choices()?;
         let mut out = HashMap::with_capacity(states.len());
         for state in states {
             let state = state?;
@@ -334,6 +337,9 @@ pub(crate) fn load_states_rows_on(
                 state.content_hash.clone(),
                 DbImportCandidateState {
                     signals: signals.remove(&state.content_hash),
+                    lookup_choices: lookup_choices
+                        .remove(&state.content_hash)
+                        .unwrap_or_default(),
                     identify: verdicts.remove(&state.content_hash),
                     metadata_provenance: provenances
                         .remove(&state.content_hash)

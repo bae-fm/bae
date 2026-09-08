@@ -5,9 +5,9 @@
 use super::annotate_with_library_status;
 use super::code::{lookup_code, PrintedCode};
 use super::discid::lookup_and_resolve;
-use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, SignalToggle};
+use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome};
 use crate::import::search::SourceLookup;
-use crate::import::{ImportEvent, MetadataSource};
+use crate::import::{ImportEvent, LookupChoices, MetadataSource};
 use crate::library::LibraryManager;
 use crate::util::rate_limiter::CallPriority;
 use std::collections::HashMap;
@@ -91,8 +91,8 @@ impl IdentifyRunId {
 
 struct CandidateDriver {
     token: CancellationToken,
-    /// Into the running driver's event channel — where `toggle_signal` and
-    /// `rerun` push the bridge's events.
+    /// Into the running driver's event channel — where `rerun` and
+    /// `retry_failed` push the bridge's events.
     inbox: mpsc::UnboundedSender<IdentifyEvent>,
 }
 
@@ -162,9 +162,16 @@ impl IdentifyServiceHandle {
     /// storing a verdict about a lookup that never happened. The candidate is
     /// left as it was; what to do about it is a settings question, and the
     /// surface reads the availability list to say so.
-    pub fn start(&self, run: IdentifyRunId, key: String, priority: CallPriority) {
-        // A restart (the user re-selects after a scan refresh) supersedes the
-        // prior run — a candidate is identified once at a time.
+    pub fn start(
+        &self,
+        run: IdentifyRunId,
+        key: String,
+        priority: CallPriority,
+        choices: LookupChoices,
+    ) {
+        // A restart (the user re-selects after a scan refresh, or changes what
+        // the run asks about) supersedes the prior run — a candidate is
+        // identified once at a time.
         self.cancel(&key);
 
         if run_providers(&self.inner.library_manager).is_empty() {
@@ -173,8 +180,8 @@ impl IdentifyServiceHandle {
         }
 
         let token = CancellationToken::new();
-        // Create the inbox up front so a `toggle_signal` / `rerun` arriving
-        // before the driver task lands still finds somewhere to go.
+        // Create the inbox up front so a `rerun` arriving before the driver
+        // task lands still finds somewhere to go.
         let (event_tx, event_rx) = mpsc::unbounded_channel::<IdentifyEvent>();
         self.inner.drivers.lock().unwrap().insert(
             key.clone(),
@@ -190,12 +197,15 @@ impl IdentifyServiceHandle {
 
         let inner = self.inner.clone();
         self.inner.runtime_handle.spawn(async move {
-            run_driver(inner, run, key, priority, token, event_tx, event_rx, bus_rx).await;
+            run_driver(
+                inner, run, key, priority, choices, token, event_tx, event_rx, bus_rx,
+            )
+            .await;
         });
     }
 
     /// Whether a driver is registered for `key` — a run is in flight, or has
-    /// settled and is still alive to receive a toggle or a re-run.
+    /// settled and is still alive to receive a re-run.
     ///
     /// The queue sweep asks before starting one, because
     /// [`IdentifyServiceHandle::start`] supersedes: sweeping a candidate the
@@ -214,20 +224,9 @@ impl IdentifyServiceHandle {
         }
     }
 
-    /// Include or exclude one of a candidate's signals from triangulation. The
-    /// driver re-combines over the surviving signals and emits the result. A no-op
-    /// when the candidate isn't running.
-    pub fn toggle_signal(&self, key: &str, signal: SignalToggle) {
-        self.push_event(
-            key,
-            IdentifyEvent::SignalToggled { signal },
-            "toggle_signal",
-        );
-    }
-
     /// Re-run a candidate's lookups: the driver resets to `Triangulating` and
-    /// re-dispatches from the retained signals, keeping the user's exclusions. A
-    /// no-op when the candidate isn't running.
+    /// re-dispatches from the retained signals, keeping the choices the run
+    /// started with. A no-op when the candidate isn't running.
     pub fn rerun(&self, key: &str) {
         let providers = run_providers(&self.inner.library_manager);
         self.push_event(key, IdentifyEvent::ReRun { providers }, "rerun");
@@ -309,6 +308,7 @@ async fn run_driver(
     run: IdentifyRunId,
     key: String,
     priority: CallPriority,
+    choices: LookupChoices,
     token: CancellationToken,
     event_tx: mpsc::UnboundedSender<IdentifyEvent>,
     mut event_rx: mpsc::UnboundedReceiver<IdentifyEvent>,
@@ -354,6 +354,7 @@ async fn run_driver(
         &event_tx,
         IdentifyEvent::Started {
             providers: run_providers(&inner.library_manager),
+            choices,
         },
     );
 
@@ -388,8 +389,8 @@ async fn run_driver(
 
         // The driver ends only on `Idle`, which is reached only via `Cancelled`.
         // `Found` / `Conflict` / `NotFoundAnywhere` / `ManualOnly` do NOT end it:
-        // the user can still toggle a signal or re-run from the toolbar, and the
-        // driver has to be alive to receive that.
+        // the user can still re-run or retry what failed from the toolbar, and
+        // the driver has to be alive to receive that.
         if matches!(state, IdentifyState::Idle) {
             remove_driver_if_current(&inner, &key, &event_tx);
             return;
@@ -616,7 +617,12 @@ mod tests {
         };
         let mut bus_rx = inner.event_tx.subscribe();
 
-        handle.start(handle.new_run(), "k".to_string(), CallPriority::Interactive);
+        handle.start(
+            handle.new_run(),
+            "k".to_string(),
+            CallPriority::Interactive,
+            LookupChoices::default(),
+        );
 
         // Feed the signals over the bus, as the extraction service would.
         inner
@@ -653,7 +659,7 @@ mod tests {
             "driver should broadcast a terminal ManualOnly state"
         );
 
-        // ManualOnly doesn't end the driver: it stays alive for a toggle or re-run.
+        // ManualOnly doesn't end the driver: it stays alive for a re-run.
         assert!(inner.drivers.lock().unwrap().contains_key("k"));
 
         handle.cancel("k");

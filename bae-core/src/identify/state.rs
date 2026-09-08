@@ -15,24 +15,13 @@ use super::combine::{combine_results, CombineOutcome, NarrowedOut, ResultProvena
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
-use crate::import::MetadataSource;
+use crate::import::{LookupChoices, MetadataSource};
 use crate::signals::{ArtworkScan, BarcodeSignal, LookupFailure, SignalOrigin, Signals};
-
-/// A signal the user acted on. The disc ID and barcode are checked by default
-/// and toggle off; the catalog is off until one of the extracted numbers is
-/// chosen. Choosing a number adds it to the numbers the run looks up, each on
-/// its own; choosing a chosen number takes it back out.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum SignalToggle {
-    Disc,
-    Barcode,
-    Catalog(String),
-}
 
 /// One candidate's identify state.
 ///
 /// Every state but `Idle` carries a [`SignalsContext`], so the toolbar projection
-/// always has its signal values and the user can toggle or re-run from any settled
+/// always has its signal values and the user can re-run from any settled
 /// state.
 #[derive(Clone, Debug, PartialEq)]
 pub enum IdentifyState {
@@ -113,7 +102,7 @@ impl IdentifyState {
     }
 
     /// Whether the machine has stopped moving on its own: nothing is in flight,
-    /// so only the user (a toggle, a re-run) can change it now.
+    /// so only the user (a re-run, a retry of what failed) can change it now.
     ///
     /// A lookup failure is terminal too; conversion preserves it as a failed
     /// verdict rather than misclassifying its partial evidence.
@@ -230,8 +219,14 @@ pub enum IdentifyEvent {
     /// Begin. Enters `Triangulating` and waits for the first `SignalsUpdated` —
     /// extraction owns scanning and OCR, not the reducer. `providers` is what
     /// this run asks: MusicBrainz, and Discogs when it is configured.
+    ///
+    /// `choices` is what the person decided this candidate's identification
+    /// asks about, read from the candidate when the run started. It is the
+    /// only way a choice enters a run: nothing changes one while the run is
+    /// going, so a different decision is a different run.
     Started {
         providers: Vec<MetadataSource>,
+        choices: LookupChoices,
     },
     Cancelled,
 
@@ -271,18 +266,10 @@ pub enum IdentifyEvent {
         outcome: LookupOutcome,
     },
 
-    /// The user checked or unchecked a signal. Unchecking the disc ID or the
-    /// barcode re-combines over the rest; choosing a catalog number runs its
-    /// lookup beside the other chosen numbers', and choosing a chosen one
-    /// takes it and its results out.
-    SignalToggled {
-        signal: SignalToggle,
-    },
-
     /// The user asked to replay the lookups. The reducer resets to `Triangulating`
-    /// and re-dispatches from the retained signals, keeping what the user
-    /// checked. `providers` is re-read, so a provider configured since the last
-    /// run joins it.
+    /// and re-dispatches from the retained signals, keeping the choices the run
+    /// started with. `providers` is re-read, so a provider configured since the
+    /// last run joins it.
     ReRun {
         providers: Vec<MetadataSource>,
     },
@@ -333,15 +320,12 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
         return (IdentifyState::Idle, vec![]);
     }
 
-    // Toggle, re-run, a changed provider list and retry all act on the carried
+    // Re-run, a changed provider list and retry all act on the carried
     // `SignalsContext`, so they're handled once here rather than per state.
     // `ReRun` is ignored during triangulation — those lookups are already in
     // flight. `ProvidersChanged` is not: the list they were dispatched against
     // is the thing that changed.
     match event {
-        IdentifyEvent::SignalToggled { signal } if state.context().is_some() => {
-            return apply_toggle(state, signal);
-        }
         IdentifyEvent::ReRun { providers }
             if !matches!(state, IdentifyState::Triangulating { .. }) =>
         {
@@ -361,15 +345,29 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
     }
 
     match (state, event) {
-        (IdentifyState::Idle, IdentifyEvent::Started { providers }) => (
-            IdentifyState::Triangulating {
-                discid: DiscidProgress::Computing,
-                barcode: BarcodeProgress::Scanning,
-                catalog: CatalogProgress::Skipped,
-                context: SignalsContext::empty(providers),
-            },
-            vec![],
-        ),
+        (IdentifyState::Idle, IdentifyEvent::Started { providers, choices }) => {
+            let context = SignalsContext::started(providers, choices);
+            // The chosen numbers are the person's decision about this
+            // candidate, not something read off a snapshot, so their lookups
+            // go out with the run rather than waiting for extraction to offer
+            // the numbers again. A number the settled snapshot no longer
+            // offers loses its lookup then, in `apply_signals`.
+            let mut effects = Vec::new();
+            let catalog = start_catalog_progress(
+                &context.catalog.chosen_values(),
+                &context.providers,
+                &mut effects,
+            );
+            (
+                IdentifyState::Triangulating {
+                    discid: DiscidProgress::Computing,
+                    barcode: BarcodeProgress::Scanning,
+                    catalog,
+                    context,
+                },
+                effects,
+            )
+        }
 
         (
             IdentifyState::Triangulating {
@@ -563,9 +561,12 @@ fn apply_signals(
     context.refresh_inputs(&signals, artwork);
 
     let discid = match (discid, &signals.disc_id) {
-        (DiscidProgress::Computing, signal) => {
-            start_discid_progress(signal, &context.providers, &mut effects)
-        }
+        (DiscidProgress::Computing, signal) => start_discid_progress(
+            signal,
+            context.disc.excluded,
+            &context.providers,
+            &mut effects,
+        ),
         // Past Computing: the lookup is in flight or settled.
         (discid, _) => discid,
     };
@@ -575,6 +576,7 @@ fn apply_signals(
             context.barcode.code_values(),
             true,
             None,
+            context.barcode.excluded,
             &context.providers,
             &mut effects,
         ),
@@ -653,60 +655,6 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     (re_derive(context), vec![])
 }
 
-/// Apply a toolbar toggle.
-///
-/// Unchecking the disc ID or the barcode changes nothing that has to be
-/// fetched, so it re-combines in place. Choosing a catalog number does: its
-/// lookup has to run, which puts the state back in `Triangulating` with the
-/// other two signals standing back up from what they already found.
-///
-/// Mid-`Triangulating` an exclusion is only recorded — the in-flight lookups
-/// keep running, and the settle applies it.
-fn apply_toggle(state: IdentifyState, signal: SignalToggle) -> (IdentifyState, Vec<Effect>) {
-    match signal {
-        SignalToggle::Disc => flip_exclusion(state, |context| &mut context.disc.excluded),
-        SignalToggle::Barcode => flip_exclusion(state, |context| &mut context.barcode.excluded),
-        SignalToggle::Catalog(value) => choose_catalog(state, value),
-    }
-}
-
-/// Flip the exclusion flag `excluded_in` names, in whatever context the state
-/// carries.
-fn flip_exclusion(
-    state: IdentifyState,
-    excluded_in: impl Fn(&mut SignalsContext) -> &mut bool,
-) -> (IdentifyState, Vec<Effect>) {
-    match state {
-        IdentifyState::Triangulating {
-            discid,
-            barcode,
-            catalog,
-            mut context,
-        } => {
-            let excluded = excluded_in(&mut context);
-            *excluded = !*excluded;
-            (
-                IdentifyState::Triangulating {
-                    discid,
-                    barcode,
-                    catalog,
-                    context,
-                },
-                vec![],
-            )
-        }
-        IdentifyState::Found { mut context, .. }
-        | IdentifyState::NotFoundAnywhere { mut context }
-        | IdentifyState::ManualOnly { mut context, .. }
-        | IdentifyState::Failed { mut context, .. } => {
-            let excluded = excluded_in(&mut context);
-            *excluded = !*excluded;
-            (re_derive(context), vec![])
-        }
-        IdentifyState::Idle => (IdentifyState::Idle, vec![]),
-    }
-}
-
 /// The three pipes and the context a state carries into `Triangulating` when
 /// a new lookup starts from it: the live ones mid-run, else the settled ones
 /// stood back up from the context.
@@ -743,44 +691,6 @@ fn pipes_of(state: IdentifyState) -> Option<Pipes> {
     }
 }
 
-/// Check one extracted catalog number, or uncheck one already checked. Each
-/// checked number is looked up on its own, so checking another adds a lookup
-/// beside the ones running or settled, and unchecking one drops only its.
-fn choose_catalog(state: IdentifyState, value: String) -> (IdentifyState, Vec<Effect>) {
-    let Some(Pipes {
-        discid,
-        barcode,
-        catalog,
-        mut context,
-    }) = pipes_of(state)
-    else {
-        return (IdentifyState::Idle, vec![]);
-    };
-
-    if context.catalog.is_chosen(&value) {
-        context.catalog.unchoose(&value);
-        return settle_if_ready(IdentifyState::Triangulating {
-            discid,
-            barcode,
-            catalog: catalog.without(&value),
-            context,
-        });
-    }
-
-    context.catalog.choose(value.clone());
-    let mut effects = Vec::new();
-    let lookup = start_catalog_lookup(&value, &context.providers, &mut effects);
-    (
-        IdentifyState::Triangulating {
-            discid,
-            barcode,
-            catalog: catalog.with(lookup),
-            context,
-        },
-        effects,
-    )
-}
-
 /// Re-ask exactly the lookups that failed, keeping every answer that landed.
 /// Mid-run the failed walks restart in place; from a settled state the pipes
 /// stand back up from the context first. A state with nothing failed is left
@@ -815,7 +725,7 @@ fn retry_failed(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 }
 
 /// Re-combine over the non-excluded signals and lift the outcome into a state. The
-/// one combine path: triangulation settle, signal toggle, and re-run completion all
+/// one combine path: the triangulation settle and the re-run completion both
 /// arrive here once the results are in the context.
 ///
 /// Both sides empty — because the lookups found nothing, or because the user
@@ -868,7 +778,7 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
 }
 
 /// Reset to `Triangulating` and re-dispatch the lookups from the retained
-/// signals, keeping what the user checked.
+/// signals, keeping the choices the run started with.
 fn rerun(
     mut context: SignalsContext,
     providers: Vec<MetadataSource>,
@@ -881,11 +791,17 @@ fn rerun(
 
     let mut effects = Vec::new();
 
-    let discid = start_discid_progress(&context.disc.signal, &context.providers, &mut effects);
+    let discid = start_discid_progress(
+        &context.disc.signal,
+        context.disc.excluded,
+        &context.providers,
+        &mut effects,
+    );
     let barcode = start_barcode_progress(
         context.barcode.code_values(),
         context.barcode.had_source,
         context.barcode.scan_failure.as_ref(),
+        context.barcode.excluded,
         &context.providers,
         &mut effects,
     );
@@ -919,7 +835,7 @@ use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
     discid_progress_state, retry_failed_barcode_lookups, retry_failed_catalog_lookups,
     retry_failed_discid_lookup, settled_identity_state, settled_track_count,
-    start_barcode_progress, start_catalog_lookup, start_catalog_progress, start_discid_progress,
+    start_barcode_progress, start_catalog_progress, start_discid_progress,
 };
 /// The pipes a settled context stands back up as — what the view lays a
 /// settled run out from.

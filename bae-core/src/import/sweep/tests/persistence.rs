@@ -64,6 +64,7 @@ fn row_with_verdict(
             identified_at: fixed_now(),
         }),
         signals: None,
+        lookup_choices: Default::default(),
         file_edits: Default::default(),
         metadata_provenance: None,
         metadata_revision: 0,
@@ -312,7 +313,7 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
     let not_in_library =
         |result: &MetadataResult| crate::db::LibraryStatus::absent(&result.release_id);
     let found =
-        multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1").resume_state(None, &not_in_library);
+        multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1").resume_state(None, &LookupChoices::default(), &not_in_library);
     let changed = |state: IdentifyState| ImportEvent::IdentifyStateChanged {
         candidate_key: key.clone(),
         run: crate::identify::IdentifyRunId::for_test(0),
@@ -910,7 +911,7 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
     let outcome = finish_candidate(
         &fixture.context(),
         &entry,
-        TerminalVerdict::NotFoundAnywhere.resume_state(None, &|_| {
+        TerminalVerdict::NotFoundAnywhere.resume_state(None, &LookupChoices::default(), &|_| {
             unreachable!("a no-match verdict names no release")
         }),
         &CancellationToken::new(),

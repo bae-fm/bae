@@ -63,7 +63,8 @@ private struct ImportOperations: Sendable {
     let setFileRole:
         @Sendable (String, String, BridgeFileRoleChoice) async throws -> Void
     let identifyForExplicitLookup: @MainActor @Sendable (String) -> Void
-    let autoIdentifyRelease: @Sendable (String, String) -> Void
+    let autoIdentifyRelease:
+        @Sendable (String, String, BridgeLookupChoices) -> Void
     let cancelAutoIdentify: @Sendable (String) -> Void
     let startCandidateSearch: @Sendable (String, BridgeSearchQuery) -> Void
     let retryCandidateSearch: @Sendable (String) -> Void
@@ -71,9 +72,8 @@ private struct ImportOperations: Sendable {
         @Sendable (
             BridgeMetadataSource, String, String?, ReleaseLibraryStatusCallback
         ) -> any LiveSubscriptionProtocol
-    let toggleSignalForCandidate:
-        @Sendable (String, BridgeSignalToggle) ->
-            Void
+    let setCandidateLookupChoices:
+        @Sendable (String, BridgeLookupChoices) async throws -> Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
     /// Re-ask only the lookups that failed, keeping what the others found.
     let retryFailedIdentifyForCandidate: @Sendable (String) -> Void
@@ -188,7 +188,11 @@ extension ImportOperations {
                 handle.identifyFolderForLookup(candidateKey: $0)
             },
             autoIdentifyRelease: {
-                handle.autoIdentifyRelease(candidateKey: $0, releaseId: $1)
+                handle.autoIdentifyRelease(
+                    candidateKey: $0,
+                    releaseId: $1,
+                    choices: $2
+                )
             },
             cancelAutoIdentify: {
                 handle.cancelAutoIdentify(candidateKey: $0)
@@ -207,8 +211,11 @@ extension ImportOperations {
                     callback: $3
                 )
             },
-            toggleSignalForCandidate: {
-                handle.toggleSignalForCandidate(candidateKey: $0, signal: $1)
+            setCandidateLookupChoices: {
+                try await handle.setCandidateLookupChoices(
+                    candidateKey: $0,
+                    choices: $1
+                )
             },
             rerunIdentifyForCandidate: {
                 handle.rerunIdentifyForCandidate(candidateKey: $0)
@@ -375,10 +382,13 @@ final class Importer: Sendable, Observable {
             async throws -> Void = { _, _, _ in },
         identifyForExplicitLookup:
             @escaping @MainActor @Sendable (String) -> Void = { _ in },
-        autoIdentifyRelease: @escaping @Sendable (String, String) -> Void = {
-            _,
-            _ in
-        },
+        autoIdentifyRelease:
+            @escaping @Sendable (String, String, BridgeLookupChoices) -> Void =
+            {
+                _,
+                _,
+                _ in
+            },
         cancelAutoIdentify: @escaping @Sendable (String) -> Void = { _ in },
         startCandidateSearch:
             @escaping @Sendable (String, BridgeSearchQuery) -> Void = { _, _ in
@@ -391,11 +401,9 @@ final class Importer: Sendable, Observable {
             ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
                 InertLibraryStatusSubscription()
             },
-        toggleSignalForCandidate:
-            @escaping @Sendable (String, BridgeSignalToggle) -> Void = {
-                _,
-                _ in
-            },
+        setCandidateLookupChoices:
+            @escaping @Sendable (String, BridgeLookupChoices) async throws ->
+            Void = { _, _ in },
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
         retryFailedIdentifyForCandidate:
@@ -482,7 +490,7 @@ final class Importer: Sendable, Observable {
             startCandidateSearch: startCandidateSearch,
             retryCandidateSearch: retryCandidateSearch,
             subscribeReleaseLibraryStatus: subscribeReleaseLibraryStatus,
-            toggleSignalForCandidate: toggleSignalForCandidate,
+            setCandidateLookupChoices: setCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
             retryFailedIdentifyForCandidate: retryFailedIdentifyForCandidate,
             setCandidatePresentation: setCandidatePresentation,
@@ -615,8 +623,15 @@ extension Importer {
         operations.identifyForExplicitLookup(candidateKey)
     }
 
-    func autoIdentifyRelease(_ candidateKey: String, _ releaseId: String) {
-        operations.autoIdentifyRelease(candidateKey, releaseId)
+    /// Re-identify a library release. It is not a scanned candidate, so
+    /// nothing stores what its run asks about: the sheet holds `choices` and
+    /// hands them back with every run it starts.
+    func autoIdentifyRelease(
+        _ candidateKey: String,
+        _ releaseId: String,
+        _ choices: BridgeLookupChoices
+    ) {
+        operations.autoIdentifyRelease(candidateKey, releaseId, choices)
     }
 
     func cancelAutoIdentify(_ candidateKey: String) {
@@ -653,11 +668,14 @@ extension Importer {
         )
     }
 
-    func toggleSignalForCandidate(
+    /// Record what a candidate's identification asks about — the whole value,
+    /// computed from the detail's current one — and start the run that reads
+    /// it.
+    func setCandidateLookupChoices(
         _ candidateKey: String,
-        _ signal: BridgeSignalToggle
-    ) {
-        operations.toggleSignalForCandidate(candidateKey, signal)
+        _ choices: BridgeLookupChoices
+    ) async throws {
+        try await operations.setCandidateLookupChoices(candidateKey, choices)
     }
 
     func rerunIdentifyForCandidate(_ candidateKey: String) {

@@ -47,6 +47,13 @@ public sealed class ImportCandidate
     internal IReadOnlyList<BridgeFileEvidence> FileEvidence =>
         Detail?.FileEvidence ?? System.Array.Empty<BridgeFileEvidence>();
 
+    /// <summary>What this candidate's identification asks about, as the person
+    /// left it. The default until the per-candidate read has answered — the
+    /// same value a candidate nobody has decided anything about runs with.
+    /// </summary>
+    internal BridgeLookupChoices LookupChoices =>
+        Detail?.LookupChoices ?? NativeBae.NoLookupChoices();
+
     /// <summary>The candidate's one editable metadata draft.</summary>
     internal BridgeRawReleaseEdit? Edit => Detail?.MetadataDraft;
 

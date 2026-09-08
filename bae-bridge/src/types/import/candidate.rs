@@ -326,23 +326,30 @@ mirror_struct! {
     },
 }
 
-/// A signal the user acted on. The disc ID and the barcode are checked until
-/// toggled off; the catalog is off until one of the extracted numbers is
-/// chosen. Choosing a number adds its lookup beside the other chosen numbers'
-/// and choosing a chosen one takes it back out — so its variant names the
-/// value. Mirrors `bae_core::identify::SignalToggle`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSignalToggle {
-    Disc,
-    Barcode,
-    Catalog { value: String },
+/// What a candidate's identification asks about: the signals its runs leave
+/// out, and the catalog numbers they look up. Mirrors
+/// `bae_core::import::LookupChoices`.
+///
+/// One value, sent whole. A control that changes one part reads the candidate
+/// detail's current value, changes that part, and sends the result back —
+/// which is also what starts the run that reads it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeLookupChoices {
+    /// Whether the run leaves the candidate's disc ID out.
+    pub disc_id_excluded: bool,
+    /// Whether the run leaves the candidate's barcodes out.
+    pub barcode_excluded: bool,
+    /// The catalog numbers the run looks up, each on its own, in the order
+    /// they were chosen.
+    pub chosen_catalogs: Vec<String>,
 }
 
-mirror_enum! {
+mirror_struct! {
     #[cfg(feature = "desktop")]
-    BridgeSignalToggle = bae_core::identify::SignalToggle,
+    BridgeLookupChoices = bae_core::import::LookupChoices,
+    from_core: pub(crate) fn,
     into_core: pub fn,
-    variants: { Disc, Barcode, Catalog(value) },
+    fields: { disc_id_excluded, barcode_excluded, chosen_catalogs },
 }
 
 /// Where a signal value was harvested from — what a badge shows on hover

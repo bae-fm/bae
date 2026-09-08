@@ -5,7 +5,7 @@
 //!
 //! [`IdentifyState`] is the reducer's own working shape: it carries a full
 //! [`SignalsContext`] (raw signal inputs, the user's exclusions) through every
-//! state so a toggle or a re-run can re-combine without re-fetching, and it has
+//! state so a re-run can re-combine without re-fetching, and it has
 //! `Idle` and `Triangulating` variants that are mid-flight, not a verdict at
 //! all. None of that belongs on disk. [`TerminalVerdict`] is the shape that
 //! does: only the four states identification can actually end on, holding only
@@ -22,12 +22,12 @@
 
 use super::combine::{NarrowedOut, ResultProvenance};
 use super::state::{
-    BarcodeEvidence, CatalogEvidence, DiscIdEvidence, IdentifyState, RecordedWalk, SignalsContext,
-    WalkEnd,
+    BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence, IdentifyState, RecordedWalk,
+    SignalsContext, WalkEnd,
 };
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
-use crate::import::MetadataSource;
+use crate::import::{LookupChoices, MetadataSource};
 use crate::signals::{ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals};
 
 /// Which lookup failed, and — where several providers answer it — which
@@ -197,10 +197,14 @@ impl TerminalVerdict {
     /// the same ledger out as the live run did, and a cell that failed offers
     /// its retry.
     ///
-    /// Two things no write keeps, so no resume has them: the catalog numbers
-    /// the person had chosen (they come back as tiles to choose again), and a
-    /// failed run's partial matches — the failure is what stores, and
-    /// re-running is what turns partial evidence into an answer.
+    /// `choices` is what the person decided the candidate's identification
+    /// asks about — the same value the run that wrote this verdict read at its
+    /// start — so a resumed pane shows the signals it left out as left out and
+    /// the numbers it chose as chosen.
+    ///
+    /// One thing no write keeps, so no resume has it: a failed run's partial
+    /// matches. The failure is what stores, and re-running is what turns
+    /// partial evidence into an answer.
     ///
     /// `signals` is `None` for a candidate whose signals are not stored: then
     /// there are no inputs, so there is no ledger — the matches, the barcode
@@ -211,6 +215,7 @@ impl TerminalVerdict {
     pub fn resume_state(
         self,
         signals: Option<&Signals>,
+        choices: &LookupChoices,
         status_of: &impl Fn(&MetadataResult) -> LibraryStatus,
     ) -> IdentifyState {
         let providers = self.resumed_providers();
@@ -231,7 +236,7 @@ impl TerminalVerdict {
                 };
                 let context = match signals {
                     Some(signals) => found_run(
-                        stored_inputs(signals, providers),
+                        stored_inputs(signals, providers, choices),
                         &matches,
                         &library_statuses,
                         &provenance,
@@ -256,7 +261,7 @@ impl TerminalVerdict {
             }
             Self::NotFoundAnywhere => IdentifyState::NotFoundAnywhere {
                 context: match signals {
-                    Some(signals) => exhausted_run(stored_inputs(signals, providers)),
+                    Some(signals) => exhausted_run(stored_inputs(signals, providers, choices)),
                     None => no_inputs(0),
                 },
             },
@@ -266,7 +271,7 @@ impl TerminalVerdict {
                 // they are the whole run. Catalog numbers among them come back
                 // as tiles to choose.
                 context: match signals {
-                    Some(signals) => stored_inputs(signals, providers),
+                    Some(signals) => stored_inputs(signals, providers, choices),
                     None => no_inputs(track_count),
                 },
             },
@@ -278,7 +283,9 @@ impl TerminalVerdict {
                 track_count,
             } => IdentifyState::Failed {
                 context: match signals {
-                    Some(signals) => failed_run(stored_inputs(signals, providers), &failures),
+                    Some(signals) => {
+                        failed_run(stored_inputs(signals, providers, choices), &failures)
+                    }
                     None => no_inputs(track_count),
                 },
                 failures,
@@ -320,25 +327,43 @@ impl TerminalVerdict {
     }
 }
 
-/// What extraction read, as the run had it. Nothing has been asked yet — the
-/// verdict's own answers are recorded onto this below.
-fn stored_inputs(signals: &Signals, providers: Vec<MetadataSource>) -> SignalsContext {
+/// What extraction read and what the person decided the run asks about, as the
+/// run had them. Nothing has been asked yet — the verdict's own answers are
+/// recorded onto this below.
+///
+/// A chosen number the stored signals no longer offer is dropped: a choice has
+/// to be one of the values on the list, the same rule a live run applies to
+/// each new snapshot.
+fn stored_inputs(
+    signals: &Signals,
+    providers: Vec<MetadataSource>,
+    choices: &LookupChoices,
+) -> SignalsContext {
+    let numbers = signals.text.catalogs().to_vec();
     SignalsContext {
         providers,
         // No artwork pass runs behind a stored verdict, so no row waits on one.
         artwork: ArtworkScan::Absent,
         disc: DiscIdEvidence {
             signal: signals.disc_id.clone(),
+            excluded: choices.disc_id_excluded,
             ..Default::default()
         },
         barcode: BarcodeEvidence {
             codes: signals.barcode.codes().to_vec(),
             had_source: !matches!(signals.barcode, BarcodeSignal::Absent),
+            excluded: choices.barcode_excluded,
             ..Default::default()
         },
         catalog: CatalogEvidence {
-            numbers: signals.text.catalogs().to_vec(),
-            chosen: Vec::new(),
+            chosen: choices
+                .chosen_catalogs
+                .iter()
+                .filter(|value| numbers.iter().any(|number| &&number.value == value))
+                .cloned()
+                .map(ChosenCatalog::new)
+                .collect(),
+            numbers,
         },
         track_count: signals.disc_id.track_count(),
     }
@@ -347,7 +372,8 @@ fn stored_inputs(signals: &Signals, providers: Vec<MetadataSource>) -> SignalsCo
 /// The context a verdict resumes with when its candidate's signals are not
 /// stored. `disc_id: Absent` here means "not retained", not "the folder had no
 /// disc artifact" — the distinction never leaves core: with no inputs at all
-/// there is no ledger to lay out and no toolbar to draw.
+/// there is no ledger to lay out and no toolbar to draw, so the person's
+/// choices have nothing to be about either.
 fn no_inputs(track_count: u32) -> SignalsContext {
     SignalsContext {
         providers: Vec::new(),
@@ -384,6 +410,13 @@ fn found_run(
     };
     context.disc.results = found_by(|provenance| provenance.by_disc_id);
     context.barcode.results = found_by(|provenance| provenance.by_barcode);
+    // Every match the run found by catalog, on each number it was looking up:
+    // a verdict records that the catalog produced a match, not which of the
+    // chosen numbers did.
+    let by_catalog = found_by(|provenance| provenance.by_catalog);
+    for chosen in &mut context.catalog.chosen {
+        chosen.results = by_catalog.clone();
+    }
 
     // A walk that matched names one of the codes it asked about, and the codes
     // and the verdict are written together, so the code the verdict points at

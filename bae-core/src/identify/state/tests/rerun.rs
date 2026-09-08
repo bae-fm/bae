@@ -1,130 +1,25 @@
-/// Drive the reducer through triangulation into a disagreement: the disc ID
-/// matches one release and the barcode two others, so nothing intersects and
-/// the settled `Found` holds all three.
-fn driven_disagreement() -> IdentifyState {
-    let (state, _) = update(
-        started(),
-        signals(
-            disc("d", 7),
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["BAR"]),
-            },
-            &[],
-        ),
-    );
-    let (state, _) = step(
-        state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
-            track_count: 7,
-        },
-    );
-    let (state, _) = step(
-        state,
-        barcode_matched(
-            MB,
-            "BAR",
-            vec![
-                pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y")),
-                pair("rel-3", Some("g-y")),
-            ],
-        ),
-    );
-    // Nothing intersects, so the set is the union: one disc-ID result and two
-    // barcode ones.
-    let IdentifyState::Found { matches, .. } = &state else {
-        panic!("expected Found, got {state:?}");
-    };
-    assert_eq!(matches.len(), 3);
-    state
-}
-
-/// Excluding the disc-ID signal leaves the barcode side's two results alone;
-/// re-including it puts the disc-ID result back in the set.
+/// A run started with the disc ID left out never asks about it: no disc-ID
+/// lookup goes out, the badge says the person took it out, and the answer is
+/// the barcode's alone.
 #[test]
-fn toggle_excludes_discid_then_re_includes() {
-    let disagreeing = driven_disagreement();
-
-    let (state, effects) = step(
-        disagreeing,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Disc,
-        },
-    );
-    assert!(
-        effects.is_empty(),
-        "toggle re-combines in place, no lookups"
-    );
-    match &state {
-        IdentifyState::Found {
-            matches,
-            provenance,
-            ..
-        } => {
-            assert_eq!(matches.len(), 2);
-            assert!(provenance.iter().all(|p| p.by_barcode && !p.by_disc_id));
-        }
-        other => panic!("expected Found, got {other:?}"),
-    }
-    // The disc-ID badge reports its exclusion.
-    let disc = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::DiscId)
-        .expect("disc badge");
-    assert!(disc.excluded);
-
-    // Re-including the disc-ID signal puts its result back in the set.
-    let (restored, _) = step(
-        state,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Disc,
-        },
-    );
-    let IdentifyState::Found { matches, .. } = &restored else {
-        panic!("expected Found after re-include, got {restored:?}");
+fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
+    let (state, effects) = started_with_choices(vec![MB], excluding(true, false));
+    let (state, effects) = {
+        assert!(effects.is_empty());
+        update(state, disc_and_codes("d", &["BAR"]))
     };
-    assert_eq!(matches.len(), 3);
-}
-
-/// Toggling mid-triangulation records the exclusion without collapsing the
-/// in-flight lookups: the state stays `Triangulating`, the badge reads excluded,
-/// and the exclusion is honored once the lookups settle.
-#[test]
-fn toggle_during_triangulation_keeps_looking_up() {
-    let (state, effects) = update(started(), disc_and_codes("d", &["BAR"]));
-    assert!(matches!(state, IdentifyState::Triangulating { .. }));
-    assert!(effects
-        .iter()
-        .any(|e| matches!(e, Effect::LookupDiscid { .. })));
-
-    // Toggling mid-lookup must not collapse to a terminal state or dispatch.
-    let (state, effects) = step(
-        state,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Disc,
-        },
-    );
     assert!(
-        matches!(state, IdentifyState::Triangulating { .. }),
-        "toggling mid-lookup must stay Triangulating, got {state:?}",
+        !effects
+            .iter()
+            .any(|effect| matches!(effect, Effect::LookupDiscid { .. })),
+        "the disc ID was left out, so nothing asks about it: {effects:?}"
     );
-    assert!(effects.is_empty(), "toggle dispatches no lookups");
-    let disc = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::DiscId)
-        .expect("disc badge");
-    assert!(disc.excluded, "disc badge reads excluded after toggle");
+    assert!(effects.contains(&lookup_barcode(MB, "BAR")));
 
-    // Both settle; the exclusion holds, so the disc results don't count.
-    let (state, _) = step(
-        state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
-            track_count: 5,
-        },
-    );
+    let disc = badge(&state, SignalKind::DiscId);
+    assert!(disc.excluded, "the disc badge reads as left out");
+    assert_eq!(disc.state, SignalState::Skipped);
+
     let (state, _) = step(
         state,
         barcode_matched(
@@ -139,35 +34,61 @@ fn toggle_during_triangulation_keeps_looking_up() {
             matches,
             ..
         } => {
-            assert!(provenance[0].by_barcode && !provenance[0].by_disc_id);
             assert_eq!(matches.len(), 1);
-            assert_eq!(
-                matches[0].release_id,
-                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
-            );
+            assert!(provenance[0].by_barcode && !provenance[0].by_disc_id);
         }
-        other => panic!("expected barcode-only Found, got {other:?}"),
+        other => panic!("expected a barcode-only Found, got {other:?}"),
     }
 }
 
-/// A failure from a signal the user excluded while it was in flight is not
-/// part of the active evidence and cannot invalidate the remaining answer.
+/// The same for the barcode: nothing is asked about the codes, and the disc
+/// ID's answer stands alone.
 #[test]
-fn excluded_in_flight_disc_failure_does_not_fail_the_barcode_answer() {
-    let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
-    let (state, _) = step(
-        state,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Disc,
-        },
+fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
+    let (state, _) = started_with_choices(vec![MB], excluding(false, true));
+    let (state, effects) = update(state, disc_and_codes("d", &["BAR"]));
+    assert!(
+        !effects.iter().any(|effect| matches!(
+            effect,
+            Effect::LookupBarcode { .. }
+        )),
+        "the barcode was left out, so nothing asks about it: {effects:?}"
     );
+    assert!(effects
+        .iter()
+        .any(|effect| matches!(effect, Effect::LookupDiscid { .. })));
+
+    let barcode = badge(&state, SignalKind::Barcode);
+    assert!(barcode.excluded, "the barcode badge reads as left out");
+    assert_eq!(barcode.state, SignalState::Skipped);
+
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupFailed {
-            failure: LookupFailure::Network,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
             track_count: 5,
         },
     );
+    match state {
+        IdentifyState::Found {
+            provenance,
+            matches,
+            ..
+        } => {
+            assert_eq!(matches.len(), 1);
+            assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
+        }
+        other => panic!("expected a disc-only Found, got {other:?}"),
+    }
+}
+
+/// A signal the run left out contributes no failure either: the barcode
+/// answered, the disc ID's excluded lookup could not have run, and the run
+/// lands on the barcode's answer rather than on a failure.
+#[test]
+fn an_excluded_disc_id_cannot_fail_the_barcode_answer() {
+    let (state, _) = started_with_choices(vec![MB], excluding(true, false));
+    let (state, _) = update(state, disc_and_codes("d", &["BAR"]));
     let (state, _) = step(
         state,
         barcode_matched(
@@ -287,30 +208,41 @@ fn rerun_of_scanned_but_empty_barcode_settles_the_same_as_the_first_pass() {
     );
 }
 
-/// A re-run replays both lookups regardless of exclusions, but the re-derive that
-/// follows still masks the excluded side: exclude the disc, re-run, and the state
-/// settles back to the barcode's two results rather than all three.
+/// A re-run replays the run the person asked for, which is the run they chose
+/// what to ask about: the disc ID they left out is still left out afterwards,
+/// so the re-derived set is the barcode's two results rather than all three.
 #[test]
-fn rerun_preserves_exclusions() {
-    let disagreeing = driven_disagreement();
-    // Exclude the disc-ID signal: leaves the barcode's own results.
+fn a_rerun_keeps_the_choices_the_run_started_with() {
+    let (state, _) = started_with_choices(vec![MB], excluding(true, false));
+    let (state, _) = update(
+        state,
+        signals(
+            disc("d", 7),
+            BarcodeSignal::Settled {
+                codes: artwork_codes(&["BAR"]),
+            },
+            &[],
+        ),
+    );
     let (excluded, _) = step(
-        disagreeing,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Disc,
-        },
+        state,
+        barcode_matched(
+            MB,
+            "BAR",
+            vec![
+                pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y")),
+                pair("rel-3", Some("g-y")),
+            ],
+        ),
     );
     assert!(matches!(excluded, IdentifyState::Found { .. }));
 
-    // Re-run, then re-settle both lookups. The disc exclusion survives, so the
-    // re-derived set is the barcode's two results again, not all three.
-    let (state, _) = step(excluded, IdentifyEvent::ReRun { providers: vec![MB] });
-    let (state, _) = step(
-        state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
-            track_count: 7,
-        },
+    let (state, effects) = step(excluded, IdentifyEvent::ReRun { providers: vec![MB] });
+    assert!(
+        !effects
+            .iter()
+            .any(|effect| matches!(effect, Effect::LookupDiscid { .. })),
+        "the re-run leaves out what the run left out: {effects:?}"
     );
     let (state, _) = step(
         state,

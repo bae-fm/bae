@@ -4,7 +4,7 @@
 /// The opener the catalog-number tests share: a run over `providers` given a
 /// computed disc id for five tracks, no barcode and one catalog number on
 /// offer, with the disc-id lookup already answered by two releases of one
-/// group. Leaves the state `Found`, with "LBL 001" offered but not checked.
+/// group. Leaves the state `Found`, with "LBL 001" offered but not chosen.
 fn state_with_catalog_offered(providers: Vec<MetadataSource>) -> IdentifyState {
     let (state, _) = update(
         started_with(providers),
@@ -18,6 +18,24 @@ fn state_with_catalog_offered(providers: Vec<MetadataSource>) -> IdentifyState {
         },
     );
     state
+}
+
+/// The same run, started with "LBL 001" chosen: its lookup goes out with the
+/// run, and the effects it dispatched come back with the state.
+fn run_with_catalog_chosen(providers: Vec<MetadataSource>) -> (IdentifyState, Vec<Effect>) {
+    let (state, chosen_effects) = started_with_choices(providers, choosing(&["LBL 001"]));
+    let (state, _) = update(
+        state,
+        signals(disc("disc-hash", 5), BarcodeSignal::Absent, &["LBL 001"]),
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
+            track_count: 5,
+        },
+    );
+    (state, chosen_effects)
 }
 
 #[test]
@@ -98,19 +116,11 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
     );
 }
 
-/// Checking a catalog number runs its own lookup, and its results join the
-/// intersection the other signals are already in.
+/// A number the run was told to look up is asked about from the start, and its
+/// results join the intersection the other signals are already in.
 #[test]
-fn choosing_a_catalog_number_looks_it_up_and_intersects() {
-    let state = state_with_catalog_offered(vec![MB]);
-    assert!(matches!(state, IdentifyState::Found { .. }));
-
-    let (state, effects) = step(
-        state,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Catalog("LBL 001".to_string()),
-        },
-    );
+fn a_chosen_catalog_number_is_looked_up_from_the_start() {
+    let (state, effects) = run_with_catalog_chosen(vec![MB]);
     assert_eq!(
         effects,
         vec![Effect::LookupCatalog {
@@ -118,11 +128,7 @@ fn choosing_a_catalog_number_looks_it_up_and_intersects() {
             catalog: "LBL 001".to_string(),
         }]
     );
-    let catalog_badge = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::Catalog)
-        .expect("catalog badge");
+    let catalog_badge = badge(&state, SignalKind::Catalog);
     assert_eq!(catalog_badge.value.as_deref(), Some("LBL 001"));
     assert_eq!(catalog_badge.state, SignalState::LookingUp);
 
@@ -148,11 +154,7 @@ fn choosing_a_catalog_number_looks_it_up_and_intersects() {
         }
         other => panic!("expected Found, got {other:?}"),
     }
-    let catalog_badge = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::Catalog)
-        .expect("catalog badge");
+    let catalog_badge = badge(&state, SignalKind::Catalog);
     assert_eq!(catalog_badge.state, SignalState::Found { count: 1 });
     assert!(catalog_badge
         .options
@@ -160,43 +162,76 @@ fn choosing_a_catalog_number_looks_it_up_and_intersects() {
         .any(|o| o.value == "LBL 001" && o.chosen));
 }
 
-/// Checking the number already checked clears the choice, and the catalog
-/// leaves the combine again.
+/// A run nobody chose a number for asks about none of them: they are the list
+/// to choose from, and the catalog takes no part until one is on it.
 #[test]
-fn checking_the_chosen_catalog_number_again_clears_it() {
+fn a_run_with_no_chosen_number_asks_about_none_of_them() {
     let state = state_with_catalog_offered(vec![MB]);
-    let (state, _) = step(
-        state,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Catalog("LBL 001".to_string()),
-        },
-    );
-    let (state, _) = step(
-        state,
-        IdentifyEvent::CatalogLookupAnswered {
-            source: MB,
-            for_catalog: "LBL 001".to_string(),
-            outcome: Ok(vec![pair("rel-b", Some("g-x"))]),
-        },
-    );
-    let (state, effects) = step(
-        state,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Catalog("LBL 001".to_string()),
-        },
-    );
-    assert!(effects.is_empty(), "clearing the choice looks nothing up");
-    match state {
-        IdentifyState::Found { ref matches, .. } => assert_eq!(matches.len(), 2),
-        ref other => panic!("expected Found, got {other:?}"),
-    }
-    let catalog_badge = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::Catalog)
-        .expect("catalog badge");
+    assert!(matches!(state, IdentifyState::Found { .. }));
+    let catalog_badge = badge(&state, SignalKind::Catalog);
     assert_eq!(catalog_badge.value, None);
     assert_eq!(catalog_badge.state, SignalState::Skipped);
+    assert!(catalog_badge.options.iter().all(|option| !option.chosen));
+}
+
+/// A number the settled snapshot no longer offers is not one of the values on
+/// the list, so the run stops looking it up.
+#[test]
+fn a_chosen_number_the_snapshot_does_not_offer_leaves_the_run() {
+    let (state, effects) = started_with_choices(vec![MB], choosing(&["GONE 001"]));
+    assert_eq!(
+        effects,
+        vec![Effect::LookupCatalog {
+            source: MB,
+            catalog: "GONE 001".to_string(),
+        }]
+    );
+    let (state, _) = update(
+        state,
+        signals(
+            DiscIdSignal::Absent { track_count: 5 },
+            BarcodeSignal::Absent,
+            &["LBL 001"],
+        ),
+    );
+    // Nothing is left in flight, so the run settled without waiting on an
+    // answer about a number this candidate no longer carries.
+    assert!(
+        !matches!(state, IdentifyState::Triangulating { .. }),
+        "got {state:?}"
+    );
+    let catalog_badge = badge(&state, SignalKind::Catalog);
+    assert_eq!(catalog_badge.state, SignalState::Skipped);
+    assert!(catalog_badge.options.iter().all(|option| !option.chosen));
+}
+
+/// The numbers stream out of the artwork pass, so a snapshot taken while it is
+/// still reading does not yet offer every number the last run found. A chosen
+/// number is not dropped against a half-read list.
+#[test]
+fn a_chosen_number_survives_a_snapshot_still_being_read() {
+    let (state, _) = started_with_choices(vec![MB], choosing(&["LBL 001"]));
+    let (state, _) = step(
+        state,
+        IdentifyEvent::SignalsUpdated {
+            signals: Signals {
+                disc_id: DiscIdSignal::Absent { track_count: 5 },
+                barcode: BarcodeSignal::Scanning { codes: Vec::new() },
+                text: TextSignal::Scanning {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                durations: crate::import::probe::SourceDurations::default(),
+            },
+            artwork: crate::signals::ArtworkScan::Absent,
+        },
+    );
+    let catalog_badge = badge(&state, SignalKind::Catalog);
+    assert_eq!(
+        catalog_badge.state,
+        SignalState::LookingUp,
+        "the chosen number's lookup is still out"
+    );
 }
 
 #[test]
@@ -379,45 +414,6 @@ fn found_carries_in_library_status_through() {
     }
 }
 
-/// `SignalToggled` from a terminal `Found` state re-derives in place: excluding
-/// the only signal that produced results drops to `NotFoundAnywhere`, and
-/// re-including it restores the `Found`.
-#[test]
-fn toggle_from_found_re_derives_terminal_state() {
-    let (state, _) = disc_only_started();
-    let (found, _) = step(
-        state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
-            track_count: 5,
-        },
-    );
-    assert!(matches!(found, IdentifyState::Found { .. }));
-
-    let (excluded, effects) = step(
-        found,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Disc,
-        },
-    );
-    assert!(effects.is_empty(), "toggle re-combines in place");
-    assert!(
-        matches!(excluded, IdentifyState::NotFoundAnywhere { .. }),
-        "excluding the only signal with results leaves nothing found, got {excluded:?}"
-    );
-
-    let (restored, _) = step(
-        excluded,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Disc,
-        },
-    );
-    assert!(
-        matches!(restored, IdentifyState::Found { .. }),
-        "re-including the disc signal restores Found, got {restored:?}"
-    );
-}
-
 /// A barcode lookup can fail while the disc-ID lookup is still in flight. The
 /// pipeline stays `Triangulating` until the disc settles, then reports the
 /// failed automatic lookup instead of presenting the disc's partial answer.
@@ -464,13 +460,7 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
 /// beside them.
 #[test]
 fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
-    let state = state_with_catalog_offered(vec![MB, DG]);
-    let (state, effects) = step(
-        state,
-        IdentifyEvent::SignalToggled {
-            signal: SignalToggle::Catalog("LBL 001".to_string()),
-        },
-    );
+    let (state, effects) = run_with_catalog_chosen(vec![MB, DG]);
     assert_eq!(
         effects,
         vec![

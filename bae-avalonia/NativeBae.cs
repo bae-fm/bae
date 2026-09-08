@@ -816,8 +816,13 @@ internal static partial class NativeBae
     internal static void IdentifyFolderForLookup(AppHandle handle, string candidateKey) =>
         handle.IdentifyFolderForLookup(candidateKey);
 
-    internal static void AutoIdentifyRelease(AppHandle handle, string candidateKey, string releaseId) =>
-        handle.AutoIdentifyRelease(candidateKey, releaseId);
+    /// <summary>Re-identify a library release. It is not a scanned candidate,
+    /// so nothing stores what its run asks about: the dialog holds
+    /// <paramref name="choices"/> and hands them back with every run it
+    /// starts.</summary>
+    internal static void AutoIdentifyRelease(
+        AppHandle handle, string candidateKey, string releaseId, BridgeLookupChoices choices) =>
+        handle.AutoIdentifyRelease(candidateKey, releaseId, choices);
 
     internal static void CancelAutoIdentify(AppHandle handle, string candidateKey) =>
         handle.CancelAutoIdentify(candidateKey);
@@ -832,8 +837,11 @@ internal static partial class NativeBae
             releaseId,
             ReleaseUserEdit(await handle.ResetReleaseEditToSource(releaseId)))));
 
-    internal static void ToggleSignalForCandidate(AppHandle handle, string candidateKey, string kind, string value) =>
-        handle.ToggleSignalForCandidate(candidateKey, SignalToggle(kind, value));
+    /// <summary>Record what this candidate's identification asks about, whole,
+    /// and start the run that reads it.</summary>
+    internal static string? SetCandidateLookupChoices(
+        AppHandle handle, string candidateKey, BridgeLookupChoices choices) =>
+        CaptureError(() => Await(() => handle.SetCandidateLookupChoices(candidateKey, choices)));
 
     internal static void RerunIdentifyForCandidate(AppHandle handle, string candidateKey) =>
         handle.RerunIdentifyForCandidate(candidateKey);

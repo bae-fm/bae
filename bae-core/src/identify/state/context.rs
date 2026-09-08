@@ -2,9 +2,9 @@
 //! against, the user's exclusions, and every provider's answer.
 //!
 //! Held apart from the reducer because it is what makes a re-combine free: a
-//! toggle or a re-run reads it instead of re-fetching, and lifting a settled
-//! state into a stored verdict reads it to tell "nothing was learned" apart
-//! from "the lookup ran and found nothing".
+//! re-run reads it instead of re-fetching, and lifting a settled state into a
+//! stored verdict reads it to tell "nothing was learned" apart from "the
+//! lookup ran and found nothing".
 //!
 //! One type per signal, each holding that signal's input, whether the current
 //! selection uses it, what its lookup returned, and how it failed — the four
@@ -18,9 +18,9 @@ use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, LibraryStatus, MetadataResult, SourceFailure,
 };
 use crate::identify::IdentifyFailure;
-use crate::import::MetadataSource;
+use crate::import::{LookupChoices, MetadataSource};
 use crate::signals::{
-    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue,
+    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal,
 };
 
 /// The disc-ID signal and what asking about it produced. The disc-ID endpoint
@@ -252,7 +252,8 @@ pub struct ChosenCatalog {
 }
 
 impl ChosenCatalog {
-    fn new(value: String) -> Self {
+    /// A number the run looks up, before its lookup has run.
+    pub(crate) fn new(value: String) -> Self {
         Self {
             value,
             results: Vec::new(),
@@ -277,11 +278,19 @@ pub struct CatalogEvidence {
 }
 
 impl CatalogEvidence {
-    /// Take the extracted numbers from a new snapshot. A chosen number the new
-    /// snapshot no longer offers is dropped along with its lookup; a choice
-    /// has to be one of the values on the list.
-    fn refresh_input(&mut self, numbers: &[SourcedValue]) {
-        self.numbers = numbers.to_vec();
+    /// Take the extracted numbers from a new snapshot. A choice has to be one
+    /// of the values on the list, so once the list is final a chosen number it
+    /// does not offer is dropped along with its lookup.
+    ///
+    /// Only once it is final. The numbers stream out of the artwork pass, so a
+    /// snapshot taken while it is still reading offers only what has been read
+    /// so far — and dropping a stored choice against a half-read list would
+    /// take a number out of the run because the OCR had not reached it yet.
+    fn refresh_input(&mut self, text: &TextSignal) {
+        self.numbers = text.catalogs().to_vec();
+        if matches!(text, TextSignal::Scanning { .. }) {
+            return;
+        }
         self.chosen
             .retain(|chosen| self.numbers.iter().any(|c| c.value == chosen.value));
     }
@@ -306,17 +315,6 @@ impl CatalogEvidence {
     /// Whether the run looks `value` up.
     pub fn is_chosen(&self, value: &str) -> bool {
         self.chosen.iter().any(|chosen| chosen.value == value)
-    }
-
-    /// Add `value` to the numbers the run looks up. Its lookup has not run.
-    pub(super) fn choose(&mut self, value: String) {
-        self.chosen.push(ChosenCatalog::new(value));
-    }
-
-    /// Take `value` out of the numbers the run looks up, dropping whatever
-    /// its lookup found.
-    pub(super) fn unchoose(&mut self, value: &str) {
-        self.chosen.retain(|chosen| chosen.value != value);
     }
 
     /// The values the run looks up, each once, in the order they were chosen.
@@ -381,12 +379,14 @@ fn unique_values(sightings: &[SourcedValue]) -> Vec<String> {
     out
 }
 
-/// Everything a settled state needs to re-derive its outcome when the user toggles
-/// a signal or re-runs — carried unchanged through every non-`Idle` state.
+/// Everything a settled state needs to re-derive its outcome when the run
+/// re-runs — carried unchanged through every non-`Idle` state.
 ///
 /// The three signals' evidence drives the toolbar badges and the `ReRun`
-/// re-dispatch, and the results each one recorded let a toggle re-combine
-/// without re-fetching. What the user checked survives every new snapshot.
+/// re-dispatch, and the results each one recorded let a re-combine happen
+/// without re-fetching. What the run was told to ask about survives every new
+/// snapshot: it is the person's decision about the candidate, not something a
+/// snapshot states.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SignalsContext {
     /// The providers this run asks — MusicBrainz, and Discogs when it is
@@ -405,26 +405,43 @@ pub struct SignalsContext {
 }
 
 impl SignalsContext {
-    /// No signals known yet — the context on entry to `Triangulating`, before the
-    /// first `SignalsUpdated`. `providers` is what the run will ask.
-    pub(super) fn empty(providers: Vec<MetadataSource>) -> Self {
+    /// No signals known yet — the context on entry to `Triangulating`, before
+    /// the first `SignalsUpdated`. `providers` is what the run will ask, and
+    /// `choices` is what the person decided it asks about: the exclusions are
+    /// set and every chosen catalog number is chosen, with nothing found for
+    /// any of them yet.
+    pub(super) fn started(providers: Vec<MetadataSource>, choices: LookupChoices) -> Self {
         Self {
             providers,
             artwork: ArtworkScan::Absent,
-            disc: DiscIdEvidence::default(),
-            barcode: BarcodeEvidence::default(),
-            catalog: CatalogEvidence::default(),
+            disc: DiscIdEvidence {
+                excluded: choices.disc_id_excluded,
+                ..Default::default()
+            },
+            barcode: BarcodeEvidence {
+                excluded: choices.barcode_excluded,
+                ..Default::default()
+            },
+            catalog: CatalogEvidence {
+                numbers: Vec::new(),
+                chosen: choices
+                    .chosen_catalogs
+                    .into_iter()
+                    .map(ChosenCatalog::new)
+                    .collect(),
+            },
             track_count: 0,
         }
     }
 
-    /// Take the inputs from a new snapshot, keeping what the user checked.
-    /// Results aren't touched — they're recorded as the lookups settle.
+    /// Take the inputs from a new snapshot, keeping what the run was told to
+    /// ask about. Results aren't touched — they're recorded as the lookups
+    /// settle.
     pub(super) fn refresh_inputs(&mut self, signals: &Signals, artwork: ArtworkScan) {
         self.artwork = artwork;
         self.disc.refresh_input(&signals.disc_id);
         self.barcode.refresh_input(&signals.barcode);
-        self.catalog.refresh_input(signals.text.catalogs());
+        self.catalog.refresh_input(&signals.text);
         self.track_count = signals.disc_id.track_count();
     }
 

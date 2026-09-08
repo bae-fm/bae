@@ -512,6 +512,7 @@ impl crate::types::BridgeImportCandidateDetail {
             // `cover_art` is the same list.
             remote_covers: _,
             signals,
+            lookup_choices,
             failure,
             session,
         } = detail;
@@ -545,6 +546,7 @@ impl crate::types::BridgeImportCandidateDetail {
             mapping: crate::types::BridgeMappingTable::from_core(mapping),
             cover: cover.map(crate::types::BridgeCoverChoice::from_core),
             signals: signals.map(crate::types::BridgeSignals::from_core),
+            lookup_choices: crate::types::BridgeLookupChoices::from_core(lookup_choices),
             failure: failure.map(crate::types::BridgeImportFailure::from_core),
             session: crate::types::BridgeCandidateSession::from_core(session),
         }

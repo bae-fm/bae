@@ -6,7 +6,7 @@ use crate::identify::state::{
 };
 use crate::identify::{IdentifyFailure, TerminalVerdict};
 use crate::import::search::{MetadataResult, SourceFailure};
-use crate::import::MetadataSource;
+use crate::import::{LookupChoices, MetadataSource};
 use crate::signals::{BarcodeSignal, SignalOrigin, Signals, SourcedValue, TextSignal};
 
 const MB: MetadataSource = MetadataSource::MusicBrainz;
@@ -532,7 +532,11 @@ fn a_resumed_failure_lays_out_the_run_it_failed_on() {
         })],
         track_count: 9,
     };
-    let run = run_of(verdict.resume_state(Some(&stored_signals()), &not_in_library));
+    let run = run_of(verdict.resume_state(
+        Some(&stored_signals()),
+        &LookupChoices::default(),
+        &not_in_library,
+    ));
     assert_eq!(run.providers, vec![DG]);
     let rows = barcode_rows(&run);
     assert_eq!(rows.len(), 1);
@@ -572,7 +576,11 @@ fn a_resumed_found_lays_out_the_run_it_settled_on() {
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
     };
-    let run = run_of(verdict.resume_state(Some(&stored_signals()), &not_in_library));
+    let run = run_of(verdict.resume_state(
+        Some(&stored_signals()),
+        &LookupChoices::default(),
+        &not_in_library,
+    ));
     assert_eq!(run.providers, vec![MB, DG]);
     let DiscIdStepView::Read { source, lookup, .. } = &run.disc_id else {
         panic!("a disc ID that was read, got {:?}", run.disc_id);
@@ -600,11 +608,11 @@ fn a_resumed_found_lays_out_the_run_it_settled_on() {
 /// was asked about them.
 #[test]
 fn a_resumed_empty_run_lays_out_no_provider_it_cannot_name() {
-    let run = run_of(
-        TerminalVerdict::NotFoundAnywhere.resume_state(Some(&stored_signals()), &|_| {
-            unreachable!("a no-match verdict names no release")
-        }),
-    );
+    let run = run_of(TerminalVerdict::NotFoundAnywhere.resume_state(
+        Some(&stored_signals()),
+        &LookupChoices::default(),
+        &|_| unreachable!("a no-match verdict names no release"),
+    ));
     assert!(run.providers.is_empty());
     assert!(cells(&barcode_rows(&run)[0]).is_empty());
     assert!(matches!(
@@ -626,7 +634,11 @@ fn a_verdict_resumed_without_stored_signals_has_no_run() {
         track_count: 9,
     };
     assert!(matches!(
-        IdentifyStateView::from(verdict.resume_state(None, &not_in_library)),
+        IdentifyStateView::from(verdict.resume_state(
+            None,
+            &LookupChoices::default(),
+            &not_in_library
+        )),
         IdentifyStateView::Failed { run: None, .. }
     ));
 }

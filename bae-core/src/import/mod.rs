@@ -49,6 +49,7 @@ desktop_only! {
     pub mod search;
     pub(crate) mod service;
 }
+pub mod lookup_choices;
 pub mod session;
 desktop_only! {
     pub mod sweep;
@@ -182,6 +183,7 @@ desktop_only! {
     pub use search::{SearchQuery, SourceFailure, SourceLookup};
     pub use service::ImportService;
 }
+pub use lookup_choices::LookupChoices;
 pub use session::{CandidateSession, MetadataPresentation, SearchForm, SearchTab};
 desktop_only! {
     pub use sweep::QueueSweepHandle;

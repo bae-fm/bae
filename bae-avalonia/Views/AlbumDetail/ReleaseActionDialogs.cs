@@ -159,14 +159,21 @@ internal sealed class ReleaseActionDialogs
             var confirm = DialogUi.Primary(Loc.Chrome("album.reidentify.confirm"));
             confirm.IsEnabled = false;
 
+            // A library release is not a scanned candidate, so nothing stores
+            // what its run asks about: this dialog holds it and hands it back
+            // with every run it starts.
+            var choices = NativeBae.NoLookupChoices();
+
             // A pipeline interaction takes the results list back from a typed
             // search: the search run is dropped, and the pipeline's own matches
-            // draw again.
+            // draw again. A changed choice is a new run, not a change to the
+            // one going.
             void ToggleSignal(string kind, string value)
             {
                 _app.Import.ClearCandidateSearch(key);
                 results.ResumePipeline();
-                _ = _app.Import.ToggleSignalForCandidate(key, kind, value);
+                choices = NativeBae.Toggling(choices, kind, value);
+                _app.Import.AutoIdentifyRelease(key, releaseId, choices);
             }
 
             void Rerun()
@@ -321,7 +328,7 @@ internal sealed class ReleaseActionDialogs
             // Subscribe before starting the run, so nothing it reports is
             // missed between the two.
             _app.ImportStore.CandidateRuntimeChanged += OnRuntimeChanged;
-            _app.Import.AutoIdentifyRelease(key, releaseId);
+            _app.Import.AutoIdentifyRelease(key, releaseId, choices);
             return new ScrollViewer { Content = column, MaxHeight = 560 };
         });
 
