@@ -333,6 +333,50 @@ async fn drain(context: &SweepContext, finishing: &mut JoinSet<Finished>) {
     }
 }
 
+/// Give this pass up: stop every run it has going, tell the answers it is
+/// still writing to abandon themselves, and wait for them to say they have.
+async fn abandon(
+    context: &SweepContext,
+    pass: &Pass,
+    settling: &CancellationToken,
+    finishing: &mut JoinSet<Finished>,
+) {
+    pass.release_in_flight(context);
+    settling.cancel();
+    drain(context, finishing).await;
+}
+
+/// Take the candidate at `candidate_key` as it stands right now: its job
+/// dropped, its shape counted afresh, and either counted answered or put back
+/// in the queue — whichever its stored row says.
+///
+/// What an event that changes what a candidate *is* to the sweep resolves to,
+/// and the same resolution for each of them: a skip lifted, a decision made
+/// about it. A key that is not the sweep's any more leaves its job and is left
+/// counted as it was; the events that take a candidate away say so themselves.
+///
+/// `Err` is a stored row that could not be read, which is never permission to
+/// guess at what it says.
+async fn take_candidate_as_it_stands(
+    context: &SweepContext,
+    pass: &mut Pass,
+    candidate_key: &str,
+) -> Result<(), String> {
+    pass.detach(context, candidate_key);
+    let Some(candidate) = sweepable_candidate(context, candidate_key).await else {
+        return Ok(());
+    };
+    let identity = candidate_identity(&candidate);
+    pass.count(candidate_key.to_string(), identity.clone());
+    if current_stored_answer(context, &candidate).await? {
+        pass.mark_answered(candidate_key.to_string(), identity);
+    } else {
+        pass.enqueue(context, candidate);
+    }
+    pass.announce(context);
+    Ok(())
+}
+
 /// Walk the queue once: plan what still needs answering, drive it under the
 /// concurrency cap, and report progress as verdicts land.
 async fn run_pass(
@@ -414,9 +458,7 @@ async fn run_pass(
                     warn!(
                             "sweep: cannot read what {key} runs from ({error}); aborting pass"
                         );
-                    pass.release_in_flight(context);
-                    settling.cancel();
-                    drain(context, &mut finishing).await;
+                    abandon(context, &pass, &settling, &mut finishing).await;
                     return;
                 }
             };
@@ -524,12 +566,22 @@ async fn run_pass(
                 // A person decided this candidate: they picked a release, said
                 // File Tags, or cleared what it had. The command that decided
                 // ended its run as part of its own write, so nothing is
-                // cancelled here — the candidate simply stops being the pass's,
-                // and every other candidate carries on to its verdict.
+                // cancelled here, and every other candidate carries on to its
+                // verdict. What the decision left is what the pass takes the
+                // candidate as: a pick answers it, and a clear puts it back in
+                // the queue rather than leaving it for the next scan.
                 Some(Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
                     candidate_key,
                 }))) => {
-                    pass.drop_candidate(context, &candidate_key);
+                    if let Err(error) =
+                        take_candidate_as_it_stands(context, &mut pass, &candidate_key).await
+                    {
+                        warn!(
+                            "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
+                        );
+                        abandon(context, &pass, &settling, &mut finishing).await;
+                        return;
+                    }
                 }
                 // The folder was removed, renamed, or unmounted while we were
                 // identifying it. Extraction is cancelled for us by the signal
@@ -568,9 +620,7 @@ async fn run_pass(
                             warn!(
                                 "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
                             );
-                            pass.release_in_flight(context);
-                            settling.cancel();
-                            drain(context, &mut finishing).await;
+                            abandon(context, &pass, &settling, &mut finishing).await;
                             return;
                         }
                     };
@@ -589,31 +639,14 @@ async fn run_pass(
                 }))) => {
                     if skipped {
                         pass.drop_candidate(context, &candidate_key);
-                    } else {
-                        pass.detach(context, &candidate_key);
-                        if let Some(candidate) = sweepable_candidate(context, &candidate_key).await {
-                            let identity = candidate_identity(&candidate);
-                            pass.count(candidate_key.clone(), identity.clone());
-                            let stored_now =
-                                match current_stored_answer(context, &candidate).await {
-                                    Ok(stored) => stored,
-                                    Err(error) => {
-                                        warn!(
-                                            "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
-                                        );
-                                        pass.release_in_flight(context);
-                                        settling.cancel();
-                                        drain(context, &mut finishing).await;
-                                        return;
-                                    }
-                                };
-                            if stored_now {
-                                pass.mark_answered(candidate_key, identity);
-                            } else {
-                                pass.enqueue(context, candidate);
-                            }
-                            pass.announce(context);
-                        }
+                    } else if let Err(error) =
+                        take_candidate_as_it_stands(context, &mut pass, &candidate_key).await
+                    {
+                        warn!(
+                            "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
+                        );
+                        abandon(context, &pass, &settling, &mut finishing).await;
+                        return;
                     }
                 }
                 // The folder is a different shape now. A run already under way

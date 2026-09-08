@@ -136,8 +136,8 @@ async fn skipping_a_candidate_ends_its_run_and_unskipping_plans_it_again() {
 }
 
 /// Clearing a candidate's metadata is a decision too: the run answering the
-/// old shape ends, and the change is announced so the pane and the sweep both
-/// read the candidate afresh.
+/// candidate as it was ends, and the change is announced so the pane and the
+/// queue sweep both read the candidate afresh.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() {
@@ -148,11 +148,9 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
 
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
     let mut events = fixture.import.subscribe_events();
+    fixture.start_explicit_lookup_and_await_run(&dir).await;
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
 
     fixture
         .import
@@ -164,16 +162,8 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
         !fixture.import.is_identifying(&key),
         "clearing ends the run before it returns"
     );
-    tokio::time::timeout(Duration::from_secs(20), pass)
-        .await
-        .expect("the pass has nothing left to answer")
-        .unwrap();
-    fixture.provider.release();
-
-    assert!(
-        fixture.identified_for(&dir).await.is_none(),
-        "a cancelled run writes no verdict"
-    );
+    // The announce is sent inside the same write, so it is on the bus by the
+    // time the command has returned.
     let announced = drain_events(&mut events).into_iter().any(|event| {
         matches!(
             event,
@@ -182,6 +172,66 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
         )
     });
     assert!(announced, "the clear announces the candidate's change");
+    fixture.provider.release();
+
+    assert!(
+        fixture.identified_for(&dir).await.is_none(),
+        "a cancelled run writes no verdict"
+    );
+}
+
+/// A clear leaves the candidate holding neither a pick nor a verdict, so the
+/// pass it was running in takes it back: the run the clear ended is replaced,
+/// in the same pass, by one reading the candidate as it now is.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn clearing_a_candidates_metadata_mid_pass_puts_it_back_in_the_queue() {
+    let fixture = Fixture::new("clear-requeues").await;
+    let dir = fixture.disc_id_candidate("Candidate");
+    let key = dir.to_string_lossy().into_owned();
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-cleared", "rg-cleared", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-cleared?",
+        200,
+        release_json("mb-cleared", "rg-cleared", &[probed, 0]),
+    );
+    fixture.provider.hold("/discid/");
+    fixture.scan(1).await;
+
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
+
+    fixture
+        .import
+        .clear_candidate_metadata(key.clone())
+        .await
+        .expect("the metadata is cleared");
+
+    assert!(
+        !fixture.import.is_identifying(&key),
+        "the clear ends the run it found"
+    );
+    // A second disc-ID lookup is the pass asking the candidate again. Nothing
+    // else can produce one: the pass owns the only queue, and the candidate it
+    // dropped would otherwise wait for a scan that never comes.
+    wait_for_request(&fixture.provider, "/discid/", 2).await;
+    fixture.provider.release();
+    tokio::time::timeout(Duration::from_secs(30), pass)
+        .await
+        .expect("the pass answers the candidate it took back")
+        .unwrap();
+
+    assert!(
+        fixture.identified_for(&dir).await.is_some(),
+        "the run that replaced the cleared one stored its verdict"
+    );
 }
 
 /// An import claims the candidate, so nothing is left for identification to
