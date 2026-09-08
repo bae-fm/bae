@@ -206,7 +206,7 @@ private struct ZoomableGalleryImage: View {
                 if let image = fullRes ?? thumbnail {
                     Image(uiImage: image)
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
+                        .scaledToFit()
                         .frame(
                             maxWidth: .infinity,
                             maxHeight: .infinity

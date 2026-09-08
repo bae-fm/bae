@@ -260,7 +260,7 @@ struct LightboxView<Item: LightboxImage>: View {
     private func loadedImageView(_ nsImage: NSImage) -> some View {
         Image(nsImage: nsImage)
             .resizable()
-            .aspectRatio(contentMode: .fit)
+            .scaledToFit()
             .overlay {
                 if let analysis = imageAnalysis {
                     LiveTextOverlay(analysis: analysis)

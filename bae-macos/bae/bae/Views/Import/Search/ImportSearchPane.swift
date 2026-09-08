@@ -36,9 +36,9 @@ struct ImportSearchPane: View {
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (Pressing) -> Void
 
-    /// Which sources are asked, and whether Discogs can be asked at all, are
-    /// core's answers, carried on the config the app observes: adding a token
-    /// in Settings takes the notice away while the pane is open.
+    /// Whether Discogs can be asked at all is core's answer, carried on the
+    /// config the app observes: adding a token in Settings takes the notice
+    /// away while the pane is open.
     @Environment(ConfigStore.self)
     private var configStore
     @Environment(UiStore.self)
@@ -58,10 +58,6 @@ struct ImportSearchPane: View {
     @State
     private var narrowedOutExpanded = false
 
-    private var area: FindOnlineResultArea {
-        FindOnlineResultArea(identifyState: state.identifyState)
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             FindOnlineHeader(onBack: onBack)
@@ -77,12 +73,21 @@ struct ImportSearchPane: View {
                 onOpen: { openSection = .automatic }
             )
             if openSection == .automatic {
-                automaticContent
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .top
-                    )
+                FindOnlineAutomaticSection(
+                    state: state,
+                    onOpenSettings: onOpenSettings,
+                    onToggleCatalog: onToggleCatalog,
+                    onIdentify: onIdentify,
+                    onRetryFailed: onRetryFailed,
+                    onSelect: onSelect,
+                    onSearchManually: searchManually,
+                    narrowedOutExpanded: $narrowedOutExpanded,
+                )
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: .top
+                )
             }
             Divider()
             FindOnlineSectionHeader(
@@ -105,14 +110,6 @@ struct ImportSearchPane: View {
                 openSection = .search
             }
         }
-    }
-
-    /// Whether any source is being asked at all. With none, there is nothing to
-    /// start: core refuses to switch off the last source, so this is reachable
-    /// only by a source losing its credential after being left as the only one
-    /// switched on.
-    private var hasSourceToSearch: Bool {
-        configStore.config.metadataSources.contains { $0.availability == .on }
     }
 
     /// Above both sections, because neither of them asked Discogs. Gone for
@@ -144,115 +141,6 @@ struct ImportSearchPane: View {
         }
     }
 
-    // MARK: - AUTOMATIC
-
-    /// The ledger with what it matched beneath, scrolling together — or,
-    /// with nothing to lay out, one line saying so and the one thing to do.
-    @ViewBuilder
-    private var automaticContent: some View {
-        switch area {
-        case .notStarted:
-            FindOnlineEmptyZone {
-                if hasSourceToSearch {
-                    IdentifyButton(action: onIdentify)
-                }
-                else {
-                    Text("No source to search")
-                        .foregroundStyle(.secondary)
-                    Button("Open Settings", action: onOpenSettings)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                }
-            }
-        case .noSignals:
-            FindOnlineEmptyZone {
-                Text("No disc ID, barcode, or catalog number found")
-                    .foregroundStyle(.secondary)
-                SearchManuallyButton(action: searchManually)
-            }
-        case .identifying, .groups, .nothingFound, .awaitingCatalog,
-            .failureLines:
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if let run = state.run {
-                        IdentifyLedgerView(
-                            run: run,
-                            filePaths: state.filePaths,
-                            onToggleCatalog: onToggleCatalog,
-                            onRetryFailed: onRetryFailed
-                        )
-                        Divider()
-                            .padding(.horizontal, 14)
-                    }
-                    belowLedger
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var belowLedger: some View {
-        switch area {
-        case .identifying:
-            if !state.identifiedGroups.isEmpty {
-                identifiedList { narrowedOut }
-            }
-        case .groups:
-            identifiedList {
-                narrowedOut
-                ForEach(missingSourceNotes, id: \.self) { note in
-                    MissingSourceNote(text: note)
-                }
-            }
-        case .nothingFound:
-            FindOnlineEmptyZone {
-                Text("No results")
-                    .foregroundStyle(.secondary)
-                SearchManuallyButton(action: searchManually)
-            }
-        case .failureLines:
-            failureLines
-        case .awaitingCatalog, .notStarted, .noSignals:
-            EmptyView()
-        }
-    }
-
-    /// What the signals agreed away, under the matches and above what the
-    /// list says about itself. Nothing narrowed, nothing to disclose.
-    @ViewBuilder
-    private var narrowedOut: some View {
-        if !state.narrowedOut.isEmpty {
-            NarrowedOutDisclosure(
-                narrowedOut: state.narrowedOut,
-                isExpanded: $narrowedOutExpanded,
-                isImporting: state.isImporting,
-                selectedReleaseId: state.selectedReleaseId,
-                loadingReleaseId: state.loadingReleaseId,
-                releaseSelectionFailure: state.releaseSelectionFailure,
-                onSelect: onSelect,
-            )
-        }
-    }
-
-    private func identifiedList<Trailing: View>(
-        @ViewBuilder trailing: @escaping () -> Trailing
-    ) -> some View {
-        ReleaseGroupListContent(
-            groups: state.identifiedGroups,
-            isImporting: state.isImporting,
-            libraryStatuses: state.libraryStatuses,
-            provenance: state.identifiedProvenance,
-            selectedReleaseId: state.selectedReleaseId
-                ?? state.finalizingPressing?.lead.releaseId,
-            loadingReleaseId: state.loadingReleaseId
-                ?? state.finalizingPressing?.lead.releaseId,
-            releaseSelectionFailure: state.releaseSelectionFailure,
-            onSelect: onSelect,
-            trailing: trailing,
-        )
-    }
-
     /// Open SEARCH with the cursor in its first field, seeded from what was
     /// read off the folder — only when the fields are untouched, never over
     /// typing.
@@ -266,32 +154,6 @@ struct ImportSearchPane: View {
             var seeded = form
             seeded.searchArtist = seed
             onCommitForm(seeded)
-        }
-    }
-
-    /// The reasons, with the retry they carry when no ledger does.
-    private var failureLines: some View {
-        FindOnlineFailureLines(
-            failures: state.identifyFailures,
-            onRetry: state.run == nil ? onRetryFailed : nil
-        )
-    }
-
-    /// One line per failed lookup whose results the list is missing, closing
-    /// it. Named by step as well as source: the source's other steps may have
-    /// answered, and those results are on the list.
-    private var missingSourceNotes: [String] {
-        var seen: Set<FailedSearch> = []
-        return state.identifyFailures.compactMap { failure in
-            guard let search = failure.failedSearch,
-                seen.insert(search).inserted
-            else { return nil }
-            let source = bridgeMetadataSourceName(source: search.source)
-            let step = SignalBadgeStyle.sentenceLabel(for: search.step)
-            return String(
-                localized:
-                    "\(source) \(step) results are missing from this list."
-            )
         }
     }
 
