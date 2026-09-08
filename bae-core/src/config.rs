@@ -442,8 +442,8 @@ pub struct LibraryIdentity {
 ///
 /// Serializing is derived. Parsing is not: a save preset's codec is written as
 /// a YAML tag (`codec: !Flac`), and serde's `flatten` funnels every flattened
-/// key through an untagged intermediate that rejects tags. [`Self::from_value`]
-/// reads each part from the same parsed [`serde_yaml::Value`], which keeps them.
+/// key through an untagged intermediate that rejects tags. Parsing instead reads
+/// each part from the same parsed [`serde_yaml::Value`], which keeps them.
 #[derive(Debug, Clone, Serialize)]
 pub struct ConfigYaml {
     #[serde(flatten)]
