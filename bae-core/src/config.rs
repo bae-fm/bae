@@ -219,6 +219,46 @@ impl Config {
         }
     }
 
+    /// Which metadata sources this library asks, one entry per
+    /// [`MetadataSource`](crate::import::MetadataSource).
+    ///
+    /// The one answer every place that asks the sources together reads — a
+    /// run's provider list, a typed search's per-source parts, the switches a
+    /// surface renders. Two things decide it and they are not the same
+    /// question: whether this library holds what the source needs, and whether
+    /// the person wants it asked. Unreachable wins, so a source with no
+    /// credential reports `NotConfigured` rather than `Off`, and the surface
+    /// says which of the two to fix.
+    ///
+    /// A fact about the stored config and nothing else, which is why it lives
+    /// here: the bridge builds the list a surface renders out of the same
+    /// value it reads every other setting off.
+    pub fn metadata_sources(&self) -> Vec<crate::import::MetadataSourceAvailability> {
+        crate::import::MetadataSource::ALL
+            .into_iter()
+            .map(|source| crate::import::MetadataSourceAvailability {
+                source,
+                state: if !self.source_is_configured(source) {
+                    crate::import::SourceAvailability::NotConfigured
+                } else if !self.prefs.metadata_sources.enabled(source) {
+                    crate::import::SourceAvailability::Off
+                } else {
+                    crate::import::SourceAvailability::On
+                },
+            })
+            .collect()
+    }
+
+    /// Whether this library holds the credentials `source` needs. MusicBrainz's
+    /// API is open, so it needs none; Discogs needs a key it has not rejected.
+    /// Total over the sources, so a new one has to state what it needs.
+    fn source_is_configured(&self, source: crate::import::MetadataSource) -> bool {
+        match source {
+            crate::import::MetadataSource::MusicBrainz => true,
+            crate::import::MetadataSource::Discogs => self.discogs_token_status().is_usable(),
+        }
+    }
+
     /// The coven sync/cloud config bae embeds. Handed to the `CovenHandle` (via
     /// its config provider) and read fresh by coven for the cloud-home selection,
     /// the blob-path scheme, sync, and restore-code generation.

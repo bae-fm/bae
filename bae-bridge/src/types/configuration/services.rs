@@ -17,6 +17,12 @@ pub struct BridgeConfig {
     pub identify_automatically: bool,
     /// Which source is applied when an import candidate is first discovered.
     pub default_import_metadata_source: BridgeDefaultImportMetadataSource,
+    /// Which metadata sources Find online asks, one entry per source in core's
+    /// order — what the switches on the Find online header and in Settings
+    /// render, those being two views of one setting. Core folds the person's
+    /// choice and the source's credentials into a single answer, so no surface
+    /// re-derives "on and reachable" from a flag plus `discogs_usable`.
+    pub metadata_sources: Vec<BridgeMetadataSourceSetting>,
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, not a
     /// per-device one — the seek bar reads it and never stores a copy.
@@ -57,6 +63,35 @@ pub enum BridgeDefaultImportMetadataSource {
     FindOnline,
     FileTags,
     None,
+}
+
+/// Whether Find online asks one source, and when it does not, why not. Mirrors
+/// `bae_core::import::SourceAvailability`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSourceAvailability {
+    /// Asked. Its switch is on.
+    On,
+    /// Switched off. Its switch is off, and turning it back on is all it takes.
+    Off,
+    /// The source needs a credential this library does not hold, so it cannot
+    /// be asked whatever the switch says. Its switch renders off and cannot be
+    /// moved; supplying the credential brings back the choice last made.
+    NotConfigured,
+}
+
+/// One metadata source and whether this library asks it — one switch, as a
+/// surface draws it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeMetadataSourceSetting {
+    pub source: BridgeMetadataSource,
+    pub availability: BridgeSourceAvailability,
+    /// Whether this switch can be moved at all. Core's answer, covering both
+    /// reasons it cannot: the source needs a credential this library does not
+    /// hold, which a switch cannot supply, and it is the only source still
+    /// being asked, which core refuses to leave nothing behind. A surface
+    /// greys the switch out on this rather than working the two cases out for
+    /// itself, so it is disabled on exactly the writes core would turn down.
+    pub can_change: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

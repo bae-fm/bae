@@ -23,6 +23,18 @@ enum PreviewData {
                     maxConcurrentDownloads: 3,
                     identifyAutomatically: true,
                     defaultImportMetadataSource: .findOnline,
+                    metadataSources: [
+                        BridgeMetadataSourceSetting(
+                            source: .musicBrainz,
+                            availability: .on,
+                            canChange: true
+                        ),
+                        BridgeMetadataSourceSetting(
+                            source: .discogs,
+                            availability: .on,
+                            canChange: true
+                        ),
+                    ],
                     showRemainingTime: false,
                     libraryFullWidth: false,
                     savePresets: [],

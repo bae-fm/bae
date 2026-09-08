@@ -29,6 +29,12 @@ public struct Config: Equatable {
     public let identifyAutomatically: Bool
     /// Which source a newly discovered candidate starts with.
     public let defaultImportMetadataSource: BridgeDefaultImportMetadataSource
+    /// Which metadata sources Find online asks, one entry per source in core's
+    /// order. Core folds the person's choice and the source's credentials into
+    /// one availability, so the switches on the Find online header and in
+    /// Settings render this rather than re-deriving "on and reachable" from
+    /// `discogsUsable` plus a flag of their own.
+    public let metadataSources: [BridgeMetadataSourceSetting]
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, so the bar
     /// reads it here rather than keeping its own copy per device.
@@ -64,6 +70,7 @@ public struct Config: Equatable {
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         identifyAutomatically = bridge.identifyAutomatically
         defaultImportMetadataSource = bridge.defaultImportMetadataSource
+        metadataSources = bridge.metadataSources
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
         savePresets = bridge.savePresets

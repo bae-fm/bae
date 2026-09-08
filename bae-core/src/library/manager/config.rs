@@ -49,40 +49,39 @@ impl LibraryManager {
     pref_setter!(set_identify_automatically, identify_automatically: bool);
 
     /// Which metadata sources this library asks, one entry per
-    /// [`MetadataSource`](crate::import::MetadataSource).
-    ///
-    /// The one answer every place that asks the sources together reads — a
-    /// run's provider list, a typed search's per-source parts, the switches a
-    /// surface renders. Two things decide it and they are not the same
-    /// question: whether this library holds what the source needs, and whether
-    /// the person wants it asked. Unreachable wins, so a source with no
-    /// credential reports `NotConfigured` rather than `Off` and the surface
-    /// says which of the two to fix.
+    /// [`MetadataSource`](crate::import::MetadataSource). See
+    /// [`Config::metadata_sources`](crate::config::Config::metadata_sources) —
+    /// the answer is a fact about the stored config, read here off the current
+    /// one.
     pub fn metadata_sources(&self) -> Vec<crate::import::MetadataSourceAvailability> {
-        let config = self.config_handle.config();
-        crate::import::MetadataSource::ALL
-            .into_iter()
-            .map(|source| crate::import::MetadataSourceAvailability {
-                source,
-                state: if !self.source_is_configured(source) {
-                    crate::import::SourceAvailability::NotConfigured
-                } else if !config.prefs.metadata_sources.enabled(source) {
-                    crate::import::SourceAvailability::Off
-                } else {
-                    crate::import::SourceAvailability::On
-                },
-            })
-            .collect()
+        self.config_handle.config().metadata_sources()
     }
 
-    /// Whether this library holds the credentials `source` needs. MusicBrainz's
-    /// API is open, so it needs none; Discogs needs a key it has not rejected.
-    /// Total over the sources, so a new one has to state what it needs.
-    fn source_is_configured(&self, source: crate::import::MetadataSource) -> bool {
-        match source {
-            crate::import::MetadataSource::MusicBrainz => true,
-            crate::import::MetadataSource::Discogs => self.discogs_is_usable(),
+    /// Ask, or stop asking, one metadata source. The switch behind every place
+    /// the sources are asked together.
+    ///
+    /// Refused when switching `source` off would leave nothing to ask: a
+    /// library that asks no source cannot look anything up, and the run that
+    /// would report so has nothing to report about. The surface disables the
+    /// last remaining source's switch, so this is the backstop for two writes
+    /// racing, not the path a person takes.
+    ///
+    /// Writes the preference only. Re-laying live runs and searches over the
+    /// new list is [`AppServices::set_metadata_source_enabled`](crate::library::AppServices::set_metadata_source_enabled)'s
+    /// job — this layer owns config and knows nothing about what is running.
+    pub fn set_metadata_source_enabled(
+        &self,
+        source: crate::import::MetadataSource,
+        enabled: bool,
+    ) -> Result<(), crate::config::ConfigError> {
+        if !enabled && crate::import::is_the_only_asked_source(&self.metadata_sources(), source) {
+            return Err(crate::config::ConfigError::Config(format!(
+                "{} is the only source left to search",
+                source.display_name()
+            )));
         }
+        self.config_handle
+            .update(|config| config.prefs.metadata_sources.set(source, enabled))
     }
 
     pref_setter!(

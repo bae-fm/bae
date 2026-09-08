@@ -36,12 +36,21 @@ struct ImportSettingsTab: View {
 
             Section {
                 Toggle("Identify automatically", isOn: identifyAutomatically)
+                ForEach(configStore.config.metadataSources, id: \.source) {
+                    setting in
+                    sourceToggle(setting)
+                }
             } header: {
                 Text("Online lookup")
             } footer: {
-                Text(
-                    "New candidates are identified as they are discovered, and when Find online opens. When off, the Identify link starts a run."
-                )
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(
+                        "New candidates are identified as they are discovered, and when Find online opens. When off, the Identify link starts a run."
+                    )
+                    Text(
+                        "Find online asks the sources that are checked here. The same checkboxes are on the Find online header."
+                    )
+                }
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -70,6 +79,35 @@ struct ImportSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// One source's checkbox. Whether it can be moved is core's answer, not
+    /// this view's: a source with no credential and the only source left being
+    /// asked are both writes core would turn down.
+    private func sourceToggle(
+        _ setting: BridgeMetadataSourceSetting
+    ) -> some View {
+        Toggle(
+            String(
+                localized:
+                    "Search \(bridgeMetadataSourceName(source: setting.source))"
+            ),
+            isOn: Binding(
+                get: { setting.availability == .on },
+                set: { enabled in
+                    do {
+                        try importer.setMetadataSourceEnabled(
+                            setting.source,
+                            enabled
+                        )
+                    }
+                    catch {
+                        uiStore.showError(error)
+                    }
+                }
+            )
+        )
+        .disabled(!setting.canChange)
     }
 
     private var identifyAutomatically: Binding<Bool> {

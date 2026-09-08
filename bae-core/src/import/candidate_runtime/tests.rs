@@ -819,3 +819,77 @@ fn rebinding_a_sheet_drops_the_key_s_search() {
     assert!(runtime.get(key).is_none());
     assert!(!runtime.search_run_is_current(key, run));
 }
+
+/// Switching a source off closes its part of every search running right now,
+/// wherever the person is looking — and only publishes the keys it changed.
+#[test]
+fn switching_a_source_off_closes_its_part_of_every_live_search() {
+    let runtime = CandidateRuntime::default();
+    let searching = "/watch/a/rel1";
+    let importing = "/watch/a/rel2";
+    let run = runtime.start_search(
+        searching,
+        CandidateSearch::started(search_query(), &every_source_on()),
+    );
+    runtime.claim_for_import(importing);
+    let mut changes = runtime.subscribe();
+
+    runtime.switch_source_off(MetadataSource::MusicBrainz);
+
+    let search = runtime
+        .get(searching)
+        .and_then(|state| state.search)
+        .expect("the search is still what is in flight for the key");
+    assert_eq!(
+        search.source(MetadataSource::MusicBrainz),
+        Some(&SourceSearch::Off)
+    );
+    assert_eq!(
+        search.source(MetadataSource::Discogs),
+        Some(&SourceSearch::Searching),
+        "the source still being asked is untouched"
+    );
+    assert!(
+        runtime.search_run_is_current(searching, run),
+        "the run stands, so the other source's lookup still lands"
+    );
+    assert_eq!(
+        published_search(&mut changes),
+        vec![Some(search)],
+        "only the key whose search changed is published"
+    );
+}
+
+/// The lookup the dropped source already had out lands on a part that is no
+/// longer looking, so it goes nowhere and the search stays closed on it.
+#[test]
+fn a_landing_for_a_switched_off_source_goes_nowhere() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+    let run = runtime.start_search(
+        key,
+        CandidateSearch::started(search_query(), &every_source_on()),
+    );
+
+    runtime.switch_source_off(MetadataSource::MusicBrainz);
+    assert!(
+        runtime.land_search(
+            key,
+            run,
+            MetadataSource::MusicBrainz,
+            Ok(vec![search_result(MetadataSource::MusicBrainz, "mb-1")]),
+        ),
+        "the run is current, so the landing reaches the search"
+    );
+
+    let search = runtime
+        .get(key)
+        .and_then(|state| state.search)
+        .expect("the search is what is in flight for the key");
+    assert_eq!(
+        search.source(MetadataSource::MusicBrainz),
+        Some(&SourceSearch::Off),
+        "a part that is not looking takes no answer"
+    );
+    assert!(search.groups.is_empty());
+}

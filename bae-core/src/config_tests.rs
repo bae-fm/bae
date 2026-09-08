@@ -444,6 +444,75 @@ fn metadata_source_preferences_are_total_over_the_sources() {
     assert!(!prefs.enabled(crate::import::MetadataSource::Discogs));
 }
 
+/// The availability list folds two questions that are not the same — whether
+/// this library holds what a source needs, and whether the person wants it
+/// asked — into the one answer everything that asks the sources together
+/// reads. Unreachable beats switched-off, so a source with no credential says
+/// which of the two to fix while the person's switch waits underneath it.
+#[test]
+fn metadata_sources_fold_the_credential_and_the_switch() {
+    use crate::import::{MetadataSource, SourceAvailability};
+
+    let mut config = make_test_config("abc-123", PathBuf::from("unused"));
+    assert_eq!(
+        config
+            .metadata_sources()
+            .into_iter()
+            .map(|entry| (entry.source, entry.state))
+            .collect::<Vec<_>>(),
+        vec![
+            (MetadataSource::MusicBrainz, SourceAvailability::On),
+            (MetadataSource::Discogs, SourceAvailability::NotConfigured),
+        ],
+        "a fresh library has no Discogs key, so it cannot ask Discogs"
+    );
+
+    config.prefs.discogs = Some(DiscogsValidation::Valid);
+    config
+        .prefs
+        .metadata_sources
+        .set(MetadataSource::Discogs, false);
+    assert_eq!(
+        config.metadata_sources()[1].state,
+        SourceAvailability::Off,
+        "with a key, the switch is what answers"
+    );
+
+    config.prefs.discogs = Some(DiscogsValidation::Rejected);
+    assert_eq!(
+        config.metadata_sources()[1].state,
+        SourceAvailability::NotConfigured,
+        "a rejected key is no key, whatever the switch says"
+    );
+}
+
+/// The rule that decides both the refusal and the greyed-out switch: switching
+/// off the only source still being asked would leave nothing to ask.
+#[test]
+fn the_only_asked_source_is_the_one_that_cannot_be_switched_off() {
+    use crate::import::{is_the_only_asked_source, MetadataSource};
+
+    let mut config = make_test_config("abc-123", PathBuf::from("unused"));
+    let sources = config.metadata_sources();
+    assert!(is_the_only_asked_source(
+        &sources,
+        MetadataSource::MusicBrainz
+    ));
+    assert!(
+        !is_the_only_asked_source(&sources, MetadataSource::Discogs),
+        "a source nothing is asking is not the last one asked"
+    );
+
+    config.prefs.discogs = Some(DiscogsValidation::Valid);
+    let sources = config.metadata_sources();
+    for source in MetadataSource::ALL {
+        assert!(
+            !is_the_only_asked_source(&sources, source),
+            "with both asked, neither is the last"
+        );
+    }
+}
+
 /// `is_usable` is the single source of truth for whether Discogs can be a
 /// metadata source: a stored key is usable optimistically unless rejected.
 #[test]

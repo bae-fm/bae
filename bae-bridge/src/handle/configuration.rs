@@ -31,6 +31,17 @@ forward! { sync this => {
         Ok(this.services.set_identify_automatically(enabled)?)
     }
 
+    /// Ask, or stop asking, one metadata source. Refused when it would leave
+    /// nothing to ask — the error carries the sentence to show.
+    fn set_metadata_source_enabled(
+        source: crate::types::BridgeMetadataSource,
+        enabled: bool,
+    ) -> Result<(), BridgeError> {
+        Ok(this
+            .services
+            .set_metadata_source_enabled(source.into_core(), enabled)?)
+    }
+
     fn set_default_import_metadata_source(
         source: crate::types::BridgeDefaultImportMetadataSource,
     ) -> Result<(), BridgeError> {

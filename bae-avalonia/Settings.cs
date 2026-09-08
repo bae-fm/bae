@@ -32,6 +32,13 @@ public sealed class Settings
     internal BridgeDefaultImportMetadataSource DefaultImportMetadataSource { get; set; } =
         BridgeDefaultImportMetadataSource.FindOnline;
 
+    /// <summary>Which metadata sources Find online asks, one entry per source in
+    /// core's order. Core folds the person's choice and the source's credentials
+    /// into one availability, so the settings checkboxes render this and never
+    /// re-derive "on and reachable" from <see cref="DiscogsUsable"/> plus a
+    /// flag.</summary>
+    internal List<BridgeMetadataSourceSetting> MetadataSources { get; set; } = new();
+
     /// <summary>Whether the seek bar's leading label counts down the time
     /// remaining instead of showing the time elapsed. A synced preference, so it
     /// follows the user to every device.</summary>

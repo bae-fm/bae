@@ -113395,193 +113395,766 @@
         }
       }
     },
-    "Only %@ is searched. Add a %@ token to look up its releases too." : {
-      "comment" : "Find online: the Discogs-not-configured bar's explanation; %1$@ is the source that is searched, %2$@ the one that is not",
+    "Add a %@ token to look up its releases too." : {
+      "comment" : "Find online: the Discogs-not-configured bar's explanation; %@ is the source that has no token",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يتم البحث في %1$@ فقط. أضف رمز %2$@ للبحث في إصداراته أيضًا."
+            "value" : "أضف رمز %@ للبحث في إصداراته أيضًا."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Търси се само в %1$@. Добавете токен за %2$@, за да се търсят и неговите издания."
+            "value" : "Добавете токен за %@, за да се търсят и неговите издания."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "শুধু %1$@-এ খোঁজা হয়। এর রিলিজগুলোও খুঁজতে %2$@ টোকেন যোগ করুন।"
+            "value" : "এর রিলিজগুলোও খুঁজতে %@ টোকেন যোগ করুন।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prohledává se jen %1$@. Přidejte token %2$@, aby se hledalo i mezi jeho vydáními."
+            "value" : "Přidejte token %@, aby se hledalo i mezi jeho vydáními."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Es wird nur %1$@ durchsucht. Füge ein %2$@-Token hinzu, um auch dessen Veröffentlichungen zu finden."
+            "value" : "Füge ein %@-Token hinzu, um auch dessen Veröffentlichungen zu finden."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Only %1$@ is searched. Add a %2$@ token to look up its releases too."
+            "value" : "Add a %@ token to look up its releases too."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Solo se busca en %1$@. Añade un token de %2$@ para buscar también sus ediciones."
+            "value" : "Añade un token de %@ para buscar también sus ediciones."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seul %1$@ est interrogé. Ajoutez un jeton %2$@ pour rechercher aussi ses éditions."
+            "value" : "Ajoutez un jeton %@ pour rechercher aussi ses éditions."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ફક્ત %1$@ માં શોધ થાય છે. તેની રિલીઝ પણ શોધવા માટે %2$@ ટોકન ઉમેરો."
+            "value" : "તેની રિલીઝ પણ શોધવા માટે %@ ટોકન ઉમેરો."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "החיפוש מתבצע ב-%1$@ בלבד. הוסף אסימון %2$@ כדי לחפש גם בגרסאות שלו."
+            "value" : "הוסף אסימון %@ כדי לחפש גם בגרסאות שלו."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "केवल %1$@ में खोजा जाता है। उसके रिलीज़ भी खोजने के लिए %2$@ टोकन जोड़ें।"
+            "value" : "उसके रिलीज़ भी खोजने के लिए %@ टोकन जोड़ें।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pretražuje se samo %1$@. Dodajte token %2$@ da se pretraže i njegova izdanja."
+            "value" : "Dodajte token %@ da se pretraže i njegova izdanja."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Viene cercato solo %1$@. Aggiungi un token %2$@ per cercare anche le sue edizioni."
+            "value" : "Aggiungi un token %@ per cercare anche le sue edizioni."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ のみを検索します。%2$@ のリリースも検索するにはトークンを追加してください。"
+            "value" : "%@ のリリースも検索するにはトークンを追加してください。"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ ಮಾತ್ರ ಹುಡುಕಲಾಗುತ್ತದೆ. ಅದರ ಬಿಡುಗಡೆಗಳನ್ನೂ ಹುಡುಕಲು %2$@ ಟೋಕನ್ ಸೇರಿಸಿ."
+            "value" : "ಅದರ ಬಿಡುಗಡೆಗಳನ್ನೂ ಹುಡುಕಲು %@ ಟೋಕನ್ ಸೇರಿಸಿ."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@만 검색합니다. %2$@의 릴리스도 검색하려면 토큰을 추가하세요."
+            "value" : "%@의 릴리스도 검색하려면 토큰을 추가하세요."
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ മാത്രമേ തിരയുന്നുള്ളൂ. അതിന്റെ റിലീസുകളും തിരയാൻ %2$@ ടോക്കൺ ചേർക്കുക."
+            "value" : "അതിന്റെ റിലീസുകളും തിരയാൻ %@ ടോക്കൺ ചേർക്കുക."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "फक्त %1$@ मध्ये शोधले जाते. त्याच्या आवृत्त्याही शोधण्यासाठी %2$@ टोकन जोडा."
+            "value" : "त्याच्या आवृत्त्याही शोधण्यासाठी %@ टोकन जोडा."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Er wordt alleen in %1$@ gezocht. Voeg een %2$@-token toe om ook daar uitgaven op te zoeken."
+            "value" : "Voeg een %@-token toe om ook daar uitgaven op te zoeken."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਸਿਰਫ਼ %1$@ ਵਿੱਚ ਖੋਜ ਹੁੰਦੀ ਹੈ। ਇਸ ਦੀਆਂ ਰਿਲੀਜ਼ਾਂ ਵੀ ਲੱਭਣ ਲਈ %2$@ ਟੋਕਨ ਸ਼ਾਮਲ ਕਰੋ।"
+            "value" : "ਇਸ ਦੀਆਂ ਰਿਲੀਜ਼ਾਂ ਵੀ ਲੱਭਣ ਲਈ %@ ਟੋਕਨ ਸ਼ਾਮਲ ਕਰੋ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przeszukiwany jest tylko %1$@. Dodaj token %2$@, aby przeszukiwać także jego wydania."
+            "value" : "Dodaj token %@, aby przeszukiwać także jego wydania."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apenas o %1$@ é consultado. Adicione um token do %2$@ para buscar também as edições dele."
+            "value" : "Adicione um token do %@ para buscar também as edições dele."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ மட்டுமே தேடப்படுகிறது. அதன் வெளியீடுகளையும் தேட %2$@ டோக்கனைச் சேர்க்கவும்."
+            "value" : "அதன் வெளியீடுகளையும் தேட %@ டோக்கனைச் சேர்க்கவும்."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ మాత్రమే శోధించబడుతుంది. దాని విడుదలలను కూడా వెతకడానికి %2$@ టోకెన్‌ను జోడించండి."
+            "value" : "దాని విడుదలలను కూడా వెతకడానికి %@ టోకెన్‌ను జోడించండి."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ค้นหาเฉพาะใน %1$@ เท่านั้น เพิ่มโทเคน %2$@ เพื่อค้นหารุ่นวางจำหน่ายของบริการนั้นด้วย"
+            "value" : "เพิ่มโทเคน %@ เพื่อค้นหารุ่นวางจำหน่ายของบริการนี้ด้วย"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yalnızca %1$@ aranır. Sürümlerini de aramak için bir %2$@ belirteci ekleyin."
+            "value" : "Sürümlerini de aramak için bir %@ belirteci ekleyin."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пошук виконується лише в %1$@. Додайте токен %2$@, щоб шукати й серед його видань."
+            "value" : "Додайте токен %@, щоб шукати й серед його видань."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "صرف %1$@ میں تلاش کیا جاتا ہے۔ اس کے ریلیز بھی تلاش کرنے کے لیے %2$@ ٹوکن شامل کریں۔"
+            "value" : "اس کے ریلیز بھی تلاش کرنے کے لیے %@ ٹوکن شامل کریں۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chỉ tìm trong %1$@. Thêm token %2$@ để tìm cả các bản phát hành của dịch vụ đó."
+            "value" : "Thêm token %@ để tìm cả các bản phát hành của dịch vụ này."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "仅搜索 %1$@。添加 %2$@ 令牌即可一并搜索其发行版本。"
+            "value" : "添加 %@ 令牌即可一并搜索其发行版本。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "僅搜尋 %1$@。新增 %2$@ 權杖即可一併搜尋其發行版本。"
+            "value" : "新增 %@ 權杖即可一併搜尋其發行版本。"
+          }
+        }
+      }
+    },
+    "Search %@" : {
+      "comment" : "Settings › Import: the checkbox that switches one metadata source on or off; %@ is the source name",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "البحث في %@"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Търсене в %@"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@-এ খুঁজুন"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hledat v %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In %@ suchen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar en %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher dans %@"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ માં શોધો"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש ב-%@"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ में खोजें"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pretraži %@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerca in %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ を検索"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ನಲ್ಲಿ ಹುಡುಕಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 검색"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ തിരയുക"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ मध्ये शोधा"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In %@ zoeken"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ਵਿੱਚ ਖੋਜੋ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Szukaj w %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar no %@"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ இல் தேடு"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ లో వెతకండి"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ค้นหาใน %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ içinde ara"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шукати в %@"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ میں تلاش کریں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tìm trong %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索 %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜尋 %@"
+          }
+        }
+      }
+    },
+    "No source to search" : {
+      "comment" : "Find online: shown instead of the Identify button when no metadata source is being asked",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يوجد مصدر للبحث فيه"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Няма източник за търсене"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "খোঁজার মতো কোনো উৎস নেই"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Není v čem hledat"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Quelle zum Suchen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No source to search"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay ninguna fuente en la que buscar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune source à interroger"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "શોધવા માટે કોઈ સ્રોત નથી"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין מקור לחיפוש"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "खोजने के लिए कोई स्रोत नहीं"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema izvora za pretragu"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna fonte da interrogare"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検索できるソースがありません"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಹುಡುಕಲು ಯಾವುದೇ ಮೂಲವಿಲ್ಲ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "검색할 소스가 없습니다"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "തിരയാൻ ഉറവിടമില്ല"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "शोधण्यासाठी स्रोत नाही"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geen bron om te doorzoeken"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਖੋਜਣ ਲਈ ਕੋਈ ਸਰੋਤ ਨਹੀਂ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brak źródła do przeszukania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma fonte para consultar"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "தேட மூலம் எதுவும் இல்லை"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "వెతకడానికి మూలం లేదు"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่มีแหล่งให้ค้นหา"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aranacak kaynak yok"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Немає джерела для пошуку"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تلاش کے لیے کوئی ماخذ نہیں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không có nguồn để tìm"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可搜索的来源"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有可搜尋的來源"
+          }
+        }
+      }
+    },
+    "Find online asks the sources that are checked here. The same checkboxes are on the Find online header." : {
+      "comment" : "Settings › Import: the footer under the metadata-source checkboxes",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يسأل البحث عبر الإنترنت المصادر المحددة هنا. وتظهر خانات الاختيار نفسها في رأس البحث عبر الإنترنت."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Търсене онлайн пита източниците, отметнати тук. Същите отметки има и в заглавната лента на Търсене онлайн."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অনলাইনে খুঁজুন এখানে টিক দেওয়া উৎসগুলোকে জিজ্ঞাসা করে। একই চেকবক্সগুলো অনলাইনে খুঁজুন-এর হেডারেও আছে।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Najít online se ptá zdrojů zaškrtnutých zde. Stejná zaškrtávací pole jsou i v záhlaví Najít online."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Online suchen“ fragt die hier angehakten Quellen ab. Dieselben Kontrollkästchen stehen in der Kopfzeile von „Online suchen“."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find online asks the sources that are checked here. The same checkboxes are on the Find online header."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar en línea consulta las fuentes marcadas aquí. Las mismas casillas están en la cabecera de Buscar en línea."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher en ligne interroge les sources cochées ici. Les mêmes cases figurent dans l’en-tête de Rechercher en ligne."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ઓનલાઇન શોધો અહીં ચેક કરેલા સ્રોતોને પૂછે છે. એ જ ચેકબોક્સ ઓનલાઇન શોધો ના હેડરમાં પણ છે."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש באינטרנט פונה למקורות המסומנים כאן. אותן תיבות סימון נמצאות גם בכותרת של חיפוש באינטרנט."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ऑनलाइन खोजें यहाँ चुने गए स्रोतों से पूछता है। वही चेकबॉक्स ऑनलाइन खोजें के शीर्ष पर भी हैं।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pronađi na internetu pita izvore označene ovdje. Iste kućice nalaze se i u zaglavlju Pronađi na internetu."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trova online interroga le fonti selezionate qui. Le stesse caselle sono nell’intestazione di Trova online."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オンラインで検索は、ここでチェックしたソースに問い合わせます。同じチェックボックスはオンラインで検索のヘッダーにもあります。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ ಇಲ್ಲಿ ಗುರುತಿಸಿದ ಮೂಲಗಳನ್ನು ಕೇಳುತ್ತದೆ. ಅದೇ ಚೆಕ್‌ಬಾಕ್ಸ್‌ಗಳು ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ ಶೀರ್ಷಿಕೆಯಲ್ಲೂ ಇವೆ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "온라인에서 찾기는 여기에서 선택한 소스에 질의합니다. 같은 체크박스가 온라인에서 찾기 헤더에도 있습니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഓൺലൈനിൽ കണ്ടെത്തുക ഇവിടെ അടയാളപ്പെടുത്തിയ ഉറവിടങ്ങളോടാണ് ചോദിക്കുന്നത്. അതേ ചെക്ക്ബോക്സുകൾ ഓൺലൈനിൽ കണ്ടെത്തുക എന്നതിന്റെ ഹെഡറിലുമുണ്ട്."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ऑनलाइन शोधा येथे निवडलेल्या स्रोतांना विचारते. तेच चेकबॉक्स ऑनलाइन शोधा च्या शीर्षपट्टीतही आहेत."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Online zoeken raadpleegt de hier aangevinkte bronnen. Dezelfde vinkjes staan in de koptekst van Online zoeken."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਆਨਲਾਈਨ ਲੱਭੋ ਇੱਥੇ ਚੁਣੇ ਸਰੋਤਾਂ ਨੂੰ ਪੁੱਛਦਾ ਹੈ। ਉਹੀ ਚੈੱਕਬਾਕਸ ਆਨਲਾਈਨ ਲੱਭੋ ਦੇ ਸਿਰਲੇਖ ਵਿੱਚ ਵੀ ਹਨ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Znajdź online odpytuje źródła zaznaczone tutaj. Te same pola wyboru są w nagłówku Znajdź online."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar online consulta as fontes marcadas aqui. As mesmas caixas estão no cabeçalho de Buscar online."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இணையத்தில் தேடு இங்கே தேர்ந்தெடுத்த மூலங்களைக் கேட்கிறது. அதே தேர்வுப்பெட்டிகள் இணையத்தில் தேடு தலைப்பிலும் உள்ளன."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఆన్‌లైన్‌లో కనుగొను ఇక్కడ ఎంచుకున్న మూలాలను అడుగుతుంది. అవే చెక్‌బాక్స్‌లు ఆన్‌లైన్‌లో కనుగొను శీర్షికలోనూ ఉన్నాయి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ค้นหาออนไลน์จะถามแหล่งที่ติ๊กไว้ที่นี่ ช่องติ๊กชุดเดียวกันอยู่บนหัวข้อค้นหาออนไลน์ด้วย"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çevrimiçi bul burada işaretli kaynaklara sorar. Aynı kutular Çevrimiçi bul başlığında da yer alır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Знайти онлайн опитує позначені тут джерела. Ті самі позначки є в заголовку Знайти онлайн."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "آن لائن تلاش کریں یہاں منتخب کردہ ماخذوں سے پوچھتا ہے۔ وہی چیک باکس آن لائن تلاش کریں کے سرنامے میں بھی ہیں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tìm trên mạng sẽ hỏi các nguồn được đánh dấu ở đây. Cùng những ô đánh dấu đó cũng có trên đầu trang Tìm trên mạng."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“在线查找”会询问此处勾选的来源。相同的复选框也在“在线查找”的标题栏上。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「在線上尋找」會詢問此處勾選的來源。相同的核取方塊也在「在線上尋找」的標題列上。"
           }
         }
       }

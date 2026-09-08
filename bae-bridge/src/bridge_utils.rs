@@ -2,8 +2,9 @@
 use crate::types::BridgeOutputKind;
 use crate::types::{
     BridgeConfig, BridgeDefaultImportMetadataSource, BridgeDiscogsTokenStatus, BridgeMcpConfig,
-    BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement,
-    BridgeSavePreset, BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
+    BridgeMetadataSource, BridgeMetadataSourceSetting, BridgeSaveBitDepth, BridgeSaveCodec,
+    BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset, BridgeSourceAvailability,
+    BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
 };
 
 mirror_enum! {
@@ -11,6 +12,30 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { FindOnline, FileTags, None },
+}
+
+mirror_enum! {
+    BridgeSourceAvailability = bae_core::import::SourceAvailability,
+    from_core: pub(crate) fn,
+    variants: { On, Off, NotConfigured },
+}
+
+impl BridgeMetadataSourceSetting {
+    /// One source's switch, read out of the whole list: whether it can be moved
+    /// is a fact about the others too, since the last source still being asked
+    /// cannot be switched off.
+    pub(crate) fn from_core(
+        sources: &[bae_core::import::MetadataSourceAvailability],
+        entry: bae_core::import::MetadataSourceAvailability,
+    ) -> Self {
+        let bae_core::import::MetadataSourceAvailability { source, state } = entry;
+        BridgeMetadataSourceSetting {
+            source: BridgeMetadataSource::from_core(source),
+            availability: BridgeSourceAvailability::from_core(state),
+            can_change: state != bae_core::import::SourceAvailability::NotConfigured
+                && !bae_core::import::is_the_only_asked_source(sources, source),
+        }
+    }
 }
 
 mirror_enum! {
@@ -176,6 +201,11 @@ impl BridgeConfig {
     pub(crate) fn from_core(config: &bae_core::config::Config) -> Self {
         let discogs_status = config.discogs_token_status();
         let cloud_account_display = config.cloud_account_display();
+        let sources = config.metadata_sources();
+        let metadata_sources = sources
+            .iter()
+            .map(|entry| BridgeMetadataSourceSetting::from_core(&sources, *entry))
+            .collect();
         let bae_core::config::Config { inner, prefs, .. } = config;
         let bae_core::config::Preferences {
             // Read via the derived `discogs_token_status()` above.
@@ -190,9 +220,9 @@ impl BridgeConfig {
             max_concurrent_downloads,
             identify_automatically,
             default_import_metadata_source,
-            // Which sources Find online asks. Surfaced as the availability
-            // list core computes, not as this raw preference — see the
-            // `metadata_sources` field below.
+            // Read through `Config::metadata_sources()` above, which folds this
+            // raw preference together with each source's credentials into the
+            // one answer a surface renders.
             metadata_sources: _,
             show_remaining_time,
             library_full_width,
@@ -222,6 +252,7 @@ impl BridgeConfig {
             default_import_metadata_source: BridgeDefaultImportMetadataSource::from_core(
                 *default_import_metadata_source,
             ),
+            metadata_sources,
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
             save_presets: save_presets

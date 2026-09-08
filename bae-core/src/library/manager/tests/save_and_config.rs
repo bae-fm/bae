@@ -482,3 +482,68 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
     manager.set_subsonic_config(valid.clone()).unwrap();
     assert_eq!(manager.get_config().prefs.subsonic, valid);
 }
+
+/// Something has to be asked. Core refuses the write that would leave nothing,
+/// and refuses it whichever source is last — the rule is about the list, not
+/// about MusicBrainz.
+#[tokio::test]
+async fn the_last_source_being_asked_cannot_be_switched_off() {
+    use crate::import::{MetadataSource, SourceAvailability};
+
+    let (manager, _temp_dir) = setup_test_manager().await;
+
+    // No Discogs key in a fresh library, so MusicBrainz is the only one asked.
+    let states: Vec<_> = manager
+        .metadata_sources()
+        .into_iter()
+        .map(|entry| (entry.source, entry.state))
+        .collect();
+    assert_eq!(
+        states,
+        vec![
+            (MetadataSource::MusicBrainz, SourceAvailability::On),
+            (MetadataSource::Discogs, SourceAvailability::NotConfigured),
+        ]
+    );
+
+    let refused = manager
+        .set_metadata_source_enabled(MetadataSource::MusicBrainz, false)
+        .expect_err("the only source being asked cannot be switched off");
+    assert!(
+        refused.to_string().contains("MusicBrainz"),
+        "the refusal names the source: {refused}"
+    );
+    assert_eq!(
+        manager.metadata_sources()[0].state,
+        SourceAvailability::On,
+        "the refused write changed nothing"
+    );
+}
+
+/// A source with no credential reports why it is not asked rather than looking
+/// switched off, and the person's switch is kept underneath it: turning it off
+/// is allowed (it is not the last one asked) and is what comes back when the
+/// credential arrives.
+#[tokio::test]
+async fn an_unreachable_source_keeps_the_switch_underneath_it() {
+    use crate::import::{MetadataSource, SourceAvailability};
+
+    let (manager, _temp_dir) = setup_test_manager().await;
+
+    manager
+        .set_metadata_source_enabled(MetadataSource::Discogs, false)
+        .expect("switching off a source nothing is asking is allowed");
+    assert_eq!(
+        manager.metadata_sources()[1].state,
+        SourceAvailability::NotConfigured,
+        "no credential still beats the switch"
+    );
+    assert!(
+        !manager
+            .get_config()
+            .prefs
+            .metadata_sources
+            .enabled(MetadataSource::Discogs),
+        "the switch is kept where the person left it"
+    );
+}

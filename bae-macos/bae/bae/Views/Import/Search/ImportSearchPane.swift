@@ -36,9 +36,9 @@ struct ImportSearchPane: View {
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (Pressing) -> Void
 
-    /// Whether Discogs can be asked at all is core's answer, carried on the
-    /// config the app observes: adding a token in Settings takes the notice
-    /// away while the pane is open.
+    /// Which sources are asked, and whether Discogs can be asked at all, are
+    /// core's answers, carried on the config the app observes: adding a token
+    /// in Settings takes the notice away while the pane is open.
     @Environment(ConfigStore.self)
     private var configStore
     @Environment(UiStore.self)
@@ -107,6 +107,14 @@ struct ImportSearchPane: View {
         }
     }
 
+    /// Whether any source is being asked at all. With none, there is nothing to
+    /// start: core refuses to switch off the last source, so this is reachable
+    /// only by a source losing its credential after being left as the only one
+    /// switched on.
+    private var hasSourceToSearch: Bool {
+        configStore.config.metadataSources.contains { $0.availability == .on }
+    }
+
     /// Above both sections, because neither of them asked Discogs. Gone for
     /// the rest of the session once put away, in every candidate's pane.
     @ViewBuilder
@@ -145,7 +153,16 @@ struct ImportSearchPane: View {
         switch area {
         case .notStarted:
             FindOnlineEmptyZone {
-                IdentifyButton(action: onIdentify)
+                if hasSourceToSearch {
+                    IdentifyButton(action: onIdentify)
+                }
+                else {
+                    Text("No source to search")
+                        .foregroundStyle(.secondary)
+                    Button("Open Settings", action: onOpenSettings)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                }
             }
         case .noSignals:
             FindOnlineEmptyZone {

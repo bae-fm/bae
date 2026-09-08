@@ -542,6 +542,37 @@
             catalog: .numbers(scanning: true, rows: [], candidates: [])
         )
 
+        /// MusicBrainz switched off, so the run asks Discogs alone: one column,
+        /// one rail, and a disc ID nothing looked up — disc IDs are a
+        /// MusicBrainz identifier, so with it unasked the value stands with no
+        /// count beside it.
+        static let identifyRunOneSource = BridgeIdentifyRun(
+            providers: [.discogs],
+            discId: .readNotAsked(
+                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT=",
+                source: BridgeDiscIdFile(
+                    kind: .log,
+                    file: "Artist Name - Album Title One.log"
+                )
+            ),
+            barcode: .rows(
+                scanning: false,
+                rows: [
+                    BridgeSignalValueRow(
+                        value: "5051961234567",
+                        sources: [backCoverBarcodeSource],
+                        cells: [
+                            BridgeProviderCell(
+                                source: .discogs,
+                                lookup: .lookingUp
+                            )
+                        ]
+                    )
+                ]
+            ),
+            catalog: .numbers(scanning: false, rows: [], candidates: [])
+        )
+
         /// No disc ID; Discogs failed the first barcode while MusicBrainz
         /// moved on to the second, and one chosen catalog number is out at
         /// MusicBrainz and empty at Discogs.

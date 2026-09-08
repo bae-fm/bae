@@ -367,3 +367,68 @@ fn a_rerun_picks_up_a_newly_configured_provider() {
     assert!(effects.contains(&lookup_barcode(DG, "BAR")));
     assert_eq!(barcode_walks(&state).len(), 2);
 }
+
+/// A source switched off mid-run is what the run has to notice. `ReRun` is
+/// ignored while the lookups are in flight — a person replaying a settled run
+/// is not asking to restart what is already out — but `ProvidersChanged` is
+/// exactly a statement about the list those lookups were dispatched against,
+/// so the run re-lays itself over what is left rather than waiting on a source
+/// nobody is asking.
+#[test]
+fn a_changed_provider_list_re_lays_a_run_still_in_flight() {
+    let (state, effects) = update(started_with(vec![MB, DG]), disc_and_codes("d", &["BAR"]));
+    assert_eq!(barcode_walks(&state).len(), 2);
+    assert!(effects.contains(&lookup_barcode(MB, "BAR")));
+    assert!(effects.contains(&lookup_barcode(DG, "BAR")));
+    assert!(matches!(state, IdentifyState::Triangulating { .. }));
+
+    // A person's replay is turned down while the lookups are out.
+    let (state, replay_effects) = step(
+        state,
+        IdentifyEvent::ReRun {
+            providers: vec![DG],
+        },
+    );
+    assert!(replay_effects.is_empty());
+    assert_eq!(barcode_walks(&state).len(), 2);
+
+    // The list changing is not.
+    let (state, effects) = step(
+        state,
+        IdentifyEvent::ProvidersChanged {
+            providers: vec![DG],
+        },
+    );
+    assert!(matches!(state, IdentifyState::Triangulating { .. }));
+    assert_eq!(
+        barcode_walks(&state)
+            .iter()
+            .map(|walk| walk.source)
+            .collect::<Vec<_>>(),
+        vec![DG],
+        "only the sources still being asked have a walk"
+    );
+    assert_eq!(effects, vec![lookup_barcode(DG, "BAR")]);
+}
+
+/// The dropped source's lookup was already out. It lands on a run that has no
+/// cell for it, so it changes nothing — the run is not reopened on a source
+/// nobody is asking.
+#[test]
+fn a_dropped_source_s_late_answer_lands_nowhere() {
+    let (state, _) = update(started_with(vec![MB, DG]), disc_and_codes("d", &["BAR"]));
+    let (state, _) = step(
+        state,
+        IdentifyEvent::ProvidersChanged {
+            providers: vec![DG],
+        },
+    );
+
+    let (after, effects) = step(
+        state.clone(),
+        barcode_matched(MB, "BAR", vec![pair("rel-a", Some("g-x"))]),
+    );
+
+    assert!(effects.is_empty());
+    assert_eq!(after, state, "the dropped source's answer changed nothing");
+}

@@ -478,6 +478,8 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>ऑनलाइन खोजें</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>स्वतः पहचानें</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>नए उम्मीदवारों की पहचान मिलते ही और ऑनलाइन खोजें खुलने पर होती है। बंद होने पर पहचानें लिंक इसे शुरू करता है।</value></data>
+  <data name="settings.import.search_source" xml:space="preserve"><value>{source} में खोजें</value></data>
+  <data name="settings.import.sources_help" xml:space="preserve"><value>ऑनलाइन खोजें यहाँ चुने गए स्रोतों से पूछता है।</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>कोई नहीं</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>ऑनलाइन खोज</value></data>
   <data name="action.clear" xml:space="preserve"><value>साफ़ करें</value></data>

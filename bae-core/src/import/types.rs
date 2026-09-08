@@ -125,6 +125,20 @@ pub fn asked_sources(sources: &[MetadataSourceAvailability]) -> Vec<MetadataSour
         .collect()
 }
 
+/// Whether `source` is the only one this library still asks, so switching it
+/// off would leave nothing to ask.
+///
+/// The rule `LibraryManager::set_metadata_source_enabled` refuses on, and the
+/// rule the bridge greys that source's switch out by — one function, so a
+/// switch cannot move on exactly the writes core would turn down, rather than
+/// on a surface's own guess at them.
+pub fn is_the_only_asked_source(
+    sources: &[MetadataSourceAvailability],
+    source: MetadataSource,
+) -> bool {
+    asked_sources(sources) == [source]
+}
+
 impl std::str::FromStr for MetadataSource {
     type Err = String;
 

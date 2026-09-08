@@ -286,6 +286,33 @@ impl CandidateRuntime {
         self.set(key, |_, runtime| runtime.search = None);
     }
 
+    /// Stop asking `source` on every search running right now, and publish each
+    /// key whose search changed. What the person switched off is switched off
+    /// everywhere they can see it, not only in the pane they were looking at.
+    ///
+    /// The run each search is on is untouched: a lookup already out for the
+    /// dropped source still lands on its current run and is dropped there,
+    /// because a part that is not looking takes no answer. Superseding the run
+    /// instead would take the other source's in-flight lookup down with it.
+    pub(super) fn switch_source_off(&self, source: MetadataSource) {
+        let searching: Vec<String> = self
+            .inner
+            .lock()
+            .unwrap()
+            .runtime
+            .iter()
+            .filter(|(_, state)| state.search.is_some())
+            .map(|(key, _)| key.clone())
+            .collect();
+        for key in searching {
+            self.set(&key, |_, runtime| {
+                if let Some(running) = runtime.search.as_mut() {
+                    running.search.switch_off(source);
+                }
+            });
+        }
+    }
+
     /// Whether `run` is still the run `key`'s search is on — asked before a
     /// landing pays for work only a current run will use.
     pub(super) fn search_run_is_current(&self, key: &str, run: u64) -> bool {

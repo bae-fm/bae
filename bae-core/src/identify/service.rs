@@ -233,6 +233,35 @@ impl IdentifyServiceHandle {
         self.push_event(key, IdentifyEvent::ReRun { providers }, "rerun");
     }
 
+    /// The sources this library asks have changed: re-lay every live run over
+    /// the list as it now stands.
+    ///
+    /// Every driver, not only the candidate whose pane the switch was flicked
+    /// on. The switch is the library's, so a run in the background waiting on a
+    /// source nobody is asking any more is exactly as wrong as the open one.
+    ///
+    /// The provider list is read once here rather than per driver, so every run
+    /// is re-laid over the same list.
+    pub fn rerun_all(&self) {
+        let providers = run_providers(&self.inner.library_manager);
+        let drivers: Vec<(String, mpsc::UnboundedSender<IdentifyEvent>)> = self
+            .inner
+            .drivers
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(key, driver)| (key.clone(), driver.inbox.clone()))
+            .collect();
+        for (key, inbox) in drivers {
+            let event = IdentifyEvent::ProvidersChanged {
+                providers: providers.clone(),
+            };
+            if inbox.send(event).is_err() {
+                debug!("rerun_all: driver for {key} already stopped");
+            }
+        }
+    }
+
     /// Re-ask only the lookups that failed, keeping what every other provider
     /// found. A no-op when the candidate isn't running.
     pub fn retry_failed(&self, key: &str) {

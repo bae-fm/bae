@@ -247,6 +247,20 @@ struct LedgerColumnRails: View {
         .windowBackground()
     }
 
+    /// One source asked: one column, one rail, and a disc ID with a dash
+    /// where a count would be because the source that answers disc IDs is not
+    /// being asked.
+    #Preview("Run on one source") {
+        IdentifyLedgerView(
+            run: PreviewData.identifyRunOneSource,
+            filePaths: [:],
+            onToggleCatalog: { _ in },
+            onRetryFailed: {},
+        )
+        .frame(width: 660)
+        .windowBackground()
+    }
+
     #Preview("Run starting") {
         IdentifyLedgerView(
             run: PreviewData.identifyRunStarting,

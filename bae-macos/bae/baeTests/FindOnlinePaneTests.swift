@@ -134,9 +134,12 @@ struct NarrowedOutDisclosureTests {
 /// The pane's standing notice that Discogs was never asked.
 ///
 /// Asserted in pixels: the bar sits above both section headers, so what it
-/// changes is the whole pane. A pane with the bar put away must look exactly
-/// like one whose Discogs key is configured — that equality is what says the
-/// bar is the only thing dismissal takes away.
+/// changes is the whole pane, and putting it away takes that row with it.
+///
+/// What dismissal does *not* take away is the header's own report: Discogs's
+/// checkbox stays unchecked and cannot be moved for as long as there is no
+/// token. So a dismissed pane no longer matches a configured one — the notice
+/// is dismissible, the fact it reports is not.
 @MainActor
 @Suite("The Discogs-not-configured bar")
 struct FindOnlineDiscogsBarTests {
@@ -176,9 +179,43 @@ struct FindOnlineDiscogsBarTests {
             dismissed: false
         )
 
-        #expect(showing != dismissed)
-        #expect(showing != configured)
-        #expect(dismissed == configured)
+        #expect(showing != dismissed, "putting the bar away takes its row")
+        #expect(
+            showing != configured,
+            "a library with a token never shows the bar"
+        )
+        #expect(
+            dismissed != configured,
+            "the header still says Discogs is not being asked"
+        )
+    }
+
+    /// And that residual difference is the header: the same two libraries, with
+    /// no bar in either, still draw their Discogs checkbox differently.
+    @Test("the header keeps saying it after the notice is gone")
+    func theHeaderKeepsSayingIt() async throws {
+        let noToken = try await FindOnlineRendering.pixels(
+            header(discogsUsable: false),
+            size: NSSize(width: 900, height: 42)
+        )
+        let configured = try await FindOnlineRendering.pixels(
+            header(discogsUsable: true),
+            size: NSSize(width: 900, height: 42)
+        )
+
+        #expect(noToken != configured)
+    }
+
+    private func header(discogsUsable: Bool) -> some View {
+        FindOnlineHeader(onBack: {})
+            .environment(
+                PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    discogsUsable: discogsUsable
+                )
+            )
+            .environment(Importer.stub())
+            .environment(UiStore())
     }
 
     private func pixels(

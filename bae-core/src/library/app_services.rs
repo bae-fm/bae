@@ -697,6 +697,42 @@ impl AppServices {
     delegate_sync!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_identify_automatically => set_identify_automatically(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_default_import_metadata_source => set_default_import_metadata_source(source: crate::config::DefaultImportMetadataSource) -> Result<(), crate::config::ConfigError>);
+
+    /// Ask, or stop asking, one metadata source — the switch on the Find online
+    /// header and in Settings, which are two views of this one preference.
+    ///
+    /// Written here rather than delegated, because switching a source off is
+    /// not only a preference: everything already asking it has to stop. The
+    /// live searches close that source's part, dropping the results it had
+    /// found and the answer it still has out; every live identify run re-lays
+    /// itself over the sources that are left, so a run waiting on the source
+    /// nobody is asking any more finishes on the rest. This is the one object
+    /// that holds the config, the searches, and the runs, which is why the
+    /// order lives here.
+    ///
+    /// Switching a source *on* re-runs nothing: the next run or search asks it.
+    /// Re-dispatching a settled run because a source became available would
+    /// throw away an answer the person is reading.
+    pub fn set_metadata_source_enabled(
+        &self,
+        source: crate::import::MetadataSource,
+        enabled: bool,
+    ) -> Result<(), crate::config::ConfigError> {
+        self.inner
+            .manager
+            .set_metadata_source_enabled(source, enabled)?;
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        {
+            if !enabled {
+                // Searches first: a landing that races the switch then finds a
+                // part that has stopped looking, and is dropped.
+                self.inner.import.stop_asking_source(source);
+                self.inner.identify.rerun_all();
+            }
+        }
+        Ok(())
+    }
+
     delegate_sync!(manager, set_save_presets => set_save_presets(presets: Vec<crate::config::SavePreset>) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);

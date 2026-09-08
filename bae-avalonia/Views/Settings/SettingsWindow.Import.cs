@@ -49,13 +49,58 @@ internal sealed partial class SettingsWindow
         content.Children.Add(SecondaryLabel(
             Loc.Chrome("settings.import.identify_automatically_help")));
 
+        // One checkbox per source, built as the settings arrive: which sources
+        // exist is core's list, not a constant this file repeats.
+        var sources = new StackPanel();
+        content.Children.Add(sources);
+        content.Children.Add(SecondaryLabel(Loc.Chrome("settings.import.sources_help")));
+
         renderers.Add(fresh =>
         {
             _refreshingSettings = true;
             SelectSource(source, fresh.DefaultImportMetadataSource);
             identifyAutomatically.IsChecked = fresh.IdentifyAutomatically;
+            RenderSourceSwitches(sources, fresh, renderers);
             _refreshingSettings = false;
         });
+    }
+
+    /// <summary>Draw one checkbox per metadata source over the availability core
+    /// computed. Whether a switch can be moved is core's answer too, covering
+    /// both reasons it cannot: a source with no credential, which the switch
+    /// cannot supply, and the only source still being asked, which core refuses
+    /// to leave nothing behind.</summary>
+    private void RenderSourceSwitches(
+        StackPanel host,
+        Settings fresh,
+        List<Action<Settings>> renderers)
+    {
+        host.Children.Clear();
+        foreach (var entry in fresh.MetadataSources)
+        {
+            var box = new CheckBox
+            {
+                Content = Loc.Chrome(
+                    "settings.import.search_source",
+                    "source",
+                    BaeBridgeMethods.BridgeMetadataSourceName(entry.Source)),
+                IsChecked = entry.Availability == BridgeSourceAvailability.On,
+                IsEnabled = entry.CanChange,
+            };
+            var source = entry.Source;
+            box.IsCheckedChanged += (_, _) =>
+            {
+                if (_refreshingSettings)
+                {
+                    return;
+                }
+                WriteSetting(
+                    () => _app.Settings.SetMetadataSourceEnabled(
+                        source, box.IsChecked == true),
+                    () => RenderCurrent(renderers));
+            };
+            host.Children.Add(box);
+        }
     }
 
     private static void AddSource(

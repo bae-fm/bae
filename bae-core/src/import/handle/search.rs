@@ -55,6 +55,15 @@ impl ImportServiceHandle {
         self.runtime.clear_search(&candidate_key);
     }
 
+    /// The library has stopped asking `source`: close its part of every search
+    /// running right now, wherever the person is looking.
+    ///
+    /// Called after the preference is written, so every search started from
+    /// here on is started without the source and has nothing to close.
+    pub fn stop_asking_source(&self, source: MetadataSource) {
+        self.runtime.switch_source_off(source);
+    }
+
     /// Run one source's part of a search and land it on the candidate's
     /// current run. The runtime holds the value the landing folds into and
     /// publishes what it leaves behind, so a superseded run writes nothing.

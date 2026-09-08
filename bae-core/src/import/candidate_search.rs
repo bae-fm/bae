@@ -129,9 +129,11 @@ impl CandidateSearch {
     /// Land one source's answer and re-derive the result area from every
     /// source that has answered.
     ///
-    /// An answer from a source this search does not carry is dropped: the
-    /// search names the sources it asked, and a landing outside them belongs
-    /// to a dispatch this value has already moved past.
+    /// Only a source this search is still waiting on takes an answer. A source
+    /// it never carried, and one that has stopped looking since the lookup went
+    /// out — switched off while it was in flight — both belong to a dispatch
+    /// this value has moved past, so their answers are dropped rather than
+    /// reopening a part that is settled.
     pub fn record(
         &mut self,
         source: MetadataSource,
@@ -152,7 +154,34 @@ impl CandidateSearch {
             );
             return;
         };
+        if !matches!(entry.1, SourceSearch::Searching) {
+            debug!(
+                "dropped a {} search landing: it is no longer looking",
+                source.as_str()
+            );
+            return;
+        }
         entry.1 = settled;
+        self.regroup();
+    }
+
+    /// Stop asking `source`: its part of this search closes, and whatever it
+    /// had found leaves the result area. What the other sources found stays.
+    ///
+    /// A lookup already out for it still lands here and is dropped, because a
+    /// part that is not looking takes no answer.
+    pub fn switch_off(&mut self, source: MetadataSource) {
+        let Some(entry) = self
+            .sources
+            .iter_mut()
+            .find(|(candidate, _)| *candidate == source)
+        else {
+            return;
+        };
+        if matches!(entry.1, SourceSearch::Off) {
+            return;
+        }
+        entry.1 = SourceSearch::Off;
         self.regroup();
     }
 
@@ -536,10 +565,11 @@ mod tests {
         assert!(search.has_no_matches());
     }
 
-    /// A second answer from the same source replaces the first: a retry's
-    /// results are the source's answer, not an addition to a stale one.
+    /// Only a source still looking takes an answer. A second answer from a
+    /// source that has already settled is a landing from a dispatch this value
+    /// moved past, so it does not overwrite what is there.
     #[test]
-    fn a_second_answer_from_one_source_replaces_the_first() {
+    fn a_source_that_has_settled_takes_no_second_answer() {
         let mut search = CandidateSearch::started(query(), &all_on());
         search.record(
             MetadataSource::Discogs,
@@ -550,6 +580,78 @@ mod tests {
             answer(MetadataSource::Discogs, "dg-2", "master-8"),
         );
         assert_eq!(search.groups.len(), 1);
+        assert_eq!(search.groups[0].pressings[0].lead().release_id, "dg-1");
+    }
+
+    /// A retry puts the failed source back to looking, and only then does its
+    /// new answer land — replacing the failure rather than adding to it.
+    #[test]
+    fn a_retried_source_lands_its_new_answer() {
+        let mut search = CandidateSearch::started(query(), &all_on());
+        search.record(MetadataSource::Discogs, Err(LookupFailure::Timeout));
+        search.restart_failed();
+        search.record(
+            MetadataSource::Discogs,
+            answer(MetadataSource::Discogs, "dg-2", "master-8"),
+        );
+        assert_eq!(search.groups.len(), 1);
         assert_eq!(search.groups[0].pressings[0].lead().release_id, "dg-2");
+    }
+
+    /// Switching a source off mid-search closes its part and takes its results
+    /// out of the list, leaving the other source's standing — and the answer
+    /// its lookup was already out for lands nowhere.
+    #[test]
+    fn switching_a_source_off_drops_its_results_and_its_late_answer() {
+        let mut search = CandidateSearch::started(query(), &all_on());
+        search.record(
+            MetadataSource::MusicBrainz,
+            answer(MetadataSource::MusicBrainz, "mb-1", "group-x"),
+        );
+        search.record(
+            MetadataSource::Discogs,
+            answer(MetadataSource::Discogs, "dg-1", "master-7"),
+        );
+        assert_eq!(search.groups[0].sources.len(), 2);
+
+        search.switch_off(MetadataSource::MusicBrainz);
+        assert_eq!(
+            search.source(MetadataSource::MusicBrainz),
+            Some(&SourceSearch::Off)
+        );
+        assert_eq!(search.groups.len(), 1);
+        assert_eq!(
+            search.groups[0]
+                .sources
+                .iter()
+                .map(|carrier| carrier.source)
+                .collect::<Vec<_>>(),
+            vec![MetadataSource::Discogs]
+        );
+        assert_eq!(search.library_statuses.len(), 1);
+
+        // The lookup that was in flight for it when the switch went off.
+        search.record(
+            MetadataSource::MusicBrainz,
+            answer(MetadataSource::MusicBrainz, "mb-2", "group-y"),
+        );
+        assert_eq!(
+            search.source(MetadataSource::MusicBrainz),
+            Some(&SourceSearch::Off)
+        );
+        assert_eq!(search.groups.len(), 1);
+    }
+
+    /// A search whose only looking source is switched off is settled, and it
+    /// never claims to have found nothing: nothing answered.
+    #[test]
+    fn switching_off_the_last_looking_source_settles_the_search() {
+        let mut search = CandidateSearch::started(query(), &all_on());
+        search.record(MetadataSource::Discogs, Ok(Vec::new()));
+        assert!(!search.is_settled());
+        search.switch_off(MetadataSource::MusicBrainz);
+        assert!(search.is_settled());
+        assert!(search.searching_sources().is_empty());
+        assert_eq!(search.status(), SearchStatus::NoMatches);
     }
 }

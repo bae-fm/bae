@@ -287,6 +287,19 @@ pub enum IdentifyEvent {
         providers: Vec<MetadataSource>,
     },
 
+    /// The sources this library asks changed while the run was alive — one was
+    /// switched off, in the Find online header or in Settings. The run
+    /// re-dispatches over the new list whatever it was doing, which is the
+    /// whole point of the switch: a run still waiting on the source the person
+    /// has just stopped asking would otherwise wait for an answer nobody wants.
+    ///
+    /// Unlike [`Self::ReRun`], which is a person replaying a settled run and is
+    /// ignored mid-flight, this applies while the run is still triangulating.
+    /// Answers from the dropped source land on no cell and are dropped.
+    ProvidersChanged {
+        providers: Vec<MetadataSource>,
+    },
+
     /// The user asked to re-ask only what failed. Every lookup that answered
     /// keeps its answer; a failed provider walks the barcodes again from the
     /// first, a failed catalog-number lookup is asked again, and a failed
@@ -320,9 +333,11 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
         return (IdentifyState::Idle, vec![]);
     }
 
-    // Toggle, re-run and retry all act on the carried `SignalsContext`, so
-    // they're handled once here rather than per state. `ReRun` is ignored
-    // during triangulation — those lookups are already in flight.
+    // Toggle, re-run, a changed provider list and retry all act on the carried
+    // `SignalsContext`, so they're handled once here rather than per state.
+    // `ReRun` is ignored during triangulation — those lookups are already in
+    // flight. `ProvidersChanged` is not: the list they were dispatched against
+    // is the thing that changed.
     match event {
         IdentifyEvent::SignalToggled { signal } if state.context().is_some() => {
             return apply_toggle(state, signal);
@@ -330,6 +345,12 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
         IdentifyEvent::ReRun { providers }
             if !matches!(state, IdentifyState::Triangulating { .. }) =>
         {
+            if let Some(context) = state.context() {
+                return rerun(context.clone(), providers);
+            }
+            return (state, vec![]);
+        }
+        IdentifyEvent::ProvidersChanged { providers } => {
             if let Some(context) = state.context() {
                 return rerun(context.clone(), providers);
             }

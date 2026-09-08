@@ -590,6 +590,10 @@ internal static partial class NativeBae
         AppHandle handle, BridgeDefaultImportMetadataSource source) =>
         CaptureError(() => handle.SetDefaultImportMetadataSource(source));
 
+    internal static string? SetMetadataSourceEnabled(
+        AppHandle handle, BridgeMetadataSource source, bool enabled) =>
+        CaptureError(() => handle.SetMetadataSourceEnabled(source, enabled));
+
     internal static BridgeConfig GetConfig(AppHandle handle) => handle.GetConfig();
 
     internal static string? SetMaxConcurrentUploads(AppHandle handle, uint n) =>

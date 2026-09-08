@@ -104,6 +104,8 @@ private struct ImportOperations: Sendable {
     let setIdentifyAutomatically: @MainActor @Sendable (Bool) throws -> Void
     let setDefaultMetadataSource:
         @MainActor @Sendable (BridgeDefaultImportMetadataSource) throws -> Void
+    let setMetadataSourceEnabled:
+        @MainActor @Sendable (BridgeMetadataSource, Bool) throws -> Void
 }
 
 extension ImportOperations {
@@ -296,6 +298,9 @@ extension ImportOperations {
             },
             setDefaultMetadataSource: {
                 try handle.setDefaultImportMetadataSource(source: $0)
+            },
+            setMetadataSourceEnabled: {
+                try handle.setMetadataSourceEnabled(source: $0, enabled: $1)
             }
         )
     }
@@ -453,7 +458,11 @@ final class Importer: Sendable, Observable {
                 BridgeDefaultImportMetadataSource
             )
             throws -> Void =
-            { _ in }
+            { _ in },
+        setMetadataSourceEnabled:
+            @escaping @MainActor @Sendable (
+                BridgeMetadataSource, Bool
+            ) throws -> Void = { _, _ in }
     ) {
         operations = ImportOperations(
             candidateSourceFolders: candidateSourceFolders,
@@ -498,7 +507,8 @@ final class Importer: Sendable, Observable {
                 throw StubError.notImplemented
             },
             setIdentifyAutomatically: setIdentifyAutomatically,
-            setDefaultMetadataSource: setDefaultMetadataSource
+            setDefaultMetadataSource: setDefaultMetadataSource,
+            setMetadataSourceEnabled: setMetadataSourceEnabled
         )
     }
 
@@ -777,6 +787,17 @@ extension Importer {
         _ source: BridgeDefaultImportMetadataSource
     ) throws {
         try operations.setDefaultMetadataSource(source)
+    }
+
+    /// Ask, or stop asking, one metadata source — the same write behind the
+    /// Find online header's checkboxes and the Settings ones. Throws when core
+    /// refuses, which is when it would leave nothing to ask.
+    @MainActor
+    func setMetadataSourceEnabled(
+        _ source: BridgeMetadataSource,
+        _ enabled: Bool
+    ) throws {
+        try operations.setMetadataSourceEnabled(source, enabled)
     }
 
     convenience init(handle: any AppHandleProtocol) {

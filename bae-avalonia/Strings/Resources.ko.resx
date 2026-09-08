@@ -478,6 +478,8 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>온라인에서 찾기</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>자동으로 식별</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>새 후보는 발견되는 즉시, 그리고 온라인에서 찾기를 열 때 식별됩니다. 꺼져 있으면 식별 링크로 시작합니다.</value></data>
+  <data name="settings.import.search_source" xml:space="preserve"><value>{source} 검색</value></data>
+  <data name="settings.import.sources_help" xml:space="preserve"><value>온라인에서 찾기는 여기에서 선택한 소스에 질의합니다.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>없음</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>온라인 검색</value></data>
   <data name="action.clear" xml:space="preserve"><value>지우기</value></data>

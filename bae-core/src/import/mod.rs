@@ -197,8 +197,8 @@ desktop_only! {
     pub use types::ImportCommand;
 }
 pub use types::{
-    asked_sources, ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack,
-    EditValidationError, ExistingArtist, MetadataProvenance, MetadataSource,
+    asked_sources, is_the_only_asked_source, ArtistAssignment, AudioFile, CandidateDraft,
+    CandidateTrack, EditValidationError, ExistingArtist, MetadataProvenance, MetadataSource,
     MetadataSourceAvailability, NewArtistSeed, PressingEdit, RawPressingEdit, RawReleaseEdit,
     RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed, ReleaseIdentity, ReleaseUserEdit,
     SourceAvailability, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit,

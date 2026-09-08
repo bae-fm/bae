@@ -33,6 +33,12 @@ internal sealed class SettingsService
         = _ => throw new InvalidOperationException(
             "SettingsService stub: SetDefaultImportMetadataSource not wired");
 
+    /// <summary>Ask, or stop asking, one metadata source. Core refuses to switch
+    /// off the last source there is to ask and returns the sentence to show.</summary>
+    public Func<BridgeMetadataSource, bool, (bool Current, string? Error)> SetMetadataSourceEnabled { get; init; }
+        = (_, _) => throw new InvalidOperationException(
+            "SettingsService stub: SetMetadataSourceEnabled not wired");
+
     /// <summary>Wire the read through the open session's current handle.</summary>
     public static SettingsService FromSession(SessionStore session) => new()
     {
@@ -44,5 +50,8 @@ internal sealed class SettingsService
         SetDefaultImportMetadataSource = source =>
             session.WithCurrentHandle(handle =>
                 NativeBae.SetDefaultImportMetadataSource(handle, source)),
+        SetMetadataSourceEnabled = (source, enabled) =>
+            session.WithCurrentHandle(handle =>
+                NativeBae.SetMetadataSourceEnabled(handle, source, enabled)),
     };
 }

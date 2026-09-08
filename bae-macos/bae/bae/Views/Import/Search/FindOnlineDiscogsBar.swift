@@ -4,7 +4,8 @@ import SwiftUI
 /// The standing notice that Discogs is not among the sources Find online can
 /// ask. It sits under the pane's header, above both section headers, because
 /// it is equally true of the automatic run and the typed search: neither one
-/// asked Discogs, and nothing else on the pane says so.
+/// asked Discogs, and nothing else on the pane says why its checkbox in the
+/// header cannot be ticked.
 ///
 /// Whether Discogs is usable is core's answer, read live from the config the
 /// app already observes — adding a token in Settings takes the bar away
@@ -19,10 +20,6 @@ struct FindOnlineDiscogsBar: View {
         bridgeMetadataSourceName(source: .discogs)
     }
 
-    private var musicBrainz: String {
-        bridgeMetadataSourceName(source: .musicBrainz)
-    }
-
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "info.circle")
@@ -32,12 +29,10 @@ struct FindOnlineDiscogsBar: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(discogs) not configured")
                     .font(.system(size: 12, weight: .semibold))
-                Text(
-                    "Only \(musicBrainz) is searched. Add a \(discogs) token to look up its releases too."
-                )
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                Text("Add a \(discogs) token to look up its releases too.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 12)
             Button("Open Settings", action: onOpenSettings)
