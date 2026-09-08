@@ -125,11 +125,7 @@ impl ImportServiceHandle {
             if runtime.import.is_some() {
                 return Err(ImportError::CandidateImportInProgress);
             }
-            if runtime
-                .identify
-                .as_ref()
-                .is_some_and(|identify| !identify.is_terminal())
-            {
+            if runtime.queued.is_some() || runtime.running.is_some() {
                 return Err(ImportError::Internal {
                     detail: format!("identification is still running for {key}"),
                 });

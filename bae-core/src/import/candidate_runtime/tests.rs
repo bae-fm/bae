@@ -62,13 +62,37 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
     }
 }
 
-fn identify(key: &str, state: crate::identify::IdentifyState) -> ImportEvent {
+fn run(number: u64) -> crate::identify::IdentifyRunId {
+    crate::identify::IdentifyRunId::for_test(number)
+}
+
+fn identify(key: &str, run: u64, state: crate::identify::IdentifyState) -> ImportEvent {
     ImportEvent::IdentifyStateChanged {
         candidate_key: key.to_string(),
-        run: crate::identify::IdentifyRunId::for_test(0),
+        run: crate::identify::IdentifyRunId::for_test(run),
         state,
         priority: CallPriority::Background,
     }
+}
+
+fn triangulating() -> crate::identify::IdentifyState {
+    crate::identify::IdentifyState::Triangulating {
+        discid: crate::identify::DiscidProgress::Computing,
+        barcode: crate::identify::BarcodeProgress::Scanning,
+        catalog: crate::identify::CatalogProgress::Skipped,
+        context: signals_context(9),
+    }
+}
+
+fn manual_only() -> crate::identify::IdentifyState {
+    crate::identify::IdentifyState::ManualOnly {
+        track_count: 9,
+        context: signals_context(9),
+    }
+}
+
+fn identification(runtime: &CandidateRuntime, key: &str) -> Option<crate::import::IdentificationStatus> {
+    crate::import::triage::TriageRuntimeFacts::of(&runtime.get(key)?).identification
 }
 
 fn drain(changes: &mut broadcast::Receiver<CandidateRuntimeChange>) -> Vec<CandidateRuntimeChange> {
@@ -198,19 +222,13 @@ fn a_finished_import_leaves_the_map() {
     }
 }
 
-/// A held terminal state keeps the key: only the import half ends.
+/// A verdict still being saved keeps the key: only the import half ends.
 #[test]
-fn a_finished_import_keeps_a_key_whose_run_is_still_held() {
+fn a_finished_import_keeps_a_key_whose_verdict_is_still_being_saved() {
     let runtime = CandidateRuntime::default();
     let mut changes = runtime.subscribe();
     let key = "/watch/a/rel1";
-    runtime.record_event(&identify(
-        key,
-        crate::identify::IdentifyState::ManualOnly {
-            track_count: 9,
-            context: signals_context(9),
-        },
-    ));
+    runtime.record_event(&identify(key, 1, manual_only()));
     runtime.record_event(&progress(key, 42));
     drain(&mut changes);
 
@@ -222,12 +240,10 @@ fn a_finished_import_keeps_a_key_whose_run_is_still_held() {
             album_id: "alb".to_string(),
         },
     });
-    let recorded = runtime.get(key).expect("the held run keeps the key");
+    let recorded = runtime.get(key).expect("the pending save keeps the key");
     assert!(recorded.import.is_none());
     assert!(matches!(
-        recorded
-            .identify
-            .and_then(CandidateIdentifyRuntime::into_state),
+        recorded.saving,
         Some(crate::identify::IdentifyState::ManualOnly { .. })
     ));
     assert!(matches!(
@@ -444,161 +460,201 @@ fn queue_progress_never_touches_the_runtime() {
     assert!(drain(&mut changes).is_empty());
 }
 
+/// A run's terminal state is its answer, and answering is not saving: the
+/// state leaves `running` and becomes the save the write step owns.
 #[test]
-fn a_stored_verdict_clears_the_recorded_terminal_state() {
+fn a_terminal_state_moves_the_run_from_running_to_saving() {
     let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
     let key = "/watch/a/rel1";
-    runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
-    runtime.record_event(&identify(
-        key,
-        crate::identify::IdentifyState::ManualOnly {
-            track_count: 9,
-            context: signals_context(9),
-        },
-    ));
 
-    // A driver torn down after settling broadcasts `Idle`; the answer stays.
-    runtime.record_event(&identify(key, crate::identify::IdentifyState::Idle));
+    runtime.record_event(&identify(key, 1, triangulating()));
+    let progressing = runtime.get(key).expect("the run is in flight");
     assert!(matches!(
-        runtime
-            .get(key)
-            .and_then(|runtime| runtime.identify)
-            .and_then(CandidateIdentifyRuntime::into_state),
-        Some(crate::identify::IdentifyState::ManualOnly { .. })
-    ));
-    drain(&mut changes);
-
-    runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
-        candidate_key: key.to_string(),
-    }));
-    assert!(
-        runtime.get(key).is_none(),
-        "the stored verdict owns the answer now, and nothing else was running"
-    );
-    assert_eq!(
-        drain(&mut changes),
-        vec![CandidateRuntimeChange::Removed {
-            key: key.to_string()
-        }]
-    );
-
-    // A newer run is in flight when the previous run's write lands: its
-    // state is not terminal, so it stays.
-    runtime.record_event(&identify(
-        key,
-        crate::identify::IdentifyState::Triangulating {
-            discid: crate::identify::DiscidProgress::Computing,
-            barcode: crate::identify::BarcodeProgress::Scanning,
-            catalog: crate::identify::CatalogProgress::Skipped,
-            context: signals_context(9),
-        },
-    ));
-    runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
-        candidate_key: key.to_string(),
-    }));
-    assert!(matches!(
-        runtime
-            .get(key)
-            .and_then(|runtime| runtime.identify)
-            .and_then(CandidateIdentifyRuntime::into_state),
+        progressing.running,
         Some(crate::identify::IdentifyState::Triangulating { .. })
     ));
+    assert!(progressing.saving.is_none());
 
-    // A genuine mid-run cancel empties the key.
-    runtime.record_event(&identify(key, crate::identify::IdentifyState::Idle));
+    runtime.record_event(&identify(key, 1, manual_only()));
+    let answered = runtime.get(key).expect("the answer is being saved");
+    assert!(answered.running.is_none());
+    assert!(matches!(
+        answered.saving,
+        Some(crate::identify::IdentifyState::ManualOnly { .. })
+    ));
+}
+
+/// A cancelled run broadcasts `Idle` on its way out. It ends that run and
+/// nothing else: the run that superseded it keeps the field.
+#[test]
+fn an_idle_ends_only_the_run_that_broadcast_it() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+    runtime.record_event(&identify(key, 2, triangulating()));
+
+    runtime.record_event(&identify(key, 1, crate::identify::IdentifyState::Idle));
+    assert!(
+        runtime
+            .get(key)
+            .is_some_and(|runtime| runtime.running.is_some()),
+        "a superseded run's ending does not end the run that replaced it"
+    );
+
+    runtime.record_event(&identify(key, 2, crate::identify::IdentifyState::Idle));
+    assert!(
+        runtime.get(key).is_none(),
+        "the running run's own ending empties the key"
+    );
+}
+
+/// A save is over when its write says so, and the run id says whose write it
+/// was: a later run's save outlives an earlier one's write landing.
+#[test]
+fn a_write_ends_the_save_it_ran_for_and_no_other() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+    runtime.record_event(&identify(key, 1, manual_only()));
+
+    runtime.finish_identification_save(key, run(2));
+    assert!(
+        runtime
+            .get(key)
+            .is_some_and(|runtime| runtime.saving.is_some()),
+        "another run's write says nothing about this save"
+    );
+
+    runtime.finish_identification_save(key, run(1));
     assert!(runtime.get(key).is_none());
 }
 
+/// A write that failed leaves the error where a row can say so, and nothing
+/// waiting on a commit that is not coming.
 #[test]
-fn a_failed_finalization_replaces_progress_without_discarding_the_result() {
+fn a_failed_write_replaces_the_pending_save_with_its_error() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
-    runtime.record_event(&identify(
-        key,
-        crate::identify::IdentifyState::ManualOnly {
-            track_count: 9,
-            context: signals_context(9),
-        },
-    ));
+    runtime.record_event(&identify(key, 1, manual_only()));
 
-    runtime.fail_identification(key, "database write failed".to_string());
+    runtime.fail_identification(key, run(1), "database write failed".to_string());
 
-    let recorded = runtime.get(key).expect("the failure remains visible");
-    assert!(matches!(
-        recorded
-            .identify
-            .as_ref()
-            .and_then(CandidateIdentifyRuntime::state),
-        Some(crate::identify::IdentifyState::ManualOnly { .. })
-    ));
+    let failed = runtime.get(key).expect("the failure remains visible");
+    assert!(failed.saving.is_none());
+    assert_eq!(failed.save_failed.as_deref(), Some("database write failed"));
     assert_eq!(
-        crate::import::triage::TriageRuntimeFacts::of(&recorded).identification,
+        identification(&runtime, key),
         Some(crate::import::IdentificationStatus::FinalizationFailed {
             error: "database write failed".to_string(),
         })
     );
+}
 
-    runtime.record_event(&identify(
-        key,
-        crate::identify::IdentifyState::ManualOnly {
-            track_count: 9,
-            context: signals_context(9),
-        },
-    ));
-    assert!(matches!(
-        crate::import::triage::TriageRuntimeFacts::of(
-            &runtime.get(key).expect("the failure remains visible")
-        )
-        .identification,
-        Some(crate::import::IdentificationStatus::FinalizationFailed { .. })
-    ));
+/// The failure describes the run that failed. The next run is a fresh attempt,
+/// so its first state clears it — and a further state of that same run does
+/// not, because nothing about it is new.
+#[test]
+fn a_new_runs_first_state_clears_the_previous_runs_failure() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+    runtime.record_event(&identify(key, 1, manual_only()));
+    runtime.fail_identification(key, run(1), "database write failed".to_string());
+
+    runtime.record_event(&identify(key, 2, triangulating()));
+    let rerun = runtime.get(key).expect("the new run is in flight");
+    assert!(rerun.save_failed.is_none());
+    assert!(rerun.running.is_some());
+
+    runtime.fail_identification(key, run(2), "database write failed again".to_string());
+    runtime.record_event(&identify(key, 2, triangulating()));
+    assert_eq!(
+        runtime
+            .get(key)
+            .and_then(|runtime| runtime.save_failed)
+            .as_deref(),
+        Some("database write failed again"),
+        "a state from the run that failed is not a new attempt"
+    );
 }
 
 /// A claimed import outlives the run's write: the key keeps the half that is
 /// still happening.
 #[test]
-fn a_stored_verdict_keeps_a_key_whose_import_is_running() {
+fn a_finished_save_keeps_a_key_whose_import_is_running() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
-    runtime.record_event(&identify(
-        key,
-        crate::identify::IdentifyState::ManualOnly {
-            track_count: 9,
-            context: signals_context(9),
-        },
-    ));
+    runtime.record_event(&identify(key, 1, manual_only()));
     runtime.claim_for_import(key);
 
-    runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
-        candidate_key: key.to_string(),
-    }));
+    runtime.finish_identification_save(key, run(1));
+
     let recorded = runtime.get(key).expect("the claim keeps the key");
-    assert!(recorded.identify.is_none());
+    assert!(recorded.saving.is_none());
     assert!(recorded.import.is_some());
 }
 
 /// An answer that will never be stored — the candidate moved on while its run
-/// settled — leaves nothing in flight. Kept, the terminal state would read as
-/// a commit still pending, for good.
+/// settled — leaves nothing in flight. Kept, the pending save would read as a
+/// commit still waiting, for good.
 #[test]
 fn discarding_an_unstorable_answer_leaves_nothing_in_flight() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel";
     runtime.record_event(&identify(
         key,
+        1,
         crate::identify::IdentifyState::NotFoundAnywhere {
             context: signals_context(9),
         },
     ));
     assert!(runtime
         .get(key)
-        .and_then(|runtime| runtime.identify)
-        .is_some_and(|identify| identify.is_terminal()));
+        .is_some_and(|runtime| runtime.saving.is_some()));
 
-    runtime.discard_identification(key);
+    runtime.finish_identification_save(key, run(1));
 
     assert!(runtime.get(key).is_none());
+}
+
+/// Each field is one fact, and a row reads them in one order: what went wrong
+/// last, then what is being committed, then what is running, then what is
+/// waiting for a slot.
+#[test]
+fn every_field_yields_its_own_status_in_one_order() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+
+    runtime.requeue_automatic_identification(key);
+    assert_eq!(
+        identification(&runtime, key),
+        Some(crate::import::IdentificationStatus::Queued)
+    );
+
+    runtime.record_event(&identify(key, 1, triangulating()));
+    assert_eq!(
+        identification(&runtime, key),
+        Some(crate::import::IdentificationStatus::Running),
+        "a run outranks the queue marker it was planned under"
+    );
+
+    runtime.record_event(&identify(key, 1, manual_only()));
+    assert_eq!(
+        identification(&runtime, key),
+        Some(crate::import::IdentificationStatus::Finalizing)
+    );
+
+    runtime.fail_identification(key, run(1), "database write failed".to_string());
+    assert_eq!(
+        identification(&runtime, key),
+        Some(crate::import::IdentificationStatus::FinalizationFailed {
+            error: "database write failed".to_string(),
+        })
+    );
+
+    runtime.record_event(&identify(key, 2, manual_only()));
+    assert_eq!(
+        identification(&runtime, key),
+        Some(crate::import::IdentificationStatus::Finalizing),
+        "the new run's save outranks the previous run's failure, which it cleared"
+    );
 }
 
 /// A library that asks every source — what these tests search from unless

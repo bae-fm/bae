@@ -153,7 +153,7 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
     assert!(
         fixture
             .import
-            .save_candidate_verdict_if_current(&key, &row())
+            .save_candidate_verdict_if_current(&key, IdentifyRunId::for_test(1), &row())
             .await
             .unwrap(),
         "an unclaimed candidate still takes its verdict"
@@ -164,7 +164,7 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
     assert!(
         !fixture
             .import
-            .save_candidate_verdict_if_current(&key, &row())
+            .save_candidate_verdict_if_current(&key, IdentifyRunId::for_test(1), &row())
             .await
             .unwrap(),
         "a claimed candidate refuses a verdict"
@@ -187,6 +187,7 @@ async fn explicit_lookup_for_an_answered_candidate_starts_nothing() {
         .import
         .save_candidate_verdict_if_current(
             &dir.to_string_lossy(),
+            IdentifyRunId::for_test(1),
             &NewImportCandidateVerdict {
                 candidate: crate::import::CandidateAsRead {
                     content_hash: fixture.content_hash(&dir),
@@ -297,13 +298,13 @@ async fn explicit_lookup_during_an_active_run_keeps_the_existing_run() {
     );
 }
 
-/// The recorded runtime keeps a terminal state when an `Idle` for the same run
-/// follows it: the candidate's answer doesn't stop being its answer because
-/// something behind it announced an ending. A genuine mid-run cancel still
-/// resets.
+/// An ending ends the run it names and nothing else. A run's own terminal
+/// state has already left `running` for `saving`, so an `Idle` behind it
+/// cannot blank the answer waiting to be written — while a mid-run `Idle`,
+/// which is the run being abandoned, empties the key.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
+async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
     let fixture = Fixture::new("teardown-keeps-state").await;
     let dir = fixture.disc_id_candidate("Album");
     fixture.scan(1).await;
@@ -313,9 +314,9 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
         |result: &MetadataResult| crate::db::LibraryStatus::absent(&result.release_id);
     let found =
         multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1").resume_state(None, &LookupChoices::default(), &not_in_library);
-    let changed = |state: IdentifyState| ImportEvent::IdentifyStateChanged {
+    let changed = |run: u64, state: IdentifyState| ImportEvent::IdentifyStateChanged {
         candidate_key: key.clone(),
-        run: crate::identify::IdentifyRunId::for_test(0),
+        run: crate::identify::IdentifyRunId::for_test(run),
         state,
         priority: CallPriority::Background,
     };
@@ -344,11 +345,11 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
         );
     };
 
-    fixture.import.emit_event_for_test(changed(found));
+    fixture.import.emit_event_for_test(changed(1, found));
     changes.recv().await.expect("runtime changes stay open");
     fixture
         .import
-        .emit_event_for_test(changed(IdentifyState::Idle));
+        .emit_event_for_test(changed(1, IdentifyState::Idle));
     fixture.import.emit_event_for_test(marker());
     recorded(changes.recv().await);
     let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
@@ -356,17 +357,15 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
     else {
         panic!("the scanned candidate is readable");
     };
-    let Some(IdentifyState::Found { matches, .. }) = &runtime
-        .as_ref()
-        .and_then(|runtime| runtime.identify.clone())
-        .and_then(crate::import::CandidateIdentifyRuntime::into_state)
+    let Some(IdentifyState::Found { matches, .. }) =
+        &runtime.as_ref().and_then(|runtime| runtime.saving.clone())
     else {
-        panic!("a terminal state survives its driver's teardown, got {runtime:?}");
+        panic!("the answer stays where its write will find it, got {runtime:?}");
     };
     assert_eq!(matches[0].release_id, "mb-teardown-1");
 
-    // A mid-run cancel is a different fact and still resets: the run was
-    // abandoned, not answered.
+    // A later run cancelled mid-flight is that run being abandoned. It ends
+    // itself and leaves the answer still waiting to be written.
     let triangulating = IdentifyState::Triangulating {
         discid: crate::identify::DiscidProgress::Computing,
         barcode: crate::identify::BarcodeProgress::Scanning,
@@ -380,12 +379,26 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
             track_count: 0,
         },
     };
-    fixture.import.emit_event_for_test(changed(triangulating));
+    fixture.import.emit_event_for_test(changed(2, triangulating));
     changes.recv().await.expect("runtime changes stay open");
     fixture
         .import
-        .emit_event_for_test(changed(IdentifyState::Idle));
+        .emit_event_for_test(changed(2, IdentifyState::Idle));
     changes.recv().await.expect("runtime changes stay open");
+    let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
+        fixture.import.get_candidate(&key).await
+    else {
+        panic!("the scanned candidate is readable");
+    };
+    let runtime = runtime.expect("the answer is still waiting on its write");
+    assert!(runtime.running.is_none());
+    assert!(matches!(runtime.saving, Some(IdentifyState::Found { .. })));
+
+    // Only the write of the run that answered ends that wait, and then
+    // nothing is happening for the key at all.
+    fixture
+        .import
+        .finish_identification_save(&key, crate::identify::IdentifyRunId::for_test(1));
     let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
         fixture.import.get_candidate(&key).await
     else {
@@ -393,7 +406,7 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
     };
     assert!(
         runtime.is_none(),
-        "a cancelled mid-run state leaves nothing behind, got {runtime:?}"
+        "the finished write leaves nothing behind, got {runtime:?}"
     );
 }
 
@@ -922,22 +935,22 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
 }
 
 /// Coven commits a write on its writer thread whether or not the future that
-/// asked for it survives, and the candidate runtime clears a run's held
-/// terminal state only on the stored announcement. So the announcement has to
-/// be the write's, not its caller's: the sweep aborts its settling tasks
-/// whenever it replans, and a task torn down the instant it has asked must
-/// still leave behind a row that was announced — or the row reads as a commit
-/// still pending, for good, and offers the candidate nothing but Skip.
+/// asked for it survives, and the candidate runtime holds a run's answer until
+/// its write says the answer has landed. So the write has to end that wait
+/// itself, not its caller: the sweep aborts its settling tasks whenever it
+/// replans, and a task torn down the instant it has asked must still leave the
+/// key stating what happened — or the row reads as a commit still pending, for
+/// good, and offers the candidate nothing but Skip.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_verdict_write_announces_itself_when_its_caller_is_torn_down() {
+async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     use std::future::Future;
 
     let fixture = Fixture::new("torn-down-writer").await;
     let dir = fixture.disc_id_candidate("Album");
     fixture.scan(1).await;
     let key = dir.to_string_lossy().into_owned();
-    let mut events = fixture.import.subscribe_events();
+    let run = IdentifyRunId::for_test(1);
     let row = NewImportCandidateVerdict {
         candidate: crate::import::CandidateAsRead {
             content_hash: fixture.content_hash(&dir),
@@ -950,12 +963,40 @@ async fn a_verdict_write_announces_itself_when_its_caller_is_torn_down() {
         metadata: blank_metadata_for_dir(&dir),
     };
 
+    // The run's terminal state is what puts the key on a pending save.
+    let not_in_library =
+        |result: &MetadataResult| crate::db::LibraryStatus::absent(&result.release_id);
+    fixture
+        .import
+        .emit_event_for_test(ImportEvent::IdentifyStateChanged {
+            candidate_key: key.clone(),
+            run,
+            state: row
+                .verdict
+                .clone()
+                .resume_state(None, &LookupChoices::default(), &not_in_library),
+            priority: CallPriority::Background,
+        });
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while fixture
+            .import
+            .candidate_runtime(&key)
+            .is_none_or(|runtime| runtime.saving.is_none())
+        {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("the terminal state is recorded as a pending save");
+
     // One poll asks for the write; dropping the future at the end of the block
     // is the caller being torn down.
     {
-        let mut save = std::pin::pin!(fixture
-            .import
-            .save_candidate_verdict_if_current(&key, &row));
+        let mut save = std::pin::pin!(fixture.import.save_candidate_verdict_if_current(
+            &key,
+            run,
+            &row
+        ));
         let first_poll =
             std::future::poll_fn(|cx| std::task::Poll::Ready(save.as_mut().poll(cx))).await;
         assert!(
@@ -965,20 +1006,16 @@ async fn a_verdict_write_announces_itself_when_its_caller_is_torn_down() {
     }
 
     tokio::time::timeout(Duration::from_secs(10), async {
-        loop {
-            match events.recv().await {
-                Ok(ImportEvent::Scan(ScanEvent::CandidateVerdictStored { candidate_key }))
-                    if candidate_key == key =>
-                {
-                    break;
-                }
-                Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => continue,
-                Err(broadcast::error::RecvError::Closed) => panic!("the import bus closed"),
-            }
+        while fixture
+            .import
+            .candidate_runtime(&key)
+            .is_some_and(|runtime| runtime.saving.is_some())
+        {
+            tokio::time::sleep(Duration::from_millis(10)).await;
         }
     })
     .await
-    .expect("the stored verdict is announced");
+    .expect("the write ends the save it ran for");
     assert!(
         fixture.import.stored_verdict(&key).await.unwrap().is_some(),
         "the verdict landed"

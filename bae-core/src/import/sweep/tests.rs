@@ -841,6 +841,7 @@ impl Fixture {
             .import
             .save_candidate_verdict_if_current(
                 &dir.to_string_lossy(),
+                IdentifyRunId::for_test(1),
                 &NewImportCandidateVerdict {
                     candidate: crate::import::CandidateAsRead {
                         content_hash: self.content_hash(dir),

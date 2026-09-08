@@ -19,8 +19,7 @@ pub(crate) fn automation_candidate_from_folder(
     let candidate = &folder.candidate;
     let live = runtime.get(candidate.key().as_ref());
     let identify = live
-        .and_then(|live| live.identify.clone())
-        .and_then(bae_core::import::CandidateIdentifyRuntime::into_state)
+        .and_then(|live| live.running.clone().or_else(|| live.saving.clone()))
         .unwrap_or_else(|| folder.resumed_identify_state.clone());
     AutomationCandidate::Valid {
         common: automation_candidate_common(

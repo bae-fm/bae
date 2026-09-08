@@ -83,8 +83,17 @@ struct SweepContext {
 }
 
 impl SweepContext {
+    /// Whether something is already answering this candidate: a driver alive,
+    /// or a terminal answer whose durable write has not landed yet. Two
+    /// separate facts, and the candidate is taken while either holds — a run
+    /// that has answered still owns its key until the row states its result,
+    /// or a pass planning inside that interval would identify it again.
+    fn identification_in_flight(&self, key: &str) -> bool {
+        self.identify.is_running(key) || self.import.is_saving_identification(key)
+    }
+
     fn owned_elsewhere(&self, key: &str) -> bool {
-        self.identify.is_running(key) && !self.ours.lock().unwrap().contains(key)
+        self.identification_in_flight(key) && !self.ours.lock().unwrap().contains(key)
     }
 
     /// Stop everything the sweep started for `key` and stop counting it as
@@ -270,6 +279,9 @@ struct ExplicitLookupInFlight {
 /// What a finished candidate reports back to the pass loop.
 struct Finished {
     representative_key: String,
+    /// The run whose answer this is. What the write it asked for leaves in the
+    /// candidate runtime is recorded against it.
+    run: IdentifyRunId,
     identity: CandidateIdentity,
     candidate_keys: Vec<String>,
     current_candidates: Vec<ReleaseCandidate>,
@@ -415,6 +427,10 @@ async fn run_pass_once(
             context
                 .identify
                 .start(run, key.clone(), CallPriority::Background, choices);
+            // The job is running now, so it is not waiting for a slot. The
+            // members it shares an identity with still are: they are waiting
+            // for the answer this run stores.
+            context.import.clear_automatic_identification(&key);
             context.extraction.start(
                 key.clone(),
                 ExtractionSource::Candidate {
@@ -450,6 +466,14 @@ async fn run_pass_once(
                         context.release_settled(&done.representative_key);
                         let deferred = pass.take_finishing_members(&done.identity);
                         let stored = matches!(&done.outcome, FinishCandidateOutcome::Stored);
+                        // Whichever way it went, this run's answer is not
+                        // waiting on a write any more: the row landed, or no
+                        // row will ever state it. The write clears its own on
+                        // the way through; this covers the outcomes that never
+                        // reached one.
+                        context
+                            .import
+                            .finish_identification_save(&done.representative_key, done.run);
                         match done.outcome {
                             FinishCandidateOutcome::Stored => {
                                 for key in &done.candidate_keys {
@@ -471,8 +495,11 @@ async fn run_pass_once(
                                 for candidate in
                                     done.current_candidates.into_iter().chain(deferred)
                                 {
+                                    let key = candidate.key();
+                                    context.import.clear_automatic_identification(&key);
                                     context.import.fail_identification(
-                                        &candidate.key(),
+                                        &key,
+                                        done.run,
                                         error.clone(),
                                     );
                                 }

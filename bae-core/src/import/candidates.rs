@@ -16,6 +16,7 @@ use super::folder_scanner::{
     InvalidCandidate, ScanItem,
 };
 use super::types::ImportStep;
+use crate::identify::IdentifyState;
 
 /// Where a stored candidate stands in the queue, read once from the three
 /// places that each hold one fact about it: the skip table, the library's
@@ -93,13 +94,23 @@ pub enum ImportCandidateSnapshot {
     },
 }
 
-/// What is in flight for one key. An entry exists only while at least one
-/// field is `Some`; both `None` is the absence of an entry, not a value.
+/// What is in flight for one key, one fact per field. An entry exists only
+/// while at least one of them is `Some`; all of them `None` is the absence of
+/// an entry, not a value. No field is inferred from another or from the order
+/// events arrived in — each has exactly one writer.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateRuntimeSnapshot {
-    /// Identification admitted to the queue or reported by its driver. `None`
-    /// when no identification work exists for this key.
-    pub identify: Option<CandidateIdentifyRuntime>,
+    /// Identification is planned for this key and has not started. `None` once
+    /// its run starts, and for a key nobody queued.
+    pub queued: Option<IdentifyQueueOwner>,
+    /// The latest state a run in flight published. Never terminal — a run's
+    /// terminal state is its answer, and answering ends it.
+    pub running: Option<IdentifyState>,
+    /// The terminal state whose durable write is under way. Always terminal.
+    pub saving: Option<IdentifyState>,
+    /// Why the last write of a terminal state did not land. Cleared by the
+    /// next run of this key.
+    pub save_failed: Option<String>,
     /// The running import: claimed, preparing, or partway through a phase.
     pub import: Option<ImportInFlight>,
     /// The typed search a person submitted for this candidate, as its sources
@@ -114,111 +125,13 @@ pub struct CandidateRuntimeSnapshot {
     pub search: Option<super::candidate_search::CandidateSearch>,
 }
 
-/// What currently exists for one candidate's identification.
-///
-/// Construction stays inside the import runtime so a reported
-/// [`IdentifyState::Idle`](crate::identify::IdentifyState::Idle) cannot be
-/// represented: idle means this value is absent.
-#[derive(Debug, Clone, PartialEq)]
-pub struct CandidateIdentifyRuntime(CandidateIdentifyRuntimeKind);
-
-#[derive(Debug, Clone, PartialEq)]
-enum CandidateIdentifyRuntimeKind {
-    Queued(IdentifyQueueOwner),
-    Reported(crate::identify::IdentifyState),
-    FinalizationFailed {
-        state: Option<crate::identify::IdentifyState>,
-        error: String,
-    },
-}
-
+/// Who admitted a candidate to identification. Both mark the same waiting, and
+/// each clears only its own: a pass replanning must not drop the marker a
+/// person's Lookup put there, or the other way round.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum IdentifyQueueOwner {
+pub enum IdentifyQueueOwner {
     AutomaticSweep,
     ExplicitLookup,
-}
-
-impl CandidateIdentifyRuntime {
-    pub(crate) fn automatic_queue() -> Self {
-        Self(CandidateIdentifyRuntimeKind::Queued(
-            IdentifyQueueOwner::AutomaticSweep,
-        ))
-    }
-
-    pub(crate) fn explicit_queue() -> Self {
-        Self(CandidateIdentifyRuntimeKind::Queued(
-            IdentifyQueueOwner::ExplicitLookup,
-        ))
-    }
-
-    pub(crate) fn finalization_failed(error: String) -> Self {
-        Self(CandidateIdentifyRuntimeKind::FinalizationFailed { state: None, error })
-    }
-
-    /// Wrap a driver's non-idle state. Idle is represented by this value being
-    /// absent from [`CandidateRuntimeSnapshot`].
-    pub fn from_state(state: crate::identify::IdentifyState) -> Option<Self> {
-        (!matches!(state, crate::identify::IdentifyState::Idle))
-            .then_some(Self(CandidateIdentifyRuntimeKind::Reported(state)))
-    }
-
-    pub(crate) fn is_automatic_queue(&self) -> bool {
-        matches!(
-            self.0,
-            CandidateIdentifyRuntimeKind::Queued(IdentifyQueueOwner::AutomaticSweep)
-        )
-    }
-
-    pub(crate) fn is_terminal(&self) -> bool {
-        match &self.0 {
-            CandidateIdentifyRuntimeKind::Queued(_) => false,
-            CandidateIdentifyRuntimeKind::Reported(state) => state.is_terminal(),
-            CandidateIdentifyRuntimeKind::FinalizationFailed { .. } => true,
-        }
-    }
-
-    pub(crate) fn is_finalization_failed(&self) -> bool {
-        matches!(
-            self.0,
-            CandidateIdentifyRuntimeKind::FinalizationFailed { .. }
-        )
-    }
-
-    pub(crate) fn finalization_failure(&self) -> Option<&str> {
-        match &self.0 {
-            CandidateIdentifyRuntimeKind::FinalizationFailed { error, .. } => Some(error),
-            CandidateIdentifyRuntimeKind::Queued(_) | CandidateIdentifyRuntimeKind::Reported(_) => {
-                None
-            }
-        }
-    }
-
-    pub(crate) fn into_finalization_failed(self, error: String) -> Self {
-        let state = match self.0 {
-            CandidateIdentifyRuntimeKind::Queued(_) => None,
-            CandidateIdentifyRuntimeKind::Reported(state) => Some(state),
-            CandidateIdentifyRuntimeKind::FinalizationFailed { state, .. } => state,
-        };
-        Self(CandidateIdentifyRuntimeKind::FinalizationFailed { state, error })
-    }
-
-    /// The state a driver reported, or `None` while the work is queued.
-    pub fn state(&self) -> Option<&crate::identify::IdentifyState> {
-        match &self.0 {
-            CandidateIdentifyRuntimeKind::Queued(_) => None,
-            CandidateIdentifyRuntimeKind::Reported(state) => Some(state),
-            CandidateIdentifyRuntimeKind::FinalizationFailed { state, .. } => state.as_ref(),
-        }
-    }
-
-    /// The state a driver reported, or `None` while the work is queued.
-    pub fn into_state(self) -> Option<crate::identify::IdentifyState> {
-        match self.0 {
-            CandidateIdentifyRuntimeKind::Queued(_) => None,
-            CandidateIdentifyRuntimeKind::Reported(state) => Some(state),
-            CandidateIdentifyRuntimeKind::FinalizationFailed { state, .. } => state,
-        }
-    }
 }
 
 /// How far a running import has got. It ends with the import: a finished one

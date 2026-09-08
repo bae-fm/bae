@@ -224,13 +224,17 @@ impl Pass {
         }
     }
 
-    /// Report a representative's state to the members waiting on it, and settle
-    /// its job once that state is terminal: the job leaves the slot it holds,
-    /// every member arriving while it settles is held for its answer, and the
-    /// task that commits that answer starts.
+    /// Settle a representative's job once its state is terminal: the job leaves
+    /// the slot it holds, every member arriving while it settles is held for
+    /// its answer, and the task that commits that answer starts.
     ///
     /// A state from another run of the same candidate — an earlier one still
     /// broadcasting — is not this pass's.
+    ///
+    /// Members are not told the representative's state. Each candidate key is
+    /// its own run, and what the members are waiting for is the answer this
+    /// one stores, which covers their identity — so they stay queued until it
+    /// does.
     ///
     /// `Idle` is this run ending with no answer, which happens when someone
     /// started a newer run for the same candidate: a person changing what its
@@ -247,9 +251,13 @@ impl Pass {
         run: IdentifyRunId,
         state: IdentifyState,
     ) {
-        let Some(ours) = self.in_flight.get(key).filter(|entry| entry.run == run) else {
+        if !self
+            .in_flight
+            .get(key)
+            .is_some_and(|entry| entry.run == run)
+        {
             return;
-        };
+        }
         if matches!(state, IdentifyState::Idle) {
             let entry = self
                 .in_flight
@@ -260,11 +268,6 @@ impl Pass {
                 context.import.clear_automatic_identification(&member_key);
             }
             return;
-        }
-        for member_key in ours.job.candidate_keys() {
-            if member_key != key {
-                context.import.report_identification(&member_key, &state);
-            }
         }
         // Terminal means the machine stopped moving, including on an explicit
         // failure verdict. Either way the candidate's slot is free now.
@@ -282,6 +285,7 @@ impl Pass {
         finishing.spawn(async move {
             let candidate_keys = entry.job.candidate_keys().collect();
             let outcome = finish_candidate(&context, &entry, state, &child).await;
+            let run = entry.run;
             let current_candidates = if matches!(&outcome, FinishCandidateOutcome::Stored) {
                 Vec::new()
             } else {
@@ -296,6 +300,7 @@ impl Pass {
             };
             Finished {
                 representative_key,
+                run,
                 identity,
                 candidate_keys,
                 current_candidates,

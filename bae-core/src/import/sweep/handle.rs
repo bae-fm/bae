@@ -41,6 +41,10 @@ impl QueueSweepHandle {
 
     /// Identify a candidate after a person explicitly enters Lookup,
     /// regardless of the automatic-lookup setting.
+    ///
+    /// The key is marked as queued for the whole time this is deciding, so a
+    /// person who clicked sees their candidate waiting rather than nothing —
+    /// and the mark goes whether or not a run comes of it.
     pub fn identify_for_explicit_lookup(&self, candidate_key: String) {
         if self.token.is_cancelled() {
             return;
@@ -48,32 +52,42 @@ impl QueueSweepHandle {
         let this = self.clone();
         self.tasks.spawn_on(
             async move {
-                let Some(candidate) = actionable_candidate(&this.context, &candidate_key).await
-                else {
-                    warn!(
-                        "cannot start Lookup for {candidate_key}: \
-                         it is not a folder candidate"
-                    );
-                    return;
-                };
-                let has_stored_verdict =
-                    match has_stored_verdict(&this.context, &candidate_key).await {
-                        Ok(stored) => stored,
-                        Err(error) => {
-                            warn!("cannot read the stored verdict for {candidate_key}: {error}");
-                            return;
-                        }
-                    };
-                if has_stored_verdict || this.context.identify.is_running(&candidate_key) {
-                    return;
-                }
-                let Some(start) = run_start(&this.context, &candidate).await else {
-                    return;
-                };
-                this.start_explicit_lookup_run(candidate_key, candidate, start);
+                this.context
+                    .import
+                    .queue_explicit_identification(&candidate_key);
+                this.enter_explicit_lookup(&candidate_key).await;
+                this.context
+                    .import
+                    .clear_explicit_identification(&candidate_key);
             },
             &self.runtime_handle,
         );
+    }
+
+    /// Start a run for a candidate a person just opened, unless its answer is
+    /// already stored or something is already answering it.
+    async fn enter_explicit_lookup(&self, candidate_key: &str) {
+        let Some(candidate) = actionable_candidate(&self.context, candidate_key).await else {
+            warn!(
+                "cannot start Lookup for {candidate_key}: \
+                 it is not a folder candidate"
+            );
+            return;
+        };
+        let has_stored_verdict = match has_stored_verdict(&self.context, candidate_key).await {
+            Ok(stored) => stored,
+            Err(error) => {
+                warn!("cannot read the stored verdict for {candidate_key}: {error}");
+                return;
+            }
+        };
+        if has_stored_verdict || self.context.identification_in_flight(candidate_key) {
+            return;
+        }
+        let Some(start) = run_start(&self.context, &candidate).await else {
+            return;
+        };
+        self.start_explicit_lookup_run(candidate_key.to_string(), candidate, start);
     }
 
     /// Re-run an explicit Lookup without consulting its stored verdict.
@@ -81,21 +95,30 @@ impl QueueSweepHandle {
         let this = self.clone();
         self.tasks.spawn_on(
             async move {
-                let Some(candidate) = actionable_candidate(&this.context, &candidate_key).await
-                else {
-                    warn!(
-                        "cannot re-run Lookup for {candidate_key}: \
-                         it is not a folder candidate"
-                    );
-                    return;
-                };
-                let Some(start) = run_start(&this.context, &candidate).await else {
-                    return;
-                };
-                this.start_explicit_lookup_run(candidate_key, candidate, start);
+                this.context
+                    .import
+                    .queue_explicit_identification(&candidate_key);
+                this.rerun_explicit_lookup(&candidate_key).await;
+                this.context
+                    .import
+                    .clear_explicit_identification(&candidate_key);
             },
             &self.runtime_handle,
         );
+    }
+
+    async fn rerun_explicit_lookup(&self, candidate_key: &str) {
+        let Some(candidate) = actionable_candidate(&self.context, candidate_key).await else {
+            warn!(
+                "cannot re-run Lookup for {candidate_key}: \
+                 it is not a folder candidate"
+            );
+            return;
+        };
+        let Some(start) = run_start(&self.context, &candidate).await else {
+            return;
+        };
+        self.start_explicit_lookup_run(candidate_key.to_string(), candidate, start);
     }
 
     fn start_explicit_lookup_run(
@@ -104,9 +127,6 @@ impl QueueSweepHandle {
         candidate: ReleaseCandidate,
         start: CandidateRunStart,
     ) {
-        self.context
-            .import
-            .queue_explicit_identification(&candidate_key);
         let run = self.context.identify.new_run();
         self.record_explicit_lookup(
             run,

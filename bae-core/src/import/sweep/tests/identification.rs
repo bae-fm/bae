@@ -91,9 +91,13 @@ async fn a_planned_candidate_is_queued_before_its_driver_reports() {
         .unwrap();
 }
 
+/// Candidates hashing the same share one job, and one of them runs it. The
+/// rest are not told that run's states — each key is its own run, and what
+/// they are waiting for is the answer this one stores, which covers them. So
+/// they stay queued until it does.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn every_candidate_sharing_an_identify_job_reports_its_live_status() {
+async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
     let fixture = Fixture::new("shared-job-status").await;
     let first = fixture.disc_id_candidate("First");
     let second = fixture.disc_id_candidate("Second");
@@ -112,20 +116,32 @@ async fn every_candidate_sharing_an_identify_job_reports_its_live_status() {
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
             let runtimes = fixture.import.candidate_runtimes();
-            let all_running = keys.iter().all(|key| {
-                runtimes.get(key).is_some_and(|runtime| {
-                    crate::import::TriageRuntimeFacts::of(runtime).identification
-                        == Some(crate::import::IdentificationStatus::Running)
+            let statuses: Vec<Option<crate::import::IdentificationStatus>> = keys
+                .iter()
+                .map(|key| {
+                    runtimes
+                        .get(key)
+                        .and_then(|runtime| {
+                            crate::import::TriageRuntimeFacts::of(runtime).identification
+                        })
                 })
-            });
-            if all_running {
+                .collect();
+            let running = statuses
+                .iter()
+                .filter(|status| **status == Some(crate::import::IdentificationStatus::Running))
+                .count();
+            let queued = statuses
+                .iter()
+                .filter(|status| **status == Some(crate::import::IdentificationStatus::Queued))
+                .count();
+            if running == 1 && queued == 1 {
                 return;
             }
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
     })
     .await
-    .expect("every member reports the shared job's running state");
+    .expect("one member runs the shared job and the other waits on its answer");
 
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(20), pass)
@@ -230,29 +246,20 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
             release_json("mb-retry-2", "rg-retry-2", &[probed, 0]),
         ),
     ]);
-    let mut after_rerun = fixture.import.subscribe_events();
     fixture.sweep.rerun_for_explicit_lookup(key.clone());
     tokio::time::timeout(Duration::from_secs(15), async {
         loop {
             if matches!(
-                after_rerun.recv().await,
-                Ok(ImportEvent::Scan(ScanEvent::CandidateVerdictStored { candidate_key }))
-                    if candidate_key == key
+                fixture.identified_for(&dir).await.map(|row| row.verdict),
+                Some(TerminalVerdict::Found { .. })
             ) {
                 break;
             }
+            tokio::time::sleep(Duration::from_millis(20)).await;
         }
     })
     .await
-    .expect("the explicit re-run stores its verdict");
-
-    assert!(
-        matches!(
-            fixture.identified_for(&dir).await.map(|row| row.verdict),
-            Some(TerminalVerdict::Found { .. })
-        ),
-        "the explicit re-run stores its own answer, not the previous run's"
-    );
+    .expect("the explicit re-run stores its own answer, not the previous run's");
     let runs: Vec<IdentifyRunId> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {

@@ -19,11 +19,7 @@ pub(super) async fn new_candidates(
         .map(ReleaseCandidate::from)
         .filter(|candidate| {
             runtime.get(candidate.key().as_ref()).is_none_or(|runtime| {
-                runtime.import.is_none()
-                    && runtime
-                        .identify
-                        .as_ref()
-                        .is_none_or(|identify| !identify.is_finalization_failed())
+                runtime.import.is_none() && runtime.save_failed.is_none()
             })
         })
         .collect())

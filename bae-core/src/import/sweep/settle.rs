@@ -146,6 +146,7 @@ pub(super) async fn finish_candidate(
         context,
         token,
         &candidate.key(),
+        entry.run,
         crate::import::CandidateAsRead {
             content_hash: candidate.files().content_hash(),
             file_edit_revision: candidate.file_edit_revision(),
@@ -190,6 +191,7 @@ pub(super) async fn save(
     context: &SweepContext,
     token: &CancellationToken,
     candidate_key: &str,
+    run: IdentifyRunId,
     candidate: crate::import::CandidateAsRead,
     folder_path: &str,
     verdict: &TerminalVerdict,
@@ -197,6 +199,7 @@ pub(super) async fn save(
     metadata: crate::import::CandidateMetadataDraft,
 ) -> FinishCandidateOutcome {
     if token.is_cancelled() {
+        context.import.finish_identification_save(candidate_key, run);
         return FinishCandidateOutcome::Superseded;
     }
     let row = NewImportCandidateVerdict {
@@ -208,7 +211,7 @@ pub(super) async fn save(
     };
     let wrote = match context
         .import
-        .save_candidate_verdict_if_current(candidate_key, &row)
+        .save_candidate_verdict_if_current(candidate_key, run, &row)
         .await
     {
         Ok(wrote) => wrote,
@@ -437,6 +440,7 @@ pub(super) async fn record_explicit_lookup_verdict(
                 let Some(signals) = entry.signals.as_ref() else {
                     context.import.fail_identification(
                         &candidate_key,
+                        run,
                         format!("{candidate_key} reached a verdict with no settled signals"),
                     );
                     return;
@@ -453,11 +457,15 @@ pub(super) async fn record_explicit_lookup_verdict(
                 {
                     Ok(settled) => settled,
                     Err(FinalizationError::Superseded) => {
-                        context.import.discard_identification(&candidate_key);
+                        context
+                            .import
+                            .finish_identification_save(&candidate_key, run);
                         return;
                     }
                     Err(FinalizationError::Failed(error)) => {
-                        context.import.fail_identification(&candidate_key, error);
+                        context
+                            .import
+                            .fail_identification(&candidate_key, run, error);
                         return;
                     }
                 };
@@ -475,13 +483,14 @@ pub(super) async fn record_explicit_lookup_verdict(
                 {
                     context
                         .import
-                        .fail_identification(&candidate_key, error.to_string());
+                        .fail_identification(&candidate_key, run, error.to_string());
                     return;
                 }
                 match save(
                     context,
                     token,
                     &candidate_key,
+                    run,
                     crate::import::CandidateAsRead {
                         content_hash: entry.candidate.files().content_hash(),
                         file_edit_revision: entry.candidate.file_edit_revision(),
@@ -500,11 +509,12 @@ pub(super) async fn record_explicit_lookup_verdict(
                             "lookup: {candidate_key} changed while its answer was being \
                              stored; the answer is discarded"
                         );
-                        context.import.discard_identification(&candidate_key);
                         return;
                     }
                     FinishCandidateOutcome::Failed { error } => {
-                        context.import.fail_identification(&candidate_key, error);
+                        context
+                            .import
+                            .fail_identification(&candidate_key, run, error);
                         return;
                     }
                 }
@@ -517,19 +527,24 @@ pub(super) async fn record_explicit_lookup_verdict(
             Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key: key }))
                 if key == candidate_key =>
             {
-                context.import.discard_identification(&candidate_key);
+                context
+                    .import
+                    .finish_identification_save(&candidate_key, run);
                 return;
             }
             Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }))
                 if candidate.path.to_string_lossy() == candidate_key.as_str() =>
             {
-                context.import.discard_identification(&candidate_key);
+                context
+                    .import
+                    .finish_identification_save(&candidate_key, run);
                 return;
             }
             Ok(_) => {}
             Err(broadcast::error::RecvError::Lagged(n)) => {
                 context.import.fail_identification(
                     &candidate_key,
+                    run,
                     format!(
                         "the identification event stream dropped {n} events before the result could be stored"
                     ),

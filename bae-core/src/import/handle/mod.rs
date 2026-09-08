@@ -185,9 +185,6 @@ pub enum ScanEvent {
     CandidateBindingChanged {
         candidate: FolderCandidate,
     },
-    CandidateVerdictStored {
-        candidate_key: String,
-    },
     /// The candidate's editable metadata draft or its provenance changed. The
     /// triage projection re-reads so the row carries the persisted state.
     CandidateMetadataChanged {
@@ -382,6 +379,10 @@ impl ImportServiceHandle {
         self.runtime.queue_explicit_identification(candidate_key);
     }
 
+    pub(crate) fn clear_explicit_identification(&self, candidate_key: &str) {
+        self.runtime.clear_explicit_identification(candidate_key);
+    }
+
     pub(crate) fn requeue_automatic_identification(&self, candidate_key: &str) {
         self.runtime.requeue_automatic_identification(candidate_key);
     }
@@ -390,22 +391,31 @@ impl ImportServiceHandle {
         self.runtime.clear_automatic_identification(candidate_key);
     }
 
-    pub(crate) fn fail_identification(&self, candidate_key: &str, error: String) {
-        self.runtime.fail_identification(candidate_key, error);
-    }
-
-    /// An identification's answer was not stored because the candidate moved
-    /// on while it ran, so nothing is pending for the key any more.
-    pub(crate) fn discard_identification(&self, candidate_key: &str) {
-        self.runtime.discard_identification(candidate_key);
-    }
-
-    pub(crate) fn report_identification(
+    /// A terminal result `run` reached could not be committed.
+    pub(crate) fn fail_identification(
         &self,
         candidate_key: &str,
-        state: &crate::identify::IdentifyState,
+        run: crate::identify::IdentifyRunId,
+        error: String,
     ) {
-        self.runtime.report_identification(candidate_key, state);
+        self.runtime.fail_identification(candidate_key, run, error);
+    }
+
+    /// `run`'s answer is not being written any more: its row landed, was
+    /// refused as stale, or was abandoned because the candidate moved on.
+    pub(crate) fn finish_identification_save(
+        &self,
+        candidate_key: &str,
+        run: crate::identify::IdentifyRunId,
+    ) {
+        self.runtime
+            .finish_identification_save(candidate_key, run);
+    }
+
+    /// Whether a terminal answer for this key is still waiting on its durable
+    /// write.
+    pub(crate) fn is_saving_identification(&self, candidate_key: &str) -> bool {
+        self.runtime.is_saving_identification(candidate_key)
     }
 
     /// The signals extraction has found for one key so far. `None` before the
@@ -633,12 +643,12 @@ impl ImportServiceHandle {
     /// settling task aborted by a replan — ends the wait for the outcome and
     /// nothing else. Coven commits a write on its writer thread whether or not
     /// the future that asked for it survives, so a write the caller could
-    /// abort is one that can land without the announcement, bookkeeping, or
-    /// lock release that follows it ever running: a stored verdict nobody
-    /// announced leaves the candidate runtime holding the run's terminal state
-    /// for good, and a pick a person made would be dropped partway through its
-    /// release fetch. The `From<JoinError>` on the error type is the one way
-    /// this can still fail: the task panicked, or the runtime is gone.
+    /// abort is one that can land without the bookkeeping or lock release that
+    /// follows it ever running: a stored verdict nobody accounted for leaves
+    /// the candidate runtime waiting on that write for good, and a pick a
+    /// person made would be dropped partway through its release fetch. The
+    /// `From<JoinError>` on the error type is the one way this can still fail:
+    /// the task panicked, or the runtime is gone.
     pub(crate) async fn committed<V, E>(
         &self,
         write: impl std::future::Future<Output = Result<V, E>> + Send + 'static,
@@ -650,13 +660,17 @@ impl ImportServiceHandle {
         self.runtime_handle.spawn(write).await?
     }
 
-    /// Store one candidate's verdict, unless the candidate has moved on from
-    /// the shape the verdict describes — its files were re-decided, it was
-    /// skipped, it is already in the library, or an import has claimed it —
-    /// and announce the stored row. Runs to completion once asked for, see
-    /// [`Self::committed`]: the candidate runtime clears the run's held
-    /// terminal state on the announcement, so the write and the announcement
-    /// are one unit.
+    /// Store the verdict `run` reached for one candidate, unless the candidate
+    /// has moved on from the shape the verdict describes — its files were
+    /// re-decided, it was skipped, it is already in the library, or an import
+    /// has claimed it.
+    ///
+    /// **The write owns what it leaves in the runtime.** Runs to completion
+    /// once asked for, see [`Self::committed`], and inside that task ends
+    /// `run`'s pending save: cleared when the row lands or is refused, and
+    /// replaced by the failure when the write itself fails. So a caller torn
+    /// down the instant it has asked still leaves the key stating what
+    /// happened rather than a commit that never resolves.
     ///
     /// The default metadata source plays no part: it decides which candidates
     /// the sweep picks up on its own, not whether an answer a run reached —
@@ -672,14 +686,24 @@ impl ImportServiceHandle {
     pub(crate) async fn save_candidate_verdict_if_current(
         &self,
         candidate_key: &str,
+        run: crate::identify::IdentifyRunId,
         row: &crate::db::NewImportCandidateVerdict,
     ) -> Result<bool, crate::library::LibraryError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         let row = row.clone();
         self.committed(async move {
-            this.save_candidate_verdict_if_current_write(&candidate_key, &row)
-                .await
+            let wrote = this
+                .save_candidate_verdict_if_current_write(&candidate_key, &row)
+                .await;
+            match &wrote {
+                Ok(_) => this.runtime.finish_identification_save(&candidate_key, run),
+                Err(error) => {
+                    this.runtime
+                        .fail_identification(&candidate_key, run, error.to_string())
+                }
+            }
+            wrote
         })
         .await
     }
@@ -698,16 +722,7 @@ impl ImportServiceHandle {
         {
             return Ok(false);
         }
-        let wrote = self.preparations.store_verdict(row).await?;
-        if wrote {
-            send_event(
-                &self.event_tx,
-                ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
-                    candidate_key: candidate_key.to_string(),
-                }),
-            );
-        }
-        Ok(wrote)
+        self.preparations.store_verdict(row).await
     }
 
     /// The candidate at `key` as the queue sweep is responsible for it: an

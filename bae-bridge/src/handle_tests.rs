@@ -888,7 +888,10 @@ mod candidate_runtime {
         let key = "/watch/Album Title".to_string();
         let running = crate::types::BridgeCandidateRuntimeSnapshot::from_core(
             bae_core::import::CandidateRuntimeSnapshot {
-                identify: None,
+                queued: None,
+                running: None,
+                saving: None,
+                save_failed: None,
                 import: Some(bae_core::import::ImportInFlight {
                     progress_percent: None,
                     step: None,

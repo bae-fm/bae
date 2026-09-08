@@ -105,7 +105,10 @@ async fn only_a_change_that_moves_a_placement_reruns_the_query() {
 
     let key = "/music/Release".to_string();
     let claimed = CandidateRuntimeSnapshot {
-        identify: None,
+        queued: None,
+        running: None,
+        saving: None,
+        save_failed: None,
         import: Some(ImportInFlight {
             progress_percent: None,
             step: None,
@@ -132,7 +135,10 @@ async fn only_a_change_that_moves_a_placement_reruns_the_query() {
             .send(CandidateRuntimeChange::Updated {
                 key: key.clone(),
                 runtime: CandidateRuntimeSnapshot {
-                    identify: None,
+                    queued: None,
+                    running: None,
+                    saving: None,
+                    save_failed: None,
                     import: Some(ImportInFlight {
                         progress_percent: Some(percent),
                         step: Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),

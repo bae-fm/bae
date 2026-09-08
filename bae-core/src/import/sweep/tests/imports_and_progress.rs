@@ -637,6 +637,7 @@ async fn a_cancelled_candidate_writes_no_row() {
             &fixture.context(),
             &cancelled,
             "/x",
+            IdentifyRunId::for_test(1),
             crate::import::CandidateAsRead {
                 content_hash: "hash-x".to_string(),
                 file_edit_revision: 0,

@@ -199,7 +199,11 @@ async fn explicit_lookup_stores_its_verdict_whatever_the_default_source() {
             .import
             .candidate_runtimes()
             .get(&key)
-            .is_some_and(|runtime| runtime.identify.is_some())
+            .is_some_and(|runtime| {
+                crate::import::triage::TriageRuntimeFacts::of(runtime)
+                    .identification
+                    .is_some()
+            })
         {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }

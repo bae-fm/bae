@@ -1,17 +1,20 @@
-//! What is happening right now for each candidate: the live identify driver's
-//! state, and a running import's progress.
+//! What is happening right now for each candidate, one fact per field: the
+//! queue it is waiting in, the run in flight, the answer being written, the
+//! write that failed, the import running, the search a person typed.
 //!
-//! One entry per key that has either, and no entry at all otherwise — a
-//! finished import leaves, and so does a settled run once its verdict is
-//! stored. Everything an entry used to outlive itself carrying has a table
-//! now: the verdict the run settled on, the signals a settled run stored, the
-//! release an import wrote, the error one failed with. Whoever wants those
-//! reads the rows.
+//! **Each field has one writer and is never inferred from another.** The
+//! queue sweep owns `queued` — both its passes and the Lookup entry point it
+//! exposes; the identify driver's broadcasts own `running`; the verdict write
+//! owns `saving` and `save_failed`; the import worker owns `import`; and a
+//! candidate's search owns `search`. Nothing here reads one field to decide
+//! another, and nothing depends on the order two producers happened to reach
+//! it in.
 //!
-//! A terminal identify state stays here across the interval between the reducer
-//! producing it and the verdict transaction committing it. The stored event
-//! then removes it. A failed commit becomes an explicit runtime failure rather
-//! than a terminal result that still looks in flight.
+//! One entry per key that has any of them, and no entry at all otherwise.
+//! Everything an entry used to outlive itself carrying has a table now: the
+//! verdict the run settled on, the signals a settled run stored, the release
+//! an import wrote, the error one failed with. Whoever wants those reads the
+//! rows.
 //!
 //! Changes are published per key — one [`CandidateRuntimeChange`] for the one
 //! candidate an event concerned — so a consumer holding the list never
@@ -33,12 +36,13 @@
 //! have to remember to clear.
 
 use super::candidate_search::CandidateSearch;
-use super::candidates::{CandidateIdentifyRuntime, CandidateRuntimeSnapshot, ImportInFlight};
+use super::candidates::{CandidateRuntimeSnapshot, IdentifyQueueOwner, ImportInFlight};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
 use super::types::{ImportProgress, ImportStep, MetadataSource, PrepareStep};
 use crate::db::LibraryStatus;
+use crate::identify::{IdentifyRunId, IdentifyState};
 use crate::signals::{LookupFailure, Signals};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -95,12 +99,39 @@ struct RunningSearch {
     search: CandidateSearch,
 }
 
+/// A run and the state it is at. The run id tells this run's states from a
+/// superseded run's, and is bookkeeping rather than something a surface
+/// draws, so [`CandidateRuntimeSnapshot`] carries only the state.
+#[derive(Clone, PartialEq)]
+struct RunState {
+    run: IdentifyRunId,
+    state: IdentifyState,
+}
+
+/// The run whose durable write did not land, and what stopped it.
+#[derive(Clone, PartialEq)]
+struct FailedSave {
+    run: IdentifyRunId,
+    error: String,
+}
+
 /// One key's runtime as this map holds it. [`CandidateRuntimeSnapshot`] is
-/// derived from it rather than kept beside it: the run a search is on is
-/// bookkeeping for the landings, and no surface draws it.
+/// derived from it rather than kept beside it: the run numbers are
+/// bookkeeping for the producers that write these fields, and no surface
+/// draws them.
 #[derive(Clone, Default, PartialEq)]
 struct CandidateRuntimeState {
-    identify: Option<CandidateIdentifyRuntime>,
+    /// Written by the sweep when it plans a run, cleared when that run starts
+    /// or the sweep gives the candidate up.
+    queued: Option<IdentifyQueueOwner>,
+    /// Written from the driver's broadcasts. Never terminal and never `Idle`:
+    /// both of those end the run rather than being a state it sits at.
+    running: Option<RunState>,
+    /// Written when a run broadcasts its terminal state, cleared when that
+    /// run's write lands, is refused, or is abandoned. Always terminal.
+    saving: Option<RunState>,
+    /// Written when a write fails, cleared by the next run of this key.
+    save_failed: Option<FailedSave>,
     import: Option<ImportInFlight>,
     search: Option<RunningSearch>,
 }
@@ -111,12 +142,20 @@ impl CandidateRuntimeState {
     /// that, and two spellings of it would need reconciling everywhere the
     /// map is read.
     fn is_idle(&self) -> bool {
-        self.identify.is_none() && self.import.is_none() && self.search.is_none()
+        self.queued.is_none()
+            && self.running.is_none()
+            && self.saving.is_none()
+            && self.save_failed.is_none()
+            && self.import.is_none()
+            && self.search.is_none()
     }
 
     fn snapshot(&self) -> CandidateRuntimeSnapshot {
         CandidateRuntimeSnapshot {
-            identify: self.identify.clone(),
+            queued: self.queued,
+            running: self.running.as_ref().map(|run| run.state.clone()),
+            saving: self.saving.as_ref().map(|run| run.state.clone()),
+            save_failed: self.save_failed.as_ref().map(|failed| failed.error.clone()),
             import: self.import.clone(),
             search: self.search.as_ref().map(|running| running.search.clone()),
         }
@@ -368,7 +407,7 @@ impl CandidateRuntime {
     }
 
     /// Replace the automatic sweep's queued keys in one atomic change.
-    /// Explicit Lookup queues and driver-reported states belong to their own
+    /// Explicit Lookup queues and every other field belong to their own
     /// producers and are preserved.
     pub(super) fn replace_automatic_identification_queue(
         &self,
@@ -379,19 +418,15 @@ impl CandidateRuntime {
             let mut inner = self.inner.lock().unwrap();
             let previous = snapshots(&inner.runtime);
             for runtime in inner.runtime.values_mut() {
-                if runtime
-                    .identify
-                    .as_ref()
-                    .is_some_and(CandidateIdentifyRuntime::is_automatic_queue)
-                {
-                    runtime.identify = None;
+                if runtime.queued == Some(IdentifyQueueOwner::AutomaticSweep) {
+                    runtime.queued = None;
                 }
             }
             inner.runtime.retain(|_, runtime| !runtime.is_idle());
             for key in queued_keys {
                 let runtime = inner.runtime.entry(key).or_default();
-                if runtime.identify.is_none() {
-                    runtime.identify = Some(CandidateIdentifyRuntime::automatic_queue());
+                if runtime.queued.is_none() {
+                    runtime.queued = Some(IdentifyQueueOwner::AutomaticSweep);
                 }
             }
             let next = snapshots(&inner.runtime);
@@ -402,73 +437,124 @@ impl CandidateRuntime {
         }
     }
 
-    /// This key has been admitted to an explicit Lookup run but its driver has
-    /// not reported a state yet.
+    /// This key has been admitted to an explicit Lookup and its run has not
+    /// started yet.
     pub(super) fn queue_explicit_identification(&self, candidate_key: &str) {
         self.set(candidate_key, |_, runtime| {
-            runtime.identify = Some(CandidateIdentifyRuntime::explicit_queue());
+            runtime.queued = Some(IdentifyQueueOwner::ExplicitLookup);
         });
     }
 
-    /// A sweep-owned job is waiting for another attempt after a prior attempt
-    /// produced no storable answer.
+    /// The explicit Lookup that queued this key has started its run, or given
+    /// up before starting one. Either way it is not waiting any more.
+    pub(super) fn clear_explicit_identification(&self, candidate_key: &str) {
+        self.set(candidate_key, |_, runtime| {
+            if runtime.queued == Some(IdentifyQueueOwner::ExplicitLookup) {
+                runtime.queued = None;
+            }
+        });
+    }
+
+    /// A sweep-owned job is waiting for a slot.
     pub(super) fn requeue_automatic_identification(&self, candidate_key: &str) {
         self.set(candidate_key, |_, runtime| {
-            runtime.identify = Some(CandidateIdentifyRuntime::automatic_queue());
+            runtime.queued = Some(IdentifyQueueOwner::AutomaticSweep);
         });
     }
 
     /// Remove this key only when it is waiting in the automatic sweep.
     pub(super) fn clear_automatic_identification(&self, candidate_key: &str) {
         self.set(candidate_key, |_, runtime| {
-            if runtime
-                .identify
-                .as_ref()
-                .is_some_and(CandidateIdentifyRuntime::is_automatic_queue)
-            {
-                runtime.identify = None;
+            if runtime.queued == Some(IdentifyQueueOwner::AutomaticSweep) {
+                runtime.queued = None;
             }
         });
     }
 
-    /// The answer a run reached will never be stored — the candidate changed
-    /// shape, was skipped, imported, or removed while it ran — so the key has
-    /// nothing in flight. Left in place, the terminal state would read as a
-    /// commit still pending, for good.
-    pub(super) fn discard_identification(&self, candidate_key: &str) {
-        self.set(candidate_key, |_, runtime| runtime.identify = None);
-    }
-
-    /// Identification reached a terminal result but could not commit it.
-    /// Preserve the result for the pane and attach the failure that stopped the
-    /// row, replacing either the representative's terminal state or a grouped
-    /// candidate's queue marker.
-    pub(super) fn fail_identification(&self, candidate_key: &str, error: String) {
+    /// `run`'s save is over: its row landed, was refused as stale, or was
+    /// abandoned because the candidate moved on. Left in place, it would read
+    /// as a commit still pending, for good.
+    ///
+    /// By run id, so a write that lands after a newer run has already answered
+    /// takes only its own save with it.
+    pub(super) fn finish_identification_save(&self, candidate_key: &str, run: IdentifyRunId) {
         self.set(candidate_key, |_, runtime| {
-            runtime.identify = Some(match runtime.identify.take() {
-                Some(identify) => identify.into_finalization_failed(error),
-                None => CandidateIdentifyRuntime::finalization_failed(error),
-            });
+            if runtime.saving.as_ref().is_some_and(|saving| saving.run == run) {
+                runtime.saving = None;
+            }
         });
     }
 
-    /// Report the shared identify job's state for one of its candidate keys.
-    /// Duplicate-content candidates have one driver but every row represents
-    /// the same live job, so the sweep applies each driver state to every key.
-    pub(super) fn report_identification(
+    /// `run` reached a terminal result that could not be committed. The row
+    /// says why, and nothing is left waiting on a write that is not coming.
+    pub(super) fn fail_identification(
         &self,
         candidate_key: &str,
-        state: &crate::identify::IdentifyState,
+        run: IdentifyRunId,
+        error: String,
     ) {
-        let current = self.get(candidate_key).and_then(|runtime| runtime.identify);
-        let preserves_current = current.as_ref().is_some_and(|identify| {
-            (matches!(state, crate::identify::IdentifyState::Idle) && identify.is_terminal())
-                || (state.is_terminal() && identify.is_finalization_failed())
+        self.set(candidate_key, |_, runtime| {
+            if runtime.saving.as_ref().is_some_and(|saving| saving.run == run) {
+                runtime.saving = None;
+            }
+            runtime.save_failed = Some(FailedSave { run, error });
         });
-        if !preserves_current {
-            let identify = CandidateIdentifyRuntime::from_state(state.clone());
-            self.set(candidate_key, |_, runtime| runtime.identify = identify);
-        }
+    }
+
+    /// Whether a terminal answer for this key is waiting on its durable write
+    /// — the interval in which the run has ended but no row states its result
+    /// yet, and nothing else may take the candidate over.
+    pub(super) fn is_saving_identification(&self, candidate_key: &str) -> bool {
+        self.inner
+            .lock()
+            .unwrap()
+            .runtime
+            .get(candidate_key)
+            .is_some_and(|state| state.saving.is_some())
+    }
+
+    /// Record what `run` published for `candidate_key`.
+    ///
+    /// Three states, three facts. A non-terminal state is the run in flight.
+    /// A terminal state is its answer, which ends the run and starts the save
+    /// the write step owns. `Idle` is a cancellation, and ends only the run
+    /// that broadcast it — a superseded run announces its ending after the run
+    /// that replaced it has already reported.
+    ///
+    /// A state from a run this key was not already on is a fresh attempt, so
+    /// it clears whatever the previous attempt's write failed with.
+    fn record_identify_state(&self, candidate_key: &str, run: IdentifyRunId, state: &IdentifyState) {
+        self.set(candidate_key, |_, runtime| {
+            if matches!(state, IdentifyState::Idle) {
+                if runtime
+                    .running
+                    .as_ref()
+                    .is_some_and(|running| running.run == run)
+                {
+                    runtime.running = None;
+                }
+                return;
+            }
+            if !runtime
+                .running
+                .as_ref()
+                .is_some_and(|running| running.run == run)
+            {
+                runtime.save_failed = None;
+            }
+            if state.is_terminal() {
+                runtime.running = None;
+                runtime.saving = Some(RunState {
+                    run,
+                    state: state.clone(),
+                });
+            } else {
+                runtime.running = Some(RunState {
+                    run,
+                    state: state.clone(),
+                });
+            }
+        });
     }
 
     /// Record that an import owns this candidate.
@@ -539,41 +625,10 @@ impl CandidateRuntime {
             }
             ImportEvent::IdentifyStateChanged {
                 candidate_key,
-                run: _,
+                run,
                 state,
                 priority: _,
-            } => {
-                // A terminal state followed by `Idle` is a driver being torn
-                // down after settling — the sweep cancels its own drivers once
-                // they settle, and cancellation broadcasts `Idle` on its way
-                // out. The candidate's answer doesn't stop being its answer
-                // because the machinery that produced it exited, so the
-                // terminal state stays. A genuine mid-run cancel goes
-                // `Triangulating` → `Idle` and clears as before.
-                //
-                // The retained terminal state covers the interval before the
-                // verdict's durable write lands. `CandidateVerdictStored`
-                // below clears it after the transaction commits.
-                self.report_identification(candidate_key, state);
-            }
-            // The candidate's answer now lives in its stored verdict row, and
-            // the candidate list serves it from there as the resumed state.
-            // The recorded terminal state has done its job — carrying the
-            // answer across the interval between settling and the durable
-            // write — so it clears, leaving the runtime holding only what is
-            // still happening. Only a terminal state clears: a newer run's
-            // in-flight state must not be blanked by the previous run's write
-            // landing.
-            ImportEvent::Scan(ScanEvent::CandidateVerdictStored { candidate_key }) => {
-                let terminal = self.get(candidate_key).is_some_and(|runtime| {
-                    runtime
-                        .identify
-                        .is_some_and(|identify| identify.is_terminal())
-                });
-                if terminal {
-                    self.set(candidate_key, |_, runtime| runtime.identify = None);
-                }
-            }
+            } => self.record_identify_state(candidate_key, *run, state),
             ImportEvent::Scan(
                 ScanEvent::FolderCandidate { candidate, .. }
                 | ScanEvent::CandidateDiscovered { candidate, .. },

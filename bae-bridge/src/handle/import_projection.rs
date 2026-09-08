@@ -99,12 +99,18 @@ impl crate::types::BridgeInvalidCandidate {
 
 impl crate::types::BridgeCandidateRuntimeSnapshot {
     pub(crate) fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
+        // The queue marker and a failed write are the row's facts, drawn from
+        // the candidate's triage status; the pane draws the run itself, and
+        // reads the one in flight before the one being written.
         let bae_core::import::CandidateRuntimeSnapshot {
-            identify,
+            queued: _,
+            running,
+            saving,
+            save_failed: _,
             import,
             search,
         } = runtime;
-        let identify = identify.and_then(bae_core::import::CandidateIdentifyRuntime::into_state);
+        let identify = running.or(saving);
         crate::types::BridgeCandidateRuntimeSnapshot {
             signals_toolbar: crate::types::BridgeSignalsToolbar::from_core(
                 identify

@@ -52,7 +52,10 @@ mod triage_tests {
 
         let crossed =
             BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
-                identify: bae_core::import::CandidateIdentifyRuntime::from_state(live),
+                queued: None,
+                running: Some(live),
+                saving: None,
+                save_failed: None,
                 import: None,
                 search: None,
             });
@@ -61,7 +64,10 @@ mod triage_tests {
 
         let idle =
             BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
-                identify: None,
+                queued: None,
+                running: None,
+                saving: None,
+                save_failed: None,
                 import: Some(bae_core::import::ImportInFlight {
                     progress_percent: Some(40),
                     step: None,

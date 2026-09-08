@@ -143,7 +143,7 @@ desktop_only! {
     pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
     pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
     pub use candidates::{
-        CandidateIdentifyRuntime, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
+        CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus, IdentifyQueueOwner,
         ImportCandidateSnapshot, ImportInFlight, ImportedRelease, WatchedFolderScanStatus,
     };
     pub use cover_art::{CoverChoice, CoverImageSource};

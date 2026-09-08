@@ -23,7 +23,7 @@ use super::folder_scanner::{FolderReleaseDecisionKey, ResolvedFolderReleaseBound
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
 use super::types::{MetadataProvenance, MetadataSource};
 use super::{CandidateRuntimeSnapshot, ImportedRelease};
-use crate::identify::{IdentifyState, LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
+use crate::identify::{LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
 
 mod actions;
 mod model;
@@ -148,28 +148,23 @@ pub struct TriageRuntimeFacts {
 }
 
 impl TriageRuntimeFacts {
+    /// One order over the fields, most recent fact first: what the last write
+    /// failed with, then the answer being written, then the run in flight,
+    /// then the queue it is waiting in.
     pub fn of(runtime: &CandidateRuntimeSnapshot) -> Self {
+        let identification = if let Some(error) = &runtime.save_failed {
+            Some(IdentificationStatus::FinalizationFailed {
+                error: error.clone(),
+            })
+        } else if runtime.saving.is_some() {
+            Some(IdentificationStatus::Finalizing)
+        } else if runtime.running.is_some() {
+            Some(IdentificationStatus::Running)
+        } else {
+            runtime.queued.map(|_| IdentificationStatus::Queued)
+        };
         Self {
-            identification: runtime.identify.as_ref().map(|identify| {
-                if let Some(error) = identify.finalization_failure() {
-                    return IdentificationStatus::FinalizationFailed {
-                        error: error.to_string(),
-                    };
-                }
-                match identify.state() {
-                    None => IdentificationStatus::Queued,
-                    Some(IdentifyState::Triangulating { .. }) => IdentificationStatus::Running,
-                    Some(
-                        IdentifyState::Found { .. }
-                        | IdentifyState::NotFoundAnywhere { .. }
-                        | IdentifyState::ManualOnly { .. }
-                        | IdentifyState::Failed { .. },
-                    ) => IdentificationStatus::Finalizing,
-                    Some(IdentifyState::Idle) => {
-                        unreachable!("idle identification has no runtime value")
-                    }
-                }
-            }),
+            identification,
             importing: runtime.import.is_some(),
         }
     }
