@@ -15,13 +15,7 @@ pub fn test_config(
     library_dir: &coven::StoreDir,
 ) -> std::sync::Arc<bae_core::config::ConfigHandle> {
     bae_core::config::install_test_keyring();
-    // No test has any business reaching api.discogs.com. Point every client
-    // built from here at a port nothing listens on: the seeded session caches
-    // answer what the tests actually assert on, and anything else fails fast
-    // and locally instead of spending a fixture's fake key on a real auth
-    // check — which comes back 401 and marks the stored key rejected for every
-    // later call in the process.
-    bae_core::discogs::client::set_base_url_for_test(Some("http://127.0.0.1:9".to_string()));
+    crate::discogs::point_discogs_at_dead_port();
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
     let library_id = format!("test-{}", uuid::Uuid::new_v4());

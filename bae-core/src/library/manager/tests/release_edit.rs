@@ -89,6 +89,7 @@ async fn release_edit_seed_uses_persisted_track_ids() {
 }
 
 #[tokio::test]
+#[serial(musicbrainz)]
 async fn release_edit_reset_preserves_persisted_track_ids() {
     use crate::import::{MetadataRef, MetadataSource, ReleaseReseed};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
@@ -108,7 +109,7 @@ async fn release_edit_reset_preserves_persisted_track_ids() {
     let source_group_id = "reset-editor-group";
     let response = make_mb_release_for_re_identify(source_release_id, source_group_id, 2);
     let raw_json = serde_json::to_string(&response).unwrap();
-    seed_release_cache(source_release_id, (response, None, raw_json));
+    seed_release_cache(source_release_id, raw_json);
     seed_release_group_json_cache(
         source_group_id,
         r#"{"id":"reset-editor-group"}"#.to_string(),

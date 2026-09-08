@@ -24,6 +24,45 @@ pub(crate) const MAX_REDIRECTS: usize = 10;
 /// Ceiling for image/cover bodies read into memory.
 pub(crate) const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 
+/// One provider response worth keeping: the status it came back with and the
+/// whole body. The MusicBrainz and Discogs clients hold these keyed by request
+/// URL, so asking a provider the same question twice in one session costs one
+/// round trip.
+#[derive(Clone)]
+pub(crate) struct CachedResponse {
+    pub(crate) status: u16,
+    pub(crate) body: String,
+}
+
+impl CachedResponse {
+    pub(crate) fn is_success(&self) -> bool {
+        is_success(self.status)
+    }
+}
+
+fn is_success(status: u16) -> bool {
+    (200..300).contains(&status)
+}
+
+/// Whether a status is the provider's answer rather than its momentary state. A
+/// 2xx and a 404 are stable — asking again returns the same thing. A 429, a 5xx
+/// and every transport failure say only that this attempt did not land, so the
+/// next caller asks again. A 401 answers a question about the key in the
+/// request's own headers, which no URL names, so it is not this URL's answer
+/// either.
+pub(crate) fn is_cacheable(status: u16) -> bool {
+    is_success(status) || status == 404
+}
+
+/// A response's cache key: the request URL as reqwest renders it. A test puts a
+/// canned answer at this key and the request that looks for it computes the
+/// same one, so the two cannot drift apart over URL normalization.
+pub(crate) fn response_key(url: &str) -> String {
+    reqwest::Url::parse(url)
+        .expect("a provider request URL parses")
+        .to_string()
+}
+
 /// A `reqwest` client builder pre-set with bae's outbound HTTP policy. Callers
 /// add their endpoint's settings and call `.build()` themselves, so each keeps
 /// its own error handling.

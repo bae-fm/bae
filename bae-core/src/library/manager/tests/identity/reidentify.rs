@@ -1,9 +1,13 @@
 // ── re_identify_release ────────────────────────────────────────────
 //
-// Exact / Approximate fetch through MB / Discogs, so these tests seed the release
-// cache and the cover-art lookups first and `prepare_release` reads locally
-// instead of hitting the network. The File Tags path makes no external source claim, so it
-// needs no seeding.
+// Exact / Approximate fetch through MB / Discogs, so these tests seed the
+// release documents and the cover-art lookups first and `prepare_release` reads
+// them instead of hitting the network. The File Tags path makes no external
+// source claim, so it needs no seeding.
+//
+// A seeded answer is keyed by the URL its request goes to, base address
+// included, and that address is process-wide — so a test that seeds one is
+// `#[serial(musicbrainz)]` against the tests that point it somewhere else.
 
 /// The archived documents under one source release's own key.
 async fn archived_for(
@@ -230,6 +234,7 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
 }
 
 #[tokio::test]
+#[serial(musicbrainz)]
 async fn re_identify_release_exact_archives_the_picked_release() {
     use crate::import::{ReleaseReseed, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
@@ -261,7 +266,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
     // What the archive holds is what the client returned, so the projection that
     // replays it later reads the same release the cache handed over now.
     let new_raw_json = serde_json::to_string(&new_response).unwrap();
-    seed_release_cache(new_release_id, (new_response, None, new_raw_json.clone()));
+    seed_release_cache(new_release_id, new_raw_json.clone());
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"exact-re-identify-mb-group-new"}"#.to_string(),
@@ -333,6 +338,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
 }
 
 #[tokio::test]
+#[serial(musicbrainz)]
 async fn re_identify_release_rejects_track_count_mismatch() {
     // Re-identify re-points the identity without re-binding any audio, so a
     // source naming a different number of tracks leaves rows with nothing to
@@ -351,7 +357,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
     let new_group_id = "mismatch-re-identify-mb-group-new";
     let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 12);
     let new_raw_json = serde_json::to_string(&new_response).unwrap();
-    seed_release_cache(new_release_id, (new_response, None, new_raw_json));
+    seed_release_cache(new_release_id, new_raw_json);
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"mismatch-re-identify-mb-group-new"}"#.to_string(),
@@ -389,6 +395,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
 }
 
 #[tokio::test]
+#[serial(musicbrainz)]
 async fn re_identify_release_followed_by_reset_succeeds() {
     // End to end: after a re-identify commit, `reset_metadata_to_source`
     // projects through the new pointer and reaches the documents that commit
@@ -411,7 +418,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
     let new_group_id = "reset-re-identify-mb-group-new";
     let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 2);
     let new_raw_json = serde_json::to_string(&new_response).unwrap();
-    seed_release_cache(new_release_id, (new_response, None, new_raw_json));
+    seed_release_cache(new_release_id, new_raw_json);
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"reset-re-identify-mb-group-new"}"#.to_string(),
@@ -589,6 +596,7 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
 /// release's own identity row and one for each partner, naming the release
 /// that source lists.
 #[tokio::test]
+#[serial(musicbrainz)]
 async fn re_identify_with_a_partner_writes_both_identity_rows() {
     use crate::import::{MetadataRef, MetadataSource, ReleaseReseed};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
@@ -625,7 +633,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     let mb_group_id = "partner-re-identify-mb-group-new";
     let response = make_mb_release_for_re_identify(mb_release_id, mb_group_id, 1);
     let raw_json = serde_json::to_string(&response).unwrap();
-    seed_release_cache(mb_release_id, (response, None, raw_json));
+    seed_release_cache(mb_release_id, raw_json);
     seed_release_group_json_cache(
         mb_group_id,
         serde_json::json!({ "id": mb_group_id }).to_string(),
@@ -635,7 +643,6 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     let discogs_master_id = "80009101";
     crate::discogs::client::seed_master_cache(
         discogs_master_id,
-        Some(1996),
         serde_json::json!({ "id": discogs_master_id, "year": 1996 }).to_string(),
     );
     let discogs_raw = serde_json::json!({
@@ -654,8 +661,9 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
         }],
     })
     .to_string();
-    let discogs_parsed = crate::discogs::client::parse_discogs_release_json(&discogs_raw).unwrap();
-    crate::discogs::client::seed_release_cache(discogs_release_id, (discogs_parsed, discogs_raw));
+    crate::discogs::client::parse_discogs_release_json(&discogs_raw)
+        .expect("the rendered Discogs release parses");
+    crate::discogs::client::seed_release_cache(discogs_release_id, discogs_raw);
     crate::musicbrainz::seed_discogs_url_lookup(discogs_release_id, None);
 
     manager

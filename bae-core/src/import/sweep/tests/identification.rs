@@ -306,8 +306,10 @@ async fn a_transport_failure_is_stored_and_not_automatically_retried() {
 /// user typed is admitted next rather than after all of them.
 ///
 /// Eight candidates saturate the limiter's background queue at the sweep's
-/// concurrency cap. Without priority the interactive search waits out every
-/// queued background call at one second each; with it, one interval.
+/// concurrency cap. Each carries its own barcode, so each is a lookup of its
+/// own: candidates asking the same question are answered once from the response
+/// cache and would queue nothing. Without priority the interactive search waits
+/// out every queued background call at one second each; with it, one interval.
 ///
 /// Wall time, not the deterministic clock, and deliberately: the fake provider
 /// is a real socket, so `start_paused` would leave the runtime idle while a
@@ -320,9 +322,12 @@ async fn a_transport_failure_is_stored_and_not_automatically_retried() {
 #[serial(musicbrainz)]
 async fn the_interactive_path_is_not_delayed_by_the_sweep() {
     let fixture = Fixture::new("interactive-not-delayed").await;
+    fixture
+        .extraction
+        .register_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
     let mut dirs = Vec::new();
     for i in 0..8 {
-        let dir = fixture.disc_id_candidate(&format!("Album {i}"));
+        let dir = fixture.barcode_candidate(&format!("Album {i}"));
         std::fs::write(
             dir.join(format!("playlist-{i}.m3u")),
             format!("candidate {i}"),
@@ -331,10 +336,12 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
         dirs.push(dir);
     }
     let probed = fixture.probed_total_ms(&dirs[0]);
+    // Added first, so the typed-search route below catches only what the
+    // barcode lookups leave.
     fixture.provider.route(
-        "/discid/",
+        "/release?query=barcode",
         200,
-        discid_json("mb-flood-0", "rg-flood-0", &[probed, 0]),
+        search_json("mb-flood-0", "rg-flood-0"),
     );
     fixture.provider.route(
         "/release/mb-flood-0?",
@@ -353,7 +360,7 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
 
     // Let the sweep take the first slot and stack the rest behind it.
     tokio::time::sleep(Duration::from_millis(1_200)).await;
-    let background_before = fixture.provider.count_containing("/discid/");
+    let background_before = fixture.provider.count_containing("query=barcode");
     assert!(
         (1..8).contains(&background_before),
         "the sweep must be mid-flight when the search is timed — {background_before} of 8 \

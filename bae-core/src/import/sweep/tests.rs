@@ -332,6 +332,30 @@ impl ArtworkAnalyzer for BarcodeAnalyzer {
     }
 }
 
+/// A different barcode per candidate folder, so a flood of candidates is a
+/// flood of distinct lookups. Candidates that ask the same question of the
+/// provider are answered once from the response cache and queue nothing.
+struct PerFolderBarcodeAnalyzer;
+
+impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
+    fn analyze(&self, path: &Path) -> ArtworkAnalysis {
+        let folder = path
+            .parent()
+            .and_then(|dir| dir.file_name())
+            .and_then(|name| name.to_str())
+            .expect("a candidate image sits in a named folder");
+        let digits: String = folder.chars().filter(|c| c.is_ascii_digit()).collect();
+        let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
+        ArtworkAnalysis {
+            barcodes: vec![DetectedBarcode {
+                payload: format!("012345678{ordinal:04}"),
+                region: None,
+            }],
+            text_lines: Vec::new(),
+        }
+    }
+}
+
 /// An OCR stub held between entry and completion, so a test can act while a
 /// candidate is genuinely mid-extraction without depending on scheduling.
 struct GatedAnalyzer {

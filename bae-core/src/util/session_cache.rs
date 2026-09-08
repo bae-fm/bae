@@ -3,10 +3,11 @@ use std::sync::{Mutex, OnceLock};
 
 use lru::LruCache;
 
-/// Capacity for a metadata-provider lookup cache. Sized for a session of a few
-/// imports, each touching 1-3 releases. Eviction costs one network round-trip —
-/// the same as a cold start.
-pub const PROVIDER_LOOKUP_CAPACITY: usize = 25;
+/// Capacity for a metadata provider's response cache. One entry per distinct
+/// request URL, so a session's lookups, searches and the documents they settle
+/// all share it. Eviction costs one network round-trip — the same as a cold
+/// start.
+pub const PROVIDER_RESPONSE_CAPACITY: usize = 512;
 
 pub struct SessionCache<V> {
     name: &'static str,
@@ -44,15 +45,6 @@ impl<V> SessionCache<V> {
             .lock()
             .unwrap_or_else(|_| panic!("{} mutex poisoned", self.name))
             .put(key.into(), value);
-    }
-
-    #[cfg(test)]
-    pub fn remove(&self, key: &str) {
-        self.inner
-            .get_or_init(|| new_cache(self.name, self.capacity))
-            .lock()
-            .unwrap_or_else(|_| panic!("{} mutex poisoned", self.name))
-            .pop(key);
     }
 }
 

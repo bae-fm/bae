@@ -1,4 +1,8 @@
 use super::*;
+use serial_test::serial;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[test]
 fn test_release_search_params_build_query() {
@@ -209,13 +213,15 @@ fn a_darkened_release_serves_no_front_cover() {
 
 // ── fetch_mb_xref ────────────────────────────────────────────────
 //
-// Seeded through the caches so no test hits the network. The caches are
-// process-global LRUs, so each test uses a unique Discogs release ID to keep
-// another test's seed from bleeding in.
+// Seeded responses, so no test hits the network. A seeded answer is keyed by
+// the URL its request goes to, base address included, and that address is
+// process-wide — so these are `#[serial(musicbrainz)]` against every test that
+// points it somewhere else. Each test also uses ids of its own, to keep
+// another test's seed from answering for it.
 
 /// A bare MusicBrainz release document — no credits, no media, no cover art —
 /// for the fetch paths, which only read its id and release group. Shared by
-/// every seeded cache entry below so they cannot drift apart.
+/// every seeded response below so they cannot drift apart.
 fn mb_release(release_id: &str, release_group_id: Option<&str>) -> MbReleaseResponse {
     MbReleaseResponse {
         id: release_id.to_string(),
@@ -239,6 +245,12 @@ fn mb_release(release_id: &str, release_group_id: Option<&str>) -> MbReleaseResp
     }
 }
 
+/// A release document as the endpoint returns it — the bytes the client parses
+/// and the import archives are the same bytes.
+fn mb_release_json(release: &MbReleaseResponse) -> String {
+    serde_json::to_string(release).expect("the test release serializes")
+}
+
 #[test]
 fn release_group_fallback_error_is_logged_with_group_id() {
     let mut result = None;
@@ -256,6 +268,7 @@ fn release_group_fallback_error_is_logged_with_group_id() {
 }
 
 #[tokio::test]
+#[serial(musicbrainz)]
 async fn test_fetch_mb_xref_with_backlink_returns_response_and_metadata() {
     let discogs_id = "fetch-mb-xref-hit-1";
     let mb_release_id = "mb-release-hit-1";
@@ -264,11 +277,7 @@ async fn test_fetch_mb_xref_with_backlink_returns_response_and_metadata() {
     seed_discogs_url_lookup(discogs_id, Some(mb_release_id.to_string()));
     seed_release_cache(
         mb_release_id,
-        (
-            mb_release(mb_release_id, Some(mb_group_id)),
-            None,
-            r#"{"id":"mb-release-hit-1"}"#.to_string(),
-        ),
+        mb_release_json(&mb_release(mb_release_id, Some(mb_group_id))),
     );
     seed_release_group_json_cache(mb_group_id, r#"{"id":"mb-group-hit-1"}"#.to_string());
 
@@ -296,6 +305,7 @@ async fn test_fetch_mb_xref_with_backlink_returns_response_and_metadata() {
 }
 
 #[tokio::test]
+#[serial(musicbrainz)]
 async fn test_fetch_mb_xref_no_backlink_returns_none() {
     let discogs_id = "fetch-mb-xref-miss-1";
     seed_discogs_url_lookup(discogs_id, None);
@@ -309,6 +319,7 @@ async fn test_fetch_mb_xref_no_backlink_returns_none() {
 }
 
 #[tokio::test]
+#[serial(musicbrainz)]
 async fn test_fetch_mb_xref_release_without_group_still_returns_response() {
     // A missing release group is not a fetch-time failure: `fetch_mb_xref`
     // returns whatever MB gave it. The mapper is what gates on `release_group`,
@@ -319,11 +330,7 @@ async fn test_fetch_mb_xref_release_without_group_still_returns_response() {
     seed_discogs_url_lookup(discogs_id, Some(mb_release_id.to_string()));
     seed_release_cache(
         mb_release_id,
-        (
-            mb_release(mb_release_id, None),
-            None,
-            r#"{"id":"mb-release-no-rg"}"#.to_string(),
-        ),
+        mb_release_json(&mb_release(mb_release_id, None)),
     );
 
     let result = fetch_mb_xref(discogs_id, CallPriority::Interactive).await;
@@ -376,17 +383,19 @@ fn only_transient_musicbrainz_failures_are_retried() {
 /// direct import and the Discogs cross-reference fetch through here, so a change
 /// to this shape reaches both.
 #[tokio::test]
+#[serial(musicbrainz)]
 async fn fetch_release_with_metadata_archives_release_and_group() {
     let release_id = "fetch-with-metadata-rel";
     let group_id = "fetch-with-metadata-group";
-    seed_release_cache(
-        release_id,
-        (
-            mb_release(release_id, Some(group_id)),
-            Some("https://www.discogs.com/release/1".to_string()),
-            r#"{"id":"release"}"#.to_string(),
-        ),
-    );
+    let mut release = mb_release(release_id, Some(group_id));
+    release.relations = vec![MbRelation {
+        url: Some(MbUrlResource {
+            resource: Some("https://www.discogs.com/release/1".to_string()),
+        }),
+        ..Default::default()
+    }];
+    let raw_json = mb_release_json(&release);
+    seed_release_cache(release_id, raw_json.clone());
     seed_release_group_json_cache(group_id, r#"{"id":"group"}"#.to_string());
 
     let fetched = fetch_release_with_metadata(release_id, CallPriority::Interactive)
@@ -398,7 +407,7 @@ async fn fetch_release_with_metadata_archives_release_and_group() {
         fetched.discogs_url.as_deref(),
         Some("https://www.discogs.com/release/1")
     );
-    assert_eq!(fetched.raw_json, r#"{"id":"release"}"#);
+    assert_eq!(fetched.raw_json, raw_json);
     assert_eq!(
         fetched.release_group,
         Some(crate::import::SourcePayload::new(
@@ -412,23 +421,18 @@ async fn fetch_release_with_metadata_archives_release_and_group() {
 /// A release with no release group archives just its own JSON. The group is
 /// supplementary — its absence is not an import failure.
 #[tokio::test]
+#[serial(musicbrainz)]
 async fn fetch_release_with_metadata_without_group_archives_only_the_release() {
     let release_id = "fetch-with-metadata-no-group";
-    seed_release_cache(
-        release_id,
-        (
-            mb_release(release_id, None),
-            None,
-            r#"{"id":"release"}"#.to_string(),
-        ),
-    );
+    let raw_json = mb_release_json(&mb_release(release_id, None));
+    seed_release_cache(release_id, raw_json.clone());
 
     let fetched = fetch_release_with_metadata(release_id, CallPriority::Interactive)
         .await
         .unwrap();
 
     assert_eq!(fetched.discogs_url, None);
-    assert_eq!(fetched.raw_json, r#"{"id":"release"}"#);
+    assert_eq!(fetched.raw_json, raw_json);
     assert_eq!(fetched.release_group, None);
 }
 
@@ -464,4 +468,182 @@ fn label_and_catno_reads_the_first_label_info() {
         }]),
         (None, None)
     );
+}
+
+// ── The response cache ──────────────────────────────────────────────────────
+//
+// Driven against a local server that answers the URLs the live service does and
+// counts what was asked for, so "did this go to the wire?" is answered by a
+// request count rather than by a stub.
+
+/// A local HTTP server answering `responses` in order, then answering anything
+/// further with a status no test expects — an over-count fails on the
+/// assertion instead of hanging until the request timeout.
+///
+/// One connection per response: the stream is dropped once the body is written,
+/// so the client opens a fresh connection for its next request and the accept
+/// count is the request count.
+async fn mb_response_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUsize>) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("test listener should bind");
+    let url = format!(
+        "http://{}",
+        listener
+            .local_addr()
+            .expect("test listener should have an address")
+    );
+    let request_count = Arc::new(AtomicUsize::new(0));
+    let counted_requests = request_count.clone();
+    tokio::spawn(async move {
+        let mut remaining = responses.into_iter();
+        loop {
+            let Ok((mut stream, _)) = listener.accept().await else {
+                return;
+            };
+            counted_requests.fetch_add(1, Ordering::SeqCst);
+            let mut buffer = [0; 4096];
+            let _ = stream.read(&mut buffer).await;
+            let (status, body) = remaining
+                .next()
+                .unwrap_or_else(|| (599, "unscripted request".to_string()));
+            let raw = format!(
+                "HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\n\
+                 Content-Length: {}\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = stream.write_all(raw.as_bytes()).await;
+        }
+    });
+    (url, request_count)
+}
+
+/// Points MusicBrainz at a local server and restores the live address when the
+/// test ends, panic included. The base URL and the rate limiter are both
+/// process-wide, so every test holding one of these is `#[serial(musicbrainz)]`.
+struct TestBase;
+
+impl TestBase {
+    fn point_at(url: &str) -> Self {
+        BASE_URL.set_for_test(Some(url.to_string()));
+        reset_rate_limiter_for_test();
+        TestBase
+    }
+}
+
+impl Drop for TestBase {
+    fn drop(&mut self) {
+        BASE_URL.set_for_test(None);
+    }
+}
+
+/// A disc-ID response body carrying one release.
+fn discid_body(release_id: &str) -> String {
+    serde_json::json!({
+        "releases": [serde_json::to_value(mb_release(release_id, None))
+            .expect("the test release serializes")],
+    })
+    .to_string()
+}
+
+#[tokio::test]
+#[serial(musicbrainz)]
+async fn a_repeated_request_is_answered_without_a_second_round_trip() {
+    let (url, requests) =
+        mb_response_server(vec![(200, r#"{"id":"rg-repeat"}"#.to_string())]).await;
+    let _base = TestBase::point_at(&url);
+
+    let first = fetch_release_group_json("rg-repeat", CallPriority::Interactive)
+        .await
+        .expect("the release-group fetch succeeds");
+    let second = fetch_release_group_json("rg-repeat", CallPriority::Interactive)
+        .await
+        .expect("the repeated fetch is answered");
+
+    assert_eq!(first, r#"{"id":"rg-repeat"}"#);
+    assert_eq!(second, first);
+    assert_eq!(requests.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+#[serial(musicbrainz)]
+async fn a_not_found_answer_is_kept() {
+    let (url, requests) = mb_response_server(vec![(404, String::new())]).await;
+    let _base = TestBase::point_at(&url);
+
+    for _ in 0..2 {
+        let error = lookup_by_discid("disc-not-found", CallPriority::Interactive)
+            .await
+            .expect_err("the disc is not in MusicBrainz");
+        assert!(matches!(error, MusicBrainzError::NotFound(_)));
+    }
+
+    assert_eq!(requests.load(Ordering::SeqCst), 1);
+}
+
+/// A rate limit and a server error are the provider's momentary state, not its
+/// answer: every retry goes to the wire, and so does the next call.
+#[tokio::test]
+#[serial(musicbrainz)]
+async fn transient_failures_are_not_kept() {
+    let (url, requests) = mb_response_server(vec![
+        (429, String::new()),
+        (503, String::new()),
+        (429, String::new()),
+        (200, discid_body("mb-after-transient")),
+    ])
+    .await;
+    let _base = TestBase::point_at(&url);
+
+    let error = lookup_by_discid("disc-transient", CallPriority::Interactive)
+        .await
+        .expect_err("three transient answers exhaust the retries");
+    assert!(matches!(
+        error,
+        MusicBrainzError::Provider { status: Some(429) }
+    ));
+    assert_eq!(
+        requests.load(Ordering::SeqCst),
+        3,
+        "each retry asked the server again"
+    );
+
+    let releases = lookup_by_discid("disc-transient", CallPriority::Interactive)
+        .await
+        .expect("the provider recovered");
+    assert_eq!(releases[0].id, "mb-after-transient");
+    assert_eq!(
+        requests.load(Ordering::SeqCst),
+        4,
+        "the failed answer was not kept"
+    );
+}
+
+/// The key is the whole URL, so the same path under two base addresses is two
+/// answers — which is what keeps one test's fake provider out of another's.
+#[tokio::test]
+#[serial(musicbrainz)]
+async fn the_same_path_under_two_base_urls_is_two_answers() {
+    let (first_url, first_requests) =
+        mb_response_server(vec![(200, r#"{"id":"first"}"#.to_string())]).await;
+    let (second_url, second_requests) =
+        mb_response_server(vec![(200, r#"{"id":"second"}"#.to_string())]).await;
+
+    let first = {
+        let _base = TestBase::point_at(&first_url);
+        fetch_release_group_json("rg-two-bases", CallPriority::Interactive)
+            .await
+            .expect("the first server answers")
+    };
+    let second = {
+        let _base = TestBase::point_at(&second_url);
+        fetch_release_group_json("rg-two-bases", CallPriority::Interactive)
+            .await
+            .expect("the second server answers")
+    };
+
+    assert_eq!(first, r#"{"id":"first"}"#);
+    assert_eq!(second, r#"{"id":"second"}"#);
+    assert_eq!(first_requests.load(Ordering::SeqCst), 1);
+    assert_eq!(second_requests.load(Ordering::SeqCst), 1);
 }

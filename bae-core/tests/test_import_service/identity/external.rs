@@ -157,11 +157,11 @@ async fn a_user_edit_overlays_the_picked_release() {
 /// handed over beside them. `master_id` is the fixture's own spelling, rendered
 /// numerically as the endpoint numbers its ids.
 fn seed_discogs_for_xref(release_id: &str, master_id: &str, title: &str) -> String {
+    support::point_discogs_at_dead_port();
     let rendered_master = support::discogs_fixture_id(master_id);
     bae_core::discogs::client::seed_artist_image_response("1", None);
     bae_core::discogs::client::seed_master_cache(
         &rendered_master,
-        Some(1996),
         serde_json::json!({ "id": rendered_master.parse::<u64>().expect("a rendered master id is numeric"), "year": 1996 }).to_string(),
     );
     let raw_json = serde_json::json!({
@@ -182,9 +182,9 @@ fn seed_discogs_for_xref(release_id: &str, master_id: &str, title: &str) -> Stri
         }],
     })
     .to_string();
-    let parsed = bae_core::discogs::client::parse_discogs_release_json(&raw_json)
+    bae_core::discogs::client::parse_discogs_release_json(&raw_json)
         .expect("the rendered Discogs release parses");
-    bae_core::discogs::client::seed_release_cache(release_id, (parsed, raw_json));
+    bae_core::discogs::client::seed_release_cache(release_id, raw_json);
     release_id.to_string()
 }
 
@@ -205,12 +205,8 @@ fn seed_mb_with_discogs_xref(
         }),
         ..MbRelation::default()
     }];
-    let discogs_url = Some(format!(
-        "https://www.discogs.com/release/{}",
-        discogs_release_id
-    ));
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, discogs_url, raw_json));
+    bae_core::musicbrainz::seed_release_cache(mb_release_id, raw_json);
     bae_core::musicbrainz::seed_release_group_json_cache(
         mb_group_id,
         serde_json::json!({ "id": mb_group_id }).to_string(),

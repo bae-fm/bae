@@ -2,10 +2,11 @@ use crate::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, D
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use crate::retry::retry_with_backoff_if;
+use crate::util::http::{is_cacheable, response_key, CachedResponse};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
-use crate::util::session_cache::{SessionCache, PROVIDER_LOOKUP_CAPACITY};
+use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 use crate::util::test_base_url::TestBaseUrl;
-use reqwest::{Client, Error as ReqwestError, Response, StatusCode};
+use reqwest::{Client, Error as ReqwestError, StatusCode};
 use serde::Deserialize;
 use std::time::Duration;
 use thiserror::Error;
@@ -14,55 +15,71 @@ use tracing::{debug, warn};
 const DISCOGS_REQUEST_INTERVAL: Duration = Duration::from_secs(1);
 const DISCOGS_RETRY_ATTEMPTS: u32 = 3;
 
-type ReleaseCacheValue = (DiscogsRelease, String);
-type MasterCacheValue = (Option<u32>, String);
-type ArtistImageCacheValue = Option<String>;
-
-/// In-memory cache for `releases/{id}` lookups: the parsed release plus its raw JSON
-/// for archival, keyed by release ID. A module-level static, so it survives across
-/// `DiscogsClient::new` calls — release content doesn't vary with the API token.
-static RELEASE_CACHE: SessionCache<ReleaseCacheValue> =
-    SessionCache::new("Discogs release cache", PROVIDER_LOOKUP_CAPACITY);
-
-/// The same, for `masters/{id}`.
-static MASTER_CACHE: SessionCache<MasterCacheValue> =
-    SessionCache::new("Discogs master cache", PROVIDER_LOOKUP_CAPACITY);
-
-/// The same, for the selected image URL from `artists/{id}`.
-static ARTIST_IMAGE_CACHE: SessionCache<ArtistImageCacheValue> =
-    SessionCache::new("Discogs artist image cache", PROVIDER_LOOKUP_CAPACITY);
-
-#[cfg(any(test, feature = "test-utils"))]
-static ARTIST_IMAGE_RESPONSES_FOR_TEST: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<String, ArtistImageCacheValue>>,
-> = std::sync::OnceLock::new();
+/// The response cache every Discogs content request is answered from, keyed by
+/// the full request URL — base address included, so two addresses for one path
+/// are two answers. A module-level static, so it survives across
+/// `DiscogsClient::new` calls: what a release, master or artist URL returns
+/// doesn't vary with the API token. What the token itself is worth does, which
+/// is why the token check does not read from here.
+static DISCOGS_RESPONSES: SessionCache<CachedResponse> =
+    SessionCache::new("Discogs response cache", PROVIDER_RESPONSE_CAPACITY);
 
 static RATE_LIMITER: RateLimiter = RateLimiter::new(DISCOGS_REQUEST_INTERVAL);
 
-/// Pre-populate the release cache, so a test can drive `prepare_release` without an
-/// HTTP call. The raw JSON is what gets archived, and what a later projection
-/// replays from, so it has to be the release handed over with it.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn seed_release_cache(id: &str, value: (DiscogsRelease, String)) {
-    RELEASE_CACHE.put(id, value);
+fn release_url(base_url: &str, id: &str) -> String {
+    format!("{base_url}/releases/{id}")
 }
 
-/// Pre-populate the master cache, for a synthetic `DiscogsRelease` that carries a
-/// `master_id` — the worker's cross-reference fetch then resolves through it.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn seed_master_cache(master_id: &str, year: Option<u32>, raw_json: String) {
-    MASTER_CACHE.put(master_id, (year, raw_json));
+fn master_url(base_url: &str, master_id: &str) -> String {
+    format!("{base_url}/masters/{master_id}")
 }
 
-/// Supply the artist-image answer returned by a synthetic provider response.
+fn artist_url(base_url: &str, artist_id: &str) -> String {
+    format!("{base_url}/artists/{artist_id}")
+}
+
+/// Put `body` where a request built right now for `url` would look for it.
+#[cfg(any(test, feature = "test-utils"))]
+fn seed_response(url: &str, status: u16, body: String) {
+    DISCOGS_RESPONSES.put(response_key(url), CachedResponse { status, body });
+}
+
+/// Pre-populate a release document, so a test can drive `prepare_release`
+/// without an HTTP call. `raw_json` is the endpoint's own answer: it is what
+/// gets archived, what a later projection replays from, and what the client
+/// parses here, so those three cannot disagree.
+///
+/// Keyed under the base URL in force right now — point the client at the test
+/// endpoint before seeding, not after.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn seed_release_cache(id: &str, raw_json: String) {
+    seed_response(&release_url(&API_BASE_URL.get(), id), 200, raw_json);
+}
+
+/// Pre-populate a master document, for a synthetic `DiscogsRelease` that
+/// carries a `master_id` — the worker's cross-reference fetch then resolves
+/// through it.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn seed_master_cache(master_id: &str, raw_json: String) {
+    seed_response(&master_url(&API_BASE_URL.get(), master_id), 200, raw_json);
+}
+
+/// Pre-populate an artist document whose image list yields `image_url`. `None`
+/// is the 404 the endpoint gives for an artist it does not have, which the
+/// image lookup reads as "no image".
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_artist_image_response(artist_id: &str, image_url: Option<String>) {
-    ARTIST_IMAGE_RESPONSES_FOR_TEST
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-        .lock()
-        .expect("Discogs test artist response mutex poisoned")
-        .insert(artist_id.to_string(), image_url);
+    let url = artist_url(&API_BASE_URL.get(), artist_id);
+    match image_url {
+        Some(uri) => seed_response(
+            &url,
+            200,
+            serde_json::json!({ "images": [{ "type": "primary", "uri": uri }] }).to_string(),
+        ),
+        None => seed_response(&url, 404, String::new()),
+    }
 }
+
 #[derive(Error, Debug)]
 pub enum DiscogsError {
     /// The request never reached a usable response — connection, DNS, timeout, a
@@ -92,13 +109,15 @@ impl DiscogsError {
     }
 }
 
-fn classify_discogs_response(response: Response) -> Result<Response, DiscogsError> {
-    let status = response.status();
-    if status.is_success() {
-        return Ok(response);
+/// The body on a success, and the error the status names otherwise.
+fn classify_discogs_response(response: CachedResponse) -> Result<String, DiscogsError> {
+    if response.is_success() {
+        return Ok(response.body);
     }
 
-    match status {
+    // The status was read off a real response, so it is a code `StatusCode`
+    // holds.
+    match StatusCode::from_u16(response.status).expect("a response status is in range") {
         StatusCode::NOT_FOUND => Err(DiscogsError::NotFound),
         StatusCode::TOO_MANY_REQUESTS => Err(DiscogsError::RateLimit),
         StatusCode::UNAUTHORIZED => Err(DiscogsError::InvalidApiKey),
@@ -468,13 +487,43 @@ impl DiscogsClient {
             .timeout(crate::util::http::API_TIMEOUT)
     }
 
+    /// One request, straight to the wire: wait for the rate-limit slot, send,
+    /// read the whole body. Only the token check sends this way — its answer is
+    /// about the key in the `Authorization` header, which no URL names, so a
+    /// kept answer would be an answer to a different question.
     async fn send(
+        &self,
+        request: reqwest::Request,
+        priority: CallPriority,
+    ) -> Result<CachedResponse, DiscogsError> {
+        RATE_LIMITER.wait(priority).await;
+        let response = self.client.execute(request).await?;
+        let status = response.status().as_u16();
+        let body = response.text().await?;
+        Ok(CachedResponse { status, body })
+    }
+
+    /// Every content request's send point: a URL that already has an answer is
+    /// answered from the cache without waiting for a rate-limit slot; otherwise
+    /// the request is made and a stable answer kept. Returns the body on a
+    /// success, and the error the status names otherwise.
+    async fn get_cached(
         &self,
         request: reqwest::RequestBuilder,
         priority: CallPriority,
-    ) -> Result<Response, DiscogsError> {
-        RATE_LIMITER.wait(priority).await;
-        let response = request.send().await?;
+    ) -> Result<String, DiscogsError> {
+        let request = request.build()?;
+        let key = request.url().to_string();
+
+        if let Some(cached) = DISCOGS_RESPONSES.get_cloned(&key) {
+            debug!("Discogs response cache hit for {}", key);
+            return classify_discogs_response(cached);
+        }
+
+        let response = self.send(request, priority).await?;
+        if is_cacheable(response.status) {
+            DISCOGS_RESPONSES.put(key, response.clone());
+        }
         classify_discogs_response(response)
     }
 
@@ -489,9 +538,8 @@ impl DiscogsClient {
             should_retry_discogs,
             crate::retry::linear_backoff,
             || async {
-                self.send(self.get(&url).query(&query_params), priority)
-                    .await
-                    .map(|_| ())
+                let request = self.get(&url).query(&query_params).build()?;
+                classify_discogs_response(self.send(request, priority).await?).map(|_| ())
             },
         )
         .await
@@ -540,8 +588,8 @@ impl DiscogsClient {
             should_retry_discogs,
             crate::retry::linear_backoff,
             || async {
-                let response = self
-                    .send(self.get(&url).query(&query_params), priority)
+                let body = self
+                    .get_cached(self.get(&url).query(&query_params), priority)
                     .await
                     .inspect_err(|error| match error {
                         DiscogsError::RateLimit => warn!("Discogs rate limit exceeded"),
@@ -553,8 +601,7 @@ impl DiscogsClient {
                         }
                         DiscogsError::Serialization(_) => {}
                     })?;
-                debug!("Response status: {}", response.status());
-                response.json().await.map_err(DiscogsError::Transport)
+                serde_json::from_str(&body).map_err(DiscogsError::Serialization)
             },
         )
         .await?;
@@ -593,27 +640,19 @@ impl DiscogsClient {
         id: &str,
         priority: CallPriority,
     ) -> Result<(DiscogsRelease, String), DiscogsError> {
-        if let Some(hit) = RELEASE_CACHE.get_cloned(id) {
-            debug!("Discogs release cache hit for {}", id);
-            return Ok(hit);
-        }
-
-        let url = format!("{}/releases/{}", self.base_url, id);
-        let value = retry_with_backoff_if(
+        let url = release_url(&self.base_url, id);
+        retry_with_backoff_if(
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs release fetch",
             should_retry_discogs,
             crate::retry::linear_backoff,
             || async {
-                let response = self.send(self.get(&url), priority).await?;
-                let raw_json = response.text().await.map_err(DiscogsError::Transport)?;
+                let raw_json = self.get_cached(self.get(&url), priority).await?;
                 let release = parse_discogs_release_json(&raw_json)?;
                 Ok((release, raw_json))
             },
         )
-        .await?;
-        RELEASE_CACHE.put(id, value.clone());
-        Ok(value)
+        .await
     }
 
     /// The master's year — the *original* release year, so 1967 for a 1985 reissue —
@@ -632,27 +671,19 @@ impl DiscogsClient {
         master_id: &str,
         priority: CallPriority,
     ) -> Result<(Option<u32>, String), DiscogsError> {
-        if let Some(hit) = MASTER_CACHE.get_cloned(master_id) {
-            debug!("Discogs master cache hit for {}", master_id);
-            return Ok(hit);
-        }
-
-        let url = format!("{}/masters/{}", self.base_url, master_id);
-        let value = retry_with_backoff_if(
+        let url = master_url(&self.base_url, master_id);
+        retry_with_backoff_if(
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs master fetch",
             should_retry_discogs,
             crate::retry::linear_backoff,
             || async {
-                let response = self.send(self.get(&url), priority).await?;
-                let raw_json = response.text().await.map_err(DiscogsError::Transport)?;
+                let raw_json = self.get_cached(self.get(&url), priority).await?;
                 let year = parse_discogs_master_year(&raw_json)?;
                 Ok((year, raw_json))
             },
         )
-        .await?;
-        MASTER_CACHE.put(master_id, value.clone());
-        Ok(value)
+        .await
     }
 
     pub async fn get_artist_image(
@@ -669,50 +700,31 @@ impl DiscogsClient {
         artist_id: &str,
         priority: CallPriority,
     ) -> Result<Option<String>, DiscogsError> {
-        #[cfg(any(test, feature = "test-utils"))]
-        if let Some(answer) = ARTIST_IMAGE_RESPONSES_FOR_TEST
-            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
-            .lock()
-            .expect("Discogs test artist response mutex poisoned")
-            .get(artist_id)
-            .cloned()
-        {
-            return Ok(answer);
-        }
-
-        if let Some(hit) = ARTIST_IMAGE_CACHE.get_cloned(artist_id) {
-            debug!(discogs_artist_id = %artist_id, "Discogs artist image cache hit");
-            return Ok(hit);
-        }
-
-        let url = format!("{}/artists/{}", self.base_url, artist_id);
-        let Some(json) = retry_with_backoff_if(
+        let url = artist_url(&self.base_url, artist_id);
+        let Some(body) = retry_with_backoff_if(
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs artist fetch",
             should_retry_discogs,
             crate::retry::linear_backoff,
             || async {
-                let response = match self.send(self.get(&url), priority).await {
-                    Ok(response) => response,
+                match self.get_cached(self.get(&url), priority).await {
+                    Ok(body) => Ok(Some(body)),
                     Err(DiscogsError::NotFound) => {
                         warn!(
                             discogs_artist_id = %artist_id,
                             "Discogs artist image lookup returned not found"
                         );
-                        return Ok(None);
+                        Ok(None)
                     }
-                    Err(error) => return Err(error),
-                };
-                let json: serde_json::Value =
-                    response.json().await.map_err(DiscogsError::Transport)?;
-                Ok(Some(json))
+                    Err(error) => Err(error),
+                }
             },
         )
         .await?
         else {
-            ARTIST_IMAGE_CACHE.put(artist_id, None);
             return Ok(None);
         };
+        let json: serde_json::Value = serde_json::from_str(&body)?;
         let image_url = json
             .get("images")
             .and_then(|images| images.as_array())
@@ -730,7 +742,6 @@ impl DiscogsClient {
             .and_then(|img| img.get("uri").and_then(|u| u.as_str()))
             .map(|s| s.to_string());
 
-        ARTIST_IMAGE_CACHE.put(artist_id, image_url.clone());
         Ok(image_url)
     }
 }

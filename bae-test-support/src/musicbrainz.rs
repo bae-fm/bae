@@ -1,5 +1,5 @@
-//! Synthetic MusicBrainz release documents, and seeding them into the caches
-//! an import reads instead of the network.
+//! Synthetic MusicBrainz release documents, and putting them where an import's
+//! requests look instead of the network.
 
 /// One track on a synthetic MusicBrainz medium: numbered `position`, its title
 /// carried by the recording (where a real MB document usually carries it).
@@ -75,17 +75,17 @@ pub fn mb_release(
     }
 }
 
-/// Seed `response` and a minimal release-group document into the MusicBrainz
-/// caches, so a lookup for either resolves without touching the network, and
-/// return the release id. The release's own archived JSON is its serialization,
-/// so what the import stores and what it parsed cannot disagree.
+/// Put `response` and a minimal release-group document where a lookup for
+/// either will find them, so neither touches the network, and return the
+/// release id. The release document is `response`'s own serialization, so what
+/// the import parses and what it archives cannot disagree.
 pub fn seed_mb_release(
     response: bae_core::musicbrainz::MbReleaseResponse,
     release_group_id: &str,
 ) -> String {
     let release_id = response.id.clone();
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    bae_core::musicbrainz::seed_release_cache(&release_id, (response, None, raw_json));
+    bae_core::musicbrainz::seed_release_cache(&release_id, raw_json);
     bae_core::musicbrainz::seed_release_group_json_cache(
         release_group_id,
         serde_json::json!({ "id": release_group_id }).to_string(),

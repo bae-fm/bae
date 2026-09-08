@@ -39,7 +39,7 @@ mod playback;
 pub use audio::{assert_captured_matches_reference, samples_as_f32};
 pub use discogs::{
     discogs_artist, discogs_fixture_id, discogs_test_release, discogs_track,
-    seed_discogs_test_release,
+    point_discogs_at_dead_port, seed_discogs_test_release,
 };
 pub use files::{
     copy_and_tag, cover_art_archive, cover_png, read_cover_image_blob, write_cover_png,

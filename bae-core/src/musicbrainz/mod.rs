@@ -12,8 +12,9 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use crate::import::{PayloadSource, SourcePayload};
+use crate::util::http::{is_cacheable, response_key, CachedResponse};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
-use crate::util::session_cache::{SessionCache, PROVIDER_LOOKUP_CAPACITY};
+use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 use crate::util::test_base_url::TestBaseUrl;
 use thiserror::Error;
 use tracing::{debug, warn};
@@ -50,6 +51,36 @@ fn ws2(path: &str) -> String {
     format!("{}/{path}", BASE_URL.get())
 }
 
+/// Where a release's own document is fetched from. Named once, because the
+/// response cache is keyed by URL: the request and anything putting an answer
+/// where the request will look for it have to agree on it.
+fn release_url(release_id: &str) -> String {
+    ws2(&format!(
+        "release/{release_id}?inc=recordings+artist-credits+release-groups+release-group-rels+url-rels+labels+media+recording-level-rels+work-level-rels+work-rels+artist-rels"
+    ))
+}
+
+fn release_group_url(release_group_id: &str) -> String {
+    ws2(&format!(
+        "release-group/{release_group_id}?inc=url-rels&fmt=json"
+    ))
+}
+
+fn discid_url(discid: &str) -> String {
+    ws2(&format!(
+        "discid/{discid}?inc=recordings+artist-credits+release-groups+url-rels+labels"
+    ))
+}
+
+/// The URL endpoint asked which MusicBrainz release links back to a Discogs
+/// release.
+fn discogs_url_lookup_url(discogs_release_id: &str) -> String {
+    let discogs_url = format!("https://www.discogs.com/release/{discogs_release_id}");
+    ws2(&format!(
+        "url?resource={discogs_url}&inc=release-rels&fmt=json"
+    ))
+}
+
 /// Retry only what a retry can fix. `NotFound` is MusicBrainz's answer, not a
 /// fault — and it's the ordinary answer for a disc it doesn't have, so retrying
 /// buys three round trips and three rate-limit waits to learn it again. `Other`
@@ -78,81 +109,105 @@ where
         .await
 }
 
+/// The response cache every MusicBrainz request is answered from, keyed by the
+/// full request URL — base address included, so two addresses for one path are
+/// two answers.
+static MUSICBRAINZ_RESPONSES: SessionCache<CachedResponse> =
+    SessionCache::new("MusicBrainz response cache", PROVIDER_RESPONSE_CAPACITY);
+
+/// One MusicBrainz GET, answered from the cache when this URL already has an
+/// answer — without waiting for a rate-limit slot — and otherwise sent, kept
+/// when the answer is stable, and returned. The body is the whole response;
+/// each caller parses what it needs out of it.
 async fn mb_get(
     request: reqwest::RequestBuilder,
     priority: CallPriority,
-) -> Result<reqwest::Response, MusicBrainzError> {
-    RATE_LIMITER.wait(priority).await;
-    let response = request
+) -> Result<String, MusicBrainzError> {
+    let request = request
         .header("Accept", "application/json")
         .timeout(crate::util::http::API_TIMEOUT)
-        .send()
+        .build()
+        .map_err(MusicBrainzError::from_reqwest)?;
+    let key = request.url().to_string();
+
+    if let Some(cached) = MUSICBRAINZ_RESPONSES.get_cloned(&key) {
+        debug!("MusicBrainz response cache hit for {}", key);
+        return mb_body(cached);
+    }
+
+    RATE_LIMITER.wait(priority).await;
+    let response = http_client()
+        .execute(request)
         .await
         .map_err(MusicBrainzError::from_reqwest)?;
+    let status = response.status().as_u16();
+    let body = response
+        .text()
+        .await
+        .map_err(MusicBrainzError::from_reqwest)?;
+    let response = CachedResponse { status, body };
 
-    let status = response.status();
-    if status.is_success() {
-        Ok(response)
+    if !response.is_success() {
+        warn!(
+            "MusicBrainz API error response ({} from {}): {}",
+            status, key, response.body
+        );
+    }
+    if is_cacheable(status) {
+        MUSICBRAINZ_RESPONSES.put(key, response.clone());
+    }
+    mb_body(response)
+}
+
+fn mb_body(response: CachedResponse) -> Result<String, MusicBrainzError> {
+    if response.is_success() {
+        Ok(response.body)
     } else {
-        let url = response.url().clone();
-        match response.text().await {
-            Ok(error_text) => warn!(
-                "MusicBrainz API error response ({} from {}): {}",
-                status, url, error_text
-            ),
-            Err(error) => warn!(
-                "MusicBrainz API error response ({} from {}) with unreadable body: {}",
-                status, url, error
-            ),
-        }
         Err(MusicBrainzError::Provider {
-            status: Some(status.as_u16()),
+            status: Some(response.status),
         })
     }
 }
 
-type ReleaseCacheValue = (MbReleaseResponse, Option<String>, String);
+/// Put `body` where a request built right now for `url` would look for it.
+#[cfg(any(test, feature = "test-utils"))]
+fn seed_response(url: &str, status: u16, body: String) {
+    MUSICBRAINZ_RESPONSES.put(response_key(url), CachedResponse { status, body });
+}
 
-/// In-memory cache for `release/{id}` lookups. Holds the parsed response, the
-/// Discogs release URL from its url-rels (if any), and the raw JSON, so a caller
-/// needing any of the three hits a warm cache.
-static RELEASE_CACHE: SessionCache<ReleaseCacheValue> =
-    SessionCache::new("MusicBrainz release cache", PROVIDER_LOOKUP_CAPACITY);
-
-/// In-memory cache for `release-group/{id}` JSON. Discogs cross-reference
-/// archival keeps the raw JSON; we cache that string directly.
-static RELEASE_GROUP_JSON_CACHE: SessionCache<String> = SessionCache::new(
-    "MusicBrainz release-group JSON cache",
-    PROVIDER_LOOKUP_CAPACITY,
-);
-
-/// In-memory cache for `url?resource=https://www.discogs.com/release/{id}`
-/// lookups, keyed by Discogs release ID; the value is the linked MB release ID,
-/// or `None` when no link exists. Caching means a confirmed Discogs import warms
-/// the lookup for the worker's later commit-time call.
-static DISCOGS_URL_LOOKUP_CACHE: SessionCache<Option<String>> =
-    SessionCache::new("Discogs URL lookup cache", PROVIDER_LOOKUP_CAPACITY);
-
-/// Pre-populate the Discogs-URL → MB-release-ID lookup cache, so a test can drive
-/// the cross-reference path without the network. `None` means "no MB release
-/// linked" — the natural answer for a synthetic test release.
+/// Pre-populate the answer to the Discogs-URL lookup, so a test can drive the
+/// cross-reference path without the network. `None` means "no MB release
+/// linked" — the natural answer for a synthetic test release, and the 404 the
+/// endpoint gives for a URL it has never seen.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_discogs_url_lookup(discogs_release_id: &str, mb_release_id: Option<String>) {
-    DISCOGS_URL_LOOKUP_CACHE.put(discogs_release_id, mb_release_id);
+    let url = discogs_url_lookup_url(discogs_release_id);
+    match mb_release_id {
+        Some(id) => seed_response(
+            &url,
+            200,
+            serde_json::json!({
+                "relations": [{ "type": "discogs", "release": { "id": id } }],
+            })
+            .to_string(),
+        ),
+        None => seed_response(&url, 404, String::new()),
+    }
 }
 
-/// Pre-populate the MB release cache, so a test can drive `fetch_mb_xref`
-/// without an HTTP call. The raw JSON is what gets archived, and what a later
-/// projection replays from, so it has to be the release handed over with it.
+/// Pre-populate a release document, so a test can drive `fetch_mb_xref` without
+/// an HTTP call. `raw_json` is the endpoint's own answer: it is what gets
+/// archived, what a later projection replays from, and what the client parses
+/// here, so those three cannot disagree.
 #[cfg(any(test, feature = "test-utils"))]
-pub fn seed_release_cache(release_id: &str, value: (MbReleaseResponse, Option<String>, String)) {
-    RELEASE_CACHE.put(release_id, value);
+pub fn seed_release_cache(release_id: &str, raw_json: String) {
+    seed_response(&release_url(release_id), 200, raw_json);
 }
 
-/// Pre-populate the MB release-group JSON cache. Pairs with `seed_release_cache`.
+/// Pre-populate a release-group document. Pairs with `seed_release_cache`.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_release_group_json_cache(release_group_id: &str, raw_json: String) {
-    RELEASE_GROUP_JSON_CACHE.put(release_group_id, raw_json);
+    seed_response(&release_group_url(release_group_id), 200, raw_json);
 }
 
 /// A MusicBrainz lookup failure, keeping the wire-level distinction the caller
@@ -220,22 +275,18 @@ async fn lookup_by_discid_once(
     priority: CallPriority,
 ) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
     debug!("MusicBrainz: Looking up DiscID '{}'", discid);
-    let url = ws2(&format!(
-        "discid/{discid}?inc=recordings+artist-credits+release-groups+url-rels+labels"
-    ));
+    let url = discid_url(discid);
     debug!("MusicBrainz API request: {}", url);
 
-    let response = match mb_get(http_client().get(&url), priority).await {
-        Ok(response) => response,
+    let body = match mb_get(http_client().get(&url), priority).await {
+        Ok(body) => body,
         Err(MusicBrainzError::Provider { status: Some(404) }) => {
             return Err(MusicBrainzError::NotFound(discid.to_string()));
         }
         Err(error) => return Err(error),
     };
 
-    let disc_response: DiscIdResponse = response
-        .json()
-        .await
+    let disc_response: DiscIdResponse = serde_json::from_str(&body)
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
     if disc_response.releases.is_empty() {
@@ -256,9 +307,10 @@ async fn lookup_by_discid_once(
 /// Look up a release by MusicBrainz release ID.
 ///
 /// Returns the parsed response, the Discogs release URL (if any), and the raw
-/// JSON that gets archived. On a cache miss this does the network round-trip,
-/// plus a release-group fetch when the release's own relations carry no Discogs
-/// URL.
+/// JSON that gets archived. The Discogs URL is derived from the two documents
+/// each time: the release's own url-rels, and — when those carry none — the
+/// release group's, which is a second request. Both documents are answered from
+/// the response cache, so re-deriving costs a parse, not a round trip.
 pub async fn lookup_release_by_id(
     release_id: &str,
     priority: CallPriority,
@@ -273,29 +325,17 @@ async fn lookup_release_by_id_once(
     release_id: &str,
     priority: CallPriority,
 ) -> Result<(MbReleaseResponse, Option<String>, String), MusicBrainzError> {
-    if let Some(hit) = RELEASE_CACHE.get_cloned(release_id) {
-        debug!("MusicBrainz release cache hit for {}", release_id);
-        return Ok(hit);
-    }
-
     debug!("MusicBrainz: Looking up release ID '{}'", release_id);
-    let url = ws2(&format!(
-        "release/{release_id}?inc=recordings+artist-credits+release-groups+release-group-rels+url-rels+labels+media+recording-level-rels+work-level-rels+work-rels+artist-rels"
-    ));
+    let url = release_url(release_id);
     debug!("MusicBrainz API request: {}", url);
 
-    let response = match mb_get(http_client().get(&url), priority).await {
-        Ok(response) => response,
+    let raw_json = match mb_get(http_client().get(&url), priority).await {
+        Ok(body) => body,
         Err(MusicBrainzError::Provider { status: Some(404) }) => {
             return Err(MusicBrainzError::NotFound(release_id.to_string()));
         }
         Err(error) => return Err(error),
     };
-
-    let raw_json = response
-        .text()
-        .await
-        .map_err(|e| MusicBrainzError::Other(format!("Failed to read response body: {}", e)))?;
 
     let mb_response: MbReleaseResponse = serde_json::from_str(&raw_json)
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
@@ -332,10 +372,7 @@ async fn lookup_release_by_id_once(
         }
     }
 
-    let value = (mb_response, discogs_url, raw_json);
-    RELEASE_CACHE.put(release_id, value.clone());
-
-    Ok(value)
+    Ok((mb_response, discogs_url, raw_json))
 }
 
 fn release_group_discogs_url(
@@ -357,10 +394,10 @@ fn release_group_discogs_url(
     }
 }
 
-/// The release-group, parsed. Shares `fetch_release_group_json`'s cache: a
-/// release whose own url-rels carry no Discogs link, and the later
-/// cross-reference archival of that same group, now cost one round trip between
-/// them rather than two.
+/// The release-group, parsed. The same URL `fetch_release_group_json` asks for,
+/// so a release whose own url-rels carry no Discogs link and the later
+/// cross-reference archival of that same group cost one round trip between them
+/// rather than two.
 async fn fetch_release_group(
     release_group_id: &str,
     priority: CallPriority,
@@ -370,34 +407,15 @@ async fn fetch_release_group(
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))
 }
 
-/// A release-group's raw JSON, for archival. Cached for the session.
+/// A release-group's raw JSON, for archival.
 pub async fn fetch_release_group_json(
     release_group_id: &str,
     priority: CallPriority,
 ) -> Result<String, MusicBrainzError> {
-    if let Some(hit) = RELEASE_GROUP_JSON_CACHE.get_cloned(release_group_id) {
-        debug!(
-            "MusicBrainz release-group JSON cache hit for {}",
-            release_group_id
-        );
-        return Ok(hit);
-    }
-
-    let url = ws2(&format!(
-        "release-group/{release_group_id}?inc=url-rels&fmt=json"
-    ));
+    let url = release_group_url(release_group_id);
     debug!("Fetching release-group JSON: {}", url);
 
-    let response = mb_get(http_client().get(&url), priority).await?;
-
-    let raw_json = response
-        .text()
-        .await
-        .map_err(|e| MusicBrainzError::Other(format!("Failed to read response body: {}", e)))?;
-
-    RELEASE_GROUP_JSON_CACHE.put(release_group_id, raw_json.clone());
-
-    Ok(raw_json)
+    mb_get(http_client().get(&url), priority).await
 }
 
 /// A release and everything the import pipeline archives with it.
@@ -453,43 +471,25 @@ pub async fn lookup_release_id_by_discogs_url(
     discogs_release_id: &str,
     priority: CallPriority,
 ) -> Result<Option<String>, MusicBrainzError> {
-    if let Some(hit) = DISCOGS_URL_LOOKUP_CACHE.get_cloned(discogs_release_id) {
-        debug!(
-            "MusicBrainz URL lookup cache hit for {}",
-            discogs_release_id
-        );
-        return Ok(hit);
-    }
-
-    let discogs_url = format!("https://www.discogs.com/release/{}", discogs_release_id);
-    let url = ws2(&format!(
-        "url?resource={discogs_url}&inc=release-rels&fmt=json"
-    ));
+    let url = discogs_url_lookup_url(discogs_release_id);
     debug!("MusicBrainz URL lookup: {}", url);
 
-    let response = match mb_get(http_client().get(&url), priority).await {
-        Ok(response) => response,
-        Err(MusicBrainzError::Provider { status: Some(404) }) => {
-            DISCOGS_URL_LOOKUP_CACHE.put(discogs_release_id, None);
-            return Ok(None);
-        }
+    let body = match mb_get(http_client().get(&url), priority).await {
+        Ok(body) => body,
+        // MusicBrainz has never seen this URL, which is the same answer as
+        // seeing it with no release linked.
+        Err(MusicBrainzError::Provider { status: Some(404) }) => return Ok(None),
         Err(error) => return Err(error),
     };
 
-    let lookup: UrlLookupResponse = response
-        .json()
-        .await
+    let lookup: UrlLookupResponse = serde_json::from_str(&body)
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
-    let release_id = lookup
+    Ok(lookup
         .relations
         .iter()
         .filter(|r| r.relation_type.as_deref() == Some("discogs"))
-        .find_map(|r| r.release.as_ref().and_then(|rel| rel.id.clone()));
-
-    DISCOGS_URL_LOOKUP_CACHE.put(discogs_release_id, release_id.clone());
-
-    Ok(release_id)
+        .find_map(|r| r.release.as_ref().and_then(|rel| rel.id.clone())))
 }
 
 /// The MB cross-reference for a Discogs release — the reverse of
@@ -649,15 +649,13 @@ async fn search_releases_with_params_once(
     let request = http_client()
         .get(&url)
         .query(&[("query", query.as_str()), ("limit", "25")]);
-    let response = match mb_get(request, priority).await {
-        Ok(response) => response,
+    let body = match mb_get(request, priority).await {
+        Ok(body) => body,
         Err(MusicBrainzError::Provider { status: Some(404) }) => return Ok(Vec::new()),
         Err(error) => return Err(error),
     };
 
-    let search_response: SearchResponse = response
-        .json()
-        .await
+    let search_response: SearchResponse = serde_json::from_str(&body)
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
     if let Some(ref error_msg) = search_response.error {

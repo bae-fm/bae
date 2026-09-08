@@ -1,4 +1,5 @@
 use super::*;
+use serial_test::serial;
 
 /// Every preparation mutation the pane offers, each refused with the error
 /// `is_expected` names, and the whole set left unwritten. The values passed in
@@ -363,6 +364,7 @@ async fn a_track_edit_that_keeps_artist_ids_keeps_the_prepared_artist_image() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
 async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by_import() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     handle
@@ -394,11 +396,9 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
         ],
     })
     .to_string();
-    let parsed_release = crate::discogs::client::parse_discogs_release_json(&raw_release).unwrap();
-    crate::discogs::client::seed_release_cache(
-        &source_release_id,
-        (parsed_release, raw_release),
-    );
+    crate::discogs::client::parse_discogs_release_json(&raw_release)
+        .expect("the rendered Discogs release parses");
+    crate::discogs::client::seed_release_cache(&source_release_id, raw_release);
     crate::musicbrainz::seed_discogs_url_lookup(&source_release_id, None);
     crate::discogs::client::seed_artist_image_response(&album_artist_id.to_string(), None);
     let prepared_artist_id = track_artist_id.to_string();

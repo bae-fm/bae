@@ -15,6 +15,8 @@ const TRACK_BETA: &str = "094f4448-f13c-4284-83ea-e362fb2f38aa"; // was "track-b
 const TRACK_WORK_A: &str = "d410a973-6a19-4ad3-87d8-b0c8c13d6015"; // was "track-work-a"
 const WORK_A: &str = "432c8996-8af0-43dc-868a-822a256f65c4"; // was "work-a"
 
+use serial_test::serial;
+
 use super::track::playback_info_from_track_release;
 use super::*;
 use crate::config::Config;

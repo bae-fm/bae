@@ -404,3 +404,161 @@ async fn search_observer_records_one_signal_after_internal_retry() {
     assert_eq!(request_count.load(Ordering::SeqCst), 2);
     assert_eq!(*signals.lock().unwrap(), vec!["accepted"]);
 }
+
+// ── The response cache ──────────────────────────────────────────────────────
+
+/// A local HTTP server answering `responses` in order, then answering anything
+/// further with a status no test expects — an over-count fails on the
+/// assertion instead of hanging until the request timeout.
+///
+/// One connection per response: the stream is dropped once the body is written,
+/// so the client opens a fresh connection for its next request and the accept
+/// count is the request count.
+async fn scripted_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUsize>) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("test listener should bind");
+    let url = format!(
+        "http://{}",
+        listener
+            .local_addr()
+            .expect("test listener should have an address")
+    );
+    let request_count = Arc::new(AtomicUsize::new(0));
+    let counted_requests = request_count.clone();
+    tokio::spawn(async move {
+        let mut remaining = responses.into_iter();
+        loop {
+            let Ok((mut stream, _)) = listener.accept().await else {
+                return;
+            };
+            counted_requests.fetch_add(1, Ordering::SeqCst);
+            let mut buffer = [0; 4096];
+            let _ = stream.read(&mut buffer).await;
+            let (status, body) = remaining
+                .next()
+                .unwrap_or_else(|| (599, "unscripted request".to_string()));
+            let raw = format!(
+                "HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\n\
+                 Content-Length: {}\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = stream.write_all(raw.as_bytes()).await;
+        }
+    });
+    (url, request_count)
+}
+
+fn release_body(id: u64) -> String {
+    serde_json::json!({ "id": id, "title": "Album Title" }).to_string()
+}
+
+fn client_at(url: String) -> DiscogsClient {
+    let mut client = DiscogsClient::new("token".to_string());
+    client.base_url = url;
+    client
+}
+
+#[tokio::test]
+#[serial(discogs_rate_limiter)]
+async fn a_repeated_request_is_answered_without_a_second_round_trip() {
+    let _guard = discogs_test_guard().lock().await;
+    RATE_LIMITER.reset();
+    let (url, requests) = scripted_server(vec![(200, release_body(510001))]).await;
+    let client = client_at(url);
+
+    let (first, first_raw) = client
+        .get_release("510001", CallPriority::Interactive)
+        .await
+        .expect("the release fetch succeeds");
+    let (second, second_raw) = client
+        .get_release("510001", CallPriority::Interactive)
+        .await
+        .expect("the repeated fetch is answered");
+
+    assert_eq!(first.id, second.id);
+    assert_eq!(first_raw, second_raw);
+    assert_eq!(requests.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+#[serial(discogs_rate_limiter)]
+async fn a_not_found_answer_is_kept() {
+    let _guard = discogs_test_guard().lock().await;
+    RATE_LIMITER.reset();
+    let (url, requests) = scripted_server(vec![(404, String::new())]).await;
+    let client = client_at(url);
+
+    for _ in 0..2 {
+        let error = client
+            .get_release("510002", CallPriority::Interactive)
+            .await
+            .expect_err("Discogs has no such release");
+        assert!(matches!(error, DiscogsError::NotFound));
+    }
+
+    assert_eq!(requests.load(Ordering::SeqCst), 1);
+}
+
+/// A rate limit and a server error are the provider's momentary state, not its
+/// answer: every retry goes to the wire, and so does the next call.
+#[tokio::test]
+#[serial(discogs_rate_limiter)]
+async fn transient_failures_are_not_kept() {
+    let _guard = discogs_test_guard().lock().await;
+    RATE_LIMITER.reset();
+    let (url, requests) = scripted_server(vec![
+        (429, String::new()),
+        (503, String::new()),
+        (429, String::new()),
+        (200, release_body(510003)),
+    ])
+    .await;
+    let client = client_at(url);
+
+    let error = client
+        .get_release("510003", CallPriority::Interactive)
+        .await
+        .expect_err("three transient answers exhaust the retries");
+    assert!(matches!(error, DiscogsError::RateLimit));
+    assert_eq!(
+        requests.load(Ordering::SeqCst),
+        3,
+        "each retry asked the server again"
+    );
+
+    let (release, _) = client
+        .get_release("510003", CallPriority::Interactive)
+        .await
+        .expect("the provider recovered");
+    assert_eq!(release.id, "510003");
+    assert_eq!(
+        requests.load(Ordering::SeqCst),
+        4,
+        "the failed answer was not kept"
+    );
+}
+
+/// The key is the whole URL, so the same path under two base addresses is two
+/// answers — which is what keeps one test's fake provider out of another's.
+#[tokio::test]
+#[serial(discogs_rate_limiter)]
+async fn the_same_path_under_two_base_urls_is_two_answers() {
+    let _guard = discogs_test_guard().lock().await;
+    RATE_LIMITER.reset();
+    let (first_url, first_requests) = scripted_server(vec![(200, release_body(510004))]).await;
+    let (second_url, second_requests) = scripted_server(vec![(200, release_body(510004))]).await;
+
+    let (_, first_raw) = client_at(first_url)
+        .get_release("510004", CallPriority::Interactive)
+        .await
+        .expect("the first server answers");
+    let (_, second_raw) = client_at(second_url)
+        .get_release("510004", CallPriority::Interactive)
+        .await
+        .expect("the second server answers");
+
+    assert_eq!(first_raw, second_raw);
+    assert_eq!(first_requests.load(Ordering::SeqCst), 1);
+    assert_eq!(second_requests.load(Ordering::SeqCst), 1);
+}
