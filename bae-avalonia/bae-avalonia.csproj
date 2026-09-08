@@ -132,9 +132,28 @@
     <EmbeddedResource Include="..\BaeKit\Sources\BaeKit\Resources\AppearancePalette.json" LogicalName="Bae.AppearancePalette.json" />
   </ItemGroup>
 
+  <!--
+    Generated once per build. The two target frameworks build in parallel, and
+    each writing the same tables at the same time is a lock on Core.<culture>.resx
+    (os error 32). So the outer, cross-targeting build writes them before it
+    dispatches the inner builds and tells each one so; a single-framework build
+    (dotnet build -f …) has no outer build and generates for itself.
+  -->
+  <PropertyGroup>
+    <GenerateCoreResxCommand>cargo run -q -p bae-loc --bin loc-gen -- emit --target resx --out-dir &quot;$(MSBuildProjectDirectory)/Strings&quot;</GenerateCoreResxCommand>
+  </PropertyGroup>
+
+  <Target Name="GenerateCoreResxForInnerBuilds" BeforeTargets="DispatchToInnerBuilds" Condition="'$(IsCrossTargetingBuild)' == 'true'">
+    <Exec Command="$(GenerateCoreResxCommand)" WorkingDirectory="$(MSBuildProjectDirectory)/.." />
+    <ItemGroup>
+      <_InnerBuildProjects AdditionalProperties="%(_InnerBuildProjects.AdditionalProperties);CoreResxGenerated=true" />
+    </ItemGroup>
+  </Target>
+
   <Target Name="GenerateCoreResx" BeforeTargets="AssignTargetPaths;PrepareResourceNames">
     <Exec
-      Command="cargo run -q -p bae-loc --bin loc-gen -- emit --target resx --out-dir &quot;$(MSBuildProjectDirectory)/Strings&quot;"
+      Condition="'$(CoreResxGenerated)' != 'true'"
+      Command="$(GenerateCoreResxCommand)"
       WorkingDirectory="$(MSBuildProjectDirectory)/.." />
     <ItemGroup>
       <EmbeddedResource Include="Strings/Core*.resx" />
