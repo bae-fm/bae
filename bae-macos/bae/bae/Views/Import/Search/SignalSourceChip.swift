@@ -161,6 +161,7 @@ func lastPathComponent(_ path: String) -> String {
             )
         }
         .padding()
+        .environment(PreviewData.artImageStore())
         .windowBackground()
     }
 #endif

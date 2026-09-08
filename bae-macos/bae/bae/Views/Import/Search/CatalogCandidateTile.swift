@@ -63,6 +63,7 @@ struct CatalogCandidateTile: View {
         }
         .padding()
         .frame(width: 400)
+        .environment(PreviewData.artImageStore())
         .windowBackground()
     }
 #endif

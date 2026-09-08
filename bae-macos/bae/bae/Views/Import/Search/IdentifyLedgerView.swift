@@ -244,6 +244,7 @@ struct LedgerColumnRails: View {
             onRetryFailed: {},
         )
         .frame(width: 660)
+        .environment(PreviewData.artImageStore())
         .windowBackground()
     }
 
@@ -258,6 +259,7 @@ struct LedgerColumnRails: View {
             onRetryFailed: {},
         )
         .frame(width: 660)
+        .environment(PreviewData.artImageStore())
         .windowBackground()
     }
 
@@ -269,6 +271,7 @@ struct LedgerColumnRails: View {
             onRetryFailed: {},
         )
         .frame(width: 660)
+        .environment(PreviewData.artImageStore())
         .windowBackground()
     }
 
@@ -280,6 +283,7 @@ struct LedgerColumnRails: View {
             onRetryFailed: {},
         )
         .frame(width: 660)
+        .environment(PreviewData.artImageStore())
         .windowBackground()
     }
 
@@ -291,6 +295,7 @@ struct LedgerColumnRails: View {
             onRetryFailed: {},
         )
         .frame(width: 660)
+        .environment(PreviewData.artImageStore())
         .windowBackground()
     }
 #endif

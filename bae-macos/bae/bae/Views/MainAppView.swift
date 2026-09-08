@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -345,6 +346,14 @@ struct MainAppView: View {
             .environment(CastStore())
             .environment(ArtworkLoadingStore(cancel: {}))
             .albumDetailPreviewEnvironment(store: libraryStore)
+            .environment(
+                \.playbackPositionPublisher,
+                Empty<PlaybackPositionEvent, Never>().eraseToAnyPublisher()
+            )
+            .environment(
+                \.previewProgressPublisher,
+                Empty<PlaybackPositionEvent, Never>().eraseToAnyPublisher()
+            )
             .padding(.top, 1)
             .frame(width: 1280, height: 800)
             .windowBackground()

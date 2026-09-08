@@ -473,6 +473,7 @@ struct ArtistAssignmentsField: View {
         .frame(width: 900, height: 360)
         .background(Theme.background)
         .environment(PreviewData.artistAssignmentsLibrary())
+        .environment(ImageStore.stub())
         .environment(UiStore())
     }
 #endif

@@ -112,11 +112,15 @@
     }
 
     #Preview("Cover gallery") {
-        CoverPickerPreviewScene().frame(width: 1_148, height: 868)
+        CoverPickerPreviewScene()
+            .frame(width: 1_148, height: 868)
+            .environment(PreviewData.artImageStore())
     }
 
     #Preview("Cover gallery — short window") {
-        CoverPickerPreviewScene().frame(width: 800, height: 520)
+        CoverPickerPreviewScene()
+            .frame(width: 800, height: 520)
+            .environment(PreviewData.artImageStore())
     }
 
     #Preview("Artwork lightbox") {
