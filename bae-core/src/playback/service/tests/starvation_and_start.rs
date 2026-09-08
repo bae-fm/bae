@@ -273,7 +273,7 @@ async fn playback_state_mapping() {
     let prompt = PlaybackSidePausePrompt {
         id: "id".to_string(),
         title_key: SIDE_PAUSE_TITLE_KEY,
-        side_letter: "B".to_string(),
+        side_label: "B".to_string(),
         message_key: SIDE_PAUSE_VINYL_MESSAGE_KEY,
     };
     service.slot = active_slot(

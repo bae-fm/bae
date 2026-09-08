@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>nije moguće spremiti ključ. Nešto je pošlo po zlu.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Provjera…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauza između strana</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauza između strana i diskova</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Emitiranje</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Omogući emitiranje</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Reproducira na Cast, AirPlay i UPnP prijamnicima na vašoj mreži. Dok je isključeno, bae ne traži uređaje.</value></data>

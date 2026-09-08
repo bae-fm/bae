@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>nie udało się zapisać klucza. Coś poszło nie tak.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Token API Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Weryfikowanie…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauza między stronami</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauza między stronami i płytami</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Przesyłanie</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Włącz przesyłanie</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Odtwarza na odbiornikach Cast, AirPlay i UPnP w Twojej sieci. Gdy jest wyłączone, bae nie szuka urządzeń.</value></data>

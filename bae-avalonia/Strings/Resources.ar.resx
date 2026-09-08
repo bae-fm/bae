@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>تعذّر حفظ المفتاح. حدث خطأ ما.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>رمز API لـ Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>جارٍ التحقق…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>إيقاف مؤقت بين الجانبين</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>إيقاف مؤقت بين الجوانب والأقراص</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>الإرسال</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>تفعيل الإرسال</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>يشغّل الصوت على أجهزة استقبال Cast وAirPlay وUPnP على شبكتك. عند إيقافه، لا يبحث bae عن أي أجهزة.</value></data>

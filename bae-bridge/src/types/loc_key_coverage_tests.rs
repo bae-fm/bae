@@ -450,6 +450,8 @@ fn produced_keys() -> Vec<String> {
 
     keys.extend(
         [
+            bae_core::playback::DISC_PAUSE_TITLE_KEY,
+            bae_core::playback::DISC_PAUSE_CD_MESSAGE_KEY,
             bae_core::playback::SIDE_PAUSE_TITLE_KEY,
             bae_core::playback::SIDE_PAUSE_VINYL_MESSAGE_KEY,
             bae_core::playback::SIDE_PAUSE_CASSETTE_MESSAGE_KEY,

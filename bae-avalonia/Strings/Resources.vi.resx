@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>không thể lưu khóa. Đã xảy ra lỗi.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Token API Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Đang xác thực…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Tạm dừng giữa các mặt</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Tạm dừng giữa các mặt và đĩa</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Truyền</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Bật truyền</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Phát tới các thiết bị nhận Cast, AirPlay và UPnP trong mạng của bạn. Khi tắt, bae không tìm thiết bị nào.</value></data>

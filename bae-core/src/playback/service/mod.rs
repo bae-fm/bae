@@ -58,7 +58,7 @@ use crate::playback::source;
 use crate::playback::source::{TrackCrossing, TrackFmt};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::TrackStream;
-use crate::util::format::PhysicalSideMedium;
+use crate::util::format::PhysicalMedium;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
@@ -87,8 +87,8 @@ use api::SidePauseDecision;
 pub(crate) use api::{dispatch_command, PlaybackCommand};
 pub use api::{
     LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackSidePausePrompt, PlaybackState,
-    PlaybackTrackInfo, PlaybackTrackSide, SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_TITLE_KEY,
-    SIDE_PAUSE_VINYL_MESSAGE_KEY,
+    PlaybackTrackInfo, PlaybackTrackSide, DISC_PAUSE_CD_MESSAGE_KEY, DISC_PAUSE_TITLE_KEY,
+    SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_TITLE_KEY, SIDE_PAUSE_VINYL_MESSAGE_KEY,
 };
 use file_buffers::{prepare_track_for_playback, FileBuffers};
 use renderer::{RemoteConnect, Renderer};
@@ -490,20 +490,33 @@ fn side_pause_prompt_between(
     }
     let current_side = current.side.as_ref()?;
     let next_side = next.side.as_ref()?;
-    if current_side.side_letter == next_side.side_letter {
+    if current_side.number == next_side.number {
         return None;
     }
-    let message_key = match current_side.medium {
-        PhysicalSideMedium::Vinyl => SIDE_PAUSE_VINYL_MESSAGE_KEY,
-        PhysicalSideMedium::Cassette => SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
+    let (title_key, message_key, side_label) = match current_side.medium {
+        PhysicalMedium::Vinyl => (
+            SIDE_PAUSE_TITLE_KEY,
+            SIDE_PAUSE_VINYL_MESSAGE_KEY,
+            crate::util::format::side_letter(current_side.number),
+        ),
+        PhysicalMedium::Cassette => (
+            SIDE_PAUSE_TITLE_KEY,
+            SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
+            crate::util::format::side_letter(current_side.number),
+        ),
+        PhysicalMedium::Cd => (
+            DISC_PAUSE_TITLE_KEY,
+            DISC_PAUSE_CD_MESSAGE_KEY,
+            current_side.number.to_string(),
+        ),
     };
     Some(PlaybackSidePausePrompt {
         id: format!(
             "{}:{}:{:?}",
-            next.track_id, current_side.side_letter, current_side.medium
+            next.track_id, current_side.number, current_side.medium
         ),
-        title_key: SIDE_PAUSE_TITLE_KEY,
-        side_letter: current_side.side_letter.clone(),
+        title_key,
+        side_label,
         message_key,
     })
 }

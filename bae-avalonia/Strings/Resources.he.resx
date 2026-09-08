@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>לא ניתן לשמור את המפתח. משהו השתבש.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>אסימון API של Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>מאמת…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>השהיה בין צדדים</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>השהיה בין צדדים ודיסקים</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>שידור</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>הפעלת שידור</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>מנגן במקלטי Cast‏, AirPlay ו‑UPnP ברשת שלך. כשהאפשרות כבויה, bae אינו מחפש מכשירים.</value></data>

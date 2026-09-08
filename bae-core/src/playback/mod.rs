@@ -45,8 +45,9 @@ pub use queue::{
 pub use repeat_mode::RepeatMode;
 pub use service::{
     LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackService, PlaybackSidePausePrompt,
-    PlaybackState, PlaybackTrackInfo, PlaybackTrackSide, SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
-    SIDE_PAUSE_TITLE_KEY, SIDE_PAUSE_VINYL_MESSAGE_KEY,
+    PlaybackState, PlaybackTrackInfo, PlaybackTrackSide, DISC_PAUSE_CD_MESSAGE_KEY,
+    DISC_PAUSE_TITLE_KEY, SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_TITLE_KEY,
+    SIDE_PAUSE_VINYL_MESSAGE_KEY,
 };
 pub use source::{TrackCrossing, TrackFmt};
 pub use sparse_buffer::SharedSparseBuffer;

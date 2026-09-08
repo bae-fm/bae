@@ -26,7 +26,7 @@ async fn assert_sided_boundary_pauses(
     format: &str,
     positions: [&str; 3],
     start_track_index: usize,
-    expected_side_letter: &str,
+    expected_side_label: &str,
     expected_message_key: &str,
 ) {
     let mut fixture = SidePauseTestFixture::new(format, positions, true)
@@ -38,7 +38,7 @@ async fn assert_sided_boundary_pauses(
         .play_to_side_pause(
             start_track_index,
             &side_track_id,
-            expected_side_letter,
+            expected_side_label,
             expected_message_key,
         )
         .await;
@@ -73,24 +73,15 @@ async fn same_side_auto_advance_does_not_side_pause() {
 }
 
 #[tokio::test]
-async fn cd_multi_disc_auto_advance_does_not_side_pause() {
-    let mut fixture = SidePauseTestFixture::new("CD", ["1-1", "2-1", "2-2"], true)
-        .await
-        .expect("side-pause fixture");
-    let first_disc_track_id = fixture.track_ids[0].clone();
-    let next_disc_track_id = fixture.track_ids[1].clone();
-
-    fixture.play_track_and_wait(0, &first_disc_track_id).await;
-
-    fixture.seek_to_auto_advance();
-
-    fixture
-        .wait_for_playing_track(
-            &next_disc_track_id,
-            Duration::from_secs(10),
-            "CD disc boundary should keep playing",
-        )
-        .await;
+async fn cd_multi_disc_boundary_pauses_on_auto_advance() {
+    assert_sided_boundary_pauses(
+        "CD",
+        ["1-1", "2-1", "2-2"],
+        0,
+        "1",
+        "core.playback.pause.disc_ended.message.cd",
+    )
+    .await;
 }
 
 #[tokio::test]

@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>nelze uložit klíč. Došlo k chybě.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>API token Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Ověřování…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauza mezi stranami</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauza mezi stranami a disky</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Odesílání</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Povolit odesílání</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Přehrává na přijímače Cast, AirPlay a UPnP ve vaší síti. Když je vypnuto, bae žádná zařízení nehledá.</value></data>

@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">লাইব্রেরির পরিবর্তন</string>
     <string name="sync_blocked_circle_operation">শেয়ারিংয়ের পরিবর্তন</string>
     <string name="sync_blocked_reclaim">ক্লাউড পরিষ্কার</string>
-    <string name="settings_pause_between_sides">সাইডের মাঝে বিরতি</string>
+    <string name="settings_pause_between_sides">সাইড ও ডিস্কের মাঝে বিরতি</string>
     <string name="settings_restore_on_launch">চালু হলে রিস্টোর করুন</string>
     <string name="settings_restore_on_launch_help">অ্যাপ খোলার সময় শেষ সেশনের ট্র্যাক, অবস্থান, সারি ও ভলিউম পুনরুদ্ধার করে।</string>
     <string name="settings_playback">প্লেব্যাক</string>

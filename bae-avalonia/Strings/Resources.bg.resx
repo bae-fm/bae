@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>ключът не може да бъде запазен. Нещо се обърка.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API токен</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Потвърждаване…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза между страните</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза между страните и дисковете</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Предаване</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Включване на предаването</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Възпроизвежда на приемници Cast, AirPlay и UPnP в мрежата ви. Когато е изключено, bae не търси устройства.</value></data>

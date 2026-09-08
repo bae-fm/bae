@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>কী সংরক্ষণ করা যায়নি। কিছু ভুল হয়েছে।</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API টোকেন</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>যাচাই করা হচ্ছে…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>সাইডের মাঝে বিরতি</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>সাইড ও ডিস্কের মাঝে বিরতি</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>কাস্টিং</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>কাস্টিং সক্ষম করুন</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>আপনার নেটওয়ার্কের Cast, AirPlay ও UPnP রিসিভারে বাজায়। বন্ধ থাকলে bae কোনো ডিভাইস খোঁজে না।</value></data>

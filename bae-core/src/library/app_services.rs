@@ -936,7 +936,7 @@ impl AppServices {
         self.inner.manager.subscribe_output_values()
     }
 
-    /// Set whether playback pauses between vinyl/cassette sides. Turning it on
+    /// Set whether playback pauses between vinyl/cassette sides and CD discs. Turning it on
     /// must take effect at the boundary already staged for gapless playback,
     /// not just the next one: `preload_next_track` decides staging once, at
     /// preload time, so writing the config alone leaves an already-staged

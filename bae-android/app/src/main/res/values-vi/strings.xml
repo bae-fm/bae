@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">Thay đổi thư viện</string>
     <string name="sync_blocked_circle_operation">Thay đổi chia sẻ</string>
     <string name="sync_blocked_reclaim">Dọn dẹp đám mây</string>
-    <string name="settings_pause_between_sides">Tạm dừng giữa các mặt</string>
+    <string name="settings_pause_between_sides">Tạm dừng giữa các mặt và đĩa</string>
     <string name="settings_restore_on_launch">Khôi phục khi khởi chạy</string>
     <string name="settings_restore_on_launch_help">Khôi phục bản nhạc, vị trí, hàng đợi và âm lượng của phiên trước khi mở ứng dụng.</string>
     <string name="settings_playback">Phát lại</string>

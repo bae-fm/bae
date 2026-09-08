@@ -21,11 +21,11 @@ pub struct PlaybackTrackInfo {
     pub side: Option<PlaybackTrackSide>,
 }
 
-/// Physical side metadata for a track on a side-based release.
+/// Physical side or disc metadata used to decide playback boundaries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackTrackSide {
-    pub medium: PhysicalSideMedium,
-    pub side_letter: String,
+    pub medium: PhysicalMedium,
+    pub number: i32,
 }
 
 /// The track metadata a `Loading` state carries once `prepare_track_for_playback`
@@ -52,13 +52,16 @@ impl LoadingTrack {
 pub struct PlaybackSidePausePrompt {
     pub id: String,
     pub title_key: &'static str,
-    pub side_letter: String,
+    pub side_label: String,
     pub message_key: &'static str,
 }
 
 pub const SIDE_PAUSE_TITLE_KEY: &str = "core.playback.pause.side_ended.title";
 pub const SIDE_PAUSE_VINYL_MESSAGE_KEY: &str = "core.playback.pause.side_ended.message.vinyl";
 pub const SIDE_PAUSE_CASSETTE_MESSAGE_KEY: &str = "core.playback.pause.side_ended.message.cassette";
+
+pub const DISC_PAUSE_TITLE_KEY: &str = "core.playback.pause.disc_ended.title";
+pub const DISC_PAUSE_CD_MESSAGE_KEY: &str = "core.playback.pause.disc_ended.message.cd";
 
 /// Why playback is paused.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -354,7 +354,7 @@ pub struct Preferences {
     /// Id of the preset a release save defaults to. A required, valid preset id
     /// that applies to release saves (config validation keeps it non-dangling).
     pub default_release_save_preset: String,
-    /// Whether playback pauses between vinyl/cassette sides.
+    /// Whether playback pauses between vinyl/cassette sides and CD discs.
     pub pause_between_sides: bool,
     /// How many blob uploads coven's upload drain runs at once. Device-local: a
     /// concurrency limit reflects one machine's link and CPU, so unlike most

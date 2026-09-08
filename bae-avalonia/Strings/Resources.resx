@@ -171,7 +171,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>couldn't save the key. Something went wrong.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause between sides</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause between sides and discs</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Casting</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Enable casting</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices.</value></data>

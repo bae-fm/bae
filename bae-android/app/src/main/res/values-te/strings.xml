@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">లైబ్రరీ మార్పు</string>
     <string name="sync_blocked_circle_operation">భాగస్వామ్య మార్పు</string>
     <string name="sync_blocked_reclaim">క్లౌడ్ శుభ్రపరచడం</string>
-    <string name="settings_pause_between_sides">వైపుల మధ్య విరామం</string>
+    <string name="settings_pause_between_sides">సైడ్‌లు మరియు డిస్క్‌ల మధ్య విరామం</string>
     <string name="settings_restore_on_launch">ప్రారంభంలో పునరుద్ధరించు</string>
     <string name="settings_restore_on_launch_help">యాప్ తెరిచినప్పుడు గత సెషన్ ట్రాక్, స్థానం, క్యూ మరియు వాల్యూమ్‌ను పునరుద్ధరిస్తుంది.</string>
     <string name="settings_playback">ప్లేబ్యాక్</string>

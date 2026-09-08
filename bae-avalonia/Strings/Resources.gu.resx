@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>કી સાચવી શકાયી નહીં. કંઈક ખોટું થયું.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API ટોકન</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>માન્ય થઈ રહ્યું છે…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>બાજુઓ વચ્ચે વિરામ</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>સાઇડ અને ડિસ્ક વચ્ચે વિરામ</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>કાસ્ટિંગ</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>કાસ્ટિંગ સક્ષમ કરો</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>તમારા નેટવર્ક પરના Cast, AirPlay અને UPnP રિસીવર પર વગાડે છે. બંધ હોય ત્યારે bae કોઈ ઉપકરણ શોધતું નથી.</value></data>

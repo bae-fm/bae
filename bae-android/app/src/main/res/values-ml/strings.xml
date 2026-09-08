@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">ലൈബ്രറി മാറ്റം</string>
     <string name="sync_blocked_circle_operation">പങ്കിടൽ മാറ്റം</string>
     <string name="sync_blocked_reclaim">ക്ലൗഡ് വൃത്തിയാക്കൽ</string>
-    <string name="settings_pause_between_sides">വശങ്ങൾക്കിടയിൽ താൽക്കാലികമായി നിർത്തുക</string>
+    <string name="settings_pause_between_sides">വശങ്ങൾക്കും ഡിസ്കുകൾക്കും ഇടയിൽ താൽക്കാലികമായി നിർത്തുക</string>
     <string name="settings_restore_on_launch">ആരംഭിക്കുമ്പോൾ പുനഃസ്ഥാപിക്കുക</string>
     <string name="settings_restore_on_launch_help">ആപ്പ് തുറക്കുമ്പോൾ അവസാന സെഷനിലെ ട്രാക്ക്, സ്ഥാനം, ക്യൂ, വോളിയം എന്നിവ പുനഃസ്ഥാപിക്കുന്നു.</string>
     <string name="settings_playback">പ്ലേബാക്ക്</string>

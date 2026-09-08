@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">Зміна бібліотеки</string>
     <string name="sync_blocked_circle_operation">Зміна спільного доступу</string>
     <string name="sync_blocked_reclaim">Очищення у хмарі</string>
-    <string name="settings_pause_between_sides">Пауза між сторонами</string>
+    <string name="settings_pause_between_sides">Пауза між сторонами та дисками</string>
     <string name="settings_restore_on_launch">Відновлювати під час запуску</string>
     <string name="settings_restore_on_launch_help">Під час відкриття застосунку відновлює трек, позицію, чергу та гучність останнього сеансу.</string>
     <string name="settings_playback">Відтворення</string>

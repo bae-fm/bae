@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">שינוי בספרייה</string>
     <string name="sync_blocked_circle_operation">שינוי בשיתוף</string>
     <string name="sync_blocked_reclaim">ניקוי בענן</string>
-    <string name="settings_pause_between_sides">השהיה בין צדדים</string>
+    <string name="settings_pause_between_sides">השהיה בין צדדים ודיסקים</string>
     <string name="settings_restore_on_launch">שחזר בהפעלה</string>
     <string name="settings_restore_on_launch_help">משחזר את הרצועה, המיקום, התור ועוצמת השמע מההפעלה הקודמת עם פתיחת האפליקציה.</string>
     <string name="settings_playback">הפעלה</string>

@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>не вдалося зберегти ключ. Щось пішло не так.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Токен API Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Перевірка…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза між сторонами</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза між сторонами та дисками</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Трансляція</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Увімкнути трансляцію</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Відтворює на приймачах Cast, AirPlay і UPnP у вашій мережі. Коли вимкнено, bae не шукає пристроїв.</value></data>

@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>无法保存密钥。出现错误。</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API 令牌</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>校验中…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面之间暂停</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面或碟片之间暂停</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>投放</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>启用投放</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>在你网络中的 Cast、AirPlay 和 UPnP 接收设备上播放。关闭时，bae 不会搜索设备。</value></data>

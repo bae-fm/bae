@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">Kitaplık değişikliği</string>
     <string name="sync_blocked_circle_operation">Paylaşım değişikliği</string>
     <string name="sync_blocked_reclaim">Bulut temizliği</string>
-    <string name="settings_pause_between_sides">Yüzler arasında duraklat</string>
+    <string name="settings_pause_between_sides">Yüzler ve diskler arasında duraklat</string>
     <string name="settings_restore_on_launch">Açılışta geri yükle</string>
     <string name="settings_restore_on_launch_help">Uygulama açıldığında son oturumun parçasını, konumunu, kuyruğunu ve ses düzeyini geri yükler.</string>
     <string name="settings_playback">Oynatma</string>

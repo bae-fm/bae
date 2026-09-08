@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>บันทึกคีย์ไม่ได้ เกิดข้อผิดพลาด</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>โทเค็น API ของ Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>กำลังตรวจสอบ…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>หยุดพักระหว่างด้าน</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>หยุดพักระหว่างด้านและแผ่น</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>การแคสต์</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>เปิดใช้การแคสต์</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>เล่นไปยังตัวรับ Cast, AirPlay และ UPnP ในเครือข่ายของคุณ เมื่อปิดอยู่ bae จะไม่ค้นหาอุปกรณ์</value></data>

@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>కీని సేవ్ చేయలేకపోయింది. ఏదో తప్పు జరిగింది.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API టోకెన్</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>ధృవీకరిస్తోంది…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>వైపుల మధ్య విరామం</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>సైడ్‌లు మరియు డిస్క్‌ల మధ్య విరామం</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>కాస్టింగ్</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>కాస్టింగ్ ప్రారంభించు</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>మీ నెట్‌వర్క్‌లోని Cast, AirPlay, UPnP రిసీవర్‌లలో ప్లే చేస్తుంది. ఆఫ్‌లో ఉన్నప్పుడు bae పరికరాల కోసం వెతకదు.</value></data>

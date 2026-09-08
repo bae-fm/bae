@@ -415,7 +415,7 @@ impl SidePauseTestFixture {
 
     async fn wait_for_side_pause(
         &mut self,
-        expected_side_letter: &str,
+        expected_side_label: &str,
         expected_message_key: &str,
     ) -> PlaybackState {
         self.wait_for_state(
@@ -425,7 +425,7 @@ impl SidePauseTestFixture {
                     PlaybackState::Paused {
                         reason: PlaybackPauseReason::SideEnded(prompt),
                         ..
-                    } if prompt.side_letter == expected_side_letter
+                    } if prompt.side_label == expected_side_label
                         && prompt.message_key == expected_message_key
                 )
             },
@@ -439,19 +439,19 @@ impl SidePauseTestFixture {
         &mut self,
         start_track_index: usize,
         track_id: &str,
-        expected_side_letter: &str,
+        expected_side_label: &str,
         expected_message_key: &str,
     ) -> PlaybackState {
         self.play_track_and_wait(start_track_index, track_id).await;
         self.seek_to_auto_advance();
-        self.wait_for_side_pause(expected_side_letter, expected_message_key)
+        self.wait_for_side_pause(expected_side_label, expected_message_key)
             .await
     }
 }
 
 fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRelease {
     let mut release = create_test_album();
-    release.id = format!("side-pause-{format}");
+    release.id = format!("side-pause-{format}-{}", positions.join("_"));
     release.title = format!("{format} Side Pause Fixture");
     release.format = vec![format.to_string()];
     for (track, position) in release.tracklist.iter_mut().zip(positions) {
@@ -467,6 +467,7 @@ fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRe
 // and AutoAdvance always start playing.
 
 include!("side_and_navigation.rs");
+include!("cd_boundaries.rs");
 include!("queue_and_pregap.rs");
 include!("high_rate_and_restore.rs");
 include!("local_sparse_buffer.rs");

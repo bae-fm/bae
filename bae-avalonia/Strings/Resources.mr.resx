@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>कळ जतन करता आली नाही। काहीतरी चुकले.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API टोकन</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>वैध करत आहे…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>बाजूंमध्ये विराम</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>बाजू आणि डिस्क यांच्यामध्ये विराम</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>कास्टिंग</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>कास्टिंग सक्षम करा</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>तुमच्या नेटवर्कवरील Cast, AirPlay आणि UPnP रिसीव्हरवर वाजवते. बंद असताना bae कोणतेही डिव्हाइस शोधत नाही.</value></data>

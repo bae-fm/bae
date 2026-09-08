@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">Modification de la bibliothèque</string>
     <string name="sync_blocked_circle_operation">Modification du partage</string>
     <string name="sync_blocked_reclaim">Nettoyage du cloud</string>
-    <string name="settings_pause_between_sides">Pause entre les faces</string>
+    <string name="settings_pause_between_sides">Pause entre les faces et les disques</string>
     <string name="settings_restore_on_launch">Restaurer au lancement</string>
     <string name="settings_restore_on_launch_help">Restaure la piste, la position, la file et le volume de la dernière session à l\'ouverture de l\'app.</string>
     <string name="settings_playback">Lecture</string>

@@ -87,13 +87,14 @@ after a repeat wrap moves played rows back into upcoming.
   to row zero. While shuffled, the whole lane is re-permuted first — a fresh
   pass over the same rows. Removals and reorders carry into every pass.
 
-## Physical-side pause
+## Side and disc pause
 
 With `pause_between_sides` enabled, playback holds for confirmation when one
-physical side ends and the next begins: the next track comes from the context
-lane, the lane is sequential, Up Next is empty,
-both tracks are from the same release, and their side letters differ. The
-prompt names the medium (vinyl or cassette) and the side that ended.
+vinyl/cassette side or CD disc ends and the next begins: the next track comes
+from the context lane, the lane is sequential, Up Next is empty, both tracks
+are from the same release, and their side or disc numbers differ. The prompt
+names the medium and the side letter or disc number that ended. Pressing Play
+starts the next side or disc. Digital downloads do not pause at disc boundaries.
 
 Shuffling closes this gate; unshuffling reopens it. Looping a sided release
 under context repeat prompts at the wrap — the last side ended, flip back to

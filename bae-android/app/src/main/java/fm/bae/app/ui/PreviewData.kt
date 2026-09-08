@@ -281,9 +281,9 @@ object PreviewData {
     fun sidePausePrompt(): BridgeSidePausePrompt =
         BridgeSidePausePrompt(
             id = "prompt-1",
-            titleKey = "core.playback.side_pause.title",
-            sideLetter = "B",
-            messageKey = "core.playback.side_pause.message",
+            titleKey = "core.playback.pause.side_ended.title",
+            sideLabel = "B",
+            messageKey = "core.playback.pause.side_ended.message.vinyl",
         )
 
     fun galleryItem(

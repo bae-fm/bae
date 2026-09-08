@@ -63350,193 +63350,193 @@
         }
       }
     },
-    "Pause between sides" : {
-      "extractionState" : "stale",
+    "Pause between sides and discs" : {
+      "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إيقاف مؤقت بين الجانبين"
+            "value" : "إيقاف مؤقت بين الجوانب والأقراص"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пауза между страните"
+            "value" : "Пауза между страните и дисковете"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "সাইডের মাঝে বিরতি"
+            "value" : "সাইড ও ডিস্কের মাঝে বিরতি"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pauza mezi stranami"
+            "value" : "Pauza mezi stranami a disky"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pause zwischen Seiten"
+            "value" : "Pause zwischen Seiten und Discs"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pause between sides"
+            "value" : "Pause between sides and discs"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pausa entre caras"
+            "value" : "Pausa entre caras y discos"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pause entre les faces"
+            "value" : "Pause entre les faces et les disques"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "બાજુઓ વચ્ચે વિરામ"
+            "value" : "સાઇડ અને ડિસ્ક વચ્ચે વિરામ"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "השהיה בין צדדים"
+            "value" : "השהיה בין צדדים ודיסקים"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "पक्षों के बीच रोकें"
+            "value" : "साइडों और डिस्कों के बीच रोकें"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pauza između strana"
+            "value" : "Pauza između strana i diskova"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pausa tra i lati"
+            "value" : "Pausa tra i lati e i dischi"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "面の間で一時停止"
+            "value" : "面やディスクの間で一時停止"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಬದಿಗಳ ನಡುವೆ ವಿರಾಮ"
+            "value" : "ಸೈಡ್‌ಗಳು ಮತ್ತು ಡಿಸ್ಕ್‌ಗಳ ನಡುವೆ ವಿರಾಮ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "면 사이에 일시정지"
+            "value" : "면과 디스크 사이에 일시정지"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "വശങ്ങൾക്കിടയിൽ താൽക്കാലികമായി നിർത്തുക"
+            "value" : "വശങ്ങൾക്കും ഡിസ്കുകൾക്കും ഇടയിൽ താൽക്കാലികമായി നിർത്തുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "बाजूंमध्ये विराम"
+            "value" : "बाजू आणि डिस्क यांच्यामध्ये विराम"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pauze tussen kanten"
+            "value" : "Pauze tussen kanten en schijven"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਸਾਈਡਾਂ ਵਿਚਕਾਰ ਠਹਿਰਾਓ"
+            "value" : "ਸਾਈਡਾਂ ਅਤੇ ਡਿਸਕਾਂ ਵਿਚਕਾਰ ਠਹਿਰਾਓ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pauza między stronami"
+            "value" : "Pauza między stronami i płytami"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pausa entre lados"
+            "value" : "Pausa entre lados e discos"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "பக்கங்களுக்கு இடையில் இடைநிறுத்து"
+            "value" : "பக்கங்கள் மற்றும் வட்டுகளுக்கு இடையில் இடைநிறுத்து"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "వైపుల మధ్య విరామం"
+            "value" : "సైడ్‌లు మరియు డిస్క్‌ల మధ్య విరామం"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "หยุดพักระหว่างด้าน"
+            "value" : "หยุดพักระหว่างด้านและแผ่น"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yüzler arasında duraklat"
+            "value" : "Yüzler ve diskler arasında duraklat"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пауза між сторонами"
+            "value" : "Пауза між сторонами та дисками"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "اطراف کے درمیان وقفہ"
+            "value" : "سائیڈز اور ڈسکس کے درمیان وقفہ"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tạm dừng giữa các mặt"
+            "value" : "Tạm dừng giữa các mặt và đĩa"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "面之间暂停"
+            "value" : "面或碟片之间暂停"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "面與面之間暫停"
+            "value" : "面或碟片之間暫停"
           }
         }
       }

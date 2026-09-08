@@ -166,7 +166,7 @@ fun SidePauseAlert(track: fm.bae.app.playback.NowPlaying) {
                 Text(
                     context.coreString(
                         prompt.titleKey,
-                        mapOf("letter" to prompt.sideLetter),
+                        mapOf("label" to prompt.sideLabel),
                     ),
                 )
             },

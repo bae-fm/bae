@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>کلید محفوظ نہیں ہو سکی۔ کچھ غلط ہو گیا۔</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API ٹوکن</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>توثیق ہو رہی ہے…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>اطراف کے درمیان وقفہ</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>سائیڈز اور ڈسکس کے درمیان وقفہ</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>کاسٹنگ</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>کاسٹنگ فعال کریں</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>آپ کے نیٹ ورک پر Cast، AirPlay اور UPnP ریسیورز پر چلاتا ہے۔ بند ہونے پر bae کوئی ڈیوائس تلاش نہیں کرتا۔</value></data>

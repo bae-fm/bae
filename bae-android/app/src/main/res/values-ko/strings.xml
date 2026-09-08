@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">라이브러리 변경</string>
     <string name="sync_blocked_circle_operation">공유 변경</string>
     <string name="sync_blocked_reclaim">클라우드 정리</string>
-    <string name="settings_pause_between_sides">면 사이에 일시정지</string>
+    <string name="settings_pause_between_sides">면과 디스크 사이에 일시정지</string>
     <string name="settings_restore_on_launch">시작 시 복원</string>
     <string name="settings_restore_on_launch_help">앱을 열 때 마지막 세션의 트랙, 위치, 대기열, 음량을 복원합니다.</string>
     <string name="settings_playback">재생</string>

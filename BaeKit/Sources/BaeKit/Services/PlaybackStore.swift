@@ -481,7 +481,7 @@ extension BridgeSidePausePrompt {
     public func title() -> String {
         String(
             format: localizedCoreString(titleKey),
-            sideLetter
+            sideLabel
         )
     }
 

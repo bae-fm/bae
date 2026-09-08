@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>キーを保存できませんでした。問題が発生しました。</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs APIトークン</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>検証中…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面の間で一時停止</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面やディスクの間で一時停止</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>キャスト</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>キャストを有効にする</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>ネットワーク上の Cast、AirPlay、UPnP レシーバーで再生します。オフの間、bae はデバイスを探しません。</value></data>

@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">लाइब्रेरी में बदलाव</string>
     <string name="sync_blocked_circle_operation">साझा करने में बदलाव</string>
     <string name="sync_blocked_reclaim">क्लाउड की सफ़ाई</string>
-    <string name="settings_pause_between_sides">पक्षों के बीच रोकें</string>
+    <string name="settings_pause_between_sides">साइडों और डिस्कों के बीच रोकें</string>
     <string name="settings_restore_on_launch">शुरू होने पर बहाल करें</string>
     <string name="settings_restore_on_launch_help">ऐप खुलने पर पिछले सत्र का ट्रैक, स्थिति, क़तार और वॉल्यूम बहाल करता है।</string>
     <string name="settings_playback">प्लेबैक</string>

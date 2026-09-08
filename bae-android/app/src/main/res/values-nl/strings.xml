@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">Bibliotheekwijziging</string>
     <string name="sync_blocked_circle_operation">Wijziging in delen</string>
     <string name="sync_blocked_reclaim">Cloudopruiming</string>
-    <string name="settings_pause_between_sides">Pauze tussen kanten</string>
+    <string name="settings_pause_between_sides">Pauze tussen kanten en schijven</string>
     <string name="settings_restore_on_launch">Herstellen bij starten</string>
     <string name="settings_restore_on_launch_help">Herstelt de track, positie, wachtrij en het volume van de laatste sessie bij het openen van de app.</string>
     <string name="settings_playback">Afspelen</string>

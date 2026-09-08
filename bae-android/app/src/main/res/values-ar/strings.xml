@@ -89,7 +89,7 @@
     <string name="sync_blocked_write">تغيير في المكتبة</string>
     <string name="sync_blocked_circle_operation">تغيير في المشاركة</string>
     <string name="sync_blocked_reclaim">تنظيف السحابة</string>
-    <string name="settings_pause_between_sides">إيقاف مؤقت بين الجانبين</string>
+    <string name="settings_pause_between_sides">إيقاف مؤقت بين الجوانب والأقراص</string>
     <string name="settings_restore_on_launch">الاستعادة عند التشغيل</string>
     <string name="settings_restore_on_launch_help">يستعيد المقطع والموضع وقائمة الانتظار ومستوى الصوت من الجلسة الأخيرة عند فتح التطبيق.</string>
     <string name="settings_playback">التشغيل</string>

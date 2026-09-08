@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>no se pudo guardar la clave. Algo salió mal.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Token de API de Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validando…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pausa entre caras</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pausa entre caras y discos</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Transmisión</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Activar la transmisión</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Reproduce en receptores Cast, AirPlay y UPnP de tu red. Cuando está desactivado, bae no busca dispositivos.</value></data>

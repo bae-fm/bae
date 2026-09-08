@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>Schlüssel konnte nicht gespeichert werden. Etwas ist schiefgelaufen.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs-API-Token</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Wird überprüft …</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause zwischen Seiten</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause zwischen Seiten und Discs</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Übertragung</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Übertragung aktivieren</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Gibt auf Cast-, AirPlay- und UPnP-Empfängern in deinem Netzwerk wieder. Ist es aus, sucht bae nicht nach Geräten.</value></data>

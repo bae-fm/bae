@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>விசையைச் சேமிக்க முடியவில்லை. ஏதோ தவறு ஏற்பட்டது.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API குறியீடு</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>சரிபார்க்கப்படுகிறது…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>பக்கங்களுக்கு இடையில் இடைநிறுத்து</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>பக்கங்கள் மற்றும் வட்டுகளுக்கு இடையில் இடைநிறுத்து</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>காஸ்ட்</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>காஸ்ட் இயக்கு</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>உங்கள் நெட்வொர்க்கில் உள்ள Cast, AirPlay மற்றும் UPnP ரிசீவர்களில் இயக்கும். அணைத்திருக்கும்போது bae சாதனங்களைத் தேடாது.</value></data>

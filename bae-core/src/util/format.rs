@@ -8,30 +8,32 @@ pub fn side_letter(side: i32) -> String {
     ((b'A' + (side - 1) as u8) as char).to_string()
 }
 
-/// A physical release format whose tracks are laid out on sides, not discs.
+/// A physical release medium whose side or disc boundaries can pause playback.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PhysicalSideMedium {
+pub enum PhysicalMedium {
     Vinyl,
     Cassette,
+    Cd,
 }
 
 enum FormatKind {
-    Sided(PhysicalSideMedium),
-    Digital, // CD, digital, or anything else
+    Physical(PhysicalMedium),
+    Digital, // Downloads or unrecognized formats
 }
 
 fn detect_format(format: Option<&str>) -> FormatKind {
     match format {
-        Some(f) if f.contains("Vinyl") => FormatKind::Sided(PhysicalSideMedium::Vinyl),
-        Some(f) if f.contains("Cassette") => FormatKind::Sided(PhysicalSideMedium::Cassette),
+        Some(f) if f.contains("Vinyl") => FormatKind::Physical(PhysicalMedium::Vinyl),
+        Some(f) if f.contains("Cassette") => FormatKind::Physical(PhysicalMedium::Cassette),
+        Some(f) if f.contains("CD") => FormatKind::Physical(PhysicalMedium::Cd),
         _ => FormatKind::Digital,
     }
 }
 
-/// The physical medium for a release format that has sides.
-pub fn physical_side_medium(format: Option<&str>) -> Option<PhysicalSideMedium> {
+/// The physical medium for a release format that has sides or CD discs.
+pub fn physical_medium(format: Option<&str>) -> Option<PhysicalMedium> {
     match detect_format(format) {
-        FormatKind::Sided(medium) => Some(medium),
+        FormatKind::Physical(medium) => Some(medium),
         FormatKind::Digital => None,
     }
 }
@@ -40,7 +42,10 @@ pub fn physical_side_medium(format: Option<&str>) -> Option<PhysicalSideMedium> 
 /// anything unknown). Returns `false` for side-based physical formats
 /// like vinyl or cassette, where "disc number" isn't the right label.
 pub fn is_digital_format(format: Option<&str>) -> bool {
-    matches!(detect_format(format), FormatKind::Digital)
+    matches!(
+        detect_format(format),
+        FormatKind::Digital | FormatKind::Physical(PhysicalMedium::Cd)
+    )
 }
 
 /// The structured [`crate::album_detail::TrackPosition`] for a track: picks the
@@ -54,16 +59,18 @@ pub fn compute_track_position(
 ) -> crate::album_detail::TrackPosition {
     use crate::album_detail::TrackPosition;
     match detect_format(format) {
-        FormatKind::Sided(_) => match track_number {
-            Some(number) => TrackPosition::Sided {
-                side_letter: side_letter(side),
-                number,
-            },
-            None => TrackPosition::SidedUnnumbered {
-                side_letter: side_letter(side),
-            },
-        },
-        FormatKind::Digital => {
+        FormatKind::Physical(PhysicalMedium::Vinyl | PhysicalMedium::Cassette) => {
+            match track_number {
+                Some(number) => TrackPosition::Sided {
+                    side_letter: side_letter(side),
+                    number,
+                },
+                None => TrackPosition::SidedUnnumbered {
+                    side_letter: side_letter(side),
+                },
+            }
+        }
+        FormatKind::Digital | FormatKind::Physical(PhysicalMedium::Cd) => {
             if has_multiple_sides {
                 match track_number {
                     Some(number) => TrackPosition::Disc { disc: side, number },
@@ -165,17 +172,18 @@ mod tests {
     }
 
     #[test]
-    fn physical_side_medium_detection() {
+    fn physical_medium_detection() {
         assert_eq!(
-            physical_side_medium(Some("2xLP, Vinyl")),
-            Some(PhysicalSideMedium::Vinyl)
+            physical_medium(Some("2xLP, Vinyl")),
+            Some(PhysicalMedium::Vinyl)
         );
         assert_eq!(
-            physical_side_medium(Some("Cassette")),
-            Some(PhysicalSideMedium::Cassette)
+            physical_medium(Some("Cassette")),
+            Some(PhysicalMedium::Cassette)
         );
-        assert_eq!(physical_side_medium(Some("2xCD")), None);
-        assert_eq!(physical_side_medium(None), None);
+        assert_eq!(physical_medium(Some("2xCD")), Some(PhysicalMedium::Cd));
+        assert_eq!(physical_medium(Some("Digital Media")), None);
+        assert_eq!(physical_medium(None), None);
     }
 
     #[test]

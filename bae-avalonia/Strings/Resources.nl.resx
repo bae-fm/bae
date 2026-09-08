@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>kan de sleutel niet bewaren. Er is iets misgegaan.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API-token</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Valideren…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauze tussen kanten</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauze tussen kanten en schijven</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Casten</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Casten inschakelen</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Speelt af op Cast-, AirPlay- en UPnP-ontvangers in je netwerk. Als dit uit staat, zoekt bae niet naar apparaten.</value></data>

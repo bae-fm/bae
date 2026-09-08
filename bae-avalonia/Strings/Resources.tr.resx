@@ -170,7 +170,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>anahtar kaydedilemedi. Bir sorun oluştu.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API belirteci</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Doğrulanıyor…</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Yüzler arasında duraklat</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Yüzler ve diskler arasında duraklat</value></data>
   <data name="settings.casting.label" xml:space="preserve"><value>Yayınlama</value></data>
   <data name="settings.casting.enable" xml:space="preserve"><value>Yayınlamayı etkinleştir</value></data>
   <data name="settings.casting.footer" xml:space="preserve"><value>Ağınızdaki Cast, AirPlay ve UPnP alıcılarında çalar. Kapalıyken bae cihaz aramaz.</value></data>
