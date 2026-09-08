@@ -227,6 +227,12 @@ forward! {
         fn retry_candidate_search(candidate_key: String) {
             this.services.import_retry_candidate_search(candidate_key);
         }
+
+        /// Drop a candidate's search, so its result area goes back to whatever
+        /// identification has to say.
+        fn clear_candidate_search(candidate_key: String) {
+            this.services.import_clear_candidate_search(candidate_key);
+        }
     }
 }
 
