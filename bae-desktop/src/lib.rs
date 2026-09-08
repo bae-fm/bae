@@ -1,4 +1,8 @@
 #![deny(unreachable_pub, dead_code)]
+// Laying out rmcp's HTTP service future over `BaeMcpServer` nests the tool
+// dispatch's async state machines deeper than rustc's default query depth of
+// 128; the test build of this crate is where that layout is first computed.
+#![recursion_limit = "256"]
 
 use std::sync::Arc;
 
