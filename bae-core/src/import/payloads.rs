@@ -244,6 +244,26 @@ impl ReleasePayloads {
         Ok(self.covers()?.into_iter().next())
     }
 
+    /// The keys the pane checks against the library, without building its
+    /// tracks or artwork. A source that names no group leaves it absent.
+    pub(crate) fn library_check(&self) -> Result<crate::db::LibraryCheck, ImportError> {
+        let (release_id, source_group_id) = match self.release.source {
+            MetadataSource::MusicBrainz => {
+                let release = self.musicbrainz_anchor()?;
+                (release.id, release.release_group.map(|group| group.id))
+            }
+            MetadataSource::Discogs => {
+                let release = self.discogs_anchor()?;
+                (release.id, release.master_id)
+            }
+        };
+        Ok(crate::db::LibraryCheck {
+            source: self.release.source,
+            release_id,
+            source_group_id,
+        })
+    }
+
     pub fn detail_for_audio(
         &self,
         audio_durations_ms: &[u64],
@@ -516,6 +536,36 @@ mod tests {
             covers[1].thumbnail_url,
             "https://images.example/back-small.jpg"
         );
+    }
+
+    #[test]
+    fn library_check_matches_detail_keys_with_and_without_source_groups() {
+        for group in [None, Some(789)] {
+            for source in [MetadataSource::Discogs, MetadataSource::MusicBrainz] {
+                let anchor = match source {
+                    MetadataSource::Discogs => serde_json::json!({
+                        "id": 123, "title": "Album Title", "master_id": group
+                    }),
+                    MetadataSource::MusicBrainz => serde_json::json!({
+                        "id": "123", "title": "Album Title", "artist-credit": [],
+                        "label-info": [], "media": [], "relations": [],
+                        "cover-art-archive": { "front": false, "darkened": false },
+                        "release-group": group.map(|id| serde_json::json!({ "id": id.to_string() }))
+                    }),
+                };
+                let payloads = ReleasePayloads {
+                    release: MetadataRef::new("123", source),
+                    anchor: anchor.to_string(),
+                    supporting: Vec::new(),
+                };
+                let check = payloads.library_check().unwrap();
+                let detail = payloads.detail_for_audio(&[]).unwrap();
+                assert_eq!(check.source, detail.source);
+                assert_eq!(check.release_id, detail.release_id);
+                assert_eq!(check.source_group_id, detail.source_group_id);
+                assert_eq!(check.source_group_id, group.map(|id| id.to_string()));
+            }
+        }
     }
 
     fn now() -> DateTime<Utc> {

@@ -18,7 +18,8 @@ impl Database {
         }
 
         let entries = entries.to_vec();
-        self.read(move |sql| get_queue_items_on(&sql, &entries))
+        self.read(move |sql| Ok((queue_metadata_on(&sql, &entries)?, entries)))
+            .process(|(metadata, entries)| Ok(resolve_queue_entries(&metadata, &entries)))
             .await
     }
 
@@ -27,10 +28,13 @@ impl Database {
         entries: Vec<QueueEntry>,
         context_release_id: Option<String>,
     ) -> coven::LiveQuery<QueueCatalogProjection> {
-        self.inner.handle.subscribe(move |sql| {
-            queue_catalog_on(&sql, &entries, context_release_id.as_deref())
-                .map_err(CovenError::from)
-        })
+        self.inner
+            .handle
+            .subscribe(move |sql| {
+                queue_catalog_on(&sql, entries.clone(), context_release_id.as_deref())
+                    .map_err(CovenError::from)
+            })
+            .process(|rows| Ok(rows.process()))
     }
 
     pub(crate) async fn get_queue_catalog(
@@ -38,7 +42,8 @@ impl Database {
         entries: Vec<QueueEntry>,
         context_release_id: Option<String>,
     ) -> Result<QueueCatalogProjection, DbError> {
-        self.read(move |sql| queue_catalog_on(&sql, &entries, context_release_id.as_deref()))
+        self.read(move |sql| queue_catalog_on(&sql, entries, context_release_id.as_deref()))
+            .process(|rows| Ok(rows.process()))
             .await
     }
 
@@ -165,13 +170,10 @@ impl Database {
     }
 }
 
-fn get_queue_items_on(
+fn queue_metadata_on(
     sql: &SqlReadContext<'_>,
     entries: &[QueueEntry],
-) -> Result<Vec<QueueItem>, DbError> {
-    if entries.is_empty() {
-        return Ok(Vec::new());
-    }
+) -> Result<HashMap<String, TrackQueueMeta>, DbError> {
     let track_ids: Vec<String> = entries.iter().map(|entry| entry.track_id.clone()).collect();
     let mut meta_by_track: HashMap<String, TrackQueueMeta> = HashMap::new();
     for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
@@ -219,15 +221,15 @@ fn get_queue_items_on(
             },
         )?);
     }
-    Ok(resolve_queue_entries(&meta_by_track, entries))
+    Ok(meta_by_track)
 }
 
 fn queue_catalog_on(
     sql: &SqlReadContext<'_>,
-    entries: &[QueueEntry],
+    entries: Vec<QueueEntry>,
     context_release_id: Option<&str>,
-) -> Result<QueueCatalogProjection, DbError> {
-    let items = get_queue_items_on(sql, entries)?;
+) -> Result<QueueCatalogRows, DbError> {
+    let metadata = queue_metadata_on(sql, &entries)?;
     let source_title = match context_release_id {
         None => None,
         Some(release_id) => {
@@ -238,10 +240,26 @@ fn queue_catalog_on(
             }
         }
     };
-    Ok(QueueCatalogProjection {
-        items,
+    Ok(QueueCatalogRows {
+        entries,
+        metadata,
         source_title,
     })
+}
+
+struct QueueCatalogRows {
+    entries: Vec<QueueEntry>,
+    metadata: HashMap<String, TrackQueueMeta>,
+    source_title: Option<String>,
+}
+
+impl QueueCatalogRows {
+    fn process(self) -> QueueCatalogProjection {
+        QueueCatalogProjection {
+            items: resolve_queue_entries(&self.metadata, &self.entries),
+            source_title: self.source_title,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

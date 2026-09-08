@@ -6,7 +6,7 @@ pub(super) fn storage_page_on(
     uploading: &[String],
     offset: u64,
     limit: u64,
-) -> Result<Vec<DbStorageRow>, DbError> {
+) -> Result<Vec<(DbReleaseSummary, AlbumSummaryRow)>, DbError> {
     let mut binds = uploading
         .iter()
         .map(|id| Box::new(id.clone()) as Box<dyn coven::rusqlite::ToSql>)
@@ -18,17 +18,16 @@ pub(super) fn storage_page_on(
         coven::rusqlite::params_from_iter(binds.iter()),
         |row| {
             let release = row_to_release_summary(row)?;
-            Ok(parse_album_summary_row(row).map(|album| DbStorageRow { release, album }))
+            Ok((release, AlbumSummaryRow::read(row)?))
         },
-    )?
-    .into_iter()
-    .collect()
+    )
+    .map_err(DbError::from)
 }
 
 pub(super) fn find_release_detail_context_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<Option<ReleaseDetailContext>, DbError> {
+) -> Result<Option<ReleaseContextRows>, DbError> {
     let Some(release) = find_release_by_id_on(sql, release_id)? else {
         return Ok(None);
     };
@@ -39,12 +38,43 @@ pub(super) fn find_release_detail_context_on(
     };
     let is_compilation =
         find_album_by_id_on(sql, &release.album_id)?.is_some_and(|album| album.is_compilation);
-    Ok(Some(ReleaseDetailContext {
+    Ok(Some(ReleaseContextRows {
         detail: build_release_detail_on(sql, release)?,
         album_artists,
         release_index,
         is_compilation,
     }))
+}
+
+pub(super) struct ReleaseContextRows {
+    detail: ReleaseDetailRows,
+    album_artists: Vec<DbArtist>,
+    release_index: usize,
+    is_compilation: bool,
+}
+
+impl ReleaseContextRows {
+    pub(super) fn process(self) -> ReleaseDetailContext {
+        ReleaseDetailContext {
+            detail: self.detail.process(),
+            album_artists: self.album_artists,
+            release_index: self.release_index,
+            is_compilation: self.is_compilation,
+        }
+    }
+}
+
+pub(super) fn process_storage_rows(
+    rows: Vec<(DbReleaseSummary, AlbumSummaryRow)>,
+) -> Result<Vec<DbStorageRow>, DbError> {
+    rows.into_iter()
+        .map(|(release, album)| {
+            Ok(DbStorageRow {
+                release,
+                album: album.process()?,
+            })
+        })
+        .collect()
 }
 
 pub(super) fn storage_count_on(

@@ -28,7 +28,7 @@ use crate::import::folder_scanner::{
     CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionAuthor,
     FolderReleaseDecisionKey, FolderReleaseDecisions, StoredCandidateEdits,
 };
-use rows::{author_column, insert_provenance, load_candidate_file_edits_on};
+use rows::{author_column, insert_provenance, load_candidate_file_edits_on, load_states_rows_on};
 use std::collections::HashSet;
 use verdict_rows::{delete_verdict, insert_verdict};
 
@@ -439,13 +439,16 @@ impl Database {
     /// the sweep and the scan want different halves of the same few hundred
     /// rows, and two queries over one table is two things to keep in step.
     pub async fn load_stored_candidate_edits(&self) -> Result<StoredCandidateEdits, DbError> {
-        Ok(StoredCandidateEdits::new(
-            self.load_import_candidate_states()
-                .await?
-                .into_iter()
-                .map(|(hash, state)| (hash, state.file_edits))
-                .collect(),
-        ))
+        self.read(move |sql| load_states_rows_on(&sql, None))
+            .process(|process| {
+                Ok(StoredCandidateEdits::new(
+                    process()?
+                        .into_iter()
+                        .map(|(hash, state)| (hash, state.file_edits))
+                        .collect(),
+                ))
+            })
+            .await
     }
 
     /// One candidate's file decisions. Progressive scans call this after they
@@ -457,6 +460,7 @@ impl Database {
     ) -> Result<CandidateFileEdits, DbError> {
         let content_hash = content_hash.to_string();
         self.read(move |sql| load_candidate_file_edits_on(&sql, &content_hash))
+            .process(|process| process())
             .await
     }
 
@@ -470,7 +474,9 @@ impl Database {
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
-        self.read(move |sql| load_states_on(&sql, None)).await
+        self.read(move |sql| load_states_rows_on(&sql, None))
+            .process(|process| process())
+            .await
     }
 
     pub async fn load_import_candidate_state(
@@ -478,8 +484,14 @@ impl Database {
         content_hash: &str,
     ) -> Result<Option<DbImportCandidateState>, DbError> {
         let content_hash = content_hash.to_string();
-        self.read(move |sql| Ok(load_states_on(&sql, Some(&content_hash))?.remove(&content_hash)))
-            .await
+        self.read(move |sql| {
+            Ok((
+                load_states_rows_on(&sql, Some(&content_hash))?,
+                content_hash,
+            ))
+        })
+        .process(|(process, content_hash)| Ok(process()?.remove(&content_hash)))
+        .await
     }
 }
 

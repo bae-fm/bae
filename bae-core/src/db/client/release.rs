@@ -375,6 +375,7 @@ impl Database {
         );
 
         self.read(move |sql| storage_page_on(&sql, &query, &uploading, offset, limit))
+            .process(super::release_projection::process_storage_rows)
             .await
     }
 
@@ -401,34 +402,43 @@ impl Database {
             page_where,
             usize::from(queue_ordered) * uploading.len(),
         );
-        self.inner.handle.subscribe(move |sql| {
-            let rows = storage_page_on(&sql, &query, &uploading, offset, limit)
-                .map_err(CovenError::from)?;
-            let total_count =
-                storage_count_on(&sql, &where_clause, &uploading).map_err(CovenError::from)?;
-            let total_size =
-                storage_total_size_on(&sql, &where_clause, &uploading).map_err(CovenError::from)?;
-            let cover_ids = rows
-                .iter()
-                .flat_map(|row| {
-                    [row.release.id.clone()]
-                        .into_iter()
-                        .chain(resolve_primary_release_id(
-                            row.album.primary_release_id.as_deref(),
-                            row.album.release_ids.iter().map(String::as_str),
-                        ))
-                })
-                .collect::<Vec<_>>();
-            let cover_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &cover_ids)
+        self.inner
+            .handle
+            .subscribe(move |sql| {
+                let rows = storage_page_on(&sql, &query, &uploading, offset, limit)
                     .map_err(CovenError::from)?;
-            Ok(StoragePageProjection {
-                rows,
-                total_count,
-                total_size,
-                cover_versions,
+                let total_count =
+                    storage_count_on(&sql, &where_clause, &uploading).map_err(CovenError::from)?;
+                let total_size = storage_total_size_on(&sql, &where_clause, &uploading)
+                    .map_err(CovenError::from)?;
+                let album_ids = rows
+                    .iter()
+                    .map(|(_, album)| album.id.clone())
+                    .collect::<Vec<_>>();
+                let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
+                Ok((rows, total_count, total_size, cover_versions))
             })
-        })
+            .process(|(rows, total_count, total_size, mut cover_versions)| {
+                let rows = super::release_projection::process_storage_rows(rows)?;
+                let cover_ids = rows
+                    .iter()
+                    .flat_map(|row| {
+                        [row.release.id.clone()]
+                            .into_iter()
+                            .chain(resolve_primary_release_id(
+                                row.album.primary_release_id.as_deref(),
+                                row.album.release_ids.iter().map(String::as_str),
+                            ))
+                    })
+                    .collect::<HashSet<_>>();
+                cover_versions.retain(|id, _| cover_ids.contains(id));
+                Ok(StoragePageProjection {
+                    rows,
+                    total_count,
+                    total_size,
+                    cover_versions,
+                })
+            })
     }
 
     /// Follow `DbTrack.release_id` → `DbRelease`. FK navigation — the row must
@@ -459,6 +469,7 @@ impl Database {
             };
             Ok(Some(build_release_detail_on(&sql, release)?))
         })
+        .process(|rows| Ok(rows.map(ReleaseDetailRows::process)))
         .await
     }
 
@@ -471,6 +482,7 @@ impl Database {
     ) -> Result<Option<ReleaseDetailContext>, DbError> {
         let release_id = release_id.to_string();
         self.read(move |sql| find_release_detail_context_on(&sql, &release_id))
+            .process(|rows| Ok(rows.map(super::release_projection::ReleaseContextRows::process)))
             .await
     }
 
@@ -479,20 +491,25 @@ impl Database {
         release_id: &str,
     ) -> coven::LiveQuery<ReleaseDetailProjection> {
         let release_id = release_id.to_string();
-        self.inner.handle.subscribe(move |sql| {
-            let context =
-                find_release_detail_context_on(&sql, &release_id).map_err(CovenError::from)?;
-            let cover_versions = super::blobs::image_versions_on(
-                &sql,
-                LibraryImageType::Cover,
-                std::slice::from_ref(&release_id),
-            )
-            .map_err(CovenError::from)?;
-            Ok(ReleaseDetailProjection {
-                context,
-                cover_versions,
+        self.inner
+            .handle
+            .subscribe(move |sql| {
+                let context =
+                    find_release_detail_context_on(&sql, &release_id).map_err(CovenError::from)?;
+                let cover_versions = super::blobs::image_versions_on(
+                    &sql,
+                    LibraryImageType::Cover,
+                    std::slice::from_ref(&release_id),
+                )
+                .map_err(CovenError::from)?;
+                Ok((context, cover_versions))
             })
-        })
+            .process(|(context, cover_versions)| {
+                Ok(ReleaseDetailProjection {
+                    context: context.map(super::release_projection::ReleaseContextRows::process),
+                    cover_versions,
+                })
+            })
     }
 
     /// Ordered by `created_at`.
@@ -534,6 +551,7 @@ impl Database {
     pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
         let release_id = release_id.to_string();
         self.read(move |sql| get_files_for_release_on(&sql, &release_id))
+            .process(|files| Ok(process_files(files)))
             .await
     }
 

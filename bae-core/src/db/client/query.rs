@@ -788,20 +788,61 @@ pub(super) fn album_summary_artist_join(needs_artist_join: bool) -> &'static str
     }
 }
 
-/// Parse one album summary row (page queries and per-album lookups alike).
-/// Requires a `release_ids_json` column on the row.
-pub(super) fn parse_album_summary_row(row: &Row) -> Result<DbAlbumSummary, DbError> {
-    let release_ids_json: String = row.get("release_ids_json")?;
-    let release_ids: Vec<String> =
-        serde_json::from_str(&release_ids_json).map_err(|e| DbError::Message(e.to_string()))?;
+/// Owned SQL columns; JSON decoding runs after the read connection is released.
+pub(super) struct AlbumSummaryRow {
+    pub(super) id: String,
+    title: String,
+    year: Option<i32>,
+    is_compilation: bool,
+    artist_names: String,
+    release_ids_json: String,
+    primary_release_id: Option<String>,
+}
 
-    Ok(DbAlbumSummary {
-        id: row.get("id")?,
-        title: row.get("title")?,
-        year: row.get("year")?,
-        is_compilation: row.get("is_compilation")?,
-        artist_names: row.get("artist_names")?,
-        release_ids,
-        primary_release_id: row.get("primary_release_id")?,
-    })
+impl AlbumSummaryRow {
+    pub(super) fn read(row: &Row) -> coven::rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            title: row.get("title")?,
+            year: row.get("year")?,
+            is_compilation: row.get("is_compilation")?,
+            artist_names: row.get("artist_names")?,
+            release_ids_json: row.get("release_ids_json")?,
+            primary_release_id: row.get("primary_release_id")?,
+        })
+    }
+
+    pub(super) fn process(self) -> Result<DbAlbumSummary, DbError> {
+        let release_ids = serde_json::from_str(&self.release_ids_json)
+            .map_err(|error| DbError::Message(error.to_string()))?;
+        Ok(DbAlbumSummary {
+            id: self.id,
+            title: self.title,
+            year: self.year,
+            is_compilation: self.is_compilation,
+            artist_names: self.artist_names,
+            release_ids,
+            primary_release_id: self.primary_release_id,
+        })
+    }
+}
+
+/// Resolve cover dependencies from SQL keys without decoding display aggregates.
+pub(super) fn album_cover_versions_on(
+    sql: &SqlReadContext<'_>,
+    album_ids: &[String],
+) -> Result<HashMap<String, String>, DbError> {
+    let mut releases = Vec::new();
+    for chunk in album_ids.chunks(SQL_MAX_IN_VARS) {
+        let query = format!(
+            "SELECT id FROM releases WHERE album_id IN ({})",
+            in_clause_placeholders(chunk.len())
+        );
+        releases.extend(sql.query(
+            &query,
+            coven::rusqlite::params_from_iter(chunk.iter()),
+            |row| row.get::<_, String>(0),
+        )?);
+    }
+    super::blobs::image_versions_on(sql, LibraryImageType::Cover, &releases)
 }

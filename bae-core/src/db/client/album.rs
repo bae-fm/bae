@@ -41,6 +41,7 @@ impl Database {
         let pattern = format!("%{}%", escape_like_pattern(query));
         let limit_i64 = limit as i64;
         self.read(move |sql| search_library_on(&sql, &pattern, limit_i64))
+            .process(LibrarySearchRows::process)
             .await
     }
 
@@ -51,32 +52,61 @@ impl Database {
     ) -> coven::LiveQuery<LibrarySearchProjection> {
         let pattern = format!("%{}%", escape_like_pattern(query));
         let limit_i64 = limit as i64;
-        self.inner.handle.subscribe(move |sql| {
-            let results = search_library_on(&sql, &pattern, limit_i64).map_err(CovenError::from)?;
-            let release_ids = search_release_ids(&results);
-            let artist_ids = results
-                .artists
-                .iter()
-                .map(|artist| artist.artist.id.clone())
-                .chain(
-                    results
-                        .composers
-                        .iter()
-                        .map(|composer| composer.artist.id.clone()),
-                )
-                .collect::<Vec<_>>();
-            let cover_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                    .map_err(CovenError::from)?;
-            let artist_image_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                    .map_err(CovenError::from)?;
-            Ok(LibrarySearchProjection {
-                results,
-                cover_versions,
-                artist_image_versions,
+        self.inner
+            .handle
+            .subscribe(move |sql| {
+                let results =
+                    search_library_on(&sql, &pattern, limit_i64).map_err(CovenError::from)?;
+                let album_ids = results
+                    .albums
+                    .iter()
+                    .map(|album| album.id.clone())
+                    .collect::<Vec<_>>();
+                let release_ids = results
+                    .tracks
+                    .iter()
+                    .map(|track| track.release_id.clone())
+                    .chain(
+                        results
+                            .works
+                            .iter()
+                            .filter_map(|work| work.representative_release_id.clone()),
+                    )
+                    .collect::<Vec<_>>();
+                let artist_ids = results
+                    .artists
+                    .iter()
+                    .map(|artist| artist.artist.id.clone())
+                    .chain(
+                        results
+                            .composers
+                            .iter()
+                            .map(|composer| composer.artist.id.clone()),
+                    )
+                    .collect::<Vec<_>>();
+                let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
+                cover_versions.extend(super::blobs::image_versions_on(
+                    &sql,
+                    LibraryImageType::Cover,
+                    &release_ids,
+                )?);
+                let artist_image_versions =
+                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                        .map_err(CovenError::from)?;
+                Ok((results, cover_versions, artist_image_versions))
             })
-        })
+            .process(|(results, mut cover_versions, artist_image_versions)| {
+                let results = results.process()?;
+                let release_ids = search_release_ids(&results)
+                    .into_iter()
+                    .collect::<HashSet<_>>();
+                cover_versions.retain(|id, _| release_ids.contains(id));
+                Ok(LibrarySearchProjection {
+                    results,
+                    cover_versions,
+                    artist_image_versions,
+                })
+            })
     }
 
     pub async fn insert_album(&self, album: &DbAlbum) -> Result<(), DbError> {
@@ -148,12 +178,13 @@ impl Database {
         );
 
         self.read(move |sql| {
-            sql.query(&query, params![limit as i64, offset as i64], |row| {
-                Ok(parse_album_summary_row(row))
-            })?
-            .into_iter()
-            .collect()
+            Ok(sql.query(
+                &query,
+                params![limit as i64, offset as i64],
+                AlbumSummaryRow::read,
+            )?)
         })
+        .process(|rows| rows.into_iter().map(AlbumSummaryRow::process).collect())
         .await
     }
 
@@ -169,16 +200,24 @@ impl Database {
         let query = format!(
             "{select} FROM albums a {artist_sort_join} ORDER BY {order_by} LIMIT ? OFFSET ?"
         );
-        self.inner.handle.subscribe(move |sql| {
-            let (rows, cover_versions) =
-                album_rows_with_covers_on(&sql, &query, params![limit as i64, offset as i64])?;
-            let total_count = album_count_on(&sql).map_err(CovenError::from)?;
-            Ok(AlbumPageProjection {
-                rows,
-                cover_versions,
-                total_count,
+        self.inner
+            .handle
+            .subscribe(move |sql| {
+                let (rows, cover_versions) =
+                    album_rows_with_covers_on(&sql, &query, params![limit as i64, offset as i64])?;
+                let total_count = album_count_on(&sql).map_err(CovenError::from)?;
+                Ok((rows, cover_versions, total_count))
             })
-        })
+            .process(|(rows, cover_versions, total_count)| {
+                Ok(AlbumPageProjection {
+                    rows: rows
+                        .into_iter()
+                        .map(AlbumSummaryRow::process)
+                        .collect::<Result<_, _>>()?,
+                    cover_versions,
+                    total_count,
+                })
+            })
     }
 
     pub(crate) fn subscribe_album_browse(
@@ -202,13 +241,11 @@ impl Database {
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
                 let total_count = album_count_on(&sql).map_err(CovenError::from)?;
                 let dependency_rows = album_rows_on(&sql, &dependency_query, [])?;
-                let release_ids = dependency_rows
+                let album_ids = dependency_rows
                     .iter()
-                    .flat_map(|row| row.release_ids.iter().cloned())
+                    .map(|row| row.id.clone())
                     .collect::<Vec<_>>();
-                let cover_versions =
-                    super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                        .map_err(CovenError::from)?;
+                let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 let windows = requested
                     .iter()
                     .map(|window| {
@@ -223,6 +260,22 @@ impl Database {
                         })
                     })
                     .collect::<Result<Vec<_>, CovenError>>()?;
+                Ok((windows, cover_versions, total_count))
+            })
+            .process(|_, (windows, cover_versions, total_count)| {
+                let windows = windows
+                    .into_iter()
+                    .map(|window| {
+                        Ok(crate::library::LibraryBrowseWindow {
+                            window: window.window,
+                            rows: window
+                                .rows
+                                .into_iter()
+                                .map(AlbumSummaryRow::process)
+                                .collect::<Result<_, _>>()?,
+                        })
+                    })
+                    .collect::<Result<_, CovenError>>()?;
                 Ok(AlbumBrowseProjection {
                     windows,
                     cover_versions,
@@ -306,6 +359,7 @@ impl Database {
     ) -> Result<Option<DbAlbumDetail>, DbError> {
         let album_id = album_id.to_string();
         self.read(move |sql| find_album_detail_on(&sql, &album_id))
+            .process(|rows| Ok(rows.map(AlbumDetailRows::process)))
             .await
     }
 
@@ -314,24 +368,29 @@ impl Database {
         album_id: &str,
     ) -> coven::LiveQuery<AlbumDetailProjection> {
         let album_id = album_id.to_string();
-        self.inner.handle.subscribe(move |sql| {
-            let detail = find_album_detail_on(&sql, &album_id).map_err(CovenError::from)?;
-            let release_ids = match &detail {
-                Some(detail) => detail
-                    .releases
-                    .iter()
-                    .map(|release| release.release.id.clone())
-                    .collect::<Vec<_>>(),
-                None => Vec::new(),
-            };
-            let cover_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                    .map_err(CovenError::from)?;
-            Ok(AlbumDetailProjection {
-                detail,
-                cover_versions,
+        self.inner
+            .handle
+            .subscribe(move |sql| {
+                let detail = find_album_detail_on(&sql, &album_id).map_err(CovenError::from)?;
+                let release_ids = match &detail {
+                    Some(detail) => detail
+                        .releases
+                        .iter()
+                        .map(|release| release.release.id.clone())
+                        .collect::<Vec<_>>(),
+                    None => Vec::new(),
+                };
+                let cover_versions =
+                    super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
+                        .map_err(CovenError::from)?;
+                Ok((detail, cover_versions))
             })
-        })
+            .process(|(detail, cover_versions)| {
+                Ok(AlbumDetailProjection {
+                    detail: detail.map(AlbumDetailRows::process),
+                    cover_versions,
+                })
+            })
     }
     /// Find album_id for a release. Caller-provided ID — may not exist.
     pub async fn find_album_id_for_release(
@@ -390,7 +449,7 @@ fn search_library_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,
     limit: i64,
-) -> Result<DbLibrarySearchResults, DbError> {
+) -> Result<LibrarySearchRows, DbError> {
     let album_query = format!(
         r#"
             SELECT a.id, a.title, a.year, a.primary_release_id,
@@ -406,20 +465,12 @@ fn search_library_on(
         release_ids = album_release_ids_json_sql()
     );
     let albums = sql.query(&album_query, params![pattern, pattern, limit], |row| {
-        let release_ids_json: String = row.get("release_ids_json")?;
-        let release_ids: Vec<String> = serde_json::from_str(&release_ids_json).map_err(|e| {
-            coven::rusqlite::Error::FromSqlConversionFailure(
-                0,
-                coven::rusqlite::types::Type::Text,
-                format!("malformed release_ids_json: {e}").into(),
-            )
-        })?;
-        Ok(DbAlbumSearchResult {
+        Ok(AlbumSearchRow {
             id: row.get("id")?,
             title: row.get("title")?,
             year: row.get("year")?,
             primary_release_id: row.get("primary_release_id")?,
-            release_ids,
+            release_ids_json: row.get("release_ids_json")?,
             artist_name: row.get("artist_name")?,
         })
     })?;
@@ -475,13 +526,63 @@ fn search_library_on(
         params![pattern, limit],
         row_to_work_summary,
     )?;
-    Ok(DbLibrarySearchResults {
+    Ok(LibrarySearchRows {
         albums,
         artists,
         tracks,
         composers,
         works,
     })
+}
+
+struct AlbumSearchRow {
+    id: String,
+    title: String,
+    year: Option<i32>,
+    primary_release_id: Option<String>,
+    release_ids_json: String,
+    artist_name: String,
+}
+
+struct LibrarySearchRows {
+    albums: Vec<AlbumSearchRow>,
+    artists: Vec<DbArtistSummary>,
+    tracks: Vec<DbTrackSearchResult>,
+    composers: Vec<DbComposerSummary>,
+    works: Vec<DbWorkSummary>,
+}
+
+impl LibrarySearchRows {
+    fn process(self) -> Result<DbLibrarySearchResults, DbError> {
+        let albums = self
+            .albums
+            .into_iter()
+            .map(|row| {
+                let release_ids = serde_json::from_str(&row.release_ids_json).map_err(|error| {
+                    coven::rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        coven::rusqlite::types::Type::Text,
+                        format!("malformed release_ids_json: {error}").into(),
+                    )
+                })?;
+                Ok(DbAlbumSearchResult {
+                    id: row.id,
+                    title: row.title,
+                    year: row.year,
+                    primary_release_id: row.primary_release_id,
+                    release_ids,
+                    artist_name: row.artist_name,
+                })
+            })
+            .collect::<Result<_, DbError>>()?;
+        Ok(DbLibrarySearchResults {
+            albums,
+            artists: self.artists,
+            tracks: self.tracks,
+            composers: self.composers,
+            works: self.works,
+        })
+    }
 }
 
 fn search_release_ids(results: &DbLibrarySearchResults) -> Vec<String> {
@@ -508,7 +609,7 @@ fn search_release_ids(results: &DbLibrarySearchResults) -> Vec<String> {
 fn find_album_detail_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
-) -> Result<Option<DbAlbumDetail>, DbError> {
+) -> Result<Option<AlbumDetailRows>, DbError> {
     let Some(album) = find_album_by_id_on(sql, album_id)? else {
         return Ok(None);
     };
@@ -521,11 +622,31 @@ fn find_album_detail_on(
         .into_iter()
         .map(|release| build_release_detail_on(sql, release))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(Some(DbAlbumDetail {
+    Ok(Some(AlbumDetailRows {
         album,
         artists,
         releases,
     }))
+}
+
+struct AlbumDetailRows {
+    album: DbAlbum,
+    artists: Vec<DbArtist>,
+    releases: Vec<ReleaseDetailRows>,
+}
+
+impl AlbumDetailRows {
+    fn process(self) -> DbAlbumDetail {
+        DbAlbumDetail {
+            album: self.album,
+            artists: self.artists,
+            releases: self
+                .releases
+                .into_iter()
+                .map(ReleaseDetailRows::process)
+                .collect(),
+        }
+    }
 }
 
 fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
@@ -540,15 +661,10 @@ fn album_rows_with_covers_on<P: Params>(
     sql: &SqlReadContext<'_>,
     query: &str,
     params: P,
-) -> Result<(Vec<DbAlbumSummary>, HashMap<String, String>), CovenError> {
+) -> Result<(Vec<AlbumSummaryRow>, HashMap<String, String>), CovenError> {
     let rows = album_rows_on(sql, query, params)?;
-    let release_ids = rows
-        .iter()
-        .flat_map(|row| row.release_ids.iter().cloned())
-        .collect::<Vec<_>>();
-    let cover_versions =
-        super::blobs::image_versions_on(sql, LibraryImageType::Cover, &release_ids)
-            .map_err(CovenError::from)?;
+    let album_ids = rows.iter().map(|row| row.id.clone()).collect::<Vec<_>>();
+    let cover_versions = album_cover_versions_on(sql, &album_ids)?;
     Ok((rows, cover_versions))
 }
 
@@ -556,11 +672,8 @@ fn album_rows_on<P: Params>(
     sql: &SqlReadContext<'_>,
     query: &str,
     params: P,
-) -> Result<Vec<DbAlbumSummary>, CovenError> {
-    sql.query(query, params, |row| Ok(parse_album_summary_row(row)))?
-        .into_iter()
-        .collect::<Result<Vec<_>, DbError>>()
-        .map_err(CovenError::from)
+) -> Result<Vec<AlbumSummaryRow>, CovenError> {
+    Ok(sql.query(query, params, AlbumSummaryRow::read)?)
 }
 
 #[derive(Debug, Clone, PartialEq)]

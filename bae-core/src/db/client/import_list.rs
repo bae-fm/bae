@@ -476,23 +476,37 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
 fn load_import_list_on(
     sql: &SqlReadContext<'_>,
     request: &ImportListRequest,
-) -> Result<ImportListProjection, DbError> {
+) -> Result<impl FnOnce() -> Result<ImportListProjection, DbError> + Send + 'static, DbError> {
     let rows = load_import_queue_on(sql)?;
     let flat = flatten(&rows, request).map_err(|error| DbError::Message(error.to_string()))?;
     let windows = request
         .windows
         .iter()
         .map(|window| {
-            Ok(ImportListWindow {
-                window: window.clone(),
-                items: window::materialise(sql, window, &flat, &rows)?,
-            })
+            Ok((
+                window.clone(),
+                window::materialise(sql, window, &flat, &rows)?,
+            ))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(ImportListProjection {
-        total_count: flat.items.len() as u64,
-        windows,
-        summary: flat.summary,
+    Ok(move || {
+        let windows = windows
+            .into_iter()
+            .map(|(window, items)| {
+                Ok(ImportListWindow {
+                    window,
+                    items: items
+                        .into_iter()
+                        .map(window::WindowItemRows::process)
+                        .collect::<Result<_, _>>()?,
+                })
+            })
+            .collect::<Result<_, DbError>>()?;
+        Ok(ImportListProjection {
+            total_count: flat.items.len() as u64,
+            windows,
+            summary: flat.summary,
+        })
     })
 }
 
@@ -510,6 +524,7 @@ impl Database {
             .subscribe_reconfigurable(initial, move |request, sql| {
                 load_import_list_on(&sql, request).map_err(CovenError::from)
             })
+            .process(|_, process| process().map_err(CovenError::from))
     }
 
     /// One read of the list, for a caller with no subscription.
@@ -518,6 +533,7 @@ impl Database {
         request: ImportListRequest,
     ) -> Result<ImportListProjection, DbError> {
         self.read(move |sql| load_import_list_on(&sql, &request))
+            .process(|process| process())
             .await
     }
 
@@ -527,12 +543,12 @@ impl Database {
         candidate_key: &str,
     ) -> Result<Option<crate::import::ImportCandidateListLocation>, DbError> {
         let candidate_key = candidate_key.to_string();
-        self.read(move |sql| {
-            let rows = load_import_queue_on(&sql)?;
-            crate::import::list::locate_candidate(&rows, &request, &candidate_key)
-                .map_err(|error| DbError::Message(error.to_string()))
-        })
-        .await
+        self.read(move |sql| load_import_queue_on(&sql))
+            .process(move |rows| {
+                crate::import::list::locate_candidate(&rows, &request, &candidate_key)
+                    .map_err(|error| DbError::Message(error.to_string()))
+            })
+            .await
     }
 
     /// One candidate as the pane reads it, live. `None` once the key names no
@@ -542,9 +558,17 @@ impl Database {
         key: &str,
     ) -> coven::LiveQuery<Option<ImportCandidateDetailProjection>> {
         let key = key.to_string();
-        self.inner.handle.subscribe(move |sql| {
-            window::load_candidate_detail_on(&sql, &key).map_err(CovenError::from)
-        })
+        self.inner
+            .handle
+            .subscribe(move |sql| {
+                window::load_candidate_detail_on(&sql, &key).map_err(CovenError::from)
+            })
+            .process(|process| {
+                process
+                    .map(|process| process())
+                    .transpose()
+                    .map_err(CovenError::from)
+            })
     }
 
     /// Every candidate the queue sweep is responsible for: settled folders,
@@ -557,6 +581,7 @@ impl Database {
         &self,
     ) -> Result<Vec<crate::import::FolderCandidate>, DbError> {
         self.read(move |sql| load_sweepable_candidates_on(&sql))
+            .process(|process| process())
             .await
     }
 
@@ -567,13 +592,17 @@ impl Database {
     ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
         let key = key.to_string();
         self.read(move |sql| window::load_candidate_detail_on(&sql, &key))
+            .process(|process| process.map(|process| process()).transpose())
             .await
     }
 }
 
 fn load_sweepable_candidates_on(
     sql: &SqlReadContext<'_>,
-) -> Result<Vec<crate::import::FolderCandidate>, DbError> {
+) -> Result<
+    impl FnOnce() -> Result<Vec<crate::import::FolderCandidate>, DbError> + Send + 'static,
+    DbError,
+> {
     let online_candidates: HashSet<(String, String)> = sql
         .query(
             "SELECT watched_folder_path, path FROM scan_candidate \
@@ -605,29 +634,36 @@ fn load_sweepable_candidates_on(
         [],
         |row| row.get::<_, String>(0),
     )?;
-    let mut candidates = Vec::new();
-    for root in roots {
-        for stored in folder_scans::load_candidate_items(sql, &root, None)? {
-            let ScanItem::Valid(candidate) = stored.item else {
-                continue;
-            };
-            let candidate_key = candidate.path.to_string_lossy().into_owned();
-            if !online_candidates.contains(&(candidate.watched_folder_path.clone(), candidate_key))
-            {
-                continue;
+    let roots = roots
+        .into_iter()
+        .map(|root| folder_scans::read::load_candidate_items_rows(sql, &root, None))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(move || {
+        let mut candidates = Vec::new();
+        for root in roots {
+            for stored in root()? {
+                let ScanItem::Valid(candidate) = stored.item else {
+                    continue;
+                };
+                let candidate_key = candidate.path.to_string_lossy().into_owned();
+                if !online_candidates
+                    .contains(&(candidate.watched_folder_path.clone(), candidate_key))
+                {
+                    continue;
+                }
+                let relative = crate::import::watched_folder::candidate_relative_path(
+                    &candidate.watched_folder_path,
+                    &candidate.path,
+                )
+                .map_err(|error| DbError::Message(error.to_string()))?;
+                if skipped.contains(&(candidate.watched_folder_path.clone(), relative))
+                    || imported.contains(&candidate.files.content_hash())
+                {
+                    continue;
+                }
+                candidates.push(candidate);
             }
-            let relative = crate::import::watched_folder::candidate_relative_path(
-                &candidate.watched_folder_path,
-                &candidate.path,
-            )
-            .map_err(|error| DbError::Message(error.to_string()))?;
-            if skipped.contains(&(candidate.watched_folder_path.clone(), relative))
-                || imported.contains(&candidate.files.content_hash())
-            {
-                continue;
-            }
-            candidates.push(candidate);
         }
-    }
-    Ok(candidates)
+        Ok(candidates)
+    })
 }

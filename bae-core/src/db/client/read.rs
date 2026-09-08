@@ -71,14 +71,14 @@ pub(super) fn get_releases_for_album_on(
 pub(super) fn build_release_detail_on(
     sql: &SqlReadContext<'_>,
     release: DbRelease,
-) -> Result<DbReleaseDetail, DbError> {
+) -> Result<ReleaseDetailRows, DbError> {
     let tracks = get_tracks_with_artists_for_release_on(sql, &release.id)?;
     let files = get_files_for_release_on(sql, &release.id)?;
     let audio_formats = get_audio_formats_for_release_on(sql, &release.id)?;
     let audio_segments = get_audio_segments_for_release_on(sql, &release.id)?;
     let identities = get_release_identities_on(sql, &release.id)?;
 
-    Ok(DbReleaseDetail {
+    Ok(ReleaseDetailRows {
         release,
         tracks,
         files,
@@ -88,13 +88,35 @@ pub(super) fn build_release_detail_on(
     })
 }
 
+pub(super) struct ReleaseDetailRows {
+    pub(super) release: DbRelease,
+    tracks: Vec<(DbTrack, Option<DbArtist>)>,
+    files: Vec<DbFile>,
+    audio_formats: Vec<DbAudioFormat>,
+    audio_segments: Vec<DbAudioSegment>,
+    identities: Vec<crate::import::ReleaseIdentity>,
+}
+
+impl ReleaseDetailRows {
+    pub(super) fn process(self) -> DbReleaseDetail {
+        DbReleaseDetail {
+            release: self.release,
+            tracks: process_tracks(self.tracks),
+            files: process_files(self.files),
+            audio_formats: self.audio_formats,
+            audio_segments: self.audio_segments,
+            identities: self.identities,
+        }
+    }
+}
+
 /// One row per (track, artist) pair, so a track with several artists repeats.
 /// The rows arrive grouped by track and ordered by artist position, and the fold
 /// below rebuilds one entry per track from that run.
 pub(super) fn get_tracks_with_artists_for_release_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<Vec<DbTrackWithArtists>, DbError> {
+) -> Result<Vec<(DbTrack, Option<DbArtist>)>, DbError> {
     let joined = sql.query(
         "SELECT
             track.id AS track_id,
@@ -128,6 +150,10 @@ pub(super) fn get_tracks_with_artists_for_release_on(
         },
     )?;
 
+    Ok(joined)
+}
+
+fn process_tracks(joined: Vec<(DbTrack, Option<DbArtist>)>) -> Vec<DbTrackWithArtists> {
     let mut tracks: Vec<DbTrackWithArtists> = Vec::new();
     for (track, artist) in joined {
         if tracks.last().map(|last| last.track.id.as_str()) != Some(track.id.as_str()) {
@@ -145,18 +171,22 @@ pub(super) fn get_tracks_with_artists_for_release_on(
         }
     }
 
-    Ok(tracks)
+    tracks
 }
 
 pub(super) fn get_files_for_release_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbFile>, DbError> {
-    let mut files = sql.query(
+    let files = sql.query(
         "SELECT * FROM release_files WHERE release_id = ?",
         params![release_id],
         row_to_file,
     )?;
+    Ok(files)
+}
+
+pub(super) fn process_files(mut files: Vec<DbFile>) -> Vec<DbFile> {
     // Every file list a user sees (detail, gallery, storage, export) derives
     // from this read, so it is ordered here once, the same way the import
     // folder lists its files: natural order, case-insensitive. Id breaks
@@ -165,7 +195,7 @@ pub(super) fn get_files_for_release_on(
         natord::compare_ignore_case(&a.original_filename, &b.original_filename)
             .then_with(|| a.id.cmp(&b.id))
     });
-    Ok(files)
+    files
 }
 
 /// Every audio-format row for a release, joined through its tracks — one row per

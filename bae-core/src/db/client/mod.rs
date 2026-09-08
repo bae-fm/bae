@@ -40,6 +40,7 @@ mod blobs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod candidate_state_rows;
 mod coven_capabilities;
+mod database_read;
 mod identity;
 // Watched folders, folder scans and the import candidate queue. Read
 // `import::watched_folder` and `import::FolderScanStatus`, both desktop-only,
@@ -144,7 +145,7 @@ impl Database {
 
     // ── The three SQL entry points ────────────────────────────────────────
     //
-    // `read`     — pure reads, on coven's read-only companion connection: no
+    // `read`     — pure reads, on coven's bounded read-only connections: no
     //              changeset journal, concurrent with the writer rather than
     //              queued behind it. The closure cannot write — a
     //              `SqlReadContext` offers only `query`/`query_row`, and the
@@ -159,20 +160,23 @@ impl Database {
     // `read` after an awaited write is correct. A closure that reads and then
     // conditionally writes is a write — it belongs on `call`, not `read`.
 
-    /// Run a pure read on coven's read-only companion connection. See the entry
-    /// points note above.
-    async fn read<R>(
+    /// Run a pure read on Coven's bounded readers. Attach `.process()` for
+    /// result assembly after releasing the connection.
+    fn read<R>(
         &self,
         f: impl for<'conn> FnOnce(SqlReadContext<'conn>) -> Result<R, DbError> + Send + 'static,
-    ) -> Result<R, DbError>
+    ) -> database_read::DatabaseRead<
+        '_,
+        impl for<'conn> FnOnce(SqlReadContext<'conn>) -> Result<R, CovenError> + Send + 'static,
+    >
     where
         R: Send + 'static,
     {
-        self.inner
-            .handle
-            .read(move |sql| f(sql).map_err(CovenError::from))
-            .await
-            .map_err(Self::coven_error)
+        database_read::DatabaseRead::new(
+            self.inner
+                .handle
+                .read(move |sql| f(sql).map_err(CovenError::from)),
+        )
     }
 
     /// Run a write that does not stamp `_updated_at`. See the entry points note

@@ -10,6 +10,8 @@ use super::*;
 use crate::import::{MetadataAuthor, MetadataProvenance, MetadataRef, MetadataSource};
 use std::str::FromStr;
 
+type CandidateProvenances = HashMap<String, (MetadataProvenance, MetadataAuthor)>;
+
 /// The provenance as its columns. Only an external release names a source and
 /// a release; `author` is never absent, because a provenance nobody put there
 /// has no row at all.
@@ -103,9 +105,15 @@ pub(super) fn insert_provenance(
 pub(crate) fn load_provenance_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
-) -> Result<HashMap<String, (MetadataProvenance, MetadataAuthor)>, DbError> {
-    let mut partners: HashMap<String, Vec<MetadataRef>> = HashMap::new();
-    for (content_hash, source, release_id) in sql.query(
+) -> Result<CandidateProvenances, DbError> {
+    load_provenance_rows_on(sql, only)?()
+}
+
+pub(crate) fn load_provenance_rows_on(
+    sql: &SqlReadContext<'_>,
+    only: Option<&str>,
+) -> Result<impl FnOnce() -> Result<CandidateProvenances, DbError> + Send + 'static, DbError> {
+    let partners_rows = sql.query(
         "SELECT content_hash, source, release_id FROM import_candidate_provenance_partner \
          WHERE :only IS NULL OR content_hash = :only \
          ORDER BY content_hash, source",
@@ -117,13 +125,7 @@ pub(crate) fn load_provenance_on(
                 row.get::<_, String>(2)?,
             ))
         },
-    )? {
-        let source = MetadataSource::from_str(&source).map_err(DbError::Message)?;
-        partners
-            .entry(content_hash)
-            .or_default()
-            .push(MetadataRef::new(release_id, source));
-    }
+    )?;
 
     let rows = sql.query(
         "SELECT content_hash, kind, source, release_id, author \
@@ -140,29 +142,39 @@ pub(crate) fn load_provenance_on(
             ))
         },
     )?;
-    let mut out = HashMap::with_capacity(rows.len());
-    for (content_hash, kind, source, release_id, author) in rows {
-        let partners = partners.remove(&content_hash).unwrap_or_default();
-        let provenance = match kind.as_str() {
-            "file_tags" => MetadataProvenance::FileTags,
-            "external_release" => {
-                let missing = |what: &str| {
-                    DbError::Message(format!(
-                        "stored external metadata provenance names no {what}"
-                    ))
-                };
-                MetadataProvenance::ExternalRelease {
-                    source: MetadataSource::from_str(&source.ok_or_else(|| missing("source"))?)
-                        .map_err(DbError::Message)?,
-                    release_id: release_id.ok_or_else(|| missing("release"))?,
-                    partners,
+    Ok(move || {
+        let mut partners: HashMap<String, Vec<MetadataRef>> = HashMap::new();
+        for (content_hash, source, release_id) in partners_rows {
+            let source = MetadataSource::from_str(&source).map_err(DbError::Message)?;
+            partners
+                .entry(content_hash)
+                .or_default()
+                .push(MetadataRef::new(release_id, source));
+        }
+        let mut out = HashMap::with_capacity(rows.len());
+        for (content_hash, kind, source, release_id, author) in rows {
+            let partners = partners.remove(&content_hash).unwrap_or_default();
+            let provenance = match kind.as_str() {
+                "file_tags" => MetadataProvenance::FileTags,
+                "external_release" => {
+                    let missing = |what: &str| {
+                        DbError::Message(format!(
+                            "stored external metadata provenance names no {what}"
+                        ))
+                    };
+                    MetadataProvenance::ExternalRelease {
+                        source: MetadataSource::from_str(&source.ok_or_else(|| missing("source"))?)
+                            .map_err(DbError::Message)?,
+                        release_id: release_id.ok_or_else(|| missing("release"))?,
+                        partners,
+                    }
                 }
-            }
-            other => return Err(unreadable("provenance kind", other)),
-        };
-        out.insert(content_hash, (provenance, author_of(&author)?));
-    }
-    Ok(out)
+                other => return Err(unreadable("provenance kind", other)),
+            };
+            out.insert(content_hash, (provenance, author_of(&author)?));
+        }
+        Ok(out)
+    })
 }
 
 /// Every candidate's verdict, or the one `only` names, each rebuilt with the
@@ -170,8 +182,11 @@ pub(crate) fn load_provenance_on(
 pub(crate) fn load_verdicts_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
-) -> Result<HashMap<String, DbCandidateIdentifyResult>, DbError> {
-    let mut matches = load_matches_on(sql, only)?;
+) -> Result<
+    impl FnOnce() -> Result<HashMap<String, DbCandidateIdentifyResult>, DbError> + Send + 'static,
+    DbError,
+> {
+    let matches = load_matches_rows_on(sql, only)?;
     let rows = sql.query(
         &format!(
             "SELECT {VERDICT_COLUMNS} FROM import_candidate_verdict \
@@ -180,14 +195,17 @@ pub(crate) fn load_verdicts_on(
         named_params! { ":only": only },
         |row| Ok(read_verdict_row(row)),
     )?;
-    let mut out = HashMap::with_capacity(rows.len());
-    for row in rows {
-        let row = row?;
-        let content_hash = row.content_hash.clone();
-        let found = matches.remove(&content_hash).unwrap_or_default();
-        out.insert(content_hash, identification_of(row, found)?);
-    }
-    Ok(out)
+    Ok(move || {
+        let mut matches = matches()?;
+        let mut out = HashMap::with_capacity(rows.len());
+        for row in rows {
+            let row = row?;
+            let content_hash = row.content_hash.clone();
+            let found = matches.remove(&content_hash).unwrap_or_default();
+            out.insert(content_hash, identification_of(row, found)?);
+        }
+        Ok(out)
+    })
 }
 
 struct StateRow {
@@ -227,8 +245,17 @@ pub(crate) fn load_matches_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
 ) -> Result<HashMap<String, StoredMatches>, DbError> {
-    let mut matches: HashMap<String, StoredMatches> = HashMap::new();
-    for row in sql.query(
+    load_matches_rows_on(sql, only)?()
+}
+
+pub(crate) fn load_matches_rows_on(
+    sql: &SqlReadContext<'_>,
+    only: Option<&str>,
+) -> Result<
+    impl FnOnce() -> Result<HashMap<String, StoredMatches>, DbError> + Send + 'static,
+    DbError,
+> {
+    let rows = sql.query(
         &format!(
             "SELECT {MATCH_COLUMNS} FROM import_candidate_match \
              WHERE :only IS NULL OR content_hash = :only \
@@ -236,17 +263,21 @@ pub(crate) fn load_matches_on(
         ),
         named_params! { ":only": only },
         |row| Ok(read_match_row(row)),
-    )? {
-        let row = row?;
-        let entry = matches.entry(row.content_hash).or_default();
-        let list = if row.narrowed_out {
-            &mut entry.narrowed_out
-        } else {
-            &mut entry.found
-        };
-        list.push((row.result, row.provenance));
-    }
-    Ok(matches)
+    )?;
+    Ok(move || {
+        let mut matches: HashMap<String, StoredMatches> = HashMap::new();
+        for row in rows {
+            let row = row?;
+            let entry = matches.entry(row.content_hash).or_default();
+            let list = if row.narrowed_out {
+                &mut entry.narrowed_out
+            } else {
+                &mut entry.found
+            };
+            list.push((row.result, row.provenance));
+        }
+        Ok(matches)
+    })
 }
 
 /// Every stored candidate row, or the one `only` names, assembled with the
@@ -255,6 +286,16 @@ pub(crate) fn load_states_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
 ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
+    load_states_rows_on(sql, only)?()
+}
+
+pub(crate) fn load_states_rows_on(
+    sql: &SqlReadContext<'_>,
+    only: Option<&str>,
+) -> Result<
+    impl FnOnce() -> Result<HashMap<String, DbImportCandidateState>, DbError> + Send + 'static,
+    DbError,
+> {
     let states = sql.query(
         &format!(
             "SELECT {STATE_COLUMNS} FROM import_candidate_state \
@@ -263,43 +304,49 @@ pub(crate) fn load_states_on(
         named_params! { ":only": only },
         |row| Ok(read_state_row(row)),
     )?;
-    let mut verdicts = load_verdicts_on(sql, only)?;
-    let mut edits = load_edits_on(sql, only)?;
-    let mut signals = load_signals_on(sql, only)?;
-    let mut provenances = load_provenance_on(sql, only)?;
+    let verdicts = load_verdicts_on(sql, only)?;
+    let edits = load_edits_on(sql, only)?;
+    let signals = load_signals_on(sql, only)?;
+    let provenances = load_provenance_rows_on(sql, only)?;
 
-    let mut out = HashMap::with_capacity(states.len());
-    for state in states {
-        let state = state?;
-        let mut file_edits = edits.remove(&state.content_hash).unwrap_or_default();
-        file_edits.revision = u64::try_from(state.edit_revision).map_err(|_| {
-            DbError::Message(format!(
-                "import candidate {} has a negative edit revision",
-                state.content_hash
-            ))
-        })?;
-        let metadata_revision = u64::try_from(state.metadata_revision).map_err(|_| {
-            DbError::Message(format!(
-                "import candidate {} has a negative metadata revision",
-                state.content_hash
-            ))
-        })?;
-        out.insert(
-            state.content_hash.clone(),
-            DbImportCandidateState {
-                signals: signals.remove(&state.content_hash),
-                identify: verdicts.remove(&state.content_hash),
-                metadata_provenance: provenances
-                    .remove(&state.content_hash)
-                    .map(|(provenance, _)| provenance),
-                content_hash: state.content_hash,
-                folder_path: state.folder_path,
-                file_edits,
-                metadata_revision,
-            },
-        );
-    }
-    Ok(out)
+    Ok(move || {
+        let mut verdicts = verdicts()?;
+        let mut edits = edits()?;
+        let mut signals = signals()?;
+        let mut provenances = provenances()?;
+        let mut out = HashMap::with_capacity(states.len());
+        for state in states {
+            let state = state?;
+            let mut file_edits = edits.remove(&state.content_hash).unwrap_or_default();
+            file_edits.revision = u64::try_from(state.edit_revision).map_err(|_| {
+                DbError::Message(format!(
+                    "import candidate {} has a negative edit revision",
+                    state.content_hash
+                ))
+            })?;
+            let metadata_revision = u64::try_from(state.metadata_revision).map_err(|_| {
+                DbError::Message(format!(
+                    "import candidate {} has a negative metadata revision",
+                    state.content_hash
+                ))
+            })?;
+            out.insert(
+                state.content_hash.clone(),
+                DbImportCandidateState {
+                    signals: signals.remove(&state.content_hash),
+                    identify: verdicts.remove(&state.content_hash),
+                    metadata_provenance: provenances
+                        .remove(&state.content_hash)
+                        .map(|(provenance, _)| provenance),
+                    content_hash: state.content_hash,
+                    folder_path: state.folder_path,
+                    file_edits,
+                    metadata_revision,
+                },
+            );
+        }
+        Ok(out)
+    })
 }
 
 /// The per-file decisions of every candidate, or of the one `only` names.
@@ -308,7 +355,10 @@ pub(crate) fn load_states_on(
 fn load_edits_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
-) -> Result<HashMap<String, CandidateFileEdits>, DbError> {
+) -> Result<
+    impl FnOnce() -> Result<HashMap<String, CandidateFileEdits>, DbError> + Send + 'static,
+    DbError,
+> {
     let rows = sql.query(
         &format!(
             "SELECT {FILE_EDIT_COLUMNS} FROM import_candidate_file_edit \
@@ -318,13 +368,15 @@ fn load_edits_on(
         named_params! { ":only": only },
         |row| Ok(read_file_edit_row(row)),
     )?;
-    let mut edits: HashMap<String, CandidateFileEdits> = HashMap::new();
-    for row in rows {
-        let row = row?;
-        let entry = edits.entry(row.content_hash.clone()).or_default();
-        apply_file_edit_row(entry, row)?;
-    }
-    Ok(edits)
+    Ok(move || {
+        let mut edits: HashMap<String, CandidateFileEdits> = HashMap::new();
+        for row in rows {
+            let row = row?;
+            let entry = edits.entry(row.content_hash.clone()).or_default();
+            apply_file_edit_row(entry, row)?;
+        }
+        Ok(edits)
+    })
 }
 
 /// One candidate's file decisions, revision included. Progressive scans call
@@ -333,7 +385,7 @@ fn load_edits_on(
 pub(super) fn load_candidate_file_edits_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
-) -> Result<CandidateFileEdits, DbError> {
+) -> Result<impl FnOnce() -> Result<CandidateFileEdits, DbError> + Send + 'static, DbError> {
     let revision: Option<i64> = sql
         .query_row(
             "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
@@ -341,16 +393,24 @@ pub(super) fn load_candidate_file_edits_on(
             |row| row.get(0),
         )
         .optional()?;
-    let Some(revision) = revision else {
-        return Ok(CandidateFileEdits::default());
+    let edits = if revision.is_some() {
+        Some(load_edits_on(sql, Some(content_hash))?)
+    } else {
+        None
     };
-    let mut edits = load_edits_on(sql, Some(content_hash))?
-        .remove(content_hash)
-        .unwrap_or_default();
-    edits.revision = u64::try_from(revision).map_err(|_| {
-        DbError::Message(format!(
-            "import candidate {content_hash} has a negative edit revision"
-        ))
-    })?;
-    Ok(edits)
+    let content_hash = content_hash.to_string();
+    Ok(move || {
+        let Some(revision) = revision else {
+            return Ok(CandidateFileEdits::default());
+        };
+        let mut edits = edits.expect("a stored revision has fetched file edits")()?
+            .remove(&content_hash)
+            .unwrap_or_default();
+        edits.revision = u64::try_from(revision).map_err(|_| {
+            DbError::Message(format!(
+                "import candidate {content_hash} has a negative edit revision"
+            ))
+        })?;
+        Ok(edits)
+    })
 }

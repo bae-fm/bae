@@ -17,13 +17,11 @@ use crate::import::folder_scanner::{
     CategorizedFiles, InvalidCandidate, ResolvedFolderReleaseBoundary,
 };
 use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
-use crate::import::mapping::MappingTable;
-use crate::import::probe::SourceDurations;
 use crate::import::release_candidate::ReleaseCandidate;
 use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
 use crate::import::triage::MatchedRelease;
+use crate::import::CoverSelection;
 use crate::import::MetadataRef;
-use crate::import::{CoverSelection, RawReleaseEdit};
 use crate::library::LibraryPageWindow;
 use std::path::PathBuf;
 
@@ -33,11 +31,11 @@ pub(super) fn materialise(
     window: &LibraryPageWindow,
     flat: &Flattened,
     rows: &ImportQueueRows,
-) -> Result<Vec<ImportListItem>, DbError> {
+) -> Result<Vec<WindowItemRows>, DbError> {
     window_refs(&flat.items, window)
         .iter()
         .map(|item| match item {
-            ItemRef::Header(index) => Ok(flat.headers[*index].item()),
+            ItemRef::Header(index) => Ok(WindowItemRows::Ready(flat.headers[*index].item())),
             ItemRef::Candidate {
                 index,
                 is_group_member,
@@ -53,14 +51,6 @@ pub(super) fn materialise(
                     row.resolved_boundaries =
                         resolved_boundaries(sql, &scanned.watched_folder_path, &scanned.path)?;
                 }
-                // A decided identity outranks the verdict's lead: a manual
-                // search settles a folder on a release the verdict never
-                // named. With nothing archived behind the pick the row leads
-                // with its folder name rather than someone else's release.
-                if let Some(seed) = row.metadata_provenance.clone() {
-                    let audio_durations = candidate_audio_durations(sql, &row.candidate_key)?;
-                    row.matched = picked_release(sql, &seed, &audio_durations)?;
-                }
                 let content_hash = scanned.content_hash.as_deref().ok_or_else(|| {
                     DbError::Message(format!("candidate {} has no content hash", scanned.path))
                 })?;
@@ -69,10 +59,42 @@ pub(super) fn materialise(
                     .get(content_hash)
                     .filter(|state| state.edit_revision == scanned.file_edit_revision)
                     .and_then(|state| state.selected_cover.as_ref());
-                row.cover_thumbnail =
-                    effective_row_cover_source(sql, scanned, selected, row.matched.as_ref())?;
-                Ok(ImportListItem::Candidate {
+                let files = if row.metadata_provenance.is_some() || selected.is_none() {
+                    Some(
+                        load_candidate_on(sql, &scanned.path)?
+                            .ok_or_else(|| {
+                                DbError::Message(format!(
+                                    "candidate {} vanished while reading its presentation",
+                                    scanned.path
+                                ))
+                            })?
+                            .candidate
+                            .files()
+                            .clone(),
+                    )
+                } else {
+                    None
+                };
+                // A decided identity outranks the verdict's lead. Its payloads
+                // are fetched in this snapshot and interpreted after release.
+                let picked = match row.metadata_provenance.as_ref() {
+                    Some(seed) => picked_release(
+                        sql,
+                        seed,
+                        files
+                            .as_ref()
+                            .expect("a picked candidate has fetched files"),
+                    )?,
+                    None => None,
+                };
+                let cover = match selected {
+                    Some(selected) => RowCover::Selected(row_cover_source(sql, scanned, selected)?),
+                    None => RowCover::Default(files.expect("a default cover has fetched files")),
+                };
+                Ok(WindowItemRows::Candidate {
                     row,
+                    picked,
+                    cover,
                     is_group_member: *is_group_member,
                 })
             }
@@ -81,7 +103,7 @@ pub(super) fn materialise(
                 is_group_member,
             } => {
                 let scanned = &rows.candidates[*index];
-                Ok(ImportListItem::Invalid {
+                Ok(WindowItemRows::Ready(ImportListItem::Invalid {
                     candidate: InvalidCandidate {
                         path: PathBuf::from(&scanned.path),
                         name: scanned.name.clone(),
@@ -100,37 +122,81 @@ pub(super) fn materialise(
                         })?,
                     },
                     is_group_member: *is_group_member,
-                })
+                }))
             }
         })
         .collect()
 }
 
-fn effective_row_cover_source(
-    sql: &SqlReadContext<'_>,
-    candidate: &ScanCandidateListRow,
-    selected: Option<&CoverSelection>,
-    matched: Option<&MatchedRelease>,
-) -> Result<Option<crate::import::CoverImageSource>, DbError> {
-    if let Some(cover) = selected {
-        return row_cover_source(sql, candidate, cover).map(Some);
+pub(super) enum WindowItemRows {
+    Ready(ImportListItem),
+    Candidate {
+        row: crate::import::triage::TriageRow,
+        picked: Option<PickedReleaseRows>,
+        cover: RowCover,
+        is_group_member: bool,
+    },
+}
+
+impl WindowItemRows {
+    pub(super) fn process(self) -> Result<ImportListItem, DbError> {
+        match self {
+            Self::Ready(item) => Ok(item),
+            Self::Candidate {
+                mut row,
+                picked,
+                cover,
+                is_group_member,
+            } => {
+                if row.metadata_provenance.is_some() {
+                    row.matched = picked.map(PickedReleaseRows::process).transpose()?;
+                }
+                row.cover_thumbnail = match cover {
+                    RowCover::Selected(cover) => Some(cover),
+                    RowCover::Default(files) => match row
+                        .matched
+                        .as_ref()
+                        .and_then(|matched| matched.cover_thumbnail_url.as_ref())
+                    {
+                        Some(url) => {
+                            Some(crate::import::CoverImageSource::Remote { url: url.clone() })
+                        }
+                        None => crate::import::local_artwork::default_local_cover_choice(&files)
+                            .map(|choice| choice.thumbnail),
+                    },
+                };
+                Ok(ImportListItem::Candidate {
+                    row,
+                    is_group_member,
+                })
+            }
+        }
     }
-    if let Some(url) = matched.and_then(|release| release.cover_thumbnail_url.as_ref()) {
-        return Ok(Some(crate::import::CoverImageSource::Remote {
-            url: url.clone(),
-        }));
+}
+
+pub(super) enum RowCover {
+    Selected(crate::import::CoverImageSource),
+    Default(CategorizedFiles),
+}
+
+pub(super) struct PickedReleaseRows {
+    source: MetadataSource,
+    payloads: crate::import::payloads::ReleasePayloads,
+    files: CategorizedFiles,
+}
+
+impl PickedReleaseRows {
+    fn process(self) -> Result<MatchedRelease, DbError> {
+        let durations = crate::import::probe::source_durations(&self.files)
+            .map_err(|error| DbError::Message(error.to_string()))?;
+        let audio_durations = crate::import::track_slots::audio_durations(&self.files, &durations)
+            .map_err(|error| DbError::Message(error.to_string()))?;
+        let detail = self
+            .payloads
+            .detail_for_audio(&audio_durations)
+            .map_err(|error| DbError::Message(error.to_string()))?;
+        Ok(MatchedRelease::of_pick(self.source, &detail))
     }
-    let stored = load_candidate_on(sql, &candidate.path)?.ok_or_else(|| {
-        DbError::Message(format!(
-            "candidate {} vanished while materialising its cover",
-            candidate.path
-        ))
-    })?;
-    let candidate = stored.candidate;
-    Ok(
-        crate::import::local_artwork::default_local_cover_choice(candidate.files())
-            .map(|cover| cover.thumbnail),
-    )
 }
 
 fn row_cover_source(
@@ -210,8 +276,8 @@ fn resolved_boundaries(
 fn picked_release(
     sql: &SqlReadContext<'_>,
     pick: &MetadataProvenance,
-    audio_durations_ms: &[u64],
-) -> Result<Option<MatchedRelease>, DbError> {
+    files: &CategorizedFiles,
+) -> Result<Option<PickedReleaseRows>, DbError> {
     let MetadataProvenance::ExternalRelease {
         source, release_id, ..
     } = pick
@@ -225,26 +291,11 @@ fn picked_release(
     else {
         return Ok(None);
     };
-    let detail = payloads
-        .detail_for_audio(audio_durations_ms)
-        .map_err(message)?;
-    Ok(Some(MatchedRelease::of_pick(*source, &detail)))
-}
-
-fn candidate_audio_durations(
-    sql: &SqlReadContext<'_>,
-    candidate_key: &str,
-) -> Result<Vec<u64>, DbError> {
-    let stored = load_candidate_on(sql, candidate_key)?.ok_or_else(|| {
-        DbError::Message(format!(
-            "candidate {candidate_key} vanished while materialising its picked release"
-        ))
-    })?;
-    let candidate = stored.candidate;
-    let durations = crate::import::probe::source_durations(candidate.files())
-        .map_err(|error| DbError::Message(error.to_string()))?;
-    crate::import::track_slots::audio_durations(candidate.files(), &durations)
-        .map_err(|error| DbError::Message(error.to_string()))
+    Ok(Some(PickedReleaseRows {
+        source: *source,
+        payloads,
+        files: files.clone(),
+    }))
 }
 
 /// One candidate, whole, before its runtime is folded in. `None` when the key
@@ -252,7 +303,10 @@ fn candidate_audio_durations(
 pub(super) fn load_candidate_detail_on(
     sql: &SqlReadContext<'_>,
     key: &str,
-) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
+) -> Result<
+    Option<impl FnOnce() -> Result<ImportCandidateDetailProjection, DbError> + Send + 'static>,
+    DbError,
+> {
     let Some(stored) = load_candidate_on(sql, key)? else {
         return Ok(None);
     };
@@ -282,8 +336,6 @@ pub(super) fn load_candidate_detail_on(
     let picked = current
         .as_ref()
         .and_then(|state| state.metadata_provenance.clone());
-    let durations = crate::import::probe::source_durations(candidate.files())
-        .map_err(|error| DbError::Message(error.to_string()))?;
     let signals = current.as_ref().and_then(|state| state.signals.clone());
     let pane_rows = load_pane_rows_on(sql, &content_hash)?;
     let (initial_metadata_source, metadata_revision) = sql.query_row(
@@ -298,58 +350,23 @@ pub(super) fn load_candidate_detail_on(
     let metadata_revision = u64::try_from(metadata_revision)
         .map_err(|_| DbError::Message("candidate metadata revision is negative".to_string()))?;
 
-    let mut answer = None;
-    let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
-    let mut matched = None;
-    if let Some(identify) = identify {
-        let statuses = library_statuses(sql, &identify.verdict)?;
-        // The check answers for every release the verdict names, so a lookup
-        // cannot miss: `check_releases_in_library_on` returns one status per
-        // check and the checks are exactly those releases.
-        let status_of = |result: &MetadataResult| {
-            statuses
-                .iter()
-                .find(|status| status.release_id == result.release_id)
-                .expect("the library check covers every release the verdict names")
-                .clone()
-        };
-        answer = Some(classify(
-            &identify.verdict,
-            identify.probed_total_duration_ms,
-            &statuses,
-        ));
-        matched = MatchedRelease::of_summary(&VerdictSummary::of(&identify.verdict));
-        resumed_identify_state = identify
-            .verdict
-            .clone()
-            .resume_state(signals.as_ref(), &status_of);
-    }
-    if let Some(pick) = picked.as_ref() {
-        let audio_durations =
-            crate::import::track_slots::audio_durations(candidate.files(), &durations)
+    let statuses = identify
+        .map(|identify| library_statuses(sql, &identify.verdict))
+        .transpose()?;
+    // Only identity keys are needed for the next SQL query. Track and artwork
+    // processing runs after the snapshot ends.
+    let payloads = payloads_for_pane_on(sql, &candidate, picked.as_ref())?;
+    let picked_library_status = match payloads.as_ref() {
+        Some(payloads) => {
+            let check = payloads
+                .library_check()
                 .map_err(|error| DbError::Message(error.to_string()))?;
-        matched = picked_release(sql, pick, &audio_durations)?;
-    }
-
-    let pane = pane_of(sql, &candidate, picked.as_ref(), &durations, &pane_rows)?;
-    let picked_library_status = match pane.release.as_ref() {
-        Some(release) => check_releases_in_library_on(
-            sql,
-            &[LibraryCheck {
-                source: release.source,
-                release_id: release.release_id.clone(),
-                source_group_id: release.source_group_id.clone(),
-            }],
-        )?
-        .into_iter()
-        .next(),
+            check_releases_in_library_on(sql, &[check])?
+                .into_iter()
+                .next()
+        }
         None => None,
     };
-    let remote_covers = pane
-        .release
-        .as_ref()
-        .map(|release| release.cover_art.clone())
-        .unwrap_or_default();
     let embedded_cover = match pane_rows.cover.as_ref() {
         Some(CoverSelection::Embedded(source_file_id)) => {
             let snapshot = super::super::folder_scans::load_candidate_file_tag_snapshot(
@@ -380,54 +397,103 @@ pub(super) fn load_candidate_detail_on(
         }
         _ => None,
     };
-    let cover = chosen_cover(
-        candidate.files(),
-        pane_rows.cover.as_ref(),
-        pane.release.as_ref(),
-        embedded_cover.as_ref(),
-    );
-    Ok(Some(ImportCandidateDetailProjection {
-        is_added: imported_release.is_some(),
-        candidate,
-        source_error,
-        actionable,
-        skipped,
-        resumed_identify_state,
-        answer,
-        matched,
-        metadata_provenance: picked,
-        metadata_revision,
-        initial_metadata_source,
-        imported_release,
-        release: pane.release,
-        picked_library_status,
-        metadata_draft: pane.edit,
-        mapping: pane.mapping,
-        cover,
-        remote_covers,
-        signals,
-        failure: pane_rows.failure,
-        session: pane_rows.session,
+    Ok(Some(move || {
+        let durations = crate::import::probe::source_durations(candidate.files())
+            .map_err(|error| DbError::Message(error.to_string()))?;
+        let release = payloads
+            .map(|payloads| {
+                let audio_durations =
+                    crate::import::track_slots::audio_durations(candidate.files(), &durations)
+                        .map_err(|error| DbError::Message(error.to_string()))?;
+                payloads
+                    .detail_for_audio(&audio_durations)
+                    .map_err(|error| DbError::Message(error.to_string()))
+            })
+            .transpose()?;
+        let mut answer = None;
+        let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
+        let mut matched = None;
+        let identify = current.as_ref().and_then(|state| state.identify.as_ref());
+        if let Some(identify) = identify {
+            let statuses = statuses
+                .as_ref()
+                .expect("identification has fetched library statuses");
+            // The check answers for every release the verdict names, so a lookup
+            // cannot miss: `check_releases_in_library_on` returns one status per
+            // check and the checks are exactly those releases.
+            let status_of = |result: &MetadataResult| {
+                statuses
+                    .iter()
+                    .find(|status| status.release_id == result.release_id)
+                    .expect("the library check covers every release the verdict names")
+                    .clone()
+            };
+            answer = Some(classify(
+                &identify.verdict,
+                identify.probed_total_duration_ms,
+                statuses,
+            ));
+            matched = MatchedRelease::of_summary(&VerdictSummary::of(&identify.verdict));
+            resumed_identify_state = identify
+                .verdict
+                .clone()
+                .resume_state(signals.as_ref(), &status_of);
+        }
+        if picked.is_some() {
+            matched = release
+                .as_ref()
+                .map(|release| MatchedRelease::of_pick(release.source, release));
+        }
+        let pane = crate::import::pane::draft_pane(
+            release,
+            candidate.files(),
+            &durations,
+            &pane_rows.draft,
+            picked.as_ref(),
+        );
+        let remote_covers = pane
+            .release
+            .as_ref()
+            .map(|release| release.cover_art.clone())
+            .unwrap_or_default();
+        let cover = chosen_cover(
+            candidate.files(),
+            pane_rows.cover.as_ref(),
+            pane.release.as_ref(),
+            embedded_cover.as_ref(),
+        );
+        Ok(ImportCandidateDetailProjection {
+            is_added: imported_release.is_some(),
+            candidate,
+            source_error,
+            actionable,
+            skipped,
+            resumed_identify_state,
+            answer,
+            matched,
+            metadata_provenance: picked,
+            metadata_revision,
+            initial_metadata_source,
+            imported_release,
+            release: pane.release,
+            picked_library_status,
+            metadata_draft: pane.edit,
+            mapping: pane.mapping,
+            cover,
+            remote_covers,
+            signals,
+            failure: pane_rows.failure,
+            session: pane_rows.session,
+        })
     }))
 }
 
-/// What the pick produces for the pane. A folder with no pick still gets its
-/// table — the roles say what every file becomes, and only the tracks are the
-/// open question.
-struct PaneValue {
-    release: Option<ImportSearchReleaseDetail>,
-    edit: RawReleaseEdit,
-    mapping: MappingTable,
-}
-
-#[allow(clippy::too_many_arguments)]
-fn pane_of(
+/// Read the picked release documents in the pane's SQL snapshot.
+fn payloads_for_pane_on(
     sql: &SqlReadContext<'_>,
     candidate: &ReleaseCandidate,
     picked: Option<&MetadataProvenance>,
-    durations: &SourceDurations,
-    rows: &DbCandidatePaneRows,
-) -> Result<PaneValue, DbError> {
+) -> Result<Option<crate::import::payloads::ReleasePayloads>, DbError> {
     let release = match picked {
         Some(MetadataProvenance::ExternalRelease {
             source, release_id, ..
@@ -445,24 +511,11 @@ fn pane_of(
                         candidate.key()
                     ))
                 })?;
-            Some(
-                payloads
-                    .detail_for_audio(
-                        &crate::import::track_slots::audio_durations(candidate.files(), durations)
-                            .map_err(|error| DbError::Message(error.to_string()))?,
-                    )
-                    .map_err(|error| DbError::Message(error.to_string()))?,
-            )
+            Some(payloads)
         }
         Some(MetadataProvenance::FileTags) | None => None,
     };
-    let pick =
-        crate::import::pane::draft_pane(release, candidate.files(), durations, &rows.draft, picked);
-    Ok(PaneValue {
-        release: pick.release,
-        edit: pick.edit,
-        mapping: pick.mapping,
-    })
+    Ok(release)
 }
 
 /// The cover the candidate commits with: its selection, the picked release's

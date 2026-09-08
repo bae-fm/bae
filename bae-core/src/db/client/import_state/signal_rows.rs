@@ -268,7 +268,7 @@ fn free_text(text: &TextSignal) -> &[String] {
 pub(super) fn load_signals_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
-) -> Result<HashMap<String, Signals>, DbError> {
+) -> Result<impl FnOnce() -> Result<HashMap<String, Signals>, DbError> + Send + 'static, DbError> {
     let values = sql.query(
         &format!(
             "SELECT {SIGNAL_VALUE_COLUMNS} FROM import_candidate_signal_value \
@@ -292,21 +292,6 @@ pub(super) fn load_signals_on(
             ))
         },
     )?;
-    let mut lists: HashMap<String, SignalValues> = HashMap::new();
-    for (content_hash, list, value, origin, origin_path, region) in values {
-        let entry = lists.entry(content_hash).or_default();
-        match list.as_str() {
-            "barcode" => entry
-                .barcodes
-                .push(sourced_value(value, origin, origin_path, region)?),
-            "catalog" => entry
-                .catalogs
-                .push(sourced_value(value, origin, origin_path, region)?),
-            "free_text" => entry.free_text.push(value),
-            other => return Err(unreadable("list", other)),
-        }
-    }
-
     let rows = sql.query(
         &format!(
             "SELECT {SIGNALS_COLUMNS} FROM import_candidate_signals \
@@ -335,90 +320,111 @@ pub(super) fn load_signals_on(
         },
     )?;
 
-    let mut out = HashMap::with_capacity(rows.len());
-    for row in rows {
-        let (
-            content_hash,
-            disc_id_state,
-            disc_id,
-            disc_id_source_file,
-            track_count,
-            disc_id_failure,
-            disc_id_failure_status,
-            disc_id_failure_detail,
-            barcode_state,
-            barcode_failure,
-            barcode_failure_status,
-            barcode_failure_detail,
-            text_state,
-            text_failure,
-            text_failure_status,
-            text_failure_detail,
-        ) = row;
-        let values = lists.remove(&content_hash).unwrap_or_default();
-        let track_count = u32::try_from(track_count).map_err(|_| {
-            DbError::Message(format!("a stored signal counts {track_count} tracks"))
-        })?;
-        let disc_id = match disc_id_state.as_str() {
-            "computed" => DiscIdSignal::Computed {
-                disc_id: disc_id.ok_or_else(|| {
-                    DbError::Message("a computed disc ID signal states no hash".into())
-                })?,
-                track_count,
-                source_file: disc_id_source_file,
-            },
-            "absent" => DiscIdSignal::Absent { track_count },
-            "failed" => DiscIdSignal::Failed {
-                failure: failure_of(
-                    disc_id_failure,
-                    disc_id_failure_status,
-                    disc_id_failure_detail,
-                )?
-                .ok_or_else(|| DbError::Message("a failed disc ID states no reason".into()))?,
-                track_count,
-            },
-            other => return Err(unreadable("disc_id_state", other)),
-        };
-        let barcode = match barcode_state.as_str() {
-            "settled" => BarcodeSignal::Settled {
-                codes: values.barcodes,
-            },
-            "absent" => BarcodeSignal::Absent,
-            "failed" => BarcodeSignal::Failed {
-                failure: failure_of(
-                    barcode_failure,
-                    barcode_failure_status,
-                    barcode_failure_detail,
-                )?
-                .ok_or_else(|| DbError::Message("a failed barcode states no reason".into()))?,
-                codes: values.barcodes,
-            },
-            other => return Err(unreadable("barcode_state", other)),
-        };
-        let text = match text_state.as_str() {
-            "settled" => TextSignal::Settled {
-                catalogs: values.catalogs,
-                free_text: values.free_text,
-            },
-            "failed" => TextSignal::Failed {
-                failure: failure_of(text_failure, text_failure_status, text_failure_detail)?
-                    .ok_or_else(|| DbError::Message("failed text states no reason".into()))?,
-                catalogs: values.catalogs,
-                free_text: values.free_text,
-            },
-            other => return Err(unreadable("text_state", other)),
-        };
-        out.insert(
-            content_hash,
-            Signals {
+    Ok(move || {
+        let mut lists: HashMap<String, SignalValues> = HashMap::new();
+        for (content_hash, list, value, origin, origin_path, region) in values {
+            let entry = lists.entry(content_hash).or_default();
+            match list.as_str() {
+                "barcode" => {
+                    entry
+                        .barcodes
+                        .push(sourced_value(value, origin, origin_path, region)?)
+                }
+                "catalog" => {
+                    entry
+                        .catalogs
+                        .push(sourced_value(value, origin, origin_path, region)?)
+                }
+                "free_text" => entry.free_text.push(value),
+                other => return Err(unreadable("list", other)),
+            }
+        }
+
+        let mut out = HashMap::with_capacity(rows.len());
+        for row in rows {
+            let (
+                content_hash,
+                disc_id_state,
                 disc_id,
-                barcode,
-                text,
-                durations: Default::default(),
-            },
-        );
-    }
-    Ok(out)
+                disc_id_source_file,
+                track_count,
+                disc_id_failure,
+                disc_id_failure_status,
+                disc_id_failure_detail,
+                barcode_state,
+                barcode_failure,
+                barcode_failure_status,
+                barcode_failure_detail,
+                text_state,
+                text_failure,
+                text_failure_status,
+                text_failure_detail,
+            ) = row;
+            let values = lists.remove(&content_hash).unwrap_or_default();
+            let track_count = u32::try_from(track_count).map_err(|_| {
+                DbError::Message(format!("a stored signal counts {track_count} tracks"))
+            })?;
+            let disc_id = match disc_id_state.as_str() {
+                "computed" => DiscIdSignal::Computed {
+                    disc_id: disc_id.ok_or_else(|| {
+                        DbError::Message("a computed disc ID signal states no hash".into())
+                    })?,
+                    track_count,
+                    source_file: disc_id_source_file,
+                },
+                "absent" => DiscIdSignal::Absent { track_count },
+                "failed" => DiscIdSignal::Failed {
+                    failure: failure_of(
+                        disc_id_failure,
+                        disc_id_failure_status,
+                        disc_id_failure_detail,
+                    )?
+                    .ok_or_else(|| DbError::Message("a failed disc ID states no reason".into()))?,
+                    track_count,
+                },
+                other => return Err(unreadable("disc_id_state", other)),
+            };
+            let barcode = match barcode_state.as_str() {
+                "settled" => BarcodeSignal::Settled {
+                    codes: values.barcodes,
+                },
+                "absent" => BarcodeSignal::Absent,
+                "failed" => BarcodeSignal::Failed {
+                    failure: failure_of(
+                        barcode_failure,
+                        barcode_failure_status,
+                        barcode_failure_detail,
+                    )?
+                    .ok_or_else(|| DbError::Message("a failed barcode states no reason".into()))?,
+                    codes: values.barcodes,
+                },
+                other => return Err(unreadable("barcode_state", other)),
+            };
+            let text = match text_state.as_str() {
+                "settled" => TextSignal::Settled {
+                    catalogs: values.catalogs,
+                    free_text: values.free_text,
+                },
+                "failed" => TextSignal::Failed {
+                    failure: failure_of(text_failure, text_failure_status, text_failure_detail)?
+                        .ok_or_else(|| DbError::Message("failed text states no reason".into()))?,
+                    catalogs: values.catalogs,
+                    free_text: values.free_text,
+                },
+                other => return Err(unreadable("text_state", other)),
+            };
+            out.insert(
+                content_hash,
+                Signals {
+                    disc_id,
+                    barcode,
+                    text,
+                    durations: Default::default(),
+                },
+            );
+        }
+        Ok(out)
+    })
 }
 
 #[derive(Default)]

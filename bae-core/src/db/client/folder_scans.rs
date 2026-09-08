@@ -24,8 +24,7 @@ use std::path::{Path, PathBuf};
 // `use super::*` above also brings the client's own `read` and `write` modules
 // into scope, so these name this module's pair explicitly.
 pub(super) use self::read::{
-    load_candidate_file_tag_snapshot, load_candidate_items, load_item_by_key,
-    load_resolved_boundaries, stored_entries,
+    load_candidate_file_tag_snapshot, load_item_by_key, load_resolved_boundaries, stored_entries,
 };
 pub(super) use self::write::{delete_entry, insert_candidate_files, StoredEntry};
 
@@ -463,6 +462,7 @@ impl Database {
     #[cfg(test)]
     pub async fn load_folder_scan_snapshots(&self) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
         self.read(move |sql| load_folder_scan_snapshots_on(&sql))
+            .process(|process| process())
             .await
     }
 
@@ -473,6 +473,7 @@ impl Database {
     ) -> Result<Vec<ScanItem>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         self.read(move |sql| load_folder_scan_items_on(&sql, &watched_folder_path))
+            .process(|process| process())
             .await
     }
 
@@ -486,7 +487,14 @@ impl Database {
             )?;
             let mut items = Vec::new();
             for root in roots {
-                items.extend(load_folder_scan_items_on(&sql, &root)?);
+                items.push(load_folder_scan_items_on(&sql, &root)?);
+            }
+            Ok(items)
+        })
+        .process(|roots| {
+            let mut items = Vec::new();
+            for root in roots {
+                items.extend(root()?);
             }
             Ok(items)
         })
@@ -501,7 +509,16 @@ impl Database {
         entry_key: &str,
     ) -> Result<Option<ScanItem>, DbError> {
         let entry_key = entry_key.to_string();
-        self.read(move |sql| load_scan_item_on(&sql, &entry_key))
+        self.read(move |sql| read::load_item_by_key_rows(&sql, &entry_key))
+            .process(|process| {
+                process
+                    .map(|process| {
+                        let (root, stored) = process()?;
+                        validate_scan_item_ownership(&root, &stored.key, &stored.item)?;
+                        Ok(stored.item)
+                    })
+                    .transpose()
+            })
             .await
     }
 }
@@ -509,20 +526,24 @@ impl Database {
 pub(super) fn load_folder_scan_items_on(
     sql: &SqlReadContext<'_>,
     watched_folder_path: &str,
-) -> Result<Vec<ScanItem>, DbError> {
-    read::load_items(sql, watched_folder_path)?
-        .into_iter()
-        .map(|stored| {
-            validate_scan_item_ownership(watched_folder_path, &stored.key, &stored.item)?;
-            Ok(stored.item)
-        })
-        .collect()
+) -> Result<impl FnOnce() -> Result<Vec<ScanItem>, DbError> + Send + 'static, DbError> {
+    let items = read::load_items(sql, watched_folder_path)?;
+    let watched_folder_path = watched_folder_path.to_string();
+    Ok(move || {
+        items()?
+            .into_iter()
+            .map(|stored| {
+                validate_scan_item_ownership(&watched_folder_path, &stored.key, &stored.item)?;
+                Ok(stored.item)
+            })
+            .collect()
+    })
 }
 
 #[cfg(test)]
 fn load_folder_scan_snapshots_on(
     sql: &SqlReadContext<'_>,
-) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
+) -> Result<impl FnOnce() -> Result<Vec<DbFolderScanSnapshot>, DbError> + Send + 'static, DbError> {
     let roots = sql.query(
         "SELECT roots.watched_folder_path, roots.generation, roots.status, roots.error, \
                 COUNT(candidate.path) \
@@ -565,14 +586,21 @@ fn load_folder_scan_snapshots_on(
             }
         };
         let items = load_folder_scan_items_on(sql, &watched_folder_path)?;
-        snapshots.push(DbFolderScanSnapshot {
-            watched_folder_path,
-            generation,
-            status,
-            items,
-        });
+        snapshots.push((watched_folder_path, generation, status, items));
     }
-    Ok(snapshots)
+    Ok(move || {
+        snapshots
+            .into_iter()
+            .map(|(watched_folder_path, generation, status, items)| {
+                Ok(DbFolderScanSnapshot {
+                    watched_folder_path,
+                    generation,
+                    status,
+                    items: items()?,
+                })
+            })
+            .collect()
+    })
 }
 
 pub(super) fn validate_scan_item_ownership(

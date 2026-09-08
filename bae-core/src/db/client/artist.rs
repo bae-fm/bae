@@ -316,6 +316,7 @@ impl Database {
     ) -> Result<Option<DbArtistDetail>, DbError> {
         let artist_id = artist_id.to_string();
         self.read(move |sql| find_artist_detail_on(&sql, &artist_id))
+            .process(|rows| rows.map(ArtistDetailRows::process).transpose())
             .await
     }
 
@@ -324,31 +325,34 @@ impl Database {
         artist_id: &str,
     ) -> coven::LiveQuery<ArtistDetailProjection> {
         let artist_id = artist_id.to_string();
-        self.inner.handle.subscribe(move |sql| {
-            let detail = find_artist_detail_on(&sql, &artist_id).map_err(CovenError::from)?;
-            let (artist_ids, release_ids) = match &detail {
-                Some(detail) => (
-                    vec![detail.artist.artist.id.clone()],
-                    detail
-                        .albums
-                        .iter()
-                        .flat_map(|album| album.release_ids.iter().cloned())
-                        .collect::<Vec<_>>(),
-                ),
-                None => (Vec::new(), Vec::new()),
-            };
-            let image_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                    .map_err(CovenError::from)?;
-            let cover_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                    .map_err(CovenError::from)?;
-            Ok(ArtistDetailProjection {
-                detail,
-                image_versions,
-                cover_versions,
+        self.inner
+            .handle
+            .subscribe(move |sql| {
+                let detail = find_artist_detail_on(&sql, &artist_id).map_err(CovenError::from)?;
+                let (artist_ids, album_ids) = match &detail {
+                    Some(detail) => (
+                        vec![detail.artist.artist.id.clone()],
+                        detail
+                            .albums
+                            .iter()
+                            .map(|album| album.id.clone())
+                            .collect::<Vec<_>>(),
+                    ),
+                    None => (Vec::new(), Vec::new()),
+                };
+                let image_versions =
+                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                        .map_err(CovenError::from)?;
+                let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
+                Ok((detail, image_versions, cover_versions))
             })
-        })
+            .process(|(detail, image_versions, cover_versions)| {
+                Ok(ArtistDetailProjection {
+                    detail: detail.map(ArtistDetailRows::process).transpose()?,
+                    image_versions,
+                    cover_versions,
+                })
+            })
     }
 
     pub async fn find_composer_detail(
@@ -357,6 +361,7 @@ impl Database {
     ) -> Result<Option<DbComposerDetail>, DbError> {
         let artist_id = artist_id.to_string();
         self.read(move |sql| find_composer_detail_on(&sql, &artist_id))
+            .process(|rows| Ok(rows.map(ComposerDetailRows::process)))
             .await
     }
 
@@ -365,32 +370,37 @@ impl Database {
         artist_id: &str,
     ) -> coven::LiveQuery<ComposerDetailProjection> {
         let artist_id = artist_id.to_string();
-        self.inner.handle.subscribe(move |sql| {
-            let detail = find_composer_detail_on(&sql, &artist_id).map_err(CovenError::from)?;
-            let (artist_ids, release_ids) = match &detail {
-                Some(detail) => (
-                    vec![detail.composer.artist.id.clone()],
-                    detail
-                        .work_groups
-                        .iter()
-                        .flat_map(|group| group.parent.iter().chain(group.works.iter()))
-                        .filter_map(|work| work.representative_release_id.clone())
-                        .collect::<Vec<_>>(),
-                ),
-                None => (Vec::new(), Vec::new()),
-            };
-            let image_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                    .map_err(CovenError::from)?;
-            let cover_versions =
-                super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                    .map_err(CovenError::from)?;
-            Ok(ComposerDetailProjection {
-                detail,
-                image_versions,
-                cover_versions,
+        self.inner
+            .handle
+            .subscribe(move |sql| {
+                let detail = find_composer_detail_on(&sql, &artist_id).map_err(CovenError::from)?;
+                let (artist_ids, release_ids) = match &detail {
+                    Some(detail) => (
+                        vec![detail.composer.artist.id.clone()],
+                        detail
+                            .works
+                            .iter()
+                            .chain(detail.parents.values())
+                            .filter_map(|work| work.representative_release_id.clone())
+                            .collect::<Vec<_>>(),
+                    ),
+                    None => (Vec::new(), Vec::new()),
+                };
+                let image_versions =
+                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                        .map_err(CovenError::from)?;
+                let cover_versions =
+                    super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
+                        .map_err(CovenError::from)?;
+                Ok((detail, image_versions, cover_versions))
             })
-        })
+            .process(|(detail, image_versions, cover_versions)| {
+                Ok(ComposerDetailProjection {
+                    detail: detail.map(ComposerDetailRows::process),
+                    image_versions,
+                    cover_versions,
+                })
+            })
     }
 
     /// The `works` row id minted for a MusicBrainz work, if this library already
@@ -527,7 +537,7 @@ fn find_work_detail_on(
 fn find_artist_detail_on(
     sql: &SqlReadContext<'_>,
     artist_id: &str,
-) -> Result<Option<DbArtistDetail>, DbError> {
+) -> Result<Option<ArtistDetailRows>, DbError> {
     let artist = sql
         .query_row(
             &artist_summary_query(Some("WHERE ar.id = ?"), None),
@@ -550,19 +560,32 @@ fn find_artist_detail_on(
                   a.year, a.title COLLATE NOCASE, a.id",
         select = album_summary_select()
     );
-    let albums = sql
-        .query(&albums_query, params![artist_id], |row| {
-            Ok(parse_album_summary_row(row))
-        })?
-        .into_iter()
-        .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(Some(DbArtistDetail { artist, albums }))
+    let albums = sql.query(&albums_query, params![artist_id], AlbumSummaryRow::read)?;
+    Ok(Some(ArtistDetailRows { artist, albums }))
+}
+
+struct ArtistDetailRows {
+    artist: DbArtistSummary,
+    albums: Vec<AlbumSummaryRow>,
+}
+
+impl ArtistDetailRows {
+    fn process(self) -> Result<DbArtistDetail, DbError> {
+        Ok(DbArtistDetail {
+            artist: self.artist,
+            albums: self
+                .albums
+                .into_iter()
+                .map(AlbumSummaryRow::process)
+                .collect::<Result<_, _>>()?,
+        })
+    }
 }
 
 fn find_composer_detail_on(
     sql: &SqlReadContext<'_>,
     artist_id: &str,
-) -> Result<Option<DbComposerDetail>, DbError> {
+) -> Result<Option<ComposerDetailRows>, DbError> {
     let composer = sql
         .query_row(
             &composer_summary_query(Some("WHERE composer.id = ?"), None),
@@ -604,34 +627,6 @@ fn find_composer_detail_on(
         .into_iter()
         .collect::<HashMap<_, _>>()
     };
-    let mut grouped: HashMap<String, Vec<DbWorkSummary>> = HashMap::new();
-    let mut ungrouped = Vec::new();
-    for work in works {
-        if let Some(parent_id) = work.parent_work_id.clone() {
-            grouped.entry(parent_id).or_default().push(work);
-        } else {
-            let id = work.work.id.clone();
-            ungrouped.push(DbComposerWorkGroup {
-                id,
-                parent: None,
-                works: vec![work],
-            });
-        }
-    }
-    let mut work_groups = grouped
-        .into_iter()
-        .map(|(parent_id, mut works)| {
-            works.sort_by_key(work_summary_sort_key);
-            DbComposerWorkGroup {
-                id: parent_id.clone(),
-                parent: parent_summaries.get(&parent_id).cloned(),
-                works,
-            }
-        })
-        .collect::<Vec<_>>();
-    work_groups.extend(ungrouped);
-    work_groups.sort_by_key(composer_work_group_sort_key);
-
     let release_roles_query = format!(
         "SELECT rar.id AS release_artist_role_id, rar.release_id,
                 rar.artist_id, rar.position,
@@ -697,12 +692,67 @@ fn find_composer_detail_on(
         params![composer.artist.id],
         row_to_track_role_summary,
     )?;
-    Ok(Some(DbComposerDetail {
+    Ok(Some(ComposerDetailRows {
         composer,
-        work_groups,
+        works,
+        parents: parent_summaries,
         unlinked_release_roles,
         unlinked_track_roles,
     }))
+}
+
+struct ComposerDetailRows {
+    composer: DbComposerSummary,
+    works: Vec<DbWorkSummary>,
+    parents: HashMap<String, DbWorkSummary>,
+    unlinked_release_roles: Vec<DbReleaseRoleSummary>,
+    unlinked_track_roles: Vec<DbTrackRoleSummary>,
+}
+
+impl ComposerDetailRows {
+    fn process(self) -> DbComposerDetail {
+        let Self {
+            composer,
+            works,
+            parents: parent_summaries,
+            unlinked_release_roles,
+            unlinked_track_roles,
+        } = self;
+        let mut grouped: HashMap<String, Vec<DbWorkSummary>> = HashMap::new();
+        let mut ungrouped = Vec::new();
+        for work in works {
+            if let Some(parent_id) = work.parent_work_id.clone() {
+                grouped.entry(parent_id).or_default().push(work);
+            } else {
+                let id = work.work.id.clone();
+                ungrouped.push(DbComposerWorkGroup {
+                    id,
+                    parent: None,
+                    works: vec![work],
+                });
+            }
+        }
+        let mut work_groups = grouped
+            .into_iter()
+            .map(|(parent_id, mut works)| {
+                works.sort_by_key(work_summary_sort_key);
+                DbComposerWorkGroup {
+                    id: parent_id.clone(),
+                    parent: parent_summaries.get(&parent_id).cloned(),
+                    works,
+                }
+            })
+            .collect::<Vec<_>>();
+        work_groups.extend(ungrouped);
+        work_groups.sort_by_key(composer_work_group_sort_key);
+
+        DbComposerDetail {
+            composer,
+            work_groups,
+            unlinked_release_roles,
+            unlinked_track_roles,
+        }
+    }
 }
 
 fn composer_work_group_sort_key(group: &DbComposerWorkGroup) -> String {
