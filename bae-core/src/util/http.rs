@@ -57,6 +57,7 @@ pub(crate) fn is_cacheable(status: u16) -> bool {
 /// A response's cache key: the request URL as reqwest renders it. A test puts a
 /// canned answer at this key and the request that looks for it computes the
 /// same one, so the two cannot drift apart over URL normalization.
+#[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn response_key(url: &str) -> String {
     reqwest::Url::parse(url)
         .expect("a provider request URL parses")

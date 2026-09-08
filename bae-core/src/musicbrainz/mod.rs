@@ -12,7 +12,7 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use crate::import::{PayloadSource, SourcePayload};
-use crate::util::http::{is_cacheable, response_key, CachedResponse};
+use crate::util::http::{is_cacheable, CachedResponse};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 use crate::util::test_base_url::TestBaseUrl;
@@ -172,7 +172,10 @@ fn mb_body(response: CachedResponse) -> Result<String, MusicBrainzError> {
 /// Put `body` where a request built right now for `url` would look for it.
 #[cfg(any(test, feature = "test-utils"))]
 fn seed_response(url: &str, status: u16, body: String) {
-    MUSICBRAINZ_RESPONSES.put(response_key(url), CachedResponse { status, body });
+    MUSICBRAINZ_RESPONSES.put(
+        crate::util::http::response_key(url),
+        CachedResponse { status, body },
+    );
 }
 
 /// Pre-populate the answer to the Discogs-URL lookup, so a test can drive the

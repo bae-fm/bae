@@ -2,7 +2,7 @@ use crate::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, D
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use crate::retry::retry_with_backoff_if;
-use crate::util::http::{is_cacheable, response_key, CachedResponse};
+use crate::util::http::{is_cacheable, CachedResponse};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 use crate::util::test_base_url::TestBaseUrl;
@@ -41,7 +41,10 @@ fn artist_url(base_url: &str, artist_id: &str) -> String {
 /// Put `body` where a request built right now for `url` would look for it.
 #[cfg(any(test, feature = "test-utils"))]
 fn seed_response(url: &str, status: u16, body: String) {
-    DISCOGS_RESPONSES.put(response_key(url), CachedResponse { status, body });
+    DISCOGS_RESPONSES.put(
+        crate::util::http::response_key(url),
+        CachedResponse { status, body },
+    );
 }
 
 /// Pre-populate a release document, so a test can drive `prepare_release`
