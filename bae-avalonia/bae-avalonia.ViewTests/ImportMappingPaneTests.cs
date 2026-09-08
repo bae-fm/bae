@@ -280,7 +280,7 @@ public sealed class ImportMappingPaneTests
     {
         var search = new BridgeCandidateSearch(
             new BridgeSearchQuery.General("Artist Name", "Album Title"),
-            new List<BridgeSourceSearchEntry>
+            new BridgeSourceSearchEntry[]
             {
                 new(
                     BridgeMetadataSource.MusicBrainz,
