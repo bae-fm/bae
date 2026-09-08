@@ -17,6 +17,8 @@ import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeMcpConfig
+import uniffi.bae_bridge.BridgeMetadataSource
+import uniffi.bae_bridge.BridgeMetadataSourceSetting
 import uniffi.bae_bridge.BridgeOutboxPauseState
 import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeRelease
@@ -29,6 +31,7 @@ import uniffi.bae_bridge.BridgeSavePregapPlacement
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSourceAudioSummary
+import uniffi.bae_bridge.BridgeSourceAvailability
 import uniffi.bae_bridge.BridgeSubsonicConfig
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
@@ -270,6 +273,23 @@ object BridgeFixtures {
             maxConcurrentDownloads = 3u,
             identifyAutomatically = true,
             defaultImportMetadataSource = BridgeDefaultImportMetadataSource.FIND_ONLINE,
+            // Every source in core's order, matching this fixture's Discogs
+            // state below: MusicBrainz is asked and, as the only source still
+            // being asked, cannot be switched off; Discogs holds no key, so its
+            // switch cannot be moved either.
+            metadataSources =
+                listOf(
+                    BridgeMetadataSourceSetting(
+                        source = BridgeMetadataSource.MUSIC_BRAINZ,
+                        availability = BridgeSourceAvailability.ON,
+                        canChange = false,
+                    ),
+                    BridgeMetadataSourceSetting(
+                        source = BridgeMetadataSource.DISCOGS,
+                        availability = BridgeSourceAvailability.NOT_CONFIGURED,
+                        canChange = false,
+                    ),
+                ),
             showRemainingTime = false,
             libraryFullWidth = false,
             savePresets =
