@@ -90,10 +90,17 @@ jobs:
       # now -- compiled once, helpers are its public API -- so that false
       # positive is gone rather than tolerated. dead_code is denied in
       # [workspace.lints]; an allow here is the way back around that deny.
+      #
+      # Scoped by exclusion, not by a crate list: the list this gate used to
+      # carry had drifted off the workspace twice over -- it still named
+      # `third-party`, deleted with libdiscid, and had never picked up
+      # bae-cast, bae-mirror, bae-subsonic or bae-uniffi-bindgen, so an allow
+      # in any of them passed. Every .rs file in the repo belongs to a
+      # workspace member, so "the tree minus the build dirs" is the whole
+      # workspace and a new crate is covered the day it lands.
       run: |
-        offenders=$(grep -rn --include='*.rs' 'allow(dead_code)' \
-          bae-core bae-bridge bae-mcp bae-automation bae-desktop bae-loc \
-          bae-test-support third-party \
+        offenders=$(grep -rn --include='*.rs' --exclude-dir='target*' \
+          'allow(dead_code)' . \
           || true)
         if [ -n "$offenders" ]; then
           echo "New #[allow(dead_code)] is banned (delete the code or #[cfg]-restrict it):"

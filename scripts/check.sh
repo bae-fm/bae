@@ -211,9 +211,8 @@ check "dead_code (bae-core lib only)" \
 # bae-test-support crate now -- compiled once, helpers are its public API --
 # so that false positive is gone rather than tolerated.
 check "no new #[allow(dead_code)]" bash -c '
-  offenders=$(grep -rn --include="*.rs" "allow(dead_code)" \
-    bae-core bae-bridge bae-cast bae-mcp bae-automation bae-desktop \
-    bae-loc bae-test-support third-party \
+  offenders=$(grep -rn --include="*.rs" --exclude-dir="target*" \
+    "allow(dead_code)" . \
     || true)
   if [ -n "$offenders" ]; then
     echo "New #[allow(dead_code)] is banned (delete the code or #[cfg]-restrict it):"
