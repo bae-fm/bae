@@ -10,7 +10,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
         presentation: MetadataPresentation,
     ) -> Result<(), crate::import::ImportError> {
-        self.update_candidate_session(candidate_key, |session| {
+        self.update_candidate_session(candidate_key, move |session| {
             session.presentation = presentation;
         })
         .await
@@ -22,7 +22,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
         search: SearchForm,
     ) -> Result<(), crate::import::ImportError> {
-        self.update_candidate_session(candidate_key, |session| {
+        self.update_candidate_session(candidate_key, move |session| {
             session.search = search;
         })
         .await
@@ -35,7 +35,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
         error: Option<String>,
     ) -> Result<(), crate::import::ImportError> {
-        self.update_candidate_session(candidate_key, |session| {
+        self.update_candidate_session(candidate_key, move |session| {
             session.error = error;
         })
         .await
@@ -45,6 +45,20 @@ impl ImportServiceHandle {
     /// opens on — apply `change`, and store the whole. Under the commit lock,
     /// so two writes in a row cannot lose one another's field.
     async fn update_candidate_session(
+        &self,
+        candidate_key: &str,
+        change: impl FnOnce(&mut CandidateSession) + Send + 'static,
+    ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move {
+            this.update_candidate_session_write(&candidate_key, change)
+                .await
+        })
+        .await
+    }
+
+    async fn update_candidate_session_write(
         &self,
         candidate_key: &str,
         change: impl FnOnce(&mut CandidateSession),

@@ -225,9 +225,6 @@ pub(super) async fn save(
         );
         return FinishCandidateOutcome::Superseded;
     }
-    context
-        .import
-        .announce_candidate_verdict_stored(candidate_key.to_string());
     FinishCandidateOutcome::Stored
 }
 

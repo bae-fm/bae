@@ -705,3 +705,62 @@ fn track_rows(table: &crate::import::MappingTable) -> Vec<crate::import::RawTrac
         })
         .collect()
 }
+
+/// A pick is a person's decision about the folder, so it runs to its end once
+/// asked for: the bridge drops the call's future when the person looks at
+/// another candidate, and coven would commit a write that was already
+/// dispatched without anyone left to announce it. Both the write and its
+/// announcement have to land whatever happens to the caller.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
+    use std::future::Future;
+
+    let StoredCandidate {
+        handle,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate().await;
+    handle
+        .preview_file_tags_for_folder(key.clone())
+        .await
+        .unwrap();
+    let mut events = handle.subscribe_events();
+
+    // One poll asks for the pick; dropping the future at the end of the block
+    // is the caller being torn down.
+    {
+        let mut pick = std::pin::pin!(handle.select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::FileTags,
+        ));
+        let first_poll =
+            std::future::poll_fn(|cx| std::task::Poll::Ready(pick.as_mut().poll(cx))).await;
+        assert!(
+            first_poll.is_pending(),
+            "the first poll asks for the pick and waits on it"
+        );
+    }
+
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            match events.recv().await {
+                Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }))
+                    if candidate_key == key =>
+                {
+                    break;
+                }
+                Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                Err(broadcast::error::RecvError::Closed) => panic!("the import bus closed"),
+            }
+        }
+    })
+    .await
+    .expect("the pick is announced");
+    assert_eq!(
+        pane(&handle, &key).await.metadata_provenance,
+        Some(crate::import::MetadataProvenance::FileTags),
+        "the pick landed"
+    );
+    shut_down(handle).await;
+}

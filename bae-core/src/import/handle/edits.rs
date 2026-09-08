@@ -22,6 +22,17 @@ impl ImportServiceHandle {
         candidate_key: &str,
         cover: crate::import::CoverSelection,
     ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move { this.set_candidate_cover_write(&candidate_key, cover).await })
+            .await
+    }
+
+    async fn set_candidate_cover_write(
+        &self,
+        candidate_key: &str,
+        cover: crate::import::CoverSelection,
+    ) -> Result<(), crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files().content_hash();
         let revision = self
@@ -67,6 +78,18 @@ impl ImportServiceHandle {
         field: crate::import::CandidateEditField,
         value: String,
     ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move { this.set_candidate_edit_field_write(&candidate_key, field, value).await })
+            .await
+    }
+
+    async fn set_candidate_edit_field_write(
+        &self,
+        candidate_key: &str,
+        field: crate::import::CandidateEditField,
+        value: String,
+    ) -> Result<(), crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files().content_hash();
         let _commit = self
@@ -89,6 +112,17 @@ impl ImportServiceHandle {
     /// artist seeds, or both. The stored assignments remain typed until import
     /// resolves them, so matching names never imply identity.
     pub async fn set_candidate_album_artists(
+        &self,
+        candidate_key: &str,
+        assignments: Vec<crate::import::ArtistAssignment>,
+    ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move { this.set_candidate_album_artists_write(&candidate_key, assignments).await })
+            .await
+    }
+
+    async fn set_candidate_album_artists_write(
         &self,
         candidate_key: &str,
         assignments: Vec<crate::import::ArtistAssignment>,
@@ -125,6 +159,17 @@ impl ImportServiceHandle {
     /// takes this row's previous audio in the same write, so two rows can
     /// never hold one file and the displaced file never silently unbinds.
     pub async fn set_candidate_track_edit(
+        &self,
+        candidate_key: &str,
+        track: crate::import::RawTrackEdit,
+    ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move { this.set_candidate_track_edit_write(&candidate_key, track).await })
+            .await
+    }
+
+    async fn set_candidate_track_edit_write(
         &self,
         candidate_key: &str,
         track: crate::import::RawTrackEdit,
@@ -191,6 +236,18 @@ impl ImportServiceHandle {
         track_ids: Vec<String>,
         assignments: crate::import::TrackArtistAssignments,
     ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move { this.set_candidate_track_artists_write(&candidate_key, track_ids, assignments).await })
+            .await
+    }
+
+    async fn set_candidate_track_artists_write(
+        &self,
+        candidate_key: &str,
+        track_ids: Vec<String>,
+        assignments: crate::import::TrackArtistAssignments,
+    ) -> Result<(), crate::import::ImportError> {
         let edited_ids = track_ids.clone();
         let replacement = assignments.clone();
         let prepared = self
@@ -226,6 +283,17 @@ impl ImportServiceHandle {
     /// Take one mapping-table row out of the import: the release commits
     /// without that track. Nothing on disk changes.
     pub async fn drop_candidate_track(
+        &self,
+        candidate_key: &str,
+        track_id: String,
+    ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move { this.drop_candidate_track_write(&candidate_key, track_id).await })
+            .await
+    }
+
+    async fn drop_candidate_track_write(
         &self,
         candidate_key: &str,
         track_id: String,

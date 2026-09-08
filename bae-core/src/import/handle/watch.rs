@@ -44,6 +44,15 @@ impl ImportServiceHandle {
     /// moved — no scan, no status, no log line — is how a folder that could not
     /// be read stayed invisible however many times it was picked.
     pub async fn add_watched_folder(&self, path: String) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        self.committed(async move { this.add_watched_folder_write(path).await })
+            .await
+    }
+
+    async fn add_watched_folder_write(
+        &self,
+        path: String,
+    ) -> Result<(), crate::import::ImportError> {
         let path = crate::import::watched_folder::canonical_absolute_root(&path)?;
         let _commit = self.folder_state_commit.lock().await;
         let added = self

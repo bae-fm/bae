@@ -182,6 +182,18 @@ impl ImportServiceHandle {
         storage_mode: StorageMode,
         pin: bool,
     ) -> Result<String, crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move { this.start_import_write(&candidate_key, storage_mode, pin).await })
+            .await
+    }
+
+    async fn start_import_write(
+        &self,
+        candidate_key: &str,
+        storage_mode: StorageMode,
+        pin: bool,
+    ) -> Result<String, crate::import::ImportError> {
         let commit = self.folder_state_commit.lock().await;
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {

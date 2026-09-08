@@ -360,6 +360,14 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
     }
 }
 
+/// A write the import handle ran to completion on its own task did not report
+/// back: the task panicked, or the runtime is shutting down under it.
+impl From<tokio::task::JoinError> for LibraryError {
+    fn from(error: tokio::task::JoinError) -> Self {
+        Self::Internal(format!("a candidate write did not complete: {error}"))
+    }
+}
+
 impl From<crate::import::ImportError> for LibraryError {
     /// The re-identify / reset-from-source paths run import mappers but report
     /// through `LibraryError`; a mapper failure becomes an `Import` error with

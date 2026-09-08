@@ -338,13 +338,6 @@ impl ImportServiceHandle {
         });
     }
 
-    pub(crate) fn announce_candidate_verdict_stored(&self, candidate_key: String) {
-        send_event(
-            &self.event_tx,
-            ImportEvent::Scan(ScanEvent::CandidateVerdictStored { candidate_key }),
-        );
-    }
-
     pub(crate) fn announce_queue_identify_progress(&self, identified: u32, total: u32) {
         send_event(
             &self.event_tx,
@@ -631,9 +624,38 @@ impl ImportServiceHandle {
         self.runtime.release_import_claim(candidate_key);
     }
 
+    /// Run a durable write to completion once it has been asked for.
+    ///
+    /// The write runs as a task of the import runtime, and this only waits on
+    /// it, so whatever happens to the caller's future — a UniFFI call the
+    /// bridge drops because the person looked at another candidate, a sweep
+    /// settling task aborted by a replan — ends the wait for the outcome and
+    /// nothing else. Coven commits a write on its writer thread whether or not
+    /// the future that asked for it survives, so a write the caller could
+    /// abort is one that can land without the announcement, bookkeeping, or
+    /// lock release that follows it ever running: a stored verdict nobody
+    /// announced leaves the candidate runtime holding the run's terminal state
+    /// for good, and a pick a person made would be dropped partway through its
+    /// release fetch. The `From<JoinError>` on the error type is the one way
+    /// this can still fail: the task panicked, or the runtime is gone.
+    pub(crate) async fn committed<V, E>(
+        &self,
+        write: impl std::future::Future<Output = Result<V, E>> + Send + 'static,
+    ) -> Result<V, E>
+    where
+        V: Send + 'static,
+        E: From<tokio::task::JoinError> + Send + 'static,
+    {
+        self.runtime_handle.spawn(write).await?
+    }
+
     /// Store one candidate's verdict, unless the candidate has moved on from
     /// the shape the verdict describes — its files were re-decided, it was
-    /// skipped, it is already in the library, or an import has claimed it.
+    /// skipped, it is already in the library, or an import has claimed it —
+    /// and announce the stored row. Runs to completion once asked for, see
+    /// [`Self::committed`]: the candidate runtime clears the run's held
+    /// terminal state on the announcement, so the write and the announcement
+    /// are one unit.
     ///
     /// The default metadata source plays no part: it decides which candidates
     /// the sweep picks up on its own, not whether an answer a run reached —
@@ -651,6 +673,21 @@ impl ImportServiceHandle {
         candidate_key: &str,
         row: &crate::db::NewImportCandidateVerdict,
     ) -> Result<bool, crate::library::LibraryError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        let row = row.clone();
+        self.committed(async move {
+            this.save_candidate_verdict_if_current_write(&candidate_key, &row)
+                .await
+        })
+        .await
+    }
+
+    async fn save_candidate_verdict_if_current_write(
+        &self,
+        candidate_key: &str,
+        row: &crate::db::NewImportCandidateVerdict,
+    ) -> Result<bool, crate::library::LibraryError> {
         let _commit = self.folder_state_commit.lock().await;
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(false);
@@ -660,7 +697,16 @@ impl ImportServiceHandle {
         {
             return Ok(false);
         }
-        self.preparations.store_verdict(row).await
+        let wrote = self.preparations.store_verdict(row).await?;
+        if wrote {
+            send_event(
+                &self.event_tx,
+                ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
+                    candidate_key: candidate_key.to_string(),
+                }),
+            );
+        }
+        Ok(wrote)
     }
 
     /// The candidate at `key` as the queue sweep is responsible for it: an

@@ -47,6 +47,22 @@ impl ImportServiceHandle {
         order: CombinationTrackOrder,
         name: String,
     ) -> Result<String, ImportError> {
+        let this = self.clone();
+        let review = review.clone();
+        self.committed(async move {
+            this.combine_reviewed_candidates_write(&review, keys, order, name)
+                .await
+        })
+        .await
+    }
+
+    async fn combine_reviewed_candidates_write(
+        &self,
+        review: &CombinationReview,
+        keys: Vec<String>,
+        order: CombinationTrackOrder,
+        name: String,
+    ) -> Result<String, ImportError> {
         let candidates = review.ordered_candidates(&keys)?;
         let _commit = self.folder_state_commit.lock().await;
         for key in &keys {
@@ -72,6 +88,13 @@ impl ImportServiceHandle {
     }
 
     pub async fn separate_combined_candidate(&self, key: &str) -> Result<(), ImportError> {
+        let this = self.clone();
+        let key = key.to_string();
+        self.committed(async move { this.separate_combined_candidate_write(&key).await })
+            .await
+    }
+
+    async fn separate_combined_candidate_write(&self, key: &str) -> Result<(), ImportError> {
         let _commit = self.folder_state_commit.lock().await;
         self.ensure_combination_idle(key)?;
         let detail = self

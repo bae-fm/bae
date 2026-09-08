@@ -341,16 +341,25 @@ impl ImportServiceHandle {
     ///
     /// Nothing comes back. The per-candidate query sees the write and
     /// redraws the pane from it, which is the same thing a relaunch does.
+    ///
+    /// Runs to completion once asked for, see
+    /// [`ImportServiceHandle::committed`]: the person's decision stands
+    /// whether or not they are still looking at the candidate when its
+    /// release fetch and write finish.
     pub async fn select_candidate_metadata_provenance(
         &self,
         candidate_key: String,
         provenance: crate::import::MetadataProvenance,
     ) -> Result<u64, crate::import::ImportError> {
-        let revision = self
-            .set_candidate_metadata_provenance(candidate_key.clone(), provenance)
-            .await?;
-        self.announce_metadata_provenance(candidate_key);
-        Ok(revision)
+        let this = self.clone();
+        self.committed(async move {
+            let revision = this
+                .set_candidate_metadata_provenance(candidate_key.clone(), provenance)
+                .await?;
+            this.announce_metadata_provenance(candidate_key);
+            Ok(revision)
+        })
+        .await
     }
 
     /// The stored verdict describing `candidate_key`'s current file shape —

@@ -920,3 +920,67 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
     assert!(matches!(outcome, FinishCandidateOutcome::Failed { .. }));
     assert!(fixture.stored().await.is_empty());
 }
+
+/// Coven commits a write on its writer thread whether or not the future that
+/// asked for it survives, and the candidate runtime clears a run's held
+/// terminal state only on the stored announcement. So the announcement has to
+/// be the write's, not its caller's: the sweep aborts its settling tasks
+/// whenever it replans, and a task torn down the instant it has asked must
+/// still leave behind a row that was announced — or the row reads as a commit
+/// still pending, for good, and offers the candidate nothing but Skip.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_verdict_write_announces_itself_when_its_caller_is_torn_down() {
+    use std::future::Future;
+
+    let fixture = Fixture::new("torn-down-writer").await;
+    let dir = fixture.disc_id_candidate("Album");
+    fixture.scan(1).await;
+    let key = dir.to_string_lossy().into_owned();
+    let mut events = fixture.import.subscribe_events();
+    let row = NewImportCandidateVerdict {
+        candidate: crate::import::CandidateAsRead {
+            content_hash: fixture.content_hash(&dir),
+            file_edit_revision: 0,
+            metadata_revision: 0,
+        },
+        folder_path: key.clone(),
+        verdict: multi_match_verdict(&["mb-torn-1", "mb-torn-2"], "rg-torn-1"),
+        signals: settled_signals(fixture.probed_durations(&dir)),
+        metadata: blank_metadata_for_dir(&dir),
+    };
+
+    // One poll asks for the write; dropping the future at the end of the block
+    // is the caller being torn down.
+    {
+        let mut save = std::pin::pin!(fixture
+            .import
+            .save_candidate_verdict_if_current(&key, &row));
+        let first_poll =
+            std::future::poll_fn(|cx| std::task::Poll::Ready(save.as_mut().poll(cx))).await;
+        assert!(
+            first_poll.is_pending(),
+            "the first poll asks for the write and waits on it"
+        );
+    }
+
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            match events.recv().await {
+                Ok(ImportEvent::Scan(ScanEvent::CandidateVerdictStored { candidate_key }))
+                    if candidate_key == key =>
+                {
+                    break;
+                }
+                Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                Err(broadcast::error::RecvError::Closed) => panic!("the import bus closed"),
+            }
+        }
+    })
+    .await
+    .expect("the stored verdict is announced");
+    assert!(
+        fixture.import.stored_verdict(&key).await.unwrap().is_some(),
+        "the verdict landed"
+    );
+}

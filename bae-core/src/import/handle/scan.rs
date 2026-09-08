@@ -11,6 +11,16 @@ impl ImportServiceHandle {
         path: String,
         skipped: bool,
     ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        self.committed(async move { this.set_candidate_skipped_write(path, skipped).await })
+            .await
+    }
+
+    async fn set_candidate_skipped_write(
+        &self,
+        path: String,
+        skipped: bool,
+    ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock().await;
         let Some(candidate) = self.get_release_candidate(&path).await? else {
             return Err(crate::import::ImportError::Internal {
@@ -95,6 +105,17 @@ impl ImportServiceHandle {
     /// longer exists. The event that follows makes the view read the candidate
     /// again and the queue sweep identify it again.
     pub async fn set_sheet_binding(
+        &self,
+        candidate_key: String,
+        sheet_file_id: String,
+        audio_file_id: Option<String>,
+    ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        self.committed(async move { this.set_sheet_binding_write(candidate_key, sheet_file_id, audio_file_id).await })
+            .await
+    }
+
+    async fn set_sheet_binding_write(
         &self,
         candidate_key: String,
         sheet_file_id: String,
@@ -195,6 +216,17 @@ impl ImportServiceHandle {
     /// Discs count from one, so disc zero is refused: there is no such disc to
     /// put the sheet's entries on.
     pub async fn set_sheet_disc(
+        &self,
+        candidate_key: String,
+        sheet_file_id: String,
+        disc: crate::import::folder_scanner::SheetDisc,
+    ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        self.committed(async move { this.set_sheet_disc_write(candidate_key, sheet_file_id, disc).await })
+            .await
+    }
+
+    async fn set_sheet_disc_write(
         &self,
         candidate_key: String,
         sheet_file_id: String,
@@ -427,6 +459,15 @@ impl ImportServiceHandle {
         &self,
         candidate_key: String,
     ) -> Result<u64, crate::import::ImportError> {
+        let this = self.clone();
+        self.committed(async move { this.clear_candidate_metadata_write(candidate_key).await })
+            .await
+    }
+
+    async fn clear_candidate_metadata_write(
+        &self,
+        candidate_key: String,
+    ) -> Result<u64, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
@@ -493,6 +534,17 @@ impl ImportServiceHandle {
     /// nothing left to import, and a release with no tracks is not a state the
     /// rest of the import can describe.
     pub async fn set_file_role(
+        &self,
+        candidate_key: String,
+        file_id: String,
+        choice: crate::import::folder_scanner::FileRoleChoice,
+    ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        self.committed(async move { this.set_file_role_write(candidate_key, file_id, choice).await })
+            .await
+    }
+
+    async fn set_file_role_write(
         &self,
         candidate_key: String,
         file_id: String,

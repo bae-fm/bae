@@ -187,6 +187,17 @@ pub enum ImportError {
     Internal { detail: String },
 }
 
+/// A write the import handle ran to completion on its own task did not report
+/// back: the task panicked, or the runtime is shutting down under it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl From<tokio::task::JoinError> for ImportError {
+    fn from(error: tokio::task::JoinError) -> Self {
+        Self::Internal {
+            detail: format!("a candidate write did not complete: {error}"),
+        }
+    }
+}
+
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl ImportError {
     /// A file-tag read that failed at the file itself, named by what was being
