@@ -31,7 +31,7 @@ struct CandidateSessionWriter: Sendable {
         self.reportFailure = reportFailure
     }
 
-    private init(
+    init(
         setPresentation:
             @escaping @Sendable (String, BridgeMetadataPresentation)
             async throws -> Void,
@@ -53,29 +53,4 @@ struct CandidateSessionWriter: Sendable {
         setError: { _, _ in },
         reportFailure: { _ in }
     )
-
-    /// Records every write, for a test to read back.
-    static func recording(
-        _ record: @escaping @Sendable (CandidateSessionWrite) -> Void
-    )
-        -> CandidateSessionWriter
-    {
-        CandidateSessionWriter(
-            setPresentation: { key, presentation in
-                record(.presentation(key: key, presentation: presentation))
-            },
-            setSearchForm: { key, form in
-                record(.searchForm(key: key, form: form))
-            },
-            setError: { key, error in record(.error(key: key, error: error)) },
-            reportFailure: { _ in }
-        )
-    }
-}
-
-/// One session write, as a recording writer saw it.
-enum CandidateSessionWrite: Equatable, Sendable {
-    case presentation(key: String, presentation: BridgeMetadataPresentation)
-    case searchForm(key: String, form: BridgeSearchForm)
-    case error(key: String, error: String?)
 }

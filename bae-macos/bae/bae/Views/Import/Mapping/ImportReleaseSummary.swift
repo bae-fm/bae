@@ -10,7 +10,6 @@ struct ImportReleaseSummary {
     let factsLine: String
     let sourceAudio: BridgeCandidateSourceAudio?
     let provenance: BridgeMetadataProvenance?
-    let hasMatchedRelease: Bool
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
         let provenance = candidate.metadataProvenance
@@ -46,7 +45,6 @@ struct ImportReleaseSummary {
         }
         self.provenance = provenance
         sourceAudio = candidate.files.sourceAudio
-        hasMatchedRelease = candidate.pickedRelease != nil
     }
 
     init(candidate: Candidate, fileTags values: BridgeReleaseUserEdit) {
@@ -64,7 +62,6 @@ struct ImportReleaseSummary {
         ])
         provenance = .fileTags
         sourceAudio = candidate.files.sourceAudio
-        hasMatchedRelease = false
     }
 
     init?(row: BridgeTriageRow) {
@@ -79,7 +76,6 @@ struct ImportReleaseSummary {
             factsLine = ""
             provenance = nil
             sourceAudio = nil
-            hasMatchedRelease = false
             return
         }
         guard let matched = row.matched else { return nil }
@@ -103,7 +99,6 @@ struct ImportReleaseSummary {
         }
         provenance = nil
         sourceAudio = nil
-        hasMatchedRelease = false
     }
 
     private static func factsLine(_ facts: [String?]) -> String {

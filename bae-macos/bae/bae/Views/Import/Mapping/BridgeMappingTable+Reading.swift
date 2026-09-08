@@ -13,13 +13,6 @@ extension BridgeTrackMapping {
         return track
     }
 
-    /// The position this row commits — core-rendered from the track's own
-    /// numbering, whatever filled the draft.
-    var position: String? {
-        guard case .track(_, let position, _) = becomes else { return nil }
-        return position
-    }
-
     /// Whether committing writes a track for this row: the rows carrying audio
     /// do, and a track the folder has nothing behind is carried without one.
     var writesTrack: Bool { track?.file != nil }
@@ -115,13 +108,6 @@ struct ImportAudioChoice: Identifiable {
 
 extension BridgeMappingFile {
     /// The file's size formatted for the current locale.
-    var sizeText: String {
-        Int64(size).formatted(.byteCount(style: .file))
-    }
-}
-
-extension BridgeMappingContainer {
-    /// The container's size formatted for the current locale.
     var sizeText: String {
         Int64(size).formatted(.byteCount(style: .file))
     }

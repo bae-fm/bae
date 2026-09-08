@@ -49,12 +49,6 @@ impl ImportServiceHandle {
         }
     }
 
-    /// Drop a candidate's search: its lookups stop mattering and the result
-    /// area goes back to the identify verdict.
-    pub fn clear_candidate_search(&self, candidate_key: String) {
-        self.runtime.clear_search(&candidate_key);
-    }
-
     /// The library has stopped asking `source`: close its part of every search
     /// running right now, wherever the person is looking.
     ///

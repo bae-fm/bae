@@ -269,10 +269,6 @@ extension ReleaseMetadataEditSession {
     var isSaving: Bool {
         operation == .saving
     }
-
-    var isResetting: Bool {
-        operation == .resetting
-    }
 }
 
 struct ReleaseMetadataTrackItem: Identifiable {

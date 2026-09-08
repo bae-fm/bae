@@ -287,6 +287,21 @@ struct LedgerColumnRails: View {
         .windowBackground()
     }
 
+    /// The same run as "A provider failed", with its catalog number taken back
+    /// out: the number leaves the table and rejoins the tiles under it, and
+    /// the lookups it drove are gone with it.
+    #Preview("A catalog number waiting to be used") {
+        IdentifyLedgerView(
+            run: PreviewData.identifyRunCatalogWaiting,
+            filePaths: [:],
+            onToggleCatalog: { _ in },
+            onRetryFailed: {},
+        )
+        .frame(width: 660)
+        .environment(PreviewData.artImageStore())
+        .windowBackground()
+    }
+
     #Preview("Nothing found") {
         IdentifyLedgerView(
             run: PreviewData.identifyRunNothingFound,

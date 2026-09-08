@@ -404,4 +404,39 @@ struct StorageManagerView: View {
         .environment(fixture.outboxStore)
         .frame(width: 940, height: 600)
     }
+
+    /// An upload retrying because the file it would send is not where the
+    /// library left it. The inspector is where that reason is readable — the
+    /// row carries the message in place of its progress.
+    #Preview("A retrying upload — inspector open") {
+        let fixture = StorageManagerPreviewFixture(
+            rows: Array(PreviewData.storageRows.prefix(3)),
+            selectedReleaseId: "rel-row-3",
+            inspectorPresented: true,
+            downloadSnapshot: PreviewData.emptyDownloadSnapshot,
+            outputSnapshot: PreviewData.emptyOutputSnapshot,
+            outboxSnapshot: PreviewData.outboxSnapshot(
+                uploadGroups: [PreviewData.uploadGroupSourceUnavailable],
+                deletes: []
+            )
+        )
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(fixture.libraryStore)
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
+        .frame(width: 940, height: 600)
+    }
 #endif
