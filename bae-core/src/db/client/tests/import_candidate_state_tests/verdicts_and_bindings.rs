@@ -55,6 +55,8 @@ fn sample_verdict() -> TerminalVerdict {
             by_catalog: true,
         }],
         matched_barcode: Some("5099969394522".to_string()),
+        narrowed_out: Vec::new(),
+        narrowed_out_provenance: Vec::new(),
     }
 }
 
@@ -124,6 +126,80 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
     assert_eq!(
         identify.verdict, verdict,
         "the verdict must round-trip exactly, provenance included"
+    );
+}
+
+/// The releases agreement narrowed out are stored under the same verdict as
+/// its matches and read back apart from them: they are what the run rejected,
+/// never what it settled on, so a reader that merged the two lists would
+/// offer a rejected release as an answer.
+#[tokio::test]
+async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches() {
+    let (db, _tmp) = empty_db().await;
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let TerminalVerdict::Found {
+        matches,
+        track_count,
+        provenance,
+        matched_barcode,
+        ..
+    } = sample_verdict()
+    else {
+        panic!("the sample verdict is a found one");
+    };
+    let mut left_out = matches[0].clone();
+    left_out.release_id = "rel-narrowed".to_string();
+    let verdict = TerminalVerdict::Found {
+        matches,
+        track_count,
+        provenance,
+        matched_barcode,
+        narrowed_out: vec![left_out],
+        narrowed_out_provenance: vec![ResultProvenance {
+            by_disc_id: true,
+            by_barcode: false,
+            by_catalog: false,
+        }],
+    };
+    let row = new_candidate_row(&hash, "/music/Some Album", &verdict, 2_700_000);
+    store_candidate_state(&db, &candidate, &row.folder_path).await;
+
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .unwrap();
+
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    let identify = loaded
+        .get(&hash)
+        .expect("row present under its content hash")
+        .identify
+        .as_ref()
+        .expect("a stored verdict reads back as an identify result");
+    assert_eq!(identify.verdict, verdict);
+    let TerminalVerdict::Found {
+        matches,
+        narrowed_out,
+        ..
+    } = &identify.verdict
+    else {
+        panic!("a found verdict reads back as one");
+    };
+    assert_eq!(
+        matches
+            .iter()
+            .map(|result| result.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["rel-1"]
+    );
+    assert_eq!(
+        narrowed_out
+            .iter()
+            .map(|result| result.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["rel-narrowed"]
     );
 }
 

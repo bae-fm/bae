@@ -211,7 +211,7 @@ const STATE_COLUMNS: &str = "content_hash, folder_path, edit_revision, metadata_
 const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, year, \
      format, label, catalog_number, country, barcode, cover_url, cover_thumbnail_url, \
      cover_label, cover_source, source_group_id, source_tracks_kind, source_tracks_count, \
-     source_tracks_total_ms, by_disc_id, by_barcode, by_catalog";
+     source_tracks_total_ms, by_disc_id, by_barcode, by_catalog, narrowed_out";
 
 const FILE_EDIT_COLUMNS: &str = "content_hash, relative_path, role_choice, sheet_binding, \
      sheet_binding_file_id, sheet_disc, sheet_disc_number";
@@ -238,10 +238,13 @@ pub(crate) fn load_matches_on(
         |row| Ok(read_match_row(row)),
     )? {
         let row = row?;
-        matches
-            .entry(row.content_hash)
-            .or_default()
-            .push((row.result, row.provenance));
+        let entry = matches.entry(row.content_hash).or_default();
+        let list = if row.narrowed_out {
+            &mut entry.narrowed_out
+        } else {
+            &mut entry.found
+        };
+        list.push((row.result, row.provenance));
     }
     Ok(matches)
 }

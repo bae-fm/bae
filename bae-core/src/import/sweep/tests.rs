@@ -782,6 +782,8 @@ impl Fixture {
                 by_catalog: false,
             }],
             matched_barcode: None,
+            narrowed_out: Vec::new(),
+            narrowed_out_provenance: Vec::new(),
         };
         let wrote = self
             .import

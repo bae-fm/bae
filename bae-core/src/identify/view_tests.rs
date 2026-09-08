@@ -569,6 +569,8 @@ fn a_resumed_found_lays_out_the_run_it_settled_on() {
             },
         ],
         matched_barcode: Some("0123456789012".to_string()),
+        narrowed_out: Vec::new(),
+        narrowed_out_provenance: Vec::new(),
     };
     let run = run_of(verdict.resume_state(Some(&stored_signals()), &not_in_library));
     assert_eq!(run.providers, vec![MB, DG]);
@@ -624,4 +626,94 @@ fn a_verdict_resumed_without_stored_signals_has_no_run() {
         IdentifyStateView::from(verdict.resume_state(None, &not_in_library)),
         IdentifyStateView::Failed { run: None, .. }
     ));
+}
+
+// ── What agreement narrowed out ─────────────────────────────────────────────
+
+/// The barcode walks a settled context needs to stand its ledger back up: one
+/// provider matched the code, the other tried it and found nothing.
+fn settled_walks() -> Vec<RecordedWalk> {
+    vec![
+        RecordedWalk {
+            source: MB,
+            end: WalkEnd::Matched {
+                code: "A".to_string(),
+            },
+        },
+        RecordedWalk {
+            source: DG,
+            end: WalkEnd::Exhausted,
+        },
+    ]
+}
+
+/// Agreement is what shortens the list, so what it discarded stays on the
+/// state: its own cards, its own statuses, and the provenance saying which
+/// signal named each one.
+#[test]
+fn a_settled_state_lists_what_agreement_narrowed_out() {
+    let mut context = context();
+    context.disc.signal = DiscIdSignal::Computed {
+        disc_id: "d".to_string(),
+        track_count: 9,
+        source_file: None,
+    };
+    context.disc.results = vec![result(MB, "mb-shared"), result(MB, "mb-only")];
+    context.barcode.results = vec![result(MB, "mb-shared")];
+    context.barcode.matched = Some("A".to_string());
+    context.barcode.walks = settled_walks();
+
+    let IdentifyStateView::Found {
+        groups,
+        narrowed_out,
+        ..
+    } = IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context))
+    else {
+        panic!("the signals agree on one release");
+    };
+    assert_eq!(groups.len(), 1);
+    assert_eq!(groups[0].pressings[0].releases[0].release_id, "mb-shared");
+    assert_eq!(narrowed_out.groups.len(), 1);
+    assert_eq!(
+        narrowed_out.groups[0].pressings[0].releases[0].release_id,
+        "mb-only"
+    );
+    assert_eq!(
+        narrowed_out
+            .library_statuses
+            .iter()
+            .map(|status| status.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["mb-only"]
+    );
+    assert_eq!(narrowed_out.provenance[0].0, "mb-only");
+    assert!(narrowed_out.provenance[0].1.by_disc_id);
+    assert!(!narrowed_out.provenance[0].1.by_barcode);
+}
+
+/// Signals that share nothing already list everything they saw, so there is
+/// nothing behind the disclosure.
+#[test]
+fn signals_that_agree_on_nothing_narrow_nothing_out() {
+    let mut context = context();
+    context.disc.signal = DiscIdSignal::Computed {
+        disc_id: "d".to_string(),
+        track_count: 9,
+        source_file: None,
+    };
+    context.disc.results = vec![result(MB, "mb-disc")];
+    context.barcode.results = vec![result(MB, "mb-barcode")];
+    context.barcode.matched = Some("A".to_string());
+    context.barcode.walks = settled_walks();
+
+    let IdentifyStateView::Found {
+        groups,
+        narrowed_out,
+        ..
+    } = IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context))
+    else {
+        panic!("both releases are offered");
+    };
+    assert_eq!(groups[0].pressings.len(), 2);
+    assert!(narrowed_out.is_empty());
 }

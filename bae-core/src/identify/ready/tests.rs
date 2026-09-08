@@ -38,6 +38,8 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
         track_count,
         provenance,
         matched_barcode: None,
+        narrowed_out: Vec::new(),
+        narrowed_out_provenance: Vec::new(),
     }
 }
 
@@ -82,6 +84,39 @@ fn status(release_id: &str, release_in_library: bool, album_in_library: bool) ->
 #[test]
 fn one_verified_match_not_in_the_library_is_ready() {
     let verdict = found(vec![result("mb-1", agreeing(11, 2_400_000))], 11);
+    assert_eq!(
+        classify(&verdict, 2_400_000, &[status("mb-1", false, false)]),
+        QueueClassification::Ready
+    );
+}
+
+/// The releases agreement narrowed out are not answers: the rule counts the
+/// matches alone, so a sole verified match is still Ready however many the
+/// agreement discarded on the way to it.
+#[test]
+fn what_agreement_narrowed_out_is_not_a_match() {
+    let TerminalVerdict::Found {
+        matches,
+        track_count,
+        provenance,
+        matched_barcode,
+        ..
+    } = found(vec![result("mb-1", agreeing(11, 2_400_000))], 11)
+    else {
+        panic!("a found verdict");
+    };
+    let verdict = TerminalVerdict::Found {
+        matches,
+        track_count,
+        provenance,
+        matched_barcode,
+        narrowed_out: vec![result("mb-2", agreeing(11, 2_400_000))],
+        narrowed_out_provenance: vec![ResultProvenance {
+            by_disc_id: true,
+            by_barcode: false,
+            by_catalog: false,
+        }],
+    };
     assert_eq!(
         classify(&verdict, 2_400_000, &[status("mb-1", false, false)]),
         QueueClassification::Ready

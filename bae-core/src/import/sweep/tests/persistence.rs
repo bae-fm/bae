@@ -120,6 +120,8 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
             })
             .collect(),
         matched_barcode: None,
+        narrowed_out: Vec::new(),
+        narrowed_out_provenance: Vec::new(),
     }
 }
 

@@ -632,7 +632,8 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 12,
-                provenance: searchProvenanceExact
+                provenance: searchProvenanceExact,
+                narrowedOut: .nothing
             )
             return candidate
         }()

@@ -806,6 +806,18 @@ pub struct BridgeResultProvenance {
     pub by_catalog: bool,
 }
 
+/// The releases the signals' agreement left out of a state's matches — real
+/// answers a real lookup returned that the intersection discarded. Shaped
+/// exactly as a state's own matches, so a surface lists them the same way.
+/// Empty when the agreement narrowed nothing. Mirrors
+/// `bae_core::identify::NarrowedOutView`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeNarrowedOut {
+    pub groups: Vec<BridgeReleaseGroup>,
+    pub library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
+    pub provenance: std::collections::HashMap<String, BridgeResultProvenance>,
+}
+
 /// Current identify-pipeline state for one candidate. One variant per state;
 /// the UI reducer switches on the variant to render the right banner and
 /// update the candidate.
@@ -826,6 +838,9 @@ pub enum BridgeIdentifyState {
         groups: Vec<BridgeReleaseGroup>,
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         provenance: std::collections::HashMap<String, BridgeResultProvenance>,
+        /// What the answers so far leave out of `groups` — the same list the
+        /// settled state lands on, as it stands.
+        narrowed_out: BridgeNarrowedOut,
     },
     Found {
         run: Option<BridgeIdentifyRun>,
@@ -841,6 +856,9 @@ pub enum BridgeIdentifyState {
         /// Per-pressing provenance keyed by release id — the per-row signal
         /// badges, and which signal produced each match.
         provenance: std::collections::HashMap<String, BridgeResultProvenance>,
+        /// The releases the agreement left out of `groups`, for the surface to
+        /// offer behind a disclosure.
+        narrowed_out: BridgeNarrowedOut,
     },
     NotFoundAnywhere {
         run: Option<BridgeIdentifyRun>,
@@ -866,6 +884,7 @@ pub enum BridgeIdentifyState {
         groups: Vec<BridgeReleaseGroup>,
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         provenance: std::collections::HashMap<String, BridgeResultProvenance>,
+        narrowed_out: BridgeNarrowedOut,
     },
 }
 

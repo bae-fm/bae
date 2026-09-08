@@ -405,7 +405,10 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         let (content_hash, kind, track_count, probed) = row;
         // Read the lead off the first row, then spend the rest on the count:
         // both come from the one read of this candidate's matches.
-        let found = matches.remove(&content_hash).unwrap_or_default();
+        // The releases agreement narrowed out are not what the verdict
+        // settled on: the row leads with a match and counts pressings among
+        // the matches alone.
+        let found = matches.remove(&content_hash).unwrap_or_default().found;
         let lead = found
             .first()
             .map(|(result, provenance)| LeadMatch::of(result, Some(provenance)));

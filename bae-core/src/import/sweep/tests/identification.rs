@@ -419,6 +419,8 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
             by_catalog: false,
         }],
         matched_barcode: None,
+        narrowed_out: Vec::new(),
+        narrowed_out_provenance: Vec::new(),
     }
 }
 

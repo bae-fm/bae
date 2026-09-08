@@ -32,7 +32,7 @@ enum FindOnlineSectionGlyph: Equatable {
             self = .none
         case .triangulating:
             self = .working
-        case .found(_, let groups, _, _, _):
+        case .found(_, let groups, _, _, _, _):
             self = groups.isEmpty ? .empty : .matched
         case .notFoundAnywhere:
             self = .empty

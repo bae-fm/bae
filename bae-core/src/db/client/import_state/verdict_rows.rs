@@ -89,7 +89,9 @@ pub(super) fn insert_verdict(
     insert_matches(sql, content_hash, verdict)
 }
 
-/// The matches of one verdict, written under the verdict row that found them.
+/// The releases of one verdict, written under the verdict row that found them:
+/// the matches first, then the ones agreement narrowed out, which continue the
+/// same position sequence and are marked as what they are.
 fn insert_matches(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -99,20 +101,42 @@ fn insert_matches(
         TerminalVerdict::Found {
             matches,
             provenance,
+            narrowed_out,
+            narrowed_out_provenance,
             ..
         } => {
-            if matches.len() != provenance.len() {
-                return Err(DbError::Message(format!(
-                    "a found verdict for {content_hash} carries {} matches and {} provenance \
+            let aligned = |what: &str, results: &[MetadataResult], provenance: &[ResultProvenance]| {
+                if results.len() == provenance.len() {
+                    return Ok(());
+                }
+                Err(DbError::Message(format!(
+                    "a found verdict for {content_hash} carries {} {what} and {} provenance \
                      entries; they are index-aligned",
-                    matches.len(),
+                    results.len(),
                     provenance.len()
-                )));
-            }
-            for (position, (result, provenance)) in
-                matches.iter().zip(provenance.iter()).enumerate()
-            {
-                insert_match(sql, content_hash, position, result, provenance)?;
+                )))
+            };
+            aligned("matches", matches, provenance)?;
+            aligned("narrowed-out releases", narrowed_out, narrowed_out_provenance)?;
+            let written = matches
+                .iter()
+                .zip(provenance.iter())
+                .map(|pair| (pair, false))
+                .chain(
+                    narrowed_out
+                        .iter()
+                        .zip(narrowed_out_provenance.iter())
+                        .map(|pair| (pair, true)),
+                );
+            for (position, ((result, provenance), narrowed_out)) in written.enumerate() {
+                insert_match(
+                    sql,
+                    content_hash,
+                    position,
+                    result,
+                    provenance,
+                    narrowed_out,
+                )?;
             }
         }
         TerminalVerdict::NotFoundAnywhere
@@ -128,6 +152,7 @@ fn insert_match(
     position: usize,
     result: &MetadataResult,
     provenance: &ResultProvenance,
+    narrowed_out: bool,
 ) -> Result<(), DbError> {
     let position = i64::try_from(position)
         .map_err(|_| DbError::Message("a match list is longer than SQLite counts".to_string()))?;
@@ -157,8 +182,9 @@ fn insert_match(
              (content_hash, position, source, release_id, title, artist, year, format, \
               label, catalog_number, country, barcode, cover_url, cover_thumbnail_url, \
               cover_label, cover_source, source_group_id, source_tracks_kind, \
-              source_tracks_count, source_tracks_total_ms, by_disc_id, by_barcode, by_catalog) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              source_tracks_count, source_tracks_total_ms, by_disc_id, by_barcode, by_catalog, \
+              narrowed_out) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -183,19 +209,28 @@ fn insert_match(
             provenance.by_disc_id,
             provenance.by_barcode,
             provenance.by_catalog,
+            narrowed_out,
         ],
     )?;
     Ok(())
 }
 
-/// One candidate's stored matches, in the order they were written: the lead
-/// first, then the rest.
-pub(crate) type StoredMatches = Vec<(MetadataResult, ResultProvenance)>;
+/// One candidate's stored releases, each list in the order it was written: the
+/// verdict's matches, the lead first, and the releases its signals' agreement
+/// narrowed out.
+#[derive(Default)]
+pub(crate) struct StoredMatches {
+    pub(crate) found: Vec<(MetadataResult, ResultProvenance)>,
+    pub(crate) narrowed_out: Vec<(MetadataResult, ResultProvenance)>,
+}
 
 pub(super) struct MatchRow {
     pub(super) content_hash: String,
     pub(super) result: MetadataResult,
     pub(super) provenance: ResultProvenance,
+    /// Whether this release is one the agreement left out rather than one the
+    /// verdict settled on.
+    pub(super) narrowed_out: bool,
 }
 
 pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
@@ -260,6 +295,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
             by_barcode: row.get("by_barcode")?,
             by_catalog: row.get("by_catalog")?,
         },
+        narrowed_out: row.get("narrowed_out")?,
     })
 }
 
@@ -320,12 +356,16 @@ pub(super) fn identification_of(
     };
     let verdict = match kind.as_str() {
         "found" => {
-            let (matches, provenance) = found.into_iter().unzip();
+            let (matches, provenance) = found.found.into_iter().unzip();
+            let (narrowed_out, narrowed_out_provenance) =
+                found.narrowed_out.into_iter().unzip();
             TerminalVerdict::Found {
                 matches,
                 track_count: count_of()?,
                 provenance,
                 matched_barcode,
+                narrowed_out,
+                narrowed_out_provenance,
             }
         }
         "not_found" => TerminalVerdict::NotFoundAnywhere,

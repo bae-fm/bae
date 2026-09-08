@@ -203,6 +203,7 @@ pub(crate) fn automation_identify_state(
             groups,
             library_statuses,
             provenance,
+            narrowed_out,
         } => AutomationIdentifyState::Triangulating {
             run: AutomationIdentifyRun::from_core(run),
             groups: groups
@@ -214,6 +215,7 @@ pub(crate) fn automation_identify_state(
                 .map(AutomationLibraryStatus::from_core)
                 .collect(),
             provenance: automation_provenance(provenance),
+            narrowed_out: automation_narrowed_out(narrowed_out),
         },
         IdentifyStateView::Found {
             run,
@@ -221,6 +223,7 @@ pub(crate) fn automation_identify_state(
             library_statuses,
             track_count,
             provenance,
+            narrowed_out,
         } => AutomationIdentifyState::Found {
             run: run.map(AutomationIdentifyRun::from_core),
             groups: groups
@@ -233,6 +236,7 @@ pub(crate) fn automation_identify_state(
                 .collect(),
             track_count,
             provenance: automation_provenance(provenance),
+            narrowed_out: automation_narrowed_out(narrowed_out),
         },
         IdentifyStateView::NotFoundAnywhere { run } => AutomationIdentifyState::NotFoundAnywhere {
             run: run.map(AutomationIdentifyRun::from_core),
@@ -247,6 +251,7 @@ pub(crate) fn automation_identify_state(
             groups,
             library_statuses,
             provenance,
+            narrowed_out,
         } => AutomationIdentifyState::Failed {
             run: run.map(AutomationIdentifyRun::from_core),
             failures: failures
@@ -262,6 +267,28 @@ pub(crate) fn automation_identify_state(
                 .map(AutomationLibraryStatus::from_core)
                 .collect(),
             provenance: automation_provenance(provenance),
+            narrowed_out: automation_narrowed_out(narrowed_out),
         },
+    }
+}
+
+/// The narrowed-out releases, field for field — the same shapes a state's own
+/// matches cross as.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_narrowed_out(
+    narrowed_out: bae_core::identify::NarrowedOutView,
+) -> AutomationNarrowedOut {
+    AutomationNarrowedOut {
+        groups: narrowed_out
+            .groups
+            .into_iter()
+            .map(AutomationReleaseGroup::from_core)
+            .collect(),
+        library_statuses: narrowed_out
+            .library_statuses
+            .into_iter()
+            .map(AutomationLibraryStatus::from_core)
+            .collect(),
+        provenance: automation_provenance(narrowed_out.provenance),
     }
 }

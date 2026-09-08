@@ -113,6 +113,11 @@ pub fn all() -> Vec<coven::Migration> {
             "signal_value_region",
             include_str!("../migrations/021_signal_value_region.sql"),
         ),
+        coven::Migration::sql(
+            22,
+            "candidate_narrowed_out_matches",
+            include_str!("../migrations/022_candidate_narrowed_out_matches.sql"),
+        ),
     ]
 }
 

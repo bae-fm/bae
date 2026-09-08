@@ -336,6 +336,7 @@ mod identify_mirrors {
                     by_catalog: true,
                 },
             ],
+            narrowed_out: Default::default(),
             context: empty_context(),
         };
 
@@ -384,6 +385,7 @@ mod identify_mirrors {
                     by_catalog: false,
                 },
             ],
+            narrowed_out: Default::default(),
             context: empty_context(),
         };
 

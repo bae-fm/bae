@@ -64,21 +64,70 @@ final class FindOnlinePaneTests: XCTestCase {
     private func renderedText(
         of state: ImportSearchState
     ) async throws -> [String] {
-        let size = NSSize(width: 900, height: 600)
-        let (window, host) = FindOnlineRendering.host(
+        try await FindOnlineRendering.text(
             ImportSearchPane.preview(state: state).importPreviewEnvironment(),
-            size: size
+            size: NSSize(width: 900, height: 600)
         )
-        defer { withExtendedLifetime(window) {} }
-        await SnapshotTestSupport.settle(host)
-        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        try VNImageRequestHandler(data: png, options: [:]).perform([request])
-        return (request.results ?? [])
-            .compactMap {
-                $0.topCandidates(1).first?.string
+    }
+}
+
+@MainActor
+@Suite("What the signals narrowed out")
+struct NarrowedOutDisclosureTests {
+    private static let paneSize = NSSize(width: 900, height: 600)
+    private static let disclosureSize = NSSize(width: 660, height: 420)
+
+    /// The line stands under the matches only when the agreement discarded
+    /// something, and it counts the releases behind it.
+    @Test(
+        "it counts what agreement left out, and says nothing when it left nothing"
+    )
+    func itCountsWhatAgreementLeftOut() async throws {
+        let narrowed = try await FindOnlineRendering.text(
+            ImportSearchPane.preview(state: PreviewData.searchStateNarrowedOut)
+                .importPreviewEnvironment(),
+            size: Self.paneSize
+        )
+        #expect(narrowed.contains { $0.contains("2 more releases") })
+
+        let agreed = try await FindOnlineRendering.text(
+            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+                .importPreviewEnvironment(),
+            size: Self.paneSize
+        )
+        #expect(
+            !agreed.contains {
+                $0.localizedCaseInsensitiveContains("more releases")
             }
+        )
+    }
+
+    /// Closed, those releases are only a count; open, they are cards to pick
+    /// like any other.
+    @Test("opening it lists the releases the agreement discarded")
+    func openingItListsThem() async throws {
+        let closed = try await FindOnlineRendering.text(
+            disclosure(isExpanded: false),
+            size: Self.disclosureSize
+        )
+        let open = try await FindOnlineRendering.text(
+            disclosure(isExpanded: true),
+            size: Self.disclosureSize
+        )
+        #expect(!closed.contains { $0.contains("Other Album Title") })
+        #expect(open.contains { $0.contains("Other Album Title") })
+    }
+
+    private func disclosure(isExpanded: Bool) -> some View {
+        NarrowedOutDisclosure(
+            narrowedOut: PreviewData.searchStateNarrowedOut.narrowedOut,
+            isExpanded: .constant(isExpanded),
+            isImporting: false,
+            selectedReleaseId: nil,
+            loadingReleaseId: nil,
+            onSelect: { _ in },
+        )
+        .importPreviewEnvironment()
     }
 }
 
@@ -342,7 +391,8 @@ struct FindOnlineResultAreaTests {
                     run: PreviewData.identifyRunStarting,
                     groups: [],
                     libraryStatuses: [:],
-                    provenance: [:]
+                    provenance: [:],
+                    narrowedOut: .nothing
                 )
             ) == .identifying
         )
@@ -493,6 +543,23 @@ struct IdentifyLedgerViewTests {
 /// focused. Capture needs layout and `cacheDisplay`, not focus.
 @MainActor
 enum FindOnlineRendering {
+    /// Every line of text a view draws, read off its pixels: these panes draw
+    /// their own controls rather than hanging AppKit ones in the view tree, so
+    /// what they say is in what they drew.
+    static func text(_ view: some View, size: NSSize) async throws -> [String] {
+        let (window, host) = host(view, size: size)
+        defer { withExtendedLifetime(window) {} }
+        await SnapshotTestSupport.settle(host)
+        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        try VNImageRequestHandler(data: png, options: [:]).perform([request])
+        return (request.results ?? [])
+            .compactMap {
+                $0.topCandidates(1).first?.string
+            }
+    }
+
     static func pixels(
         _ view: some View,
         size: NSSize = NSSize(width: 380, height: 220)

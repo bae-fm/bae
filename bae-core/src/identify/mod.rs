@@ -35,7 +35,7 @@ pub mod toolbar;
 pub mod verdict;
 pub mod view;
 
-pub use combine::ResultProvenance;
+pub use combine::{NarrowedOut, ResultProvenance};
 pub use ready::{
     classify, classify_summary, LeadMatch, NeedsYou, QueueClassification, VerdictKind,
     VerdictSummary,
@@ -50,8 +50,8 @@ pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{
     BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdFile, DiscIdFileKind,
-    DiscIdStepView, IdentifyRunView, IdentifyStateView, LookupView, ProviderCell, SignalValueRow,
-    ValueSource,
+    DiscIdStepView, IdentifyRunView, IdentifyStateView, LookupView, NarrowedOutView, ProviderCell,
+    SignalValueRow, ValueSource,
 };
 
 use crate::db::{LibraryCheck, LibraryStatus};

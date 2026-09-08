@@ -160,6 +160,16 @@ pub enum AutomationIdentifyFailure {
     },
 }
 
+/// The releases the signals' agreement left out of a state's matches, shaped
+/// as its matches are. Empty when the agreement narrowed nothing. Mirrors
+/// `bae_core::identify::NarrowedOutView`.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct AutomationNarrowedOut {
+    pub groups: Vec<AutomationReleaseGroup>,
+    pub library_statuses: Vec<AutomationLibraryStatus>,
+    pub provenance: Vec<AutomationResultProvenance>,
+}
+
 /// Projects bae-core's `identify::IdentifyState`. The `SignalsContext`
 /// internals that drive core triangulation don't cross; terminal states carry
 /// the full match data an MCP client acts on.
@@ -174,6 +184,7 @@ pub enum AutomationIdentifyState {
         groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,
         provenance: Vec<AutomationResultProvenance>,
+        narrowed_out: AutomationNarrowedOut,
     },
     /// A settled state carries the run it settled as; none when extraction
     /// handed the run nothing to lay out, or the verdict was stood back up
@@ -184,6 +195,7 @@ pub enum AutomationIdentifyState {
         library_statuses: Vec<AutomationLibraryStatus>,
         track_count: u32,
         provenance: Vec<AutomationResultProvenance>,
+        narrowed_out: AutomationNarrowedOut,
     },
     NotFoundAnywhere {
         run: Option<AutomationIdentifyRun>,
@@ -202,5 +214,6 @@ pub enum AutomationIdentifyState {
         groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,
         provenance: Vec<AutomationResultProvenance>,
+        narrowed_out: AutomationNarrowedOut,
     },
 }

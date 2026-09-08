@@ -17,7 +17,7 @@
 //! The transports (`bae-bridge`'s uniffi records, `bae-automation`'s JSON) mirror
 //! this view into their own wire types field by field and decide nothing.
 
-use super::combine::{combine_results, CombineOutcome, ResultProvenance};
+use super::combine::{combine_results, CombineOutcome, NarrowedOut, ResultProvenance};
 use super::state::{
     BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
     IdentifyState, LookupResults, LookupState, SignalsContext,
@@ -169,6 +169,25 @@ pub struct IdentifyRunView {
     pub catalog: CatalogStepView,
 }
 
+/// The releases the signals' agreement left out, as a surface lists them:
+/// folded into album cards like the matches, with the same per-pressing
+/// library statuses and provenance. Empty when nothing was narrowed — one
+/// signal answering alone, or signals that shared nothing.
+#[derive(Debug, Clone, Default)]
+pub struct NarrowedOutView {
+    pub groups: Vec<ReleaseGroup>,
+    /// One per pressing; each carries its own `release_id`.
+    pub library_statuses: Vec<LibraryStatus>,
+    /// Per-pressing provenance, keyed by release id, as `Found`'s is.
+    pub provenance: Vec<(String, ResultProvenance)>,
+}
+
+impl NarrowedOutView {
+    pub fn is_empty(&self) -> bool {
+        self.groups.is_empty()
+    }
+}
+
 /// One candidate's identify state as a surface renders it.
 ///
 /// A settled state carries the run it settled as, so the ledger stays up
@@ -189,6 +208,9 @@ pub enum IdentifyStateView {
         groups: Vec<ReleaseGroup>,
         library_statuses: Vec<LibraryStatus>,
         provenance: Vec<(String, ResultProvenance)>,
+        /// What the lookups answered so far that the agreement so far leaves
+        /// out — the same list the settled state lands on, as it stands.
+        narrowed_out: NarrowedOutView,
     },
 
     /// The matches, bucketed into their release groups — one card per group,
@@ -207,6 +229,9 @@ pub enum IdentifyStateView {
         /// group cards, so the alignment is re-expressed as a key here rather
         /// than left for a surface to reconstruct.
         provenance: Vec<(String, ResultProvenance)>,
+        /// The releases the signals agreed away, for the surface to offer
+        /// behind a disclosure.
+        narrowed_out: NarrowedOutView,
     },
 
     NotFoundAnywhere {
@@ -233,6 +258,7 @@ pub enum IdentifyStateView {
         groups: Vec<ReleaseGroup>,
         library_statuses: Vec<LibraryStatus>,
         provenance: Vec<(String, ResultProvenance)>,
+        narrowed_out: NarrowedOutView,
     },
 }
 
@@ -247,7 +273,7 @@ impl From<IdentifyState> for IdentifyStateView {
                 catalog,
                 context,
             } => {
-                let (matches, library_statuses, provenance) =
+                let (matches, library_statuses, provenance, narrowed_out) =
                     live_matches(&discid, &barcode, &catalog, &context);
                 let (groups, provenance) = fold_matches(matches, provenance);
                 IdentifyStateView::Triangulating {
@@ -255,6 +281,7 @@ impl From<IdentifyState> for IdentifyStateView {
                     groups,
                     library_statuses,
                     provenance,
+                    narrowed_out: fold_narrowed_out(narrowed_out),
                 }
             }
 
@@ -263,6 +290,7 @@ impl From<IdentifyState> for IdentifyStateView {
                 library_statuses,
                 track_count,
                 provenance,
+                narrowed_out,
                 context,
             } => {
                 let (groups, provenance) = fold_matches(matches, provenance);
@@ -272,6 +300,7 @@ impl From<IdentifyState> for IdentifyStateView {
                     library_statuses,
                     track_count,
                     provenance,
+                    narrowed_out: fold_narrowed_out(narrowed_out),
                 }
             }
 
@@ -292,6 +321,7 @@ impl From<IdentifyState> for IdentifyStateView {
                 matches,
                 library_statuses,
                 provenance,
+                narrowed_out,
                 track_count: _,
                 context,
             } => {
@@ -302,6 +332,7 @@ impl From<IdentifyState> for IdentifyStateView {
                     groups,
                     library_statuses,
                     provenance,
+                    narrowed_out: fold_narrowed_out(narrowed_out),
                 }
             }
         }
@@ -323,6 +354,7 @@ fn live_matches(
     Vec<MetadataResult>,
     Vec<LibraryStatus>,
     Vec<ResultProvenance>,
+    NarrowedOut,
 ) {
     let outcome = combine_results(
         context.disc.active(discid.results()),
@@ -334,8 +366,11 @@ fn live_matches(
             matches,
             library_statuses,
             provenance,
-        } => (matches, library_statuses, provenance),
-        CombineOutcome::NotFoundAnywhere => (Vec::new(), Vec::new(), Vec::new()),
+            narrowed_out,
+        } => (matches, library_statuses, provenance, narrowed_out),
+        CombineOutcome::NotFoundAnywhere => {
+            (Vec::new(), Vec::new(), Vec::new(), NarrowedOut::default())
+        }
     }
 }
 
@@ -352,6 +387,22 @@ fn fold_matches(
         .zip(provenance)
         .collect();
     (group_results(matches), keyed)
+}
+
+/// The narrowed-out releases, folded into their album cards the way the
+/// matches are, so a surface lists both the same way.
+fn fold_narrowed_out(narrowed_out: NarrowedOut) -> NarrowedOutView {
+    let NarrowedOut {
+        matches,
+        library_statuses,
+        provenance,
+    } = narrowed_out;
+    let (groups, provenance) = fold_matches(matches, provenance);
+    NarrowedOutView {
+        groups,
+        library_statuses,
+        provenance,
+    }
 }
 
 /// The ledger of a settled state: its pipes stood back up from the context,

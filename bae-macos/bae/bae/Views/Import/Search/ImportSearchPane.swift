@@ -53,6 +53,10 @@ struct ImportSearchPane: View {
     /// elsewhere.
     @State
     private var formFocusRequest = 0
+    /// Whether the releases agreement narrowed out are showing. Closed on
+    /// arrival: the matches are the answer.
+    @State
+    private var narrowedOutExpanded = false
 
     private var area: FindOnlineResultArea {
         FindOnlineResultArea(identifyState: state.identifyState)
@@ -175,10 +179,11 @@ struct ImportSearchPane: View {
         switch area {
         case .identifying:
             if !state.identifiedGroups.isEmpty {
-                identifiedList { EmptyView() }
+                identifiedList { narrowedOut }
             }
         case .groups:
             identifiedList {
+                narrowedOut
                 ForEach(missingSourceNotes, id: \.self) { note in
                     MissingSourceNote(text: note)
                 }
@@ -193,6 +198,23 @@ struct ImportSearchPane: View {
             failureLines
         case .awaitingCatalog, .notStarted, .noSignals:
             EmptyView()
+        }
+    }
+
+    /// What the signals agreed away, under the matches and above what the
+    /// list says about itself. Nothing narrowed, nothing to disclose.
+    @ViewBuilder
+    private var narrowedOut: some View {
+        if !state.narrowedOut.isEmpty {
+            NarrowedOutDisclosure(
+                narrowedOut: state.narrowedOut,
+                isExpanded: $narrowedOutExpanded,
+                isImporting: state.isImporting,
+                selectedReleaseId: state.selectedReleaseId,
+                loadingReleaseId: state.loadingReleaseId,
+                releaseSelectionFailure: state.releaseSelectionFailure,
+                onSelect: onSelect,
+            )
         }
     }
 
@@ -230,31 +252,12 @@ struct ImportSearchPane: View {
         }
     }
 
-    /// Every lookup failed, so the reasons take the place of the results.
-    ///
-    /// With a ledger above them, the way to ask again is the Retry in the cell
-    /// that failed. Without one — a folder that carried nothing to lay out, or
-    /// a verdict stored before its signals were — the reasons are the whole
-    /// pane, and this is the only way back.
+    /// The reasons, with the retry they carry when no ledger does.
     private var failureLines: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(state.identifyFailures, id: \.badgeLine) { failure in
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Text(failure.badgeLine)
-                    Spacer(minLength: 0)
-                }
-            }
-            if state.run == nil {
-                Button("Retry", action: onRetryFailed)
-                    .buttonStyle(.link)
-            }
-        }
-        .font(.system(size: 12.5))
-        .padding(.horizontal, 18)
-        .padding(.vertical, 22)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        FindOnlineFailureLines(
+            failures: state.identifyFailures,
+            onRetry: state.run == nil ? onRetryFailed : nil
+        )
     }
 
     /// One line per failed lookup whose results the list is missing, closing
@@ -346,6 +349,12 @@ struct ImportSearchPane: View {
 
     #Preview("Find online — found, cross-linked") {
         ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — releases the agreement left out") {
+        ImportSearchPane.preview(state: PreviewData.searchStateNarrowedOut)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }

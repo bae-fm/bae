@@ -29,13 +29,13 @@ enum FindOnlineResultArea: Equatable {
             self = .notStarted
         case .triangulating:
             self = .identifying
-        case .found(_, let groups, _, _, _):
+        case .found(_, let groups, _, _, _, _):
             self = groups.isEmpty ? .nothingFound : .groups
         case .notFoundAnywhere:
             self = .nothingFound
         case .manualOnly(_, let run):
             self = run == nil ? .noSignals : .awaitingCatalog
-        case .failed(_, _, let groups, _, _):
+        case .failed(_, _, let groups, _, _, _):
             // One source failing leaves the other's matches standing: show
             // them, with the failure named under the list.
             self = groups.isEmpty ? .failureLines : .groups

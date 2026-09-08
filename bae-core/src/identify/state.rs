@@ -11,7 +11,7 @@
 //! `step` takes a state and an event and returns the next state plus the side
 //! effects for the service to run. No I/O, no async, nothing outside itself.
 
-use super::combine::{combine_results, CombineOutcome, ResultProvenance};
+use super::combine::{combine_results, CombineOutcome, NarrowedOut, ResultProvenance};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
@@ -58,6 +58,9 @@ pub enum IdentifyState {
         /// index-aligned with `matches` — drives the per-row signal badges, and
         /// says which signal produced any given match.
         provenance: Vec<ResultProvenance>,
+        /// The releases the signals' agreement left out of `matches`. Empty
+        /// when nothing was narrowed.
+        narrowed_out: NarrowedOut,
         context: SignalsContext,
     },
 
@@ -86,6 +89,10 @@ pub enum IdentifyState {
         matches: Vec<MetadataResult>,
         library_statuses: Vec<LibraryStatus>,
         provenance: Vec<ResultProvenance>,
+        /// The releases the surviving signals' agreement left out of
+        /// `matches`. Empty when nothing was narrowed, and for a failure
+        /// resumed from its stored verdict.
+        narrowed_out: NarrowedOut,
         track_count: u32,
         context: SignalsContext,
     },
@@ -800,13 +807,16 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
         context.barcode.active_results(),
         context.catalog.active_results(),
     );
-    let (matches, library_statuses, provenance) = match outcome {
+    let (matches, library_statuses, provenance, narrowed_out) = match outcome {
         CombineOutcome::Found {
             matches,
             library_statuses,
             provenance,
-        } => (matches, library_statuses, provenance),
-        CombineOutcome::NotFoundAnywhere => (Vec::new(), Vec::new(), Vec::new()),
+            narrowed_out,
+        } => (matches, library_statuses, provenance, narrowed_out),
+        CombineOutcome::NotFoundAnywhere => {
+            (Vec::new(), Vec::new(), Vec::new(), NarrowedOut::default())
+        }
     };
     let track_count = context.track_count;
     let failures = context.active_failures();
@@ -816,6 +826,7 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
             matches,
             library_statuses,
             provenance,
+            narrowed_out,
             track_count,
             context,
         };
@@ -828,6 +839,7 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
         library_statuses,
         track_count,
         provenance,
+        narrowed_out,
         context,
     }
 }

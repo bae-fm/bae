@@ -311,7 +311,8 @@ public sealed class ImportMappingPaneTests
                 new[] { group },
                 new Dictionary<string, BridgeLibraryStatus>(),
                 1,
-                new Dictionary<string, BridgeResultProvenance>()),
+                new Dictionary<string, BridgeResultProvenance>(),
+                NothingNarrowedOut()),
             new BridgeSignalsToolbar(Array.Empty<BridgeToolbarSignal>()),
             null,
             null);
@@ -755,6 +756,13 @@ public sealed class ImportMappingPaneTests
         1991,
         new BridgePressingEdit(1996, "CD", "Label Name", "CAT-1", "UK", null),
         Array.Empty<BridgeTrackUserEdit>());
+
+    /// <summary>A verdict whose signals narrowed nothing out.</summary>
+    private static BridgeNarrowedOut NothingNarrowedOut() =>
+        new(
+            Array.Empty<BridgeReleaseGroup>(),
+            new Dictionary<string, BridgeLibraryStatus>(),
+            new Dictionary<string, BridgeResultProvenance>());
 
     private static BridgeReleaseGroup ChoiceGroup(string releaseId)
     {

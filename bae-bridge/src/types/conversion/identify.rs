@@ -417,6 +417,7 @@ impl BridgeIdentifyState {
                 groups,
                 library_statuses,
                 provenance,
+                narrowed_out,
             } => BridgeIdentifyState::Triangulating {
                 run: BridgeIdentifyRun::from_core(run),
                 groups: groups
@@ -428,6 +429,7 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
                     .collect(),
+                narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
             },
             IdentifyStateView::Found {
                 run,
@@ -435,6 +437,7 @@ impl BridgeIdentifyState {
                 library_statuses,
                 track_count,
                 provenance,
+                narrowed_out,
             } => BridgeIdentifyState::Found {
                 run: run.map(BridgeIdentifyRun::from_core),
                 groups: groups
@@ -447,6 +450,7 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
                     .collect(),
+                narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
             },
             IdentifyStateView::NotFoundAnywhere { run } => BridgeIdentifyState::NotFoundAnywhere {
                 run: run.map(BridgeIdentifyRun::from_core),
@@ -461,6 +465,7 @@ impl BridgeIdentifyState {
                 groups,
                 library_statuses,
                 provenance,
+                narrowed_out,
             } => BridgeIdentifyState::Failed {
                 run: run.map(BridgeIdentifyRun::from_core),
                 failures: failures.into_iter().map(identify_failure).collect(),
@@ -473,7 +478,26 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
                     .collect(),
+                narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
             },
+        }
+    }
+}
+
+impl BridgeNarrowedOut {
+    fn from_core(view: bae_core::identify::NarrowedOutView) -> Self {
+        Self {
+            groups: view
+                .groups
+                .into_iter()
+                .map(BridgeReleaseGroup::from_core)
+                .collect(),
+            library_statuses: status_map(view.library_statuses),
+            provenance: view
+                .provenance
+                .into_iter()
+                .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
+                .collect(),
         }
     }
 }

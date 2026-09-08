@@ -27,6 +27,33 @@ pub struct ResultProvenance {
     pub by_catalog: bool,
 }
 
+/// The releases agreement left out — every release a checked signal named that
+/// the intersection does not hold.
+///
+/// Agreement is what makes a short list: a disc ID that named three releases
+/// and a barcode that named two settle on the one they share, and the other
+/// four never reach the person. Each of those four is a real answer from a real
+/// lookup, and one of them may be the disc on the desk, so combine hands them
+/// back beside the matches instead of dropping them.
+///
+/// Empty when nothing was narrowed: one signal answering alone is the whole
+/// answer, and signals that shared nothing already list their union.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct NarrowedOut {
+    /// In signal order, each release once.
+    pub matches: Vec<MetadataResult>,
+    /// Index-aligned with `matches`.
+    pub library_statuses: Vec<LibraryStatus>,
+    /// Index-aligned with `matches`: which signals named each one.
+    pub provenance: Vec<ResultProvenance>,
+}
+
+impl NarrowedOut {
+    pub fn is_empty(&self) -> bool {
+        self.matches.is_empty()
+    }
+}
+
 /// What combine decided; the reducer lifts it into a terminal `IdentifyState`.
 #[derive(Debug, Clone)]
 pub enum CombineOutcome {
@@ -36,6 +63,7 @@ pub enum CombineOutcome {
         matches: Vec<MetadataResult>,
         library_statuses: Vec<LibraryStatus>,
         provenance: Vec<ResultProvenance>,
+        narrowed_out: NarrowedOut,
     },
     /// Every checked signal settled with zero results.
     NotFoundAnywhere,
@@ -74,33 +102,51 @@ pub fn combine_results(
         return CombineOutcome::NotFoundAnywhere;
     };
 
-    let combined = if rest.is_empty() {
-        (*first).clone()
+    // Only an intersection narrows anything: one set alone is the whole answer,
+    // and sets that share nothing already list their union.
+    let (combined, left_out) = if rest.is_empty() {
+        ((*first).clone(), Results::new())
     } else {
         let intersected = intersect_all(first, rest);
         if intersected.is_empty() {
-            union_all(&present)
+            (union_all(&present), Results::new())
         } else {
-            intersected
+            let agreed = release_keys(&intersected);
+            let left_out = union_all(&present)
+                .into_iter()
+                .filter(|(r, _)| !agreed.contains(&(r.source, r.release_id.clone())))
+                .collect();
+            (intersected, left_out)
         }
     };
 
-    let provenance: Vec<ResultProvenance> = combined
-        .iter()
-        .map(|(r, _)| {
-            let key = (r.source, r.release_id.clone());
-            ResultProvenance {
-                by_disc_id: keys[0].contains(&key),
-                by_barcode: keys[1].contains(&key),
-                by_catalog: keys[2].contains(&key),
-            }
-        })
-        .collect();
+    let provenance_of = |results: &Results| -> Vec<ResultProvenance> {
+        results
+            .iter()
+            .map(|(r, _)| {
+                let key = (r.source, r.release_id.clone());
+                ResultProvenance {
+                    by_disc_id: keys[0].contains(&key),
+                    by_barcode: keys[1].contains(&key),
+                    by_catalog: keys[2].contains(&key),
+                }
+            })
+            .collect()
+    };
+
+    let provenance = provenance_of(&combined);
+    let narrowed_out_provenance = provenance_of(&left_out);
     let (matches, library_statuses) = combined.into_iter().unzip();
+    let (narrowed_matches, narrowed_statuses) = left_out.into_iter().unzip();
     CombineOutcome::Found {
         matches,
         library_statuses,
         provenance,
+        narrowed_out: NarrowedOut {
+            matches: narrowed_matches,
+            library_statuses: narrowed_statuses,
+            provenance: narrowed_out_provenance,
+        },
     }
 }
 
@@ -168,6 +214,13 @@ mod tests {
 
     fn ids(matches: &[MetadataResult]) -> Vec<&str> {
         matches.iter().map(|m| m.release_id.as_str()).collect()
+    }
+
+    fn narrowed(outcome: CombineOutcome) -> NarrowedOut {
+        match outcome {
+            CombineOutcome::Found { narrowed_out, .. } => narrowed_out,
+            other => panic!("expected Found, got {other:?}"),
+        }
     }
 
     fn found(outcome: CombineOutcome) -> (Vec<MetadataResult>, Vec<ResultProvenance>) {
@@ -300,6 +353,57 @@ mod tests {
         let barcode = vec![pair_src(MetadataSource::Discogs, "rel-a", None)];
         let (matches, _) = found(combine_results(discid, barcode, vec![]));
         assert_eq!(matches.len(), 2);
+    }
+
+    /// What agreement left out comes back beside the matches: every release a
+    /// signal named that the intersection does not hold, in signal order, each
+    /// once, saying which signal named it.
+    #[test]
+    fn an_intersection_hands_back_what_it_narrowed_out() {
+        let discid = vec![
+            pair("rel-a", None),
+            pair("rel-shared", None),
+            pair("rel-b", None),
+        ];
+        let barcode = vec![pair("rel-shared", None), pair("rel-c", None)];
+        let outcome = combine_results(discid, barcode, vec![]);
+        let (matches, _) = found(outcome.clone());
+        assert_eq!(ids(&matches), vec!["rel-shared"]);
+
+        let narrowed = narrowed(outcome);
+        assert_eq!(ids(&narrowed.matches), vec!["rel-a", "rel-b", "rel-c"]);
+        assert_eq!(narrowed.library_statuses.len(), 3);
+        assert!(narrowed.provenance[0].by_disc_id && !narrowed.provenance[0].by_barcode);
+        assert!(narrowed.provenance[2].by_barcode && !narrowed.provenance[2].by_disc_id);
+    }
+
+    /// A release two signals both named, that a third narrowed out, is one
+    /// entry saying both named it.
+    #[test]
+    fn a_narrowed_out_release_two_signals_named_is_named_once() {
+        let discid = vec![pair("rel-a", None), pair("rel-shared", None)];
+        let barcode = vec![pair("rel-a", None), pair("rel-shared", None)];
+        let catalog = vec![pair("rel-shared", None)];
+        let narrowed = narrowed(combine_results(discid, barcode, catalog));
+        assert_eq!(ids(&narrowed.matches), vec!["rel-a"]);
+        assert!(narrowed.provenance[0].by_disc_id && narrowed.provenance[0].by_barcode);
+        assert!(!narrowed.provenance[0].by_catalog);
+    }
+
+    /// Signals that share nothing already list everything they saw, and one
+    /// signal answering alone is the whole answer: neither narrowed anything.
+    #[test]
+    fn a_union_and_a_lone_signal_narrow_nothing() {
+        let disagreeing =
+            combine_results(vec![pair("rel-a", None)], vec![pair("rel-b", None)], vec![]);
+        assert!(narrowed(disagreeing).is_empty());
+
+        let alone = combine_results(
+            vec![pair("rel-a", None), pair("rel-b", None)],
+            vec![],
+            vec![],
+        );
+        assert!(narrowed(alone).is_empty());
     }
 
     /// A result the source returned without a group id is still a release the

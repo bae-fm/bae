@@ -40,26 +40,32 @@ struct ImportSearchState {
     /// surviving source found.
     var identifiedGroups: [ReleaseGroup] {
         switch identifyState {
-        case .found(_, let groups, _, _, _): groups
-        case .failed(_, _, let groups, _, _): groups
-        case .triangulating(_, let groups, _, _): groups
+        case .found(_, let groups, _, _, _, _): groups
+        case .failed(_, _, let groups, _, _, _): groups
+        case .triangulating(_, let groups, _, _, _): groups
         case .idle, .notFoundAnywhere, .manualOnly: []
         }
+    }
+
+    /// The releases the signals' agreement left out of the offered ones —
+    /// what the AUTOMATIC section offers behind its disclosure.
+    var narrowedOut: NarrowedOut {
+        identifyState.narrowedOut
     }
 
     /// Which signals produced each offered pressing, keyed by release id.
     var identifiedProvenance: [String: BridgeResultProvenance] {
         switch identifyState {
-        case .found(_, _, _, _, let provenance): provenance
-        case .failed(_, _, _, _, let provenance): provenance
-        case .triangulating(_, _, _, let provenance): provenance
+        case .found(_, _, _, _, let provenance, _): provenance
+        case .failed(_, _, _, _, let provenance, _): provenance
+        case .triangulating(_, _, _, let provenance, _): provenance
         case .idle, .notFoundAnywhere, .manualOnly: [:]
         }
     }
 
     /// The automatic lookups that failed, each naming what it was and why.
     var identifyFailures: [BridgeIdentifyFailure] {
-        guard case .failed(_, let failures, _, _, _) = identifyState else {
+        guard case .failed(_, let failures, _, _, _, _) = identifyState else {
             return []
         }
         return failures

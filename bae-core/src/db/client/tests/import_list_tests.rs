@@ -79,6 +79,8 @@ fn verdict(release_id: &str) -> TerminalVerdict {
             by_catalog: false,
         }],
         matched_barcode: None,
+        narrowed_out: Vec::new(),
+        narrowed_out_provenance: Vec::new(),
     }
 }
 

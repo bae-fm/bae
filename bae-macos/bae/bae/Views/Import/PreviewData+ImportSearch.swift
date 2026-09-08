@@ -643,7 +643,8 @@
                 run: identifyRunInFlight,
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
-                provenance: searchProvenanceExact
+                provenance: searchProvenanceExact,
+                narrowedOut: .nothing
             ),
             signals: settledSignals
         )
@@ -655,7 +656,27 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact
+                provenance: searchProvenanceExact,
+                narrowedOut: .nothing
+            ),
+            signals: settledSignals
+        )
+
+        /// The signals agreed on one release and each named another the
+        /// agreement discarded — the disclosure's own case.
+        static let searchStateNarrowedOut = searchState(
+            identifyState: .found(
+                run: identifyRunFound,
+                groups: [searchGroupExact],
+                libraryStatuses: [:],
+                trackCount: 11,
+                provenance: searchProvenanceExact,
+                narrowedOut: NarrowedOut(
+                    groups: [discidOnlyGroup, barcodeOnlyGroup]
+                        .map(ReleaseGroup.init(bridge:)),
+                    libraryStatuses: [:],
+                    provenance: disagreementProvenance
+                )
             ),
             signals: settledSignals
         )
@@ -673,7 +694,12 @@
             groups: [discidOnlyGroup, barcodeOnlyGroup],
             libraryStatuses: [:],
             trackCount: 11,
-            provenance: disagreementProvenance
+            provenance: disagreementProvenance,
+            narrowedOut: BridgeNarrowedOut(
+                groups: [],
+                libraryStatuses: [:],
+                provenance: [:]
+            )
         )
 
         /// Both signals ran and neither source knew them.
@@ -706,7 +732,8 @@
                 ],
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
-                provenance: searchProvenanceExact
+                provenance: searchProvenanceExact,
+                narrowedOut: .nothing
             )
         )
 
@@ -744,7 +771,8 @@
                 ],
                 groups: [],
                 libraryStatuses: [:],
-                provenance: [:]
+                provenance: [:],
+                narrowedOut: .nothing
             )
         )
 
@@ -760,7 +788,8 @@
                 ],
                 groups: [],
                 libraryStatuses: [:],
-                provenance: [:]
+                provenance: [:],
+                narrowedOut: .nothing
             )
         )
 
@@ -786,7 +815,8 @@
                 ],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact
+                provenance: searchProvenanceExact,
+                narrowedOut: .nothing
             ),
             signals: settledSignals,
             isFinalizing: true
@@ -799,7 +829,8 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact
+                provenance: searchProvenanceExact,
+                narrowedOut: .nothing
             ),
             search: searchRunInFlight,
             signals: settledSignals
@@ -812,7 +843,8 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact
+                provenance: searchProvenanceExact,
+                narrowedOut: .nothing
             ),
             search: manualSearchRun,
             signals: settledSignals
@@ -825,7 +857,8 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact
+                provenance: searchProvenanceExact,
+                narrowedOut: .nothing
             ),
             search: searchRunSourceFailed,
             signals: settledSignals
@@ -838,7 +871,8 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact
+                provenance: searchProvenanceExact,
+                narrowedOut: .nothing
             ),
             search: searchRunEmpty,
             signals: settledSignals
