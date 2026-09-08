@@ -151,4 +151,8 @@ jobs:
         # different workload, so measuring it here and the optimized one locally
         # would mean the gate never guards the code that ships.
         cargo nextest run -p bae-core --features bae-core/test-utils -- --skip test_playback_cpu
+        # The release build is the last thing this job compiles, and the runner's
+        # disk has run out under it (two debug trees plus a release one). Nothing
+        # after this point reads the debug artifacts, so drop them first.
+        rm -rf target/debug
         cargo nextest run -p bae-core --release --features bae-core/test-utils --test test_playback_cpu -j 1
