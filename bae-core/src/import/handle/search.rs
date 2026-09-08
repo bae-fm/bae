@@ -342,8 +342,8 @@ impl ImportServiceHandle {
     /// Nothing comes back. The per-candidate query sees the write and
     /// redraws the pane from it, which is the same thing a relaunch does.
     ///
-    /// Runs to completion once asked for, see
-    /// [`ImportServiceHandle::committed`]: the person's decision stands
+    /// Runs to completion once asked for, through the handle's `committed`
+    /// wrapper: the person's decision stands
     /// whether or not they are still looking at the candidate when its
     /// release fetch and write finish.
     pub async fn select_candidate_metadata_provenance(
