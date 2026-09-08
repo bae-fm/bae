@@ -157,7 +157,7 @@ internal static partial class NativeBae
             PauseBetweenSides = config.PauseBetweenSides,
             IdentifyAutomatically = config.IdentifyAutomatically,
             DefaultImportMetadataSource = config.DefaultImportMetadataSource,
-            MetadataSources = config.MetadataSources,
+            MetadataSources = config.MetadataSources.ToList(),
             ShowRemainingTime = config.ShowRemainingTime,
             LibraryFullWidth = config.LibraryFullWidth,
             SavePresets = config.SavePresets.Select(SavePreset).ToList(),
