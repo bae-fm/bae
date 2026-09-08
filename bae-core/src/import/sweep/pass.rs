@@ -236,16 +236,21 @@ impl Pass {
     /// one stores, which covers their identity — so they stay queued until it
     /// does.
     ///
-    /// `Idle` is this run ending with no answer, which happens when someone
-    /// started a newer run for the same candidate: a person changing what its
-    /// identification asks about. The job leaves its slot and is not queued
-    /// again — the candidate belongs to that run now, and if it does not, the
-    /// next pass plans it afresh from the stored row. Nothing is cancelled
-    /// here: the key names the newer run.
+    /// `Idle` is this run ending with no answer: it was cancelled, by the
+    /// command that decided the candidate or by a newer run superseding it.
+    /// The job leaves its slot and is not queued again — the candidate belongs
+    /// to whoever ended it now, and if nobody holds it, the next pass plans it
+    /// afresh from the stored row. Nothing is cancelled here: the key may
+    /// already name a newer run.
+    ///
+    /// `settling` is the pass's own cancellation, which the spawned task
+    /// carries. Cancelling it tells a settle to abandon its answer before it
+    /// writes; the task is never aborted, so it always ends the save it
+    /// started.
     pub(super) fn settle(
         &mut self,
         context: &SweepContext,
-        token: &CancellationToken,
+        settling: &CancellationToken,
         finishing: &mut JoinSet<Finished>,
         key: &str,
         run: IdentifyRunId,
@@ -281,11 +286,25 @@ impl Pass {
         self.finishing_members.insert(identity.clone(), Vec::new());
         let representative_key = key.to_string();
         let context = context.clone();
-        let child = token.child_token();
+        let settling = settling.clone();
         finishing.spawn(async move {
             let candidate_keys = entry.job.candidate_keys().collect();
-            let outcome = finish_candidate(&context, &entry, state, &child).await;
+            let outcome = finish_candidate(&context, &entry, state, &settling).await;
             let run = entry.run;
+            // This task is the save step, so it is what ends the save it
+            // started — the pass may abandon it and never read what it
+            // returns, and a key left saying a commit is still coming would
+            // say it for good.
+            match &outcome {
+                FinishCandidateOutcome::Stored | FinishCandidateOutcome::Superseded => context
+                    .import
+                    .finish_identification_save(&representative_key, run),
+                FinishCandidateOutcome::Failed { error } => context.import.fail_identification(
+                    &representative_key,
+                    run,
+                    error.clone(),
+                ),
+            }
             let current_candidates = if matches!(&outcome, FinishCandidateOutcome::Stored) {
                 Vec::new()
             } else {

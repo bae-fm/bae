@@ -197,8 +197,8 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
 async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     let fixture = Fixture::new("import-mid-write").await;
     fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
             barcode: "0123456789012".to_string(),
         }));
     let dir = fixture.barcode_candidate("From Barcode");
@@ -373,7 +373,7 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
     let fixture = Fixture::new("removed-mid-flight").await;
     let analyzer_started = Arc::new(Barrier::new(2));
     let analyzer_release = Arc::new(Barrier::new(2));
-    fixture.extraction.register_analyzer(Arc::new(GatedAnalyzer {
+    fixture.import.register_artwork_analyzer(Arc::new(GatedAnalyzer {
         started: analyzer_started.clone(),
         release: analyzer_release.clone(),
     }));
@@ -468,7 +468,7 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
         "the candidate really was identified"
     );
     assert!(
-        !fixture.identify.is_running(&key),
+        !fixture.import.is_identifying(&key),
         "and its driver is gone: the run ended at the verdict it reached"
     );
     assert!(
@@ -489,7 +489,7 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
 #[serial(musicbrainz)]
 async fn a_candidate_the_sweep_failed_then_the_user_reran_is_left_alone() {
     let fixture = Fixture::new("failed-then-looked-up").await;
-    fixture.extraction.register_analyzer(Arc::new(SlowAnalyzer {
+    fixture.import.register_artwork_analyzer(Arc::new(SlowAnalyzer {
         delay: Duration::from_millis(2_000),
     }));
     let dir = fixture.disc_id_candidate("Album");
@@ -511,13 +511,13 @@ async fn a_candidate_the_sweep_failed_then_the_user_reran_is_left_alone() {
     // The user explicitly reruns the stored failure.
     fixture.sweep.rerun_for_explicit_lookup(key.clone());
     tokio::time::timeout(Duration::from_secs(10), async {
-        while !fixture.identify.is_running(&key) {
+        while !fixture.import.is_identifying(&key) {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
     })
     .await
     .expect("identify registers the explicit rerun");
-    assert!(fixture.identify.is_running(&key), "their run is in flight");
+    assert!(fixture.import.is_identifying(&key), "their run is in flight");
 
     let lookups_before = fixture.provider.count_containing("/discid/");
     fixture.sweep_once().await;
@@ -531,7 +531,7 @@ async fn a_candidate_the_sweep_failed_then_the_user_reran_is_left_alone() {
         "nor spent a background lookup on it"
     );
     assert!(
-        fixture.identify.is_running(&key),
+        fixture.import.is_identifying(&key),
         "their run is still the one registered — it was not cancelled and \
          restarted underneath them"
     );
@@ -563,7 +563,7 @@ async fn the_sweep_leaves_a_candidate_the_user_is_looking_up_alone() {
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     assert!(
-        fixture.identify.is_running(&key),
+        fixture.import.is_identifying(&key),
         "the user's run is in flight"
     );
 
@@ -574,7 +574,7 @@ async fn the_sweep_leaves_a_candidate_the_user_is_looking_up_alone() {
         "the sweep never took ownership of a candidate it does not own"
     );
     assert!(
-        fixture.identify.is_running(&key),
+        fixture.import.is_identifying(&key),
         "and it did not cancel the run out from under them"
     );
     assert_eq!(

@@ -6,8 +6,8 @@
 async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
     let fixture = Fixture::new("choices-leave-out-barcode").await;
     fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
             barcode: "0123456789012".to_string(),
         }));
     // A rip log for the disc ID and an image for the barcode, so both signals

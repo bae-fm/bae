@@ -14,8 +14,8 @@
 async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
     let fixture = Fixture::new("settle-lead").await;
     fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
             barcode: "0123456789012".to_string(),
         }));
     let disc_dir = fixture.disc_id_candidate("From Disc Id");
@@ -132,8 +132,8 @@ async fn a_failed_settle_is_stored_without_partial_documents() {
 async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
     let fixture = Fixture::new("interactive-settles").await;
     fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
             barcode: "0123456789012".to_string(),
         }));
     let dir = fixture.barcode_candidate("From Barcode");
@@ -399,8 +399,8 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     let fixture = Fixture::new("paired-settle").await;
     fixture.use_discogs();
     fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
             barcode: PAIRED_BARCODE.to_string(),
         }));
     let dir = fixture.barcode_candidate("From Barcode");
@@ -485,8 +485,8 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
 async fn two_distinct_pressings_do_not_settle() {
     let fixture = Fixture::new("two-pressings").await;
     fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
             barcode: PAIRED_BARCODE.to_string(),
         }));
     let dir = fixture.barcode_candidate("From Barcode");

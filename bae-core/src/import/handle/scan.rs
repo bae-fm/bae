@@ -6,6 +6,10 @@ impl ImportServiceHandle {
     /// and broadcasting it so the import view re-tabs the row (New ↔ Skipped).
     /// A no-op request (already in the requested state) persists nothing and
     /// emits no event.
+    ///
+    /// Skipping is a decision about the candidate, so it ends the
+    /// identification it had going — nothing is left answering a candidate the
+    /// person has set aside.
     pub async fn set_candidate_skipped(
         &self,
         path: String,
@@ -34,6 +38,9 @@ impl ImportServiceHandle {
                 .set_combined_candidate_skipped(&path, skipped)
                 .await?
             {
+                if skipped {
+                    self.cancel_identification(&path);
+                }
                 send_event(
                     &self.event_tx,
                     ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
@@ -54,6 +61,9 @@ impl ImportServiceHandle {
             .set_import_candidate_skipped(&watched_folder_path, &relative_candidate_path, skipped)
             .await?;
         if changed {
+            if skipped {
+                self.cancel_identification(&path);
+            }
             send_event(
                 &self.event_tx,
                 ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
@@ -455,13 +465,24 @@ impl ImportServiceHandle {
 
     /// Clear source metadata while retaining the candidate's physical layout
     /// and every explicit mapping decision.
+    ///
+    /// A clear is a decision about the candidate like a pick is: it ends
+    /// whatever identification the candidate had going, and announces the
+    /// change, so the pane and the queue sweep both read the candidate afresh.
     pub(crate) async fn clear_candidate_metadata(
         &self,
         candidate_key: String,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
-        self.committed(async move { this.clear_candidate_metadata_write(candidate_key).await })
-            .await
+        self.committed(async move {
+            let revision = this
+                .clear_candidate_metadata_write(candidate_key.clone())
+                .await?;
+            this.cancel_identification(&candidate_key);
+            this.announce_metadata_provenance(candidate_key);
+            Ok(revision)
+        })
+        .await
     }
 
     async fn clear_candidate_metadata_write(

@@ -127,25 +127,19 @@ impl QueueSweepHandle {
         candidate: ReleaseCandidate,
         start: CandidateRunStart,
     ) {
-        let run = self.context.identify.new_run();
+        let run = self.context.import.new_identification_run();
         self.record_explicit_lookup(
             run,
             candidate_key.clone(),
             candidate.clone(),
             start.metadata_revision,
         );
-        self.context.identify.start(
+        self.context.import.start_identification(
             run,
-            candidate_key.clone(),
+            candidate_key,
+            ExtractionSource::Candidate { candidate },
             CallPriority::Interactive,
             start.choices,
-        );
-        self.context.extraction.start(
-            candidate_key,
-            ExtractionSource::Candidate {
-                candidate: candidate.clone(),
-            },
-            CallPriority::Interactive,
         );
     }
 

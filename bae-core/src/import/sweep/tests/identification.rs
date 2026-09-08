@@ -220,7 +220,7 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
         Some(TerminalVerdict::Failed { .. })
     ));
     assert!(
-        !fixture.identify.is_running(&key),
+        !fixture.import.is_identifying(&key),
         "the failed run ended at its verdict rather than parking on its inbox"
     );
     let failed_run = drain_events(&mut events)
@@ -286,8 +286,8 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
     let fixture = Fixture::new("restart-drops-a-source").await;
     fixture.use_discogs();
     fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
             barcode: PAIRED_BARCODE.to_string(),
         }));
     let dir = fixture.barcode_candidate("From Barcode");
@@ -414,8 +414,8 @@ async fn a_transport_failure_is_stored_and_not_automatically_retried() {
 async fn the_interactive_path_is_not_delayed_by_the_sweep() {
     let fixture = Fixture::new("interactive-not-delayed").await;
     fixture
-        .extraction
-        .register_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
+        .import
+        .register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
     let mut dirs = Vec::new();
     for i in 0..8 {
         let dir = fixture.barcode_candidate(&format!("Album {i}"));
@@ -653,8 +653,8 @@ async fn a_skipped_candidate_is_not_swept() {
 async fn unskipping_a_stored_candidate_mid_pass_counts_it_immediately() {
     let fixture = Fixture::new("unskip-mid-pass").await;
     fixture
-        .extraction
-        .register_analyzer(Arc::new(BarcodeAnalyzer {
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
             barcode: "0123456789012".to_string(),
         }));
     let stored = fixture.barcode_candidate("Stored");

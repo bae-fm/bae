@@ -50,7 +50,15 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &str, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &str, track_ids: Vec<String>, assignments: crate::import::TrackArtistAssignments) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_drop_candidate_track => drop_candidate_track(candidate_key: &str, track_id: String) -> Result<(), crate::import::ImportError>);
-    delegate_sync!(extraction, extraction_register_analyzer => register_analyzer(analyzer: std::sync::Arc<dyn crate::signals::ArtworkAnalyzer>) -> ());
+
+    /// Register the platform's artwork analyzer, which extraction reads
+    /// barcodes and text off a candidate's images with.
+    pub fn extraction_register_analyzer(
+        &self,
+        analyzer: std::sync::Arc<dyn crate::signals::ArtworkAnalyzer>,
+    ) {
+        self.inner.import.register_artwork_analyzer(analyzer);
+    }
 
     pub(crate) fn subscribe_import_events(
         &self,
@@ -99,17 +107,13 @@ impl AppServices {
         release_id: String,
         choices: crate::import::LookupChoices,
     ) {
-        let run = self.inner.identify.new_run();
-        self.inner.identify.start(
+        let run = self.inner.import.new_identification_run();
+        self.inner.import.start_identification(
             run,
-            candidate_key.clone(),
-            crate::util::rate_limiter::CallPriority::Interactive,
-            choices,
-        );
-        self.inner.extraction.start(
             candidate_key,
             crate::signals::ExtractionSource::Release { release_id },
             crate::util::rate_limiter::CallPriority::Interactive,
+            choices,
         );
     }
 
@@ -119,8 +123,7 @@ impl AppServices {
     /// [`Self::identify_release_for_lookup`]; a no-op for a key with nothing
     /// running.
     pub fn cancel_identify(&self, candidate_key: &str) {
-        self.inner.identify.cancel(candidate_key);
-        self.inner.extraction.cancel(candidate_key);
+        self.inner.import.cancel_identification(candidate_key);
     }
 
     /// Identify a folder candidate again, reading what the candidate says its

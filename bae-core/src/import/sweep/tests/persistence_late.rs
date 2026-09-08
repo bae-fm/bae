@@ -60,8 +60,8 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
         .expect("the late candidate is handled without panic");
     assert!(
         !fixture
-            .identify
-            .is_running(running.to_string_lossy().as_ref())
+            .import
+            .is_identifying(running.to_string_lossy().as_ref())
     );
     let late_row = fixture
         .stored_for(&late)

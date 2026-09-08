@@ -176,6 +176,9 @@ impl ImportServiceHandle {
     ///
     /// The worker sources the release itself from the persisted provider
     /// documents for an external release, or the stored snapshot for File Tags.
+    ///
+    /// The claim ends the candidate's identification: an imported candidate
+    /// has no question left for a run to answer.
     pub async fn start_import(
         &self,
         candidate_key: &str,
@@ -290,6 +293,9 @@ impl ImportServiceHandle {
             .clear_import_candidate_failure(&expectation.candidate.content_hash)
             .await?;
         self.runtime.claim_for_import(candidate_key);
+        // The claim is the point the candidate stops being identification's to
+        // answer, so the run it had going ends here.
+        self.cancel_identification(candidate_key);
         drop(commit);
         self.send_claimed_command(command, expectation).await?;
         Ok(import_id)

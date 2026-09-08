@@ -45,12 +45,11 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         .start_import_service(tokio::runtime::Handle::current())
         .await
         .unwrap();
-    let (_identify, extraction) = import_handle.start_candidate_services();
     let analyzer = std::sync::Arc::new(DelayedAnalyzer {
         calls: AtomicUsize::new(0),
         delay: Duration::from_millis(200),
     });
-    extraction.register_analyzer(analyzer.clone());
+    import_handle.register_artwork_analyzer(analyzer.clone());
 
     let mut events = import_handle.subscribe_events();
     import_handle
@@ -93,8 +92,11 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         .expect("the candidate reads back")
         .expect("the accepted list holds the candidate");
 
-    // Start extraction the way the bridge does, then remove the folder mid-OCR.
-    extraction.start(
+    // Extraction alone, without the run it normally feeds: this is about what
+    // a removed folder does to the OCR in flight, and a run would ask the
+    // providers. Reached through the owner's own field, which its tests are
+    // inside of.
+    import_handle.extraction.start(
         key.clone(),
         ExtractionSource::Candidate { candidate },
         crate::util::rate_limiter::CallPriority::Interactive,

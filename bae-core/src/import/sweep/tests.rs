@@ -426,8 +426,6 @@ struct Fixture {
     /// The writer the handle uses, for tests that write a candidate directly.
     preparations: crate::import::CandidatePreparations,
     import: ImportServiceHandle,
-    identify: IdentifyServiceHandle,
-    extraction: ExtractionServiceHandle,
     provider: FakeProvider,
     /// One context for the fixture's whole life, so consecutive `sweep_once`
     /// calls are the same sweep — which is what a second pass after a failed
@@ -486,7 +484,6 @@ impl Fixture {
             .start_import_service(tokio::runtime::Handle::current())
             .await
             .unwrap();
-        let (identify, extraction) = import.start_candidate_services();
 
         let provider = FakeProvider::start().await;
         crate::musicbrainz::BASE_URL.set_for_test(Some(provider.base_url.clone()));
@@ -501,8 +498,6 @@ impl Fixture {
 
         let context = SweepContext {
             import: import.clone(),
-            identify: identify.clone(),
-            extraction: extraction.clone(),
             library_manager: manager.clone(),
             ours: Arc::new(Mutex::new(HashSet::new())),
         };
@@ -527,8 +522,6 @@ impl Fixture {
             manager,
             preparations,
             import,
-            identify,
-            extraction,
             provider,
             context,
             sweep,
@@ -654,7 +647,7 @@ impl Fixture {
         let key = dir.to_string_lossy().into_owned();
         self.start_explicit_lookup(dir);
         tokio::time::timeout(Duration::from_secs(10), async {
-            while !self.identify.is_running(&key) {
+            while !self.import.is_identifying(&key) {
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
         })
@@ -931,5 +924,7 @@ include!("tests/settling.rs");
 include!("tests/metadata_modes.rs");
 include!("tests/imports_and_progress.rs");
 include!("tests/persistence.rs");
+include!("tests/stored_picks.rs");
 include!("tests/persistence_late.rs");
 include!("tests/candidate_decisions.rs");
+include!("tests/cancellation.rs");

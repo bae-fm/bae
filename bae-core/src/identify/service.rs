@@ -110,6 +110,13 @@ impl IdentifyServiceHandle {
             drivers: Mutex::new(HashMap::new()),
             next_run: std::sync::atomic::AtomicU64::new(1),
         });
+        // A candidate that vanished or was reshaped cannot be answered by the
+        // run in flight: it is answering files the key no longer names, and
+        // storing that answer would put back exactly the stale verdict the
+        // reshape cleared. This is the one cancellation that is not a command
+        // — a reshape has no single decision point, so it is heard here — and
+        // every decision a person makes about a candidate instead ends its run
+        // at the command that decides, inside that command's own write.
         let mut removal_rx = inner.event_tx.subscribe();
         let removal_inner = inner.clone();
         inner.runtime_handle.spawn(async move {

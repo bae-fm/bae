@@ -1,13 +1,9 @@
 use super::manager::LibraryManager;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::identify::IdentifyServiceHandle;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::import::ImportServiceHandle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::import::QueueSweepHandle;
 use crate::playback::PlaybackHandle;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::signals::ExtractionServiceHandle;
 use std::sync::Arc;
 
 macro_rules! delegate_sync {
@@ -29,12 +25,10 @@ macro_rules! delegate_async {
 struct AppServicesInner {
     manager: LibraryManager,
     playback: PlaybackHandle,
+    /// The import service, which also owns the identify driver and the
+    /// extraction feeding it: one of each per library, reached through it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     import: ImportServiceHandle,
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    identify: IdentifyServiceHandle,
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    extraction: ExtractionServiceHandle,
     /// Queue-wide identification. Built here rather than handed in, so that a
     /// library cannot exist without one: the sweep runs whether or not anyone
     /// has the Import section open, and opening a view is not what starts it.
@@ -161,24 +155,13 @@ impl AppServices {
         #[cfg(not(any(target_os = "ios", target_os = "android")))] import: ImportServiceHandle,
     ) -> Self {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let (identify, extraction) = import.start_candidate_services();
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let sweep = crate::import::sweep::start(
-            import.clone(),
-            identify.clone(),
-            extraction.clone(),
-            manager.clone(),
-        );
+        let sweep = crate::import::sweep::start(import.clone(), manager.clone());
         AppServices {
             inner: Arc::new(AppServicesInner {
                 manager,
                 playback,
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
                 import,
-                #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                identify,
-                #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                extraction,
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
                 sweep,
             }),
@@ -735,7 +718,7 @@ impl AppServices {
                 // nobody asks is exactly as wrong as the open one. A candidate
                 // that already settled has no run to supersede; the sweep
                 // re-plans those when its own config watcher fires.
-                for key in self.inner.identify.running_keys() {
+                for key in self.inner.import.identifying_keys() {
                     self.inner.sweep.rerun_for_explicit_lookup(key);
                 }
             }

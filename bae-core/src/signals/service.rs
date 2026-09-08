@@ -187,8 +187,10 @@ impl ExtractionServiceHandle {
     }
 
     /// Cancel a candidate's in-flight extraction. For the bridge's candidate
-    /// teardown (the re-identify dismissal); core-side removal cancels through
-    /// the `CandidateRemoved` bus listener instead.
+    /// teardown (the re-identify dismissal) and for
+    /// [`crate::import::ImportServiceHandle::cancel_identification`], which
+    /// ends a decided candidate's extraction beside its run; a removed or
+    /// reshaped candidate cancels through the bus listener instead.
     pub fn cancel(&self, key: &str) {
         self.inner.cancellation.cancel(key);
     }

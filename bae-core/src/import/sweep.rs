@@ -37,11 +37,11 @@
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use super::release_candidate::ReleaseCandidate;
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
-use crate::identify::{IdentifyRunId, IdentifyServiceHandle, IdentifyState, TerminalVerdict};
+use crate::identify::{IdentifyRunId, IdentifyState, TerminalVerdict};
 use crate::import::search::MetadataResult;
 use crate::import::LookupChoices;
 use crate::library::LibraryManager;
-use crate::signals::{ExtractionServiceHandle, ExtractionSource};
+use crate::signals::ExtractionSource;
 use crate::util::rate_limiter::CallPriority;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
@@ -71,12 +71,12 @@ use settle::*;
 /// meaningfully choose here.
 const MAX_IN_FLIGHT: usize = 4;
 
-/// The services and live ownership one queue-identification pass needs.
+/// The services and live ownership one queue-identification pass needs. The
+/// identify driver and the extraction behind it are the import handle's, so
+/// the sweep and the commands that decide a candidate act on the same pair.
 #[derive(Clone)]
 struct SweepContext {
     import: ImportServiceHandle,
-    identify: IdentifyServiceHandle,
-    extraction: ExtractionServiceHandle,
     library_manager: LibraryManager,
     /// Candidate keys the sweep currently has drivers running for.
     ours: Arc<Mutex<HashSet<String>>>,
@@ -89,19 +89,25 @@ impl SweepContext {
     /// that has answered still owns its key until the row states its result,
     /// or a pass planning inside that interval would identify it again.
     fn identification_in_flight(&self, key: &str) -> bool {
-        self.identify.is_running(key) || self.import.is_saving_identification(key)
+        self.import.is_identifying(key) || self.import.is_saving_identification(key)
     }
 
     fn owned_elsewhere(&self, key: &str) -> bool {
         self.identification_in_flight(key) && !self.ours.lock().unwrap().contains(key)
     }
 
-    /// Stop everything the sweep started for `key` and stop counting it as
-    /// ours. For a candidate the sweep is giving up on mid-run.
+    /// Stop the run the sweep started for `key` and stop counting it as ours.
+    /// For a candidate the sweep is ending mid-run itself.
+    ///
+    /// Only a run that is still the sweep's is cancelled. A decision about a
+    /// candidate ends its run at the command that decided, and the sweep
+    /// hears about that decision afterwards — by which time the key may name
+    /// a run somebody else started, which is not the sweep's to tear down.
     fn release(&self, key: &str) {
-        self.identify.cancel(key);
-        self.extraction.cancel(key);
-        self.ours.lock().unwrap().remove(key);
+        if !self.ours.lock().unwrap().remove(key) {
+            return;
+        }
+        self.import.cancel_identification(key);
     }
 
     /// The run answered and ended on its own, so there is no driver left to
@@ -109,7 +115,7 @@ impl SweepContext {
     /// Cancelling identify here would tear down whatever run has taken the key
     /// since the answer landed.
     fn release_settled(&self, key: &str) {
-        self.extraction.cancel(key);
+        self.import.cancel_candidate_extraction(key);
         self.ours.lock().unwrap().remove(key);
     }
 
@@ -125,31 +131,21 @@ impl SweepContext {
             .ours
             .lock()
             .unwrap()
-            .iter()
-            .cloned()
+            .drain()
             .collect::<Vec<_>>();
         for key in keys {
-            self.identify.cancel(&key);
-            self.extraction.cancel(&key);
+            self.import.cancel_identification(&key);
         }
-        self.ours.lock().unwrap().clear();
     }
 }
 
 /// Start the queue sweep. A candidate becoming actionable, a binding change,
 /// or a completed folder scan plans a pass.
-pub fn start(
-    import: ImportServiceHandle,
-    identify: IdentifyServiceHandle,
-    extraction: ExtractionServiceHandle,
-    library_manager: LibraryManager,
-) -> QueueSweepHandle {
+pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> QueueSweepHandle {
     let token = CancellationToken::new();
     let tasks = TaskTracker::new();
     let context = SweepContext {
         import,
-        identify,
-        extraction,
         library_manager,
         ours: Arc::new(Mutex::new(HashSet::new())),
     };
@@ -320,9 +316,21 @@ impl Drop for AutomaticQueueGuard {
     }
 }
 
-enum PassOutcome {
-    Complete,
-    Replan,
+/// Wait for every settling task to run out, and stop owning what each of them
+/// settled.
+///
+/// Nothing is aborted. A settling task holds a durable write and ends its own
+/// pending save whichever way it goes, so tearing one down mid-flight would
+/// leave a candidate's row saying a commit is still coming. Cancelling
+/// `settling` first is what abandons their answers; the tasks then return at
+/// their next check.
+async fn drain(context: &SweepContext, finishing: &mut JoinSet<Finished>) {
+    while let Some(result) = finishing.join_next().await {
+        match result {
+            Ok(done) => context.release_settled(&done.representative_key),
+            Err(error) => warn!("sweep finishing task failed: {error}"),
+        }
+    }
 }
 
 /// Walk the queue once: plan what still needs answering, drive it under the
@@ -333,19 +341,10 @@ async fn run_pass(
     bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
     config: &mut tokio::sync::watch::Receiver<crate::config::Config>,
 ) {
-    while let PassOutcome::Replan = run_pass_once(context, token, bus, config).await {}
-}
-
-async fn run_pass_once(
-    context: &SweepContext,
-    token: &CancellationToken,
-    bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
-    config: &mut tokio::sync::watch::Receiver<crate::config::Config>,
-) -> PassOutcome {
     if !config.borrow().prefs.identify_automatically {
         context.release_all();
         announce_empty_queue(context);
-        return PassOutcome::Complete;
+        return;
     }
     let candidates = match new_candidates(context).await {
         Ok(candidates) => candidates,
@@ -353,7 +352,7 @@ async fn run_pass_once(
             // Without the list the sweep cannot plan. Skip the pass; the next
             // scan plans another.
             warn!("sweep: could not read the candidate list ({error}); skipping this pass");
-            return PassOutcome::Complete;
+            return;
         }
     };
     let stored = match context.library_manager.load_import_candidate_states().await {
@@ -364,7 +363,7 @@ async fn run_pass_once(
             // rate limit re-learning what it already knows. Skip the pass; the
             // next scan plans another.
             warn!("sweep: could not read stored candidate states ({e}); skipping this pass");
-            return PassOutcome::Complete;
+            return;
         }
     };
 
@@ -372,18 +371,22 @@ async fn run_pass_once(
     pass.announce(context);
     pass.publish_queue(context);
     if pass.is_idle() {
-        return PassOutcome::Complete;
+        return;
     }
     let _automatic_queue = AutomaticQueueGuard(context.import.clone());
     let mut finishing = JoinSet::<Finished>::new();
+    // Every settling task takes this token, a child of the pass's own. A pass
+    // that abandons its answers cancels it and waits; one that stops taking new
+    // candidates but keeps the answers it already has just waits.
+    let settling = token.child_token();
 
     loop {
         while pass.in_flight_count() + finishing.len() < MAX_IN_FLIGHT {
             if !config.borrow().prefs.identify_automatically {
                 context.release_all();
-                finishing.shutdown().await;
+                drain(context, &mut finishing).await;
                 announce_empty_queue(context);
-                return PassOutcome::Complete;
+                return;
             }
             let Some(mut job) = pass.next_job() else {
                 break;
@@ -412,8 +415,9 @@ async fn run_pass_once(
                             "sweep: cannot read what {key} runs from ({error}); aborting pass"
                         );
                     pass.release_in_flight(context);
-                    finishing.shutdown().await;
-                    return PassOutcome::Complete;
+                    settling.cancel();
+                    drain(context, &mut finishing).await;
+                    return;
                 }
             };
             let CandidateRunStart {
@@ -421,43 +425,46 @@ async fn run_pass_once(
                 choices,
             } = start;
             context.ours.lock().unwrap().insert(key.clone());
-            // Identify first: it takes its bus subscription synchronously, so
-            // extraction's first snapshot cannot be emitted into a void.
-            let run = context.identify.new_run();
-            context
-                .identify
-                .start(run, key.clone(), CallPriority::Background, choices);
-            // The job is running now, so it is not waiting for a slot. The
-            // members it shares an identity with still are: they are waiting
-            // for the answer this run stores.
-            context.import.clear_automatic_identification(&key);
-            context.extraction.start(
+            let run = context.import.new_identification_run();
+            context.import.start_identification(
+                run,
                 key.clone(),
                 ExtractionSource::Candidate {
                     candidate: candidate.clone(),
                 },
                 CallPriority::Background,
+                choices,
             );
+            // The job is running now, so it is not waiting for a slot. The
+            // members it shares an identity with still are: they are waiting
+            // for the answer this run stores.
+            context.import.clear_automatic_identification(&key);
             pass.track(key, job, run, expected_metadata_revision);
         }
 
         if pass.is_idle() && finishing.is_empty() {
-            return PassOutcome::Complete;
+            return;
         }
 
         tokio::select! {
             biased;
             _ = token.cancelled() => {
+                // `settling` is a child of this token, so the answers in
+                // flight are already told to stop; what is left is waiting
+                // for them to say so.
                 pass.release_in_flight(context);
-                finishing.shutdown().await;
-                return PassOutcome::Complete;
+                drain(context, &mut finishing).await;
+                return;
             }
             changed = config.changed() => {
                 if changed.is_err() || !config.borrow().prefs.identify_automatically {
+                    // The runs the sweep has going are cancelled; the answers
+                    // already being written are not. A candidate whose verdict
+                    // is in flight keeps its write and its row lands.
                     context.release_all();
-                    finishing.shutdown().await;
+                    drain(context, &mut finishing).await;
                     announce_empty_queue(context);
-                    return PassOutcome::Complete;
+                    return;
                 }
             }
             Some(result) = finishing.join_next() => {
@@ -466,14 +473,6 @@ async fn run_pass_once(
                         context.release_settled(&done.representative_key);
                         let deferred = pass.take_finishing_members(&done.identity);
                         let stored = matches!(&done.outcome, FinishCandidateOutcome::Stored);
-                        // Whichever way it went, this run's answer is not
-                        // waiting on a write any more: the row landed, or no
-                        // row will ever state it. The write clears its own on
-                        // the way through; this covers the outcomes that never
-                        // reached one.
-                        context
-                            .import
-                            .finish_identification_save(&done.representative_key, done.run);
                         match done.outcome {
                             FinishCandidateOutcome::Stored => {
                                 for key in &done.candidate_keys {
@@ -512,9 +511,6 @@ async fn run_pass_once(
                             );
                         }
                     }
-                    Err(error) if error.is_cancelled() && token.is_cancelled() => {
-                        return PassOutcome::Complete;
-                    }
                     Err(error) => warn!("sweep finishing task failed: {error}"),
                 }
             }
@@ -523,16 +519,17 @@ async fn run_pass_once(
                     pass.record_signals(&candidate_key, signals);
                 }
                 Some(Ok(ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. })) => {
-                    pass.settle(context, token, &mut finishing, &candidate_key, run, state);
+                    pass.settle(context, &settling, &mut finishing, &candidate_key, run, state);
                 }
-                Some(Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { .. }))) => {
-                    // A chosen source owns this candidate now. Cancel every
-                    // background run from this pass and plan again from the
-                    // committed provenance so no in-flight duplicate can continue
-                    // OCR or provider lookup for the same content hash.
-                    context.release_all();
-                    finishing.shutdown().await;
-                    return PassOutcome::Replan;
+                // A person decided this candidate: they picked a release, said
+                // File Tags, or cleared what it had. The command that decided
+                // ended its run as part of its own write, so nothing is
+                // cancelled here — the candidate simply stops being the pass's,
+                // and every other candidate carries on to its verdict.
+                Some(Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
+                    candidate_key,
+                }))) => {
+                    pass.drop_candidate(context, &candidate_key);
                 }
                 // The folder was removed, renamed, or unmounted while we were
                 // identifying it. Extraction is cancelled for us by the signal
@@ -572,8 +569,9 @@ async fn run_pass_once(
                                 "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
                             );
                             pass.release_in_flight(context);
-                            finishing.shutdown().await;
-                            return PassOutcome::Complete;
+                            settling.cancel();
+                            drain(context, &mut finishing).await;
+                            return;
                         }
                     };
                     // Already answered — either on disk, or by a candidate this
@@ -604,8 +602,9 @@ async fn run_pass_once(
                                             "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
                                         );
                                         pass.release_in_flight(context);
-                                        finishing.shutdown().await;
-                                        return PassOutcome::Complete;
+                                        settling.cancel();
+                                        drain(context, &mut finishing).await;
+                                        return;
                                     }
                                 };
                             if stored_now {
@@ -649,9 +648,7 @@ async fn run_pass_once(
                     );
                     pass.replay_in_flight(context);
                 }
-                Some(Err(broadcast::error::RecvError::Closed)) | None => {
-                    return PassOutcome::Complete;
-                }
+                Some(Err(broadcast::error::RecvError::Closed)) | None => return,
             },
         }
     }

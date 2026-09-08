@@ -132,6 +132,12 @@ pub struct ImportServiceHandle {
     /// Unified event channel — all import service events go here.
     event_tx: broadcast::Sender<ImportEvent>,
     runtime: CandidateRuntime,
+    /// The identify driver and the extraction feeding it. Built here because
+    /// both run on this handle's event bus, and held here because the commands
+    /// that decide a candidate — a pick, a clear, a skip, an import — end its
+    /// identification as part of their own write.
+    identify: crate::identify::IdentifyServiceHandle,
+    extraction: crate::signals::ExtractionServiceHandle,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     watcher: WorkerThread<WatcherCommand>,
     runtime_handle: tokio::runtime::Handle,
@@ -246,6 +252,16 @@ impl ImportServiceHandle {
             ids,
             folder_state_commit,
         } = services;
+        let identify = crate::identify::IdentifyServiceHandle::new(
+            library_manager.clone(),
+            runtime_handle.clone(),
+            event_tx.clone(),
+        );
+        let extraction = crate::signals::ExtractionService::start(
+            runtime_handle.clone(),
+            event_tx.clone(),
+            library_manager.clone(),
+        );
         let handle = Self {
             worker,
             library_manager,
@@ -254,6 +270,8 @@ impl ImportServiceHandle {
             ids,
             event_tx,
             runtime,
+            identify,
+            extraction,
             folder_state_commit,
             watcher,
             runtime_handle,
@@ -288,23 +306,79 @@ impl ImportServiceHandle {
         });
     }
 
-    pub(crate) fn start_candidate_services(
+    /// The id of a run about to start. Separate from
+    /// [`Self::start_identification`] so a consumer can subscribe to this
+    /// handle's bus knowing which run it is waiting for before that run's
+    /// first state is broadcast.
+    pub(crate) fn new_identification_run(&self) -> crate::identify::IdentifyRunId {
+        self.identify.new_run()
+    }
+
+    /// Identify `key` as `run`: the driver that asks the providers, and the
+    /// extraction that feeds it the disc ID, barcodes and text `source`
+    /// yields. Fire-and-forget; both report on this handle's event bus.
+    ///
+    /// One candidate is identified at a time, so this supersedes whatever was
+    /// identifying `key` already. The driver is started first because it takes
+    /// its bus subscription synchronously, and extraction's first snapshot
+    /// must not be emitted into a void.
+    pub(crate) fn start_identification(
         &self,
-    ) -> (
-        crate::identify::IdentifyServiceHandle,
-        crate::signals::ExtractionServiceHandle,
+        run: crate::identify::IdentifyRunId,
+        key: String,
+        source: crate::signals::ExtractionSource,
+        priority: crate::util::rate_limiter::CallPriority,
+        choices: crate::import::LookupChoices,
     ) {
-        let identify = crate::identify::IdentifyServiceHandle::new(
-            self.library_manager.clone(),
-            self.runtime_handle.clone(),
-            self.event_tx.clone(),
-        );
-        let extraction = crate::signals::ExtractionService::start(
-            self.runtime_handle.clone(),
-            self.event_tx.clone(),
-            self.library_manager.clone(),
-        );
-        (identify, extraction)
+        self.identify.start(run, key.clone(), priority, choices);
+        self.extraction.start(key, source, priority);
+    }
+
+    /// Stop identifying this candidate: the run and the extraction feeding it.
+    ///
+    /// A decision about a candidate ends its identification, and ends it at
+    /// the command that decides — inside that command's own write, so an
+    /// answer the superseded run was about to reach cannot land after the
+    /// decision it was superseded by. A candidate with nothing running is
+    /// unchanged by this.
+    ///
+    /// The one cancellation that is not a command is a reshaped or vanished
+    /// candidate: it has no single decision point, so both halves cancel it
+    /// off their own listeners on the scan's events.
+    pub(crate) fn cancel_identification(&self, candidate_key: &str) {
+        self.identify.cancel(candidate_key);
+        self.extraction.cancel(candidate_key);
+    }
+
+    /// Stop only the extraction behind `key`, for a run that reached its
+    /// answer and ended on its own. Ending the run here would tear down
+    /// whatever has taken the key over since that answer landed.
+    pub(crate) fn cancel_candidate_extraction(&self, candidate_key: &str) {
+        self.extraction.cancel(candidate_key);
+    }
+
+    /// Whether a run is in flight for `key`. A run that reached its verdict
+    /// and one that was cancelled are both gone: the driver deregisters itself
+    /// the moment it stops working.
+    pub(crate) fn is_identifying(&self, key: &str) -> bool {
+        self.identify.is_running(key)
+    }
+
+    /// Every key with a run in flight right now. What a change to the inputs
+    /// every run reads — the library's provider list — has to act on: those
+    /// runs answer the list as it was, and nothing else does.
+    pub(crate) fn identifying_keys(&self) -> Vec<String> {
+        self.identify.running_keys()
+    }
+
+    /// Register the platform's artwork analyzer, which extraction reads
+    /// barcodes and text off a candidate's images with. Called once at boot,
+    /// on the platforms that ship one.
+    pub(crate) fn register_artwork_analyzer(
+        &self,
+        analyzer: Arc<dyn crate::signals::ArtworkAnalyzer>,
+    ) {
+        self.extraction.register_analyzer(analyzer);
     }
 
     /// Stop and join both worker threads. Idempotent (each join handle is
@@ -640,7 +714,7 @@ impl ImportServiceHandle {
     /// The write runs as a task of the import runtime, and this only waits on
     /// it, so whatever happens to the caller's future — a UniFFI call the
     /// bridge drops because the person looked at another candidate, a sweep
-    /// settling task aborted by a replan — ends the wait for the outcome and
+    /// task the app's teardown drops — ends the wait for the outcome and
     /// nothing else. Coven commits a write on its writer thread whether or not
     /// the future that asked for it survives, so a write the caller could
     /// abort is one that can land without the bookkeeping or lock release that
