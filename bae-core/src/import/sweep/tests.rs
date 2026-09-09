@@ -277,6 +277,23 @@ fn discid_json(release_id: &str, group_id: &str, track_lengths: &[u64]) -> Strin
     serde_json::json!({ "releases": [release] }).to_string()
 }
 
+/// The same disc-ID answer for a release that prints a barcode. MusicBrainz
+/// states a release's barcode on every answer that names it, so a disc-ID
+/// result carries the code that pairs it with the Discogs record of the same
+/// pressing.
+fn discid_json_stating_barcode(
+    release_id: &str,
+    group_id: &str,
+    track_lengths: &[u64],
+    barcode: &str,
+) -> String {
+    let mut answer: serde_json::Value =
+        serde_json::from_str(&discid_json(release_id, group_id, track_lengths))
+            .expect("the disc ID fixture parses");
+    answer["releases"][0]["barcode"] = serde_json::json!(barcode);
+    answer.to_string()
+}
+
 /// A search hit as `ws/2/release?query=…` returns it: no `media`, hence no
 /// lengths and no count, so the Ready rule has nothing to check until the lead
 /// is settled.

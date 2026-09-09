@@ -10,6 +10,10 @@
 //! The disc ID and the barcode are not looked for: they are exact codes, and
 //! the lookup that returned the result is what states them.
 //!
+//! A country is the one field the two write differently: a provider answers
+//! `JP` and a folder writes `Japan`. Both spellings are looked for, through
+//! [`super::country`].
+//!
 //! Not every number printed on a folder is a catalog number — a phone number
 //! on a sleeve, a serial on a label, the year twice — so a person can strike
 //! one out. A struck-out value is not read as a catalog number any more,
@@ -50,6 +54,21 @@ impl Agreements {
         year: false,
         country: false,
     };
+
+    /// Both together — what a pressing row agrees with, since a row is one
+    /// physical object however many sources carry it and is picked whole. A
+    /// catalog number only Discogs prints, and a disc ID only MusicBrainz
+    /// answers, are both true of the object.
+    pub fn with(self, other: Self) -> Self {
+        Self {
+            disc_id: self.disc_id || other.disc_id,
+            barcode: self.barcode || other.barcode,
+            catalog: self.catalog || other.catalog,
+            label: self.label || other.label,
+            year: self.year || other.year,
+            country: self.country || other.country,
+        }
+    }
 
     /// How many badges the row carries. What the rows are ordered by.
     pub fn count(&self) -> u32 {
@@ -100,7 +119,10 @@ pub fn agreements_of(
         year: result
             .year
             .is_some_and(|year| text.states(&year.to_string())),
-        country: states(&result.country),
+        country: result
+            .country
+            .as_deref()
+            .is_some_and(|value| text.states_country(value)),
     }
 }
 
@@ -154,6 +176,20 @@ impl CandidateText {
     /// and not struck out.
     pub fn states_catalog(&self, value: &str) -> bool {
         !self.is_struck_out(value) && self.states(value)
+    }
+
+    /// Whether the text states `value` as a country, however either of them
+    /// writes it. A provider answers a code and a folder writes the name out,
+    /// so a result saying `JP` is stated by a folder saying `Japan`, and one
+    /// saying `Japan` by a folder saying `JP`.
+    pub fn states_country(&self, value: &str) -> bool {
+        if self.states(value) {
+            return true;
+        }
+        let Some(country) = super::country::named(value) else {
+            return false;
+        };
+        self.states(country.code) || country.names.iter().any(|name| self.states(name))
     }
 
     /// Whether the person struck `value` out as a catalog number.

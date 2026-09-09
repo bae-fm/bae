@@ -10,17 +10,27 @@
 //! failure to identify: each saw something, and the union of what they saw is
 //! the set the user picks from, each row carrying which signal produced it.
 //!
-//! The candidate's own text is the second narrowing. Each surviving release is
-//! judged against it — see [`super::agreements`] — the rows are ordered by how
-//! much of the folder agrees with them, and a pressing the folder says nothing
-//! about joins what the intersection left out.
+//! **The pressing is what is offered or set aside, not the release.** Two
+//! sources' records of one physical object are one row a person picks whole,
+//! and the two rarely arrive by the same route: a disc ID answers on
+//! MusicBrainz alone, so the Discogs record of that same pressing can only ever
+//! be a barcode's answer and never the intersection's. So every answer the run
+//! returned is paired first — [`group_results`] — and agreement is then read
+//! off whole rows: a row survives the intersection when any of its records is
+//! in it, and what the candidate's text agrees with about the row is what its
+//! records agree with together.
+//!
+//! The candidate's own text is the second narrowing. Each row is judged
+//! against it — see [`super::agreements`] — the rows are ordered by how much of
+//! the folder agrees with them, and a pressing the folder says nothing about
+//! joins what the intersection left out.
 
-use super::agreements::{agreements_of, Agreements, CandidateText};
+use super::agreements::{agreements_of, CandidateText};
 use crate::db::LibraryStatus;
-use crate::import::release_group::group_results;
+use crate::import::release_group::{group_results, Judged, Judgements, Pressing};
 use crate::import::search::MetadataResult;
 use crate::import::MetadataSource;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Which lookup produced one result: the result came back from that signal's
 /// lookup. The other half of a row's badges — what the folder's own text says
@@ -36,8 +46,8 @@ pub struct LookupProvenance {
     pub by_catalog: bool,
 }
 
-/// The releases agreement left out — every release a checked signal named that
-/// the intersection does not hold.
+/// The pressings agreement left out, as the releases they are made of — every
+/// row a checked signal named that the intersection does not hold.
 ///
 /// Agreement is what makes a short list: a disc ID that named three releases
 /// and a barcode that named two settle on the one they share, and the other
@@ -45,9 +55,13 @@ pub struct LookupProvenance {
 /// lookup, and one of them may be the disc on the desk, so combine hands them
 /// back beside the matches instead of dropping them.
 ///
-/// The releases the folder's own text says nothing about are here too: a
-/// barcode lookup that comes back naming somebody else's record answered a
-/// question the folder never asked.
+/// The rows the folder's own text says nothing about are here too: a barcode
+/// lookup that comes back naming somebody else's record answered a question
+/// the folder never asked.
+///
+/// A row is here whole or not at all — every record of a set-aside pressing,
+/// and none of an offered one — so re-grouping either list rebuilds the same
+/// rows the run ranked.
 ///
 /// Empty when nothing was narrowed: one signal answering alone is the whole
 /// answer, signals that shared nothing already list their union, and a set the
@@ -93,17 +107,20 @@ type ReleaseKey = (MetadataSource, String);
 /// either way, since an intersection it emptied would fall through to the
 /// union of the rest.
 ///
-/// 1. **Nothing.** Every set empty: `NotFoundAnywhere`.
-/// 2. **One set.** That set is the answer.
-/// 3. **Several sets.** Intersect them by `(source, release_id)`, keeping the
-///    first set's order. An empty intersection means the signals named
-///    different releases; neither is wrong about having seen something, so the
-///    set becomes their union, in signal order, and each row says which signal
-///    produced it.
+/// Every answer the run returned is paired into pressing rows first, and the
+/// two narrowings then read those rows:
 ///
-/// Then `text` — the candidate's own lines — judges what survived: rows the
-/// folder says nothing about join what the intersection left out, and the rest
-/// are ordered by how much of the folder agrees with them.
+/// 1. **Nothing.** Every set empty: `NotFoundAnywhere`.
+/// 2. **Agreement.** With more than one set answering, the releases every set
+///    names are what agreement holds; a row holding none of them is set aside.
+///    One set alone is the whole answer, and sets that share nothing named
+///    different releases — neither narrows anything, and every row stands.
+/// 3. **The candidate's own text.** A row the folder says nothing about joins
+///    what agreement left out.
+///
+/// The rows come back most-agreed-with first, as records: a row is offered
+/// whole or set aside whole, so re-grouping either list rebuilds the rows this
+/// ranked.
 pub fn combine_results(
     discid_results: Results,
     barcode_results: Results,
@@ -121,48 +138,62 @@ pub fn combine_results(
         return CombineOutcome::NotFoundAnywhere;
     };
 
-    // Only an intersection narrows anything: one set alone is the whole answer,
-    // and sets that share nothing already list their union.
-    let (combined, mut left_out) = if rest.is_empty() {
-        ((*first).clone(), Results::new())
-    } else {
-        let intersected = intersect_all(first, rest);
-        if intersected.is_empty() {
-            (union_all(&present), Results::new())
-        } else {
-            let agreed = release_keys(&intersected);
-            let left_out = union_all(&present)
-                .into_iter()
-                .filter(|(r, _)| !agreed.contains(&(r.source, r.release_id.clone())))
-                .collect();
-            (intersected, left_out)
-        }
+    // Every answer the run returned, each release once, in signal order.
+    // Pairing runs over all of them, so two sources' records of one pressing
+    // meet however the intersection falls between them.
+    let all = union_all(&present);
+
+    // What every answering signal named. Empty when nothing narrows: one set
+    // alone is the whole answer, and sets that share nothing already list
+    // their union.
+    let agreed: HashSet<ReleaseKey> = match rest.is_empty() {
+        true => HashSet::new(),
+        false => release_keys(&intersect_all(first, rest)),
     };
 
-    let provenance_of = |results: &Results| -> Vec<LookupProvenance> {
-        results
-            .iter()
-            .map(|(r, _)| {
-                let key = (r.source, r.release_id.clone());
-                LookupProvenance {
-                    by_disc_id: keys[0].contains(&key),
-                    by_barcode: keys[1].contains(&key),
-                    by_catalog: keys[2].contains(&key),
-                }
+    let lookup_of = |result: &MetadataResult| {
+        let key = (result.source, result.release_id.clone());
+        LookupProvenance {
+            by_disc_id: keys[0].contains(&key),
+            by_barcode: keys[1].contains(&key),
+            by_catalog: keys[2].contains(&key),
+        }
+    };
+    let judged: Vec<Judged> = all
+        .iter()
+        .map(|(result, _)| {
+            let agreements = agreements_of(result, text, &lookup_of(result));
+            (result.clone(), agreements)
+        })
+        .collect();
+    let judgements = Judgements::of(&judged);
+    let rows: Vec<Pressing> = group_results(judged)
+        .into_iter()
+        .flat_map(|group| group.pressings)
+        .collect();
+    let (offered, set_aside) = split_rows(rows, &judgements, &agreed, text.is_empty());
+
+    let statuses: HashMap<ReleaseKey, LibraryStatus> = all
+        .into_iter()
+        .map(|(result, status)| ((result.source, result.release_id), status))
+        .collect();
+    let records = |rows: Vec<Pressing>| -> Results {
+        rows.into_iter()
+            .flat_map(|row| row.releases)
+            .map(|result| {
+                let status = statuses
+                    .get(&(result.source, result.release_id.clone()))
+                    .cloned()
+                    .expect("a pressing is built from the run's own answers");
+                (result, status)
             })
             .collect()
     };
 
-    let judged: Vec<Agreements> = combined
-        .iter()
-        .zip(provenance_of(&combined))
-        .map(|((result, _), lookup)| agreements_of(result, text, &lookup))
-        .collect();
-    let (combined, folded) = fold_unstated(combined, &judged, text.is_empty());
-    left_out.extend(folded);
-
-    let provenance = provenance_of(&combined);
-    let narrowed_out_provenance = provenance_of(&left_out);
+    let combined = records(offered);
+    let left_out = records(set_aside);
+    let provenance = combined.iter().map(|(r, _)| lookup_of(r)).collect();
+    let narrowed_out_provenance = left_out.iter().map(|(r, _)| lookup_of(r)).collect();
     let (matches, library_statuses) = combined.into_iter().unzip();
     let (narrowed_matches, narrowed_statuses) = left_out.into_iter().unzip();
     CombineOutcome::Found {
@@ -177,73 +208,51 @@ pub fn combine_results(
     }
 }
 
-/// Split the results into the ones offered and the ones the folder states
-/// nothing about, ordered as the rows will be: most agreed with first, ties in
-/// the order they arrived.
+/// Split the ranked rows into the ones offered and the ones set aside, each
+/// keeping the ranked order.
 ///
-/// The unit is the pressing, not the release: two sources' records of one
-/// physical object are one row a person picks whole, so a row one of them
-/// states nothing about is still the row the other one does.
+/// A row is set aside when agreement left it out — `agreed` names releases and
+/// none of the row's is among them — or when the candidate's text states
+/// nothing about it.
 ///
-/// Nothing folds unless the folder's text is evidence. `speechless` is a
-/// candidate that carries no text at all — a library release being
+/// Nothing is set aside on the text unless the text is evidence. `speechless`
+/// is a candidate that carries no text at all — a library release being
 /// re-identified before its artwork is read — and nothing was consulted about
-/// its answers, so none of them is set aside. Neither is anything set aside
-/// when the text stands behind none of the answers: folding shortens the list,
-/// it never empties it.
-fn fold_unstated(results: Results, judged: &[Agreements], speechless: bool) -> (Results, Results) {
-    let mut order: Vec<usize> = (0..results.len()).collect();
-    order.sort_by_key(|&at| std::cmp::Reverse(judged[at].count()));
+/// its answers. Neither is anything set aside when the text stands behind none
+/// of the rows agreement kept: folding shortens the list, it never empties it.
+fn split_rows(
+    rows: Vec<Pressing>,
+    judgements: &Judgements,
+    agreed: &HashSet<ReleaseKey>,
+    speechless: bool,
+) -> (Vec<Pressing>, Vec<Pressing>) {
+    let held: Vec<bool> =
+        rows.iter()
+            .map(|row| {
+                agreed.is_empty()
+                    || row.releases.iter().any(|release| {
+                        agreed.contains(&(release.source, release.release_id.clone()))
+                    })
+            })
+            .collect();
+    let stated: Vec<bool> = rows
+        .iter()
+        .map(|row| row.agreements(judgements).offered())
+        .collect();
+    let kept_rows = || held.iter().zip(&stated).filter(|(held, _)| **held);
+    let fold_on_text = !speechless
+        && kept_rows().any(|(_, stated)| *stated)
+        && kept_rows().any(|(_, stated)| !*stated);
 
-    let offered = match speechless {
-        true => HashSet::new(),
-        false => offered_pressings(&results, judged),
-    };
-    if offered.is_empty() || offered.len() == results.len() {
-        let ordered = order.iter().map(|&at| results[at].clone()).collect();
-        return (ordered, Results::new());
-    }
-    let mut kept = Results::new();
-    let mut folded = Results::new();
-    for at in order {
-        let key = (results[at].0.source, results[at].0.release_id.clone());
-        match offered.contains(&key) {
-            true => kept.push(results[at].clone()),
-            false => folded.push(results[at].clone()),
+    let mut offered = Vec::new();
+    let mut set_aside = Vec::new();
+    for ((row, held), stated) in rows.into_iter().zip(&held).zip(&stated) {
+        match *held && (!fold_on_text || *stated) {
+            true => offered.push(row),
+            false => set_aside.push(row),
         }
     }
-    (kept, folded)
-}
-
-/// Every release belonging to a pressing the folder's text stands behind.
-fn offered_pressings(results: &Results, judged: &[Agreements]) -> HashSet<ReleaseKey> {
-    let stated: HashSet<ReleaseKey> = results
-        .iter()
-        .zip(judged)
-        .filter(|(_, agreements)| agreements.offered())
-        .map(|((result, _), _)| (result.source, result.release_id.clone()))
-        .collect();
-    group_results(
-        results
-            .iter()
-            .map(|(result, _)| (result.clone(), Agreements::NONE))
-            .collect(),
-    )
-    .into_iter()
-    .flat_map(|group| group.pressings)
-    .filter(|pressing| {
-        pressing
-            .releases
-            .iter()
-            .any(|release| stated.contains(&(release.source, release.release_id.clone())))
-    })
-    .flat_map(|pressing| {
-        pressing
-            .releases
-            .into_iter()
-            .map(|release| (release.source, release.release_id))
-    })
-    .collect()
+    (offered, set_aside)
 }
 
 fn release_keys(results: &Results) -> HashSet<ReleaseKey> {
@@ -266,10 +275,9 @@ fn intersect_all(first: &Results, rest: &[&Results]) -> Results {
         .collect()
 }
 
-/// Every release any set names, in signal order, each release once. Only
-/// reached when the sets share nothing, so in practice nothing is dropped — the
-/// de-duplication is what keeps that a property of the data rather than a thing
-/// the caller has to have checked.
+/// Every release any set names, in signal order, each release once — every
+/// answer the run returned, which is what pairing runs over. A release two
+/// signals both named is kept as the earlier signal returned it.
 fn union_all(sets: &[&Results]) -> Results {
     let mut seen: HashSet<ReleaseKey> = HashSet::new();
     let mut out = Results::new();
@@ -644,6 +652,179 @@ mod tests {
         let mut left_out = ids(&left_out);
         left_out.sort_unstable();
         assert_eq!(left_out, vec!["rel-1994", "rel-clandestino"]);
+    }
+
+    // MARK: - The pressing is what is offered or set aside
+
+    /// The rows a surface draws from a list of matches, with the badges it
+    /// draws on them — judged as `combine` judged them and read off whole
+    /// pressings, which is what `identify::view` does with a stored verdict.
+    fn rows(
+        matches: &[MetadataResult],
+        provenance: &[LookupProvenance],
+        text: &CandidateText,
+    ) -> Vec<(Pressing, crate::identify::agreements::Agreements)> {
+        let judged: Vec<Judged> = matches
+            .iter()
+            .cloned()
+            .zip(provenance.iter().cloned())
+            .map(|(result, lookup)| {
+                let agreements = agreements_of(&result, text, &lookup);
+                (result, agreements)
+            })
+            .collect();
+        let judgements = Judgements::of(&judged);
+        group_results(judged)
+            .into_iter()
+            .flat_map(|group| group.pressings)
+            .map(|pressing| {
+                let agreements = pressing.agreements(&judgements);
+                (pressing, agreements)
+            })
+            .collect()
+    }
+
+    fn badges(agreements: &crate::identify::agreements::Agreements) -> Vec<&'static str> {
+        [
+            ("Disc ID", agreements.disc_id),
+            ("Barcode", agreements.barcode),
+            ("Catalog", agreements.catalog),
+            ("Label", agreements.label),
+            ("Year", agreements.year),
+            ("Country", agreements.country),
+        ]
+        .into_iter()
+        .filter_map(|(name, agreed)| agreed.then_some(name))
+        .collect()
+    }
+
+    /// The Japanese pressing of *Van Halen II* the disc ID names, as
+    /// MusicBrainz has it: the folder's catalog number and label, its country
+    /// as a code, and the barcode the sleeve prints.
+    fn van_halen_musicbrainz() -> (MetadataResult, LibraryStatus) {
+        (
+            MetadataResult {
+                title: "Van Halen II".to_string(),
+                artist: Some("Van Halen".to_string()),
+                label: Some("Warner Bros.".to_string()),
+                catalog_number: Some("20P2-2031".to_string()),
+                country: Some("JP".to_string()),
+                barcode: Some("4988014720311".to_string()),
+                year: Some(1988),
+                source_group_id: Some("rg-van-halen-ii".to_string()),
+                ..mk_result("mb-van-halen-ii", Some("rg-van-halen-ii"))
+            },
+            LibraryStatus::absent("mb-van-halen-ii"),
+        )
+    }
+
+    /// One of the four Discogs records of that same catalog number, all of
+    /// which the barcode lookup came back with.
+    fn van_halen_discogs(release_id: &str, year: Option<i32>) -> (MetadataResult, LibraryStatus) {
+        (
+            MetadataResult {
+                source: MetadataSource::Discogs,
+                title: "Van Halen II".to_string(),
+                artist: Some("Van Halen".to_string()),
+                label: Some("Warner Bros.".to_string()),
+                catalog_number: Some("20P2-2031".to_string()),
+                country: Some("Japan".to_string()),
+                barcode: Some("4988014720311".to_string()),
+                year,
+                source_group_id: Some("master-van-halen-ii".to_string()),
+                ..mk_result(release_id, Some("master-van-halen-ii"))
+            },
+            LibraryStatus::absent(release_id),
+        )
+    }
+
+    /// The disc ID answers on MusicBrainz alone, so the Discogs record of the
+    /// pressing it names can only ever be the barcode's answer — never the
+    /// intersection's. Pairing before the narrowing is what keeps the two
+    /// together: the row the folder describes is offered carrying both
+    /// sources, and the reissues that merely print the same barcode go under
+    /// the disclosure whole.
+    #[test]
+    fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
+        let text = folder(&["1979 - Van Halen II (Warner Bros., 20P2-2031, Japan)"]);
+        let outcome = combine_results(
+            vec![van_halen_musicbrainz()],
+            vec![
+                van_halen_musicbrainz(),
+                van_halen_discogs("dg-1991", Some(1991)),
+                van_halen_discogs("dg-1988", Some(1988)),
+                van_halen_discogs("dg-undated-a", None),
+                van_halen_discogs("dg-undated-b", None),
+            ],
+            vec![],
+            &text,
+        );
+        let (matches, provenance) = found(outcome.clone());
+        let offered = rows(&matches, &provenance, &text);
+        assert_eq!(offered.len(), 1, "one row, not two: {offered:?}");
+        assert_eq!(
+            ids(&offered[0].0.releases),
+            vec!["mb-van-halen-ii", "dg-1988"],
+            "the Discogs record of the same pressing rides with it"
+        );
+        assert_eq!(
+            badges(&offered[0].1),
+            vec!["Disc ID", "Barcode", "Catalog", "Label", "Country"]
+        );
+        assert_eq!(
+            offered[0].0.pick(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: "mb-van-halen-ii".to_string(),
+                partners: vec![crate::import::MetadataRef::new(
+                    "dg-1988",
+                    MetadataSource::Discogs
+                )],
+            },
+            "so picking the row claims both sources"
+        );
+
+        let narrowed = narrowed(outcome);
+        let set_aside = rows(&narrowed.matches, &narrowed.provenance, &text);
+        assert_eq!(
+            set_aside
+                .iter()
+                .map(|(pressing, _)| ids(&pressing.releases))
+                .collect::<Vec<_>>(),
+            vec![vec!["dg-1991"], vec!["dg-undated-a"], vec!["dg-undated-b"]]
+        );
+        for (pressing, agreements) in &set_aside {
+            assert_eq!(
+                badges(agreements),
+                vec!["Barcode", "Catalog", "Label", "Country"],
+                "{:?}",
+                ids(&pressing.releases)
+            );
+        }
+    }
+
+    /// A row is offered whole or set aside whole, so re-grouping either list
+    /// rebuilds the rows the run ranked — which is what the sweep's settle
+    /// step and the queue's pressing count both read.
+    #[test]
+    fn a_pressing_never_splits_across_the_two_lists() {
+        let text = folder(&["1979 - Van Halen II (Warner Bros., 20P2-2031, Japan)"]);
+        let outcome = combine_results(
+            vec![van_halen_musicbrainz()],
+            vec![
+                van_halen_musicbrainz(),
+                van_halen_discogs("dg-1988", Some(1988)),
+                van_halen_discogs("dg-1991", Some(1991)),
+            ],
+            vec![],
+            &text,
+        );
+        let (matches, _) = found(outcome.clone());
+        assert_eq!(crate::import::release_group::pressing_count(matches), 1);
+        assert_eq!(
+            crate::import::release_group::pressing_count(narrowed(outcome).matches),
+            1
+        );
     }
 
     /// The sole-match rule and the Ready classification both ask how many

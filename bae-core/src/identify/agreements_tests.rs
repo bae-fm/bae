@@ -221,3 +221,83 @@ fn striking_out_a_number_a_lookup_asked_leaves_its_agreement() {
     );
     assert!(judged.catalog);
 }
+
+/// A provider answers a country as a code and a folder writes it out, so the
+/// two have to meet: `JP` is what a folder saying "Japan" states, and `Japan`
+/// is what one saying "JP" states.
+#[test]
+fn a_country_agrees_whichever_of_them_spells_it_out() {
+    for (stated, folder) in [
+        ("JP", "1979 - Van Halen II (Warner Bros., 20P2-2031, Japan)"),
+        ("Japan", "1979 - Van Halen II (Warner Bros., 20P2-2031, JP)"),
+        (
+            "Japan",
+            "1979 - Van Halen II (Warner Bros., 20P2-2031, Japan)",
+        ),
+        ("US", "Dirty Deeds Done Dirt Cheap (United States)"),
+        ("United States", "Dirty Deeds Done Dirt Cheap (US)"),
+    ] {
+        let judged = agreements_of(
+            &MetadataResult {
+                country: Some(stated.to_string()),
+                ..result()
+            },
+            &text(&[folder]),
+            &NO_LOOKUP,
+        );
+        assert!(judged.country, "{stated} against {folder}");
+    }
+}
+
+/// The other spellings are one country's, not any country's: a folder that
+/// names a different one states nothing about this release.
+#[test]
+fn a_country_the_folder_does_not_name_is_no_agreement() {
+    for (stated, folder) in [
+        (
+            "JP",
+            "1979 - Van Halen II (Warner Bros., 20P2-2031, Germany)",
+        ),
+        ("Japan", "1979 - Van Halen II (Warner Bros., 20P2-2031, DE)"),
+        ("XW", "1979 - Van Halen II (Warner Bros., 20P2-2031, Japan)"),
+    ] {
+        let judged = agreements_of(
+            &MetadataResult {
+                country: Some(stated.to_string()),
+                ..result()
+            },
+            &text(&[folder]),
+            &NO_LOOKUP,
+        );
+        assert!(!judged.country, "{stated} against {folder}");
+    }
+}
+
+/// A row is one physical object however many sources carry it, so what either
+/// source's record of it agrees with is what the row agrees with.
+#[test]
+fn a_rows_agreements_are_its_records_together() {
+    let musicbrainz = Agreements {
+        disc_id: true,
+        barcode: true,
+        ..Agreements::NONE
+    };
+    let discogs = Agreements {
+        barcode: true,
+        catalog: true,
+        country: true,
+        ..Agreements::NONE
+    };
+    assert_eq!(
+        musicbrainz.with(discogs),
+        Agreements {
+            disc_id: true,
+            barcode: true,
+            catalog: true,
+            country: true,
+            ..Agreements::NONE
+        }
+    );
+    assert_eq!(musicbrainz.with(discogs).count(), 4);
+    assert_eq!(musicbrainz.with(Agreements::NONE), musicbrainz);
+}

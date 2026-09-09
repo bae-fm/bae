@@ -31,7 +31,7 @@ use super::state::{
     IdentifyState, LookupResults, LookupState, SignalsContext,
 };
 use crate::db::LibraryStatus;
-use crate::import::release_group::{group_results, ReleaseGroup};
+use crate::import::release_group::{group_results, Judged, Judgements, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::MetadataSource;
 use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
@@ -431,7 +431,12 @@ fn live_matches(
 
 /// Judge each match against the candidate's own text, fold the list into its
 /// group cards — which is also what orders the rows — and key the agreements
-/// by release id: they are derived per result, and once the results are inside
+/// by release id.
+///
+/// The badges are the row's, not the release's: a row is one physical object
+/// picked whole, so what the two sources' records of it agree with is one set
+/// of badges, and both release ids answer with it. Judging is per release
+/// because the fields being looked for are, and once the releases are inside
 /// the cards that alignment is no longer expressible.
 ///
 /// This is the one place a stored verdict's rows are judged. A run's own rows
@@ -442,7 +447,7 @@ fn fold_matches(
     provenance: Vec<LookupProvenance>,
     text: &CandidateText,
 ) -> (Vec<ReleaseGroup>, Vec<(String, Agreements)>) {
-    let judged: Vec<(MetadataResult, Agreements)> = matches
+    let judged: Vec<Judged> = matches
         .into_iter()
         .zip(provenance)
         .map(|(result, lookup)| {
@@ -450,11 +455,20 @@ fn fold_matches(
             (result, agreements)
         })
         .collect();
-    let keyed = judged
+    let judgements = Judgements::of(&judged);
+    let groups = group_results(judged);
+    let keyed = groups
         .iter()
-        .map(|(result, agreements)| (result.release_id.clone(), *agreements))
+        .flat_map(|group| &group.pressings)
+        .flat_map(|pressing| {
+            let agreements = pressing.agreements(&judgements);
+            pressing
+                .releases
+                .iter()
+                .map(move |release| (release.release_id.clone(), agreements))
+        })
         .collect();
-    (group_results(judged), keyed)
+    (groups, keyed)
 }
 
 /// The narrowed-out releases, folded into their album cards the way the

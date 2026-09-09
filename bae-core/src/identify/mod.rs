@@ -28,6 +28,7 @@
 pub mod agreements;
 pub mod code;
 pub mod combine;
+mod country;
 pub mod discid;
 pub mod ready;
 pub mod service;

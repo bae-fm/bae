@@ -477,6 +477,100 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     );
 }
 
+/// A disc ID is a question only MusicBrainz answers, so the Discogs record of
+/// the pressing it names can only ever come back from the barcode — never from
+/// the disc ID as well. Agreement reads whole rows, so the two records of the
+/// one pressing survive the narrowing together, and the pick the sweep stores
+/// claims both sources.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
+    let fixture = Fixture::new("disc-id-partner").await;
+    fixture.use_discogs();
+    fixture
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: PAIRED_BARCODE.to_string(),
+        }));
+    let dir = fixture.disc_id_candidate("From Disc Id And Barcode");
+    std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
+    let probed = fixture.probed_total_ms(&dir);
+
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json_stating_barcode("mb-paired-2", "rg-paired-2", &[probed, 0], PAIRED_BARCODE),
+    );
+    fixture.provider.route(
+        "/release?",
+        200,
+        barcode_search_json(&[("mb-paired-2", "rg-paired-2", PAIRED_BARCODE)]),
+    );
+    fixture.provider.route(
+        "/release/mb-paired-2?",
+        200,
+        release_json("mb-paired-2", "rg-paired-2", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/database/search",
+        200,
+        discogs_search_json("70000102", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
+    );
+    fixture.provider.route(
+        "/releases/70000102",
+        200,
+        discogs_release_json("70000102"),
+    );
+    crate::musicbrainz::seed_discogs_url_lookup("70000102", None);
+    fixture.scan(1).await;
+
+    fixture.sweep_once().await;
+
+    let row = fixture
+        .stored_for(&dir)
+        .await
+        .expect("the candidate stores a row");
+    let verdict = identify_result(&row).verdict.clone();
+    let TerminalVerdict::Found {
+        matches,
+        narrowed_out,
+        ..
+    } = &verdict
+    else {
+        panic!("expected a Found verdict, got {verdict:?}");
+    };
+    assert_eq!(
+        matches.len(),
+        2,
+        "the disc ID's release and the Discogs record of the same pressing: {matches:?}"
+    );
+    assert!(
+        narrowed_out.is_empty(),
+        "neither of them is what agreement left out: {narrowed_out:?}"
+    );
+    assert_eq!(
+        row.metadata_provenance,
+        Some(crate::import::MetadataProvenance::ExternalRelease {
+            source: crate::import::MetadataSource::MusicBrainz,
+            release_id: "mb-paired-2".to_string(),
+            partners: vec![crate::import::MetadataRef::new(
+                "70000102",
+                crate::import::MetadataSource::Discogs,
+            )],
+        }),
+        "the stored pick claims the Discogs record the barcode alone found"
+    );
+    assert!(
+        fixture.archived_discogs("70000102").await.is_some(),
+        "and the partner's documents are archived with the primary's"
+    );
+    assert_eq!(
+        fixture.classification_for(&dir).await,
+        QueueClassification::Ready,
+        "one pressing, counts and totals agreeing — nothing is left to ask"
+    );
+}
+
 /// Two pressings are a question, not an answer: which one is on disk is the
 /// user's call, and buying every pressing's documents would settle nothing. The
 /// verdict stores with no pick and no release lookups behind it.
