@@ -560,6 +560,7 @@ async fn stream_extraction(
                 catalogs: classification.catalogs,
                 free_text: classification.free_text,
             },
+            text_pool: gathered.pool.text_lines(),
             durations: gathered.durations,
         },
         if has_artwork {
@@ -595,6 +596,7 @@ fn emit_failed_ocr_signals(
                 catalogs: classification.catalogs,
                 free_text: classification.free_text,
             },
+            text_pool: gathered.pool.text_lines(),
             durations: gathered.durations,
         },
         artwork,
@@ -611,6 +613,7 @@ fn scanning_signals(
     catalogs: Vec<SourcedValue>,
     free_text: Vec<String>,
 ) -> Signals {
+    let text_pool = gathered.pool.text_lines();
     let barcode = if has_artwork {
         BarcodeSignal::Scanning {
             codes: gathered.barcodes.clone(),
@@ -629,6 +632,7 @@ fn scanning_signals(
             catalogs,
             free_text,
         },
+        text_pool,
         durations: gathered.durations.clone(),
     }
 }

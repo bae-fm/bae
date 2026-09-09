@@ -45,6 +45,7 @@ fn settled_signals(durations: crate::import::probe::SourceDurations) -> Signals 
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
+        text_pool: Vec::new(),
         durations,
     }
 }
@@ -821,12 +822,11 @@ impl Fixture {
                 }),
             }],
             track_count: 2,
-            provenance: vec![crate::identify::combine::ResultProvenance {
+            provenance: vec![crate::identify::combine::LookupProvenance {
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
             }],
-            matched_barcode: None,
             narrowed_out: Vec::new(),
             narrowed_out_provenance: Vec::new(),
             ledger: None,

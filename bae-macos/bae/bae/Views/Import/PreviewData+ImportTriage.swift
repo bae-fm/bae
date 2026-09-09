@@ -113,7 +113,7 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 12,
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             )
         )
@@ -154,7 +154,7 @@
                 groups: [trackMismatchGroup],
                 libraryStatuses: [:],
                 trackCount: 1,
-                provenance: [:],
+                agreements: [:],
                 narrowedOut: .nothing
             )
         )
@@ -180,7 +180,7 @@
                         importTabAlreadyInLibraryStatus
                 ],
                 trackCount: 14,
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             )
         )

@@ -639,7 +639,7 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 12,
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             )
             return candidate

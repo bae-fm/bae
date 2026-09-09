@@ -95,17 +95,25 @@
             bridge: searchGroupExactBridge
         )
 
-        /// The disc ID named the first pressing, the barcode the second.
-        static let searchProvenanceExact: [String: BridgeResultProvenance] = [
-            "rel-123": BridgeResultProvenance(
-                byDiscId: true,
-                byBarcode: false,
-                byCatalog: false
+        /// The disc ID named the first pressing and the folder's text states
+        /// its catalog number, label and year; the barcode named the second,
+        /// which the folder says nothing else about.
+        static let searchAgreementsExact: [String: BridgeAgreements] = [
+            "rel-123": BridgeAgreements(
+                discId: true,
+                barcode: false,
+                catalog: true,
+                label: true,
+                year: true,
+                country: false
             ),
-            "rel-456": BridgeResultProvenance(
-                byDiscId: false,
-                byBarcode: true,
-                byCatalog: false
+            "rel-456": BridgeAgreements(
+                discId: false,
+                barcode: true,
+                catalog: false,
+                label: false,
+                year: false,
+                country: false
             ),
         ]
 
@@ -310,18 +318,24 @@
             ]
         )
 
-        /// Each row says which signal produced it — the whole of what tells
-        /// the two apart once they are one list.
-        static let disagreementProvenance: [String: BridgeResultProvenance] = [
-            "rel-disc-1": BridgeResultProvenance(
-                byDiscId: true,
-                byBarcode: false,
-                byCatalog: false
+        /// Each row says what stands behind it — the whole of what tells the
+        /// two apart once they are one list.
+        static let disagreementAgreements: [String: BridgeAgreements] = [
+            "rel-disc-1": BridgeAgreements(
+                discId: true,
+                barcode: false,
+                catalog: false,
+                label: false,
+                year: true,
+                country: false
             ),
-            "rel-bar-1": BridgeResultProvenance(
-                byDiscId: false,
-                byBarcode: true,
-                byCatalog: false
+            "rel-bar-1": BridgeAgreements(
+                discId: false,
+                barcode: true,
+                catalog: false,
+                label: false,
+                year: false,
+                country: false
             ),
         ]
 
@@ -696,7 +710,7 @@
                 run: identifyRunInFlight,
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             ),
             signals: settledSignals
@@ -709,7 +723,7 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             ),
             signals: settledSignals
@@ -723,12 +737,12 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: NarrowedOut(
                     groups: [discidOnlyGroup, barcodeOnlyGroup]
                         .map(ReleaseGroup.init(bridge:)),
                     libraryStatuses: [:],
-                    provenance: disagreementProvenance
+                    agreements: disagreementAgreements
                 )
             ),
             signals: settledSignals
@@ -747,11 +761,11 @@
             groups: [discidOnlyGroup, barcodeOnlyGroup],
             libraryStatuses: [:],
             trackCount: 11,
-            provenance: disagreementProvenance,
+            agreements: disagreementAgreements,
             narrowedOut: BridgeNarrowedOut(
                 groups: [],
                 libraryStatuses: [:],
-                provenance: [:]
+                agreements: [:]
             )
         )
 
@@ -785,7 +799,7 @@
                 ],
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             )
         )
@@ -824,7 +838,7 @@
                 ],
                 groups: [],
                 libraryStatuses: [:],
-                provenance: [:],
+                agreements: [:],
                 narrowedOut: .nothing
             )
         )
@@ -841,7 +855,7 @@
                 ],
                 groups: [],
                 libraryStatuses: [:],
-                provenance: [:],
+                agreements: [:],
                 narrowedOut: .nothing
             )
         )
@@ -868,7 +882,7 @@
                 ],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             ),
             signals: settledSignals,
@@ -882,7 +896,7 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             ),
             search: searchRunInFlight,
@@ -896,7 +910,7 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             ),
             search: manualSearchRun,
@@ -910,7 +924,7 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             ),
             search: searchRunSourceFailed,
@@ -924,7 +938,7 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 11,
-                provenance: searchProvenanceExact,
+                agreements: searchAgreementsExact,
                 narrowedOut: .nothing
             ),
             search: searchRunEmpty,

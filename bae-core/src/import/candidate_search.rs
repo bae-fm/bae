@@ -260,7 +260,9 @@ impl CandidateSearch {
             .collect();
         let (results, statuses): (Vec<MetadataResult>, Vec<LibraryStatus>) =
             landed.into_iter().unzip();
-        self.groups = group_results(results);
+        // Typed search: nothing was judged against the candidate's own text,
+        // so the rows keep the pressing-year order alone.
+        self.groups = group_results(crate::import::release_group::unranked(results));
         self.library_statuses = statuses;
     }
 }

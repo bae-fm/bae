@@ -273,7 +273,7 @@ fn indeterminate_import_progress_serializes_without_a_fraction() {
 mod identify_mirrors {
     use super::*;
     use bae_core::db::LibraryStatus;
-    use bae_core::identify::combine::ResultProvenance;
+    use bae_core::identify::combine::LookupProvenance;
     use bae_core::identify::state::{DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
@@ -307,12 +307,13 @@ mod identify_mirrors {
             disc: Default::default(),
             barcode: Default::default(),
             catalog: Default::default(),
+            text: Default::default(),
             track_count: 0,
         }
     }
 
     #[test]
-    fn found_state_aligns_provenance_and_pressings_by_release_id() {
+    fn found_state_aligns_agreements_and_pressings_by_release_id() {
         let matches = vec![
             metadata_result("rel-1", "group-1"),
             metadata_result("rel-2", "group-1"),
@@ -325,12 +326,12 @@ mod identify_mirrors {
             ],
             track_count: 12,
             provenance: vec![
-                ResultProvenance {
+                LookupProvenance {
                     by_disc_id: true,
                     by_barcode: false,
                     by_catalog: false,
                 },
-                ResultProvenance {
+                LookupProvenance {
                     by_disc_id: false,
                     by_barcode: true,
                     by_catalog: true,
@@ -345,23 +346,25 @@ mod identify_mirrors {
         assert_eq!(json["kind"], "found");
         let groups = json["groups"].as_array().unwrap();
         assert_eq!(groups.len(), 1, "both matches share one release group");
+        // Two lookups stand behind `rel-2` and one behind `rel-1`, so the
+        // rows come back with `rel-2` on top.
         let pressings = groups[0]["pressings"].as_array().unwrap();
-        assert_eq!(pressings[0]["releases"][0]["release_id"], "rel-1");
-        assert_eq!(pressings[1]["releases"][0]["release_id"], "rel-2");
-        let provenance = json["provenance"].as_array().unwrap();
-        assert_eq!(provenance[0]["release_id"], "rel-1");
-        assert_eq!(provenance[0]["by_disc_id"], true);
-        assert_eq!(provenance[1]["release_id"], "rel-2");
-        assert_eq!(provenance[1]["by_barcode"], true);
-        assert_eq!(provenance[1]["by_catalog"], true);
+        assert_eq!(pressings[0]["releases"][0]["release_id"], "rel-2");
+        assert_eq!(pressings[1]["releases"][0]["release_id"], "rel-1");
+        let agreements = json["agreements"].as_array().unwrap();
+        assert_eq!(agreements[0]["release_id"], "rel-1");
+        assert_eq!(agreements[0]["disc_id"], true);
+        assert_eq!(agreements[1]["release_id"], "rel-2");
+        assert_eq!(agreements[1]["barcode"], true);
+        assert_eq!(agreements[1]["catalog"], true);
         let statuses = json["library_statuses"].as_array().unwrap();
         assert_eq!(statuses[0]["release_id"], "rel-1");
         assert_eq!(statuses[1]["release_id"], "rel-2");
     }
 
     /// Signals that share no result still settle as one `Found`; the releases
-    /// they each named land in their own group cards, and every row keeps the
-    /// provenance saying which signal produced it.
+    /// they each named land in their own group cards, and every row keeps its
+    /// badges saying what stands behind it.
     #[test]
     fn disagreeing_signals_become_one_found_over_several_groups() {
         let state = IdentifyState::Found {
@@ -375,12 +378,12 @@ mod identify_mirrors {
             ],
             track_count: 9,
             provenance: vec![
-                ResultProvenance {
+                LookupProvenance {
                     by_disc_id: true,
                     by_barcode: false,
                     by_catalog: false,
                 },
-                ResultProvenance {
+                LookupProvenance {
                     by_disc_id: false,
                     by_barcode: true,
                     by_catalog: false,
@@ -403,9 +406,9 @@ mod identify_mirrors {
             groups[1]["pressings"][0]["releases"][0]["release_id"],
             "rel-bar"
         );
-        let provenance = json["provenance"].as_array().unwrap();
-        assert_eq!(provenance[0]["by_disc_id"], true);
-        assert_eq!(provenance[1]["by_barcode"], true);
+        let agreements = json["agreements"].as_array().unwrap();
+        assert_eq!(agreements[0]["disc_id"], true);
+        assert_eq!(agreements[1]["barcode"], true);
         assert_eq!(json["track_count"], 9);
     }
 
@@ -504,8 +507,8 @@ mod identify_mirrors {
             groups[0]["pressings"][0]["releases"][0]["release_id"],
             "rel-dg"
         );
-        assert_eq!(json["provenance"][0]["release_id"], "rel-dg");
-        assert_eq!(json["provenance"][0]["by_barcode"], true);
+        assert_eq!(json["agreements"][0]["release_id"], "rel-dg");
+        assert_eq!(json["agreements"][0]["barcode"], true);
     }
 
     #[test]
@@ -552,6 +555,7 @@ mod identify_mirrors {
             },
             // A plausible total for the ten tracks above. Not zero, which
             // would claim the audio could not be probed.
+            text_pool: Vec::new(),
             durations: bae_core::import::probe::SourceDurations::totalling(2_400_000),
         };
 

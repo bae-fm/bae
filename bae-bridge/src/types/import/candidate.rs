@@ -810,25 +810,33 @@ pub struct BridgeSignals {
     pub text: BridgeTextSignal,
 }
 
-/// Which signals produced or confirmed one result. Mirrors
-/// `bae_core::identify::ResultProvenance` — drives the per-row signal badges.
+/// What the candidate's own text agrees with about one result — the per-row
+/// badges, and what ordered the rows. Mirrors `bae_core::identify::Agreements`.
+///
+/// `disc_id` and `barcode` are the lookups that returned the release.
+/// `catalog` is either the catalog lookup or the number being printed in the
+/// folder's text; `label`, `year` and `country` are the text alone. A field the
+/// source does not state cannot be agreed with.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeResultProvenance {
-    pub by_disc_id: bool,
-    pub by_barcode: bool,
-    pub by_catalog: bool,
+pub struct BridgeAgreements {
+    pub disc_id: bool,
+    pub barcode: bool,
+    pub catalog: bool,
+    pub label: bool,
+    pub year: bool,
+    pub country: bool,
 }
 
-/// The releases the signals' agreement left out of a state's matches — real
-/// answers a real lookup returned that the intersection discarded. Shaped
-/// exactly as a state's own matches, so a surface lists them the same way.
-/// Empty when the agreement narrowed nothing. Mirrors
+/// The releases agreement left out of a state's matches — real answers a real
+/// lookup returned that the intersection discarded, and the ones the folder's
+/// own text says nothing about. Shaped exactly as a state's own matches, so a
+/// surface lists them the same way. Empty when nothing was narrowed. Mirrors
 /// `bae_core::identify::NarrowedOutView`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeNarrowedOut {
     pub groups: Vec<BridgeReleaseGroup>,
     pub library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
-    pub provenance: std::collections::HashMap<String, BridgeResultProvenance>,
+    pub agreements: std::collections::HashMap<String, BridgeAgreements>,
 }
 
 /// Current identify-pipeline state for one candidate. One variant per state;
@@ -850,25 +858,25 @@ pub enum BridgeIdentifyState {
         run: BridgeIdentifyRun,
         groups: Vec<BridgeReleaseGroup>,
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
-        provenance: std::collections::HashMap<String, BridgeResultProvenance>,
+        agreements: std::collections::HashMap<String, BridgeAgreements>,
         /// What the answers so far leave out of `groups` — the same list the
         /// settled state lands on, as it stands.
         narrowed_out: BridgeNarrowedOut,
     },
     Found {
         run: Option<BridgeIdentifyRun>,
-        /// The matches as group cards, in match order — the UI renders one card
-        /// per group with its pressings beneath. Usually one; signals that
-        /// named different releases give several.
+        /// The matches as group cards, ranked — most agreed with first, the
+        /// UI renders them in the order they arrive and sorts nothing. Usually
+        /// one card; signals that named different releases give several.
         groups: Vec<BridgeReleaseGroup>,
         /// Library status per matched release, keyed by release id, so the
         /// UI looks up a row's status directly without re-indexing a flat
         /// list.
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         track_count: u32,
-        /// Per-pressing provenance keyed by release id — the per-row signal
-        /// badges, and which signal produced each match.
-        provenance: std::collections::HashMap<String, BridgeResultProvenance>,
+        /// Per-pressing agreements keyed by release id — the per-row badges,
+        /// and what ordered the rows.
+        agreements: std::collections::HashMap<String, BridgeAgreements>,
         /// The releases the agreement left out of `groups`, for the surface to
         /// offer behind a disclosure.
         narrowed_out: BridgeNarrowedOut,
@@ -896,7 +904,7 @@ pub enum BridgeIdentifyState {
         failures: Vec<BridgeIdentifyFailure>,
         groups: Vec<BridgeReleaseGroup>,
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
-        provenance: std::collections::HashMap<String, BridgeResultProvenance>,
+        agreements: std::collections::HashMap<String, BridgeAgreements>,
         narrowed_out: BridgeNarrowedOut,
     },
 }

@@ -25,6 +25,7 @@
 //! [`ready`] reads that stored verdict back and says what the queue needs from
 //! the user for that candidate — derived on every read, never stored.
 
+pub mod agreements;
 pub mod code;
 pub mod combine;
 pub mod discid;
@@ -35,7 +36,8 @@ pub mod toolbar;
 pub mod verdict;
 pub mod view;
 
-pub use combine::{NarrowedOut, ResultProvenance};
+pub use agreements::{agreements_of, Agreements, CandidateText};
+pub use combine::{LookupProvenance, NarrowedOut};
 pub use ready::{
     classify, classify_summary, LeadMatch, NeedsYou, QueueClassification, VerdictKind,
     VerdictSummary,

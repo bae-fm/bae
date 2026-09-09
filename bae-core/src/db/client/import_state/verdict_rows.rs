@@ -6,7 +6,7 @@
 //! candidate can neither hold two verdicts nor keep matches without one.
 
 use super::*;
-use crate::identify::{IdentifyFailure, IdentifyRunView, ResultProvenance, TerminalVerdict};
+use crate::identify::{IdentifyFailure, IdentifyRunView, LookupProvenance, TerminalVerdict};
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::MetadataSource;
@@ -39,17 +39,11 @@ pub(super) fn insert_verdict(
     identification: &DbCandidateIdentifyResult,
 ) -> Result<(), DbError> {
     let verdict = &identification.verdict;
-    let (kind, track_count, matched_barcode) = match verdict {
-        TerminalVerdict::Found {
-            track_count,
-            matched_barcode,
-            ..
-        } => ("found", Some(*track_count), matched_barcode.as_deref()),
-        TerminalVerdict::NotFoundAnywhere { .. } => ("not_found", None, None),
-        TerminalVerdict::ManualOnly { track_count, .. } => {
-            ("manual_only", Some(*track_count), None)
-        }
-        TerminalVerdict::Failed { track_count, .. } => ("failed", Some(*track_count), None),
+    let (kind, track_count) = match verdict {
+        TerminalVerdict::Found { track_count, .. } => ("found", Some(*track_count)),
+        TerminalVerdict::NotFoundAnywhere { .. } => ("not_found", None),
+        TerminalVerdict::ManualOnly { track_count, .. } => ("manual_only", Some(*track_count)),
+        TerminalVerdict::Failed { track_count, .. } => ("failed", Some(*track_count)),
     };
     // The ledger the run recorded, stored whole: no query reads into it, and
     // what it draws is the run laid out cell by cell.
@@ -87,14 +81,13 @@ pub(super) fn insert_verdict(
     })?;
     sql.execute(
         "INSERT INTO import_candidate_verdict \
-             (content_hash, kind, track_count, matched_barcode, failures_json, \
+             (content_hash, kind, track_count, failures_json, \
               ledger_json, probed_total_duration_ms, identified_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             kind,
             track_count,
-            matched_barcode,
             failures_json,
             ledger_json,
             probed,
@@ -120,7 +113,7 @@ fn insert_matches(
             narrowed_out_provenance,
             ..
         } => {
-            let aligned = |what: &str, results: &[MetadataResult], provenance: &[ResultProvenance]| {
+            let aligned = |what: &str, results: &[MetadataResult], provenance: &[LookupProvenance]| {
                 if results.len() == provenance.len() {
                     return Ok(());
                 }
@@ -166,7 +159,7 @@ fn insert_match(
     content_hash: &str,
     position: usize,
     result: &MetadataResult,
-    provenance: &ResultProvenance,
+    provenance: &LookupProvenance,
     narrowed_out: bool,
 ) -> Result<(), DbError> {
     let position = i64::try_from(position)
@@ -235,14 +228,14 @@ fn insert_match(
 /// narrowed out.
 #[derive(Default)]
 pub(crate) struct StoredMatches {
-    pub(crate) found: Vec<(MetadataResult, ResultProvenance)>,
-    pub(crate) narrowed_out: Vec<(MetadataResult, ResultProvenance)>,
+    pub(crate) found: Vec<(MetadataResult, LookupProvenance)>,
+    pub(crate) narrowed_out: Vec<(MetadataResult, LookupProvenance)>,
 }
 
 pub(super) struct MatchRow {
     pub(super) content_hash: String,
     pub(super) result: MetadataResult,
-    pub(super) provenance: ResultProvenance,
+    pub(super) provenance: LookupProvenance,
     /// Whether this release is one the agreement left out rather than one the
     /// verdict settled on.
     pub(super) narrowed_out: bool,
@@ -305,7 +298,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
             source_group_id: row.get("source_group_id")?,
             source_tracks,
         },
-        provenance: ResultProvenance {
+        provenance: LookupProvenance {
             by_disc_id: row.get("by_disc_id")?,
             by_barcode: row.get("by_barcode")?,
             by_catalog: row.get("by_catalog")?,
@@ -319,14 +312,13 @@ pub(super) struct VerdictRow {
     pub(super) content_hash: String,
     pub(super) kind: String,
     pub(super) track_count: Option<i64>,
-    pub(super) matched_barcode: Option<String>,
     pub(super) failures_json: Option<String>,
     pub(super) ledger_json: Option<String>,
     pub(super) probed_total_duration_ms: i64,
     pub(super) identified_at: DateTime<Utc>,
 }
 
-pub(super) const VERDICT_COLUMNS: &str = "content_hash, kind, track_count, matched_barcode, \
+pub(super) const VERDICT_COLUMNS: &str = "content_hash, kind, track_count, \
      failures_json, ledger_json, probed_total_duration_ms, identified_at";
 
 pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
@@ -334,7 +326,6 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
         content_hash: row.get("content_hash")?,
         kind: row.get("kind")?,
         track_count: row.get("track_count")?,
-        matched_barcode: row.get("matched_barcode")?,
         failures_json: row.get("failures_json")?,
         ledger_json: row.get("ledger_json")?,
         probed_total_duration_ms: row.get("probed_total_duration_ms")?,
@@ -351,7 +342,6 @@ pub(super) fn identification_of(
         content_hash,
         kind,
         track_count,
-        matched_barcode,
         failures_json,
         ledger_json,
         probed_total_duration_ms,
@@ -390,7 +380,6 @@ pub(super) fn identification_of(
                 matches,
                 track_count: count_of()?,
                 provenance,
-                matched_barcode,
                 narrowed_out,
                 narrowed_out_provenance,
                 ledger,

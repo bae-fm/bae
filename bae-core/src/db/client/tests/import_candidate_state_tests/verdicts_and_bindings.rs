@@ -1,6 +1,6 @@
 use super::super::*;
 use crate::identify::{
-    DiscIdFile, DiscIdFileKind, DiscIdStepView, IdentifyRunView, LookupView, ResultProvenance,
+    DiscIdFile, DiscIdFileKind, DiscIdStepView, IdentifyRunView, LookupView, LookupProvenance,
     TerminalVerdict,
 };
 use crate::import::watched_folder::host_root;
@@ -47,7 +47,9 @@ fn sample_ledger() -> IdentifyRunView {
             }),
             lookup: LookupView::Found {
                 count: 1,
-                groups: crate::import::release_group::group_results(vec![sample_match()]),
+                groups: crate::import::release_group::group_results(
+                    crate::import::release_group::unranked(vec![sample_match()]),
+                ),
             },
         },
         barcode: crate::identify::BarcodeStepView::Absent,
@@ -77,12 +79,11 @@ fn sample_verdict() -> TerminalVerdict {
     TerminalVerdict::Found {
         matches: vec![sample_match()],
         track_count: 11,
-        provenance: vec![ResultProvenance {
+        provenance: vec![LookupProvenance {
             by_disc_id: true,
             by_barcode: true,
             by_catalog: true,
         }],
-        matched_barcode: Some("5099969394522".to_string()),
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
         ledger: Some(sample_ledger()),
@@ -99,6 +100,7 @@ fn sample_signals(probed_total_duration_ms: u64) -> crate::signals::Signals {
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
+        text_pool: Vec::new(),
         durations: crate::import::probe::SourceDurations::totalling(probed_total_duration_ms),
     }
 }
@@ -159,6 +161,54 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
     );
 }
 
+/// The candidate's own text stores and reads back whole — every line, in the
+/// order the pass read it, each still naming where it came from. It is what
+/// the rows are judged and ordered against, so a resumed candidate has to be
+/// able to say exactly what it said while the run went.
+#[tokio::test]
+async fn the_candidate_s_text_round_trips_line_by_line() {
+    let (db, _tmp) = empty_db().await;
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let pool = vec![
+        crate::signals::TextLine {
+            text: "AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]".to_string(),
+            origin: crate::signals::SignalOrigin::FolderName,
+            file: None,
+            region: None,
+        },
+        crate::signals::TextLine {
+            text: "Atlantic Records, Inc.".to_string(),
+            origin: crate::signals::SignalOrigin::Artwork,
+            file: Some("back.jpg".to_string()),
+            region: crate::signals::ImageRegion::new(0.1, 0.2, 0.3, 0.4),
+        },
+    ];
+    let mut row = new_candidate_row(
+        &hash,
+        &host_root("/music/Some Album"),
+        &sample_verdict(),
+        2_700_000,
+    );
+    row.signals.text_pool = pool.clone();
+    store_candidate_state(&db, &candidate, &row.folder_path).await;
+
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .unwrap();
+
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    let stored = loaded
+        .get(&hash)
+        .expect("row present under its content hash")
+        .signals
+        .as_ref()
+        .expect("a stored verdict reads its signals back");
+    assert_eq!(stored.text_pool, pool);
+}
+
 /// A verdict recorded with no ledger reads back with none: the column is
 /// empty, and the pane draws the settled lists without a run beside them.
 #[tokio::test]
@@ -171,7 +221,6 @@ async fn a_verdict_with_no_ledger_reads_back_without_one() {
         matches,
         track_count,
         provenance,
-        matched_barcode,
         narrowed_out,
         narrowed_out_provenance,
         ..
@@ -183,7 +232,6 @@ async fn a_verdict_with_no_ledger_reads_back_without_one() {
         matches,
         track_count,
         provenance,
-        matched_barcode,
         narrowed_out,
         narrowed_out_provenance,
         ledger: None,
@@ -220,7 +268,6 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
         matches,
         track_count,
         provenance,
-        matched_barcode,
         ..
     } = sample_verdict()
     else {
@@ -232,9 +279,8 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
         matches,
         track_count,
         provenance,
-        matched_barcode,
         narrowed_out: vec![left_out],
-        narrowed_out_provenance: vec![ResultProvenance {
+        narrowed_out_provenance: vec![LookupProvenance {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
@@ -617,6 +663,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                     catalogs: vec![],
                     free_text: vec![],
                 },
+                text_pool: Vec::new(),
                 durations: crate::import::probe::SourceDurations::default(),
             },
             artwork: crate::signals::ArtworkScan::Absent,

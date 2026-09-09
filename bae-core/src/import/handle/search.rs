@@ -151,7 +151,11 @@ impl ImportServiceHandle {
 
         // Grouping is the UI's shape, so core computes it: the search surface
         // renders one card per release group with its pressings beneath.
-        let groups = crate::import::release_group::group_results(results);
+        // A typed search has no candidate text behind it to rank by, so the
+        // rows keep the pressing-year order alone.
+        let groups = crate::import::release_group::group_results(
+            crate::import::release_group::unranked(results),
+        );
 
         Ok(GroupedSearchResults { groups, statuses })
     }

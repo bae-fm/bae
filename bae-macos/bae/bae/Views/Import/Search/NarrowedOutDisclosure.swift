@@ -3,10 +3,12 @@ import SwiftUI
 
 /// The releases agreement left out, behind a line that says how many.
 ///
-/// Agreement between a folder's signals is what makes the match list short: a
-/// disc ID that named three releases and a barcode that named two settle on
-/// the one they share. The other four were real answers, and one of them may
-/// be the disc on the desk — so they are here rather than gone. Closed to
+/// Agreement is what makes the match list short. The folder's signals agree
+/// with each other — a disc ID that named three releases and a barcode that
+/// named two settle on the one they share — and the folder's own text agrees
+/// with what came back, so a barcode lookup that returned somebody else's
+/// record ends up here too. Each of these was a real answer, and one of them
+/// may be the disc on the desk, so they are here rather than gone. Closed to
 /// begin with, because the matches are the answer; open, they are the same
 /// cards as the matches, picked the same way.
 struct NarrowedOutDisclosure: View {
@@ -41,7 +43,7 @@ struct NarrowedOutDisclosure: View {
                         group: group,
                         isImporting: isImporting,
                         libraryStatuses: narrowedOut.libraryStatuses,
-                        provenance: narrowedOut.provenance,
+                        agreements: narrowedOut.agreements,
                         selectedReleaseId: selectedReleaseId,
                         loadingReleaseId: loadingReleaseId,
                         releaseSelectionFailure: releaseSelectionFailure,

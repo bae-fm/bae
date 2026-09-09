@@ -21,6 +21,7 @@
 use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, LibraryStatus, MetadataResult, SourceFailure,
 };
+use crate::identify::agreements::CandidateText;
 use crate::identify::IdentifyFailure;
 use crate::import::{LookupChoices, MetadataSource};
 use crate::signals::{
@@ -360,6 +361,12 @@ pub struct SignalsContext {
     pub disc: DiscIdEvidence,
     pub barcode: BarcodeEvidence,
     pub catalog: CatalogEvidence,
+    /// The candidate's own text, normalized for lookup — what a result is
+    /// judged against. The candidate's, not the run's: it is read off the
+    /// folder rather than produced by anything the run asked, and a state
+    /// stood back up from a stored verdict carries the stored pool so its rows
+    /// badge and order exactly as they did while the run went.
+    pub text: CandidateText,
     /// The candidate's local track count.
     pub track_count: u32,
 }
@@ -376,6 +383,7 @@ impl Default for SignalsContext {
             disc: DiscIdEvidence::default(),
             barcode: BarcodeEvidence::default(),
             catalog: CatalogEvidence::default(),
+            text: CandidateText::default(),
             track_count: 0,
         }
     }
@@ -418,6 +426,7 @@ impl SignalsContext {
         self.disc.refresh_input(&signals.disc_id);
         self.barcode.refresh_input(&signals.barcode);
         self.catalog.refresh_input(&signals.text);
+        self.text = CandidateText::of(&signals.text_pool);
         self.track_count = signals.disc_id.track_count();
     }
 

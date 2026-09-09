@@ -93,6 +93,7 @@ async fn pure_reads_use_the_read_connection() {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
+                text_pool: Vec::new(),
                 durations: bae_core::import::probe::SourceDurations::default(),
             },
             metadata: bae_core::import::CandidateMetadataDraft {

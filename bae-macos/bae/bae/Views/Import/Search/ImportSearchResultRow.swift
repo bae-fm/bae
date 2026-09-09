@@ -17,9 +17,10 @@ struct ImportSearchResultRow: View {
     let pressing: Pressing
     let isImporting: Bool
     let libraryStatus: BridgeLibraryStatus?
-    /// Which signals produced or confirmed this pressing, for the badge row.
-    /// `nil` for typed-search results, which no signal produced.
-    var provenance: BridgeResultProvenance?
+    /// What the candidate's own text agrees with about this pressing, for the
+    /// badge row. `nil` for typed-search results, where there is no candidate
+    /// to have agreed with anything.
+    var agreements: BridgeAgreements?
     let isSelected: Bool
     /// Whether this row's pick is being read right now — the row itself
     /// carries the spinner, so the list stays put while the release loads.
@@ -165,24 +166,31 @@ struct ImportSearchResultRow: View {
             .joined(separator: " \u{00b7} ")
     }
 
-    // MARK: - Signal badges
+    // MARK: - Agreement badges
 
-    /// Which signals produced or confirmed this row. All three chips stay in
-    /// the tree (opacity-toggled) so row height is stable across the list.
+    /// What the candidate's own text agrees with about this row, and what
+    /// ordered it against the others. All six chips stay in the tree
+    /// (opacity-toggled) so row height is stable across the list.
     @ViewBuilder
     private var signalBadges: some View {
-        if let provenance {
+        if let agreements {
             HStack(spacing: 4) {
-                signalBadge(.discId, on: provenance.byDiscId)
-                signalBadge(.barcode, on: provenance.byBarcode)
-                signalBadge(.catalog, on: provenance.byCatalog)
+                agreementBadge(.discId, on: agreements.discId)
+                agreementBadge(.barcode, on: agreements.barcode)
+                agreementBadge(.catalog, on: agreements.catalog)
+                agreementBadge(.label, on: agreements.label)
+                agreementBadge(.year, on: agreements.year)
+                agreementBadge(.country, on: agreements.country)
             }
         }
     }
 
-    /// Signal badges use the accent as an informational tint.
-    private func signalBadge(_ kind: BridgeSignalKind, on: Bool) -> some View {
-        Text(SignalBadgeStyle.label(for: kind))
+    /// Agreement badges use the accent as an informational tint.
+    private func agreementBadge(
+        _ agreement: SignalBadgeStyle.Agreement,
+        on: Bool
+    ) -> some View {
+        Text(SignalBadgeStyle.label(for: agreement))
             .font(.system(size: 10.5, weight: .semibold))
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
@@ -255,10 +263,13 @@ struct ImportSearchResultRow: View {
                 pressing: PreviewData.searchGroupExact.pressings[0],
                 isImporting: false,
                 libraryStatus: nil,
-                provenance: BridgeResultProvenance(
-                    byDiscId: true,
-                    byBarcode: false,
-                    byCatalog: true
+                agreements: BridgeAgreements(
+                    discId: true,
+                    barcode: false,
+                    catalog: true,
+                    label: true,
+                    year: true,
+                    country: false
                 ),
                 isSelected: true,
                 onSelect: { _ in },
@@ -267,7 +278,7 @@ struct ImportSearchResultRow: View {
                 pressing: PreviewData.searchGroupsManual[1].pressings[0],
                 isImporting: false,
                 libraryStatus: nil,
-                provenance: nil,
+                agreements: nil,
                 isSelected: false,
                 isLoading: true,
                 onSelect: { _ in },
@@ -282,7 +293,7 @@ struct ImportSearchResultRow: View {
                     albumTitle: "Album Title",
                     albumId: "album-1",
                 ),
-                provenance: nil,
+                agreements: nil,
                 isSelected: false,
                 onSelect: { _ in },
             )

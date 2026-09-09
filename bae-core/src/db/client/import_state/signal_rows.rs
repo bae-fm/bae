@@ -15,7 +15,7 @@ use super::verdict_rows::unreadable;
 use super::*;
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin, Signals, SourcedValue,
-    TextSignal,
+    TextLine, TextSignal,
 };
 
 const SIGNALS_COLUMNS: &str = "content_hash, disc_id_state, disc_id, disc_id_source_file, \
@@ -25,6 +25,9 @@ const SIGNALS_COLUMNS: &str = "content_hash, disc_id_state, disc_id, disc_id_sou
      text_state, text_failure, text_failure_status, text_failure_detail";
 
 const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin, origin_path, \
+     region_x, region_y, region_width, region_height";
+
+const TEXT_LINE_COLUMNS: &str = "content_hash, position, text, origin, origin_path, \
      region_x, region_y, region_width, region_height";
 
 /// One failure as its three columns.
@@ -253,6 +256,28 @@ pub(super) fn insert_signals(
             ],
         )?;
     }
+
+    // The candidate's own text, every line of it, in the order the pass read
+    // it. Beside the values, not among them: nothing was extracted from these.
+    for (position, line) in signals.text_pool.iter().enumerate() {
+        sql.execute(
+            &format!(
+                "INSERT INTO import_candidate_text_line ({TEXT_LINE_COLUMNS}) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ),
+            params![
+                content_hash,
+                position as i64,
+                line.text,
+                origin_str(line.origin),
+                line.file,
+                line.region.map(|r| f64::from(r.x)),
+                line.region.map(|r| f64::from(r.y)),
+                line.region.map(|r| f64::from(r.width)),
+                line.region.map(|r| f64::from(r.height)),
+            ],
+        )?;
+    }
     Ok(())
 }
 
@@ -282,6 +307,28 @@ pub(super) fn load_signals_on(
                 row.get::<_, String>("list")?,
                 row.get::<_, String>("value")?,
                 row.get::<_, Option<String>>("origin")?,
+                row.get::<_, Option<String>>("origin_path")?,
+                [
+                    row.get::<_, Option<f64>>("region_x")?,
+                    row.get::<_, Option<f64>>("region_y")?,
+                    row.get::<_, Option<f64>>("region_width")?,
+                    row.get::<_, Option<f64>>("region_height")?,
+                ],
+            ))
+        },
+    )?;
+    let text_lines = sql.query(
+        &format!(
+            "SELECT {TEXT_LINE_COLUMNS} FROM import_candidate_text_line \
+             WHERE :only IS NULL OR content_hash = :only \
+             ORDER BY content_hash, position"
+        ),
+        named_params! { ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>("content_hash")?,
+                row.get::<_, String>("text")?,
+                row.get::<_, String>("origin")?,
                 row.get::<_, Option<String>>("origin_path")?,
                 [
                     row.get::<_, Option<f64>>("region_x")?,
@@ -338,6 +385,15 @@ pub(super) fn load_signals_on(
                 "free_text" => entry.free_text.push(value),
                 other => return Err(unreadable("list", other)),
             }
+        }
+        let mut pools: HashMap<String, Vec<TextLine>> = HashMap::new();
+        for (content_hash, text, origin, origin_path, region) in text_lines {
+            pools.entry(content_hash).or_default().push(TextLine {
+                region: stored_region(&text, region)?,
+                origin: origin_of(&origin)?,
+                file: origin_path,
+                text,
+            });
         }
 
         let mut out = HashMap::with_capacity(rows.len());
@@ -413,12 +469,14 @@ pub(super) fn load_signals_on(
                 },
                 other => return Err(unreadable("text_state", other)),
             };
+            let text_pool = pools.remove(&content_hash).unwrap_or_default();
             out.insert(
                 content_hash,
                 Signals {
                     disc_id,
                     barcode,
                     text,
+                    text_pool,
                     durations: Default::default(),
                 },
             );

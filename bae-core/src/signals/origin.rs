@@ -37,7 +37,7 @@ impl SignalOrigin {
             Source::Artwork { .. } => SignalOrigin::Artwork,
             Source::PathComponent => SignalOrigin::FolderName,
             Source::FilenameGeneric { .. } => SignalOrigin::Filename,
-            Source::CueField => SignalOrigin::CueSheet,
+            Source::CueField { .. } => SignalOrigin::CueSheet,
             Source::TextFile { .. } => SignalOrigin::TextFile,
         }
     }

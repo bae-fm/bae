@@ -11,7 +11,14 @@
 //! become one row when they name the same physical pressing. A row is then a
 //! pressing on however many sources listed it, and picking it claims every one
 //! of them — [`Pressing::pick`] says exactly what.
+//!
+//! The order is decided here too, so no surface sorts anything: rows come
+//! most-agreed-with first — how much of the candidate's own text states the
+//! pressing — and cards come in the order of their best row. A caller with
+//! nothing to rank by, a typed search, hands over [`Agreements::NONE`] for
+//! every release, which leaves the pressing year as the whole of the order.
 
+use crate::identify::agreements::Agreements;
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::MetadataResult;
 use crate::import::types::MetadataSource;
@@ -104,19 +111,24 @@ impl Pressing {
     }
 }
 
-/// One source's bucket of releases under one of its groups.
+/// One source's bucket of releases under one of its groups, each with what the
+/// candidate's own text agrees with about it.
 struct Bucket {
     source: MetadataSource,
     source_group_id: Option<String>,
-    releases: Vec<MetadataResult>,
+    releases: Vec<Judged>,
 }
+
+/// One release and what the candidate's own text agrees with about it — what
+/// [`group_results`] orders the rows and the cards by.
+pub type Judged = (MetadataResult, Agreements);
 
 impl Bucket {
     /// What decides whether this bucket describes the same album as another
     /// source's: the album's title and artist, normalized. `None` artist
     /// matches only `None`.
     fn album_key(&self) -> (String, Option<String>) {
-        let first = self
+        let (first, _) = self
             .releases
             .first()
             .expect("a bucket is built from at least one release");
@@ -124,7 +136,7 @@ impl Bucket {
             normalize(&first.title),
             self.releases
                 .iter()
-                .find_map(|release| release.artist.as_deref())
+                .find_map(|(release, _)| release.artist.as_deref())
                 .map(normalize),
         )
     }
@@ -151,52 +163,67 @@ impl Bucket {
 /// These are the rows [`group_results`] builds, so nothing counts one thing
 /// and shows another.
 pub fn pressing_count(results: Vec<MetadataResult>) -> usize {
-    group_results(results)
+    // Counting is order-blind, so there is nothing to rank the rows by.
+    group_results(unranked(results))
         .iter()
         .map(|group| group.pressings.len())
         .sum()
 }
 
+/// Every release with nothing said about it — what a caller hands over when
+/// the rows are not being ranked.
+pub fn unranked(results: Vec<MetadataResult>) -> Vec<Judged> {
+    results
+        .into_iter()
+        .map(|result| (result, Agreements::NONE))
+        .collect()
+}
+
 /// Group results into album cards with one row per physical pressing.
 ///
-/// Four steps: bucket each source's releases by its own group, merge a
+/// Five steps: bucket each source's releases by its own group, merge a
 /// MusicBrainz bucket with a Discogs bucket describing the same album, pair
-/// the two sources' releases into shared pressing rows, and order the rows by
-/// pressing year.
-pub fn group_results(results: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
-    merge_buckets(bucket_by_source_group(results))
+/// the two sources' releases into shared pressing rows, order the rows by how
+/// much of the candidate's text agrees with them and then by pressing year,
+/// and order the cards by their best row.
+pub fn group_results(results: Vec<Judged>) -> Vec<ReleaseGroup> {
+    let mut cards: Vec<(ReleaseGroup, u32)> = merge_buckets(bucket_by_source_group(results))
         .into_iter()
         .map(build_group)
-        .collect()
+        .collect();
+    // Stable: cards nothing tells apart keep the order the signals named them
+    // in, which is the order they were bucketed.
+    cards.sort_by_key(|(_, best)| std::cmp::Reverse(*best));
+    cards.into_iter().map(|(group, _)| group).collect()
 }
 
 /// Bucket by `(source, source_group_id)`, preserving first-seen order. A
 /// result without a group id can't share one, so it becomes its own bucket.
-fn bucket_by_source_group(results: Vec<MetadataResult>) -> Vec<Bucket> {
+fn bucket_by_source_group(results: Vec<Judged>) -> Vec<Bucket> {
     use std::collections::HashMap;
 
     let mut buckets: Vec<Bucket> = Vec::new();
     let mut index: HashMap<(MetadataSource, String), usize> = HashMap::new();
-    for result in results {
-        match result.source_group_id.clone() {
+    for judged in results {
+        match judged.0.source_group_id.clone() {
             Some(group_id) => {
-                let key = (result.source, group_id.clone());
+                let key = (judged.0.source, group_id.clone());
                 match index.get(&key) {
-                    Some(&at) => buckets[at].releases.push(result),
+                    Some(&at) => buckets[at].releases.push(judged),
                     None => {
                         index.insert(key, buckets.len());
                         buckets.push(Bucket {
-                            source: result.source,
+                            source: judged.0.source,
                             source_group_id: Some(group_id),
-                            releases: vec![result],
+                            releases: vec![judged],
                         });
                     }
                 }
             }
             None => buckets.push(Bucket {
-                source: result.source,
+                source: judged.0.source,
                 source_group_id: None,
-                releases: vec![result],
+                releases: vec![judged],
             }),
         }
     }
@@ -232,11 +259,13 @@ fn merge_buckets(buckets: Vec<Bucket>) -> Vec<Vec<Bucket>> {
     cards
 }
 
-fn build_group(card: Vec<Bucket>) -> ReleaseGroup {
+/// The card, and how much the candidate's text agrees with its best row —
+/// what orders the cards against each other.
+fn build_group(card: Vec<Bucket>) -> (ReleaseGroup, u32) {
     let sources: Vec<ReleaseGroupSource> = card.iter().map(Bucket::as_source).collect();
     let releases: Vec<&MetadataResult> = card
         .iter()
-        .flat_map(|bucket| bucket.releases.iter())
+        .flat_map(|bucket| bucket.releases.iter().map(|(release, _)| release))
         .collect();
     let lead = releases
         .first()
@@ -259,44 +288,58 @@ fn build_group(card: Vec<Bucket>) -> ReleaseGroup {
     let first = cards
         .next()
         .expect("a card is built from at least one bucket");
-    let pressings = match cards.next() {
+    let rows = match cards.next() {
         Some(second) => pair_pressings(first.releases, second.releases),
         None => first
             .releases
             .into_iter()
-            .map(|release| Pressing {
-                releases: vec![release],
+            .map(|(release, agreements)| Row {
+                pressing: Pressing {
+                    releases: vec![release],
+                },
+                agreements: agreements.count(),
             })
             .collect(),
     };
-    let pressings = ordered_by_year(pressings);
+    let rows = ordered_rows(rows);
+    let best = rows.first().map_or(0, |row| row.agreements);
 
-    ReleaseGroup {
-        id,
-        title,
-        artist,
-        label,
-        cover_art,
-        sources,
-        year_min,
-        year_max,
-        pressings,
-    }
+    (
+        ReleaseGroup {
+            id,
+            title,
+            artist,
+            label,
+            cover_art,
+            sources,
+            year_min,
+            year_max,
+            pressings: rows.into_iter().map(|row| row.pressing).collect(),
+        },
+        best,
+    )
+}
+
+/// One pressing row and how much of the candidate's text agrees with it — the
+/// most any of its sources' records earned, since the row is picked whole.
+struct Row {
+    pressing: Pressing,
+    agreements: u32,
 }
 
 /// Pair the two sources' releases into shared pressing rows. A barcode both
 /// state is the strongest evidence that they name the same physical object, so
 /// every barcode pair is taken before any catalog-number pair; each release
 /// pairs at most once, and what is left over is its own single-source row.
-fn pair_pressings(lead: Vec<MetadataResult>, other: Vec<MetadataResult>) -> Vec<Pressing> {
-    let mut other: Vec<Option<MetadataResult>> = other.into_iter().map(Some).collect();
+fn pair_pressings(lead: Vec<Judged>, other: Vec<Judged>) -> Vec<Row> {
+    let mut other: Vec<Option<Judged>> = other.into_iter().map(Some).collect();
     let mut partners: Vec<Option<usize>> = vec![None; lead.len()];
 
     for key_of in [
         barcode_key as fn(&MetadataResult) -> Option<String>,
         catalog_key,
     ] {
-        for (at, release) in lead.iter().enumerate() {
+        for (at, (release, _)) in lead.iter().enumerate() {
             if partners[at].is_some() {
                 continue;
             }
@@ -307,26 +350,34 @@ fn pair_pressings(lead: Vec<MetadataResult>, other: Vec<MetadataResult>) -> Vec<
                 partners.iter().flatten().copied().collect();
             let found = other.iter().enumerate().position(|(index, candidate)| {
                 !taken.contains(&index)
-                    && candidate
-                        .as_ref()
-                        .is_some_and(|candidate| key_of(candidate).as_deref() == Some(key.as_str()))
+                    && candidate.as_ref().is_some_and(|(candidate, _)| {
+                        key_of(candidate).as_deref() == Some(key.as_str())
+                    })
             });
             partners[at] = found;
         }
     }
 
-    let mut pressings: Vec<Pressing> = Vec::with_capacity(lead.len() + other.len());
-    for (release, partner) in lead.into_iter().zip(&partners) {
+    let mut rows: Vec<Row> = Vec::with_capacity(lead.len() + other.len());
+    for ((release, agreements), partner) in lead.into_iter().zip(&partners) {
         let mut releases = vec![release];
-        if let Some(partner) = partner.and_then(|at| other[at].take()) {
+        let mut best = agreements.count();
+        if let Some((partner, partner_agreements)) = partner.and_then(|at| other[at].take()) {
             releases.push(partner);
+            best = best.max(partner_agreements.count());
         }
-        pressings.push(Pressing { releases });
+        rows.push(Row {
+            pressing: Pressing { releases },
+            agreements: best,
+        });
     }
-    pressings.extend(other.into_iter().flatten().map(|release| Pressing {
-        releases: vec![release],
+    rows.extend(other.into_iter().flatten().map(|(release, agreements)| Row {
+        pressing: Pressing {
+            releases: vec![release],
+        },
+        agreements: agreements.count(),
     }));
-    pressings
+    rows
 }
 
 /// The digits of a stated barcode. Sources print the same code with different
@@ -351,17 +402,31 @@ fn catalog_key(release: &MetadataResult) -> Option<String> {
     (!trimmed.is_empty()).then(|| trimmed.to_ascii_lowercase())
 }
 
-/// Order the rows by the year the row's lead release was pressed, earliest
-/// first; a pressing whose year nobody states goes last. Stable, so rows that
-/// share a year keep the order the sources listed them in.
-fn ordered_by_year(mut pressings: Vec<Pressing>) -> Vec<Pressing> {
-    pressings.sort_by_key(|pressing| (pressing.lead().year.is_none(), pressing.lead().year));
-    pressings
+/// Order the rows: most agreed with first, and among rows the candidate's text
+/// says as much about, by the year the row's lead release was pressed,
+/// earliest first, with a pressing whose year nobody states last. Stable, so
+/// rows nothing tells apart keep the order the sources listed them in.
+fn ordered_rows(mut rows: Vec<Row>) -> Vec<Row> {
+    rows.sort_by_key(|row| {
+        let lead = row.pressing.lead();
+        (
+            std::cmp::Reverse(row.agreements),
+            lead.year.is_none(),
+            lead.year,
+        )
+    });
+    rows
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The tests are about how results bucket, pair and order by year, none of
+    /// which the candidate's text takes part in.
+    fn grouped(results: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
+        group_results(unranked(results))
+    }
 
     fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
         MetadataResult {
@@ -415,7 +480,7 @@ mod tests {
 
     #[test]
     fn same_group_collapses_into_one_card() {
-        let groups = group_results(vec![
+        let groups = grouped(vec![
             mb("rel-1", Some("group-x"), Some(1992)),
             mb("rel-2", Some("group-x"), Some(2012)),
         ]);
@@ -435,7 +500,7 @@ mod tests {
     fn distinct_groups_keep_first_seen_order() {
         let mut second = mb("rel-2", Some("group-a"), None);
         second.title = "Other Album".to_string();
-        let groups = group_results(vec![
+        let groups = grouped(vec![
             mb("rel-1", Some("group-b"), None),
             second,
             mb("rel-3", Some("group-b"), None),
@@ -450,7 +515,7 @@ mod tests {
 
     #[test]
     fn ungrouped_result_is_its_own_single_pressing_card() {
-        let groups = group_results(vec![mb("rel-1", None, Some(1999))]);
+        let groups = grouped(vec![mb("rel-1", None, Some(1999))]);
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].id, "rel-1");
         assert_eq!(
@@ -469,13 +534,13 @@ mod tests {
     /// itself, whatever the titles say.
     #[test]
     fn two_ungrouped_results_from_one_source_do_not_merge() {
-        let groups = group_results(vec![mb("rel-1", None, None), mb("rel-2", None, None)]);
+        let groups = grouped(vec![mb("rel-1", None, None), mb("rel-2", None, None)]);
         assert_eq!(groups.len(), 2);
     }
 
     #[test]
     fn two_musicbrainz_groups_never_merge_with_each_other() {
-        let groups = group_results(vec![
+        let groups = grouped(vec![
             mb("rel-1", Some("group-a"), None),
             mb("rel-2", Some("group-b"), None),
         ]);
@@ -486,7 +551,7 @@ mod tests {
     /// both, MusicBrainz first, each with its own editorial page.
     #[test]
     fn the_same_album_across_sources_merges_into_one_card() {
-        let groups = group_results(vec![
+        let groups = grouped(vec![
             discogs("dg-1", Some("master-7"), Some(2001)),
             mb("mb-1", Some("group-x"), Some(1992)),
         ]);
@@ -515,7 +580,7 @@ mod tests {
     fn different_titles_across_sources_stay_apart() {
         let mut other = discogs("dg-1", Some("master-7"), None);
         other.title = "Another Album".to_string();
-        let groups = group_results(vec![mb("mb-1", Some("group-x"), None), other]);
+        let groups = grouped(vec![mb("mb-1", Some("group-x"), None), other]);
         assert_eq!(groups.len(), 2);
     }
 
@@ -525,12 +590,12 @@ mod tests {
     fn the_album_key_ignores_case_and_edge_punctuation() {
         let mut other = discogs("dg-1", Some("master-7"), None);
         other.title = "  album title!".to_string();
-        let groups = group_results(vec![mb("mb-1", Some("group-x"), None), other]);
+        let groups = grouped(vec![mb("mb-1", Some("group-x"), None), other]);
         assert_eq!(groups.len(), 1);
 
         let mut different_artist = discogs("dg-2", Some("master-8"), None);
         different_artist.artist = Some("Other Artist".to_string());
-        let groups = group_results(vec![mb("mb-2", Some("group-y"), None), different_artist]);
+        let groups = grouped(vec![mb("mb-2", Some("group-y"), None), different_artist]);
         assert_eq!(groups.len(), 2);
     }
 
@@ -539,12 +604,12 @@ mod tests {
     fn an_absent_artist_matches_only_an_absent_artist() {
         let mut anonymous = discogs("dg-1", Some("master-7"), None);
         anonymous.artist = None;
-        let groups = group_results(vec![mb("mb-1", Some("group-x"), None), anonymous.clone()]);
+        let groups = grouped(vec![mb("mb-1", Some("group-x"), None), anonymous.clone()]);
         assert_eq!(groups.len(), 2);
 
         let mut also_anonymous = mb("mb-2", Some("group-y"), None);
         also_anonymous.artist = None;
-        let groups = group_results(vec![also_anonymous, anonymous]);
+        let groups = grouped(vec![also_anonymous, anonymous]);
         assert_eq!(groups.len(), 1);
     }
 
@@ -552,7 +617,7 @@ mod tests {
     /// with the same title stays its own card rather than joining.
     #[test]
     fn each_bucket_merges_at_most_once() {
-        let groups = group_results(vec![
+        let groups = grouped(vec![
             mb("mb-1", Some("group-x"), None),
             discogs("dg-1", Some("master-7"), None),
             discogs("dg-2", Some("master-8"), None),
@@ -572,7 +637,7 @@ mod tests {
         let mut other = discogs("dg-1", Some("master-7"), Some(1992));
         other.barcode = Some("012345678905".to_string());
 
-        let groups = group_results(vec![one, other]);
+        let groups = grouped(vec![one, other]);
         assert_eq!(
             groups[0].pressings[0].pick(),
             crate::import::MetadataProvenance::ExternalRelease {
@@ -589,7 +654,7 @@ mod tests {
     /// A pressing only one source lists claims only that source.
     #[test]
     fn a_lone_row_is_picked_with_no_partner() {
-        let groups = group_results(vec![discogs("dg-1", Some("master-7"), Some(1992))]);
+        let groups = grouped(vec![discogs("dg-1", Some("master-7"), Some(1992))]);
         assert_eq!(
             groups[0].pressings[0].pick(),
             crate::import::MetadataProvenance::ExternalRelease {
@@ -608,7 +673,7 @@ mod tests {
         let mut other = discogs("dg-1", Some("master-7"), Some(1992));
         other.barcode = Some("012345678905".to_string());
 
-        let groups = group_results(vec![one, other]);
+        let groups = grouped(vec![one, other]);
         assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
     }
 
@@ -619,7 +684,7 @@ mod tests {
         let mut other = discogs("dg-1", Some("master-7"), Some(1992));
         other.catalog_number = Some("cat-7".to_string());
 
-        let groups = group_results(vec![one, other]);
+        let groups = grouped(vec![one, other]);
         assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
     }
 
@@ -633,7 +698,7 @@ mod tests {
         let mut other = discogs("dg-1", Some("master-7"), Some(1992));
         other.catalog_number = Some("CAT 2-2".to_string());
 
-        let groups = group_results(vec![one, other]);
+        let groups = grouped(vec![one, other]);
         assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
     }
 
@@ -651,7 +716,7 @@ mod tests {
         other.barcode = Some("012345678905".to_string());
         other.catalog_number = Some("CAT-7".to_string());
 
-        let groups = group_results(vec![catalog_only, barcoded, other]);
+        let groups = grouped(vec![catalog_only, barcoded, other]);
         assert_eq!(
             lead_ids(&groups[0]),
             vec![vec!["mb-catalog"], vec!["mb-barcode", "dg-1"]]
@@ -662,7 +727,7 @@ mod tests {
     /// leftovers land as single-source pressings.
     #[test]
     fn unpaired_releases_are_single_source_pressings() {
-        let groups = group_results(vec![
+        let groups = grouped(vec![
             mb("mb-1", Some("group-x"), Some(1992)),
             discogs("dg-1", Some("master-7"), Some(2001)),
         ]);
@@ -675,7 +740,7 @@ mod tests {
 
     #[test]
     fn rows_are_ordered_by_pressing_year_with_unknown_years_last() {
-        let groups = group_results(vec![
+        let groups = grouped(vec![
             mb("rel-undated", Some("group-x"), None),
             mb("rel-2012", Some("group-x"), Some(2012)),
             mb("rel-1992", Some("group-x"), Some(1992)),
@@ -690,7 +755,7 @@ mod tests {
 
     #[test]
     fn year_span_is_none_when_no_pressing_carries_a_year() {
-        let groups = group_results(vec![mb("rel-1", Some("group-x"), None)]);
+        let groups = grouped(vec![mb("rel-1", Some("group-x"), None)]);
         assert_eq!(groups[0].year_min, None);
         assert_eq!(groups[0].year_max, None);
     }
@@ -704,13 +769,13 @@ mod tests {
         let mut later = mb("rel-3", Some("group-x"), Some(2012));
         later.label = Some("Reissue Records".to_string());
 
-        let groups = group_results(vec![unlabelled, labelled, later]);
+        let groups = grouped(vec![unlabelled, labelled, later]);
         assert_eq!(groups[0].label.as_deref(), Some("Label Name"));
     }
 
     #[test]
     fn a_card_whose_pressings_name_no_label_has_none() {
-        let groups = group_results(vec![mb("rel-1", Some("group-x"), Some(1992))]);
+        let groups = grouped(vec![mb("rel-1", Some("group-x"), Some(1992))]);
         assert_eq!(groups[0].label, None);
     }
 
@@ -720,7 +785,7 @@ mod tests {
         let mut first = mb("rel-1", Some("group-x"), Some(1992));
         first.cover_art = Some(cover.clone());
 
-        let groups = group_results(vec![first, mb("rel-2", Some("group-x"), Some(1994))]);
+        let groups = grouped(vec![first, mb("rel-2", Some("group-x"), Some(1994))]);
 
         assert_eq!(groups[0].cover_art, Some(cover));
     }
@@ -739,7 +804,7 @@ mod tests {
         let mut mb_covered = mb("mb-1", Some("group-x"), Some(1992));
         mb_covered.cover_art = Some(cover());
 
-        let groups = group_results(vec![discogs_covered, mb_covered]);
+        let groups = grouped(vec![discogs_covered, mb_covered]);
         assert_eq!(groups[0].cover_art, Some(cover()));
     }
 
@@ -753,7 +818,7 @@ mod tests {
         let mut other = discogs("rel-dg", Some("shared-id"), Some(2001));
         other.title = "Album Two".to_string();
 
-        let groups = group_results(vec![one, other]);
+        let groups = grouped(vec![one, other]);
 
         assert_eq!(groups.len(), 2);
         assert_eq!(
@@ -764,4 +829,72 @@ mod tests {
             vec![MetadataSource::MusicBrainz, MetadataSource::Discogs]
         );
     }
+
+    // MARK: - Ranking
+
+    fn agreed(count: u32) -> Agreements {
+        Agreements {
+            disc_id: count >= 1,
+            barcode: count >= 2,
+            catalog: count >= 3,
+            label: count >= 4,
+            year: count >= 5,
+            country: count >= 6,
+        }
+    }
+
+    /// The rows the candidate's own text says most about lead, whatever year
+    /// they were pressed.
+    #[test]
+    fn rows_the_text_says_most_about_lead() {
+        let groups = group_results(vec![
+            (mb("rel-early", Some("group-x"), Some(1976)), agreed(1)),
+            (mb("rel-late", Some("group-x"), Some(2003)), agreed(4)),
+        ]);
+        assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-late"], vec!["rel-early"]]);
+    }
+
+    /// Rows the text says as much about keep the pressing-year order.
+    #[test]
+    fn rows_the_text_says_as_much_about_keep_the_year_order() {
+        let groups = group_results(vec![
+            (mb("rel-late", Some("group-x"), Some(2003)), agreed(2)),
+            (mb("rel-early", Some("group-x"), Some(1976)), agreed(2)),
+        ]);
+        assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-early"], vec!["rel-late"]]);
+    }
+
+    /// A row is picked whole, so what the text says about the row is the most
+    /// it says about any source's record of it.
+    #[test]
+    fn a_paired_row_ranks_by_whichever_source_the_text_says_more_about() {
+        let mut mb_release = mb("mb-1", Some("group-x"), Some(1976));
+        mb_release.barcode = Some("0075678169328".to_string());
+        let mut dg_release = discogs("dg-1", Some("master-7"), Some(1976));
+        dg_release.barcode = Some("0075678169328".to_string());
+        let groups = group_results(vec![
+            (mb("mb-other", Some("group-x"), Some(1976)), agreed(2)),
+            (mb_release, Agreements::NONE),
+            (dg_release, agreed(4)),
+        ]);
+        assert_eq!(
+            lead_ids(&groups[0]),
+            vec![vec!["mb-1", "dg-1"], vec!["mb-other"]],
+        );
+    }
+
+    /// Cards are ordered by their best row, so the album the folder describes
+    /// is the one at the top of the list.
+    #[test]
+    fn cards_are_ordered_by_their_best_row() {
+        let groups = group_results(vec![
+            (mb("rel-stranger", Some("group-stranger"), None), agreed(1)),
+            (mb("rel-named", Some("group-named"), None), agreed(4)),
+        ]);
+        assert_eq!(
+            groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
+            vec!["group-named", "group-stranger"],
+        );
+    }
 }
+

@@ -6,7 +6,9 @@ use super::*;
 fn cats(lines: &[String]) -> Vec<String> {
     let sourced: Vec<SourcedLine> = lines
         .iter()
-        .map(|t| SourcedLine::new(Source::CueField, t.clone()))
+        .map(|t| SourcedLine::new(Source::CueField {
+        file_id: "Album.cue".to_string(),
+    }, t.clone()))
         .collect();
     catalog_numbers_sourced(&sourced)
         .into_iter()
@@ -495,7 +497,9 @@ fn path_line(text: &str) -> SourcedLine {
 }
 
 fn cue_line(text: &str) -> SourcedLine {
-    SourcedLine::new(Source::CueField, text.to_string())
+    SourcedLine::new(Source::CueField {
+        file_id: "Album.cue".to_string(),
+    }, text.to_string())
 }
 
 fn cluster_lines(lines: Vec<SourcedLine>) -> Vec<Cluster> {

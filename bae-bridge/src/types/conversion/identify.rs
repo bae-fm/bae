@@ -381,16 +381,18 @@ mirror_enum! {
     },
 }
 
-/// Not a `mirror_struct`: the measured durations are a Ready-rule input and the
-/// mapping table's lengths, not a badge — the sidebar reads a candidate's
-/// classification, and the pane reads the durations through its own record.
-/// Neither wants them here, so they do not cross.
+/// Not a `mirror_struct`: neither the measured durations nor the candidate's
+/// own text lines cross. The durations are a Ready-rule input and the mapping
+/// table's lengths, and the pane reads them through its own record; the text
+/// pool is what core judges and orders the rows by, and what it concluded is
+/// already on every row as its badges.
 impl BridgeSignals {
     pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
         let bae_core::signals::Signals {
             disc_id,
             barcode,
             text,
+            text_pool: _,
             durations: _,
         } = s;
         BridgeSignals {
@@ -402,15 +404,15 @@ impl BridgeSignals {
 }
 
 mirror_struct! {
-    BridgeResultProvenance = bae_core::identify::ResultProvenance,
+    BridgeAgreements = bae_core::identify::Agreements,
     from_core: fn,
-    fields: { by_disc_id, by_barcode, by_catalog },
+    fields: { disc_id, barcode, catalog, label, year, country },
 }
 
 /// Mirror [`bae_core::identify::IdentifyStateView`] into the uniffi enum. Core has
-/// already folded the matches into their group cards, keyed the provenance,
-/// reduced the in-flight payloads to counts, and dropped what must not cross —
-/// this is a field copy per variant and nothing else.
+/// already folded the matches into their group cards, ranked them, keyed the
+/// agreements, reduced the in-flight payloads to counts, and dropped what must
+/// not cross — this is a field copy per variant and nothing else.
 impl BridgeIdentifyState {
     pub(crate) fn from_core(s: bae_core::identify::IdentifyState) -> Self {
         use bae_core::identify::IdentifyStateView;
@@ -420,7 +422,7 @@ impl BridgeIdentifyState {
                 run,
                 groups,
                 library_statuses,
-                provenance,
+                agreements,
                 narrowed_out,
             } => BridgeIdentifyState::Triangulating {
                 run: BridgeIdentifyRun::from_core(run),
@@ -429,9 +431,9 @@ impl BridgeIdentifyState {
                     .map(BridgeReleaseGroup::from_core)
                     .collect(),
                 library_statuses: status_map(library_statuses),
-                provenance: provenance
+                agreements: agreements
                     .into_iter()
-                    .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
+                    .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                     .collect(),
                 narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
             },
@@ -440,7 +442,7 @@ impl BridgeIdentifyState {
                 groups,
                 library_statuses,
                 track_count,
-                provenance,
+                agreements,
                 narrowed_out,
             } => BridgeIdentifyState::Found {
                 run: run.map(BridgeIdentifyRun::from_core),
@@ -450,9 +452,9 @@ impl BridgeIdentifyState {
                     .collect(),
                 library_statuses: status_map(library_statuses),
                 track_count,
-                provenance: provenance
+                agreements: agreements
                     .into_iter()
-                    .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
+                    .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                     .collect(),
                 narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
             },
@@ -468,7 +470,7 @@ impl BridgeIdentifyState {
                 failures,
                 groups,
                 library_statuses,
-                provenance,
+                agreements,
                 narrowed_out,
             } => BridgeIdentifyState::Failed {
                 run: run.map(BridgeIdentifyRun::from_core),
@@ -478,9 +480,9 @@ impl BridgeIdentifyState {
                     .map(BridgeReleaseGroup::from_core)
                     .collect(),
                 library_statuses: status_map(library_statuses),
-                provenance: provenance
+                agreements: agreements
                     .into_iter()
-                    .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
+                    .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                     .collect(),
                 narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
             },
@@ -497,10 +499,10 @@ impl BridgeNarrowedOut {
                 .map(BridgeReleaseGroup::from_core)
                 .collect(),
             library_statuses: status_map(view.library_statuses),
-            provenance: view
-                .provenance
+            agreements: view
+                .agreements
                 .into_iter()
-                .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
+                .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                 .collect(),
         }
     }
@@ -578,6 +580,7 @@ mod tests {
                     ..Default::default()
                 },
                 catalog: Default::default(),
+                text: Default::default(),
                 track_count: 9,
             },
         }

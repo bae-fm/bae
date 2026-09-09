@@ -9,32 +9,34 @@ import Foundation
 /// beside the matches. It carries none when extraction handed the run nothing
 /// to lay out: a folder with no disc ID, no barcode source and no catalog
 /// number, or a verdict stood back up from the store.
-/// The releases the signals' agreement left out of the matches — real answers
-/// a lookup returned that the agreement discarded, offered behind a disclosure
-/// rather than dropped. Shaped exactly as a state's own matches, so the pane
-/// lists them the same way. Empty when the agreement narrowed nothing.
+/// The releases agreement left out of the matches — real answers a lookup
+/// returned that the intersection discarded, and the ones the folder's own
+/// text says nothing about. Offered behind a disclosure rather than dropped,
+/// and shaped exactly as a state's own matches, so the pane lists them the
+/// same way. Empty when nothing was narrowed.
 struct NarrowedOut: Equatable {
     var groups: [ReleaseGroup]
     /// Library status per release, keyed by release id, as the matches' are.
     var libraryStatuses: [String: BridgeLibraryStatus]
-    /// Which signals named each release, keyed by release id.
-    var provenance: [String: BridgeResultProvenance]
+    /// What the candidate's text agrees with about each release, keyed by
+    /// release id.
+    var agreements: [String: BridgeAgreements]
 }
 
 extension NarrowedOut {
-    /// The agreement narrowed nothing out — what every state that never
-    /// intersected anything carries.
+    /// Nothing was narrowed out — what a state carries when one signal
+    /// answered alone and the folder's text stands behind every answer.
     static let nothing = NarrowedOut(
         groups: [],
         libraryStatuses: [:],
-        provenance: [:]
+        agreements: [:]
     )
 
     init(bridge: BridgeNarrowedOut) {
         self.init(
             groups: bridge.groups.map(ReleaseGroup.init(bridge:)),
             libraryStatuses: bridge.libraryStatuses,
-            provenance: bridge.provenance
+            agreements: bridge.agreements
         )
     }
 
@@ -57,20 +59,21 @@ enum IdentifyState: Equatable {
         run: BridgeIdentifyRun,
         groups: [ReleaseGroup],
         libraryStatuses: [String: BridgeLibraryStatus],
-        provenance: [String: BridgeResultProvenance],
+        agreements: [String: BridgeAgreements],
         narrowedOut: NarrowedOut,
     )
-    /// The matches as group cards, in match order. Usually one card; signals
-    /// that named different releases give several, which is the same list of
-    /// things to pick from either way.
+    /// The matches as group cards, ranked — most agreed with first, rendered
+    /// in the order they arrive. Usually one card; signals that named
+    /// different releases give several, which is the same list of things to
+    /// pick from either way.
     case found(
         run: BridgeIdentifyRun?,
         groups: [ReleaseGroup],
         libraryStatuses: [String: BridgeLibraryStatus],
         trackCount: UInt32,
-        /// Per-pressing provenance keyed by release id — the per-row badges, and
-        /// which signal produced each match.
-        provenance: [String: BridgeResultProvenance],
+        /// What the candidate's own text agrees with about each pressing,
+        /// keyed by release id — the per-row badges, and what ordered the rows.
+        agreements: [String: BridgeAgreements],
         narrowedOut: NarrowedOut,
     )
     case notFoundAnywhere(run: BridgeIdentifyRun?)
@@ -88,7 +91,7 @@ enum IdentifyState: Equatable {
         failures: [BridgeIdentifyFailure],
         groups: [ReleaseGroup],
         libraryStatuses: [String: BridgeLibraryStatus],
-        provenance: [String: BridgeResultProvenance],
+        agreements: [String: BridgeAgreements],
         narrowedOut: NarrowedOut,
     )
 
@@ -99,14 +102,14 @@ enum IdentifyState: Equatable {
             let run,
             let groups,
             let libraryStatuses,
-            let provenance,
+            let agreements,
             let narrowedOut
         ):
             self = .triangulating(
                 run: run,
                 groups: groups.map(ReleaseGroup.init(bridge:)),
                 libraryStatuses: libraryStatuses,
-                provenance: provenance,
+                agreements: agreements,
                 narrowedOut: NarrowedOut(bridge: narrowedOut),
             )
         case .found(
@@ -114,7 +117,7 @@ enum IdentifyState: Equatable {
             let groups,
             let libraryStatuses,
             let trackCount,
-            let provenance,
+            let agreements,
             let narrowedOut
         ):
             self = .found(
@@ -122,7 +125,7 @@ enum IdentifyState: Equatable {
                 groups: groups.map(ReleaseGroup.init(bridge:)),
                 libraryStatuses: libraryStatuses,
                 trackCount: trackCount,
-                provenance: provenance,
+                agreements: agreements,
                 narrowedOut: NarrowedOut(bridge: narrowedOut),
             )
         case .notFoundAnywhere(let run): self = .notFoundAnywhere(run: run)
@@ -133,7 +136,7 @@ enum IdentifyState: Equatable {
             let failures,
             let groups,
             let libraryStatuses,
-            let provenance,
+            let agreements,
             let narrowedOut
         ):
             self = .failed(
@@ -141,7 +144,7 @@ enum IdentifyState: Equatable {
                 failures: failures,
                 groups: groups.map(ReleaseGroup.init(bridge:)),
                 libraryStatuses: libraryStatuses,
-                provenance: provenance,
+                agreements: agreements,
                 narrowedOut: NarrowedOut(bridge: narrowedOut),
             )
         }

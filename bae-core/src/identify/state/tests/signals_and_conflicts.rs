@@ -164,6 +164,7 @@ fn signals_with_catalogs(
             catalogs,
             free_text: vec![],
         },
+        text_pool: Vec::new(),
         durations: crate::import::probe::SourceDurations::default(),
     }
 }

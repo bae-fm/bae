@@ -2,7 +2,7 @@
 //! sweep's tests; these are about what the queue asks of the user given one.
 
 use super::*;
-use crate::identify::ResultProvenance;
+use crate::identify::LookupProvenance;
 use crate::import::search::SourceTracks;
 use crate::import::MetadataSource;
 
@@ -27,7 +27,7 @@ fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResu
 fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
     let provenance = matches
         .iter()
-        .map(|_| ResultProvenance {
+        .map(|_| LookupProvenance {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
@@ -37,7 +37,6 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
         matches,
         track_count,
         provenance,
-        matched_barcode: None,
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
         ledger: None,
@@ -100,7 +99,6 @@ fn what_agreement_narrowed_out_is_not_a_match() {
         matches,
         track_count,
         provenance,
-        matched_barcode,
         ..
     } = found(vec![result("mb-1", agreeing(11, 2_400_000))], 11)
     else {
@@ -110,9 +108,8 @@ fn what_agreement_narrowed_out_is_not_a_match() {
         matches,
         track_count,
         provenance,
-        matched_barcode,
         narrowed_out: vec![result("mb-2", agreeing(11, 2_400_000))],
-        narrowed_out_provenance: vec![ResultProvenance {
+        narrowed_out_provenance: vec![LookupProvenance {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,

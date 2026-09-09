@@ -443,10 +443,14 @@ pub(super) fn load_candidate_detail_on(
                 statuses,
             ));
             matched = MatchedRelease::of_summary(&VerdictSummary::of(&identify.verdict));
-            resumed_identify_state = identify
-                .verdict
-                .clone()
-                .resume_state(&status_of);
+            // The candidate's own text is what the rows are judged and ordered
+            // against, live or resumed. A candidate whose extraction never
+            // stored any offers its rows unranked rather than none.
+            let text = signals.as_ref().map_or_else(
+                crate::identify::CandidateText::default,
+                |signals| crate::identify::CandidateText::of(&signals.text_pool),
+            );
+            resumed_identify_state = identify.verdict.clone().resume_state(&status_of, text);
         }
         if picked.is_some() {
             matched = release

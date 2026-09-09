@@ -132,14 +132,18 @@ pub struct AutomationIdentifyRun {
     pub catalog: AutomationCatalogStep,
 }
 
-/// Mirrors bae-core's `identify::ResultProvenance`, paired with the release id
-/// it aligns to (the core type is index-aligned with the match list).
+/// Mirrors bae-core's `identify::Agreements`, paired with the release id it
+/// belongs to: what the candidate's own text agrees with about that result,
+/// which is what ordered the rows and what each row's badges say.
 #[derive(Debug, Clone, Serialize)]
-pub struct AutomationResultProvenance {
+pub struct AutomationAgreements {
     pub release_id: String,
-    pub by_disc_id: bool,
-    pub by_barcode: bool,
-    pub by_catalog: bool,
+    pub disc_id: bool,
+    pub barcode: bool,
+    pub catalog: bool,
+    pub label: bool,
+    pub year: bool,
+    pub country: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -165,14 +169,14 @@ pub enum AutomationIdentifyFailure {
     },
 }
 
-/// The releases the signals' agreement left out of a state's matches, shaped
-/// as its matches are. Empty when the agreement narrowed nothing. Mirrors
+/// The releases agreement left out of a state's matches, shaped as its matches
+/// are. Empty when nothing was narrowed. Mirrors
 /// `bae_core::identify::NarrowedOutView`.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct AutomationNarrowedOut {
     pub groups: Vec<AutomationReleaseGroup>,
     pub library_statuses: Vec<AutomationLibraryStatus>,
-    pub provenance: Vec<AutomationResultProvenance>,
+    pub agreements: Vec<AutomationAgreements>,
 }
 
 /// Projects bae-core's `identify::IdentifyState`. The `SignalsContext`
@@ -188,7 +192,7 @@ pub enum AutomationIdentifyState {
         run: AutomationIdentifyRun,
         groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,
-        provenance: Vec<AutomationResultProvenance>,
+        agreements: Vec<AutomationAgreements>,
         narrowed_out: AutomationNarrowedOut,
     },
     /// A settled state carries the run it settled as; none when extraction
@@ -199,7 +203,7 @@ pub enum AutomationIdentifyState {
         groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,
         track_count: u32,
-        provenance: Vec<AutomationResultProvenance>,
+        agreements: Vec<AutomationAgreements>,
         narrowed_out: AutomationNarrowedOut,
     },
     NotFoundAnywhere {
@@ -218,7 +222,7 @@ pub enum AutomationIdentifyState {
         failures: Vec<AutomationIdentifyFailure>,
         groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,
-        provenance: Vec<AutomationResultProvenance>,
+        agreements: Vec<AutomationAgreements>,
         narrowed_out: AutomationNarrowedOut,
     },
 }

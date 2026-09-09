@@ -221,6 +221,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
+                text_pool: Vec::new(),
                 durations: crate::import::probe::SourceDurations::default(),
             },
             artwork: crate::signals::ArtworkScan::Absent,

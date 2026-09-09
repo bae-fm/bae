@@ -6,12 +6,13 @@
 //! `matches`, `library_statuses` and `provenance` as three index-aligned
 //! vectors because that is what `combine` hands it.
 //!
-//! No surface wants that shape, and every surface wants the same *other* shape:
-//! the matches folded into their release-group cards, each result paired with its
-//! library status, provenance keyed by release id, the run laid out as a ledger —
-//! one row per value extraction found, with where it was found beside it and
-//! one cell per provider asked about it — and the context's raw inputs left
-//! behind. Those are domain decisions, so they are made here, once, and a field
+//! No surface wants that shape, and every surface wants the same *other*
+//! shape: the matches folded into their release-group cards, ranked and
+//! badged by how much of the candidate's own text agrees with them, each
+//! result paired with its library status, the agreements keyed by release id,
+//! the run laid out as a ledger — one row per value extraction found, with
+//! where it was found beside it and one cell per provider asked about it —
+//! and the context's raw inputs left behind. Those are domain decisions, so they are made here, once, and a field
 //! that must not cross is simply absent from the type.
 //!
 //! The ledger, [`IdentifyRunView`], is also what a run stores: the reducer
@@ -21,7 +22,8 @@
 //! The transports (`bae-bridge`'s uniffi records, `bae-automation`'s JSON) mirror
 //! this view into their own wire types field by field and decide nothing.
 
-use super::combine::{combine_results, CombineOutcome, NarrowedOut, ResultProvenance};
+use super::agreements::{agreements_of, Agreements, CandidateText};
+use super::combine::{combine_results, CombineOutcome, LookupProvenance, NarrowedOut};
 use super::state::{
     BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
     IdentifyState, LookupResults, LookupState, SignalsContext,
@@ -187,17 +189,18 @@ pub struct IdentifyRunView {
     pub catalog: CatalogStepView,
 }
 
-/// The releases the signals' agreement left out, as a surface lists them:
-/// folded into album cards like the matches, with the same per-pressing
-/// library statuses and provenance. Empty when nothing was narrowed — one
-/// signal answering alone, or signals that shared nothing.
+/// The releases agreement left out, as a surface lists them: folded into album
+/// cards like the matches, with the same per-pressing library statuses and
+/// badges. Empty when nothing was narrowed — one signal answering alone,
+/// signals that shared nothing, and a candidate whose text stands behind none
+/// of the answers, which is offered whole rather than emptied.
 #[derive(Debug, Clone, Default)]
 pub struct NarrowedOutView {
     pub groups: Vec<ReleaseGroup>,
     /// One per pressing; each carries its own `release_id`.
     pub library_statuses: Vec<LibraryStatus>,
-    /// Per-pressing provenance, keyed by release id, as `Found`'s is.
-    pub provenance: Vec<(String, ResultProvenance)>,
+    /// Per-pressing agreements, keyed by release id, as `Found`'s are.
+    pub agreements: Vec<(String, Agreements)>,
 }
 
 impl NarrowedOutView {
@@ -225,7 +228,7 @@ pub enum IdentifyStateView {
         run: IdentifyRunView,
         groups: Vec<ReleaseGroup>,
         library_statuses: Vec<LibraryStatus>,
-        provenance: Vec<(String, ResultProvenance)>,
+        agreements: Vec<(String, Agreements)>,
         /// What the lookups answered so far that the agreement so far leaves
         /// out — the same list the settled state lands on, as it stands.
         narrowed_out: NarrowedOutView,
@@ -242,13 +245,14 @@ pub enum IdentifyStateView {
         /// One per pressing; each carries its own `release_id`.
         library_statuses: Vec<LibraryStatus>,
         track_count: u32,
-        /// Per-pressing provenance, keyed by release id. `combine` produces it
-        /// index-aligned with the matches, and the matches are now inside the
-        /// group cards, so the alignment is re-expressed as a key here rather
-        /// than left for a surface to reconstruct.
-        provenance: Vec<(String, ResultProvenance)>,
-        /// The releases the signals agreed away, for the surface to offer
-        /// behind a disclosure.
+        /// What the candidate's own text agrees with about each pressing,
+        /// keyed by release id — the row's badges, and what ordered the rows.
+        /// It is derived per result, and the results are now inside the group
+        /// cards, so the alignment is re-expressed as a key here rather than
+        /// left for a surface to reconstruct.
+        agreements: Vec<(String, Agreements)>,
+        /// The releases agreement left out, for the surface to offer behind a
+        /// disclosure.
         narrowed_out: NarrowedOutView,
     },
 
@@ -275,7 +279,7 @@ pub enum IdentifyStateView {
         failures: Vec<super::IdentifyFailure>,
         groups: Vec<ReleaseGroup>,
         library_statuses: Vec<LibraryStatus>,
-        provenance: Vec<(String, ResultProvenance)>,
+        agreements: Vec<(String, Agreements)>,
         narrowed_out: NarrowedOutView,
     },
 }
@@ -293,13 +297,13 @@ impl From<IdentifyState> for IdentifyStateView {
             } => {
                 let (matches, library_statuses, provenance, narrowed_out) =
                     live_matches(&discid, &barcode, &catalog, &context);
-                let (groups, provenance) = fold_matches(matches, provenance);
+                let (groups, agreements) = fold_matches(matches, provenance, &context.text);
                 IdentifyStateView::Triangulating {
                     run: run_view(&discid, &barcode, &catalog, &context),
                     groups,
                     library_statuses,
-                    provenance,
-                    narrowed_out: fold_narrowed_out(narrowed_out),
+                    agreements,
+                    narrowed_out: fold_narrowed_out(narrowed_out, &context.text),
                 }
             }
 
@@ -310,16 +314,16 @@ impl From<IdentifyState> for IdentifyStateView {
                 provenance,
                 narrowed_out,
                 ledger,
-                context: _,
+                context,
             } => {
-                let (groups, provenance) = fold_matches(matches, provenance);
+                let (groups, agreements) = fold_matches(matches, provenance, &context.text);
                 IdentifyStateView::Found {
                     run: ledger,
                     groups,
                     library_statuses,
                     track_count,
-                    provenance,
-                    narrowed_out: fold_narrowed_out(narrowed_out),
+                    agreements,
+                    narrowed_out: fold_narrowed_out(narrowed_out, &context.text),
                 }
             }
 
@@ -344,16 +348,16 @@ impl From<IdentifyState> for IdentifyStateView {
                 narrowed_out,
                 track_count: _,
                 ledger,
-                context: _,
+                context,
             } => {
-                let (groups, provenance) = fold_matches(matches, provenance);
+                let (groups, agreements) = fold_matches(matches, provenance, &context.text);
                 IdentifyStateView::Failed {
                     run: ledger,
                     failures,
                     groups,
                     library_statuses,
-                    provenance,
-                    narrowed_out: fold_narrowed_out(narrowed_out),
+                    agreements,
+                    narrowed_out: fold_narrowed_out(narrowed_out, &context.text),
                 }
             }
         }
@@ -374,13 +378,14 @@ fn live_matches(
 ) -> (
     Vec<MetadataResult>,
     Vec<LibraryStatus>,
-    Vec<ResultProvenance>,
+    Vec<LookupProvenance>,
     NarrowedOut,
 ) {
     let outcome = combine_results(
         context.disc.active(discid.results()),
         context.barcode.active(barcode.results()),
         context.catalog.active(catalog.results()),
+        &context.text,
     );
     match outcome {
         CombineOutcome::Found {
@@ -395,34 +400,47 @@ fn live_matches(
     }
 }
 
-/// Fold a match list into its group cards, keying the provenance by release id
-/// first: `combine` produces it index-aligned with the matches, and once the
-/// matches are inside the cards that alignment is no longer expressible.
+/// Judge each match against the candidate's own text, fold the list into its
+/// group cards — which is also what orders the rows — and key the agreements
+/// by release id: they are derived per result, and once the results are inside
+/// the cards that alignment is no longer expressible.
+///
+/// This is the one place a stored verdict's rows are judged. A run's own rows
+/// were judged by `combine`, against this same text, so a row does not change
+/// what it says between the run and the read.
 fn fold_matches(
     matches: Vec<MetadataResult>,
-    provenance: Vec<ResultProvenance>,
-) -> (Vec<ReleaseGroup>, Vec<(String, ResultProvenance)>) {
-    let keyed = matches
-        .iter()
-        .map(|result| result.release_id.clone())
+    provenance: Vec<LookupProvenance>,
+    text: &CandidateText,
+) -> (Vec<ReleaseGroup>, Vec<(String, Agreements)>) {
+    let judged: Vec<(MetadataResult, Agreements)> = matches
+        .into_iter()
         .zip(provenance)
+        .map(|(result, lookup)| {
+            let agreements = agreements_of(&result, text, &lookup);
+            (result, agreements)
+        })
         .collect();
-    (group_results(matches), keyed)
+    let keyed = judged
+        .iter()
+        .map(|(result, agreements)| (result.release_id.clone(), *agreements))
+        .collect();
+    (group_results(judged), keyed)
 }
 
 /// The narrowed-out releases, folded into their album cards the way the
 /// matches are, so a surface lists both the same way.
-fn fold_narrowed_out(narrowed_out: NarrowedOut) -> NarrowedOutView {
+fn fold_narrowed_out(narrowed_out: NarrowedOut, text: &CandidateText) -> NarrowedOutView {
     let NarrowedOut {
         matches,
         library_statuses,
         provenance,
     } = narrowed_out;
-    let (groups, provenance) = fold_matches(matches, provenance);
+    let (groups, agreements) = fold_matches(matches, provenance, text);
     NarrowedOutView {
         groups,
         library_statuses,
-        provenance,
+        agreements,
     }
 }
 
@@ -681,12 +699,15 @@ fn sources_of(sightings: &[crate::signals::SourcedValue], value: &str) -> Vec<Va
 }
 
 /// What a settled lookup turned up: its releases folded into album cards, or
-/// nothing.
+/// nothing. One cell of the ledger — what this lookup alone saw, before
+/// anything else narrowed it — so the rows are the lookup's own order.
 fn found_or_no_match(results: &LookupResults) -> LookupView {
     if results.is_empty() {
         return LookupView::NoMatch;
     }
-    let groups = group_results(results.iter().map(|(result, _)| result.clone()).collect());
+    let groups = group_results(crate::import::release_group::unranked(
+        results.iter().map(|(result, _)| result.clone()).collect(),
+    ));
     LookupView::Found {
         count: groups
             .iter()

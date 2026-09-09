@@ -318,7 +318,7 @@ public sealed class ImportMappingPaneTests
                 new[] { group },
                 new Dictionary<string, BridgeLibraryStatus>(),
                 1,
-                new Dictionary<string, BridgeResultProvenance>(),
+                new Dictionary<string, BridgeAgreements>(),
                 NothingNarrowedOut()),
             new BridgeSignalsToolbar(Array.Empty<BridgeToolbarSignal>()),
             null,
@@ -773,7 +773,7 @@ public sealed class ImportMappingPaneTests
         new(
             Array.Empty<BridgeReleaseGroup>(),
             new Dictionary<string, BridgeLibraryStatus>(),
-            new Dictionary<string, BridgeResultProvenance>());
+            new Dictionary<string, BridgeAgreements>());
 
     private static BridgeReleaseGroup ChoiceGroup(string releaseId)
     {

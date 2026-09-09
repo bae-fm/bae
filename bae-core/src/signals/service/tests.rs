@@ -393,6 +393,7 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
+                text_pool: Vec::new(),
                 durations: crate::import::probe::SourceDurations::default(),
             },
             ArtworkScan::Absent,
@@ -863,5 +864,93 @@ FILE \"audio.flac\" WAVE\n  \
         matches!(signals[1].barcode, BarcodeSignal::Settled { .. }),
         "a CUE catalog barcode settles without an analyzer, got {:?}",
         signals[1].barcode,
+    );
+}
+
+/// Every surface a folder carries puts its lines in the pool as it read them —
+/// the OCR of an image, the folder's own name, a file name, a CUE field, a
+/// `.txt` line — each naming the file it came from where there is one. Nothing
+/// is classified out of it and nothing is stripped: what the folder says is
+/// what ranking looks a result's fields up in.
+#[tokio::test(flavor = "multi_thread")]
+async fn every_surface_lands_in_the_text_pool_as_it_was_read() {
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(
+        &tmp,
+        "Artist Alpha - Album Title [16033-2]",
+        &["Artist Alpha - Back Cover.jpg"],
+        &[("info.txt", "Atlantic Records, Inc.\n")],
+    );
+    let cue = r#"PERFORMER "Artist Alpha"
+FILE "01 - Track.flac" WAVE
+  TRACK 01 AUDIO
+    INDEX 01 00:00:00
+"#;
+    fs::write(folder.join("Album.cue"), cue).unwrap();
+
+    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
+        StubAnalyzer::new().with(
+            "Artist Alpha - Back Cover.jpg",
+            vec!["Made in US · 1976".to_string()],
+        ),
+    );
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+
+    let signals = collect_signals(&mut rx, 2).await;
+    let pool = &signals[signals.len() - 1].text_pool;
+    let found = |text: &str| pool.iter().find(|line| line.text == text);
+
+    let folder_line = found("Artist Alpha - Album Title [16033-2]")
+        .unwrap_or_else(|| panic!("the folder's own name, as written; got {pool:?}"));
+    assert_eq!(folder_line.origin, SignalOrigin::FolderName);
+    assert_eq!(folder_line.file, None);
+
+    let filename_line = found("Artist Alpha - Back Cover")
+        .unwrap_or_else(|| panic!("the image's file name; got {pool:?}"));
+    assert_eq!(filename_line.origin, SignalOrigin::Filename);
+    assert_eq!(
+        filename_line.file.as_deref(),
+        Some("Artist Alpha - Back Cover.jpg")
+    );
+
+    let cue_line =
+        found("Artist Alpha").unwrap_or_else(|| panic!("the CUE PERFORMER; got {pool:?}"));
+    assert_eq!(cue_line.origin, SignalOrigin::CueSheet);
+    assert_eq!(cue_line.file.as_deref(), Some("Album.cue"));
+
+    let text_file_line = found("Atlantic Records, Inc.")
+        .unwrap_or_else(|| panic!("the .txt line; got {pool:?}"));
+    assert_eq!(text_file_line.origin, SignalOrigin::TextFile);
+    assert_eq!(text_file_line.file.as_deref(), Some("info.txt"));
+
+    let ocr_line =
+        found("Made in US · 1976").unwrap_or_else(|| panic!("the OCR line; got {pool:?}"));
+    assert_eq!(ocr_line.origin, SignalOrigin::Artwork);
+    assert_eq!(
+        ocr_line.file.as_deref(),
+        Some("Artist Alpha - Back Cover.jpg")
+    );
+}
+
+/// One line read twice off one surface is one line: the pool is what the folder
+/// says, not how many times a pass happened to read it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_line_read_twice_off_one_surface_is_pooled_once() {
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(&tmp, "Some Folder", &["front.jpg"], &[]);
+    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new().with(
+        "front.jpg",
+        vec!["Atlantic Records".to_string(), "Atlantic Records".to_string()],
+    ));
+    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+
+    let signals = collect_signals(&mut rx, 2).await;
+    let pool = &signals[signals.len() - 1].text_pool;
+    assert_eq!(
+        pool.iter()
+            .filter(|line| line.text == "Atlantic Records")
+            .count(),
+        1,
+        "got {pool:?}",
     );
 }

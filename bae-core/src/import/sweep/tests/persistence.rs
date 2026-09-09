@@ -115,13 +115,12 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
         track_count: 2,
         provenance: release_ids
             .iter()
-            .map(|_| crate::identify::ResultProvenance {
+            .map(|_| crate::identify::LookupProvenance {
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
             })
             .collect(),
-        matched_barcode: None,
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
         ledger: None,
@@ -315,7 +314,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
     let not_in_library =
         |result: &MetadataResult| crate::db::LibraryStatus::absent(&result.release_id);
     let found =
-        multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1").resume_state(&not_in_library);
+        multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1").resume_state(&not_in_library, Default::default());
     let changed = |run: u64, state: IdentifyState| ImportEvent::IdentifyStateChanged {
         candidate_key: key.clone(),
         run: crate::identify::IdentifyRunId::for_test(run),
@@ -378,6 +377,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
             disc: Default::default(),
             barcode: Default::default(),
             catalog: Default::default(),
+            text: Default::default(),
             track_count: 0,
         },
     };

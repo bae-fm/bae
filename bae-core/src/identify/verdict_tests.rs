@@ -24,6 +24,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
         },
         barcode: BarcodeEvidence::default(),
         catalog: Default::default(),
+        text: Default::default(),
         track_count,
     }
 }
@@ -47,7 +48,7 @@ fn found_state() -> IdentifyState {
         matches: vec![mk_result("rel-1")],
         library_statuses: vec![LibraryStatus::absent("rel-1")],
         track_count: 11,
-        provenance: vec![ResultProvenance {
+        provenance: vec![LookupProvenance {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
@@ -70,12 +71,11 @@ fn found_drops_library_status_and_keeps_the_rest() {
         TerminalVerdict::Found {
             matches: vec![mk_result("rel-1")],
             track_count: 11,
-            provenance: vec![ResultProvenance {
+            provenance: vec![LookupProvenance {
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
             }],
-            matched_barcode: None,
             narrowed_out: Vec::new(),
             narrowed_out_provenance: Vec::new(),
             ledger: None,
@@ -134,8 +134,8 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
     ));
 }
 
-fn disc_id_only() -> ResultProvenance {
-    ResultProvenance {
+fn disc_id_only() -> LookupProvenance {
+    LookupProvenance {
         by_disc_id: true,
         by_barcode: false,
         by_catalog: false,
@@ -187,14 +187,14 @@ fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
         matches: vec![mk_result("rel-1")],
         track_count: 11,
         provenance: vec![disc_id_only()],
-        matched_barcode: None,
         narrowed_out: vec![mk_result("rel-out")],
         narrowed_out_provenance: vec![disc_id_only()],
         ledger: None,
     };
-    let IdentifyState::Found { narrowed_out, .. } =
-        verdict.resume_state(&|result| LibraryStatus::absent(&result.release_id))
-    else {
+    let IdentifyState::Found { narrowed_out, .. } = verdict.resume_state(
+        &|result| LibraryStatus::absent(&result.release_id),
+        Default::default(),
+    ) else {
         panic!("a found verdict resumes as Found");
     };
     assert_eq!(narrowed_out.matches, vec![mk_result("rel-out")]);
@@ -258,18 +258,17 @@ fn a_union_of_disagreeing_signals_stores_as_one_match_list() {
             matches: vec![mk_result("rel-a"), mk_result("rel-b")],
             track_count: 9,
             provenance: vec![
-                ResultProvenance {
+                LookupProvenance {
                     by_disc_id: true,
                     by_barcode: false,
                     by_catalog: false,
                 },
-                ResultProvenance {
+                LookupProvenance {
                     by_disc_id: false,
                     by_barcode: true,
                     by_catalog: false,
                 },
             ],
-            matched_barcode: Some("012345".to_string()),
             narrowed_out: Vec::new(),
             narrowed_out_provenance: Vec::new(),
             ledger: None,

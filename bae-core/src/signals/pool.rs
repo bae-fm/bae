@@ -1,12 +1,17 @@
 //! The accumulating text pool behind the classifier: it gathers source-tagged
 //! lines and folder-bracket catalogs, dedups them, and re-classifies
 //! incrementally as the extraction pass adds more lines.
+//!
+//! The lines are kept as they were read. Classification is a projection of
+//! them — a path component loses its year prefix and its bracketed tail before
+//! it can cluster — and the pool hands the unprojected lines out as the
+//! candidate's own text, which is what ranking looks a result's fields up in.
 
 use super::candidate_text::{
     self, apply_free_text_cutoff, catalog_numbers_sourced, cluster_lines_incremental,
-    rank_clusters_in_place, Cluster, Source, SourcedLine,
+    rank_clusters_in_place, strip_path_component, Cluster, Source, SourcedLine,
 };
-use crate::signals::{SignalOrigin, SourcedValue};
+use crate::signals::{SignalOrigin, SourcedValue, TextLine};
 use std::collections::HashSet;
 
 /// `lines` is the source-tagged text that gets filtered / clustered / ranked.
@@ -63,12 +68,15 @@ impl Pool {
             }
         }
 
-        // A line `should_reject_line` drops never feeds a cluster at all.
+        // A line `should_reject_line` drops never feeds a cluster at all, and
+        // a path component clusters by what is left once its year prefix and
+        // bracketed tail are off — the bracket already rode
+        // `bracket_catalogs` to the catalog output.
         let new_slice = &self.lines[self.clustered_through..];
         let filtered: Vec<SourcedLine> = new_slice
             .iter()
+            .filter_map(clustered_form)
             .filter(|l| !candidate_text::should_reject_line(&l.text))
-            .cloned()
             .collect();
         cluster_lines_incremental(&mut self.clusters, &filtered);
         self.clustered_through = self.lines.len();
@@ -84,6 +92,33 @@ impl Pool {
             free_text,
         }
     }
+
+    /// The candidate's own text, in gathering order — every line the pass
+    /// read, as it read it.
+    pub(super) fn text_lines(&self) -> Vec<TextLine> {
+        self.lines
+            .iter()
+            .map(|line| TextLine {
+                text: line.text.clone(),
+                origin: SignalOrigin::from_text_source(&line.source),
+                file: line.source.file_id(),
+                region: line.region,
+            })
+            .collect()
+    }
+}
+
+/// The line as clustering sees it: a path component reduced to the name it
+/// carries, everything else unchanged. `None` for a component that reduces to
+/// nothing worth a cluster.
+fn clustered_form(line: &SourcedLine) -> Option<SourcedLine> {
+    match line.source {
+        Source::PathComponent => strip_path_component(&line.text).map(|text| SourcedLine {
+            text,
+            ..line.clone()
+        }),
+        _ => Some(line.clone()),
+    }
 }
 
 #[cfg(test)]
@@ -94,7 +129,12 @@ mod tests {
     // MARK: - Pool::classify end-to-end (one-shot on a fresh pool)
 
     fn cue_line(text: &str) -> SourcedLine {
-        SourcedLine::new(Source::CueField, text.to_string())
+        SourcedLine::new(
+            Source::CueField {
+                file_id: "Album.cue".to_string(),
+            },
+            text.to_string(),
+        )
     }
 
     fn path_line(text: &str) -> SourcedLine {

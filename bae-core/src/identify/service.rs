@@ -527,6 +527,7 @@ mod tests {
                 catalogs: vec![],
                 free_text: vec![],
             },
+            text_pool: Vec::new(),
             durations: crate::import::probe::SourceDurations::default(),
         }
     }

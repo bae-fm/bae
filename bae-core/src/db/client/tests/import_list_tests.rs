@@ -6,7 +6,7 @@
 //! tables it deliberately never touches.
 
 use super::super::*;
-use crate::identify::{ResultProvenance, TerminalVerdict};
+use crate::identify::{LookupProvenance, TerminalVerdict};
 
 use super::{candidate, empty_db, exec, fixed_now, watched_root};
 use crate::import::folder_scanner::{
@@ -73,12 +73,11 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
             }),
         }],
         track_count: 1,
-        provenance: vec![ResultProvenance {
+        provenance: vec![LookupProvenance {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
         }],
-        matched_barcode: None,
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
         ledger,
@@ -113,6 +112,7 @@ async fn save_verdict_with_ledger(
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
+                text_pool: Vec::new(),
                 durations: crate::import::probe::SourceDurations::totalling(1_000),
             },
             metadata: {
@@ -398,13 +398,13 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
             }),
             lookup: crate::identify::LookupView::Found {
                 count: 1,
-                groups: crate::import::release_group::group_results(vec![
-                    MetadataResult::for_test(
+                groups: crate::import::release_group::group_results(
+                    crate::import::release_group::unranked(vec![MetadataResult::for_test(
                         MetadataSource::MusicBrainz,
                         "mb-verdict",
                         Some("group-1"),
-                    ),
-                ]),
+                    )]),
+                ),
             },
         },
         barcode: crate::identify::BarcodeStepView::Absent,

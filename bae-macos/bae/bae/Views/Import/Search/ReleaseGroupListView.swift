@@ -13,9 +13,10 @@ struct ReleaseGroupListView<Trailing: View>: View {
     let groups: [ReleaseGroup]
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
-    /// Per-release provenance keyed by release id, for the signal badges.
-    /// Empty for typed-search results (no identify signals produced them).
-    var provenance: [String: BridgeResultProvenance] = [:]
+    /// What the candidate's own text agrees with about each release, keyed by
+    /// release id, for the row badges. Empty for typed-search results: no
+    /// candidate was judged against anything.
+    var agreements: [String: BridgeAgreements] = [:]
     /// Release id of the pressing whose confirm pane is open, if any.
     let selectedReleaseId: String?
     /// Release id whose candidate detail is being fetched, if any.
@@ -31,7 +32,7 @@ struct ReleaseGroupListView<Trailing: View>: View {
                 groups: groups,
                 isImporting: isImporting,
                 libraryStatuses: libraryStatuses,
-                provenance: provenance,
+                agreements: agreements,
                 selectedReleaseId: selectedReleaseId,
                 loadingReleaseId: loadingReleaseId,
                 releaseSelectionFailure: releaseSelectionFailure,
@@ -48,7 +49,7 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     let groups: [ReleaseGroup]
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
-    var provenance: [String: BridgeResultProvenance] = [:]
+    var agreements: [String: BridgeAgreements] = [:]
     let selectedReleaseId: String?
     let loadingReleaseId: String?
     var releaseSelectionFailure: ReleaseSelectionFailure?
@@ -63,7 +64,7 @@ struct ReleaseGroupListContent<Trailing: View>: View {
                     group: group,
                     isImporting: isImporting,
                     libraryStatuses: libraryStatuses,
-                    provenance: provenance,
+                    agreements: agreements,
                     selectedReleaseId: selectedReleaseId,
                     loadingReleaseId: loadingReleaseId,
                     releaseSelectionFailure: releaseSelectionFailure,
@@ -96,7 +97,7 @@ struct ReleaseGroupSection: View {
     let group: ReleaseGroup
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
-    var provenance: [String: BridgeResultProvenance] = [:]
+    var agreements: [String: BridgeAgreements] = [:]
     let selectedReleaseId: String?
     /// The pressing whose pick is being read right now — its row carries a
     /// spinner while the list stays put.
@@ -124,7 +125,7 @@ struct ReleaseGroupSection: View {
                         pressing: pressing,
                         isImporting: isImporting,
                         libraryStatus: libraryStatuses[pressing.id],
-                        provenance: provenance[pressing.id],
+                        agreements: agreements[pressing.id],
                         isSelected: isSelected(pressing),
                         isLoading: isLoading(pressing),
                         failure: releaseSelectionFailure,
@@ -159,7 +160,7 @@ struct ReleaseGroupSection: View {
             groups: [PreviewData.searchGroupExact],
             isImporting: false,
             libraryStatuses: [:],
-            provenance: PreviewData.searchProvenanceExact,
+            agreements: PreviewData.searchAgreementsExact,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onSelect: { _ in },
@@ -188,7 +189,7 @@ struct ReleaseGroupSection: View {
             groups: [PreviewData.searchGroupExact],
             isImporting: false,
             libraryStatuses: [:],
-            provenance: PreviewData.searchProvenanceExact,
+            agreements: PreviewData.searchAgreementsExact,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onSelect: { _ in },

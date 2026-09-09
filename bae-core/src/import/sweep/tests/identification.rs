@@ -511,12 +511,11 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
             source_tracks: source,
         }],
         track_count,
-        provenance: vec![crate::identify::ResultProvenance {
+        provenance: vec![crate::identify::LookupProvenance {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
         }],
-        matched_barcode: None,
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
         ledger: None,

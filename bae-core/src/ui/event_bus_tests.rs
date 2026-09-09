@@ -59,6 +59,7 @@ fn extracted(catalog: &str) -> crate::signals::Signals {
             )],
             free_text: Vec::new(),
         },
+        text_pool: Vec::new(),
         durations: crate::import::probe::SourceDurations::totalling(1_000),
     }
 }

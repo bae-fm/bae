@@ -256,7 +256,11 @@ pub(super) async fn save(
 /// result rows. A MusicBrainz release and a Discogs release agreeing on a
 /// barcode are one row a person picks whole — an answer, not a question.
 fn sole_pressing(matches: &[MetadataResult]) -> Option<crate::import::release_group::Pressing> {
-    let mut pressings = crate::import::release_group::group_results(matches.to_vec())
+    // The matches arrive ranked and folded; how many rows they make is the
+    // question here, and a count does not depend on their order.
+    let mut pressings = crate::import::release_group::group_results(
+        crate::import::release_group::unranked(matches.to_vec()),
+    )
         .into_iter()
         .flat_map(|group| group.pressings);
     let only = pressings.next()?;

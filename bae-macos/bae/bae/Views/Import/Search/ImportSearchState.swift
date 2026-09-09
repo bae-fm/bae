@@ -53,12 +53,13 @@ struct ImportSearchState {
         identifyState.narrowedOut
     }
 
-    /// Which signals produced each offered pressing, keyed by release id.
-    var identifiedProvenance: [String: BridgeResultProvenance] {
+    /// What the candidate's own text agrees with about each offered pressing,
+    /// keyed by release id — the row badges, and what ordered the rows.
+    var identifiedAgreements: [String: BridgeAgreements] {
         switch identifyState {
-        case .found(_, _, _, _, let provenance, _): provenance
-        case .failed(_, _, _, _, let provenance, _): provenance
-        case .triangulating(_, _, _, let provenance, _): provenance
+        case .found(_, _, _, _, let agreements, _): agreements
+        case .failed(_, _, _, _, let agreements, _): agreements
+        case .triangulating(_, _, _, let agreements, _): agreements
         case .idle, .notFoundAnywhere, .manualOnly: [:]
         }
     }

@@ -5,6 +5,7 @@ use crate::identify::state::{
     IdentifyEvent, ProviderBarcodeLookup, ProviderLookup,
 };
 use crate::identify::{IdentifyFailure, TerminalVerdict};
+use crate::import::release_group::unranked;
 use crate::import::search::MetadataResult;
 use crate::import::MetadataSource;
 use crate::signals::{SignalOrigin, SourcedValue};
@@ -33,6 +34,7 @@ fn context() -> SignalsContext {
             ..Default::default()
         },
         catalog: CatalogEvidence::default(),
+        text: Default::default(),
         track_count: 9,
     }
 }
@@ -83,21 +85,21 @@ fn cells(row: &SignalValueRow) -> Vec<&LookupView> {
     row.cells.iter().map(|cell| &cell.lookup).collect()
 }
 
-/// What one provider found shows while the other is still looking, with
-/// the provenance the settled verdict will give it.
+/// What one provider found shows while the other is still looking, badged as
+/// the settled verdict will badge it.
 #[test]
 fn a_landed_provider_s_matches_show_before_the_other_answers() {
     let IdentifyStateView::Triangulating {
-        groups, provenance, ..
+        groups, agreements, ..
     } = IdentifyStateView::from(in_flight(context()))
     else {
         panic!("a run in flight");
     };
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].pressings[0].releases[0].release_id, "dg-1");
-    assert_eq!(provenance.len(), 1);
-    assert_eq!(provenance[0].0, "dg-1");
-    assert!(provenance[0].1.by_barcode);
+    assert_eq!(agreements.len(), 1);
+    assert_eq!(agreements[0].0, "dg-1");
+    assert!(agreements[0].1.barcode);
 }
 
 /// A signal the user unchecked contributes nothing mid-run, as it will
@@ -510,7 +512,11 @@ fn recorded_ledger() -> IdentifyRunView {
             }),
             lookup: LookupView::Found {
                 count: 1,
-                groups: group_results(vec![MetadataResult::for_test(MB, "mb-1", Some("g"))]),
+                groups: group_results(unranked(vec![MetadataResult::for_test(
+                    MB,
+                    "mb-1",
+                    Some("g"),
+                )])),
             },
         },
         barcode: BarcodeStepView::Rows {
@@ -531,11 +537,11 @@ fn recorded_ledger() -> IdentifyRunView {
                         source: DG,
                         lookup: LookupView::Found {
                             count: 1,
-                            groups: group_results(vec![MetadataResult::for_test(
+                            groups: group_results(unranked(vec![MetadataResult::for_test(
                                 DG,
                                 "dg-1",
                                 Some("g"),
-                            )]),
+                            )])),
                         },
                     },
                 ],
@@ -557,21 +563,20 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
     let verdict = TerminalVerdict::Found {
         matches: vec![MetadataResult::for_test(MB, "mb-1", Some("g"))],
         track_count: 9,
-        provenance: vec![ResultProvenance {
+        provenance: vec![LookupProvenance {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
         }],
-        matched_barcode: Some("0123456789012".to_string()),
         narrowed_out: vec![MetadataResult::for_test(DG, "dg-1", Some("g"))],
-        narrowed_out_provenance: vec![ResultProvenance {
+        narrowed_out_provenance: vec![LookupProvenance {
             by_disc_id: false,
             by_barcode: true,
             by_catalog: false,
         }],
         ledger: Some(recorded_ledger()),
     };
-    let run = run_of(verdict.resume_state(&not_in_library));
+    let run = run_of(verdict.resume_state(&not_in_library, Default::default()));
     assert_eq!(run, recorded_ledger());
     assert_eq!(run.providers, vec![MB, DG]);
     assert!(matches!(
@@ -590,7 +595,7 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
         ledger: None,
     };
     assert!(matches!(
-        IdentifyStateView::from(verdict.resume_state(&not_in_library)),
+        IdentifyStateView::from(verdict.resume_state(&not_in_library, Default::default())),
         IdentifyStateView::Failed { run: None, .. }
     ));
 }
@@ -635,9 +640,9 @@ fn a_settled_state_lists_what_agreement_narrowed_out() {
             .collect::<Vec<_>>(),
         vec!["mb-only"]
     );
-    assert_eq!(narrowed_out.provenance[0].0, "mb-only");
-    assert!(narrowed_out.provenance[0].1.by_disc_id);
-    assert!(!narrowed_out.provenance[0].1.by_barcode);
+    assert_eq!(narrowed_out.agreements[0].0, "mb-only");
+    assert!(narrowed_out.agreements[0].1.disc_id);
+    assert!(!narrowed_out.agreements[0].1.barcode);
 }
 
 /// Signals that share nothing already list everything they saw, so there is

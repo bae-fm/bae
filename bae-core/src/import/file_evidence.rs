@@ -93,6 +93,7 @@ mod tests {
                 catalogs: Vec::new(),
                 free_text: Vec::new(),
             },
+            text_pool: Vec::new(),
             durations: Default::default(),
         }
     }

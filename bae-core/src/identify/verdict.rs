@@ -26,7 +26,8 @@
 //! state: any active lookup failure produces `IdentifyState::Failed`. Only
 //! `Idle` and `Triangulating` have no terminal verdict.
 
-use super::combine::{NarrowedOut, ResultProvenance};
+use super::agreements::CandidateText;
+use super::combine::{LookupProvenance, NarrowedOut};
 use super::state::{IdentifyState, SignalsContext};
 use super::view::IdentifyRunView;
 use crate::db::LibraryStatus;
@@ -71,10 +72,7 @@ pub enum TerminalVerdict {
         /// Index-aligned with `matches`: which signal(s) produced or confirmed
         /// each one, for the sidebar's "matched on disc ID / barcode / text"
         /// evidence line.
-        provenance: Vec<ResultProvenance>,
-        /// Which of the candidate's barcodes the lookup that produced the
-        /// barcode matches ran against. `None` when no barcode matched.
-        matched_barcode: Option<String>,
+        provenance: Vec<LookupProvenance>,
         /// The releases the signals' agreement left out of `matches` — real
         /// answers from real lookups that the intersection discarded. Kept so
         /// a resumed candidate can still offer them; empty when the agreement
@@ -82,7 +80,7 @@ pub enum TerminalVerdict {
         narrowed_out: Vec<MetadataResult>,
         /// Index-aligned with `narrowed_out`, as `provenance` is with
         /// `matches`.
-        narrowed_out_provenance: Vec<ResultProvenance>,
+        narrowed_out_provenance: Vec<LookupProvenance>,
         ledger: Option<IdentifyRunView>,
     },
     /// Both signals ran and settled on zero results. Distinct from a transport
@@ -122,12 +120,13 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 // A live per-release check at read time, not a stored copy —
                 // see the module doc.
                 library_statuses: _,
-                context,
+                // The run's, and the candidate's text it judged against, which
+                // is stored on its own and read back beside these matches.
+                context: _,
             } => Ok(Self::Found {
                 matches,
                 track_count,
                 provenance,
-                matched_barcode: context.barcode.matched,
                 narrowed_out: narrowed_out.matches,
                 narrowed_out_provenance: narrowed_out.provenance,
                 ledger,
@@ -220,16 +219,25 @@ impl TerminalVerdict {
     ///
     /// `status_of` is the live library check for a release id the verdict
     /// names, never a stored copy (see the module doc).
+    ///
+    /// `text` is the candidate's own stored lines, which is what the rows are
+    /// judged and ordered against. It belongs to the candidate rather than to
+    /// the run, so it stands back up beside the matches and the rows say and
+    /// order exactly what they did while the run went.
     pub fn resume_state(
         self,
         status_of: &impl Fn(&MetadataResult) -> LibraryStatus,
+        text: CandidateText,
     ) -> IdentifyState {
+        let context = || SignalsContext {
+            text: text.clone(),
+            ..SignalsContext::default()
+        };
         match self {
             Self::Found {
                 matches,
                 track_count,
                 provenance,
-                matched_barcode: _,
                 narrowed_out,
                 narrowed_out_provenance,
                 ledger,
@@ -247,12 +255,12 @@ impl TerminalVerdict {
                     provenance,
                     narrowed_out,
                     ledger,
-                    context: SignalsContext::default(),
+                    context: context(),
                 }
             }
             Self::NotFoundAnywhere { ledger } => IdentifyState::NotFoundAnywhere {
                 ledger,
-                context: SignalsContext::default(),
+                context: context(),
             },
             Self::ManualOnly {
                 track_count,
@@ -260,7 +268,7 @@ impl TerminalVerdict {
             } => IdentifyState::ManualOnly {
                 track_count,
                 ledger,
-                context: SignalsContext::default(),
+                context: context(),
             },
             // A stored failure resumes with no matches: what one source found
             // before the other failed was never stored, so a resumed failure
@@ -273,7 +281,7 @@ impl TerminalVerdict {
                 failures,
                 track_count,
                 ledger,
-                context: SignalsContext::default(),
+                context: context(),
                 matches: Vec::new(),
                 library_statuses: Vec::new(),
                 provenance: Vec::new(),

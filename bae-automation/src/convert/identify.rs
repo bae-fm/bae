@@ -1,8 +1,8 @@
 //! Identify's states and progress, mirrored into the JSON shapes an MCP client
 //! reads. Core's `IdentifyStateView` already made every domain decision — the
-//! matches are folded into their album cards, provenance is keyed by release
-//! id, and an in-flight payload is reduced to a count — so the variants here
-//! are a field copy.
+//! matches are folded into their album cards and ranked, the agreements are
+//! keyed by release id, and an in-flight payload is reduced to a count — so
+//! the variants here are a field copy.
 //!
 //! The copy cannot be replaced by `Serialize` derives on core's view types.
 //! The leaves this tree is built from — `signals::LookupFailure`,
@@ -12,8 +12,8 @@
 //! "failure":{"Provider":{"status":503}}}}]`. This JSON is internally tagged
 //! and snake_case, and a type gets one `Serialize`, so giving core's the MCP
 //! shape would leave every stored failed verdict unreadable. Two shapes, two
-//! types. What is genuinely not a field copy: provenance, which core keys as
-//! `(release_id, ResultProvenance)` pairs and this names inside each entry.
+//! types. What is genuinely not a field copy: the agreements, which core keys as
+//! `(release_id, Agreements)` pairs and this names inside each entry.
 
 use super::*;
 
@@ -167,34 +167,41 @@ impl AutomationIdentifyFailure {
     }
 }
 
-/// Not a copy: core keys provenance as `(release_id, ResultProvenance)` pairs,
+/// Not a copy: core keys the agreements as `(release_id, Agreements)` pairs,
 /// which this names inside each entry.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn automation_provenance(
-    provenance: Vec<(String, bae_core::identify::ResultProvenance)>,
-) -> Vec<AutomationResultProvenance> {
-    provenance
+fn automation_agreements(
+    agreements: Vec<(String, bae_core::identify::Agreements)>,
+) -> Vec<AutomationAgreements> {
+    agreements
         .into_iter()
-        .map(|(release_id, provenance)| {
-            let bae_core::identify::ResultProvenance {
-                by_disc_id,
-                by_barcode,
-                by_catalog,
-            } = provenance;
-            AutomationResultProvenance {
+        .map(|(release_id, agreements)| {
+            let bae_core::identify::Agreements {
+                disc_id,
+                barcode,
+                catalog,
+                label,
+                year,
+                country,
+            } = agreements;
+            AutomationAgreements {
                 release_id,
-                by_disc_id,
-                by_barcode,
-                by_catalog,
+                disc_id,
+                barcode,
+                catalog,
+                label,
+                year,
+                country,
             }
         })
         .collect()
 }
 
 /// Mirror [`bae_core::identify::IdentifyStateView`] into the JSON enum. Core has
-/// already folded the matches into their group cards, keyed the provenance,
-/// reduced the in-flight payloads to counts, and dropped what must not cross,
-/// so every variant is a field copy — except provenance, whose pairs this names.
+/// already folded the matches into their group cards, ranked them, keyed the
+/// agreements, reduced the in-flight payloads to counts, and dropped what must
+/// not cross, so every variant is a field copy — except the agreements, whose
+/// pairs this names.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn automation_identify_state(
     state: bae_core::identify::IdentifyState,
@@ -206,7 +213,7 @@ pub(crate) fn automation_identify_state(
             run,
             groups,
             library_statuses,
-            provenance,
+            agreements,
             narrowed_out,
         } => AutomationIdentifyState::Triangulating {
             run: AutomationIdentifyRun::from_core(run),
@@ -218,7 +225,7 @@ pub(crate) fn automation_identify_state(
                 .into_iter()
                 .map(AutomationLibraryStatus::from_core)
                 .collect(),
-            provenance: automation_provenance(provenance),
+            agreements: automation_agreements(agreements),
             narrowed_out: automation_narrowed_out(narrowed_out),
         },
         IdentifyStateView::Found {
@@ -226,7 +233,7 @@ pub(crate) fn automation_identify_state(
             groups,
             library_statuses,
             track_count,
-            provenance,
+            agreements,
             narrowed_out,
         } => AutomationIdentifyState::Found {
             run: run.map(AutomationIdentifyRun::from_core),
@@ -239,7 +246,7 @@ pub(crate) fn automation_identify_state(
                 .map(AutomationLibraryStatus::from_core)
                 .collect(),
             track_count,
-            provenance: automation_provenance(provenance),
+            agreements: automation_agreements(agreements),
             narrowed_out: automation_narrowed_out(narrowed_out),
         },
         IdentifyStateView::NotFoundAnywhere { run } => AutomationIdentifyState::NotFoundAnywhere {
@@ -254,7 +261,7 @@ pub(crate) fn automation_identify_state(
             failures,
             groups,
             library_statuses,
-            provenance,
+            agreements,
             narrowed_out,
         } => AutomationIdentifyState::Failed {
             run: run.map(AutomationIdentifyRun::from_core),
@@ -270,7 +277,7 @@ pub(crate) fn automation_identify_state(
                 .into_iter()
                 .map(AutomationLibraryStatus::from_core)
                 .collect(),
-            provenance: automation_provenance(provenance),
+            agreements: automation_agreements(agreements),
             narrowed_out: automation_narrowed_out(narrowed_out),
         },
     }
@@ -293,6 +300,6 @@ fn automation_narrowed_out(
             .into_iter()
             .map(AutomationLibraryStatus::from_core)
             .collect(),
-        provenance: automation_provenance(narrowed_out.provenance),
+        agreements: automation_agreements(narrowed_out.agreements),
     }
 }

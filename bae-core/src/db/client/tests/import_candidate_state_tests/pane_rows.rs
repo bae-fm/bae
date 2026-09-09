@@ -55,6 +55,7 @@ fn signals_with(durations: SourceDurations) -> Signals {
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
+        text_pool: Vec::new(),
         durations,
     }
 }
@@ -328,6 +329,7 @@ async fn every_settled_signal_shape_round_trips() {
             disc_id,
             barcode,
             text,
+            text_pool: Vec::new(),
             durations: SourceDurations::new(vec![file_unit("01 Track.flac", 1_000)]),
         };
 
@@ -343,6 +345,7 @@ async fn every_settled_signal_shape_round_trips() {
         assert_eq!(
             stored,
             Signals {
+                text_pool: Vec::new(),
                 durations: SourceDurations::default(),
                 ..signals
             },
@@ -364,6 +367,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 catalogs: Vec::new(),
                 free_text: Vec::new(),
             },
+            text_pool: Vec::new(),
             durations: SourceDurations::default(),
         },
         Signals {
@@ -373,6 +377,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 catalogs: Vec::new(),
                 free_text: Vec::new(),
             },
+            text_pool: Vec::new(),
             durations: SourceDurations::default(),
         },
     ] {

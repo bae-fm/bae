@@ -15,7 +15,7 @@
 //! `step` takes a state and an event and returns the next state plus the side
 //! effects for the service to run. No I/O, no async, nothing outside itself.
 
-use super::combine::{combine_results, CombineOutcome, NarrowedOut, ResultProvenance};
+use super::combine::{combine_results, CombineOutcome, LookupProvenance, NarrowedOut};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::db::LibraryStatus;
@@ -54,7 +54,7 @@ pub enum IdentifyState {
         /// Per-match provenance (which signals produced/confirmed each row),
         /// index-aligned with `matches` — drives the per-row signal badges, and
         /// says which signal produced any given match.
-        provenance: Vec<ResultProvenance>,
+        provenance: Vec<LookupProvenance>,
         /// The releases the signals' agreement left out of `matches`. Empty
         /// when nothing was narrowed.
         narrowed_out: NarrowedOut,
@@ -88,7 +88,7 @@ pub enum IdentifyState {
         failures: Vec<super::IdentifyFailure>,
         matches: Vec<MetadataResult>,
         library_statuses: Vec<LibraryStatus>,
-        provenance: Vec<ResultProvenance>,
+        provenance: Vec<LookupProvenance>,
         /// The releases the surviving signals' agreement left out of
         /// `matches`. Empty when nothing was narrowed, and for a failure
         /// resumed from its stored verdict.
@@ -641,6 +641,7 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
         context.disc.active_results(),
         context.barcode.active_results(),
         context.catalog.active_results(),
+        &context.text,
     );
     let (matches, library_statuses, provenance, narrowed_out) = match outcome {
         CombineOutcome::Found {

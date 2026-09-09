@@ -141,7 +141,7 @@ async fn migration_twenty_splits_the_verdict_and_the_provenance_off_the_candidat
     handle
         .read(|sql| {
             let verdicts = sql.query(
-                "SELECT content_hash, kind, track_count, matched_barcode, failures_json, \
+                "SELECT content_hash, kind, track_count, failures_json, \
                         probed_total_duration_ms, identified_at \
                  FROM import_candidate_verdict ORDER BY content_hash",
                 [],
@@ -151,9 +151,8 @@ async fn migration_twenty_splits_the_verdict_and_the_provenance_off_the_candidat
                         row.get::<_, String>(1)?,
                         row.get::<_, Option<i64>>(2)?,
                         row.get::<_, Option<String>>(3)?,
-                        row.get::<_, Option<String>>(4)?,
-                        row.get::<_, i64>(5)?,
-                        row.get::<_, String>(6)?,
+                        row.get::<_, i64>(4)?,
+                        row.get::<_, String>(5)?,
                     ))
                 },
             )?;
@@ -164,7 +163,6 @@ async fn migration_twenty_splits_the_verdict_and_the_provenance_off_the_candidat
                         "failed-hash".to_string(),
                         "failed".to_string(),
                         Some(5),
-                        None,
                         Some("[{\"kind\":\"network\"}]".to_string()),
                         900,
                         "2026-01-02T00:00:00Z".to_string(),
@@ -173,7 +171,6 @@ async fn migration_twenty_splits_the_verdict_and_the_provenance_off_the_candidat
                         "found-hash".to_string(),
                         "found".to_string(),
                         Some(3),
-                        Some("0123456789012".to_string()),
                         None,
                         1000,
                         "2026-01-01T00:00:00Z".to_string(),

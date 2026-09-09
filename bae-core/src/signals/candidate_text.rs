@@ -352,6 +352,10 @@ pub(crate) fn parse_filename_stem(path: &Path) -> Vec<String> {
 /// candidate-relative path every other surface addresses the file by, which
 /// is what a value read off it points back at. `None` for a file that is not
 /// one of a scanned folder's — a library release's stored cover.
+///
+/// A CUE field names only its sheet: the parser already read the sheet, so
+/// there is no second path to open — but the line still points back at the
+/// file it was read off, like every other origin that is one.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Source {
     Artwork {
@@ -363,7 +367,9 @@ pub enum Source {
         path: PathBuf,
         file_id: String,
     },
-    CueField,
+    CueField {
+        file_id: String,
+    },
     TextFile {
         path: PathBuf,
         file_id: String,
@@ -375,10 +381,10 @@ impl Source {
     pub(crate) fn file_id(&self) -> Option<String> {
         match self {
             Source::Artwork { file_id, .. } => file_id.clone(),
-            Source::FilenameGeneric { file_id, .. } | Source::TextFile { file_id, .. } => {
-                Some(file_id.clone())
-            }
-            Source::PathComponent | Source::CueField => None,
+            Source::FilenameGeneric { file_id, .. }
+            | Source::TextFile { file_id, .. }
+            | Source::CueField { file_id } => Some(file_id.clone()),
+            Source::PathComponent => None,
         }
     }
 }
@@ -473,7 +479,7 @@ impl Cluster {
 /// score by repeating across images.
 pub(crate) fn source_weight(source: &Source) -> usize {
     match source {
-        Source::CueField => 5,
+        Source::CueField { .. } => 5,
         Source::PathComponent => 3,
         Source::FilenameGeneric { .. } => 1,
         Source::Artwork { .. } => 1,

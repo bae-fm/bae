@@ -58,6 +58,7 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
         },
         barcode: Default::default(),
         catalog: Default::default(),
+        text: Default::default(),
         track_count,
     }
 }
@@ -112,6 +113,7 @@ fn extracted_signals() -> crate::signals::Signals {
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
+        text_pool: Vec::new(),
         durations: crate::import::probe::SourceDurations::totalling(1_000),
     }
 }

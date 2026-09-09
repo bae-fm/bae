@@ -3,9 +3,7 @@
 //! text source lines + brackets, plus the artwork paths for the later OCR phase.
 //! The service emits the result as its first `Signals` snapshot.
 
-use super::candidate_text::{
-    extract_folder_brackets, parse_filename_stem, strip_path_component, Source, SourcedLine,
-};
+use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source, SourcedLine};
 use crate::import::discid::compute_discid_from_categorized;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::probe::{source_durations, SourceDurations};
@@ -103,14 +101,15 @@ pub(super) fn gather_non_ocr_sources(
             .unwrap_or_default()
             .to_string();
 
+        // The name goes in as it is written. What a catalog number was
+        // printed next to is part of what the folder says, and the classifier
+        // reduces the component to the name it carries on its own way in.
         for raw in [&parent_name, &folder_name] {
             if raw.is_empty() {
                 continue;
             }
-            if let Some(stripped) = strip_path_component(raw) {
-                pass.lines
-                    .push(SourcedLine::new(Source::PathComponent, stripped));
-            }
+            pass.lines
+                .push(SourcedLine::new(Source::PathComponent, raw.clone()));
             for bracket in extract_folder_brackets(raw) {
                 pass.bracket_catalogs.push(bracket);
             }
@@ -148,7 +147,12 @@ pub(super) fn gather_non_ocr_sources(
     // No re-read, no second parser.
     for sheet in categorized.track_sheets() {
         for name in cue_sheet_names(sheet.sheet) {
-            pass.lines.push(SourcedLine::new(Source::CueField, name));
+            pass.lines.push(SourcedLine::new(
+                Source::CueField {
+                    file_id: sheet.file.relative_path.clone(),
+                },
+                name,
+            ));
         }
     }
 

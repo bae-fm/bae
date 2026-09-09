@@ -10,7 +10,7 @@
 //! Needs you *with the disagreement named*, and importing it from there is one
 //! click; the rule only decides what may be imported unattended.
 
-use super::combine::ResultProvenance;
+use super::combine::LookupProvenance;
 use super::verdict::TerminalVerdict;
 use crate::db::LibraryStatus;
 use crate::import::cover_art::RemoteCover;
@@ -124,7 +124,7 @@ pub struct LeadMatch {
 impl LeadMatch {
     /// The lead of a `Found` verdict's index-aligned match and provenance
     /// lists — also how the stored `position = 0` row reads back.
-    pub(crate) fn of(result: &MetadataResult, provenance: Option<&ResultProvenance>) -> Self {
+    pub(crate) fn of(result: &MetadataResult, provenance: Option<&LookupProvenance>) -> Self {
         Self {
             release_id: result.release_id.clone(),
             source: result.source,

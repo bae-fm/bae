@@ -45,7 +45,7 @@ desktop_only! {
     pub use disc_id::DiscIdSignal;
     pub use origin::{ImageRegion, SignalOrigin, SourcedValue};
     pub use service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
-    pub use text::TextSignal;
+    pub use text::{TextLine, TextSignal};
 }
 
 /// The identifying signals extracted from one candidate's files. Produced by
@@ -57,6 +57,16 @@ pub struct Signals {
     pub disc_id: DiscIdSignal,
     pub barcode: BarcodeSignal,
     pub text: TextSignal,
+    /// The candidate's own text, every line of it, in the order the pass read
+    /// it. Not a lookup input like the three above — it narrows, the other
+    /// half of what a signal is for: a result is ranked by how much of this
+    /// agrees with the result's own fields, and one that nothing here agrees
+    /// with is offered under "N more" rather than on the list. Nothing is
+    /// extracted from it to look up.
+    ///
+    /// Empty for a re-identified library release until its artwork is read:
+    /// there is no folder whose names and documents to gather.
+    pub text_pool: Vec<TextLine>,
     /// What every one of the candidate's audio units plays for, read off the
     /// disk in the same pass the disc ID came from. Not a lookup input like
     /// the three above — it narrows, which is the other half of what a signal
