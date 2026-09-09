@@ -70,7 +70,7 @@ pub struct ReleaseGroupSource {
 /// One physical pressing, on every source that lists it. A row is picked
 /// whole: `releases[0]` is the release the draft is read from, and each
 /// further entry is the same pressing as another source has it, claimed
-/// alongside it. [`Pressing::of`] says which record that first one is.
+/// alongside it. The pressing's constructor says which record that first one is.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Pressing {
     pub releases: Vec<MetadataResult>,

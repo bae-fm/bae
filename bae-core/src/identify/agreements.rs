@@ -11,10 +11,10 @@
 //! the lookup that returned the result is what states them.
 //!
 //! A country is one field the two write differently: a provider answers `JP`
-//! and a folder writes `Japan`. Both spellings are looked for, through
-//! [`super::country`]. A label is the other: a folder writes "Warner Bros."
-//! and a source writes "Warner Bros. Records", so the trade word a label's
-//! name trails is dropped from it first, through [`super::label`].
+//! and a folder writes `Japan`. Both spellings are looked for, through the
+//! country table beside this module. A label is the other: a folder writes
+//! "Warner Bros." and a source writes "Warner Bros. Records", so the trade word
+//! a label's name trails is dropped from it first, through the label table.
 //!
 //! Not every number printed on a folder is a catalog number — a phone number
 //! on a sleeve, a serial on a label, the year twice — so a person can strike
