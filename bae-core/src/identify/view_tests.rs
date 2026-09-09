@@ -35,6 +35,7 @@ fn context() -> SignalsContext {
         },
         catalog: CatalogEvidence::default(),
         text: Default::default(),
+        text_settled: true,
         track_count: 9,
     }
 }

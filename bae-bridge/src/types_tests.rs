@@ -42,6 +42,7 @@ mod triage_tests {
             barcode: Default::default(),
             catalog: Default::default(),
             text: Default::default(),
+            text_settled: true,
             track_count: 9,
         };
         let live = IdentifyState::ManualOnly {

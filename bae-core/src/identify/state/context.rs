@@ -372,6 +372,11 @@ pub struct SignalsContext {
     /// stood back up from a stored verdict carries the stored pool so its rows
     /// badge and order exactly as they did while the run went.
     pub text: CandidateText,
+    /// Whether `text` is the candidate's final text. Extraction streams its
+    /// snapshots while the artwork pass reads, and each one carries the text
+    /// gathered so far; only the settled snapshot carries all of it. A run
+    /// judges its results against the text, so it does not settle on less.
+    pub text_settled: bool,
     /// The candidate's local track count.
     pub track_count: u32,
 }
@@ -389,6 +394,7 @@ impl Default for SignalsContext {
             barcode: BarcodeEvidence::default(),
             catalog: CatalogEvidence::default(),
             text: CandidateText::default(),
+            text_settled: false,
             track_count: 0,
         }
     }
@@ -433,6 +439,7 @@ impl SignalsContext {
         self.barcode.refresh_input(&signals.barcode);
         self.catalog.refresh_input(&signals.text);
         self.text = CandidateText::of(&signals.text_pool, &self.catalog.struck_out);
+        self.text_settled = !matches!(signals.text, TextSignal::Scanning { .. });
         self.track_count = signals.disc_id.track_count();
     }
 

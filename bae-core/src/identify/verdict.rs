@@ -231,6 +231,7 @@ impl TerminalVerdict {
     ) -> IdentifyState {
         let context = || SignalsContext {
             text: text.clone(),
+            text_settled: true,
             ..SignalsContext::default()
         };
         match self {

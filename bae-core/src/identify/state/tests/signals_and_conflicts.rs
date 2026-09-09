@@ -276,6 +276,44 @@ fn no_disc_no_barcode_is_manual_only() {
     }
 }
 
+/// Extraction's first snapshot carries the text gathered so far and says the
+/// text is still scanning. A run with nothing to look up is not answered on
+/// it: the verdict stores the snapshot it settled on, and a scanning one is
+/// refused at the write. The settled snapshot that follows answers it.
+#[test]
+fn nothing_to_run_waits_for_the_settled_text() {
+    let scanning = Signals {
+        disc_id: DiscIdSignal::Absent { track_count: 7 },
+        barcode: BarcodeSignal::Absent,
+        text: TextSignal::Scanning {
+            catalogs: vec![],
+            free_text: vec![],
+        },
+        text_pool: Vec::new(),
+        durations: crate::import::probe::SourceDurations::default(),
+    };
+    let (state, effects) = update(started(), scanning);
+    assert!(effects.is_empty());
+    assert!(
+        matches!(state, IdentifyState::Triangulating { .. }),
+        "the run holds while the text is still scanning, got {state:?}"
+    );
+
+    let (state, effects) = update(
+        state,
+        signals(
+            DiscIdSignal::Absent { track_count: 7 },
+            BarcodeSignal::Absent,
+            &[],
+        ),
+    );
+    assert!(effects.is_empty());
+    assert!(
+        matches!(state, IdentifyState::ManualOnly { track_count: 7, .. }),
+        "the settled snapshot answers it, got {state:?}"
+    );
+}
+
 /// The two empty-code barcode signals mean opposite things and must settle
 /// differently. `Absent` (no barcode source at all — no CUE catalog, and no
 /// artwork *or* no analyzer to read it with) leaves the pipe `Skipped` and, with

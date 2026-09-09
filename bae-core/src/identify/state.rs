@@ -597,7 +597,14 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     else {
         return (state, vec![]);
     };
-    if !discid.is_settled() || !barcode.is_settled() || !catalog.is_settled() {
+    // The text is an input too: results are judged against it, and the
+    // verdict stores the snapshot it settled on. A run with nothing to look up
+    // still waits for the settled snapshot rather than answering on the first.
+    if !context.text_settled
+        || !discid.is_settled()
+        || !barcode.is_settled()
+        || !catalog.is_settled()
+    {
         return (
             IdentifyState::Triangulating {
                 discid,

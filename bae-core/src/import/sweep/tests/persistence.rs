@@ -378,6 +378,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
             barcode: Default::default(),
             catalog: Default::default(),
             text: Default::default(),
+            text_settled: false,
             track_count: 0,
         },
     };

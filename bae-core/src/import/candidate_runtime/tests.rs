@@ -59,6 +59,7 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
         barcode: Default::default(),
         catalog: Default::default(),
         text: Default::default(),
+        text_settled: true,
         track_count,
     }
 }

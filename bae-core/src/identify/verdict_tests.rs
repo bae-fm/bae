@@ -25,6 +25,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
         barcode: BarcodeEvidence::default(),
         catalog: Default::default(),
         text: Default::default(),
+        text_settled: true,
         track_count,
     }
 }

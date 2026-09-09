@@ -308,6 +308,7 @@ mod identify_mirrors {
             barcode: Default::default(),
             catalog: Default::default(),
             text: Default::default(),
+            text_settled: true,
             track_count: 0,
         }
     }
