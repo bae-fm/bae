@@ -115,6 +115,7 @@ pub(super) async fn finish_candidate(
     state: IdentifyState,
     token: &CancellationToken,
 ) -> FinishCandidateOutcome {
+    let text = state.candidate_text();
     let mut verdict = TerminalVerdict::try_from(state)
         .expect("the sweep finalizes only terminal identify states");
 
@@ -130,6 +131,7 @@ pub(super) async fn finish_candidate(
     let settled_lead = match settle_lead(
         context,
         &mut verdict,
+        &text,
         candidate,
         &signals.durations,
         CallPriority::Background,
@@ -255,12 +257,18 @@ pub(super) async fn save(
 /// did this candidate match" is that grouping's question, not a count of
 /// result rows. A MusicBrainz release and a Discogs release agreeing on a
 /// barcode are one row a person picks whole — an answer, not a question.
-fn sole_pressing(matches: &[MetadataResult]) -> Option<crate::import::release_group::Pressing> {
-    // The matches arrive ranked and folded; how many rows they make is the
-    // question here, and a count does not depend on their order.
-    let mut pressings = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(matches.to_vec()),
-    )
+///
+/// The matches are judged against the candidate's own text here, exactly as
+/// the pane judges them, because which record of the row leads it is decided
+/// by that evidence: the record whose document fills the draft has to be the
+/// one a person sees leading the row.
+fn sole_pressing(
+    matches: &[MetadataResult],
+    provenance: &[crate::identify::LookupProvenance],
+    text: &crate::identify::CandidateText,
+) -> Option<crate::import::release_group::Pressing> {
+    let judged = crate::identify::judged_results(matches.to_vec(), provenance, text);
+    let mut pressings = crate::import::release_group::group_results(judged)
         .into_iter()
         .flat_map(|group| group.pressings);
     let only = pressings.next()?;
@@ -292,6 +300,7 @@ fn sole_pressing(matches: &[MetadataResult]) -> Option<crate::import::release_gr
 async fn settle_lead(
     context: &SweepContext,
     verdict: &mut TerminalVerdict,
+    text: &crate::identify::CandidateText,
     candidate: &ReleaseCandidate,
     durations: &crate::import::probe::SourceDurations,
     priority: CallPriority,
@@ -299,6 +308,7 @@ async fn settle_lead(
 ) -> Result<SettledLead, FinalizationError> {
     let TerminalVerdict::Found {
         matches,
+        provenance,
         track_count,
         ledger,
         ..
@@ -306,7 +316,7 @@ async fn settle_lead(
     else {
         return Ok(SettledLead::NoExternalRelease);
     };
-    let Some(pressing) = sole_pressing(matches) else {
+    let Some(pressing) = sole_pressing(matches, provenance, text) else {
         return Ok(SettledLead::NoExternalRelease);
     };
     let (primary, partners) = pressing.claims();
@@ -455,6 +465,7 @@ pub(super) async fn record_explicit_lookup_verdict(
                 if !state.is_terminal() {
                     continue;
                 }
+                let text = state.candidate_text();
                 let mut verdict = TerminalVerdict::try_from(state)
                     .expect("a terminal identify state always has a verdict");
                 // Settles here too: a row a person's own run wrote is a row the
@@ -471,6 +482,7 @@ pub(super) async fn record_explicit_lookup_verdict(
                 let settled_lead = match settle_lead(
                     context,
                     &mut verdict,
+                    &text,
                     &entry.candidate,
                     &signals.durations,
                     CallPriority::Interactive,

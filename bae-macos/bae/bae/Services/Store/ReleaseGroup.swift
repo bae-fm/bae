@@ -12,7 +12,7 @@ struct ReleaseGroup: Equatable, Identifiable {
     /// The label core names for the album, where its pressings state one.
     let label: String?
     let coverArt: BridgeRemoteCover?
-    /// Every source carrying this group, MusicBrainz first.
+    /// Every source carrying this group, in the order its rows name them.
     let sources: [BridgeReleaseGroupSource]
     /// One row per physical pressing, each carrying every source that lists it.
     let pressings: [Pressing]

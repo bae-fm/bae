@@ -2,7 +2,8 @@ import BaeKit
 
 /// One physical pressing under a release-group card, on every source that
 /// lists it. Mirrors `BridgePressing`: core pairs the two sources' releases,
-/// orders them MusicBrainz first, and settles what picking the row claims.
+/// orders them by what the folder says about each, and settles what picking
+/// the row claims.
 struct Pressing: Equatable, Identifiable {
     /// The release whose facts the row shows.
     let lead: BridgeMetadataResult

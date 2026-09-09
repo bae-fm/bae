@@ -458,7 +458,8 @@ fn a_paired_row_ranks_by_its_records_together() {
     ]);
     assert_eq!(
         lead_ids(&groups[0]),
-        vec![vec!["mb-1", "dg-1"], vec!["mb-other"]],
+        vec![vec!["dg-1", "mb-1"], vec!["mb-other"]],
+        "and the record the text does say something about leads the row",
     );
 }
 
@@ -553,5 +554,94 @@ fn cards_are_ordered_by_their_best_row() {
     assert_eq!(
         groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
         vec!["group-named", "group-stranger"],
+    );
+}
+
+// MARK: - Which record of a pressing leads it
+
+/// A tracklist as a source states it. What it says does not matter here; that
+/// it was said is the tie-break.
+fn listed() -> crate::import::search::SourceTracks {
+    crate::import::search::SourceTracks::Listed {
+        count: 9,
+        total_duration_ms: Some(2_400_000),
+    }
+}
+
+/// One pressing as both sources state it, paired by the barcode they share.
+fn paired() -> (MetadataResult, MetadataResult) {
+    let mut one = mb("mb-1", Some("group-x"), Some(1976));
+    one.barcode = Some("0075678169328".to_string());
+    let mut other = discogs("dg-1", Some("master-7"), Some(1976));
+    other.barcode = Some("0075678169328".to_string());
+    (one, other)
+}
+
+/// Both sources describe the disc and neither of them is the one the draft is
+/// read from by name: the record the folder says more about leads the row, and
+/// picking the row claims the other beside it.
+#[test]
+fn the_record_the_text_says_most_about_leads_its_pressing() {
+    let (mb_release, dg_release) = paired();
+
+    let groups = group_results(vec![(mb_release, agreed(1)), (dg_release, agreed(3))]);
+
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["dg-1", "mb-1"]]);
+    assert_eq!(
+        groups[0].pressings[0].pick(),
+        crate::import::MetadataProvenance::ExternalRelease {
+            source: MetadataSource::Discogs,
+            release_id: "dg-1".to_string(),
+            partners: vec![crate::import::MetadataRef::new(
+                "mb-1",
+                MetadataSource::MusicBrainz
+            )],
+        }
+    );
+}
+
+/// Records the folder says as much about: the one that states a tracklist
+/// leads, since the draft's rows and the settle's check of them against the
+/// audio are read out of that tracklist. A source that answered and listed
+/// nothing states none.
+#[test]
+fn a_stated_tracklist_leads_records_the_text_says_as_much_about() {
+    let (mut mb_release, mut dg_release) = paired();
+    mb_release.source_tracks = Some(crate::import::search::SourceTracks::Nothing);
+    dg_release.source_tracks = Some(listed());
+
+    let groups = group_results(vec![(mb_release, agreed(2)), (dg_release, agreed(2))]);
+
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["dg-1", "mb-1"]]);
+}
+
+/// Nothing the folder says tells the two records apart and both state a
+/// tracklist, so the source name has the last word.
+#[test]
+fn records_nothing_tells_apart_lead_with_musicbrainz() {
+    let (mut mb_release, mut dg_release) = paired();
+    mb_release.source_tracks = Some(listed());
+    dg_release.source_tracks = Some(listed());
+
+    let groups = group_results(vec![(dg_release, agreed(2)), (mb_release, agreed(2))]);
+
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
+}
+
+/// The chips under an album's title name its sources in the order its rows do,
+/// so a card whose best row leads with Discogs names Discogs first.
+#[test]
+fn the_card_names_its_sources_in_the_order_its_rows_do() {
+    let (mb_release, dg_release) = paired();
+
+    let groups = group_results(vec![(mb_release, agreed(1)), (dg_release, agreed(3))]);
+
+    assert_eq!(
+        groups[0]
+            .sources
+            .iter()
+            .map(|source| source.source)
+            .collect::<Vec<_>>(),
+        vec![MetadataSource::Discogs, MetadataSource::MusicBrainz]
     );
 }

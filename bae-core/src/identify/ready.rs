@@ -103,9 +103,10 @@ pub enum VerdictKind {
 ///
 /// When they do make a single pressing this is also that pressing's own lead —
 /// the release the documents were settled from, and so the only one carrying a
-/// tracklist. A pressing holds at most one release per source and the first
-/// match is the first MusicBrainz one, so a second MusicBrainz release would be
-/// a second pressing and the rule would never have reached the tracklist.
+/// tracklist. The matches are stored in the order the pressings put them, so
+/// position 0 is that lead; a pressing holds at most one release per source,
+/// so a second release from the same source would be a second pressing and the
+/// rule would never have reached the tracklist.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LeadMatch {
     pub release_id: String,

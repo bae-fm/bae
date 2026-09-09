@@ -337,8 +337,8 @@ internal static partial class NativeBae
         };
 
     /// <summary>One choice per pressing row. The row is picked whole: core
-    /// orders its releases, MusicBrainz first, and the rest ride along as
-    /// partners.</summary>
+    /// orders its releases by what the folder says about each, and the rest
+    /// ride along as partners.</summary>
     internal static List<ReleaseCandidateChoice> GroupChoices(
         IEnumerable<BridgeReleaseGroup> groups) =>
         groups

@@ -113,6 +113,20 @@ impl IdentifyState {
         }
     }
 
+    /// The candidate's own text this run judged its results against. `Idle`
+    /// carries no context and judged nothing.
+    ///
+    /// A terminal state is projected into a [`super::TerminalVerdict`], which
+    /// keeps the matches and the lookups that returned them but not the text —
+    /// that is stored on the candidate. A caller that must re-judge those
+    /// matches, as the sweep's settle step does to find the record a row leads
+    /// with, takes the text from here before the projection drops it.
+    pub fn candidate_text(&self) -> super::CandidateText {
+        self.context()
+            .map(|context| context.text.clone())
+            .unwrap_or_default()
+    }
+
     /// Whether the machine has stopped moving on its own: nothing is in
     /// flight, so this run has nothing left to do. The driver ends here, and
     /// what a person asks for next is a run of its own.

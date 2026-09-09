@@ -14,9 +14,11 @@
 //!
 //! The order is decided here too, so no surface sorts anything: rows come
 //! most-agreed-with first — how much of the candidate's own text states the
-//! pressing — and cards come in the order of their best row. A caller with
-//! nothing to rank by, a typed search, hands over [`Agreements::NONE`] for
-//! every release, which leaves the pressing year as the whole of the order.
+//! pressing — a row's own records come the same way, and cards come in the
+//! order of their best row. A caller with nothing to rank by, a typed search,
+//! hands over [`Agreements::NONE`] for every release, which leaves the
+//! pressing year ordering the rows and the source name ordering the records
+//! within one.
 
 use crate::identify::agreements::Agreements;
 use crate::import::cover_art::RemoteCover;
@@ -44,8 +46,9 @@ pub struct ReleaseGroup {
     /// Representative cover for the card — the first pressing that surfaced
     /// one, MusicBrainz first.
     pub cover_art: Option<RemoteCover>,
-    /// Every source carrying this group, MusicBrainz first; each with its
-    /// editorial page when the source named a group.
+    /// Every source carrying this group, in the order its rows name them —
+    /// the leading record of the best row first; each with its editorial page
+    /// when the source named a group.
     pub sources: Vec<ReleaseGroupSource>,
     /// Earliest and latest pressing year, for the UI's "1992 – 2012" span.
     /// Both `None` when no pressing carries a year.
@@ -65,15 +68,35 @@ pub struct ReleaseGroupSource {
 }
 
 /// One physical pressing, on every source that lists it. A row is picked
-/// whole: `releases[0]` (MusicBrainz when both carry it) is the release the
-/// draft is read from, and each further entry is the same pressing as another
-/// source has it, claimed alongside it.
+/// whole: `releases[0]` is the release the draft is read from, and each
+/// further entry is the same pressing as another source has it, claimed
+/// alongside it. [`Pressing::of`] says which record that first one is.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Pressing {
     pub releases: Vec<MetadataResult>,
 }
 
 impl Pressing {
+    /// One pressing's records, ordered by what the folder says about each.
+    ///
+    /// Both sources describe the same physical object, and neither of them is
+    /// the one the draft is read from by name. The record the candidate's own
+    /// text agrees with most is; among records it says as much about, the one
+    /// that states a tracklist, since the draft's rows and the settle's check
+    /// of them against the audio are read out of that tracklist. Only where
+    /// the two are indistinguishable on both does the source name decide,
+    /// MusicBrainz first.
+    fn of(mut releases: Vec<MetadataResult>, judged: &Judgements) -> Self {
+        releases.sort_by_key(|release| {
+            (
+                std::cmp::Reverse(judged.of_release(release).count()),
+                !states_tracklist(release),
+                source_rank(release.source),
+            )
+        });
+        Self { releases }
+    }
+
     /// The release a row picks when the person picks the row itself.
     pub fn lead(&self) -> &MetadataResult {
         self.releases
@@ -280,7 +303,8 @@ fn bucket_by_source_group(results: Vec<Judged>) -> Vec<Bucket> {
 
 /// Pair each bucket with at most one bucket from the other source describing
 /// the same album. A merged card sits at the earlier bucket's position, and
-/// its sources are ordered MusicBrainz first.
+/// its buckets are ordered MusicBrainz first — the order the card's title,
+/// label and cover are read in.
 fn merge_buckets(buckets: Vec<Bucket>) -> Vec<Vec<Bucket>> {
     let mut buckets: Vec<Option<Bucket>> = buckets.into_iter().map(Some).collect();
     let mut cards: Vec<Vec<Bucket>> = Vec::new();
@@ -298,10 +322,7 @@ fn merge_buckets(buckets: Vec<Bucket>) -> Vec<Vec<Bucket>> {
             Some(partner) => vec![bucket, partner],
             None => vec![bucket],
         };
-        card.sort_by_key(|bucket| match bucket.source {
-            MetadataSource::MusicBrainz => 0,
-            MetadataSource::Discogs => 1,
-        });
+        card.sort_by_key(|bucket| source_rank(bucket.source));
         cards.push(card);
     }
     cards
@@ -332,17 +353,19 @@ fn build_group(card: Vec<Bucket>, judgements: &Judgements) -> (ReleaseGroup, u32
     let year_min = years.iter().min().copied();
     let year_max = years.iter().max().copied();
 
-    let mut cards = card.into_iter();
-    let first = cards
+    let mut buckets = card.into_iter();
+    let first = buckets
         .next()
         .expect("a card is built from at least one bucket");
-    let pressings = match cards.next() {
-        Some(second) => pair_pressings(releases_of(first.releases), releases_of(second.releases)),
+    let pressings = match buckets.next() {
+        Some(second) => pair_pressings(
+            releases_of(first.releases),
+            releases_of(second.releases),
+            judgements,
+        ),
         None => releases_of(first.releases)
             .into_iter()
-            .map(|release| Pressing {
-                releases: vec![release],
-            })
+            .map(|release| Pressing::of(vec![release], judgements))
             .collect(),
     };
     let rows = ordered_rows(
@@ -363,7 +386,7 @@ fn build_group(card: Vec<Bucket>, judgements: &Judgements) -> (ReleaseGroup, u32
             artist,
             label,
             cover_art,
-            sources,
+            sources: ordered_sources(sources, &rows),
             year_min,
             year_max,
             pressings: rows.into_iter().map(|row| row.pressing).collect(),
@@ -394,16 +417,20 @@ fn releases_of(judged: Vec<Judged>) -> Vec<MetadataResult> {
 /// A label's reissues share a barcode and a catalog number with the pressing
 /// they reissue, so a code can name several of the other source's records. The
 /// pressing year is what tells them apart: a record pressed the same year as
-/// the lead is taken over one that merely prints the same code.
-fn pair_pressings(lead: Vec<MetadataResult>, other: Vec<MetadataResult>) -> Vec<Pressing> {
-    let mut other: Vec<Option<MetadataResult>> = other.into_iter().map(Some).collect();
-    let mut partners: Vec<Option<usize>> = vec![None; lead.len()];
+/// the one being paired is taken over one that merely prints the same code.
+fn pair_pressings(
+    first: Vec<MetadataResult>,
+    second: Vec<MetadataResult>,
+    judged: &Judgements,
+) -> Vec<Pressing> {
+    let mut other: Vec<Option<MetadataResult>> = second.into_iter().map(Some).collect();
+    let mut partners: Vec<Option<usize>> = vec![None; first.len()];
 
     for key_of in [
         barcode_key as fn(&MetadataResult) -> Option<String>,
         catalog_key,
     ] {
-        for (at, release) in lead.iter().enumerate() {
+        for (at, release) in first.iter().enumerate() {
             if partners[at].is_some() {
                 continue;
             }
@@ -438,18 +465,61 @@ fn pair_pressings(lead: Vec<MetadataResult>, other: Vec<MetadataResult>) -> Vec<
         }
     }
 
-    let mut rows: Vec<Pressing> = Vec::with_capacity(lead.len() + other.len());
-    for (release, partner) in lead.into_iter().zip(&partners) {
+    let mut rows: Vec<Pressing> = Vec::with_capacity(first.len() + other.len());
+    for (release, partner) in first.into_iter().zip(&partners) {
         let mut releases = vec![release];
         if let Some(partner) = partner.and_then(|at| other[at].take()) {
             releases.push(partner);
         }
-        rows.push(Pressing { releases });
+        rows.push(Pressing::of(releases, judged));
     }
-    rows.extend(other.into_iter().flatten().map(|release| Pressing {
-        releases: vec![release],
-    }));
+    rows.extend(
+        other
+            .into_iter()
+            .flatten()
+            .map(|release| Pressing::of(vec![release], judged)),
+    );
     rows
+}
+
+/// Whether the source listed this release's own tracks. A record that answered
+/// with a tracklist has rows to fill a draft with and lengths to check the
+/// audio against; one nobody has asked yet, and one that answered with
+/// nothing, have neither.
+fn states_tracklist(release: &MetadataResult) -> bool {
+    matches!(
+        release.source_tracks,
+        Some(crate::import::search::SourceTracks::Listed { .. })
+    )
+}
+
+/// MusicBrainz before Discogs — the last tie-break, where nothing the folder
+/// says tells two records or two buckets apart.
+fn source_rank(source: MetadataSource) -> u8 {
+    match source {
+        MetadataSource::MusicBrainz => 0,
+        MetadataSource::Discogs => 1,
+    }
+}
+
+/// The card's sources in the order its rows name them: whichever source leads
+/// the best row first, then whatever the rest of the rows add. The chips under
+/// an album's title say which sources describe it, and reading them in the
+/// order the rows do keeps the card and the row beneath it saying the same
+/// thing.
+fn ordered_sources(mut sources: Vec<ReleaseGroupSource>, rows: &[Row]) -> Vec<ReleaseGroupSource> {
+    let named: Vec<MetadataSource> = rows
+        .iter()
+        .flat_map(|row| &row.pressing.releases)
+        .map(|release| release.source)
+        .collect();
+    sources.sort_by_key(|source| {
+        named
+            .iter()
+            .position(|named| *named == source.source)
+            .expect("every source on a card lists a release of one of its rows")
+    });
+    sources
 }
 
 /// The digits of a stated barcode. Sources print the same code with different

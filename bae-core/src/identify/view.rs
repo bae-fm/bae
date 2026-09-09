@@ -24,14 +24,14 @@
 //! The transports (`bae-bridge`'s uniffi records, `bae-automation`'s JSON) mirror
 //! this view into their own wire types field by field and decide nothing.
 
-use super::agreements::{agreements_of, squash, Agreements, CandidateText};
+use super::agreements::{judged_results, squash, Agreements, CandidateText};
 use super::combine::{combine_results, CombineOutcome, LookupProvenance, NarrowedOut};
 use super::state::{
     BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
     IdentifyState, LookupResults, LookupState, SignalsContext,
 };
 use crate::db::LibraryStatus;
-use crate::import::release_group::{group_results, Judged, Judgements, ReleaseGroup};
+use crate::import::release_group::{group_results, Judgements, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::MetadataSource;
 use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
@@ -447,14 +447,7 @@ fn fold_matches(
     provenance: Vec<LookupProvenance>,
     text: &CandidateText,
 ) -> (Vec<ReleaseGroup>, Vec<(String, Agreements)>) {
-    let judged: Vec<Judged> = matches
-        .into_iter()
-        .zip(provenance)
-        .map(|(result, lookup)| {
-            let agreements = agreements_of(&result, text, &lookup);
-            (result, agreements)
-        })
-        .collect();
+    let judged = judged_results(matches, &provenance, text);
     let judgements = Judgements::of(&judged);
     let groups = group_results(judged);
     let keyed = groups

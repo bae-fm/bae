@@ -126,6 +126,29 @@ pub fn agreements_of(
     }
 }
 
+/// What the text agrees with about each of a verdict's matches, paired with
+/// the matches themselves — what [`crate::import::release_group::group_results`]
+/// ranks the rows and the records within a row by.
+///
+/// `provenance` is index-aligned with `matches`, as a verdict stores the two.
+/// One definition, because the pane and the sweep's settle step both ask it:
+/// the record a person sees leading a row has to be the record whose document
+/// fills the draft.
+pub fn judged_results(
+    matches: Vec<MetadataResult>,
+    provenance: &[LookupProvenance],
+    text: &CandidateText,
+) -> Vec<crate::import::release_group::Judged> {
+    matches
+        .into_iter()
+        .zip(provenance)
+        .map(|(result, lookup)| {
+            let agreements = agreements_of(&result, text, lookup);
+            (result, agreements)
+        })
+        .collect()
+}
+
 /// The candidate's own text as ranking reads it: its lines, normalized once
 /// so a result's fields can be looked up in them, and the catalog numbers the
 /// person has struck out of them.

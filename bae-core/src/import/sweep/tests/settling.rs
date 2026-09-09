@@ -571,6 +571,95 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     );
 }
 
+/// Which record of a pressing fills the draft is decided by what the folder
+/// says about each, not by the source's name. Both sources answer the barcode
+/// here; only the Discogs record states a year, and the folder prints it — so
+/// the Discogs record leads its row, the pick claims MusicBrainz beside it, and
+/// the draft is read from the Discogs document.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
+    let fixture = Fixture::new("evidence-lead").await;
+    fixture.use_discogs();
+    fixture
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: PAIRED_BARCODE.to_string(),
+        }));
+    // The folder prints the year the Discogs record states and the MusicBrainz
+    // search hit does not.
+    let dir = fixture.barcode_candidate("From Barcode 1996");
+    fixture.provider.route(
+        "/release?",
+        200,
+        barcode_search_json(&[("mb-paired-3", "rg-paired-3", PAIRED_BARCODE)]),
+    );
+    fixture.provider.route(
+        "/release/mb-paired-3?",
+        200,
+        release_json("mb-paired-3", "rg-paired-3", &[180_000, 0]),
+    );
+    fixture.provider.route(
+        "/database/search",
+        200,
+        discogs_search_json("70000103", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
+    );
+    fixture.provider.route(
+        "/releases/70000103",
+        200,
+        discogs_release_json("70000103"),
+    );
+    crate::musicbrainz::seed_discogs_url_lookup("70000103", None);
+    fixture.scan(1).await;
+
+    fixture.sweep_once().await;
+
+    let row = fixture
+        .stored_for(&dir)
+        .await
+        .expect("the paired candidate stores a row");
+    let verdict = identify_result(&row).verdict.clone();
+    let TerminalVerdict::Found { matches, .. } = &verdict else {
+        panic!("expected a Found verdict, got {verdict:?}");
+    };
+    assert_eq!(
+        matches[0].source,
+        crate::import::MetadataSource::Discogs,
+        "the folder agrees with the Discogs record about more: {matches:?}"
+    );
+    assert!(
+        matches[0].source_tracks.is_some(),
+        "and the tracklist was settled from it, not from its partner"
+    );
+    assert_eq!(
+        row.metadata_provenance,
+        Some(crate::import::MetadataProvenance::ExternalRelease {
+            source: crate::import::MetadataSource::Discogs,
+            release_id: "70000103".to_string(),
+            partners: vec![crate::import::MetadataRef::new(
+                "mb-paired-3",
+                crate::import::MetadataSource::MusicBrainz,
+            )],
+        }),
+        "so the pick names it primary and the MusicBrainz record its partner"
+    );
+    assert_eq!(
+        fixture
+            .pane(&dir)
+            .await
+            .expect("the settled candidate reads back")
+            .metadata_draft
+            .album_year,
+        "1996",
+        "and the draft carries the year only the Discogs document states"
+    );
+    assert!(
+        fixture.archived_discogs("70000103").await.is_some()
+            && fixture.archived("mb-paired-3").await.is_some(),
+        "both sources the pick claims are archived, whichever of them leads"
+    );
+}
+
 /// Two pressings are a question, not an answer: which one is on disk is the
 /// user's call, and buying every pressing's documents would settle nothing. The
 /// verdict stores with no pick and no release lookups behind it.
