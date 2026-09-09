@@ -37,6 +37,29 @@ const SEEDED_DISC_ID: &str = "XwqRcz4RhAqRTfhE5nRxRKF4iFY-";
 const SEEDED_DISC_ID_FILE: &str = "Album.log";
 const FIXTURE_DISC_ID: &str = "ayQ_jFizitCdB_btUSn6qV6ENaI-";
 
+/// The modification time every copied fixture file carries. A candidate's
+/// content hash covers each file's modification time, and two folders built
+/// from the same fixtures are the same candidate only when their copies agree
+/// on it. `std::fs::copy` keeps the source's time on macOS and stamps the
+/// current time on Linux, so the fixture sets it rather than inheriting
+/// whichever the platform gives.
+fn fixture_modified_at() -> std::time::SystemTime {
+    // 2020-01-01T00:00:00Z.
+    std::time::UNIX_EPOCH + Duration::from_secs(1_577_836_800)
+}
+
+/// Copy a fixture file into a candidate folder, stamped with
+/// [`fixture_modified_at`].
+fn copy_fixture(source: &Path, target: &Path) {
+    std::fs::copy(source, target).unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(target)
+        .unwrap()
+        .set_modified(fixture_modified_at())
+        .unwrap();
+}
+
 fn settled_signals(durations: crate::import::probe::SourceDurations) -> Signals {
     Signals {
         disc_id: DiscIdSignal::Absent { track_count: 0 },
@@ -169,13 +192,20 @@ async fn await_run_state(
 }
 
 async fn wait_for_request(provider: &FakeProvider, needle: &str, count: usize) {
-    tokio::time::timeout(Duration::from_secs(10), async {
+    if tokio::time::timeout(Duration::from_secs(10), async {
         while provider.count_containing(needle) < count {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
     })
     .await
-    .expect("provider received the expected request");
+    .is_err()
+    {
+        panic!(
+            "the provider received no request containing {needle:?} (wanted {count}); \
+             requests so far: {:?}",
+            provider.requests()
+        );
+    }
 }
 
 async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState>>) {
@@ -465,6 +495,11 @@ fn fixed_now() -> chrono::DateTime<chrono::Utc> {
 
 impl Fixture {
     async fn new(name: &str) -> Self {
+        let _ = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .with_test_writer()
+            .with_ansi(false)
+            .try_init();
         let temp = TempDir::new().unwrap();
         let clock: coven::ClockRef = Arc::new(coven::FixedClock(fixed_now()));
         let ids: coven::IdRef = Arc::new(coven::SequentialIdProvider::new(name));
@@ -552,11 +587,10 @@ impl Fixture {
     /// computes — the free path.
     fn disc_id_candidate(&self, folder: &str) -> PathBuf {
         let dir = self.candidate_dir(folder);
-        std::fs::copy(
+        copy_fixture(
             Path::new("tests/fixtures/test_album.log"),
-            dir.join("test_album.log"),
-        )
-        .unwrap();
+            &dir.join("test_album.log"),
+        );
         dir
     }
 
@@ -573,7 +607,7 @@ impl Fixture {
         let dir = self.root.join(folder);
         std::fs::create_dir_all(&dir).unwrap();
         for name in FLAC_FIXTURES {
-            std::fs::copy(Path::new("tests/fixtures/flac").join(name), dir.join(name)).unwrap();
+            copy_fixture(&Path::new("tests/fixtures/flac").join(name), &dir.join(name));
         }
         dir
     }
@@ -623,11 +657,10 @@ impl Fixture {
             "02 Test Artist - Track Two (White Noise).flac",
             "03 Test Artist - Track Three (Brown Noise).flac",
         ] {
-            std::fs::copy(
-                Path::new("tests/fixtures/cue_flac").join(file),
-                dir.join(file),
-            )
-            .unwrap();
+            copy_fixture(
+                &Path::new("tests/fixtures/cue_flac").join(file),
+                &dir.join(file),
+            );
         }
         dir
     }

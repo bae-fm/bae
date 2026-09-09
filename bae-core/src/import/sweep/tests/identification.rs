@@ -113,7 +113,7 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
     let token = CancellationToken::new();
     let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
 
-    tokio::time::timeout(Duration::from_secs(10), async {
+    if tokio::time::timeout(Duration::from_secs(10), async {
         loop {
             let runtimes = fixture.import.candidate_runtimes();
             let statuses: Vec<Option<crate::import::IdentificationStatus>> = keys
@@ -141,7 +141,18 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
         }
     })
     .await
-    .expect("one member runs the shared job and the other waits on its answer");
+    .is_err()
+    {
+        panic!(
+            "one member runs the shared job and the other waits on its answer; \
+             runtimes: {:?}; requests: {:?}; identifying: {:?}",
+            fixture.import.candidate_runtimes(),
+            fixture.provider.requests(),
+            keys.iter()
+                .map(|key| fixture.import.is_identifying(key))
+                .collect::<Vec<_>>()
+        );
+    }
 
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(20), pass)
