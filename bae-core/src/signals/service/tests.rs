@@ -89,6 +89,23 @@ async fn collect_signals(
         .collect()
 }
 
+/// The bus carries no further `SignalsUpdated` for a while: the extraction
+/// said everything it had to say.
+async fn assert_no_more_snapshots(rx: &mut broadcast::Receiver<ImportEvent>, after: &str) {
+    let deadline = tokio::time::Instant::now() + Duration::from_millis(300);
+    loop {
+        match tokio::time::timeout_at(deadline, rx.recv()).await {
+            Err(_) => return,
+            Ok(Ok(ImportEvent::SignalsUpdated { signals, .. })) => {
+                panic!("no snapshot follows {after}, got {signals:?}")
+            }
+            Ok(Ok(_)) => continue,
+            Ok(Err(broadcast::error::RecvError::Closed)) => return,
+            Ok(Err(broadcast::error::RecvError::Lagged(_))) => continue,
+        }
+    }
+}
+
 /// Every snapshot with where the artwork pass was when it went out.
 async fn collect_snapshots(
     rx: &mut broadcast::Receiver<ImportEvent>,
@@ -340,7 +357,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn no_artwork_still_emits_fast_pass_and_settled() {
+async fn no_artwork_emits_one_settled_snapshot() {
     let tmp = TempDir::new().unwrap();
     // No images, just a folder name with signals.
     let folder = build_release(&tmp, "Artist Name - Album Title", &[], &[]);
@@ -348,22 +365,21 @@ async fn no_artwork_still_emits_fast_pass_and_settled() {
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
-    // Fast pass + final settled.
-    let signals = collect_signals(&mut rx, 2).await;
-    assert_eq!(signals.len(), 2);
-    assert!(matches!(signals[0].text, TextSignal::Scanning { .. }));
-    assert!(matches!(signals[1].text, TextSignal::Settled { .. }));
+    // Nothing is scanned, so nothing is reported as scanning: the settled
+    // snapshot is the first and only one.
+    let signals = collect_signals(&mut rx, 1).await;
+    assert_eq!(signals.len(), 1);
+    assert!(matches!(signals[0].text, TextSignal::Settled { .. }));
 
-    // No artwork means no barcode source, so the signal is `Absent` throughout and
-    // never passes through `Scanning`.
+    // No artwork means no barcode source, so the signal is `Absent`.
     assert!(matches!(signals[0].barcode, BarcodeSignal::Absent));
-    assert!(matches!(signals[1].barcode, BarcodeSignal::Absent));
 
     assert!(signals[0]
         .text
         .free_text()
         .iter()
         .any(|s| s.contains("Artist Name") || s.contains("Album Title")));
+    assert_no_more_snapshots(&mut rx, "a folder with nothing to scan").await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -474,7 +490,7 @@ FILE "audio.flac" WAVE
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     // Fast pass + final settled.
-    let signals = collect_signals(&mut rx, 2).await;
+    let signals = collect_signals(&mut rx, 1).await;
     let fast = signals[0].text.free_text();
     assert!(
         fast.contains(&"Artist Alpha".to_string()),
@@ -511,7 +527,7 @@ FILE \"audio.flac\" WAVE\n  \
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     // Fast pass + final settled.
-    let signals = collect_signals(&mut rx, 2).await;
+    let signals = collect_signals(&mut rx, 1).await;
     let final_signals = &signals[signals.len() - 1];
     assert!(
         final_signals
@@ -545,7 +561,7 @@ FILE \"audio.flac\" WAVE\n  \
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
-    let signals = collect_signals(&mut rx, 2).await;
+    let signals = collect_signals(&mut rx, 1).await;
     let final_signals = &signals[signals.len() - 1];
     assert!(
         final_signals.barcode.codes().is_empty(),
@@ -617,7 +633,7 @@ async fn text_files_feed_free_text() {
     let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
 
     // Fast pass + final settled. The cluster scores PathComponent(3) + TextFile(1).
-    let signals = collect_signals(&mut rx, 2).await;
+    let signals = collect_signals(&mut rx, 1).await;
     let final_free_text = signals[signals.len() - 1].text.free_text();
     assert!(
         final_free_text
@@ -815,18 +831,16 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
         CallPriority::Interactive,
     );
 
-    // Fast pass + final settled. No OCR snapshots: there is nothing to decode with.
-    let signals = collect_signals(&mut rx, 2).await;
+    // One settled snapshot. No scanning one and no OCR snapshots: there is
+    // nothing to decode with, so nothing is reported as being read.
+    let signals = collect_signals(&mut rx, 1).await;
+    assert!(matches!(signals[0].text, TextSignal::Settled { .. }));
     assert_eq!(
         signals[0].barcode,
         BarcodeSignal::Absent,
         "artwork is not a barcode source without an analyzer",
     );
-    assert_eq!(
-        signals[1].barcode,
-        BarcodeSignal::Absent,
-        "settling must not report a scan that never ran",
-    );
+    assert_no_more_snapshots(&mut rx, "a scan that never ran").await;
 }
 
 /// A CUE `CATALOG` barcode is a source in its own right — it needs no analyzer.
@@ -852,8 +866,8 @@ FILE \"audio.flac\" WAVE\n  \
         CallPriority::Interactive,
     );
 
-    let signals = collect_signals(&mut rx, 2).await;
-    let codes: Vec<&str> = signals[1]
+    let signals = collect_signals(&mut rx, 1).await;
+    let codes: Vec<&str> = signals[0]
         .barcode
         .codes()
         .iter()
@@ -861,9 +875,9 @@ FILE \"audio.flac\" WAVE\n  \
         .collect();
     assert_eq!(codes, vec!["0075678164521"]);
     assert!(
-        matches!(signals[1].barcode, BarcodeSignal::Settled { .. }),
+        matches!(signals[0].barcode, BarcodeSignal::Settled { .. }),
         "a CUE catalog barcode settles without an analyzer, got {:?}",
-        signals[1].barcode,
+        signals[0].barcode,
     );
 }
 

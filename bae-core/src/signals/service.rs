@@ -419,25 +419,21 @@ async fn stream_extraction(
         return;
     }
 
-    // First snapshot: disc ID and CUE barcodes are settled and the autocomplete
-    // pool is populated; barcode/text stay `Scanning` while OCR is pending.
-    let classification = gathered.pool.classify();
-    let first_image = match &artwork {
-        Some(pass) => position_of(&pass.images, 0),
-        None => ArtworkScan::Absent,
-    };
-    emit_signals(
-        &inner,
-        &key,
-        scanning_signals(
-            &gathered,
-            has_artwork,
-            classification.catalogs,
-            classification.free_text,
-        ),
-        first_image,
-        priority,
-    );
+    // First snapshot, only when there is artwork to read: disc ID and CUE
+    // barcodes are settled and the autocomplete pool is populated, while
+    // barcode/text stay `Scanning` until the OCR pass has been over every
+    // image. Without artwork nothing is scanned, so the settled snapshot below
+    // is the first and only one: `Scanning` means artwork is being read.
+    if let Some(pass) = &artwork {
+        let classification = gathered.pool.classify();
+        emit_signals(
+            &inner,
+            &key,
+            scanning_signals(&gathered, classification.catalogs, classification.free_text),
+            position_of(&pass.images, 0),
+            priority,
+        );
+    }
 
     // One OCR request at a time (Vision on the ANE is effectively serial).
     if let Some(ArtworkPass { images }) = artwork {
@@ -526,12 +522,7 @@ async fn stream_extraction(
             emit_signals(
                 &inner,
                 &key,
-                scanning_signals(
-                    &gathered,
-                    has_artwork,
-                    classification.catalogs,
-                    classification.free_text,
-                ),
+                scanning_signals(&gathered, classification.catalogs, classification.free_text),
                 position_of(&images, index + 1),
                 priority,
             );
@@ -604,30 +595,20 @@ fn emit_failed_ocr_signals(
     );
 }
 
-/// Build a `Scanning`-phase `Signals` snapshot. The barcode signal is
-/// `Scanning` while artwork OCR is pending; with no artwork it settles
-/// immediately (CUE codes only, or `Absent` when there's no source at all).
+/// Build a `Scanning`-phase `Signals` snapshot: what has been read so far
+/// while the artwork pass is still going. Only an extraction with artwork
+/// emits one; barcode and text both stay `Scanning` until the pass is over.
 fn scanning_signals(
     gathered: &Gathered,
-    has_artwork: bool,
     catalogs: Vec<SourcedValue>,
     free_text: Vec<String>,
 ) -> Signals {
     let text_pool = gathered.pool.text_lines();
-    let barcode = if has_artwork {
-        BarcodeSignal::Scanning {
-            codes: gathered.barcodes.clone(),
-        }
-    } else if gathered.barcodes.is_empty() {
-        BarcodeSignal::Absent
-    } else {
-        BarcodeSignal::Settled {
-            codes: gathered.barcodes.clone(),
-        }
-    };
     Signals {
         disc_id: gathered.disc_id.clone(),
-        barcode,
+        barcode: BarcodeSignal::Scanning {
+            codes: gathered.barcodes.clone(),
+        },
         text: TextSignal::Scanning {
             catalogs,
             free_text,
