@@ -16,7 +16,7 @@ namespace Bae.Desktop;
 // bindings, this store fires one coarse Changed event and the sidebar rebuilds
 // its chrome wholesale — the established pattern for this app's imperative
 // views (see QueuePane).
-internal sealed class ImportStore : IDisposable
+internal sealed partial class ImportStore : IDisposable
 {
     private readonly ImportService _import;
     private readonly Action<string, string> _showError;
@@ -382,14 +382,22 @@ internal sealed class ImportStore : IDisposable
         }
         if (detail is null)
         {
+            // The key names no scanned folder any more, so a pick made on it
+            // has nothing left to claim.
             _details.Remove(key);
             _candidates.Remove(key);
+            _picks.Remove(key);
             ObservedCandidateGone?.Invoke();
             Changed?.Invoke();
             return;
         }
         _details[key] = detail;
         var candidate = _import.ProjectFolderCandidate(detail);
+        if (_picks.TryGetValue(key, out var pick)
+            && pick.AudioIdentity != candidate.Files?.FileTagsIdentity)
+        {
+            _picks.Remove(key);
+        }
         if (_candidates.TryGetValue(key, out var existing))
         {
             candidate.PreserveSessionState(existing);

@@ -70,47 +70,23 @@ enum CandidateMetadataPresentation: Equatable {
     }
 }
 
-/// One metadata application from its click until both the bridge command and
-/// authoritative candidate-detail delivery have confirmed it.
+/// One metadata application, from its click until the read it dispatched
+/// ends. The store owns it under the candidate's key; dropping that entry
+/// cancels the read.
 final class CandidateMetadataApplicationSession: Equatable,
     @unchecked Sendable
 {
     let provenance: BridgeMetadataProvenance
 
-    private(set) var commandRevision: UInt64?
-    private(set) var deliveredRevision: UInt64?
     private var task: Task<Void, Never>?
-    private var onConfirmed: (() -> Void)?
 
-    init(
-        provenance: BridgeMetadataProvenance,
-        onConfirmed: (() -> Void)? = nil
-    ) {
+    init(provenance: BridgeMetadataProvenance) {
         self.provenance = provenance
-        self.onConfirmed = onConfirmed
     }
 
     func install(_ task: Task<Void, Never>) {
         precondition(self.task == nil)
         self.task = task
-    }
-
-    func recordCommandSuccess(revision: UInt64) {
-        commandRevision = revision
-    }
-
-    func recordDetailDelivery(revision: UInt64) {
-        deliveredRevision = revision
-    }
-
-    var isConfirmed: Bool {
-        commandRevision != nil && commandRevision == deliveredRevision
-    }
-
-    func takeConfirmation() -> (() -> Void)? {
-        precondition(isConfirmed)
-        defer { onConfirmed = nil }
-        return onConfirmed
     }
 
     deinit {
@@ -333,39 +309,9 @@ struct Candidate: Equatable, Identifiable {
         chosenCatalogs: [],
         discountedCatalogs: []
     )
-    /// The current metadata selection attempt. Its release row owns loading
-    /// and failure feedback while the pane keeps showing the stored draft.
-    var metadataApplication: CandidateMetadataApplication?
-
-    var metadataApplicationSession: CandidateMetadataApplicationSession? {
-        guard case .applying(let session) = metadataApplication else {
-            return nil
-        }
-        return session
-    }
-
-    var releaseSelectionFailure: ReleaseSelectionFailure? {
-        guard case .failed(let failure) = metadataApplication else {
-            return nil
-        }
-        return failure
-    }
     /// The lazy File Tags read for this candidate. It is session state rather
     /// than candidate detail: reading tags does not choose that seed.
     var fileTagsPreview: CandidateFileTagsPreviewState = .unloaded
-
-    var provenanceInFlight: BridgeMetadataProvenance? {
-        metadataApplicationSession?.provenance
-    }
-
-    var loadingReleaseId: String? {
-        guard
-            case .externalRelease(_, let releaseId, _) = provenanceInFlight
-        else {
-            return nil
-        }
-        return releaseId
-    }
 
     /// The draft or temporary source browser occupying the metadata slot.
     /// Browsing never replaces the stored draft; applying a result does.
@@ -414,12 +360,13 @@ struct Candidate: Equatable, Identifiable {
     }
 
     /// This row over `existing`'s session state: the list re-read the folder,
-    /// and nothing about the user's work on it changed.
+    /// and nothing about the user's work on it changed. A pick in flight is
+    /// not here — the store holds that under the candidate's key, where no
+    /// selection change reaches it.
     func withSessionState(from existing: Candidate) -> Candidate {
         var copy = self
         copy.libraryStatuses = existing.libraryStatuses
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
-        copy.metadataApplication = existing.metadataApplication
         copy.fileTagsPreview =
             files.fileTagsIdentity == existing.files.fileTagsIdentity
             ? existing.fileTagsPreview : .unloaded

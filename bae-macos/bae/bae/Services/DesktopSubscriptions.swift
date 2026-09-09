@@ -123,7 +123,9 @@ final class ImportSelectionObservations {
         guard observations[key]?.identity == identity else { return }
         guard let detail else {
             // The key names no scanned folder any more, so nothing can be done
-            // with it: drop it from the selection, which closes this read.
+            // with it: a pick made on it has nothing left to claim, and the
+            // key leaves the selection, which closes this read.
+            importStore.cancelMetadataApplication(forKey: key)
             uiStore.removeFolderCandidateSelection([key])
             return
         }

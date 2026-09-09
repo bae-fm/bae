@@ -29,9 +29,9 @@ struct ReleaseSelectionFailureTests {
             error: "Release details unavailable"
         )
         #expect(store.candidate(forKey: key)?.error == nil)
-        #expect(store.candidate(forKey: key)?.loadingReleaseId == nil)
+        #expect(store.loadingReleaseId(forKey: key) == nil)
         #expect(
-            store.candidate(forKey: key)?.releaseSelectionFailure?.message
+            store.releaseSelectionFailure(forKey: key)?.message
                 == "Release details unavailable"
         )
     }
@@ -56,7 +56,7 @@ struct ReleaseSelectionFailureTests {
             detail: MappingFixtures.detail(mapping: nil)
         )
         #expect(
-            store.candidate(forKey: key)?.releaseSelectionFailure?.message
+            store.releaseSelectionFailure(forKey: key)?.message
                 == "First failure"
         )
         let retry = try #require(
@@ -65,16 +65,14 @@ struct ReleaseSelectionFailureTests {
                 provenance: MappingFixtures.provenance
             )
         )
-        #expect(store.candidate(forKey: key)?.releaseSelectionFailure == nil)
+        #expect(store.releaseSelectionFailure(forKey: key) == nil)
         store.metadataApplicationFailed(
             key: key,
             session: first,
             error: "Stale failure"
         )
-        #expect(
-            store.candidate(forKey: key)?.metadataApplicationSession === retry
-        )
-        #expect(store.candidate(forKey: key)?.releaseSelectionFailure == nil)
+        #expect(store.metadataApplicationSession(forKey: key) === retry)
+        #expect(store.releaseSelectionFailure(forKey: key) == nil)
     }
 
     @Test(

@@ -180,10 +180,7 @@ private struct ImportOnlineMetadataBrowser: View {
                             importStore: importStore,
                             endEditing: endEditing,
                             key: candidateKey,
-                            provenance: pressing.provenance,
-                            onConfirmed: {
-                                Task { @MainActor in onBack() }
-                            }
+                            provenance: pressing.provenance
                         )
                     }
                 )

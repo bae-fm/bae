@@ -40,6 +40,20 @@ final class SessionWriteRecorder: @unchecked Sendable {
         lock.withLock { writes.append(write) }
     }
 
+    /// The surfaces put in the metadata slot for `key`, in order.
+    func presentations(forKey key: String) -> [BridgeMetadataPresentation] {
+        lock.withLock {
+            writes.compactMap { write in
+                if case .presentation(let written, let presentation) = write,
+                    written == key
+                {
+                    return presentation
+                }
+                return nil
+            }
+        }
+    }
+
     /// The banner lines written for `key`, in order; `nil` is a clear.
     func errors(forKey key: String) -> [String?] {
         lock.withLock {

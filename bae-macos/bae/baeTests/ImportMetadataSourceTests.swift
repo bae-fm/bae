@@ -205,11 +205,13 @@ extension ImportMetadataSourceTests {
         #expect(recorder.fileTagApplications.isEmpty)
     }
 
-    @Test("applying File tags waits for its authoritative detail")
-    func fileTagsApplicationWaitsForDetail() async throws {
+    @Test("applying File tags stores the draft as where the pane is")
+    func fileTagsApplicationStoresTheDraft() async throws {
+        let writes = SessionWriteRecorder()
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
+        store.sessionWriter = .recording { writes.record($0) }
         let recorder = MetadataSourceRecorder()
         let services = recorder.services(store)
         let candidate = try #require(
@@ -230,31 +232,22 @@ extension ImportMetadataSourceTests {
             services: services
         )
         await waitUntil {
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataApplicationSession?
-                .commandRevision == 1
+            writes.presentations(forKey: MappingFixtures.candidateKey).last
+                == .draft
         }
+
         #expect(recorder.fileTagApplications == [MappingFixtures.candidateKey])
-
-        store.applyCandidateDetail(
-            key: MappingFixtures.candidateKey,
-            detail: MappingFixtures.detail(
-                mapping: MappingFixtures.fileTagsTable,
-                metadataProvenance: .fileTags
-            )
+        #expect(
+            store.metadataApplicationSession(
+                forKey: MappingFixtures.candidateKey
+            ) == nil
         )
-
-        let applied = try #require(
-            store.candidate(forKey: MappingFixtures.candidateKey)
-        )
-        #expect(applied.metadataApplicationSession == nil)
-        #expect(applied.metadataPresentation == .draft)
-        #expect(applied.metadataProvenance == .fileTags)
     }
 
-    @Test("applying an online result waits for the matching release detail")
-    func onlineApplicationWaitsForMatchingDetail() async throws {
+    @Test("applying an online result stores the draft as where the pane is")
+    func onlineApplicationStoresTheDraft() async throws {
         let key = MappingFixtures.candidateKey
+        let writes = SessionWriteRecorder()
         // The pane is on Find online, as the candidate's stored session says.
         let store = MappingFixtures.store(
             mapping: nil,
@@ -262,6 +255,7 @@ extension ImportMetadataSourceTests {
             edit: MappingFixtures.blankEdit,
             presentation: .findOnline
         )
+        store.sessionWriter = .recording { writes.record($0) }
         let recorder = MetadataSourceRecorder()
 
         ImportSearchFlow.applyMetadata(
@@ -269,19 +263,16 @@ extension ImportMetadataSourceTests {
             importStore: store,
             endEditing: {},
             key: key,
-            provenance: MappingFixtures.provenance,
-            onConfirmed: {
-                Task { @MainActor in
-                    store.presentMetadata(.draft, forKey: key)
-                }
-            }
+            provenance: MappingFixtures.provenance
         )
         await waitUntil {
-            store.candidate(forKey: key)?
-                .metadataApplicationSession?
-                .commandRevision == 1
+            writes.presentations(forKey: key).last == .draft
         }
+
         #expect(recorder.externalApplications.map(\.key) == [key])
+        #expect(store.metadataApplicationSession(forKey: key) == nil)
+        // What the pane shows is core's answer, so it stays on Find online
+        // until the read the store just made comes back.
         #expect(
             store.candidate(forKey: key)?
                 .metadataPresentation == .findOnline
@@ -291,30 +282,12 @@ extension ImportMetadataSourceTests {
             key: key,
             detail: MappingFixtures.detail(
                 mapping: nil,
-                metadataProvenance: .externalRelease(
-                    source: .musicBrainz,
-                    releaseId: "different",
-                    partners: []
-                ),
-                presentation: .findOnline
-            )
-        )
-        #expect(store.candidate(forKey: key)?.metadataApplicationSession != nil)
-
-        store.applyCandidateDetail(
-            key: key,
-            detail: MappingFixtures.detail(
-                mapping: nil,
                 metadataProvenance: MappingFixtures.provenance
             )
         )
-        await waitUntil {
-            store.candidate(forKey: key)?
-                .metadataPresentation == .draft
-        }
+
         #expect(
-            store.candidate(forKey: key)?
-                .metadataApplicationSession == nil
+            store.candidate(forKey: key)?.metadataPresentation == .draft
         )
     }
 
@@ -377,16 +350,18 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
         async throws
     {
         let key = MappingFixtures.candidateKey
+        let writes = SessionWriteRecorder()
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
+        store.sessionWriter = .recording { writes.record($0) }
         let recorder = MetadataSourceRecorder()
         let services = recorder.services(store)
         let previews = repeatablePreviews()
         recorder.previewResults = previews
 
         for (offset, preview) in previews.enumerated() {
-            let revision = UInt64(offset + 1)
+            let applications = offset + 1
             let candidate = try XCTUnwrap(store.candidate(forKey: key))
             if offset > 0 {
                 XCTAssertEqual(
@@ -404,28 +379,28 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
                     .fileTagsPreview.isLoading
             )
             try await waitUntil {
-                recorder.previewedKeys.count == Int(revision)
+                recorder.previewedKeys.count == applications
                     && store.candidate(forKey: key)?.fileTagsPreview.edit
                         == preview
             }
 
             ImportMappingFlow.useFileTags(key: key, services: services)
             try await waitUntil {
-                store.candidate(forKey: key)?
-                    .metadataApplicationSession?
-                    .commandRevision == revision
+                recorder.fileTagApplications.count == applications
+                    && writes.presentations(forKey: key).last == .draft
             }
             store.applyCandidateDetail(
                 key: key,
                 detail: MappingFixtures.detail(
                     mapping: MappingFixtures.fileTagsTable,
                     metadataProvenance: .fileTags,
-                    metadataRevision: revision
+                    metadataRevision: UInt64(applications)
                 )
             )
-            try await waitUntil {
-                store.candidate(forKey: key)?.metadataPresentation == .draft
-            }
+            XCTAssertEqual(
+                store.candidate(forKey: key)?.metadataPresentation,
+                .draft
+            )
         }
 
         XCTAssertEqual(recorder.previewedKeys, [key, key])

@@ -576,6 +576,66 @@ struct IdentifyLedgerViewTests {
     }
 }
 
+/// A pick being read is not yet a pick. Its row says so — a spinner, and no
+/// second click to make — and the selected highlight waits until the draft
+/// carries the pick.
+@MainActor
+@Suite("The row a pick is being read on")
+struct PickedRowTests {
+    @Test("the row being read draws as loading, not as selected")
+    func theRowBeingReadIsNotSelected() throws {
+        let pressing = try #require(
+            PreviewData.searchGroupExact.pressings.first
+        )
+
+        let reading = section(loadingReleaseId: pressing.lead.releaseId)
+        #expect(reading.isLoading(pressing))
+        #expect(!reading.isSelected(pressing))
+
+        let picked = section(selectedReleaseId: pressing.lead.releaseId)
+        #expect(picked.isSelected(pressing))
+        #expect(!picked.isLoading(pressing))
+    }
+
+    @Test("the row being read cannot be picked again")
+    func theRowBeingReadCannotBePickedAgain() throws {
+        let pressing = try #require(
+            PreviewData.searchGroupExact.pressings.first
+        )
+
+        #expect(!row(pressing, isLoading: true).isPickable)
+        #expect(row(pressing, isLoading: false).isPickable)
+    }
+
+    private func section(
+        selectedReleaseId: String? = nil,
+        loadingReleaseId: String? = nil
+    ) -> ReleaseGroupSection {
+        ReleaseGroupSection(
+            group: PreviewData.searchGroupExact,
+            isImporting: false,
+            libraryStatuses: [:],
+            selectedReleaseId: selectedReleaseId,
+            loadingReleaseId: loadingReleaseId,
+            onSelect: { _ in }
+        )
+    }
+
+    private func row(
+        _ pressing: Pressing,
+        isLoading: Bool
+    ) -> ImportSearchResultRow {
+        ImportSearchResultRow(
+            pressing: pressing,
+            isImporting: false,
+            libraryStatus: nil,
+            isSelected: false,
+            isLoading: isLoading,
+            onSelect: { _ in }
+        )
+    }
+}
+
 /// Rendering a view to pixels, for the checks that a surface drew at all.
 ///
 /// Hosts without making the window key. Key status is process-wide: a window

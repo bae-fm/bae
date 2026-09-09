@@ -319,14 +319,14 @@ internal sealed partial class ImportMappingPane
                 nameof(_manualSearchType), _manualSearchType, "Unknown manual search type"),
         };
 
-    // The pressings on offer, whichever half produced them. Picking one
-    // applies that external release, and the editor closes only after the
-    // candidate subscription delivers that provenance too.
+    // The pressings on offer, whichever half produced them. Picking one reads
+    // that external release into the draft, and the editor closes when that
+    // read lands; a row already being read is not a pick to make again.
     private Control ChoiceList(List<ReleaseCandidateChoice> choices)
     {
         var results = new ListBox { SelectionMode = SelectionMode.Single, MaxHeight = 190 };
         results.ItemsSource = choices.Select(ChoiceRow).ToList();
-        results.IsEnabled = _applyingProvenance is null;
+        results.IsEnabled = PickInFlight() is null;
         results.SelectionChanged += async (_, _) =>
         {
             if (results.SelectedIndex < 0 || results.SelectedIndex >= choices.Count)
@@ -352,7 +352,7 @@ internal sealed partial class ImportMappingPane
         {
             Width = 14,
             Height = 14,
-            IsVisible = _applyingProvenance is BridgeMetadataProvenance.ExternalRelease applying
+            IsVisible = PickInFlight() is BridgeMetadataProvenance.ExternalRelease applying
                 && applying.Source == choice.Source
                 && applying.ReleaseId == choice.ReleaseId,
         };

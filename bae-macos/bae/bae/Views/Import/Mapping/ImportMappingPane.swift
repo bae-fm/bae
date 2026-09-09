@@ -19,6 +19,9 @@ struct ImportMappingPane: View {
     let bindingOptions: [String: [BridgeSheetBindingOption]]
     /// The exact source window currently auditioning, if any.
     let previewingTarget: BridgePreviewTarget?
+    /// Whether a metadata source is being read into this candidate's draft.
+    /// The store answers it: a pick outlives which candidate is on screen.
+    let isApplyingMetadata: Bool
     let libraryStatus: BridgeLibraryStatus?
     let hasCoverOptions: Bool
     let coverContent: ImageContent?
@@ -116,7 +119,7 @@ struct ImportMappingPane: View {
             fileTagsPreviewSummary: candidate.fileTagsPreview.edit.map {
                 ImportReleaseSummary(candidate: candidate, fileTags: $0)
             },
-            isReading: candidate.provenanceInFlight != nil
+            isReading: isApplyingMetadata
                 || candidate.fileTagsPreview.isLoading,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,

@@ -42,6 +42,7 @@
                 runtime: runtime,
                 bindingOptions: PreviewData.sheetBindingOptions,
                 previewingTarget: previewingTarget,
+                isApplyingMetadata: false,
                 libraryStatus: nil,
                 hasCoverOptions: true,
                 coverContent: nil,

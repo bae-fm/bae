@@ -60,9 +60,9 @@ struct FindOnlineAutoAdvanceTests {
         withExtendedLifetime(window) {}
     }
 
-    /// A pick the person made owns its own way out — `applyMetadata`'s
-    /// `onConfirmed`. Nobody but them wrote this draft, so this rule stays out
-    /// of it and the pane is not sent back twice.
+    /// A pick the person made owns its own way out: the store writes the pane
+    /// back to the draft when the read lands. Nobody but them wrote this
+    /// draft, so this rule stays out of it and the pane is not sent back twice.
     @Test("a pick the person made is not this rule's to act on")
     func aPickThePersonMadeIsNotActedOn() async {
         let back = BackRecorder()

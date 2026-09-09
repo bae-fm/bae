@@ -107,10 +107,7 @@ enum ImportMappingFlow {
             importStore: services.importStore,
             endEditing: services.endEditing,
             key: key,
-            provenance: .fileTags,
-            onConfirmed: {
-                services.importStore.presentMetadata(.draft, forKey: key)
-            }
+            provenance: .fileTags
         )
     }
 

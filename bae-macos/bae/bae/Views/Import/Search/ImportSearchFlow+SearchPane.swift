@@ -46,7 +46,7 @@ extension ImportSearchFlow {
     ) -> some View {
         let key = input.key
         let importStore = services.importStore
-        let state = searchPaneState(candidate: input.candidate, input: input)
+        let state = searchPaneState(input: input, importStore: importStore)
 
         ImportSearchPane(
             state: state,
@@ -88,8 +88,8 @@ extension ImportSearchFlow {
         )
         // The draft saying identification wrote it leaves nothing here to do:
         // it already carries the claim the person's click would make. Leave
-        // Find online the way a pick by hand leaves it — `applyMetadata`'s
-        // `onConfirmed` calls the same way out.
+        // Find online the way a pick by hand leaves it — that one goes back to
+        // the draft through core when its own read lands.
         //
         // Only on the transition, and inside `.id(key)` so it is this
         // candidate's: a candidate whose draft identification had already
@@ -245,13 +245,15 @@ extension ImportSearchFlow {
         )
     }
 
-    /// The pane's read-only state snapshot from the candidate, plus the
-    /// open-confirm selection the pane renders against.
+    /// The pane's read-only state snapshot from the candidate, the pick the
+    /// store is reading for it, and the open-confirm selection the pane
+    /// renders against.
     @MainActor
     private static func searchPaneState(
-        candidate: Candidate,
-        input: SearchPaneInput
+        input: SearchPaneInput,
+        importStore: ImportStore
     ) -> ImportSearchState {
+        let candidate = input.candidate
         let identifyState = shownIdentifyState(
             resumed: candidate.resumedIdentifyState,
             runtime: input.runtime
@@ -269,8 +271,10 @@ extension ImportSearchFlow {
             error: candidate.error,
             search: input.runtime?.search,
             selectedReleaseId: input.selectedReleaseId,
-            loadingReleaseId: candidate.loadingReleaseId,
-            releaseSelectionFailure: candidate.releaseSelectionFailure,
+            loadingReleaseId: importStore.loadingReleaseId(forKey: input.key),
+            releaseSelectionFailure: importStore.releaseSelectionFailure(
+                forKey: input.key
+            ),
             isImporting: isImporting(candidate),
             isFinalizing: candidate.row?.placement
                 == .identification(status: .finalizing),

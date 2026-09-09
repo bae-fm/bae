@@ -30,6 +30,11 @@ private final class ImportSelectionHandle: AppHandle, @unchecked Sendable {
     func deliver(_ detail: BridgeImportCandidateDetail) {
         candidateCallback?.onValue(value: detail)
     }
+
+    /// The key names no scanned folder any more.
+    func deliverNothing() {
+        candidateCallback?.onValue(value: nil)
+    }
 }
 
 private final class ImportSelectionSubscription: LiveSubscription,
@@ -73,5 +78,39 @@ struct DesktopSubscriptionsTests {
 
         #expect(store.selectedCandidates.count == 1)
         #expect(handle.identifyCalls.isEmpty)
+    }
+
+    /// A pick is about a folder. When the read says there is no such folder
+    /// any more, there is nothing left for the pick to claim.
+    @Test("a folder that is gone cancels the pick made on it")
+    func aGoneFolderCancelsThePick() async throws {
+        let key = MappingFixtures.candidateKey
+        let handle = ImportSelectionHandle()
+        let store = ImportStore()
+        let observations = ImportSelectionObservations(
+            appHandle: handle,
+            importStore: store,
+            uiStore: UiStore()
+        )
+
+        observations.selectionChanged([key])
+        handle.deliver(MappingFixtures.detail(mapping: nil))
+        for _ in 0..<100 where store.selectedCandidates.isEmpty {
+            await Task.yield()
+        }
+        _ = try #require(
+            store.beginMetadataApplication(
+                key: key,
+                provenance: MappingFixtures.provenance
+            )
+        )
+
+        handle.deliverNothing()
+        for _ in 0..<100
+        where store.metadataApplicationSession(forKey: key) != nil {
+            await Task.yield()
+        }
+
+        #expect(store.metadataApplicationSession(forKey: key) == nil)
     }
 }

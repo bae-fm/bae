@@ -51,10 +51,10 @@ final class SettingsNavigationTests: XCTestCase {
 @MainActor
 @Suite("ImportSearchFlow metadata application")
 struct ImportSearchFlowMetadataApplicationTests {
-    @Test("command return does not confirm until detail delivery")
-    func commandReturnDoesNotConfirmBeforeDetailDelivery() async throws {
-        let store = unsettledStore()
-        let confirmation = ConfirmationRecorder()
+    @Test("the read landing puts the draft back in the metadata slot")
+    func theReadLandingReturnsToTheDraft() async throws {
+        let writes = SessionWriteRecorder()
+        let store = unsettledStore(writes: writes)
         let recorder = PickRecorder()
         let importer = Importer(
             applyCandidateExternalMetadata: { _, provenance in
@@ -68,37 +68,24 @@ struct ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance,
-            onConfirmed: confirmation.record
+            provenance: MappingFixtures.provenance
         )
         await waitUntil {
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataApplicationSession?
-                .commandRevision == 1
+            writes.presentations(forKey: MappingFixtures.candidateKey)
+                == [.draft]
         }
 
         #expect(recorder.provenances == [MappingFixtures.provenance])
-        #expect(confirmation.count == 0)
         #expect(
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .loadingReleaseId == MappingFixtures.releaseId
+            store.metadataApplicationSession(
+                forKey: MappingFixtures.candidateKey
+            ) == nil
         )
-
-        deliverPickedDetail(to: store)
-
-        let delivered = try #require(
-            store.candidate(forKey: MappingFixtures.candidateKey)
-        )
-        #expect(delivered.error == nil)
-        #expect(delivered.pickedRelease?.releaseId == MappingFixtures.releaseId)
-        #expect(delivered.provenanceInFlight == nil)
-        #expect(confirmation.count == 1)
     }
 
-    @Test("detail delivery before command return still waits for both")
-    func detailDeliveryBeforeCommandReturnWaitsForBoth() async throws {
+    @Test("the row spins on the pressing being read until the read lands")
+    func theRowSpinsWhileTheReadRuns() async throws {
         let store = unsettledStore()
-        let confirmation = ConfirmationRecorder()
         let (gate, releaseGate) = AsyncStream<Void>.makeStream()
         let recorder = PickRecorder()
         let importer = Importer(
@@ -114,35 +101,36 @@ struct ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance,
-            onConfirmed: confirmation.record
+            provenance: MappingFixtures.provenance
         )
         await waitUntil {
             recorder.provenances == [MappingFixtures.provenance]
         }
 
-        deliverPickedDetail(to: store)
-
-        #expect(confirmation.count == 0)
         #expect(
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .provenanceInFlight == MappingFixtures.provenance
+            store.loadingReleaseId(forKey: MappingFixtures.candidateKey)
+                == MappingFixtures.releaseId
         )
 
         releaseGate.finish()
-        await waitUntil { confirmation.count == 1 }
-        #expect(
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .provenanceInFlight == nil
-        )
+        await waitUntil {
+            store.loadingReleaseId(forKey: MappingFixtures.candidateKey) == nil
+        }
     }
 
-    @Test("a different detail cannot confirm the chosen pressing")
-    func mismatchedDetailCannotConfirmTheChoice() async throws {
+    /// The candidate is re-read whenever anything about it moves — another
+    /// pane's write, the scan, the run. None of that is this pick's answer.
+    @Test("a candidate re-read does not end the pick")
+    func aCandidateReReadDoesNotEndThePick() async throws {
         let store = unsettledStore()
-        let confirmation = ConfirmationRecorder()
+        let (gate, releaseGate) = AsyncStream<Void>.makeStream()
+        let recorder = PickRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, _ in 1 }
+            applyCandidateExternalMetadata: { _, provenance in
+                await recorder.record(provenance)
+                for await _ in gate { break }
+                return 1
+            }
         )
 
         ImportSearchFlow.applyMetadata(
@@ -150,74 +138,29 @@ struct ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance,
-            onConfirmed: confirmation.record
+            provenance: MappingFixtures.provenance
         )
         await waitUntil {
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataApplicationSession?
-                .commandRevision == 1
+            recorder.provenances == [MappingFixtures.provenance]
         }
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
-            detail: MappingFixtures.detail(
-                mapping: MappingFixtures.fileTagsTable,
-                metadataProvenance: .externalRelease(
-                    source: MappingFixtures.source,
-                    releaseId: "rel-other",
-                    partners: []
-                )
-            )
+            detail: MappingFixtures.detail(mapping: nil)
         )
 
-        #expect(confirmation.count == 0)
         #expect(
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .provenanceInFlight == MappingFixtures.provenance
+            store.metadataApplicationSession(
+                forKey: MappingFixtures.candidateKey
+            ) != nil
         )
-
-        deliverPickedDetail(to: store)
-        #expect(confirmation.count == 1)
+        releaseGate.finish()
     }
 
-    @Test(
-        "an older revision from the same release cannot confirm reapplication"
-    )
-    func olderSameReleaseRevisionCannotConfirm() async throws {
-        let store = unsettledStore()
-        let confirmation = ConfirmationRecorder()
-        let importer = Importer(
-            applyCandidateExternalMetadata: { _, _ in 2 }
-        )
-
-        ImportSearchFlow.applyMetadata(
-            importer: importer,
-            importStore: store,
-            endEditing: {},
-            key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance,
-            onConfirmed: confirmation.record
-        )
-        await waitUntil {
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataApplicationSession?
-                .commandRevision == 2
-        }
-
-        deliverPickedDetail(to: store, revision: 1)
-        #expect(confirmation.count == 0)
-
-        deliverPickedDetail(to: store, revision: 2)
-        #expect(confirmation.count == 1)
-    }
-
-    @Test("a failed choice does not confirm and keeps its error on the release")
-    func failedChoiceDoesNotConfirmAndRecordsError() async throws {
-        let store = unsettledStore()
+    @Test("a failed read keeps its error on the release, not on the pane")
+    func failedReadKeepsItsErrorOnTheRelease() async throws {
         let writes = SessionWriteRecorder()
-        store.sessionWriter = .recording { writes.record($0) }
-        let confirmation = ConfirmationRecorder()
+        let store = unsettledStore(writes: writes)
         let importer = Importer(
             applyCandidateExternalMetadata: { _, _ in
                 throw StubError.notImplemented
@@ -229,33 +172,41 @@ struct ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance,
-            onConfirmed: confirmation.record
+            provenance: MappingFixtures.provenance
         )
         await waitUntil {
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .releaseSelectionFailure != nil
+            store.releaseSelectionFailure(
+                forKey: MappingFixtures.candidateKey
+            ) != nil
         }
 
         let after = try #require(
             store.candidate(forKey: MappingFixtures.candidateKey)
         )
-        #expect(after.provenanceInFlight == nil)
         #expect(after.pickedRelease == nil)
         #expect(after.error == nil)
         #expect(
-            after.releaseSelectionFailure?.release.releaseId
-                == MappingFixtures.releaseId
+            store.releaseSelectionFailure(
+                forKey: MappingFixtures.candidateKey
+            )?
+            .release.releaseId == MappingFixtures.releaseId
         )
         #expect(
             !writes.errors(forKey: MappingFixtures.candidateKey)
                 .contains { $0 != nil }
         )
-        #expect(confirmation.count == 0)
+        #expect(
+            writes.presentations(forKey: MappingFixtures.candidateKey).isEmpty
+        )
     }
 
-    private func unsettledStore() -> ImportStore {
+    private func unsettledStore(
+        writes: SessionWriteRecorder? = nil
+    ) -> ImportStore {
         let store = ImportStore()
+        if let writes {
+            store.sessionWriter = .recording { writes.record($0) }
+        }
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
             detail: MappingFixtures.detail(
@@ -265,19 +216,6 @@ struct ImportSearchFlowMetadataApplicationTests {
             )
         )
         return store
-    }
-
-    private func deliverPickedDetail(
-        to store: ImportStore,
-        revision: UInt64 = 1
-    ) {
-        store.applyCandidateDetail(
-            key: MappingFixtures.candidateKey,
-            detail: MappingFixtures.detail(
-                mapping: nil,
-                metadataRevision: revision
-            )
-        )
     }
 
     private func waitUntil(_ predicate: () -> Bool) async {
@@ -437,15 +375,6 @@ private final class PickRecorder {
 
     func record(_ provenance: BridgeMetadataProvenance) {
         provenances.append(provenance)
-    }
-}
-
-@MainActor
-private final class ConfirmationRecorder {
-    private(set) var count = 0
-
-    func record() {
-        count += 1
     }
 }
 

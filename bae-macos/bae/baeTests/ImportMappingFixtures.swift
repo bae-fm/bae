@@ -446,9 +446,14 @@ extension MappingFixtures {
         failure: BridgeImportFailure? = nil,
         presentation: BridgeMetadataPresentation = .draft,
         candidateKey key: String = MappingFixtures.candidateKey,
-        folderName: String = "Walkthrough"
+        folderName: String = "Walkthrough",
+        audioIdentity: String = "empty-audio-files"
     ) -> BridgeImportCandidateDetail {
-        let folder = sourceFolder(key: key, name: folderName)
+        let folder = sourceFolder(
+            key: key,
+            name: folderName,
+            audioIdentity: audioIdentity
+        )
         return BridgeImportCandidateDetail(
             candidate: folder,
             actionable: true,
@@ -505,9 +510,11 @@ extension MappingFixtures {
         )
     }
 
-    private static func sourceFolder(key: String, name: String)
-        -> BridgeFolderCandidate
-    {
+    private static func sourceFolder(
+        key: String,
+        name: String,
+        audioIdentity: String
+    ) -> BridgeFolderCandidate {
         BridgeFolderCandidate(
             compositionAction: .combine,
             combination: nil,
@@ -515,7 +522,11 @@ extension MappingFixtures {
             folderPath: key,
             sourceFolderName: name,
             watchedFolderPath: "/Music/Downloads",
-            files: emptyFiles,
+            files: BridgeCandidateFiles(
+                fileTagsIdentity: audioIdentity,
+                files: emptyFiles.files,
+                sourceAudio: emptyFiles.sourceAudio
+            ),
             trackCount: 13,
             skipped: false,
             isAdded: false

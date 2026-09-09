@@ -6,22 +6,21 @@ private let logger = Logger.bae("ImportSearchFlow")
 extension ImportSearchFlow {
     // MARK: - Applying metadata
 
-    /// Apply one metadata source. The source browser remains visible until the
-    /// command and the exact authoritative detail have both arrived.
+    /// Apply one metadata source. The source browser stays where it is until
+    /// core holds the draft this read produces; the pick then puts the draft
+    /// back in the metadata slot, whatever is being looked at by then.
     @MainActor
     static func applyMetadata(
         importer: Importer,
         importStore: ImportStore,
         endEditing: @escaping @MainActor () async -> Void,
         key: String,
-        provenance: BridgeMetadataProvenance,
-        onConfirmed: (() -> Void)? = nil
+        provenance: BridgeMetadataProvenance
     ) {
         guard
             let session = importStore.beginMetadataApplication(
                 key: key,
-                provenance: provenance,
-                onConfirmed: onConfirmed
+                provenance: provenance
             )
         else {
             logger.debug("Metadata application ignored for missing key: \(key)")
@@ -31,21 +30,19 @@ extension ImportSearchFlow {
         let task = Task { @MainActor [weak session] in
             await endEditing()
             do {
-                let revision =
-                    switch provenance {
-                    case .externalRelease:
-                        try await importer.applyCandidateExternalMetadata(
-                            key,
-                            provenance: provenance
-                        )
-                    case .fileTags:
-                        try await importer.applyCandidateFileTags(key)
-                    }
+                switch provenance {
+                case .externalRelease:
+                    _ = try await importer.applyCandidateExternalMetadata(
+                        key,
+                        provenance: provenance
+                    )
+                case .fileTags:
+                    _ = try await importer.applyCandidateFileTags(key)
+                }
                 guard let session else { return }
-                importStore.metadataApplicationCommandSucceeded(
+                importStore.metadataApplicationSucceeded(
                     key: key,
-                    session: session,
-                    revision: revision
+                    session: session
                 )
             }
             catch is CancellationError {

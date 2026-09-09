@@ -13,6 +13,8 @@ struct ReleaseSelectionFailure: Equatable {
     }
 }
 
+/// What one candidate's metadata pick is doing: the source still being read
+/// into its draft, or how the last read of it failed.
 enum CandidateMetadataApplication: Equatable {
     case applying(CandidateMetadataApplicationSession)
     case failed(ReleaseSelectionFailure)

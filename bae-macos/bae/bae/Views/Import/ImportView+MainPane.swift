@@ -109,6 +109,9 @@ extension ImportView {
             runtime: runtime,
             bindingOptions: sheetBindingOptions,
             previewingTarget: importStore.previewState.active?.target,
+            isApplyingMetadata: importStore.isApplyingMetadata(
+                forKey: candidate.key
+            ),
             libraryStatus: candidate.pickedLibraryStatus,
             hasCoverOptions: hasCoverOptions(candidate),
             coverContent: candidate.cover?.thumbnailContent,

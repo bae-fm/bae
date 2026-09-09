@@ -294,17 +294,6 @@ struct ImportStoreCandidateDetailTests {
             name: "A"
         )
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
-        let pendingPick = BridgeMetadataProvenance.externalRelease(
-            source: .musicBrainz,
-            releaseId: "rel-1",
-            partners: []
-        )
-        existing.metadataApplication =
-            .applying(
-                CandidateMetadataApplicationSession(
-                    provenance: pendingPick
-                )
-            )
         existing.fileTagsPreview = .loaded(MappingFixtures.albumSeed)
         store.selectedCandidates["/w1/a"] = existing
 
@@ -325,7 +314,6 @@ struct ImportStoreCandidateDetailTests {
         // The work this pane holds in memory survives; the read only re-read
         // the folder.
         #expect(merged.libraryStatuses["rel-1"] != nil)
-        #expect(merged.provenanceInFlight == pendingPick)
         #expect(merged.fileTagsPreview.edit == MappingFixtures.albumSeed)
         // The pane's session is the candidate's, so it comes with the read.
         #expect(merged.metadataPresentation == .fileTags)

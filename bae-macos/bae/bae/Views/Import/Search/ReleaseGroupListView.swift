@@ -140,14 +140,14 @@ struct ReleaseGroupSection: View {
 
     /// A pressing is the docked one when any of its sources' releases is: a
     /// person who took the Discogs half of a merged row still picked this row.
-    private func isSelected(_ pressing: Pressing) -> Bool {
-        pressing.releases.contains {
-            $0.releaseId == selectedReleaseId
-                || $0.releaseId == loadingReleaseId
-        }
+    /// A pick still being read is not one — the highlight says the draft
+    /// carries this pressing, and until the read lands it does not.
+    func isSelected(_ pressing: Pressing) -> Bool {
+        pressing.releases.contains { $0.releaseId == selectedReleaseId }
     }
 
-    private func isLoading(_ pressing: Pressing) -> Bool {
+    /// Whether this pressing is the one whose pick is being read right now.
+    func isLoading(_ pressing: Pressing) -> Bool {
         pressing.releases.contains { $0.releaseId == loadingReleaseId }
     }
 }

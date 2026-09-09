@@ -478,12 +478,16 @@ extension ImportMappingPaneTests {
                 .contains { $0 != nil }
         )
         #expect(candidate.error == nil)
-        #expect(
-            candidate.releaseSelectionFailure?.release.releaseId
-                == "another-pressing"
+        let failure = store.releaseSelectionFailure(
+            forKey: MappingFixtures.candidateKey
         )
-        #expect(candidate.releaseSelectionFailure?.message.isEmpty == false)
-        #expect(candidate.provenanceInFlight == nil)
+        #expect(failure?.release.releaseId == "another-pressing")
+        #expect(failure?.message.isEmpty == false)
+        #expect(
+            store.metadataApplicationSession(
+                forKey: MappingFixtures.candidateKey
+            ) == nil
+        )
         #expect(candidate.detail == before)
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)
     }

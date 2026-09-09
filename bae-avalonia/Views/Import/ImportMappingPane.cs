@@ -54,13 +54,6 @@ internal sealed partial class ImportMappingPane : UserControl
     private BridgeCandidateRuntimeSnapshot? _runtime;
     private string _importStatusFingerprint = string.Empty;
 
-    // Whether a pick is in flight. The control that started it says so; the
-    // pane behind it keeps showing whatever is stored until the pick lands.
-    private bool _pickInFlight;
-    private BridgeMetadataProvenance? _applyingProvenance;
-    private ulong? _applicationCommandRevision;
-    private ulong? _applicationDetailRevision;
-
     // The search editor, held open across rebuilds along with what has been
     // typed into it: the pane re-renders whenever a result lands, and a query
     // that reset itself each time would be unusable.
@@ -144,12 +137,6 @@ internal sealed partial class ImportMappingPane : UserControl
         _candidate = refreshed;
         _candidatePresentationFingerprint = presentationFingerprint;
         _importStatusFingerprint = importStatusFingerprint;
-        if (_applyingProvenance is { } applying
-            && Equals(refreshed?.MetadataProvenance, applying))
-        {
-            _applicationDetailRevision = refreshed?.Detail?.MetadataRevision;
-            FinishMetadataApplicationIfConfirmed();
-        }
         if (provenanceChanged)
         {
             ObserveRelease();
@@ -306,14 +293,11 @@ internal sealed partial class ImportMappingPane : UserControl
     }
 
     // The only state the pane owns: the search editor's own form, the storage
-    // choice, and the last command's failure. Everything else is stored.
+    // choice, and the last command's failure. Everything else is stored — a
+    // pick included, which is why switching candidates does not touch one.
     private void ResetSession()
     {
         _import.ClearReleaseLibraryStatus();
-        _pickInFlight = false;
-        _applyingProvenance = null;
-        _applicationCommandRevision = null;
-        _applicationDetailRevision = null;
         _manualSearchType = ManualSearchType.General;
         _searchArtist = string.Empty;
         _searchAlbum = string.Empty;
@@ -324,16 +308,25 @@ internal sealed partial class ImportMappingPane : UserControl
 
     // ── Selecting and presenting metadata sources ──────────────────────────
 
+    // What the candidate under the pane has a pick reading, if anything. The
+    // store answers it, so a read started here is still in flight — and still
+    // draws its spinner — after the pane looked away and came back.
+    private BridgeMetadataProvenance? PickInFlight() =>
+        _key is { } key ? _import.PickInFlight(key) : null;
+
+    // Reading a source into the draft belongs to the folder it was picked
+    // for, so the store holds it: the read runs to its end on that key even if
+    // the pane has moved on, and it lands on that candidate's pane, never on
+    // whichever one is on screen when it returns.
     private async Task ApplyMetadata(BridgeMetadataProvenance provenance)
     {
-        if (_key is not { } key)
+        if (_key is not { } key
+            || _import.BeginMetadataApplication(key, provenance) is not { } pick)
         {
             return;
         }
-        _applyingProvenance = provenance;
-        _applicationCommandRevision = null;
-        _applicationDetailRevision = null;
-        _pickInFlight = true;
+        // The store's own tick is coarse and this candidate has not moved, so
+        // the row that started the read draws its spinner from here.
         Render();
         try
         {
@@ -346,33 +339,22 @@ internal sealed partial class ImportMappingPane : UserControl
                 _ => throw new ArgumentOutOfRangeException(
                     nameof(provenance), provenance, "Unknown metadata provenance"),
             };
-            if (revision is null)
+            if (revision is not null)
             {
-                _applyingProvenance = null;
-                return;
+                _import.MetadataApplicationSucceeded(key, pick);
             }
-            _applicationCommandRevision = revision;
-            FinishMetadataApplicationIfConfirmed();
         }
         finally
         {
-            _pickInFlight = false;
-            Render();
+            // A read that failed — or raised on its way out — leaves nothing
+            // in flight. After it landed this is the pick's own no-op.
+            _import.EndMetadataApplication(key, pick);
+            // Only the candidate this read was about has anything to redraw.
+            if (_key == key)
+            {
+                Render();
+            }
         }
-    }
-
-    private void FinishMetadataApplicationIfConfirmed()
-    {
-        if (_applicationCommandRevision is null
-            || _applicationCommandRevision != _applicationDetailRevision
-            || _key is not { } key)
-        {
-            return;
-        }
-        _applyingProvenance = null;
-        _applicationCommandRevision = null;
-        _applicationDetailRevision = null;
-        _import.PresentMetadata(key, ImportMetadataPresentation.Draft);
     }
 
     /// <summary>Present one source without selecting it. Only this explicit
@@ -575,8 +557,7 @@ internal sealed partial class ImportMappingPane : UserControl
         MetaLine = MetaLine(),
         SourceAudioLine = SourceAudioLine(_candidate?.Files),
         ProvenanceChips = ProvenanceChips(),
-        IsReading = _pickInFlight
-            || _applyingProvenance is not null
+        IsReading = PickInFlight() is not null
             || _candidate?.FileTagsPreviewStatus == ImportFileTagsPreviewStatus.Loading,
         FileTagsPreview = _candidate?.FileTagsPreview,
         FileTagsMetaLine = FileTagsMetaLine(),

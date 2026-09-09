@@ -32,6 +32,12 @@ struct ImportSearchResultRow: View {
         libraryStatus?.releaseInLibrary == true
     }
 
+    /// Whether this row is still a choice to make: no import has committed the
+    /// candidate, and this row's own pick is not already being read.
+    var isPickable: Bool {
+        !isImporting && !isLoading
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             resultButton
@@ -50,7 +56,7 @@ struct ImportSearchResultRow: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(isImporting)
+            .disabled(!isPickable)
 
             HStack(spacing: 8) {
                 facts
@@ -86,7 +92,7 @@ struct ImportSearchResultRow: View {
             Spacer(minLength: 8)
             Button("Retry") { onSelect(pressing) }
                 .buttonStyle(.link)
-                .disabled(isImporting || isLoading)
+                .disabled(!isPickable)
         }
         .font(.caption)
         .padding(.horizontal, 10)
@@ -198,7 +204,9 @@ struct ImportSearchResultRow: View {
         }
     }
 
-    private func agreementChip(_ agreement: SignalBadgeStyle.Agreement) -> some View {
+    private func agreementChip(_ agreement: SignalBadgeStyle.Agreement)
+        -> some View
+    {
         Text(SignalBadgeStyle.label(for: agreement))
             .font(.system(size: 10.5, weight: .semibold))
             // A badge is one word; the row's pressing text truncates instead.

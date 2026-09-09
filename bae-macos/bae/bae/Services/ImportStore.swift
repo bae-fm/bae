@@ -176,6 +176,25 @@ class ImportStore {
 
     // MARK: - Per-key reads
 
+    /// One candidate's metadata pick: what it is doing, and the audio it was
+    /// made about.
+    private struct Pick {
+        /// The identity of the audio the folder held when the pick was made.
+        /// Audio that changes under it leaves the pick a claim about a folder
+        /// that is no longer there.
+        let audioIdentity: String
+        var state: CandidateMetadataApplication
+    }
+
+    /// What each candidate's metadata pick is doing, under that candidate's
+    /// key. Picking is a decision about one folder, so it is held here rather
+    /// than on the selected candidate: looking at another candidate — or at
+    /// none — neither cancels the read nor loses the failure it left on a
+    /// pressing. An entry ends when its own task ends, and is cancelled only
+    /// when the candidate stops being a scanned folder or its audio changes
+    /// underneath it.
+    private var picks: [String: Pick] = [:]
+
     /// One selected candidate, as its own read describes it, keeping whatever
     /// work the session has done on it.
     func applyCandidateDetail(
@@ -186,56 +205,78 @@ class ImportStore {
         if let existing = selectedCandidates[key] {
             incoming = incoming.withSessionState(from: existing)
         }
-        let deliveredSession = incoming.metadataApplicationSession.flatMap {
-            session -> CandidateMetadataApplicationSession? in
-            guard detail.metadataProvenance == session.provenance else {
-                return nil
-            }
-            session.recordDetailDelivery(revision: detail.metadataRevision)
-            return session
+        if let pick = picks[key],
+            pick.audioIdentity != incoming.files.fileTagsIdentity
+        {
+            cancelMetadataApplication(forKey: key)
         }
         selectedCandidates[key] = incoming
-        if let deliveredSession {
-            finishMetadataApplicationIfConfirmed(
-                key: key,
-                session: deliveredSession
-            )
-        }
     }
 
-    /// Start one metadata-seed session before its bridge command is dispatched,
-    /// so an immediate candidate-detail delivery cannot outrun registration.
-    /// Replacing a session drops its task owner and cancels the older command.
-    func beginMetadataApplication(
-        key: String,
-        provenance: BridgeMetadataProvenance,
-        onConfirmed: (() -> Void)? = nil
+    /// The read one candidate's pick has in flight.
+    func metadataApplicationSession(
+        forKey key: String
     ) -> CandidateMetadataApplicationSession? {
-        guard candidate(forKey: key) != nil else { return nil }
-        let session = CandidateMetadataApplicationSession(
-            provenance: provenance,
-            onConfirmed: onConfirmed
-        )
-        clearPaneError(forKey: key)
-        mutateCandidate(forKey: key) { candidate in
-            candidate.metadataApplication = .applying(session)
-        }
+        guard case .applying(let session) = picks[key]?.state
+        else { return nil }
         return session
     }
 
-    /// Record that the bridge command returned successfully. The choice stays
-    /// pending until its exact candidate detail has also landed.
-    func metadataApplicationCommandSucceeded(
+    /// Whether a metadata source is being read into this candidate's draft.
+    func isApplyingMetadata(forKey key: String) -> Bool {
+        metadataApplicationSession(forKey: key) != nil
+    }
+
+    /// The release this candidate's pick is waiting on — the row that carries
+    /// the spinner while it is read.
+    func loadingReleaseId(forKey key: String) -> String? {
+        guard
+            case .externalRelease(_, let releaseId, _) =
+                metadataApplicationSession(forKey: key)?.provenance
+        else { return nil }
+        return releaseId
+    }
+
+    /// How this candidate's last pick failed, on the pressing it was about.
+    func releaseSelectionFailure(
+        forKey key: String
+    ) -> ReleaseSelectionFailure? {
+        guard case .failed(let failure) = picks[key]?.state
+        else { return nil }
+        return failure
+    }
+
+    /// Start one pick, before its bridge command is dispatched. Replacing a
+    /// pick drops the older session, and dropping that session cancels the
+    /// read it had running.
+    func beginMetadataApplication(
         key: String,
-        session: CandidateMetadataApplicationSession,
-        revision: UInt64
+        provenance: BridgeMetadataProvenance
+    ) -> CandidateMetadataApplicationSession? {
+        guard let candidate = candidate(forKey: key) else { return nil }
+        let session = CandidateMetadataApplicationSession(
+            provenance: provenance
+        )
+        clearPaneError(forKey: key)
+        picks[key] = Pick(
+            audioIdentity: candidate.files.fileTagsIdentity,
+            state: .applying(session)
+        )
+        return session
+    }
+
+    /// The pick landed: core holds the draft it read, so the pane goes back to
+    /// the draft. Written through core rather than in memory, so the candidate
+    /// is where the pick left it whether or not anyone was watching.
+    func metadataApplicationSucceeded(
+        key: String,
+        session: CandidateMetadataApplicationSession
     ) {
-        guard candidate(forKey: key)?.metadataApplicationSession === session
-        else {
+        guard metadataApplicationSession(forKey: key) === session else {
             return
         }
-        session.recordCommandSuccess(revision: revision)
-        finishMetadataApplicationIfConfirmed(key: key, session: session)
+        picks.removeValue(forKey: key)
+        presentMetadata(.draft, forKey: key)
     }
 
     /// End only the session that raised this failure. A replacement choice may
@@ -245,48 +286,33 @@ class ImportStore {
         session: CandidateMetadataApplicationSession,
         error: String?
     ) {
-        guard candidate(forKey: key)?.metadataApplicationSession === session
-        else {
+        guard metadataApplicationSession(forKey: key) === session else {
             return
         }
         if let error,
             case .externalRelease(let source, let releaseId, _) = session
                 .provenance
         {
-            mutateCandidate(forKey: key) { candidate in
-                candidate.metadataApplication = .failed(
-                    ReleaseSelectionFailure(
-                        release: BridgeMetadataRef(
-                            source: source,
-                            releaseId: releaseId
-                        ),
-                        message: error
-                    )
+            picks[key]?.state = .failed(
+                ReleaseSelectionFailure(
+                    release: BridgeMetadataRef(
+                        source: source,
+                        releaseId: releaseId
+                    ),
+                    message: error
                 )
-            }
+            )
             return
         }
+        picks.removeValue(forKey: key)
         if let error { recordPaneError(error, forKey: key) }
-        mutateCandidate(forKey: key) { candidate in
-            candidate.metadataApplication = nil
-        }
     }
 
-    private func finishMetadataApplicationIfConfirmed(
-        key: String,
-        session: CandidateMetadataApplicationSession
-    ) {
-        guard session.isConfirmed,
-            candidate(forKey: key)?.metadataApplicationSession === session
-        else { return }
-        let confirmation = session.takeConfirmation()
-        mutateCandidate(forKey: key) { candidate in
-            guard candidate.metadataApplicationSession === session else {
-                return
-            }
-            candidate.metadataApplication = nil
-        }
-        confirmation?()
+    /// Drop this candidate's pick, cancelling the read it has in flight: the
+    /// folder it claimed is gone, or is no longer the folder it was made
+    /// about.
+    func cancelMetadataApplication(forKey key: String) {
+        picks.removeValue(forKey: key)
     }
 }
 
