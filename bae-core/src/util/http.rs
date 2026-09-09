@@ -28,18 +28,21 @@ pub(crate) const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 /// whole body. The MusicBrainz and Discogs clients hold these keyed by request
 /// URL, so asking a provider the same question twice in one session costs one
 /// round trip.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Clone)]
 pub(crate) struct CachedResponse {
     pub(crate) status: u16,
     pub(crate) body: String,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl CachedResponse {
     pub(crate) fn is_success(&self) -> bool {
         is_success(self.status)
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn is_success(status: u16) -> bool {
     (200..300).contains(&status)
 }
@@ -50,6 +53,7 @@ fn is_success(status: u16) -> bool {
 /// next caller asks again. A 401 answers a question about the key in the
 /// request's own headers, which no URL names, so it is not this URL's answer
 /// either.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn is_cacheable(status: u16) -> bool {
     is_success(status) || status == 404
 }
@@ -57,7 +61,10 @@ pub(crate) fn is_cacheable(status: u16) -> bool {
 /// A response's cache key: the request URL as reqwest renders it. A test puts a
 /// canned answer at this key and the request that looks for it computes the
 /// same one, so the two cannot drift apart over URL normalization.
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(all(
+    any(test, feature = "test-utils"),
+    not(any(target_os = "ios", target_os = "android"))
+))]
 pub(crate) fn response_key(url: &str) -> String {
     reqwest::Url::parse(url)
         .expect("a provider request URL parses")
