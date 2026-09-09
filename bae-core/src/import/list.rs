@@ -366,6 +366,7 @@ impl ImportCandidateDetailProjection {
         self.session.clone().unwrap_or_else(|| {
             CandidateSession::initial(
                 self.metadata_provenance.as_ref(),
+                self.answer.is_some(),
                 self.initial_metadata_source,
             )
         })

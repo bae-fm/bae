@@ -52,16 +52,22 @@ pub struct CandidateSession {
 
 impl CandidateSession {
     /// The pane a candidate opens on before anyone has touched it: the draft
-    /// once metadata has been chosen, else the browser the default source
-    /// names, with an empty form.
+    /// once metadata has been chosen; Find online while identification has an
+    /// answer nobody has acted on, since that is where the answer is; else the
+    /// browser the default source names, with an empty form.
     pub fn initial(
         provenance: Option<&MetadataProvenance>,
+        has_verdict: bool,
         initial_source: DefaultImportMetadataSource,
     ) -> Self {
-        let presentation = match (provenance, initial_source) {
-            (Some(_), _) | (None, DefaultImportMetadataSource::None) => MetadataPresentation::Draft,
-            (None, DefaultImportMetadataSource::FindOnline) => MetadataPresentation::FindOnline,
-            (None, DefaultImportMetadataSource::FileTags) => MetadataPresentation::FileTags,
+        let presentation = match (provenance, has_verdict, initial_source) {
+            (Some(_), _, _) => MetadataPresentation::Draft,
+            (None, true, _) => MetadataPresentation::FindOnline,
+            (None, false, DefaultImportMetadataSource::None) => MetadataPresentation::Draft,
+            (None, false, DefaultImportMetadataSource::FindOnline) => {
+                MetadataPresentation::FindOnline
+            }
+            (None, false, DefaultImportMetadataSource::FileTags) => MetadataPresentation::FileTags,
         };
         Self {
             presentation,
@@ -82,15 +88,15 @@ mod tests {
     #[test]
     fn a_fresh_pane_opens_where_the_default_source_points() {
         assert_eq!(
-            CandidateSession::initial(None, DefaultImportMetadataSource::FindOnline).presentation,
+            CandidateSession::initial(None, false, DefaultImportMetadataSource::FindOnline).presentation,
             MetadataPresentation::FindOnline
         );
         assert_eq!(
-            CandidateSession::initial(None, DefaultImportMetadataSource::FileTags).presentation,
+            CandidateSession::initial(None, false, DefaultImportMetadataSource::FileTags).presentation,
             MetadataPresentation::FileTags
         );
         assert_eq!(
-            CandidateSession::initial(None, DefaultImportMetadataSource::None).presentation,
+            CandidateSession::initial(None, false, DefaultImportMetadataSource::None).presentation,
             MetadataPresentation::Draft
         );
         let picked = MetadataProvenance::ExternalRelease {
@@ -99,17 +105,35 @@ mod tests {
             partners: Vec::new(),
         };
         assert_eq!(
-            CandidateSession::initial(Some(&picked), DefaultImportMetadataSource::FindOnline)
+            CandidateSession::initial(Some(&picked), true, DefaultImportMetadataSource::FindOnline)
                 .presentation,
             MetadataPresentation::Draft
         );
         assert_eq!(
             CandidateSession::initial(
                 Some(&MetadataProvenance::FileTags),
+                false,
                 DefaultImportMetadataSource::FindOnline
             )
             .presentation,
             MetadataPresentation::Draft
         );
+    }
+
+    /// A verdict nobody has acted on — several matches, none, a failed lookup —
+    /// opens on Find online whatever the default source: the answer, and the
+    /// way to act on it, are there.
+    #[test]
+    fn an_unanswered_verdict_opens_on_find_online() {
+        for source in [
+            DefaultImportMetadataSource::None,
+            DefaultImportMetadataSource::FindOnline,
+            DefaultImportMetadataSource::FileTags,
+        ] {
+            assert_eq!(
+                CandidateSession::initial(None, true, source).presentation,
+                MetadataPresentation::FindOnline
+            );
+        }
     }
 }
