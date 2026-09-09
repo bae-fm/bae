@@ -66,6 +66,7 @@ fn excluding(disc_id: bool, barcode: bool) -> LookupChoices {
         disc_id_excluded: disc_id,
         barcode_excluded: barcode,
         chosen_catalogs: Vec::new(),
+        discounted_catalogs: Vec::new(),
     }
 }
 
@@ -76,6 +77,7 @@ fn choosing(catalogs: &[&str]) -> LookupChoices {
         disc_id_excluded: false,
         barcode_excluded: false,
         chosen_catalogs: catalogs.iter().map(|value| value.to_string()).collect(),
+        discounted_catalogs: Vec::new(),
     }
 }
 

@@ -114,7 +114,8 @@
                 libraryStatuses: [:],
                 trackCount: 12,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
             )
         )
 
@@ -155,7 +156,8 @@
                 libraryStatuses: [:],
                 trackCount: 1,
                 agreements: [:],
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: []
             )
         )
 
@@ -181,7 +183,8 @@
                 ],
                 trackCount: 14,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
             )
         )
 

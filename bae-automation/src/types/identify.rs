@@ -122,6 +122,15 @@ pub enum AutomationCatalogStep {
     },
 }
 
+/// Mirrors bae-core's `identify::CatalogAgreementView` — one catalog number
+/// the candidate's text states about a release the run is offering, and
+/// whether the person struck it out.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationCatalogAgreement {
+    pub value: String,
+    pub discounted: bool,
+}
+
 /// Mirrors bae-core's `identify::IdentifyRunView` — the run as its ledger,
 /// each provider's part of each signal reported on its own.
 #[derive(Debug, Clone, Serialize)]
@@ -205,6 +214,7 @@ pub enum AutomationIdentifyState {
         track_count: u32,
         agreements: Vec<AutomationAgreements>,
         narrowed_out: AutomationNarrowedOut,
+        catalog_agreements: Vec<AutomationCatalogAgreement>,
     },
     NotFoundAnywhere {
         run: Option<AutomationIdentifyRun>,
@@ -224,5 +234,6 @@ pub enum AutomationIdentifyState {
         library_statuses: Vec<AutomationLibraryStatus>,
         agreements: Vec<AutomationAgreements>,
         narrowed_out: AutomationNarrowedOut,
+        catalog_agreements: Vec<AutomationCatalogAgreement>,
     },
 }

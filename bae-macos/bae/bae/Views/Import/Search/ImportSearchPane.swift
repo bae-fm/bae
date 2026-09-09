@@ -28,6 +28,9 @@ struct ImportSearchPane: View {
     /// Take a catalog number in or out of the run. Core re-derives the state
     /// the import projection delivers from what is chosen.
     let onToggleCatalog: (String) -> Void
+    /// Count a catalog number the folder states, or stop counting it: the
+    /// same answers, ranked by what the folder is taken to state about them.
+    let onToggleCatalogAgreement: (String) -> Void
     /// Start identification for a folder whose run never began. Core owns
     /// whether this starts, resumes, or does nothing.
     let onIdentify: () -> Void
@@ -77,6 +80,7 @@ struct ImportSearchPane: View {
                     state: state,
                     onOpenSettings: onOpenSettings,
                     onToggleCatalog: onToggleCatalog,
+                    onToggleCatalogAgreement: onToggleCatalogAgreement,
                     onIdentify: onIdentify,
                     onRetryFailed: onRetryFailed,
                     onSelect: onSelect,
@@ -213,6 +217,7 @@ struct ImportSearchPane: View {
                 onRetrySearch: {},
                 onOpenSettings: {},
                 onToggleCatalog: { _ in },
+                onToggleCatalogAgreement: { _ in },
                 onIdentify: {},
                 onRetryFailed: onRetryFailed,
                 onSelect: { _ in },

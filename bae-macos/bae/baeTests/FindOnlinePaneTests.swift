@@ -508,8 +508,10 @@ struct IdentifyLedgerViewTests {
             try await FindOnlineRendering.pixels(
                 IdentifyLedgerView(
                     run: run,
+                    catalogAgreements: [],
                     filePaths: [:],
                     onToggleCatalog: { _ in },
+                    onToggleCatalogAgreement: { _ in },
                     onRetryFailed: {},
                 )
                 .importPreviewEnvironment(),
@@ -557,8 +559,10 @@ struct IdentifyLedgerViewTests {
             try await FindOnlineRendering.pixels(
                 IdentifyLedgerView(
                     run: run,
+                    catalogAgreements: [],
                     filePaths: [:],
                     onToggleCatalog: { _ in },
+                    onToggleCatalogAgreement: { _ in },
                     onRetryFailed: {},
                 )
                 .importPreviewEnvironment(),

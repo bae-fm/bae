@@ -370,6 +370,13 @@
             region: nil
         )
 
+        /// The numbers one of the offered releases carries and the folder
+        /// states: chips that rank the list, one of them struck out.
+        static let catalogAgreements: [BridgeCatalogAgreement] = [
+            BridgeCatalogAgreement(value: "BST 84055", discounted: false),
+            BridgeCatalogAgreement(value: "7243 8 21152 2 3", discounted: true),
+        ]
+
         /// Catalog numbers extraction found and nobody has activated: one off
         /// the folder name, the rest off the artwork.
         static let catalogCandidates: [BridgeCatalogCandidate] = [
@@ -724,7 +731,8 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
             ),
             signals: settledSignals
         )
@@ -743,7 +751,8 @@
                         .map(ReleaseGroup.init(bridge:)),
                     libraryStatuses: [:],
                     agreements: disagreementAgreements
-                )
+                ),
+                catalogAgreements: catalogAgreements
             ),
             signals: settledSignals
         )
@@ -766,7 +775,8 @@
                 groups: [],
                 libraryStatuses: [:],
                 agreements: [:]
-            )
+            ),
+            catalogAgreements: catalogAgreements
         )
 
         /// Both signals ran and neither source knew them.
@@ -800,7 +810,8 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
             )
         )
 
@@ -839,7 +850,8 @@
                 groups: [],
                 libraryStatuses: [:],
                 agreements: [:],
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: []
             )
         )
 
@@ -856,7 +868,8 @@
                 groups: [],
                 libraryStatuses: [:],
                 agreements: [:],
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: []
             )
         )
 
@@ -883,7 +896,8 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
             ),
             signals: settledSignals,
             isFinalizing: true
@@ -897,7 +911,8 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
             ),
             search: searchRunInFlight,
             signals: settledSignals
@@ -911,7 +926,8 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
             ),
             search: manualSearchRun,
             signals: settledSignals
@@ -925,7 +941,8 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
             ),
             search: searchRunSourceFailed,
             signals: settledSignals
@@ -939,7 +956,8 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
             ),
             search: searchRunEmpty,
             signals: settledSignals

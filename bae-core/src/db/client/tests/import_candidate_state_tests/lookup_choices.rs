@@ -14,6 +14,7 @@ async fn lookup_choices_round_trip_with_their_catalog_order() {
         disc_id_excluded: true,
         barcode_excluded: false,
         chosen_catalogs: vec!["LBL 002".to_string(), "LBL 001".to_string()],
+        discounted_catalogs: Vec::new(),
     };
     db.save_import_candidate_lookup_choices(&hash, &choices)
         .await
@@ -43,6 +44,7 @@ async fn writing_lookup_choices_replaces_what_stood_before() {
             disc_id_excluded: true,
             barcode_excluded: true,
             chosen_catalogs: vec!["LBL 001".to_string(), "LBL 002".to_string()],
+            discounted_catalogs: Vec::new(),
         },
     )
     .await
@@ -51,6 +53,7 @@ async fn writing_lookup_choices_replaces_what_stood_before() {
         disc_id_excluded: false,
         barcode_excluded: true,
         chosen_catalogs: vec!["LBL 003".to_string()],
+        discounted_catalogs: Vec::new(),
     };
     db.save_import_candidate_lookup_choices(&hash, &replacement)
         .await
@@ -96,6 +99,7 @@ async fn choices_for_an_unknown_candidate_are_refused() {
                 disc_id_excluded: true,
                 barcode_excluded: false,
                 chosen_catalogs: Vec::new(),
+                discounted_catalogs: Vec::new(),
             },
         )
         .await
@@ -103,5 +107,70 @@ async fn choices_for_an_unknown_candidate_are_refused() {
     assert!(
         error.to_string().contains("candidate state row"),
         "the error names what is missing: {error}"
+    );
+}
+
+/// The numbers struck out of the candidate's text go down and come back
+/// beside the chosen ones. They are a set — nothing dispatches on their order
+/// — so they read back by value, and the two lists never touch: a number can
+/// be looked up and struck out at once.
+#[tokio::test]
+async fn struck_out_catalog_numbers_round_trip_beside_the_chosen_ones() {
+    let (db, _tmp) = empty_db().await;
+    let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
+    let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
+
+    let choices = crate::import::LookupChoices {
+        disc_id_excluded: false,
+        barcode_excluded: false,
+        chosen_catalogs: vec!["LBL 002".to_string()],
+        discounted_catalogs: vec!["LBL 002".to_string(), "LBL 100".to_string()],
+    };
+    db.save_import_candidate_lookup_choices(&hash, &choices)
+        .await
+        .unwrap();
+
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    assert_eq!(
+        loaded
+            .get(&hash)
+            .expect("the candidate reads back")
+            .lookup_choices,
+        choices
+    );
+}
+
+/// The struck-out numbers are replaced whole like the rest of the value: what
+/// the new value does not name is not struck out any more.
+#[tokio::test]
+async fn writing_the_choices_replaces_what_was_struck_out() {
+    let (db, _tmp) = empty_db().await;
+    let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
+    let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
+
+    db.save_import_candidate_lookup_choices(
+        &hash,
+        &crate::import::LookupChoices {
+            discounted_catalogs: vec!["LBL 001".to_string(), "LBL 002".to_string()],
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    let replacement = crate::import::LookupChoices {
+        discounted_catalogs: vec!["LBL 002".to_string()],
+        ..Default::default()
+    };
+    db.save_import_candidate_lookup_choices(&hash, &replacement)
+        .await
+        .unwrap();
+
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    assert_eq!(
+        loaded
+            .get(&hash)
+            .expect("the candidate reads back")
+            .lookup_choices,
+        replacement
     );
 }

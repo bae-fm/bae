@@ -105,6 +105,45 @@ extension ImportSearchFlow {
                     }
                 }
             },
+            // Striking a number out of what the folder is taken to state
+            // asks nothing of the providers: core stores the whole value and
+            // the candidate's next detail carries the same answers, ranked by
+            // it. A re-identify session has no candidate row to store on and
+            // nothing stored to re-rank, so its run is the only place its
+            // ranking is decided — the response cache answers what the last
+            // run already asked.
+            onToggleCatalogAgreement: { value in
+                let choices = input.candidate.lookupChoices.discounting(value)
+                switch input.candidate.source {
+                case .releaseReIdentify(let releaseId):
+                    importStore.mutateCandidate(forKey: key) {
+                        $0.lookupChoices = choices
+                    }
+                    services.importer.autoIdentifyRelease(
+                        key,
+                        releaseId,
+                        choices
+                    )
+                case .folder:
+                    Task { @MainActor in
+                        do {
+                            try await services.importer
+                                .setCandidateLookupChoices(key, choices)
+                        }
+                        catch is CancellationError {}
+                        catch {
+                            guard let line = error.displayLine else { return }
+                            importStore.recordPaneError(
+                                String(
+                                    localized:
+                                        "Couldn't change what counts as an agreement: \(line)"
+                                ),
+                                forKey: key
+                            )
+                        }
+                    }
+                }
+            },
             onIdentify: {
                 services.importer.identifyForExplicitLookup(key)
             },

@@ -326,13 +326,15 @@ mirror_struct! {
     },
 }
 
-/// What a candidate's identification asks about: the signals its runs leave
-/// out, and the catalog numbers they look up. Mirrors
-/// `bae_core::import::LookupChoices`.
+/// What a candidate's identification asks about — the signals its runs leave
+/// out and the catalog numbers they look up — and what it is to make of the
+/// answers. Mirrors `bae_core::import::LookupChoices`.
 ///
 /// One value, sent whole. A control that changes one part reads the candidate
-/// detail's current value, changes that part, and sends the result back —
-/// which is also what starts the run that reads it.
+/// detail's current value, changes that part, and sends the result back.
+/// Changing what the run looks up is what starts the run that reads it;
+/// striking a number out of the candidate's text starts none, and the
+/// candidate's next detail carries the answers ranked by it.
 #[derive(Debug, Clone, Default, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeLookupChoices {
     /// Whether the run leaves the candidate's disc ID out.
@@ -342,6 +344,11 @@ pub struct BridgeLookupChoices {
     /// The catalog numbers the run looks up, each on its own, in the order
     /// they were chosen.
     pub chosen_catalogs: Vec<String>,
+    /// The catalog numbers the candidate's own text carries that the person
+    /// struck out, so a release carrying one earns no catalog agreement from
+    /// the text. A set, each value once; a number can be looked up and struck
+    /// out at once.
+    pub discounted_catalogs: Vec<String>,
 }
 
 mirror_struct! {
@@ -349,7 +356,12 @@ mirror_struct! {
     BridgeLookupChoices = bae_core::import::LookupChoices,
     from_core: pub(crate) fn,
     into_core: pub fn,
-    fields: { disc_id_excluded, barcode_excluded, chosen_catalogs },
+    fields: {
+        disc_id_excluded,
+        barcode_excluded,
+        chosen_catalogs,
+        discounted_catalogs,
+    },
 }
 
 /// Where a signal value was harvested from — what a badge shows on hover
@@ -732,6 +744,17 @@ pub enum BridgeCatalogStep {
     },
 }
 
+/// One catalog number the candidate's text states about a release the run is
+/// offering — a chip in the Catalog # row. Mirrors
+/// `bae_core::identify::CatalogAgreementView`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeCatalogAgreement {
+    pub value: String,
+    /// Whether the person struck it out, so the releases carrying it earn no
+    /// catalog agreement from the text. The chip stands either way.
+    pub discounted: bool,
+}
+
 /// A run as its ledger: the three signals, each with what extraction produced
 /// for it and every provider's lookup of it. Mirrors
 /// `bae_core::identify::IdentifyRunView`.
@@ -880,6 +903,9 @@ pub enum BridgeIdentifyState {
         /// The releases the agreement left out of `groups`, for the surface to
         /// offer behind a disclosure.
         narrowed_out: BridgeNarrowedOut,
+        /// The catalog numbers the candidate's text states about the offered
+        /// releases, as the Catalog # row's chips.
+        catalog_agreements: Vec<BridgeCatalogAgreement>,
     },
     NotFoundAnywhere {
         run: Option<BridgeIdentifyRun>,
@@ -906,6 +932,7 @@ pub enum BridgeIdentifyState {
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         agreements: std::collections::HashMap<String, BridgeAgreements>,
         narrowed_out: BridgeNarrowedOut,
+        catalog_agreements: Vec<BridgeCatalogAgreement>,
     },
 }
 

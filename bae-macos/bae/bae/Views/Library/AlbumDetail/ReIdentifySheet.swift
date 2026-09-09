@@ -316,7 +316,8 @@ extension ReIdentifySheet {
                 ?? BridgeLookupChoices(
                     discIdExcluded: false,
                     barcodeExcluded: false,
-                    chosenCatalogs: []
+                    chosenCatalogs: [],
+                    discountedCatalogs: []
                 )
         )
     }

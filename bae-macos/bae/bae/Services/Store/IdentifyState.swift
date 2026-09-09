@@ -75,6 +75,10 @@ enum IdentifyState: Equatable {
         /// keyed by release id — the per-row badges, and what ordered the rows.
         agreements: [String: BridgeAgreements],
         narrowedOut: NarrowedOut,
+        /// The catalog numbers the folder states about the offered releases —
+        /// the Catalog # row's chips. Striking one out re-ranks the list with
+        /// nothing asked again.
+        catalogAgreements: [BridgeCatalogAgreement],
     )
     case notFoundAnywhere(run: BridgeIdentifyRun?)
     /// Nothing to look up — no disc-ID artifact and no barcode source. The UI
@@ -93,6 +97,7 @@ enum IdentifyState: Equatable {
         libraryStatuses: [String: BridgeLibraryStatus],
         agreements: [String: BridgeAgreements],
         narrowedOut: NarrowedOut,
+        catalogAgreements: [BridgeCatalogAgreement],
     )
 
     init(bridge: BridgeIdentifyState) {
@@ -118,7 +123,8 @@ enum IdentifyState: Equatable {
             let libraryStatuses,
             let trackCount,
             let agreements,
-            let narrowedOut
+            let narrowedOut,
+            let catalogAgreements
         ):
             self = .found(
                 run: run,
@@ -127,6 +133,7 @@ enum IdentifyState: Equatable {
                 trackCount: trackCount,
                 agreements: agreements,
                 narrowedOut: NarrowedOut(bridge: narrowedOut),
+                catalogAgreements: catalogAgreements,
             )
         case .notFoundAnywhere(let run): self = .notFoundAnywhere(run: run)
         case .manualOnly(let trackCount, let run):
@@ -137,7 +144,8 @@ enum IdentifyState: Equatable {
             let groups,
             let libraryStatuses,
             let agreements,
-            let narrowedOut
+            let narrowedOut,
+            let catalogAgreements
         ):
             self = .failed(
                 run: run,
@@ -146,6 +154,7 @@ enum IdentifyState: Equatable {
                 libraryStatuses: libraryStatuses,
                 agreements: agreements,
                 narrowedOut: NarrowedOut(bridge: narrowedOut),
+                catalogAgreements: catalogAgreements,
             )
         }
     }
@@ -154,8 +163,8 @@ enum IdentifyState: Equatable {
     /// verdict settled, keyed by release id. A live subscription outranks it.
     var libraryStatuses: [String: BridgeLibraryStatus] {
         switch self {
-        case .found(_, _, let statuses, _, _, _): statuses
-        case .failed(_, _, _, let statuses, _, _): statuses
+        case .found(_, _, let statuses, _, _, _, _): statuses
+        case .failed(_, _, _, let statuses, _, _, _): statuses
         case .triangulating(_, _, let statuses, _, _): statuses
         case .idle, .notFoundAnywhere, .manualOnly: [:]
         }
@@ -165,10 +174,21 @@ enum IdentifyState: Equatable {
     /// pane offers behind its disclosure.
     var narrowedOut: NarrowedOut {
         switch self {
-        case .found(_, _, _, _, _, let narrowedOut): narrowedOut
-        case .failed(_, _, _, _, _, let narrowedOut): narrowedOut
+        case .found(_, _, _, _, _, let narrowedOut, _): narrowedOut
+        case .failed(_, _, _, _, _, let narrowedOut, _): narrowedOut
         case .triangulating(_, _, _, _, let narrowedOut): narrowedOut
         case .idle, .notFoundAnywhere, .manualOnly: .nothing
+        }
+    }
+
+    /// The catalog numbers the folder states about the releases identification
+    /// is offering — the Catalog # row's chips. A run still going has none:
+    /// which numbers these are follows from the releases it settles on.
+    var catalogAgreements: [BridgeCatalogAgreement] {
+        switch self {
+        case .found(_, _, _, _, _, _, let chips): chips
+        case .failed(_, _, _, _, _, _, let chips): chips
+        case .idle, .triangulating, .notFoundAnywhere, .manualOnly: []
         }
     }
 
@@ -176,10 +196,10 @@ enum IdentifyState: Equatable {
     var run: BridgeIdentifyRun? {
         switch self {
         case .triangulating(let run, _, _, _, _): run
-        case .found(let run, _, _, _, _, _): run
+        case .found(let run, _, _, _, _, _, _): run
         case .notFoundAnywhere(let run): run
         case .manualOnly(_, let run): run
-        case .failed(let run, _, _, _, _, _): run
+        case .failed(let run, _, _, _, _, _, _): run
         case .idle: nil
         }
     }

@@ -8,8 +8,10 @@
 //!
 //! No surface wants that shape, and every surface wants the same *other*
 //! shape: the matches folded into their release-group cards, ranked and
-//! badged by how much of the candidate's own text agrees with them, each
-//! result paired with its library status, the agreements keyed by release id,
+//! badged by how much of the candidate's own text agrees with them, the
+//! catalog numbers that ranking read out of the text offered back as chips,
+//! each result paired with its library status, the agreements keyed by
+//! release id,
 //! the run laid out as a ledger — one row per value extraction found, with
 //! where it was found beside it and one cell per provider asked about it —
 //! and the context's raw inputs left behind. Those are domain decisions, so they are made here, once, and a field
@@ -22,7 +24,7 @@
 //! The transports (`bae-bridge`'s uniffi records, `bae-automation`'s JSON) mirror
 //! this view into their own wire types field by field and decide nothing.
 
-use super::agreements::{agreements_of, Agreements, CandidateText};
+use super::agreements::{agreements_of, squash, Agreements, CandidateText};
 use super::combine::{combine_results, CombineOutcome, LookupProvenance, NarrowedOut};
 use super::state::{
     BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
@@ -33,6 +35,7 @@ use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::MetadataSource;
 use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
+use std::collections::HashSet;
 
 /// How one provider's lookup of one value is going — one cell of the ledger.
 ///
@@ -159,6 +162,22 @@ pub struct CatalogCandidateView {
     pub sources: Vec<ValueSource>,
 }
 
+/// One catalog number the candidate's text states about a release it is
+/// offering — a chip in the Catalog # row, and a control over what the text
+/// is taken to state.
+///
+/// Not part of the run's ledger: which numbers these are follows from the
+/// releases the run brought back and the text they are read against, so they
+/// are derived on every read rather than recorded once.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogAgreementView {
+    pub value: String,
+    /// Whether the person struck it out, so the releases carrying it earn no
+    /// catalog agreement from the text. The chip stands either way: struck
+    /// out is a state to come back from.
+    pub discounted: bool,
+}
+
 /// The catalog number: the run looks up only the numbers the person picks
 /// out of the ones extraction turned up, each on its own.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -254,6 +273,9 @@ pub enum IdentifyStateView {
         /// The releases agreement left out, for the surface to offer behind a
         /// disclosure.
         narrowed_out: NarrowedOutView,
+        /// The catalog numbers the folder states about the offered releases,
+        /// as the Catalog # row's chips.
+        catalog_agreements: Vec<CatalogAgreementView>,
     },
 
     NotFoundAnywhere {
@@ -281,6 +303,9 @@ pub enum IdentifyStateView {
         library_statuses: Vec<LibraryStatus>,
         agreements: Vec<(String, Agreements)>,
         narrowed_out: NarrowedOutView,
+        /// As `Found`'s: the numbers the folder states about whatever the
+        /// surviving evidence still offers.
+        catalog_agreements: Vec<CatalogAgreementView>,
     },
 }
 
@@ -316,14 +341,16 @@ impl From<IdentifyState> for IdentifyStateView {
                 ledger,
                 context,
             } => {
+                let catalog_agreements = catalog_agreements(&matches, &provenance, &context.text);
                 let (groups, agreements) = fold_matches(matches, provenance, &context.text);
                 IdentifyStateView::Found {
-                    run: ledger,
+                    run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
                     groups,
                     library_statuses,
                     track_count,
                     agreements,
                     narrowed_out: fold_narrowed_out(narrowed_out, &context.text),
+                    catalog_agreements,
                 }
             }
 
@@ -350,14 +377,16 @@ impl From<IdentifyState> for IdentifyStateView {
                 ledger,
                 context,
             } => {
+                let catalog_agreements = catalog_agreements(&matches, &provenance, &context.text);
                 let (groups, agreements) = fold_matches(matches, provenance, &context.text);
                 IdentifyStateView::Failed {
-                    run: ledger,
+                    run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
                     failures,
                     groups,
                     library_statuses,
                     agreements,
                     narrowed_out: fold_narrowed_out(narrowed_out, &context.text),
+                    catalog_agreements,
                 }
             }
         }
@@ -442,6 +471,50 @@ fn fold_narrowed_out(narrowed_out: NarrowedOut, text: &CandidateText) -> Narrowe
         library_statuses,
         agreements,
     }
+}
+
+/// The catalog numbers the candidate's text states about the releases it is
+/// offering — the chips in the Catalog # row.
+///
+/// A number is one of these when an offered release carries it and the text
+/// prints it: those are exactly the numbers whose striking out changes what
+/// the list says. A release the catalog lookup itself brought back states its
+/// own number, so it contributes none: striking that number out would leave
+/// its agreement standing, and the chip would say it had done something it
+/// had not. Neither does a release the folder said nothing about and the run
+/// set aside — what is behind the disclosure ranks nothing.
+///
+/// A struck-out number is still one of these. It is what the person comes
+/// back to, checked off, when they want it counted again.
+fn catalog_agreements(
+    matches: &[MetadataResult],
+    provenance: &[LookupProvenance],
+    text: &CandidateText,
+) -> Vec<CatalogAgreementView> {
+    let mut seen: HashSet<String> = HashSet::new();
+    matches
+        .iter()
+        .zip(provenance)
+        .filter(|(_, lookup)| !lookup.by_catalog)
+        .filter_map(|(result, _)| result.catalog_number.as_deref())
+        .filter(|value| text.states(value) && seen.insert(squash(value)))
+        .map(|value| CatalogAgreementView {
+            discounted: text.is_struck_out(value),
+            value: value.to_string(),
+        })
+        .collect()
+}
+
+/// The recorded ledger as a settled pane draws it. A number one of the
+/// offered releases carries is a chip that ranks them, so it is not also a
+/// tile that would look it up: the tiles left under the table are the numbers
+/// nothing came back carrying.
+fn without_chip_tiles(mut run: IdentifyRunView, chips: &[CatalogAgreementView]) -> IdentifyRunView {
+    if let CatalogStepView::Numbers { candidates, .. } = &mut run.catalog {
+        let chipped: HashSet<String> = chips.iter().map(|chip| squash(&chip.value)).collect();
+        candidates.retain(|tile| !chipped.contains(&squash(&tile.value)));
+    }
+    run
 }
 
 /// The run as it stands: the three pipes laid out against the inputs and the

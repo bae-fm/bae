@@ -16,6 +16,10 @@ struct FindOnlineAutomaticSection: View {
     /// Take a catalog number in or out of the run. Core re-derives the state
     /// the import projection delivers from what is chosen.
     let onToggleCatalog: (String) -> Void
+    /// Count a catalog number the folder states, or stop counting it. Nothing
+    /// is looked up: the answers in hand are ranked by the new value the next
+    /// time the candidate is read.
+    let onToggleCatalogAgreement: (String) -> Void
     /// Start identification for a folder whose run never began. Core owns
     /// whether this starts, resumes, or does nothing.
     let onIdentify: () -> Void
@@ -77,8 +81,11 @@ struct FindOnlineAutomaticSection: View {
                     if let run = state.run {
                         IdentifyLedgerView(
                             run: run,
+                            catalogAgreements: state.catalogAgreements,
                             filePaths: state.filePaths,
                             onToggleCatalog: onToggleCatalog,
+                            onToggleCatalogAgreement:
+                                onToggleCatalogAgreement,
                             onRetryFailed: onRetryFailed
                         )
                         Divider()

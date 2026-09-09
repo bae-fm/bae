@@ -14,12 +14,19 @@ import SwiftUI
 /// somewhere to land.
 struct IdentifyLedgerView: View {
     let run: BridgeIdentifyRun
+    /// The numbers one of the offered releases carries, which rank the list
+    /// rather than drive a lookup. Empty while the run is still going: which
+    /// numbers these are follows from the releases it settles on.
+    let catalogAgreements: [BridgeCatalogAgreement]
     /// Where each of the candidate's files is on disk, by the path a source
     /// names it by — what an artwork chip crops its thumbnail out of.
     let filePaths: [String: String]
     /// Take a catalog number in or out of the run: a tile becomes a row, a
     /// row becomes a tile again.
     let onToggleCatalog: (String) -> Void
+    /// Count a catalog number the folder states, or stop counting it. Nothing
+    /// is looked up either way.
+    let onToggleCatalogAgreement: (String) -> Void
     /// Re-ask only the lookups that failed.
     let onRetryFailed: () -> Void
 
@@ -180,16 +187,23 @@ struct IdentifyLedgerView: View {
         }
     }
 
-    /// The numbers extraction found and the run is not looking up, wrapping
-    /// under the table. They never run on their own: one number can name
-    /// thirty releases, so each waits to be activated.
+    /// One row of chips under the table: first the numbers one of the offered
+    /// releases carries, which rank the list, then the numbers nothing came
+    /// back carrying. The second kind never runs on its own — one number can
+    /// name thirty releases, so each waits to be activated.
     @ViewBuilder
     private var catalogTiles: some View {
-        if case .numbers(_, _, let candidates) = run.catalog,
-            !candidates.isEmpty
-        {
+        if !catalogAgreements.isEmpty || !catalogCandidates.isEmpty {
             FlowLayout(spacing: 6) {
-                ForEach(candidates, id: \.value) { candidate in
+                ForEach(catalogAgreements, id: \.value) { agreement in
+                    CatalogAgreementChip(
+                        agreement: agreement,
+                        onToggle: {
+                            onToggleCatalogAgreement(agreement.value)
+                        }
+                    )
+                }
+                ForEach(catalogCandidates, id: \.value) { candidate in
                     CatalogCandidateTile(
                         candidate: candidate,
                         filePaths: filePaths,
@@ -202,6 +216,15 @@ struct IdentifyLedgerView: View {
             .padding(.leading, LedgerMetrics.rowInset)
             .padding(.trailing, LedgerMetrics.sideInset)
         }
+    }
+
+    /// The numbers extraction found that the run is not looking up and no
+    /// release came back carrying.
+    private var catalogCandidates: [BridgeCatalogCandidate] {
+        guard case .numbers(_, _, let candidates) = run.catalog else {
+            return []
+        }
+        return candidates
     }
 }
 
@@ -239,8 +262,10 @@ struct LedgerColumnRails: View {
     #Preview("Run in flight") {
         IdentifyLedgerView(
             run: PreviewData.identifyRunInFlight,
+            catalogAgreements: [],
             filePaths: [:],
             onToggleCatalog: { _ in },
+            onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
         .frame(width: 660)
@@ -254,8 +279,10 @@ struct LedgerColumnRails: View {
     #Preview("Run on one source") {
         IdentifyLedgerView(
             run: PreviewData.identifyRunOneSource,
+            catalogAgreements: [],
             filePaths: [:],
             onToggleCatalog: { _ in },
+            onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
         .frame(width: 660)
@@ -266,8 +293,10 @@ struct LedgerColumnRails: View {
     #Preview("Run starting") {
         IdentifyLedgerView(
             run: PreviewData.identifyRunStarting,
+            catalogAgreements: [],
             filePaths: [:],
             onToggleCatalog: { _ in },
+            onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
         .frame(width: 660)
@@ -278,8 +307,10 @@ struct LedgerColumnRails: View {
     #Preview("A provider failed") {
         IdentifyLedgerView(
             run: PreviewData.identifyRunProviderFailed,
+            catalogAgreements: [],
             filePaths: [:],
             onToggleCatalog: { _ in },
+            onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
         .frame(width: 660)
@@ -288,13 +319,15 @@ struct LedgerColumnRails: View {
     }
 
     /// The same run as "A provider failed", with its catalog number taken back
-    /// out: the number leaves the table and rejoins the tiles under it, and
-    /// the lookups it drove are gone with it.
+    /// out: the number leaves the table and rejoins the chips under it, beside
+    /// the numbers the answers themselves carry.
     #Preview("A catalog number waiting to be used") {
         IdentifyLedgerView(
             run: PreviewData.identifyRunCatalogWaiting,
+            catalogAgreements: PreviewData.catalogAgreements,
             filePaths: [:],
             onToggleCatalog: { _ in },
+            onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
         .frame(width: 660)
@@ -305,8 +338,10 @@ struct LedgerColumnRails: View {
     #Preview("Nothing found") {
         IdentifyLedgerView(
             run: PreviewData.identifyRunNothingFound,
+            catalogAgreements: [],
             filePaths: [:],
             onToggleCatalog: { _ in },
+            onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
         .frame(width: 660)

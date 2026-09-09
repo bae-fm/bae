@@ -40,8 +40,8 @@ struct ImportSearchState {
     /// surviving source found.
     var identifiedGroups: [ReleaseGroup] {
         switch identifyState {
-        case .found(_, let groups, _, _, _, _): groups
-        case .failed(_, _, let groups, _, _, _): groups
+        case .found(_, let groups, _, _, _, _, _): groups
+        case .failed(_, _, let groups, _, _, _, _): groups
         case .triangulating(_, let groups, _, _, _): groups
         case .idle, .notFoundAnywhere, .manualOnly: []
         }
@@ -57,16 +57,25 @@ struct ImportSearchState {
     /// keyed by release id — the row badges, and what ordered the rows.
     var identifiedAgreements: [String: BridgeAgreements] {
         switch identifyState {
-        case .found(_, _, _, _, let agreements, _): agreements
-        case .failed(_, _, _, _, let agreements, _): agreements
+        case .found(_, _, _, _, let agreements, _, _): agreements
+        case .failed(_, _, _, _, let agreements, _, _): agreements
         case .triangulating(_, _, _, let agreements, _): agreements
         case .idle, .notFoundAnywhere, .manualOnly: [:]
         }
     }
 
+    /// The catalog numbers the folder states about the offered releases — the
+    /// chips in the ledger's Catalog # row, each counting until it is struck
+    /// out.
+    var catalogAgreements: [BridgeCatalogAgreement] {
+        identifyState.catalogAgreements
+    }
+
     /// The automatic lookups that failed, each naming what it was and why.
     var identifyFailures: [BridgeIdentifyFailure] {
-        guard case .failed(_, let failures, _, _, _, _) = identifyState else {
+        guard
+            case .failed(_, let failures, _, _, _, _, _) = identifyState
+        else {
             return []
         }
         return failures

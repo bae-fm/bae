@@ -129,6 +129,13 @@ mirror_enum! {
 
 mirror_struct! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationCatalogAgreement = bae_core::identify::CatalogAgreementView,
+    from_core: pub(crate) fn,
+    fields: { value, discounted },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationIdentifyRun = bae_core::identify::IdentifyRunView,
     from_core: pub(crate) fn,
     fields: {
@@ -235,6 +242,7 @@ pub(crate) fn automation_identify_state(
             track_count,
             agreements,
             narrowed_out,
+            catalog_agreements,
         } => AutomationIdentifyState::Found {
             run: run.map(AutomationIdentifyRun::from_core),
             groups: groups
@@ -248,6 +256,10 @@ pub(crate) fn automation_identify_state(
             track_count,
             agreements: automation_agreements(agreements),
             narrowed_out: automation_narrowed_out(narrowed_out),
+            catalog_agreements: catalog_agreements
+                .into_iter()
+                .map(AutomationCatalogAgreement::from_core)
+                .collect(),
         },
         IdentifyStateView::NotFoundAnywhere { run } => AutomationIdentifyState::NotFoundAnywhere {
             run: run.map(AutomationIdentifyRun::from_core),
@@ -263,6 +275,7 @@ pub(crate) fn automation_identify_state(
             library_statuses,
             agreements,
             narrowed_out,
+            catalog_agreements,
         } => AutomationIdentifyState::Failed {
             run: run.map(AutomationIdentifyRun::from_core),
             failures: failures
@@ -279,6 +292,10 @@ pub(crate) fn automation_identify_state(
                 .collect(),
             agreements: automation_agreements(agreements),
             narrowed_out: automation_narrowed_out(narrowed_out),
+            catalog_agreements: catalog_agreements
+                .into_iter()
+                .map(AutomationCatalogAgreement::from_core)
+                .collect(),
         },
     }
 }

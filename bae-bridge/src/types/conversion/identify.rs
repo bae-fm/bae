@@ -287,6 +287,12 @@ mirror_enum! {
 }
 
 mirror_struct! {
+    BridgeCatalogAgreement = bae_core::identify::CatalogAgreementView,
+    from_core: fn,
+    fields: { value, discounted },
+}
+
+mirror_struct! {
     BridgeIdentifyRun = bae_core::identify::IdentifyRunView,
     from_core: fn,
     fields: {
@@ -444,6 +450,7 @@ impl BridgeIdentifyState {
                 track_count,
                 agreements,
                 narrowed_out,
+                catalog_agreements,
             } => BridgeIdentifyState::Found {
                 run: run.map(BridgeIdentifyRun::from_core),
                 groups: groups
@@ -457,6 +464,10 @@ impl BridgeIdentifyState {
                     .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                     .collect(),
                 narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
+                catalog_agreements: catalog_agreements
+                    .into_iter()
+                    .map(BridgeCatalogAgreement::from_core)
+                    .collect(),
             },
             IdentifyStateView::NotFoundAnywhere { run } => BridgeIdentifyState::NotFoundAnywhere {
                 run: run.map(BridgeIdentifyRun::from_core),
@@ -472,6 +483,7 @@ impl BridgeIdentifyState {
                 library_statuses,
                 agreements,
                 narrowed_out,
+                catalog_agreements,
             } => BridgeIdentifyState::Failed {
                 run: run.map(BridgeIdentifyRun::from_core),
                 failures: failures.into_iter().map(identify_failure).collect(),
@@ -485,6 +497,10 @@ impl BridgeIdentifyState {
                     .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                     .collect(),
                 narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
+                catalog_agreements: catalog_agreements
+                    .into_iter()
+                    .map(BridgeCatalogAgreement::from_core)
+                    .collect(),
             },
         }
     }
@@ -643,6 +659,23 @@ mod tests {
                 failure: BridgeLookupFailure::Diagnostic { detail }
             } if detail == "provider lookup failed"
         ));
+    }
+
+    /// Both halves of what a candidate's identification asks about cross, and
+    /// cross back: the numbers a run looks up, and the numbers struck out of
+    /// the candidate's own text so they rank nothing.
+    #[test]
+    fn both_halves_of_what_identification_asks_about_cross() {
+        let choices = bae_core::import::LookupChoices {
+            disc_id_excluded: true,
+            barcode_excluded: false,
+            chosen_catalogs: vec!["WPCR-80001".to_string()],
+            discounted_catalogs: vec!["LBL-9".to_string()],
+        };
+        let crossed = crate::types::BridgeLookupChoices::from_core(choices.clone());
+        assert_eq!(crossed.chosen_catalogs, vec!["WPCR-80001".to_string()]);
+        assert_eq!(crossed.discounted_catalogs, vec!["LBL-9".to_string()]);
+        assert_eq!(crossed.into_core(), choices);
     }
 
     /// Reading the candidate's barcodes failing is not a provider's failure,

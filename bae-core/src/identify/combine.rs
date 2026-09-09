@@ -529,7 +529,7 @@ mod tests {
                 region: None,
             })
             .collect();
-        CandidateText::of(&pool)
+        CandidateText::of(&pool, &[])
     }
 
     /// One pressing of AC/DC's *Dirty Deeds* as MusicBrainz states it: the

@@ -262,7 +262,24 @@ extension BridgeLookupChoices {
         return BridgeLookupChoices(
             discIdExcluded: discIdExcluded,
             barcodeExcluded: barcodeExcluded,
-            chosenCatalogs: chosen
+            chosenCatalogs: chosen,
+            discountedCatalogs: discountedCatalogs
+        )
+    }
+
+    /// This value with `catalog` struck out of what the folder is taken to
+    /// state, or counted again when it already was struck out. A set, so it
+    /// goes back sorted and each value appears once.
+    func discounting(_ catalog: String) -> BridgeLookupChoices {
+        var discounted = Set(discountedCatalogs)
+        if discounted.remove(catalog) == nil {
+            discounted.insert(catalog)
+        }
+        return BridgeLookupChoices(
+            discIdExcluded: discIdExcluded,
+            barcodeExcluded: barcodeExcluded,
+            chosenCatalogs: chosenCatalogs,
+            discountedCatalogs: discounted.sorted()
         )
     }
 }
@@ -304,15 +321,17 @@ struct Candidate: Equatable, Identifiable {
     /// Where the pane was when the person last left this candidate. A folder
     /// candidate's comes with its detail; a re-identify session's lives here.
     var session = CandidateSessionState()
-    /// What this candidate's identification asks about: the signals its runs
-    /// leave out and the catalog numbers they look up. A folder candidate's is
+    /// What this candidate's identification asks about — the signals its runs
+    /// leave out and the catalog numbers they look up — and the numbers struck
+    /// out of what its own text is taken to state. A folder candidate's is
     /// stored with it and comes back on its detail; a re-identify session has
     /// no candidate row to store one on, so its own lives here for as long as
     /// the sheet does.
     var lookupChoices = BridgeLookupChoices(
         discIdExcluded: false,
         barcodeExcluded: false,
-        chosenCatalogs: []
+        chosenCatalogs: [],
+        discountedCatalogs: []
     )
     /// The current metadata selection attempt. Its release row owns loading
     /// and failure feedback while the pane keeps showing the stored draft.

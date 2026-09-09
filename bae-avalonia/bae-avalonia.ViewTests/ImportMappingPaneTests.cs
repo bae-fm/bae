@@ -319,7 +319,8 @@ public sealed class ImportMappingPaneTests
                 new Dictionary<string, BridgeLibraryStatus>(),
                 1,
                 new Dictionary<string, BridgeAgreements>(),
-                NothingNarrowedOut()),
+                NothingNarrowedOut(),
+                []),
             new BridgeSignalsToolbar(Array.Empty<BridgeToolbarSignal>()),
             null,
             null);

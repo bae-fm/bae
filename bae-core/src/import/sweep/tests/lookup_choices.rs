@@ -35,6 +35,7 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
                 disc_id_excluded: false,
                 barcode_excluded: true,
                 chosen_catalogs: Vec::new(),
+                discounted_catalogs: Vec::new(),
             },
         )
         .await
@@ -104,6 +105,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_the_sweep_s_slot() {
                 disc_id_excluded: false,
                 barcode_excluded: true,
                 chosen_catalogs: Vec::new(),
+                discounted_catalogs: Vec::new(),
             },
         )
         .await

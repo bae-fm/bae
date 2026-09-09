@@ -78,19 +78,27 @@ impl AppServices {
     }
 
     /// Record what a candidate's identification asks about, and run it again
-    /// reading that: a run takes its choices at its start, so a person
-    /// changing one is asking for a run that reads it. Any run already going
-    /// for this candidate is superseded.
+    /// when what it looks up has changed: a run takes its choices at its
+    /// start, so a person changing one is asking for a run that reads it. Any
+    /// run already going for this candidate is superseded.
+    ///
+    /// Striking a number out of the candidate's text asks nothing of the
+    /// providers — the answers in hand are the same answers, ranked by what
+    /// the folder is now taken to state about them — so it starts no run, and
+    /// the next read of the candidate ranks them afresh.
     pub async fn import_set_candidate_lookup_choices(
         &self,
         candidate_key: String,
         choices: crate::import::LookupChoices,
     ) -> Result<(), crate::import::ImportError> {
-        self.inner
+        let change = self
+            .inner
             .import
             .set_candidate_lookup_choices(&candidate_key, choices)
             .await?;
-        self.inner.sweep.rerun_for_explicit_lookup(candidate_key);
+        if change == crate::import::ChoiceChange::Lookups {
+            self.inner.sweep.rerun_for_explicit_lookup(candidate_key);
+        }
         Ok(())
     }
 

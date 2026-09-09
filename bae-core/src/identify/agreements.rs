@@ -9,10 +9,17 @@
 //!
 //! The disc ID and the barcode are not looked for: they are exact codes, and
 //! the lookup that returned the result is what states them.
+//!
+//! Not every number printed on a folder is a catalog number — a phone number
+//! on a sleeve, a serial on a label, the year twice — so a person can strike
+//! one out. A struck-out value is not read as a catalog number any more,
+//! however plainly the text prints it; it is still text, and still states
+//! whatever else it happens to be.
 
 use super::combine::LookupProvenance;
 use crate::import::search::MetadataResult;
 use crate::signals::TextLine;
+use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 
 /// What the candidate's own text agrees with about one result — one badge per
@@ -84,7 +91,11 @@ pub fn agreements_of(
     Agreements {
         disc_id: lookup.by_disc_id,
         barcode: lookup.by_barcode,
-        catalog: lookup.by_catalog || states(&result.catalog_number),
+        catalog: lookup.by_catalog
+            || result
+                .catalog_number
+                .as_deref()
+                .is_some_and(|value| text.states_catalog(value)),
         label: states(&result.label),
         year: result
             .year
@@ -93,8 +104,9 @@ pub fn agreements_of(
     }
 }
 
-/// The candidate's own text, normalized once so a result's fields can be
-/// looked up in it.
+/// The candidate's own text as ranking reads it: its lines, normalized once
+/// so a result's fields can be looked up in them, and the catalog numbers the
+/// person has struck out of them.
 ///
 /// A line is held as its words run together, with where each word begins and
 /// ends. A value is normalized the same way — folded to lowercase, diacritics
@@ -102,20 +114,29 @@ pub fn agreements_of(
 /// stated by the text when it spans whole words of a line. That is what lets
 /// `16033-2` in a folder name state a catalog number written `16033 2`, while
 /// keeping a country of `US` out of "blues" and a catalog of `531 2` out of a
-/// barcode's digits.
+/// barcode's digits. A struck-out number is normalized the same way, so it is
+/// struck out however either of them is punctuated.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateText {
     lines: Vec<NormalizedLine>,
+    /// Normalized, so the comparison is the one `states` makes.
+    struck_out: HashSet<String>,
 }
 
 impl CandidateText {
-    /// The candidate's pooled lines, normalized for lookup. Lines that carry
-    /// no letter or digit state nothing and are left out.
-    pub fn of(pool: &[TextLine]) -> Self {
+    /// The candidate's pooled lines, normalized for lookup, with the catalog
+    /// numbers the person struck out of them. Lines that carry no letter or
+    /// digit state nothing and are left out.
+    pub fn of(pool: &[TextLine], struck_out: &[String]) -> Self {
         Self {
             lines: pool
                 .iter()
                 .filter_map(|line| NormalizedLine::of(&line.text))
+                .collect(),
+            struck_out: struck_out
+                .iter()
+                .map(|value| squash(value))
+                .filter(|value| !value.is_empty())
                 .collect(),
         }
     }
@@ -127,6 +148,17 @@ impl CandidateText {
             return false;
         }
         self.lines.iter().any(|line| line.states(&value))
+    }
+
+    /// Whether the text states `value` as a catalog number: printed there,
+    /// and not struck out.
+    pub fn states_catalog(&self, value: &str) -> bool {
+        !self.is_struck_out(value) && self.states(value)
+    }
+
+    /// Whether the person struck `value` out as a catalog number.
+    pub fn is_struck_out(&self, value: &str) -> bool {
+        self.struck_out.contains(&squash(value))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -170,7 +202,7 @@ impl NormalizedLine {
 /// A value as it is looked up: lowercase, diacritics folded away, and
 /// everything that is not a letter or a digit dropped — which is what makes
 /// `WPCR-80001`, `WPCR 80001` and `wpcr80001` one value.
-fn squash(text: &str) -> String {
+pub(super) fn squash(text: &str) -> String {
     text.nfd()
         .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
         .flat_map(char::to_lowercase)

@@ -444,11 +444,20 @@ pub(super) fn load_candidate_detail_on(
             ));
             matched = MatchedRelease::of_summary(&VerdictSummary::of(&identify.verdict));
             // The candidate's own text is what the rows are judged and ordered
-            // against, live or resumed. A candidate whose extraction never
-            // stored any offers its rows unranked rather than none.
+            // against, live or resumed, with the numbers the person struck out
+            // of it. Both are the candidate's rather than the run's, so the
+            // ranking is this read's, not the run's: striking a number out
+            // re-orders the rows the next time they are read, with nothing
+            // asked again. A candidate whose extraction never stored any text
+            // offers its rows unranked rather than none.
             let text = signals.as_ref().map_or_else(
                 crate::identify::CandidateText::default,
-                |signals| crate::identify::CandidateText::of(&signals.text_pool),
+                |signals| {
+                    crate::identify::CandidateText::of(
+                        &signals.text_pool,
+                        &lookup_choices.discounted_catalogs,
+                    )
+                },
             );
             resumed_identify_state = identify.verdict.clone().resume_state(&status_of, text);
         }

@@ -462,7 +462,9 @@ internal static partial class NativeBae
     /// <summary>What the candidate's identification asks about after the
     /// person acts on one badge: the whole value, with that one part turned
     /// over. A signal flips between left out and asked about; a catalog number
-    /// joins the numbers the run looks up or leaves them.</summary>
+    /// joins the numbers the run looks up or leaves them. What the folder's
+    /// text is taken to state about the answers is carried through
+    /// untouched — no badge here acts on it.</summary>
     internal static BridgeLookupChoices Toggling(
         BridgeLookupChoices current, string kind, string value)
     {
@@ -472,12 +474,14 @@ internal static partial class NativeBae
                 return new BridgeLookupChoices(
                     DiscIdExcluded: !current.DiscIdExcluded,
                     BarcodeExcluded: current.BarcodeExcluded,
-                    ChosenCatalogs: current.ChosenCatalogs);
+                    ChosenCatalogs: current.ChosenCatalogs,
+                    DiscountedCatalogs: current.DiscountedCatalogs);
             case "barcode":
                 return new BridgeLookupChoices(
                     DiscIdExcluded: current.DiscIdExcluded,
                     BarcodeExcluded: !current.BarcodeExcluded,
-                    ChosenCatalogs: current.ChosenCatalogs);
+                    ChosenCatalogs: current.ChosenCatalogs,
+                    DiscountedCatalogs: current.DiscountedCatalogs);
             default:
                 var chosen = new List<string>(current.ChosenCatalogs);
                 if (!chosen.Remove(value))
@@ -487,14 +491,20 @@ internal static partial class NativeBae
                 return new BridgeLookupChoices(
                     DiscIdExcluded: current.DiscIdExcluded,
                     BarcodeExcluded: current.BarcodeExcluded,
-                    ChosenCatalogs: chosen);
+                    ChosenCatalogs: chosen,
+                    DiscountedCatalogs: current.DiscountedCatalogs);
         }
     }
 
     /// <summary>The choices a session with no candidate row to store them on
-    /// starts from: nothing left out, nothing chosen.</summary>
+    /// starts from: nothing left out, nothing chosen, everything the folder
+    /// states counted.</summary>
     internal static BridgeLookupChoices NoLookupChoices() =>
-        new(DiscIdExcluded: false, BarcodeExcluded: false, ChosenCatalogs: []);
+        new(
+            DiscIdExcluded: false,
+            BarcodeExcluded: false,
+            ChosenCatalogs: [],
+            DiscountedCatalogs: []);
 
     private static BridgeReleaseUserEdit ReleaseUserEdit(BridgeRawReleaseEdit edit) =>
         BaeBridgeMethods.ShapeReleaseEdit(edit) switch

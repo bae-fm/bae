@@ -528,7 +528,8 @@ extension MappingFixtures {
     static let noLookupChoices = BridgeLookupChoices(
         discIdExcluded: false,
         barcodeExcluded: false,
-        chosenCatalogs: []
+        chosenCatalogs: [],
+        discountedCatalogs: []
     )
 
     static func session(

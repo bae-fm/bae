@@ -486,7 +486,8 @@
                     lookupChoices: BridgeLookupChoices(
                         discIdExcluded: false,
                         barcodeExcluded: false,
-                        chosenCatalogs: []
+                        chosenCatalogs: [],
+                        discountedCatalogs: []
                     ),
                     failure: failure,
                     session: BridgeCandidateSession(
@@ -640,7 +641,8 @@
                 libraryStatuses: [:],
                 trackCount: 12,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
             )
             return candidate
         }()

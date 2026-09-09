@@ -183,7 +183,7 @@ desktop_only! {
     pub use search::{SearchQuery, SourceFailure, SourceLookup};
     pub use service::ImportService;
 }
-pub use lookup_choices::LookupChoices;
+pub use lookup_choices::{ChoiceChange, LookupChoices};
 pub use session::{CandidateSession, MetadataPresentation, SearchForm, SearchTab};
 desktop_only! {
     pub use sweep::QueueSweepHandle;

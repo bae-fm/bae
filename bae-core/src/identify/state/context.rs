@@ -238,6 +238,11 @@ pub struct CatalogEvidence {
     /// The numbers the run looks up, in the order they were chosen. Empty — the
     /// resting state — keeps the catalog out of the combine entirely.
     pub chosen: Vec<ChosenCatalog>,
+    /// The numbers the person struck out of the candidate's text, so that a
+    /// result carrying one of them earns no catalog agreement from it. Read
+    /// at the run's start beside the chosen ones, and applied to the text
+    /// every snapshot rebuilds.
+    pub struck_out: Vec<String>,
 }
 
 impl CatalogEvidence {
@@ -413,6 +418,7 @@ impl SignalsContext {
                     .into_iter()
                     .map(ChosenCatalog::new)
                     .collect(),
+                struck_out: choices.discounted_catalogs,
             },
             ..Default::default()
         }
@@ -426,7 +432,7 @@ impl SignalsContext {
         self.disc.refresh_input(&signals.disc_id);
         self.barcode.refresh_input(&signals.barcode);
         self.catalog.refresh_input(&signals.text);
-        self.text = CandidateText::of(&signals.text_pool);
+        self.text = CandidateText::of(&signals.text_pool, &self.catalog.struck_out);
         self.track_count = signals.disc_id.track_count();
     }
 

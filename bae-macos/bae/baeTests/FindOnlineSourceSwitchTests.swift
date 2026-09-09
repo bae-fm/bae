@@ -174,8 +174,10 @@ struct FindOnlineSourceSwitchTests {
             try await FindOnlineRendering.pixels(
                 IdentifyLedgerView(
                     run: run,
+                    catalogAgreements: [],
                     filePaths: [:],
                     onToggleCatalog: { _ in },
+                    onToggleCatalogAgreement: { _ in },
                     onRetryFailed: {}
                 ),
                 size: size

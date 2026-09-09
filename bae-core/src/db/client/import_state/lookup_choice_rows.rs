@@ -1,5 +1,6 @@
 //! What a person decided one candidate's identification asks about, as one
-//! header row plus the chosen catalog numbers hanging off it.
+//! header row plus the chosen and the struck-out catalog numbers hanging off
+//! it.
 //!
 //! Written whole: the caller hands over the next value of all of it, and what
 //! the new value does not name is gone. A candidate with no header row has
@@ -24,6 +25,13 @@ pub(super) fn load_lookup_choices_on(
         named_params! { ":only": only },
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
     )?;
+    let discounted = sql.query(
+        "SELECT content_hash, value FROM import_candidate_discounted_catalog \
+         WHERE :only IS NULL OR content_hash = :only \
+         ORDER BY content_hash, value",
+        named_params! { ":only": only },
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+    )?;
     let rows = sql.query(
         "SELECT content_hash, disc_id_excluded, barcode_excluded \
          FROM import_candidate_lookup_choices \
@@ -42,15 +50,21 @@ pub(super) fn load_lookup_choices_on(
         for (content_hash, value) in catalogs {
             chosen.entry(content_hash).or_default().push(value);
         }
+        let mut struck_out: HashMap<String, Vec<String>> = HashMap::new();
+        for (content_hash, value) in discounted {
+            struck_out.entry(content_hash).or_default().push(value);
+        }
         let mut out = HashMap::with_capacity(rows.len());
         for (content_hash, disc_id_excluded, barcode_excluded) in rows {
             let chosen_catalogs = chosen.remove(&content_hash).unwrap_or_default();
+            let discounted_catalogs = struck_out.remove(&content_hash).unwrap_or_default();
             out.insert(
                 content_hash,
                 LookupChoices {
                     disc_id_excluded,
                     barcode_excluded,
                     chosen_catalogs,
+                    discounted_catalogs,
                 },
             );
         }
@@ -104,6 +118,20 @@ impl Database {
                     "INSERT INTO import_candidate_chosen_catalog (content_hash, position, value) \
                      VALUES (?, ?, ?)",
                     params![content_hash, position as i64, value],
+                )?;
+            }
+            sql.execute(
+                "DELETE FROM import_candidate_discounted_catalog WHERE content_hash = ?",
+                [&content_hash],
+            )?;
+            // A set: a value named twice is the caller contradicting itself,
+            // and the primary key says so rather than the second insert being
+            // quietly dropped.
+            for value in &choices.discounted_catalogs {
+                sql.execute(
+                    "INSERT INTO import_candidate_discounted_catalog (content_hash, value) \
+                     VALUES (?, ?)",
+                    params![content_hash, value],
                 )?;
             }
             Ok(())

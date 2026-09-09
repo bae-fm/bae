@@ -12,7 +12,7 @@ fn line(text: &str) -> TextLine {
 }
 
 fn text(lines: &[&str]) -> CandidateText {
-    CandidateText::of(&lines.iter().copied().map(line).collect::<Vec<_>>())
+    CandidateText::of(&lines.iter().copied().map(line).collect::<Vec<_>>(), &[])
 }
 
 fn result() -> MetadataResult {
@@ -162,4 +162,62 @@ fn a_barcode_is_the_one_agreement_that_does_not_stand_alone() {
         assert!(standing.offered(), "{standing:?}");
     }
     assert!(!Agreements::NONE.offered());
+}
+
+/// A catalog number the person struck out of the text is not read out of it
+/// any more: the result that carries it agrees with the folder about nothing.
+#[test]
+fn a_struck_out_catalog_number_states_nothing() {
+    let folder = CandidateText::of(
+        &[line("AC-DC - Dirty Deeds [16033-2]")],
+        &["16033-2".to_string()],
+    );
+    let judged = agreements_of(
+        &MetadataResult {
+            catalog_number: Some("16033-2".to_string()),
+            ..result()
+        },
+        &folder,
+        &NO_LOOKUP,
+    );
+    assert!(!judged.catalog);
+}
+
+/// Striking out a value is striking it out as a catalog number. The same
+/// digits read as a year are the year the folder states, which is a different
+/// thing about the release and stands on its own.
+#[test]
+fn striking_out_a_value_leaves_the_other_fields_alone() {
+    let folder = CandidateText::of(&[line("Atlantic 1976 US")], &["1976".to_string()]);
+    let judged = agreements_of(
+        &MetadataResult {
+            catalog_number: Some("1976".to_string()),
+            year: Some(1976),
+            ..result()
+        },
+        &folder,
+        &NO_LOOKUP,
+    );
+    assert!(!judged.catalog);
+    assert!(judged.year);
+}
+
+/// A catalog lookup that returned the result states its number itself, so
+/// striking the number out of the text leaves that agreement standing.
+#[test]
+fn striking_out_a_number_a_lookup_asked_leaves_its_agreement() {
+    let folder = CandidateText::of(&[line("[LBL-1]")], &["LBL-1".to_string()]);
+    let judged = agreements_of(
+        &MetadataResult {
+            catalog_number: Some("LBL-1".to_string()),
+            ..result()
+        },
+        &folder,
+        &LookupProvenance {
+            by_disc_id: false,
+            by_barcode: false,
+            by_catalog: true,
+        },
+    );
+    assert!(judged.catalog);
 }
