@@ -28,11 +28,11 @@ struct ShownIdentifyStateTests {
                     run: PreviewData.identifyRunStarting,
                     groups: [],
                     libraryStatuses: [:],
-                    provenance: [:],
+                    agreements: [:],
                     narrowedOut: BridgeNarrowedOut(
                         groups: [],
                         libraryStatuses: [:],
-                        provenance: [:]
+                        agreements: [:]
                     )
                 )
             )
@@ -43,7 +43,7 @@ struct ShownIdentifyStateTests {
                     run: PreviewData.identifyRunStarting,
                     groups: [],
                     libraryStatuses: [:],
-                    provenance: [:],
+                    agreements: [:],
                     narrowedOut: .nothing
                 )
         )

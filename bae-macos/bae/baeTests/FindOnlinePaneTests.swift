@@ -428,7 +428,7 @@ struct FindOnlineResultAreaTests {
                     run: PreviewData.identifyRunStarting,
                     groups: [],
                     libraryStatuses: [:],
-                    provenance: [:],
+                    agreements: [:],
                     narrowedOut: .nothing
                 )
             ) == .identifying
