@@ -426,6 +426,56 @@
             )
         }
 
+        /// The row the list places a preview candidate as.
+        static func paneRow(
+            folder: BridgeFolderCandidate,
+            metadataProvenance: BridgeMetadataProvenance?,
+            edit: BridgeRawReleaseEdit,
+            cover: BridgeCoverChoice?
+        ) -> BridgeTriageRow {
+            BridgeTriageRow(
+                candidateKey: folder.folderPath,
+                folderName: folder.sourceFolderName,
+                watchedFolderPath: folder.watchedFolderPath,
+                displayPath: folder.sourceFolderName,
+                resolvedBoundaries: [],
+                combineAncestorKey: nil,
+                actionable: true,
+                placement: metadataProvenance == nil
+                    && edit.albumTitle.isEmpty ? .pending : .ready,
+                skipAction: .skip,
+                actions: (metadataProvenance == nil
+                    && edit.albumTitle.isEmpty ? [] : [.importReady])
+                    + [
+                        .identify, .useFileMetadata, .clearMetadata,
+                        .skip,
+                    ],
+                matched: nil,
+                metadataSummary: nil,
+                coverThumbnail: cover?.thumbnailSource,
+                selectable: !edit.albumTitle.isEmpty,
+                importStatus: nil,
+                metadataProvenance: metadataProvenance
+            )
+        }
+
+        /// An untouched session opened on `presentation`.
+        static func paneSession(
+            presentation: BridgeMetadataPresentation
+        ) -> BridgeCandidateSession {
+            BridgeCandidateSession(
+                presentation: presentation,
+                search: BridgeSearchForm(
+                    tab: .general,
+                    artist: "",
+                    album: "",
+                    catalog: "",
+                    barcode: ""
+                ),
+                error: nil
+            )
+        }
+
         /// A candidate as the per-candidate read answers for it: the folder,
         /// the row the list places it as, and everything the pane draws. The
         /// pane holds none of it — this is the one value it renders from.
@@ -446,29 +496,11 @@
                     candidate: folder,
                     actionable: true,
                     resumedIdentifyState: .idle,
-                    row: BridgeTriageRow(
-                        candidateKey: folder.folderPath,
-                        folderName: folder.sourceFolderName,
-                        watchedFolderPath: folder.watchedFolderPath,
-                        displayPath: folder.sourceFolderName,
-                        resolvedBoundaries: [],
-                        combineAncestorKey: nil,
-                        actionable: true,
-                        placement: metadataProvenance == nil
-                            && edit.albumTitle.isEmpty ? .pending : .ready,
-                        skipAction: .skip,
-                        actions: (metadataProvenance == nil
-                            && edit.albumTitle.isEmpty ? [] : [.importReady])
-                            + [
-                                .identify, .useFileMetadata, .clearMetadata,
-                                .skip,
-                            ],
-                        matched: nil,
-                        metadataSummary: nil,
-                        coverThumbnail: cover?.thumbnailSource,
-                        selectable: !edit.albumTitle.isEmpty,
-                        importStatus: nil,
-                        metadataProvenance: metadataProvenance
+                    row: paneRow(
+                        folder: folder,
+                        metadataProvenance: metadataProvenance,
+                        edit: edit,
+                        cover: cover
                     ),
                     release: release,
                     pickedLibraryStatus: nil,
@@ -490,17 +522,7 @@
                         discountedCatalogs: []
                     ),
                     failure: failure,
-                    session: BridgeCandidateSession(
-                        presentation: presentation,
-                        search: BridgeSearchForm(
-                            tab: .general,
-                            artist: "",
-                            album: "",
-                            catalog: "",
-                            barcode: ""
-                        ),
-                        error: nil
-                    )
+                    session: paneSession(presentation: presentation)
                 )
             )
         }

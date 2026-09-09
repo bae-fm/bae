@@ -69,80 +69,10 @@ extension ImportSearchFlow {
             // of what this candidate's identification asks about, and the run
             // that reads it starts from there.
             onToggleCatalog: { value in
-                let choices = input.candidate.lookupChoices.choosing(value)
-                switch input.candidate.source {
-                // A library release has no candidate row to store a choice on,
-                // so the sheet's session holds it and the restarted run reads
-                // it from there.
-                case .releaseReIdentify(let releaseId):
-                    importStore.mutateCandidate(forKey: key) {
-                        $0.lookupChoices = choices
-                    }
-                    services.importer.autoIdentifyRelease(
-                        key,
-                        releaseId,
-                        choices
-                    )
-                // Core stores it and starts the run; the candidate's next
-                // detail carries it back.
-                case .folder:
-                    Task { @MainActor in
-                        do {
-                            try await services.importer
-                                .setCandidateLookupChoices(key, choices)
-                        }
-                        catch is CancellationError {}
-                        catch {
-                            guard let line = error.displayLine else { return }
-                            importStore.recordPaneError(
-                                String(
-                                    localized:
-                                        "Couldn't change what identification looks up: \(line)"
-                                ),
-                                forKey: key
-                            )
-                        }
-                    }
-                }
+                toggleCatalogLookup(value, services: services, input: input)
             },
-            // Striking a number out of what the folder is taken to state
-            // asks nothing of the providers: core stores the whole value and
-            // the candidate's next detail carries the same answers, ranked by
-            // it. A re-identify session has no candidate row to store on and
-            // nothing stored to re-rank, so its run is the only place its
-            // ranking is decided — the response cache answers what the last
-            // run already asked.
             onToggleCatalogAgreement: { value in
-                let choices = input.candidate.lookupChoices.discounting(value)
-                switch input.candidate.source {
-                case .releaseReIdentify(let releaseId):
-                    importStore.mutateCandidate(forKey: key) {
-                        $0.lookupChoices = choices
-                    }
-                    services.importer.autoIdentifyRelease(
-                        key,
-                        releaseId,
-                        choices
-                    )
-                case .folder:
-                    Task { @MainActor in
-                        do {
-                            try await services.importer
-                                .setCandidateLookupChoices(key, choices)
-                        }
-                        catch is CancellationError {}
-                        catch {
-                            guard let line = error.displayLine else { return }
-                            importStore.recordPaneError(
-                                String(
-                                    localized:
-                                        "Couldn't change what counts as an agreement: \(line)"
-                                ),
-                                forKey: key
-                            )
-                        }
-                    }
-                }
+                toggleCatalogAgreement(value, services: services, input: input)
             },
             onIdentify: {
                 services.importer.identifyForExplicitLookup(key)
@@ -152,16 +82,7 @@ extension ImportSearchFlow {
             // that had already succeeded. Where those inputs live is what
             // differs — the same split `onToggleCatalog` makes.
             onRetryFailed: {
-                switch input.candidate.source {
-                case .releaseReIdentify(let releaseId):
-                    services.importer.autoIdentifyRelease(
-                        key,
-                        releaseId,
-                        input.candidate.lookupChoices
-                    )
-                case .folder:
-                    services.importer.rerunIdentifyForCandidate(key)
-                }
+                rerunIdentification(services: services, input: input)
             },
             onSelect: onSelect,
         )
@@ -195,6 +116,108 @@ extension ImportSearchFlow {
                 key: key,
                 desired: releaseStatusKeys(state: state)
             )
+        }
+    }
+
+    /// Choose or unchoose a catalog number for lookup.
+    @MainActor
+    private static func toggleCatalogLookup(
+        _ value: String,
+        services: ImportServices,
+        input: SearchPaneInput
+    ) {
+        writeLookupChoices(
+            input.candidate.lookupChoices.choosing(value),
+            services: services,
+            input: input,
+            failure: { line in
+                String(
+                    localized:
+                        "Couldn't change what identification looks up: \(line)"
+                )
+            }
+        )
+    }
+
+    /// Count or stop counting a catalog number the folder states as an
+    /// agreement.
+    @MainActor
+    private static func toggleCatalogAgreement(
+        _ value: String,
+        services: ImportServices,
+        input: SearchPaneInput
+    ) {
+        writeLookupChoices(
+            input.candidate.lookupChoices.discounting(value),
+            services: services,
+            input: input,
+            failure: { line in
+                String(
+                    localized:
+                        "Couldn't change what counts as an agreement: \(line)"
+                )
+            }
+        )
+    }
+
+    /// Run identification again from the candidate's stored choices. A library
+    /// release has no candidate row, so the sheet restarts its own run with the
+    /// choices it holds.
+    @MainActor
+    private static func rerunIdentification(
+        services: ImportServices,
+        input: SearchPaneInput
+    ) {
+        switch input.candidate.source {
+        case .releaseReIdentify(let releaseId):
+            services.importer.autoIdentifyRelease(
+                input.key,
+                releaseId,
+                input.candidate.lookupChoices
+            )
+        case .folder:
+            services.importer.rerunIdentifyForCandidate(input.key)
+        }
+    }
+
+    /// Store the whole value of what this candidate's identification asks
+    /// about and counts, and let the run that reads it start from there.
+    ///
+    /// A library release has no candidate row to store a choice on, so the
+    /// re-identify sheet's session holds it and the restarted run reads it
+    /// from there. A folder's choices are core's: it stores them, starts a run
+    /// when what is looked up changed, and the candidate's next detail carries
+    /// them back. Striking a number out asks nothing of the providers; the
+    /// same answers come back ranked by it.
+    @MainActor
+    private static func writeLookupChoices(
+        _ choices: BridgeLookupChoices,
+        services: ImportServices,
+        input: SearchPaneInput,
+        failure: @escaping (String) -> String
+    ) {
+        let key = input.key
+        let importStore = services.importStore
+        switch input.candidate.source {
+        case .releaseReIdentify(let releaseId):
+            importStore.mutateCandidate(forKey: key) {
+                $0.lookupChoices = choices
+            }
+            services.importer.autoIdentifyRelease(key, releaseId, choices)
+        case .folder:
+            Task { @MainActor in
+                do {
+                    try await services.importer.setCandidateLookupChoices(
+                        key,
+                        choices
+                    )
+                }
+                catch is CancellationError {}
+                catch {
+                    guard let line = error.displayLine else { return }
+                    importStore.recordPaneError(failure(line), forKey: key)
+                }
+            }
         }
     }
 
