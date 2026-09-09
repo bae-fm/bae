@@ -49,12 +49,32 @@ enum SnapshotTestSupport {
         return try #require(bitmap.representation(using: .png, properties: [:]))
     }
 
-    /// Let SwiftUI publish its next render before a hosted-view test inspects
-    /// or interacts with it.
+    /// Let SwiftUI publish its renders before a hosted-view test inspects or
+    /// interacts with it: yield until a turn changes no frame in the hosted
+    /// tree.
+    ///
+    /// SwiftUI lays a hosted tree out over several main-actor turns — a
+    /// geometry reader publishes a width, the views under it re-measure, a
+    /// text wraps — and how many turns that takes depends on the machine. A
+    /// fixed number of yields measured a tree mid-layout on a slow runner and
+    /// gave frames a few points off. Convergence is what "settled" means, so
+    /// that is what is waited for, after the floor of turns every hosted
+    /// view needs to publish at all. A view that animates never converges;
+    /// `maxTurns` bounds the wait and leaves it as the last turn drew it.
     @MainActor
-    static func settle(_ host: NSView) async {
-        for _ in 0..<3 {
+    static func settle(
+        _ host: NSView,
+        minimumTurns: Int = 3,
+        maxTurns: Int = 120
+    ) async {
+        var previous: [CGRect]?
+        for turn in 0..<maxTurns {
             host.layoutSubtreeIfNeeded()
+            let frames = descendants(of: host).map(\.frame)
+            if turn >= minimumTurns, frames == previous {
+                return
+            }
+            previous = frames
             await Task.yield()
         }
         host.layoutSubtreeIfNeeded()
