@@ -351,15 +351,23 @@ mod identify_mirrors {
         let pressings = groups[0]["pressings"].as_array().unwrap();
         assert_eq!(pressings[0]["releases"][0]["release_id"], "rel-2");
         assert_eq!(pressings[1]["releases"][0]["release_id"], "rel-1");
-        let agreements = json["agreements"].as_array().unwrap();
-        assert_eq!(agreements[0]["release_id"], "rel-1");
-        assert_eq!(agreements[0]["disc_id"], true);
-        assert_eq!(agreements[1]["release_id"], "rel-2");
-        assert_eq!(agreements[1]["barcode"], true);
-        assert_eq!(agreements[1]["catalog"], true);
-        let statuses = json["library_statuses"].as_array().unwrap();
-        assert_eq!(statuses[0]["release_id"], "rel-1");
-        assert_eq!(statuses[1]["release_id"], "rel-2");
+        // Agreements and statuses are keyed by release id and travel in the
+        // rows' order, so a reader aligns them by id, never by position.
+        let by_release = |field: &str, release_id: &str| {
+            json[field]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|entry| entry["release_id"] == release_id)
+                .cloned()
+                .unwrap_or_else(|| panic!("{field} names {release_id}"))
+        };
+        assert_eq!(by_release("agreements", "rel-1")["disc_id"], true);
+        let second = by_release("agreements", "rel-2");
+        assert_eq!(second["barcode"], true);
+        assert_eq!(second["catalog"], true);
+        by_release("library_statuses", "rel-1");
+        by_release("library_statuses", "rel-2");
     }
 
     /// Signals that share no result still settle as one `Found`; the releases
