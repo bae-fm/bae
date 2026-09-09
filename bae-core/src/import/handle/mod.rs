@@ -67,6 +67,11 @@ pub enum ImportEvent {
     /// it wholesale, so it needs no partial-update logic.
     SignalsUpdated {
         candidate_key: String,
+        /// The identify run this snapshot was extracted for. Starting a run
+        /// replaces the extraction behind the previous run of the same
+        /// candidate, and the two broadcast under the same key: a consumer
+        /// feeding a run takes only the snapshots that name it.
+        run: crate::identify::IdentifyRunId,
         signals: crate::signals::Signals,
         /// Where the artwork pass that feeds the snapshot has got to. Beside
         /// the snapshot rather than in it: a stored snapshot has no pass to
@@ -321,7 +326,10 @@ impl ImportServiceHandle {
     /// One candidate is identified at a time, so this supersedes whatever was
     /// identifying `key` already. The driver is started first because it takes
     /// its bus subscription synchronously, and extraction's first snapshot
-    /// must not be emitted into a void.
+    /// must not be emitted into a void. Both halves name `run`: the driver
+    /// takes only snapshots extracted for it, so whatever the superseded
+    /// extraction still puts on the bus before its replacement lands is not
+    /// this run's input.
     pub(crate) fn start_identification(
         &self,
         run: crate::identify::IdentifyRunId,
@@ -331,7 +339,7 @@ impl ImportServiceHandle {
         choices: crate::import::LookupChoices,
     ) {
         self.identify.start(run, key.clone(), priority, choices);
-        self.extraction.start(key, source, priority);
+        self.extraction.start(run, key, source, priority);
     }
 
     /// Stop identifying this candidate: the run and the extraction feeding it.

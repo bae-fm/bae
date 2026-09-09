@@ -446,9 +446,10 @@ pub(super) async fn record_explicit_lookup_verdict(
         match event {
             Ok(ImportEvent::SignalsUpdated {
                 candidate_key: key,
+                run: snapshot_run,
                 signals,
                 ..
-            }) if key == candidate_key => {
+            }) if key == candidate_key && snapshot_run == run => {
                 entry.signals = Some(signals);
             }
             Ok(ImportEvent::IdentifyStateChanged {

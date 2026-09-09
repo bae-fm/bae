@@ -51,6 +51,25 @@ impl CancellationRegistry {
         construct(token, generation)
     }
 
+    /// Run `emit` under the registry's lock, and only while `generation` is
+    /// still `key`'s current one. Every snapshot goes out through here, so an
+    /// extraction that a later `register` replaced — or a `cancel` ended —
+    /// puts nothing on the bus after that: the replacement and this check
+    /// serialize on the one lock, and a generation that is no longer current
+    /// emits nothing. Snapshots for a key therefore leave in generation order.
+    pub(super) fn while_current<R>(
+        &self,
+        key: &str,
+        generation: u64,
+        emit: impl FnOnce() -> R,
+    ) -> Option<R> {
+        let state = self.state.lock().unwrap();
+        match state.cancel_tokens.get(key) {
+            Some((current, _)) if *current == generation => Some(emit()),
+            _ => None,
+        }
+    }
+
     pub(super) fn cancel(&self, key: &str) {
         let entry = self.state.lock().unwrap().cancel_tokens.remove(key);
         if let Some((_, token)) = entry {
@@ -96,6 +115,23 @@ mod tests {
         let b_gen = registry.register("b".to_string(), |_, generation| generation);
 
         assert_ne!(a_gen, b_gen);
+    }
+
+    #[test]
+    fn only_the_current_generation_emits() {
+        let registry = CancellationRegistry::default();
+
+        let stale = registry.register("cand".to_string(), |_, generation| generation);
+        assert_eq!(registry.while_current("cand", stale, || "sent"), Some("sent"));
+
+        // Replaced: the older generation's emit runs no more, the newer one's does.
+        let live = registry.register("cand".to_string(), |_, generation| generation);
+        assert_eq!(registry.while_current("cand", stale, || "sent"), None);
+        assert_eq!(registry.while_current("cand", live, || "sent"), Some("sent"));
+
+        // Cancelled: nothing for the key emits.
+        registry.cancel("cand");
+        assert_eq!(registry.while_current("cand", live, || "sent"), None);
     }
 
     #[test]

@@ -216,11 +216,19 @@ impl Pass {
         }
     }
 
-    /// The candidate's latest extraction snapshot, kept for the commit that
-    /// follows its verdict.
-    pub(super) fn record_signals(&mut self, key: &str, signals: crate::signals::Signals) {
+    /// The run's latest extraction snapshot, kept for the commit that follows
+    /// its verdict. Only this pass's run's: a snapshot of another run of the
+    /// same candidate was not what that run's verdict was judged against.
+    pub(super) fn record_signals(
+        &mut self,
+        key: &str,
+        run: IdentifyRunId,
+        signals: crate::signals::Signals,
+    ) {
         if let Some(entry) = self.in_flight.get_mut(key) {
-            entry.signals = Some(signals);
+            if entry.run == run {
+                entry.signals = Some(signals);
+            }
         }
     }
 

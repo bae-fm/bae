@@ -427,6 +427,7 @@ fn extracted_signals_are_retained_without_publishing_a_runtime() {
 
     runtime.record_event(&ImportEvent::SignalsUpdated {
         candidate_key: key.to_string(),
+        run: crate::identify::IdentifyRunId::for_test(1),
         signals: extracted_signals(),
         artwork: crate::signals::ArtworkScan::Absent,
         priority: CallPriority::Background,

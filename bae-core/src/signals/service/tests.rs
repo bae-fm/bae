@@ -198,6 +198,7 @@ async fn start_signals(
     let (handle, _tx, rx, lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
     handle.start(
+        IdentifyRunId::for_test(1),
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
@@ -398,10 +399,22 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
         cancellation: CancellationRegistry::default(),
     };
 
+    // A registered generation, as every running extraction has: an
+    // unregistered one is not current and sends nothing to warn about.
+    let generation = inner
+        .cancellation
+        .register("cand-1".to_string(), |_, generation| generation);
+    let identity = ExtractionIdentity {
+        run: IdentifyRunId::for_test(1),
+        key: "cand-1".to_string(),
+        generation,
+        priority: CallPriority::Interactive,
+    };
+
     let logs = capture_warn_logs(|| {
         emit_signals(
             &inner,
-            "cand-1",
+            &identity,
             Signals {
                 disc_id: DiscIdSignal::Absent { track_count: 0 },
                 barcode: BarcodeSignal::Absent,
@@ -413,7 +426,6 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
                 durations: crate::import::probe::SourceDurations::default(),
             },
             ArtworkScan::Absent,
-            CallPriority::Interactive,
         );
     });
 
@@ -695,6 +707,7 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
     handle.register_analyzer(analyzer.clone());
 
     handle.start(
+        IdentifyRunId::for_test(1),
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
@@ -737,6 +750,7 @@ async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
     );
     let (handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
     handle.start(
+        IdentifyRunId::for_test(1),
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
@@ -782,12 +796,14 @@ async fn three_starts_cancel_each_predecessor() {
     let (handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
     tokio::time::sleep(Duration::from_millis(40)).await;
     handle.start(
+        IdentifyRunId::for_test(1),
         "cand-1".to_string(),
         folder_source(folder.clone()),
         CallPriority::Interactive,
     );
     tokio::time::sleep(Duration::from_millis(40)).await;
     handle.start(
+        IdentifyRunId::for_test(1),
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
@@ -826,6 +842,7 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
 
     handle.start(
+        IdentifyRunId::for_test(1),
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
@@ -861,6 +878,7 @@ FILE \"audio.flac\" WAVE\n  \
 
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.start(
+        IdentifyRunId::for_test(1),
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,

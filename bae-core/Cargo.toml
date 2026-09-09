@@ -195,6 +195,11 @@ name = "alac_fixtures"
 path = "tests/alac_fixtures.rs"
 required-features = ["test-utils"]
 
+[[test]]
+name = "test_candidate_text_fixtures"
+path = "tests/test_candidate_text_fixtures.rs"
+required-features = ["test-utils"]
+
 [features]
 default = []
 # Enables coven's OAuth cloud providers (Google Drive, Dropbox, OneDrive). Off

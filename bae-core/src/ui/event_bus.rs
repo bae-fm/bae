@@ -95,6 +95,7 @@ impl UiEventBus {
                             ImportEvent::SignalsUpdated {
                                 artwork: _,
                                 candidate_key,
+                                run: _,
                                 signals,
                                 priority: _,
                             } => {

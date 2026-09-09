@@ -18,6 +18,12 @@
 //! A `Release` re-identify resolves its disc ID and artwork from the library.
 //! Every snapshot carries the whole `Signals`; the reducer and the UI overwrite
 //! wholesale.
+//!
+//! A snapshot names the identify run it was extracted for, and goes out only
+//! while its extraction is the key's current one. Starting a run replaces the
+//! extraction behind the previous run of the same candidate, and that one may
+//! still be mid-pass; nothing it has left to say reaches the bus, and a run
+//! reading the bus takes only the snapshots that name it.
 
 use super::analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
 use super::cancellation::CancellationRegistry;
@@ -25,6 +31,7 @@ use super::candidate_text::{Source, SourcedLine};
 use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
+use crate::identify::IdentifyRunId;
 use crate::import::{ImportEvent, ScanEvent};
 use crate::library::LibraryManager;
 use crate::signals::{
@@ -37,7 +44,7 @@ use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, warn};
+use tracing::{debug, error, warn};
 
 /// Where a candidate's signals come from: a folder on disk, or an existing
 /// library release being re-identified.
@@ -73,6 +80,16 @@ struct ExtractionServiceInner {
     /// a bus listener that cancels a key on `ScanEvent::CandidateRemoved`, so a
     /// removed candidate's in-flight OCR stops rather than running to completion.
     cancellation: CancellationRegistry,
+}
+
+/// Which extraction a snapshot comes from: the run it feeds, the candidate,
+/// the registry generation that says whether it is still the current one, and
+/// the run's priority.
+struct ExtractionIdentity {
+    run: IdentifyRunId,
+    key: String,
+    generation: u64,
+    priority: CallPriority,
 }
 
 struct ExtractionRelease {
@@ -169,19 +186,32 @@ impl ExtractionServiceHandle {
         *self.inner.analyzer.lock().unwrap() = Some(analyzer);
     }
 
-    /// Kick off extraction for candidate `key` from `source`. Cancels any prior
-    /// in-flight extraction for the same key.
+    /// Kick off extraction for candidate `key` from `source`, feeding `run`.
+    /// Cancels any prior in-flight extraction for the same key, and from here
+    /// on that one emits nothing: its snapshots would name a run that is over.
     /// `priority` is the run's, not a call's — extraction makes no provider
     /// calls. It rides the `SignalsUpdated` snapshots so a consumer can tell a
     /// candidate a person opened from one the background sweep picked up.
-    pub fn start(&self, key: String, source: ExtractionSource, priority: CallPriority) {
+    pub fn start(
+        &self,
+        run: IdentifyRunId,
+        key: String,
+        source: ExtractionSource,
+        priority: CallPriority,
+    ) {
         let inner = self.inner.clone();
         let runtime_handle = self.inner.runtime_handle.clone();
         self.inner
             .cancellation
             .register(key.clone(), move |token, generation| {
+                let identity = ExtractionIdentity {
+                    run,
+                    key,
+                    generation,
+                    priority,
+                };
                 runtime_handle.spawn(async move {
-                    run_extraction(inner, key, source, token, generation, priority).await;
+                    run_extraction(inner, identity, source, token).await;
                 });
             });
     }
@@ -200,16 +230,14 @@ impl ExtractionServiceHandle {
 /// streams `Signals` snapshots as the disc ID, barcodes, and text settle.
 async fn run_extraction(
     inner: Arc<ExtractionServiceInner>,
-    key: String,
+    identity: ExtractionIdentity,
     source: ExtractionSource,
     token: CancellationToken,
-    generation: u64,
-    priority: CallPriority,
 ) {
     let _release = ExtractionRelease {
         inner: inner.clone(),
-        key: key.clone(),
-        generation,
+        key: identity.key.clone(),
+        generation: identity.generation,
     };
 
     if token.is_cancelled() {
@@ -237,7 +265,7 @@ async fn run_extraction(
             let artwork = ArtworkPass::new(inner.has_artwork_analyzer(), fast.artwork);
             stream_extraction(
                 inner,
-                key,
+                identity,
                 token,
                 ExtractionInputs {
                     gathered: Gathered {
@@ -248,7 +276,6 @@ async fn run_extraction(
                     },
                     artwork,
                 },
-                priority,
             )
             .await;
         }
@@ -311,7 +338,7 @@ async fn run_extraction(
             };
             stream_extraction(
                 inner,
-                key,
+                identity,
                 token,
                 ExtractionInputs {
                     gathered: Gathered {
@@ -324,7 +351,6 @@ async fn run_extraction(
                     },
                     artwork,
                 },
-                priority,
             )
             .await;
         }
@@ -398,10 +424,9 @@ impl ArtworkPass {
 /// then a final settled snapshot.
 async fn stream_extraction(
     inner: Arc<ExtractionServiceInner>,
-    key: String,
+    identity: ExtractionIdentity,
     token: CancellationToken,
     inputs: ExtractionInputs,
-    priority: CallPriority,
 ) {
     let ExtractionInputs {
         mut gathered,
@@ -428,10 +453,9 @@ async fn stream_extraction(
         let classification = gathered.pool.classify();
         emit_signals(
             &inner,
-            &key,
+            &identity,
             scanning_signals(&gathered, classification.catalogs, classification.free_text),
             position_of(&pass.images, 0),
-            priority,
         );
     }
 
@@ -447,7 +471,7 @@ async fn stream_extraction(
                 Err(failure) => {
                     emit_failed_ocr_signals(
                         &inner,
-                        &key,
+                        &identity,
                         gathered,
                         ArtworkScan::Failed {
                             failure: failure.clone(),
@@ -455,7 +479,6 @@ async fn stream_extraction(
                             total,
                         },
                         failure,
-                        priority,
                     );
                     return;
                 }
@@ -521,10 +544,9 @@ async fn stream_extraction(
             let classification = gathered.pool.classify();
             emit_signals(
                 &inner,
-                &key,
+                &identity,
                 scanning_signals(&gathered, classification.catalogs, classification.free_text),
                 position_of(&images, index + 1),
-                priority,
             );
         }
     }
@@ -543,7 +565,7 @@ async fn stream_extraction(
     };
     emit_signals(
         &inner,
-        &key,
+        &identity,
         Signals {
             disc_id: gathered.disc_id,
             barcode,
@@ -559,17 +581,15 @@ async fn stream_extraction(
         } else {
             ArtworkScan::Absent
         },
-        priority,
     );
 }
 
 fn emit_failed_ocr_signals(
     inner: &ExtractionServiceInner,
-    key: &str,
+    identity: &ExtractionIdentity,
     mut gathered: Gathered,
     artwork: ArtworkScan,
     failure: LookupFailure,
-    priority: CallPriority,
 ) {
     let classification = gathered.pool.classify();
     let barcode = BarcodeSignal::Failed {
@@ -578,7 +598,7 @@ fn emit_failed_ocr_signals(
     };
     emit_signals(
         inner,
-        key,
+        identity,
         Signals {
             disc_id: gathered.disc_id,
             barcode,
@@ -591,7 +611,6 @@ fn emit_failed_ocr_signals(
             durations: gathered.durations,
         },
         artwork,
-        priority,
     );
 }
 
@@ -619,21 +638,38 @@ fn scanning_signals(
 }
 
 /// Send a `Signals` snapshot on the import event bus, with where the artwork
-/// pass has got to.
+/// pass has got to — only while the extraction is still its key's current
+/// one. The cancellation checks along the pass are not enough on their own: a
+/// successor's `start` can land between a check and the send, and a snapshot
+/// sent then would follow the successor's own on the bus, naming a run that is
+/// over. The registry decides and sends under one lock, so it cannot.
 fn emit_signals(
     inner: &ExtractionServiceInner,
-    key: &str,
+    identity: &ExtractionIdentity,
     signals: Signals,
     artwork: ArtworkScan,
-    priority: CallPriority,
 ) {
-    if let Err(err) = inner.event_tx.send(ImportEvent::SignalsUpdated {
-        candidate_key: key.to_string(),
-        signals,
-        artwork,
-        priority,
-    }) {
-        warn!("signals: SignalsUpdated broadcast had no subscribers for {key}: {err}");
+    let key = &identity.key;
+    let sent = inner
+        .cancellation
+        .while_current(key, identity.generation, || {
+            inner
+                .event_tx
+                .send(ImportEvent::SignalsUpdated {
+                    candidate_key: key.clone(),
+                    run: identity.run,
+                    signals,
+                    artwork,
+                    priority: identity.priority,
+                })
+                .map_err(|err| err.to_string())
+        });
+    match sent {
+        Some(Ok(_)) => {}
+        Some(Err(err)) => {
+            warn!("signals: SignalsUpdated broadcast had no subscribers for {key}: {err}");
+        }
+        None => debug!("signals: {key} extraction was replaced; its snapshot is not sent"),
     }
 }
 

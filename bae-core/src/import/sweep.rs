@@ -257,7 +257,7 @@ struct InFlight {
     /// earlier run of the same candidate still broadcasts; only this run's
     /// states are this pass's answer.
     run: IdentifyRunId,
-    /// The candidate's latest `SignalsUpdated` value. `None` until extraction
+    /// The run's latest `SignalsUpdated` value. `None` until extraction
     /// reports one; by the time a verdict is terminal the identify machine has
     /// consumed a settled snapshot, so this holds it.
     signals: Option<crate::signals::Signals>,
@@ -557,8 +557,8 @@ async fn run_pass(
                 }
             }
             event = bus.recv() => match event {
-                Some(Ok(ImportEvent::SignalsUpdated { candidate_key, signals, .. })) => {
-                    pass.record_signals(&candidate_key, signals);
+                Some(Ok(ImportEvent::SignalsUpdated { candidate_key, run, signals, .. })) => {
+                    pass.record_signals(&candidate_key, run, signals);
                 }
                 Some(Ok(ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. })) => {
                     pass.settle(context, &settling, &mut finishing, &candidate_key, run, state);

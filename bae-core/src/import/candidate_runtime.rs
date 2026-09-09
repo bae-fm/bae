@@ -654,6 +654,7 @@ impl CandidateRuntime {
             // runtime consumer for something none of them draws.
             ImportEvent::SignalsUpdated {
                 candidate_key,
+                run: _,
                 signals,
                 artwork: _,
                 priority: _,

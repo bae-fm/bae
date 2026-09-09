@@ -97,6 +97,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     // providers. Reached through the owner's own field, which its tests are
     // inside of.
     import_handle.extraction.start(
+        import_handle.new_identification_run(),
         key.clone(),
         ExtractionSource::Candidate { candidate },
         crate::util::rate_limiter::CallPriority::Interactive,

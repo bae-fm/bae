@@ -81,10 +81,11 @@ struct IdentifyServiceInner {
 pub struct IdentifyRunId(u64);
 
 impl IdentifyRunId {
-    /// A run id for an event a test forges onto the bus; nothing a service
+    /// A run id for an event a test forges onto the bus, or an extraction a
+    /// test starts without the run it normally feeds; nothing a service
     /// allocates collides with it.
-    #[cfg(test)]
-    pub(crate) fn for_test(run: u64) -> Self {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn for_test(run: u64) -> Self {
         Self(run)
     }
 }
@@ -257,10 +258,11 @@ async fn run_driver(
 ) {
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<IdentifyEvent>();
 
-    // Relay this candidate's `Signals` snapshots off the import bus into the
+    // Relay this run's `Signals` snapshots off the import bus into the
     // reducer, which turns the disc ID and barcodes into lookups and narrows by
-    // catalog. Fire-and-forget: a missed snapshot delays a signal, never breaks
-    // the pipeline.
+    // catalog. This run's, not the candidate's: the extraction behind the run
+    // this one superseded broadcasts under the same key until its replacement
+    // lands, and what it says was extracted for a run that is over.
     //
     // It holds a broadcast receiver every import event is cloned into, so it
     // stops the moment the loop it feeds does — on its own closed channel as
@@ -278,10 +280,11 @@ async fn run_driver(
                 msg = bus_rx.recv() => match msg {
                     Ok(ImportEvent::SignalsUpdated {
                         candidate_key,
+                        run: snapshot_run,
                         signals,
                         artwork,
                         priority: _,
-                    }) if candidate_key == relay_key => {
+                    }) if candidate_key == relay_key && snapshot_run == run => {
                         if relay_event_tx
                             .send(IdentifyEvent::SignalsUpdated { signals, artwork })
                             .is_err()
@@ -600,9 +603,10 @@ mod tests {
         .flatten()
     }
 
-    fn settled_signals_event() -> ImportEvent {
+    fn settled_signals_event(run: IdentifyRunId) -> ImportEvent {
         ImportEvent::SignalsUpdated {
             candidate_key: "k".to_string(),
+            run,
             signals: absent_signals(),
             artwork: crate::signals::ArtworkScan::Absent,
             priority: CallPriority::Interactive,
@@ -620,14 +624,15 @@ mod tests {
         };
         let mut bus_rx = inner.event_tx.subscribe();
 
+        let run = handle.new_run();
         handle.start(
-            handle.new_run(),
+            run,
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
         );
         // Feed the signals over the bus, as the extraction service would.
-        inner.event_tx.send(settled_signals_event()).unwrap();
+        inner.event_tx.send(settled_signals_event(run)).unwrap();
 
         assert!(
             await_state(&mut bus_rx, |state| {
@@ -652,6 +657,55 @@ mod tests {
             .await
             .is_none(),
             "the settled run broadcast nothing after its verdict"
+        );
+    }
+
+    /// The extraction behind a superseded run of the same candidate can still
+    /// broadcast under the key until its replacement lands. Its snapshot names
+    /// that run, and this run does not take it — only a snapshot extracted for
+    /// this run settles it.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_snapshot_of_another_run_is_not_this_runs_input() {
+        let (inner, _tmp) = setup_inner().await;
+        let handle = IdentifyServiceHandle {
+            inner: inner.clone(),
+        };
+        let mut bus_rx = inner.event_tx.subscribe();
+
+        let superseded = handle.new_run();
+        let run = handle.new_run();
+        handle.start(
+            run,
+            "k".to_string(),
+            CallPriority::Interactive,
+            LookupChoices::default(),
+        );
+
+        inner
+            .event_tx
+            .send(settled_signals_event(superseded))
+            .unwrap();
+        assert!(
+            await_state(&mut bus_rx, |state| {
+                matches!(state, IdentifyState::ManualOnly { .. }).then_some(())
+            })
+            .await
+            .is_none(),
+            "a settled snapshot extracted for another run does not settle this one"
+        );
+        assert!(
+            handle.is_running("k"),
+            "the run is still waiting on its own"
+        );
+
+        inner.event_tx.send(settled_signals_event(run)).unwrap();
+        assert!(
+            await_state(&mut bus_rx, |state| {
+                matches!(state, IdentifyState::ManualOnly { .. }).then_some(())
+            })
+            .await
+            .is_some(),
+            "its own settled snapshot does"
         );
     }
 
