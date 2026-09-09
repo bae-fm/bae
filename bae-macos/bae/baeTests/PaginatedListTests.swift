@@ -753,7 +753,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             window.contentView = nil
             window.orderOut(nil)
         }
-        drainViewportLayout()
+        await settleViewportLayout(geometry)
 
         let table = try XCTUnwrap(
             descendants(of: hosting).compactMap { $0 as? NSTableView }.first
@@ -764,7 +764,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             to: table.rect(ofRow: anchorIndex).origin
         )
         scrollView.reflectScrolledClipView(scrollView.contentView)
-        drainViewportLayout()
+        await settleViewportLayout(geometry)
         let anchorKey = "candidate:\(viewportCandidateKey(anchorIndex))"
         let anchor = try XCTUnwrap(
             geometry.value.rows.first { $0.stableKey == anchorKey }
@@ -778,7 +778,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                 index < 20 ? groupHeaderItem(index) : candidateItem(index)
             }
         await source.replaceItems(changed)
-        drainViewportLayout()
+        await settleViewportLayout(geometry)
 
         let retained = try XCTUnwrap(
             geometry.value.rows.first { $0.stableKey == anchorKey }
@@ -790,21 +790,15 @@ final class ImportCandidateViewportTests: XCTestCase {
         var state = ImportCandidateListViewport()
         let rows = (28...31)
             .map { index in
-                ImportCandidateListRowBounds(
-                    stableKey: viewportCandidateKey(index),
-                    bounds: CGRect(
-                        x: 0,
-                        y: (index - 28) * 62 - 40,
-                        width: 460,
-                        height: 62
-                    )
+                viewportRow(
+                    viewportCandidateKey(index),
+                    y: CGFloat((index - 28) * 62 - 40)
                 )
             }
-        let bounds = CGRect(x: 0, y: 84, width: 460, height: 516)
         XCTAssertNil(
             state.update(
                 rows: rows,
-                viewport: bounds,
+                viewport: viewportBounds,
                 contentRevision: 1,
                 revealInProgress: false,
                 positionOf: { _ in nil }
@@ -813,12 +807,112 @@ final class ImportCandidateViewportTests: XCTestCase {
         XCTAssertEqual(
             state.update(
                 rows: rows,
-                viewport: bounds,
+                viewport: viewportBounds,
                 contentRevision: 2,
                 revealInProgress: false,
                 positionOf: { $0 == self.viewportCandidateKey(30) ? 30 : nil }
             ),
             30
+        )
+    }
+
+    /// A restore asks the list to scroll, and every layout until that scroll
+    /// runs still measures the list where the person left it — with the rows
+    /// above the anchor already resized, so a different row sits at the top.
+    /// That row is nobody's choice: a page landing in the meantime has to put
+    /// the anchor back, not the row the unscrolled list happened to show.
+    func testALayoutBeforeTheRestoreScrollCannotReplaceTheAnchor() {
+        var state = ImportCandidateListViewport()
+        let anchorKey = viewportCandidateKey(30)
+        XCTAssertNil(
+            state.update(
+                rows: [viewportRow(anchorKey, y: 84)],
+                viewport: viewportBounds,
+                contentRevision: 1,
+                revealInProgress: false,
+                positionOf: { _ in nil }
+            )
+        )
+        XCTAssertEqual(
+            state.update(
+                rows: [viewportRow(anchorKey, y: 84)],
+                viewport: viewportBounds,
+                contentRevision: 2,
+                revealInProgress: false,
+                positionOf: { $0 == anchorKey ? 30 : nil }
+            ),
+            30
+        )
+
+        XCTAssertNil(
+            state.update(
+                rows: [viewportRow(viewportCandidateKey(45), y: 84)],
+                viewport: viewportBounds,
+                contentRevision: 2,
+                revealInProgress: false,
+                positionOf: { _ in nil }
+            )
+        )
+
+        XCTAssertEqual(
+            state.update(
+                rows: [viewportRow(viewportCandidateKey(45), y: 84)],
+                viewport: viewportBounds,
+                contentRevision: 3,
+                revealInProgress: false,
+                positionOf: { $0 == anchorKey ? 30 : 45 }
+            ),
+            30
+        )
+    }
+
+    /// Once the restore's scroll has run, the list reports where it really
+    /// left its rows, and the row at the top is the anchor again — otherwise
+    /// the next page would drag the person back to the row they scrolled off.
+    func testTheAnchorFollowsTheListOnceTheRestoreScrollHasRun() {
+        var state = ImportCandidateListViewport()
+        let anchorKey = viewportCandidateKey(30)
+        let scrolledKey = viewportCandidateKey(45)
+        XCTAssertNil(
+            state.update(
+                rows: [viewportRow(anchorKey, y: 84)],
+                viewport: viewportBounds,
+                contentRevision: 1,
+                revealInProgress: false,
+                positionOf: { _ in nil }
+            )
+        )
+        XCTAssertEqual(
+            state.update(
+                rows: [viewportRow(anchorKey, y: 84)],
+                viewport: viewportBounds,
+                contentRevision: 2,
+                revealInProgress: false,
+                positionOf: { $0 == anchorKey ? 30 : nil }
+            ),
+            30
+        )
+
+        state.restoreScrolled()
+        XCTAssertNil(
+            state.update(
+                rows: [viewportRow(scrolledKey, y: 84)],
+                viewport: viewportBounds,
+                contentRevision: 2,
+                revealInProgress: false,
+                positionOf: { _ in nil }
+            )
+        )
+
+        XCTAssertEqual(
+            state.update(
+                rows: [viewportRow(scrolledKey, y: 84)],
+                viewport: viewportBounds,
+                contentRevision: 3,
+                revealInProgress: false,
+                positionOf: { $0 == scrolledKey ? 45 : 30 }
+            ),
+            45
         )
     }
 
@@ -969,14 +1063,56 @@ final class ImportCandidateViewportTests: XCTestCase {
         "/library/release-\(index)"
     }
 
+    /// The list's own frame in the tests that drive the viewport state
+    /// directly: the sidebar's header takes the first 84 points.
+    private var viewportBounds: CGRect {
+        CGRect(x: 0, y: 84, width: 460, height: 516)
+    }
+
+    private func viewportRow(
+        _ stableKey: String,
+        y: CGFloat
+    ) -> ImportCandidateListRowBounds {
+        ImportCandidateListRowBounds(
+            stableKey: stableKey,
+            bounds: CGRect(x: 0, y: y, width: 460, height: 62)
+        )
+    }
+
     private func descendants(of view: NSView) -> [NSView] {
         [view] + view.subviews.flatMap { descendants(of: $0) }
     }
 
-    private func drainViewportLayout() {
-        for _ in 0..<20 {
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+    /// Run the list until it stops moving: SwiftUI lays out on the run loop
+    /// and the scroll a restore asks for runs as main-actor work between those
+    /// passes, so each needs its turn. Settled means the list moved and then
+    /// held still — a fixed number of turns would assert on a list still on
+    /// its way.
+    private func settleViewportLayout(
+        _ geometry: GeometryObservation
+    ) async {
+        var last = geometry.value
+        var moved = false
+        var held = 0
+        for _ in 0..<400 {
+            layOutOnce()
+            await Task.yield()
+            if geometry.value != last {
+                last = geometry.value
+                moved = true
+                held = 0
+                continue
+            }
+            guard moved else { continue }
+            held += 1
+            if held == 5 { return }
         }
+    }
+
+    /// One run-loop turn, from a synchronous context: SwiftUI lays out there,
+    /// and `RunLoop.run(until:)` is spelled out of reach of an async one.
+    private func layOutOnce() {
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.005))
     }
 
     private func viewportSettle(

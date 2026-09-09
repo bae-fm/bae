@@ -91,6 +91,17 @@ struct ImportCandidateListGeometryKey: PreferenceKey {
 struct ImportCandidateListViewport {
     private var anchorKey: String?
     private var appliedContentRevision: UInt64?
+    /// Set from the moment a restore asks for a scroll until that scroll has
+    /// run. Until it does, every layout still measures the list where it stood
+    /// before it — the row at the top of those measurements is one the person
+    /// never scrolled to, so it cannot become the anchor.
+    private var awaitingRestoreScroll = false
+
+    /// The scroll the last restore asked for has run, so what the list reports
+    /// from here on is where it actually left its rows.
+    mutating func restoreScrolled() {
+        awaitingRestoreScroll = false
+    }
 
     private mutating func accept(contentRevision: UInt64) {
         appliedContentRevision = contentRevision
@@ -140,8 +151,10 @@ struct ImportCandidateListViewport {
             to: contentRevision,
             positionOf: positionOf
         ) {
+            awaitingRestoreScroll = true
             return restore
         }
+        guard !awaitingRestoreScroll else { return nil }
         observe(rows, viewport: viewport, contentRevision: contentRevision)
         return nil
     }
@@ -511,7 +524,13 @@ extension ImportCandidateListContent {
                 revealInProgress: revealOperation != nil,
                 positionOf: { list.position(of: $0) }
             ) {
-                proxy.scrollTo(target, anchor: .top)
+                // This scroll is the list's own, not the person's, and it
+                // runs on its own turn — as a reveal's does — so that the
+                // layouts before it can be told from the ones after.
+                Task { @MainActor in
+                    proxy.scrollTo(target, anchor: .top)
+                    viewport.restoreScrolled()
+                }
             }
         }
         .scrollContentBackground(.hidden)
