@@ -326,6 +326,8 @@ pub struct ImportCandidateDetailProjection {
     /// there is a pick, the verdict's lead otherwise.
     pub matched: Option<MatchedRelease>,
     pub metadata_provenance: Option<MetadataProvenance>,
+    /// Who decided that identity: the person, identification, or nobody yet.
+    pub metadata_author: crate::import::MetadataAuthor,
     pub metadata_revision: u64,
     /// Source policy captured when this candidate was first discovered.
     pub initial_metadata_source: crate::config::DefaultImportMetadataSource,
@@ -382,6 +384,7 @@ impl ImportCandidateDetailProjection {
             answer,
             matched,
             metadata_provenance,
+            metadata_author,
             metadata_revision,
             initial_metadata_source,
             imported_release,
@@ -493,6 +496,7 @@ impl ImportCandidateDetailProjection {
             metadata_draft,
             metadata_draft_is_blank,
             metadata_provenance,
+            metadata_author,
             metadata_revision,
             initial_metadata_source,
             mapping,
@@ -525,6 +529,10 @@ pub struct ImportCandidateDetail {
     pub metadata_draft: RawReleaseEdit,
     pub metadata_draft_is_blank: bool,
     pub metadata_provenance: Option<MetadataProvenance>,
+    /// Who decided that identity. The pane returns to the draft when this
+    /// becomes `Identification`: the run wrote the pick a click here would
+    /// have written, so there is nothing left on Find online to do.
+    pub metadata_author: crate::import::MetadataAuthor,
     /// Revision of the exact metadata draft and selected cover in this value.
     pub metadata_revision: u64,
     pub initial_metadata_source: crate::config::DefaultImportMetadataSource,

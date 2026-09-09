@@ -440,6 +440,7 @@ extension MappingFixtures {
         mapping: BridgeMappingTable?,
         edit: BridgeRawReleaseEdit = albumEdit,
         metadataProvenance: BridgeMetadataProvenance? = provenance,
+        metadataAuthor: BridgeMetadataAuthor? = nil,
         metadataRevision: UInt64 = 1,
         initialMetadataSource: BridgeDefaultImportMetadataSource = .none,
         failure: BridgeImportFailure? = nil,
@@ -485,6 +486,8 @@ extension MappingFixtures {
             metadataDraft: edit,
             metadataDraftIsBlank: edit.albumTitle.isEmpty,
             metadataProvenance: metadataProvenance,
+            metadataAuthor: metadataAuthor
+                ?? (metadataProvenance == nil ? .nobody : .user),
             metadataRevision: metadataRevision,
             initialMetadataSource: initialMetadataSource,
             mapping: mapping
@@ -496,6 +499,7 @@ extension MappingFixtures {
                 ),
             cover: nil,
             signals: nil,
+            lookupChoices: noLookupChoices,
             failure: failure,
             session: session(presentation: presentation)
         )
@@ -519,6 +523,14 @@ extension MappingFixtures {
     }
 
     /// A pane session with an empty form and no banner, on `presentation`.
+    /// What a fixture candidate's identification asks about: everything, with
+    /// no catalog number singled out.
+    static let noLookupChoices = BridgeLookupChoices(
+        discIdExcluded: false,
+        barcodeExcluded: false,
+        chosenCatalogs: []
+    )
+
     static func session(
         presentation: BridgeMetadataPresentation = .draft
     ) -> BridgeCandidateSession {

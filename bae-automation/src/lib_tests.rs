@@ -337,6 +337,7 @@ mod identify_mirrors {
                 },
             ],
             narrowed_out: Default::default(),
+            ledger: None,
             context: empty_context(),
         };
 
@@ -386,6 +387,7 @@ mod identify_mirrors {
                 },
             ],
             narrowed_out: Default::default(),
+            ledger: None,
             context: empty_context(),
         };
 

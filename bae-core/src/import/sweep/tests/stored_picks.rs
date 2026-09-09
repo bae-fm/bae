@@ -35,6 +35,12 @@ async fn a_pick_reads_back_as_the_same_answer() {
         "the chip says which signal turned the release up, on the file it came from"
     );
 
+    assert_eq!(
+        resumed.metadata_author,
+        crate::import::MetadataAuthor::Identification,
+        "the pane's own value says identification wrote the pick"
+    );
+
     // The row carries the same decision for the sidebar's resume trigger.
     let picked = queue_row(&fixture, &key)
         .await
@@ -58,6 +64,11 @@ async fn a_pick_reads_back_as_the_same_answer() {
         .expect("deciding File Tags succeeds");
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
     assert!(resumed.release.is_none(), "File Tags names no external release");
+    assert_eq!(
+        resumed.metadata_author,
+        crate::import::MetadataAuthor::User,
+        "and the person is now the author of the draft"
+    );
     assert!(
         !resumed.metadata_draft.is_blank(),
         "and still draws a form, seeded from the folder's own tags"

@@ -336,6 +336,11 @@ pub(super) fn load_candidate_detail_on(
     let picked = current
         .as_ref()
         .and_then(|state| state.metadata_provenance.clone());
+    let metadata_author = current
+        .as_ref()
+        .map_or(crate::import::MetadataAuthor::Nobody, |state| {
+            state.metadata_author
+        });
     let signals = current.as_ref().and_then(|state| state.signals.clone());
     let lookup_choices = current
         .as_ref()
@@ -476,6 +481,7 @@ pub(super) fn load_candidate_detail_on(
             answer,
             matched,
             metadata_provenance: picked,
+            metadata_author,
             metadata_revision,
             initial_metadata_source,
             imported_release,

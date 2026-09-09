@@ -3,6 +3,7 @@ mod pick_partners;
 mod candidate_mutation_race;
 mod session;
 mod lookup_choices;
+mod metadata_author;
 // The pane's own controls, from the handle down to the next read.
 //
 // Every one of these writes a row and returns; nothing is handed back to the

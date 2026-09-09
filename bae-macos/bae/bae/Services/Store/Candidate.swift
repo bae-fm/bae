@@ -481,6 +481,13 @@ struct Candidate: Equatable, Identifiable {
         detail?.metadataProvenance
     }
 
+    /// Who wrote the current draft. `.nobody` for a candidate with no pick,
+    /// and for a re-identify session, which has no candidate row to write one
+    /// on.
+    var metadataAuthor: BridgeMetadataAuthor {
+        detail?.metadataAuthor ?? .nobody
+    }
+
     var metadataDraftIsBlank: Bool {
         detail?.metadataDraftIsBlank ?? true
     }

@@ -407,6 +407,22 @@ pub enum BridgeMetadataProvenance {
     FileTags,
 }
 
+/// Who wrote the candidate's metadata. Mirror of
+/// `bae_core::import::MetadataAuthor`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeMetadataAuthor {
+    Nobody,
+    Identification,
+    User,
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeMetadataAuthor = bae_core::import::MetadataAuthor,
+    from_core: pub(crate) fn,
+    variants: { Nobody, Identification, User },
+}
+
 mirror_enum! {
     #[cfg(feature = "desktop")]
     BridgeMetadataProvenance = bae_core::import::MetadataProvenance,

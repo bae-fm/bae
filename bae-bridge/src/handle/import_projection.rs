@@ -510,6 +510,7 @@ impl crate::types::BridgeImportCandidateDetail {
             metadata_draft,
             metadata_draft_is_blank,
             metadata_provenance,
+            metadata_author,
             metadata_revision,
             initial_metadata_source,
             mapping,
@@ -545,6 +546,7 @@ impl crate::types::BridgeImportCandidateDetail {
             metadata_draft_is_blank,
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
+            metadata_author: crate::types::BridgeMetadataAuthor::from_core(metadata_author),
             metadata_revision,
             initial_metadata_source: crate::types::BridgeDefaultImportMetadataSource::from_core(
                 initial_metadata_source,

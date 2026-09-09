@@ -663,6 +663,9 @@ public sealed class ImportMappingPaneTests
             MetadataDraftIsBlank: edit is not null
                 && string.IsNullOrEmpty(edit.AlbumTitle),
             MetadataProvenance: metadataProvenance,
+            MetadataAuthor: metadataProvenance is null
+                ? BridgeMetadataAuthor.Nobody
+                : BridgeMetadataAuthor.User,
             MetadataRevision: metadataRevision,
             InitialMetadataSource: BridgeDefaultImportMetadataSource.None,
             Mapping: new BridgeMappingTable(
@@ -685,6 +688,7 @@ public sealed class ImportMappingPaneTests
                 new BridgeCoverImageSource.Local("/Music/Incoming/Album/cover.jpg"),
                 new BridgeCoverImageSource.Local("/Music/Incoming/Album/cover.jpg")),
             Signals: null,
+            LookupChoices: NativeBae.NoLookupChoices(),
             Failure: failure,
             // This fixture has not visited Find Online or entered a query.
             Session: new BridgeCandidateSession(

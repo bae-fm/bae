@@ -5,31 +5,32 @@ import Testing
 
 @testable import bae
 
-/// Find online returning to the draft on its own when core picks a sole match.
+/// Find online returning to the draft on its own when identification writes
+/// the pick.
 ///
-/// The run matches one pressing, core commits it without asking, and the
-/// candidate's draft comes to carry that pick. There is then nothing left to
-/// do on this pane — clicking the row would apply what is already applied — so
-/// the pane leaves the way a pick by hand leaves it.
+/// The run matches one pressing and core commits it without asking, so the
+/// candidate's draft comes to say identification wrote it. There is then
+/// nothing left to do on this pane — clicking the row would apply what is
+/// already applied — so the pane leaves the way a pick by hand leaves it.
 ///
 /// Driven the way the app drives it: the pane is rebuilt from a new candidate
 /// value, and the rule reads the transition between the two.
 @MainActor
-@Suite("Find online advances on core's own pick")
+@Suite("Find online advances on identification's pick")
 struct FindOnlineAutoAdvanceTests {
-    /// The verdict and the draft are written as one row, so the person watching
+    /// The author and the draft are written as one row, so the person watching
     /// the spinner sees the pick land and the pane go back to it.
-    @Test("core's pick landing on the draft returns the pane to it")
-    func corePickLandingReturnsToTheDraft() async {
+    @Test("the draft coming to say identification wrote it returns the pane")
+    func identificationsPickReturnsToTheDraft() async {
         let back = BackRecorder()
         let (window, host) = AutoAdvanceHosting.host(
-            pane(candidate: .committingTheSoleMatch, onBack: back.record)
+            pane(candidate: .awaitingAnAuthor, onBack: back.record)
         )
         await SnapshotTestSupport.settle(host)
         #expect(back.count == 0)
 
         host.rootView = pane(
-            candidate: .settledOnTheSoleMatch,
+            candidate: .writtenByIdentification,
             onBack: back.record
         )
         await SnapshotTestSupport.settle(host)
@@ -38,23 +39,19 @@ struct FindOnlineAutoAdvanceTests {
         withExtendedLifetime(window) {}
     }
 
-    /// Opening Find online on a candidate core already picked for is a
-    /// deliberate visit — the person wants to look at the other pressings, or
-    /// search. The pane must not bounce them out of it, even as the run's
-    /// placement settles underneath.
-    @Test("a draft that already carried the pick keeps the pane open")
-    func aDraftThatAlreadyCarriedThePickStays() async {
+    /// Opening Find online on a candidate identification already picked for is
+    /// a deliberate visit — the person wants to look at the other pressings,
+    /// or search. The pane must not bounce them out of it.
+    @Test("a draft identification had already written keeps the pane open")
+    func aDraftAlreadyWrittenByIdentificationStays() async {
         let back = BackRecorder()
         let (window, host) = AutoAdvanceHosting.host(
-            pane(
-                candidate: .committingAPickTheDraftAlreadyCarries,
-                onBack: back.record
-            )
+            pane(candidate: .writtenByIdentification, onBack: back.record)
         )
         await SnapshotTestSupport.settle(host)
 
         host.rootView = pane(
-            candidate: .settledOnTheSoleMatch,
+            candidate: .writtenByIdentification,
             onBack: back.record
         )
         await SnapshotTestSupport.settle(host)
@@ -64,20 +61,17 @@ struct FindOnlineAutoAdvanceTests {
     }
 
     /// A pick the person made owns its own way out — `applyMetadata`'s
-    /// `onConfirmed`. Nothing was being committed here, so this rule stays out
+    /// `onConfirmed`. Nobody but them wrote this draft, so this rule stays out
     /// of it and the pane is not sent back twice.
-    @Test("a pick nobody was committing is not this rule's to act on")
-    func aPickNobodyWasCommittingIsNotActedOn() async {
+    @Test("a pick the person made is not this rule's to act on")
+    func aPickThePersonMadeIsNotActedOn() async {
         let back = BackRecorder()
         let (window, host) = AutoAdvanceHosting.host(
-            pane(candidate: .offeringTheSoleMatch, onBack: back.record)
+            pane(candidate: .awaitingAnAuthor, onBack: back.record)
         )
         await SnapshotTestSupport.settle(host)
 
-        host.rootView = pane(
-            candidate: .settledOnTheSoleMatch,
-            onBack: back.record
-        )
+        host.rootView = pane(candidate: .writtenByTheUser, onBack: back.record)
         await SnapshotTestSupport.settle(host)
 
         #expect(back.count == 0)
@@ -112,114 +106,43 @@ struct FindOnlineAutoAdvanceTests {
     }
 }
 
-/// The rule on its own, without a view: what the pane compares between two
-/// readings of the same candidate.
-@MainActor
-@Suite("What counts as core's pick landing")
-struct SoleMatchProgressTests {
-    private let pick = PreviewData.exactPressings[1].pick
-
-    @Test("the pick core was committing becoming the draft's is the landing")
-    func theLanding() {
-        #expect(
-            progress(committing: nil, applied: pick)
-                .followedCorePick(after: progress(committing: pick))
-        )
-    }
-
-    @Test("a draft that already carried it has nothing to land")
-    func alreadyCarried() {
-        #expect(
-            !progress(committing: nil, applied: pick)
-                .followedCorePick(
-                    after: progress(committing: pick, applied: pick)
-                )
-        )
-    }
-
-    @Test("nothing was being committed, so nothing landed")
-    func nothingCommitting() {
-        #expect(
-            !progress(committing: nil, applied: pick)
-                .followedCorePick(after: progress())
-        )
-    }
-
-    @Test("a draft that came to carry some other pick did not land this one")
-    func someOtherPick() {
-        #expect(
-            !progress(
-                committing: nil,
-                applied: PreviewData.exactPressings[0].pick
-            )
-            .followedCorePick(after: progress(committing: pick))
-        )
-    }
-
-    /// Clearing the draft while core commits is not a landing either.
-    @Test("a draft cleared under a run has landed nothing")
-    func clearedDraft() {
-        #expect(
-            !progress().followedCorePick(after: progress(committing: pick))
-        )
-    }
-
-    private func progress(
-        committing: BridgeMetadataProvenance? = nil,
-        applied: BridgeMetadataProvenance? = nil
-    ) -> ImportSearchFlow.SoleMatchProgress {
-        ImportSearchFlow.SoleMatchProgress(
-            committing: committing,
-            applied: applied
-        )
-    }
-}
-
 // MARK: - Fixtures
 
 @MainActor
 extension Candidate {
-    /// The run matched one pressing and core is committing it: the row is
-    /// finalizing and the draft has not been written yet.
-    static var committingTheSoleMatch: Candidate {
-        soleMatch(placement: .identification(status: .finalizing), pick: nil)
+    /// The run matched one pressing and nothing has claimed the draft yet.
+    static var awaitingAnAuthor: Candidate {
+        soleMatch(pick: nil, author: .nobody)
     }
 
-    /// Core committed the pick and the row settled: one row write, so both
-    /// changed together.
-    static var settledOnTheSoleMatch: Candidate {
-        soleMatch(placement: .ready, pick: PreviewData.exactPressings[1].pick)
-    }
-
-    /// Find online opened on a candidate whose draft core had already picked
-    /// for, while its row still reads as finalizing.
-    static var committingAPickTheDraftAlreadyCarries: Candidate {
+    /// Identification committed the pick: one row write, so the draft and its
+    /// author changed together.
+    static var writtenByIdentification: Candidate {
         soleMatch(
-            placement: .identification(status: .finalizing),
-            pick: PreviewData.exactPressings[1].pick
+            pick: PreviewData.exactPressings[1].pick,
+            author: .identification
         )
     }
 
-    /// The sole match is on offer and nothing is being committed — the state a
-    /// pick by hand starts from.
-    static var offeringTheSoleMatch: Candidate {
-        soleMatch(placement: .ready, pick: nil)
+    /// The person picked the same pressing themselves.
+    static var writtenByTheUser: Candidate {
+        soleMatch(pick: PreviewData.exactPressings[1].pick, author: .user)
     }
 
     private static func soleMatch(
-        placement: BridgeTriagePlacement,
-        pick: BridgeMetadataProvenance?
+        pick: BridgeMetadataProvenance?,
+        author: BridgeMetadataAuthor
     ) -> Candidate {
         var candidate = Candidate(
             detail: MappingFixtures.detail(
                 mapping: nil,
-                metadataProvenance: pick
+                metadataProvenance: pick,
+                metadataAuthor: author
             )
         )
-        // One pressing, so the pane reads it as the one core picks on its own.
+        // One pressing, so the pane draws the answer a sole match settles on.
         candidate.resumedIdentifyState =
             PreviewData.searchStateFinalizing.identifyState
-        candidate.row?.placement = placement
         return candidate
     }
 }

@@ -333,6 +333,7 @@ pub(crate) fn load_states_rows_on(
                     state.content_hash
                 ))
             })?;
+            let provenance = provenances.remove(&state.content_hash);
             out.insert(
                 state.content_hash.clone(),
                 DbImportCandidateState {
@@ -341,9 +342,10 @@ pub(crate) fn load_states_rows_on(
                         .remove(&state.content_hash)
                         .unwrap_or_default(),
                     identify: verdicts.remove(&state.content_hash),
-                    metadata_provenance: provenances
-                        .remove(&state.content_hash)
-                        .map(|(provenance, _)| provenance),
+                    metadata_author: provenance
+                        .as_ref()
+                        .map_or(MetadataAuthor::Nobody, |(_, author)| *author),
+                    metadata_provenance: provenance.map(|(provenance, _)| provenance),
                     content_hash: state.content_hash,
                     folder_path: state.folder_path,
                     file_edits,

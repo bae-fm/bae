@@ -45,6 +45,7 @@ mod triage_tests {
         };
         let live = IdentifyState::ManualOnly {
             track_count: 9,
+            ledger: None,
             context,
         };
         let expected = live.toolbar().len();
@@ -129,6 +130,31 @@ mod conversion_roundtrip {
             musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
             discogs_artist_id: Some("discogs-1".to_string()),
         }
+    }
+
+    /// Who wrote the candidate's draft crosses as itself. The pane returns to
+    /// the draft on `Identification` alone, so a variant landing as another
+    /// would either strand the person on Find online or bounce them off it.
+    #[cfg(feature = "desktop")]
+    #[test]
+    fn the_draft_s_author_crosses_the_bridge_as_itself() {
+        use bae_core::import::MetadataAuthor;
+        let crossed: Vec<_> = [
+            MetadataAuthor::Nobody,
+            MetadataAuthor::Identification,
+            MetadataAuthor::User,
+        ]
+        .into_iter()
+        .map(BridgeMetadataAuthor::from_core)
+        .collect();
+        assert_eq!(
+            crossed,
+            vec![
+                BridgeMetadataAuthor::Nobody,
+                BridgeMetadataAuthor::Identification,
+                BridgeMetadataAuthor::User,
+            ]
+        );
     }
 
     #[test]

@@ -242,6 +242,7 @@ private func detail(
         metadataDraft: MappingFixtures.albumEdit,
         metadataDraftIsBlank: false,
         metadataProvenance: MappingFixtures.provenance,
+        metadataAuthor: .user,
         metadataRevision: 1,
         initialMetadataSource: .none,
         mapping: BridgeMappingTable(
@@ -252,6 +253,7 @@ private func detail(
         ),
         cover: cover,
         signals: nil,
+        lookupChoices: MappingFixtures.noLookupChoices,
         failure: nil,
         session: MappingFixtures.session(presentation: presentation)
     )

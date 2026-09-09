@@ -67,6 +67,7 @@ fn row_with_verdict(
         lookup_choices: Default::default(),
         file_edits: Default::default(),
         metadata_provenance: None,
+        metadata_author: crate::import::MetadataAuthor::Nobody,
         metadata_revision: 0,
     }
 }

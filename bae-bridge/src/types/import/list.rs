@@ -159,6 +159,10 @@ pub struct BridgeImportCandidateDetail {
     pub metadata_draft_is_blank: bool,
     /// Where the current draft began, absent for direct entry and after clear.
     pub metadata_provenance: Option<BridgeMetadataProvenance>,
+    /// Who wrote it. Find online returns to the draft when this becomes
+    /// `Identification`: the run wrote the pick a click there would have
+    /// written, so the pane is done.
+    pub metadata_author: BridgeMetadataAuthor,
     /// Revision of the exact metadata draft and selected cover in this value.
     pub metadata_revision: u64,
     /// Source policy captured when this candidate was first discovered.

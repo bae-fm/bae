@@ -89,6 +89,9 @@ pub struct DbImportCandidateState {
     /// alike — it names a release, not a shape; one identification concluded
     /// lives exactly as long as the verdict that concluded it.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
+    /// Who decided it. `Nobody` where nothing is decided — the two move
+    /// together, because the author is stored on the provenance row.
+    pub metadata_author: crate::import::MetadataAuthor,
     /// Revision of the editable metadata group. Every draft, artist, track, or
     /// cover mutation advances it so a source projection cannot overwrite a
     /// newer edit.

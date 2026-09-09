@@ -47,10 +47,6 @@ extension ImportSearchFlow {
         let key = input.key
         let importStore = services.importStore
         let state = searchPaneState(candidate: input.candidate, input: input)
-        let progress = SoleMatchProgress(
-            state: state,
-            candidate: input.candidate
-        )
 
         ImportSearchPane(
             state: state,
@@ -130,21 +126,21 @@ extension ImportSearchFlow {
             },
             onSelect: onSelect,
         )
-        // A sole match core picks on its own leaves nothing here to do: the
-        // draft already carries the claim the person's click would make. Leave
+        // The draft saying identification wrote it leaves nothing here to do:
+        // it already carries the claim the person's click would make. Leave
         // Find online the way a pick by hand leaves it — `applyMetadata`'s
         // `onConfirmed` calls the same way out.
         //
         // Only on the transition, and inside `.id(key)` so it is this
-        // candidate's: a candidate whose draft already carried the pick when
-        // Find online opened stays open, because being here is then something
-        // the person asked for.
+        // candidate's: a candidate whose draft identification had already
+        // written when Find online opened stays open, because being here is
+        // then something the person asked for.
         //
         // The re-identify sheet is untouched twice over — it hands the pane no
-        // way back, and its candidate has no stored draft for a pick to land
-        // on, so its progress never leaves `nil`.
-        .onChange(of: progress) { was, now in
-            if now.followedCorePick(after: was) {
+        // way back, and its candidate has no row to write an author on, so its
+        // author never leaves `.nobody`.
+        .onChange(of: input.candidate.metadataAuthor) { _, now in
+            if now == .identification {
                 onBack?()
             }
         }
@@ -160,42 +156,6 @@ extension ImportSearchFlow {
                 key: key,
                 desired: releaseStatusKeys(state: state)
             )
-        }
-    }
-
-    /// What core is claiming for this candidate on its own, and what its
-    /// draft has come to claim. Both describe the candidate as it stands: the
-    /// first is the pick of the one pressing a run matched, held while core
-    /// commits it; the second is the pick the stored draft was read from. Core
-    /// writes the verdict and the draft in one row, so the two become the same
-    /// value the instant that write lands.
-    struct SoleMatchProgress: Equatable {
-        /// The pick core is committing on its own, while it commits it.
-        let committing: BridgeMetadataProvenance?
-        /// The pick the candidate's stored draft was read from.
-        let applied: BridgeMetadataProvenance?
-
-        init(
-            committing: BridgeMetadataProvenance?,
-            applied: BridgeMetadataProvenance?
-        ) {
-            self.committing = committing
-            self.applied = applied
-        }
-
-        init(state: ImportSearchState, candidate: Candidate) {
-            self.init(
-                committing: state.finalizingPressing?.provenance,
-                applied: candidate.metadataProvenance
-            )
-        }
-
-        /// Whether this value follows `previous` by core's own pick landing on
-        /// the draft: what core was committing is now what the draft carries,
-        /// and it was not already.
-        func followedCorePick(after previous: SoleMatchProgress) -> Bool {
-            guard let committing = previous.committing else { return false }
-            return applied == committing && previous.applied != committing
         }
     }
 

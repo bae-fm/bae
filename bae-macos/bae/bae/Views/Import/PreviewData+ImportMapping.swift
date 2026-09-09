@@ -476,6 +476,8 @@
                     metadataDraft: edit,
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,
+                    metadataAuthor: metadataProvenance == nil
+                        ? .nobody : .user,
                     metadataRevision: 1,
                     initialMetadataSource: initialMetadataSource,
                     mapping: mapping,
