@@ -13,10 +13,15 @@ runs:
     - name: Install Linux dependencies
       shell: bash
       run: |
+        # The runner image ships apt sources for software this job never
+        # installs, and a failing index fetch from any of them fails the
+        # refresh. Microsoft's have failed before; Google's chrome-stable
+        # index fails its hash check.
         sudo rm -f \
           /etc/apt/sources.list.d/azure-cli.* \
           /etc/apt/sources.list.d/microsoft-prod.* \
-          /etc/apt/sources.list.d/packages-microsoft-prod.*
+          /etc/apt/sources.list.d/packages-microsoft-prod.* \
+          /etc/apt/sources.list.d/google-chrome.*
         sudo apt-get update
         # libasound2-dev: cpal builds its ALSA backend on Linux.
         # clang/libclang-dev: ffmpeg-sys-next runs bindgen against the headers.
