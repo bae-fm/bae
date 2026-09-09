@@ -659,13 +659,9 @@ async fn change_cover_twice_replaces_the_cover_blob() {
     );
 }
 
-/// On a browsable home a cover's cloud key is the row's readable `cloud_path`, and
-/// that path carries the blob id — so replacing a cover writes a NEW object rather
-/// than overwriting the one it replaces. A reused key cannot be made to converge:
-/// two devices replacing the same cover would race for one object, and a device
-/// applying a changeset written before a replacement could never satisfy that
-/// changeset's content hash. Distinct keys leave the superseded object readable
-/// until its tombstone is collected.
+/// On a browsable home, replacements have distinct readable paths and exact
+/// stored objects. Reusing an object's key would let a replacement overwrite
+/// bytes still referenced by an earlier change.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn replacing_a_cover_on_a_browsable_home_writes_a_distinct_cloud_key() {
@@ -739,24 +735,13 @@ async fn replacing_a_cover_on_a_browsable_home_writes_a_distinct_cloud_key() {
 
     // The two keys really are distinct objects, so writing the second never
     // overwrites the first.
-    let old_blob = crate::sync::image_blob_ref(
-        crate::sync::COVERS_NAMESPACE,
-        &first.blob_id,
-        first.cloud_path.clone(),
+    let old_stored = first_stored.stored().expect("first cover reached the cloud");
+    let new_stored = second_stored.stored().expect("second cover reached the cloud");
+    assert_ne!(
+        old_stored.object().slot().logical_key(),
+        new_stored.object().slot().logical_key()
     );
-    let new_blob = crate::sync::image_blob_ref(
-        crate::sync::COVERS_NAMESPACE,
-        &second.blob_id,
-        second.cloud_path.clone(),
-    );
-    let old_key = manager.database.blob_cloud_key(&old_blob).unwrap();
-    let new_key = manager.database.blob_cloud_key(&new_blob).unwrap();
-    assert_ne!(old_key, new_key);
-    assert!(
-        first_stored.stored().is_some() && second_stored.stored().is_some(),
-        "both covers reached the cloud"
-    );
-    assert_ne!(first_stored.stored(), second_stored.stored());
+    assert_ne!(old_stored, new_stored);
 }
 
 /// Queueing an album expands to its PRIMARY release's tracks, not the

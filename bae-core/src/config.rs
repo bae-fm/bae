@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use std::num::{NonZeroU32, NonZeroUsize};
+use std::num::{NonZeroU32, NonZeroU64, NonZeroUsize};
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
@@ -437,8 +437,8 @@ pub struct LibraryIdentity {
     pub device_id: Option<String>,
 }
 
-/// `config.yaml`: the library's identity, bae's settings, and coven's cloud
-/// home, each flattened onto one top-level mapping.
+/// `config.yaml`: the library's identity, snapshot policy, bae's settings, and
+/// coven's cloud home in one top-level mapping.
 ///
 /// Serializing is derived. Parsing is not: a save preset's codec is written as
 /// a YAML tag (`codec: !Flac`), and serde's `flatten` funnels every flattened
@@ -448,6 +448,8 @@ pub struct LibraryIdentity {
 pub struct ConfigYaml {
     #[serde(flatten)]
     pub identity: LibraryIdentity,
+    /// Accepted library commits before an owner attempts a snapshot.
+    pub snapshot_commit_threshold: NonZeroU64,
     #[serde(flatten)]
     pub prefs: Preferences,
     /// Cloud home provider + per-provider settings.
@@ -456,11 +458,17 @@ pub struct ConfigYaml {
 }
 
 impl ConfigYaml {
-    /// Read the three parts out of one parsed mapping. Each ignores the keys
-    /// that belong to the others; between them they claim every key the file has.
+    /// Read the config from one parsed mapping, preserving YAML tags in presets.
     fn from_value(value: &serde_yaml::Value) -> Result<Self, serde_yaml::Error> {
         Ok(Self {
             identity: LibraryIdentity::deserialize(value)?,
+            snapshot_commit_threshold: NonZeroU64::deserialize(
+                value.get("snapshot_commit_threshold").ok_or_else(|| {
+                    <serde_yaml::Error as serde::de::Error>::missing_field(
+                        "snapshot_commit_threshold",
+                    )
+                })?,
+            )?,
             prefs: Preferences::deserialize(value)?,
             cloud_home: CloudHomeConfig::deserialize(value)?,
         })
@@ -474,6 +482,7 @@ impl ConfigYaml {
                 store_id: self.identity.library_id,
                 device_id,
                 store_name: self.identity.library_name,
+                snapshot_commit_threshold: self.snapshot_commit_threshold,
                 cloud_home: self.cloud_home,
             },
             library_path,
@@ -491,6 +500,7 @@ impl From<&Config> for ConfigYaml {
                 device_id: Some(config.device_id.clone()),
             },
             prefs: config.prefs.clone(),
+            snapshot_commit_threshold: config.snapshot_commit_threshold,
             cloud_home: config.cloud_home.clone(),
         }
     }

@@ -166,6 +166,14 @@ fn config_yaml_requires_library_id() {
 }
 
 #[test]
+fn config_yaml_requires_a_positive_snapshot_threshold() {
+    assert!(parse_yaml_without("snapshot_commit_threshold").is_err());
+    let mut value = full_config_yaml_value();
+    value["snapshot_commit_threshold"] = serde_yaml::Value::Number(0.into());
+    assert!(ConfigYaml::from_value(&value).is_err());
+}
+
+#[test]
 fn config_yaml_requires_mcp() {
     assert!(
         parse_yaml_without("mcp").is_err(),
@@ -273,8 +281,8 @@ fn config_yaml_requires_every_bae_field() {
     }
 }
 
-/// The file is the contract. Identity, preferences, and coven's cloud home are
-/// three structs flattened onto one mapping, so this pins the whole thing a
+/// The file is the contract. Identity, snapshot policy, preferences, and coven's
+/// cloud home share one mapping, so this pins the whole thing a
 /// fresh library writes: every key, its order, its nesting, and its default. A
 /// rename, a dropped key, or a value that stopped being emitted shows up here.
 #[test]
@@ -287,6 +295,7 @@ fn config_yaml_pins_the_on_disk_file() {
         r#"library_id: abc-123
 library_name: Test Library
 device_id: test-device-id
+snapshot_commit_threshold: 100
 discogs: null
 replay_gain_mode: Off
 save_presets:
@@ -839,12 +848,14 @@ fn from_coven_preserves_library_id_and_persists_bae_yaml() {
         "Test Library".to_string(),
     );
     coven_config.cloud_home.provider = Some(CloudProvider::CloudKit);
+    coven_config.snapshot_commit_threshold = NonZeroU64::new(7).unwrap();
     coven_config.cloud_home.cloudkit_owner_name = Some("_owner".to_string());
     coven_config.cloud_home.cloudkit_zone_name = Some("bae-library".to_string());
     let config = Config::from_coven(coven_config, library_path.clone());
 
     assert_eq!(config.store_id, library_id);
     assert_eq!(config.store_name, "Test Library");
+    assert_eq!(config.to_coven().snapshot_commit_threshold.get(), 7);
     assert_eq!(config.prefs.mcp, McpConfig::disabled_default());
     assert_eq!(
         config.cloud_home.cloudkit_owner_name.as_deref(),
@@ -870,4 +881,6 @@ fn from_coven_preserves_library_id_and_persists_bae_yaml() {
         yaml.cloud_home.cloudkit_zone_name.as_deref(),
         Some("bae-library")
     );
+    let loaded = yaml.into_config("restored-device".to_string(), library_path);
+    assert_eq!(loaded.to_coven().snapshot_commit_threshold.get(), 7);
 }

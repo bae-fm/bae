@@ -313,7 +313,9 @@ fn write_description(write: &coven::PendingWrite) -> String {
 
 fn write_error(write: &coven::PendingWrite) -> String {
     match &write.status {
-        coven::WriteStatus::Blocked(block) => write_block(block),
+        coven::WriteStatus::Blocked(block) | coven::WriteStatus::LocalOnlyBlocked(block) => {
+            write_block(block)
+        }
         status => {
             warn!("coven reported a blocked write whose status is {status:?}");
             format!("the write is not blocked: {status:?}")
@@ -323,6 +325,7 @@ fn write_error(write: &coven::PendingWrite) -> String {
 
 fn write_block(block: &coven::WriteBlock) -> String {
     match block {
+        coven::WriteBlock::RebaseConflict(conflict) => conflict.to_string(),
         coven::WriteBlock::InvalidPackage { reason } => format!("invalid package: {reason}"),
         coven::WriteBlock::InvalidProtocolState { reason } => {
             format!("invalid protocol state: {reason}")
@@ -352,7 +355,6 @@ fn reclaim_description(target: &coven::ReclaimTarget) -> &'static str {
         coven::ReclaimTarget::CirclePackage(_) => "a published batch of circle changes",
         coven::ReclaimTarget::CircleBootstrapImage(_) => "a circle's starting image",
         coven::ReclaimTarget::CircleSnapshotImage(_) => "a circle's snapshot image",
-        coven::ReclaimTarget::StoreMembershipRollup(_) => "the library's membership record",
         coven::ReclaimTarget::AudienceBlob(_) => "a stored file",
     }
 }
@@ -478,6 +480,37 @@ mod tests {
                 primary_key: "release-3".to_string(),
             }],
         })
+    }
+
+    #[test]
+    fn shared_and_private_rebase_conflicts_preserve_the_reason_and_write_identity() {
+        let write_id = coven::WriteId::from_generated("write-conflict".to_string());
+        let rows = vec![coven::AffectedRow {
+            table: "releases".to_string(),
+            primary_key: "release-3".to_string(),
+        }];
+        let conflict = coven::WriteRebaseConflict {
+            write_id: write_id.clone(),
+            affected_rows: rows.clone(),
+            reason: coven::WriteRebaseConflictReason::MissingTarget,
+        };
+        let block = coven::WriteBlock::RebaseConflict(conflict.clone());
+        for status in [
+            coven::WriteStatus::Blocked(block.clone()),
+            coven::WriteStatus::LocalOnlyBlocked(block),
+        ] {
+            let operation = BlockedSyncOperation::from_coven(&coven::BlockedOperation::Write(
+                coven::PendingWrite {
+                    write_id: write_id.clone(),
+                    status,
+                    affected_rows: rows.clone(),
+                },
+            ));
+            assert_eq!(operation.id, "write:write-conflict");
+            assert_eq!(operation.description, "releases/release-3");
+            assert_eq!(operation.error, conflict.to_string());
+            assert!(operation.error.contains("the edited row is absent"));
+        }
     }
 
     /// A completed cycle that left an operation waiting reports it with the

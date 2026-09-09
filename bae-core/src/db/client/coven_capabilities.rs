@@ -219,16 +219,6 @@ impl Database {
         self.inner.handle.evict_blob(blob).await
     }
 
-    /// The cloud object key a blob is stored under. Test-only: a test asserts the
-    /// read key matches the stored upload key.
-    #[cfg(test)]
-    pub(crate) fn blob_cloud_key(
-        &self,
-        blob: &coven::BlobRef,
-    ) -> Result<String, coven::StorageError> {
-        self.inner.handle.blob_cloud_key(blob)
-    }
-
     pub(crate) async fn make_remote(
         &self,
         root_table: &str,

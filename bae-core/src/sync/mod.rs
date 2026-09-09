@@ -7,8 +7,7 @@
 //! the synced-table declarations, and bae's blob namespaces plus cache budgets.
 
 // The sync substrate lives in coven; these resolve `crate::sync::<item>`
-// unchanged. Blob-key derivation is coven's, reached through
-// `CovenHandle::blob_cloud_key`.
+// unchanged. Cloud blob operations use the exact stored blob reference.
 pub use coven::{decode_restore_code_info, restore_from_code, RestoreSource};
 
 // `CloudCipher` is what a test hands to `connect_sync_with_test_home`; coven
@@ -133,11 +132,9 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         // The user's own imported files: user-provided (Local = the file at the
         // user's path, an external ref coven holds), CacheLazy (fetched on first
         // read when Remote). coven reads the blob id off the PK and the readable
-        // cloud key off `cloud_path`. write_once: the row is never repointed — a
-        // re-import mints a new release id, hence a new blob and path, so an
-        // audio object at a key never changes content. That is what lets the
-        // cloud key stay a readable name with no blob id in it; coven refuses a
-        // repoint rather than silently rewriting an object a peer already holds.
+        // path off `cloud_path`. write_once forbids repointing an existing row;
+        // a re-import creates new release and file identities. Coven's exact
+        // stored object references preserve the bytes each publication names.
         SyncedTable::new("release_files", RowIdentity::IndependentUuid).carries_blob(
             BlobDecl::new(
                 RELEASE_FILES_NAMESPACE,
