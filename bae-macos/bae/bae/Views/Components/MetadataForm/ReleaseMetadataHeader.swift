@@ -225,10 +225,7 @@ struct ReleasePressingFieldsGrid: View {
                 value: text,
                 monospaced: monospaced,
                 chrome: .inline,
-                font: .system(
-                    size: 12.5,
-                    design: monospaced ? .monospaced : .default
-                ),
+                font: .system(size: 12.5),
                 placeholderRole: .emptyMark,
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(field, $0) },

@@ -350,9 +350,9 @@ impl ImportServiceHandle {
     /// wrapper: the person's decision stands
     /// whether or not they are still looking at the candidate when its
     /// release fetch and write finish. The decision also ends whatever
-    /// identification the candidate had going — see
-    /// [`ImportServiceHandle::cancel_identification`] — inside that same
-    /// write, so no run can answer a candidate a person has already answered.
+    /// identification the candidate had going, through the handle's
+    /// cancellation, inside that same write, so no run can answer a candidate
+    /// a person has already answered.
     pub async fn select_candidate_metadata_provenance(
         &self,
         candidate_key: String,

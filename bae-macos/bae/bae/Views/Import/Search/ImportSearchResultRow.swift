@@ -186,18 +186,28 @@ struct ImportSearchResultRow: View {
     }
 
     /// Agreement badges use the accent as an informational tint.
+    /// Only the agreements a row has, packed in one fixed order, so rows read
+    /// as a run of badges rather than a grid with gaps.
+    @ViewBuilder
     private func agreementBadge(
         _ agreement: SignalBadgeStyle.Agreement,
         on: Bool
     ) -> some View {
+        if on {
+            agreementChip(agreement)
+        }
+    }
+
+    private func agreementChip(_ agreement: SignalBadgeStyle.Agreement) -> some View {
         Text(SignalBadgeStyle.label(for: agreement))
             .font(.system(size: 10.5, weight: .semibold))
+            // A badge is one word; the row's pressing text truncates instead.
+            .lineLimit(1)
+            .fixedSize()
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
             .background(Color.accentColor.opacity(0.15), in: Capsule())
             .foregroundStyle(Color.accentColor)
-            .opacity(on ? 1 : 0)
-            .accessibilityHidden(!on)
     }
 
     // MARK: - Trailing

@@ -132,17 +132,13 @@ struct CommittedTextField: View {
 
     @ViewBuilder
     private var field: some View {
-        let base = TextField(placeholder, text: $draft, prompt: prompt)
+        // The value takes the monospaced design; the prompt keeps `font` as
+        // given, so an empty mark is the same glyph in every field.
+        TextField(placeholder, text: $draft, prompt: prompt)
             .textFieldStyle(.plain)
-            .font(font)
+            .font(monospaced ? font.monospaced() : font)
             .focused($focused)
             .onSubmit { startCommit(draft) }
-        if monospaced {
-            base.monospacedDigit()
-        }
-        else {
-            base
-        }
     }
 
     /// What the field shows while empty, by the placeholder's role. `nil`
@@ -153,7 +149,9 @@ struct CommittedTextField: View {
             nil
         case .emptyMark:
             // Gone while editing, so the caret sits alone at the leading edge.
-            Text(focused ? "" : placeholder).foregroundStyle(.tertiary)
+            Text(focused ? "" : placeholder)
+                .font(font)
+                .foregroundStyle(.tertiary)
         }
     }
 
