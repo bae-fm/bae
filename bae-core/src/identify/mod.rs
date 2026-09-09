@@ -7,8 +7,9 @@
 //! third lookup, and joins the same intersection.
 //!
 //! The state machine is a pure reducer (`state::step`). The service
-//! (`service::IdentifyServiceHandle`) relays `SignalsUpdated` into it, runs the
-//! side effects it asks for (the MB/Discogs lookups), and feeds the results back.
+//! (`service::IdentifyServiceHandle`) feeds it the snapshots its extraction
+//! hands out, runs the side effects it asks for (the MB/Discogs lookups), and
+//! feeds the results back.
 //! Scanning, OCR, and disc-ID derivation belong to `crate::signals`, not here.
 //!
 //! Every state transition goes out on the `ImportEvent` broadcast channel as one

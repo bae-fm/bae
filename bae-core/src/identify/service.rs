@@ -9,6 +9,7 @@ use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome};
 use crate::import::search::SourceLookup;
 use crate::import::{ImportEvent, LookupChoices, MetadataSource};
 use crate::library::LibraryManager;
+use crate::signals::{ExtractionWatch, SignalsSnapshot};
 use crate::util::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -162,9 +163,10 @@ impl IdentifyServiceHandle {
     /// dispatches is admitted under it, so a candidate a person opened outranks
     /// one a sweep picked up.
     ///
-    /// Identify consumes the `Signals` extraction streams, so the caller must
-    /// start identify *before* extraction for `key`: the bus subscription is
-    /// taken synchronously here, so no early snapshot can be missed.
+    /// `snapshots` is the watch the extraction feeding this run handed out
+    /// at its start. It holds the extraction's latest snapshot, so the driver
+    /// reads what was last said whenever it looks — nothing is queued and
+    /// nothing is missed — and reads only its own extraction.
     /// A run with no source to ask does not start. Every source is switched
     /// off or missing its credential, so there is nothing to dispatch — and a
     /// run that dispatched nothing would settle as "found nothing anywhere",
@@ -177,6 +179,7 @@ impl IdentifyServiceHandle {
         key: String,
         priority: CallPriority,
         choices: LookupChoices,
+        snapshots: ExtractionWatch,
     ) {
         // A restart (the user re-selects after a scan refresh, or changes what
         // the run asks about) supersedes the prior run — a candidate is
@@ -197,13 +200,9 @@ impl IdentifyServiceHandle {
             },
         );
 
-        // Subscribe before returning, so the extraction service (started right
-        // after) can't emit its first `SignalsUpdated` into a void.
-        let bus_rx = self.inner.event_tx.subscribe();
-
         let inner = self.inner.clone();
         self.inner.runtime_handle.spawn(async move {
-            run_driver(inner, run, key, priority, choices, token, bus_rx).await;
+            run_driver(inner, run, key, priority, choices, token, snapshots).await;
         });
     }
 
@@ -243,10 +242,16 @@ fn remove_driver_if_current(inner: &IdentifyServiceInner, key: &str, run: Identi
     }
 }
 
-/// The driver loop for one candidate. Each iteration pops an event, feeds it to
-/// the pure reducer, broadcasts the new state, and spawns the effects the reducer
-/// asked for — whose results come back as further events. Ends when the reducer
-/// stops moving: on the run's terminal state, or on cancellation.
+/// The driver loop for one candidate. Each iteration takes the extraction's
+/// next snapshot or a lookup's completion, feeds it to the pure reducer,
+/// broadcasts the new state, and spawns the effects the reducer asked for —
+/// whose results come back as further events. Ends when the reducer stops
+/// moving: on the run's terminal state, or on cancellation.
+///
+/// The snapshots come off the watch the extraction handed out, which holds
+/// only the latest: the reducer turns each into lookups and a catalog filter,
+/// and every snapshot is the whole of what was read so far, so the latest is
+/// the only one it needs.
 async fn run_driver(
     inner: Arc<IdentifyServiceInner>,
     run: IdentifyRunId,
@@ -254,71 +259,45 @@ async fn run_driver(
     priority: CallPriority,
     choices: LookupChoices,
     token: CancellationToken,
-    mut bus_rx: broadcast::Receiver<ImportEvent>,
+    mut snapshots: ExtractionWatch,
 ) {
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<IdentifyEvent>();
 
-    // Relay this run's `Signals` snapshots off the import bus into the
-    // reducer, which turns the disc ID and barcodes into lookups and narrows by
-    // catalog. This run's, not the candidate's: the extraction behind the run
-    // this one superseded broadcasts under the same key until its replacement
-    // lands, and what it says was extracted for a run that is over.
-    //
-    // It holds a broadcast receiver every import event is cloned into, so it
-    // stops the moment the loop it feeds does — on its own closed channel as
-    // well as on the token, because a run that reached its verdict ends
-    // without one.
-    let relay_token = token.clone();
-    let relay_event_tx = event_tx.clone();
-    let relay_key = key.clone();
-    inner.runtime_handle.spawn(async move {
-        loop {
-            tokio::select! {
-                biased;
-                _ = relay_token.cancelled() => return,
-                _ = relay_event_tx.closed() => return,
-                msg = bus_rx.recv() => match msg {
-                    Ok(ImportEvent::SignalsUpdated {
-                        candidate_key,
-                        run: snapshot_run,
-                        signals,
-                        artwork,
-                        priority: _,
-                    }) if candidate_key == relay_key && snapshot_run == run => {
-                        if relay_event_tx
-                            .send(IdentifyEvent::SignalsUpdated { signals, artwork })
-                            .is_err()
-                        {
-                            return;
-                        }
-                    }
-                    Ok(_) => continue,
-                    // Lagged: keep listening. A snapshot we fell behind on is
-                    // superseded by the next one anyway.
-                    Err(broadcast::error::RecvError::Lagged(_)) => continue,
-                    Err(broadcast::error::RecvError::Closed) => return,
-                },
-            }
-        }
-    });
-
-    emit_step(
-        &event_tx,
-        IdentifyEvent::Started {
-            providers: run_providers(&inner.library_manager),
-            choices,
-        },
-    );
-
     let mut state = IdentifyState::Idle;
+    // The run's first step is its start, ahead of anything the extraction has
+    // already said: a snapshot taken in `Idle` leaves the run there, which is
+    // what a cancelled run looks like.
+    let mut start = Some(IdentifyEvent::Started {
+        providers: run_providers(&inner.library_manager),
+        choices,
+    });
+    // Whether the extraction is still going. Its sender goes with it, and
+    // once that is gone its last snapshot has been read: there is nothing
+    // further to wait on there, only the lookups it started.
+    let mut extracting = true;
 
     loop {
-        let event = tokio::select! {
-            biased;
-            _ = token.cancelled() => IdentifyEvent::Cancelled,
-            event = event_rx.recv() => match event {
-                Some(e) => e,
-                None => return,
+        let event = match start.take() {
+            Some(start) => start,
+            None => tokio::select! {
+                biased;
+                _ = token.cancelled() => IdentifyEvent::Cancelled,
+                changed = snapshots.changed(), if extracting => match changed {
+                    Ok(()) => match snapshots.borrow_and_update().clone() {
+                        Some(SignalsSnapshot { signals, artwork }) => {
+                            IdentifyEvent::SignalsUpdated { signals, artwork }
+                        }
+                        None => continue,
+                    },
+                    Err(_) => {
+                        extracting = false;
+                        continue;
+                    }
+                },
+                event = event_rx.recv() => match event {
+                    Some(e) => e,
+                    None => return,
+                },
             },
         };
 
@@ -603,13 +582,30 @@ mod tests {
         .flatten()
     }
 
-    fn settled_signals_event(run: IdentifyRunId) -> ImportEvent {
-        ImportEvent::SignalsUpdated {
-            candidate_key: "k".to_string(),
-            run,
+    fn settled_snapshot() -> SignalsSnapshot {
+        SignalsSnapshot {
             signals: absent_signals(),
             artwork: crate::signals::ArtworkScan::Absent,
-            priority: CallPriority::Interactive,
+        }
+    }
+
+    /// What extraction says while its artwork pass is still going: nothing a
+    /// run can settle on.
+    fn scanning_snapshot() -> SignalsSnapshot {
+        SignalsSnapshot {
+            signals: Signals {
+                barcode: BarcodeSignal::Scanning { codes: vec![] },
+                text: TextSignal::Scanning {
+                    catalogs: vec![],
+                    free_text: vec![],
+                },
+                ..absent_signals()
+            },
+            artwork: crate::signals::ArtworkScan::Reading {
+                current: None,
+                position: 1,
+                total: 1,
+            },
         }
     }
 
@@ -624,15 +620,16 @@ mod tests {
         };
         let mut bus_rx = inner.event_tx.subscribe();
 
-        let run = handle.new_run();
+        let (snapshots, watch) = tokio::sync::watch::channel(None);
         handle.start(
-            run,
+            handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
+            watch,
         );
-        // Feed the signals over the bus, as the extraction service would.
-        inner.event_tx.send(settled_signals_event(run)).unwrap();
+        // Feed the signals over the watch, as the extraction service would.
+        snapshots.send_replace(Some(settled_snapshot()));
 
         assert!(
             await_state(&mut bus_rx, |state| {
@@ -660,52 +657,77 @@ mod tests {
         );
     }
 
-    /// The extraction behind a superseded run of the same candidate can still
-    /// broadcast under the key until its replacement lands. Its snapshot names
-    /// that run, and this run does not take it — only a snapshot extracted for
-    /// this run settles it.
+    /// The watch holds the latest snapshot rather than queueing them. Two
+    /// land before the driver is even up — as they do when extraction is
+    /// quick, or the runtime is busy — and the driver reads the settled one,
+    /// which is the whole of what was read and the only one it needs.
     #[tokio::test(flavor = "multi_thread")]
-    async fn a_snapshot_of_another_run_is_not_this_runs_input() {
+    async fn a_run_reads_the_latest_snapshot_however_many_landed_before_it_looked() {
         let (inner, _tmp) = setup_inner().await;
         let handle = IdentifyServiceHandle {
             inner: inner.clone(),
         };
         let mut bus_rx = inner.event_tx.subscribe();
 
-        let superseded = handle.new_run();
-        let run = handle.new_run();
+        let (snapshots, watch) = tokio::sync::watch::channel(None);
+        snapshots.send_replace(Some(scanning_snapshot()));
+        snapshots.send_replace(Some(settled_snapshot()));
         handle.start(
-            run,
+            handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
+            watch,
         );
 
-        inner
-            .event_tx
-            .send(settled_signals_event(superseded))
-            .unwrap();
-        assert!(
-            await_state(&mut bus_rx, |state| {
-                matches!(state, IdentifyState::ManualOnly { .. }).then_some(())
-            })
-            .await
-            .is_none(),
-            "a settled snapshot extracted for another run does not settle this one"
-        );
-        assert!(
-            handle.is_running("k"),
-            "the run is still waiting on its own"
-        );
-
-        inner.event_tx.send(settled_signals_event(run)).unwrap();
         assert!(
             await_state(&mut bus_rx, |state| {
                 matches!(state, IdentifyState::ManualOnly { .. }).then_some(())
             })
             .await
             .is_some(),
-            "its own settled snapshot does"
+            "the run settled on the snapshot that was current when it looked"
+        );
+    }
+
+    /// The extraction's watch closing is the extraction ending, not the run:
+    /// the lookups it started still answer, and the run waits on them — or
+    /// on its cancel.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn an_extraction_ending_does_not_end_the_run() {
+        let (inner, _tmp) = setup_inner().await;
+        let handle = IdentifyServiceHandle {
+            inner: inner.clone(),
+        };
+        let mut bus_rx = inner.event_tx.subscribe();
+
+        let (snapshots, watch) = tokio::sync::watch::channel(None);
+        handle.start(
+            handle.new_run(),
+            "k".to_string(),
+            CallPriority::Interactive,
+            LookupChoices::default(),
+            watch,
+        );
+        snapshots.send_replace(Some(scanning_snapshot()));
+        drop(snapshots);
+
+        assert!(
+            await_state(&mut bus_rx, |state| state.is_terminal().then_some(()))
+                .await
+                .is_none(),
+            "no verdict comes of an extraction that said nothing settled"
+        );
+        assert!(handle.is_running("k"), "the run is still in flight");
+
+        handle.cancel("k");
+        assert!(
+            await_state(&mut bus_rx, |state| {
+                matches!(state, IdentifyState::Idle).then_some(())
+            })
+            .await
+            .is_some(),
+            "and its cancel still lands"
         );
     }
 
@@ -719,11 +741,13 @@ mod tests {
         };
         let mut bus_rx = inner.event_tx.subscribe();
 
+        let (_snapshots, watch) = tokio::sync::watch::channel(None);
         handle.start(
             handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
+            watch,
         );
         assert!(handle.is_running("k"), "the run is in flight");
         assert_eq!(handle.running_keys(), vec!["k".to_string()]);

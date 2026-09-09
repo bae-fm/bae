@@ -44,7 +44,10 @@ desktop_only! {
     pub use barcode::{is_placeholder_code, BarcodeSignal};
     pub use disc_id::DiscIdSignal;
     pub use origin::{ImageRegion, SignalOrigin, SourcedValue};
-    pub use service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
+    pub use service::{
+        ExtractionService, ExtractionServiceHandle, ExtractionSource, ExtractionWatch,
+        SignalsSnapshot,
+    };
     pub use text::{TextLine, TextSignal};
 }
 

@@ -69,8 +69,10 @@ pub enum ImportEvent {
         candidate_key: String,
         /// The identify run this snapshot was extracted for. Starting a run
         /// replaces the extraction behind the previous run of the same
-        /// candidate, and the two broadcast under the same key: a consumer
-        /// feeding a run takes only the snapshots that name it.
+        /// candidate, and the two broadcast under the same key: what stores a
+        /// run's verdict beside its snapshot takes only the snapshots that
+        /// name that run. The run itself reads its extraction's watch, not
+        /// the bus.
         run: crate::identify::IdentifyRunId,
         signals: crate::signals::Signals,
         /// Where the artwork pass that feeds the snapshot has got to. Beside
@@ -324,12 +326,10 @@ impl ImportServiceHandle {
     /// yields. Fire-and-forget; both report on this handle's event bus.
     ///
     /// One candidate is identified at a time, so this supersedes whatever was
-    /// identifying `key` already. The driver is started first because it takes
-    /// its bus subscription synchronously, and extraction's first snapshot
-    /// must not be emitted into a void. Both halves name `run`: the driver
-    /// takes only snapshots extracted for it, so whatever the superseded
-    /// extraction still puts on the bus before its replacement lands is not
-    /// this run's input.
+    /// identifying `key` already. Extraction starts first and hands out the
+    /// watch the driver reads its snapshots off: the watch holds the latest
+    /// snapshot, so nothing the extraction says before the driver is up is
+    /// lost, and nothing another extraction says reaches it.
     pub(crate) fn start_identification(
         &self,
         run: crate::identify::IdentifyRunId,
@@ -338,8 +338,8 @@ impl ImportServiceHandle {
         priority: crate::util::rate_limiter::CallPriority,
         choices: crate::import::LookupChoices,
     ) {
-        self.identify.start(run, key.clone(), priority, choices);
-        self.extraction.start(run, key, source, priority);
+        let snapshots = self.extraction.start(run, key.clone(), source, priority);
+        self.identify.start(run, key, priority, choices, snapshots);
     }
 
     /// Stop identifying this candidate: the run and the extraction feeding it.

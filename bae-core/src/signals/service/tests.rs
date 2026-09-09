@@ -404,17 +404,18 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
     let generation = inner
         .cancellation
         .register("cand-1".to_string(), |_, generation| generation);
-    let identity = ExtractionIdentity {
+    let extraction = RunningExtraction {
         run: IdentifyRunId::for_test(1),
         key: "cand-1".to_string(),
         generation,
         priority: CallPriority::Interactive,
+        snapshots: watch::channel(None).0,
     };
 
     let logs = capture_warn_logs(|| {
         emit_signals(
             &inner,
-            &identity,
+            &extraction,
             Signals {
                 disc_id: DiscIdSignal::Absent { track_count: 0 },
                 barcode: BarcodeSignal::Absent,
