@@ -10,9 +10,11 @@
 //! The disc ID and the barcode are not looked for: they are exact codes, and
 //! the lookup that returned the result is what states them.
 //!
-//! A country is the one field the two write differently: a provider answers
-//! `JP` and a folder writes `Japan`. Both spellings are looked for, through
-//! [`super::country`].
+//! A country is one field the two write differently: a provider answers `JP`
+//! and a folder writes `Japan`. Both spellings are looked for, through
+//! [`super::country`]. A label is the other: a folder writes "Warner Bros."
+//! and a source writes "Warner Bros. Records", so the trade word a label's
+//! name trails is dropped from it first, through [`super::label`].
 //!
 //! Not every number printed on a folder is a catalog number — a phone number
 //! on a sleeve, a serial on a label, the year twice — so a person can strike
@@ -106,7 +108,6 @@ pub fn agreements_of(
     text: &CandidateText,
     lookup: &LookupProvenance,
 ) -> Agreements {
-    let states = |field: &Option<String>| field.as_deref().is_some_and(|value| text.states(value));
     Agreements {
         disc_id: lookup.by_disc_id,
         barcode: lookup.by_barcode,
@@ -115,7 +116,10 @@ pub fn agreements_of(
                 .catalog_number
                 .as_deref()
                 .is_some_and(|value| text.states_catalog(value)),
-        label: states(&result.label),
+        label: result
+            .label
+            .as_deref()
+            .is_some_and(|value| text.states_label(value)),
         year: result
             .year
             .is_some_and(|year| text.states(&year.to_string())),
@@ -188,17 +192,31 @@ impl CandidateText {
 
     /// Whether the text states `value` — whole words of one of its lines.
     pub fn states(&self, value: &str) -> bool {
-        let value = squash(value);
-        if value.is_empty() {
-            return false;
-        }
-        self.lines.iter().any(|line| line.states(&value))
+        self.states_run(&squash(value))
+    }
+
+    /// Whether the text states an already-normalized value.
+    fn states_run(&self, run: &str) -> bool {
+        !run.is_empty() && self.lines.iter().any(|line| line.states(run))
     }
 
     /// Whether the text states `value` as a catalog number: printed there,
     /// and not struck out.
     pub fn states_catalog(&self, value: &str) -> bool {
         !self.is_struck_out(value) && self.states(value)
+    }
+
+    /// Whether the text states `value` as a label name, whichever of them
+    /// trails it with a trade word: a folder saying "Warner Bros." states a
+    /// result's "Warner Bros. Records", and one saying "Atlantic Records"
+    /// states an "Atlantic". A name that is nothing but trade words names no
+    /// label and is stated by nothing.
+    ///
+    /// Only the name is stripped. A line keeps its own trade words, because
+    /// the question asked of it is whether the name spans whole words of it,
+    /// and a word the name never reaches cannot answer that either way.
+    pub fn states_label(&self, value: &str) -> bool {
+        super::label::stated(value).is_some_and(|name| self.states_run(&name))
     }
 
     /// Whether the text states `value` as a country, however either of them
@@ -270,7 +288,7 @@ pub(super) fn squash(text: &str) -> String {
 }
 
 /// The line's words, each squashed. A word is a run of letters and digits.
-fn words(text: &str) -> Vec<String> {
+pub(super) fn words(text: &str) -> Vec<String> {
     text.nfd()
         .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
         .flat_map(char::to_lowercase)

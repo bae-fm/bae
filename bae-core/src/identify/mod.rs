@@ -30,6 +30,7 @@ pub mod code;
 pub mod combine;
 mod country;
 pub mod discid;
+mod label;
 pub mod ready;
 pub mod service;
 pub mod state;

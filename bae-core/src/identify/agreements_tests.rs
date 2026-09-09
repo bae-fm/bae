@@ -301,3 +301,71 @@ fn a_rows_agreements_are_its_records_together() {
     assert_eq!(musicbrainz.with(discogs).count(), 4);
     assert_eq!(musicbrainz.with(Agreements::NONE), musicbrainz);
 }
+
+/// The trade word a label trails its name with says what kind of business it
+/// is, not which one, so the two name one label however either of them writes
+/// it: a folder saying "Warner Bros." states a result's "Warner Bros.
+/// Records", and a folder saying "Atlantic Records" states an "Atlantic".
+#[test]
+fn a_label_agrees_without_the_trade_word_either_of_them_prints() {
+    for (stated, folder) in [
+        (
+            "Warner Bros. Records",
+            "1979 - Van Halen II (Warner Bros., 20P2-2031, JP)",
+        ),
+        ("Atlantic", "Atlantic Records, Inc."),
+        ("Sony Music", "Sony"),
+        ("Sony", "Sony Music"),
+        ("Blue Note Records", "Blue Note Recordings"),
+        ("Nonesuch Record Co.", "Nonesuch"),
+        ("Ninja Tune", "Ninja Tune"),
+    ] {
+        let judged = agreements_of(
+            &MetadataResult {
+                label: Some(stated.to_string()),
+                ..result()
+            },
+            &text(&[folder]),
+            &NO_LOOKUP,
+        );
+        assert!(judged.label, "{stated} against {folder}");
+    }
+}
+
+/// A name that is nothing but trade words names no label. Every folder that
+/// prints "Records" anywhere would otherwise agree with it.
+#[test]
+fn a_label_that_is_only_trade_words_states_nothing() {
+    for stated in ["Records", "Music", "Record Co.", "Music Entertainment"] {
+        let judged = agreements_of(
+            &MetadataResult {
+                label: Some(stated.to_string()),
+                ..result()
+            },
+            &text(&["Atlantic Records, Inc.", "Sony Music Entertainment"]),
+            &NO_LOOKUP,
+        );
+        assert!(!judged.label, "{stated} names no label");
+    }
+}
+
+/// Dropping the trade word does not make one label another: what is left is
+/// still looked for whole.
+#[test]
+fn a_label_the_folder_does_not_name_is_no_agreement() {
+    for (stated, folder) in [
+        ("Columbia Records", "Atlantic Records, Inc."),
+        ("Warner Bros. Records", "Warner Music"),
+        ("Blue Note", "Note Records"),
+    ] {
+        let judged = agreements_of(
+            &MetadataResult {
+                label: Some(stated.to_string()),
+                ..result()
+            },
+            &text(&[folder]),
+            &NO_LOOKUP,
+        );
+        assert!(!judged.label, "{stated} against {folder}");
+    }
+}
