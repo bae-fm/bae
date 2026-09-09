@@ -52,7 +52,7 @@ public sealed class ImportCandidate
     /// same value a candidate nobody has decided anything about runs with.
     /// </summary>
     internal BridgeLookupChoices LookupChoices =>
-        Detail?.LookupChoices ?? NativeBae.NoLookupChoices();
+        Detail?.LookupChoices ?? LookupChoiceEdits.Untouched();
 
     /// <summary>The candidate's one editable metadata draft.</summary>
     internal BridgeRawReleaseEdit? Edit => Detail?.MetadataDraft;

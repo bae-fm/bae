@@ -207,6 +207,8 @@
   <data name="signal.kind.barcode" xml:space="preserve"><value>ബാർകോഡ്</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>കാറ്റലോഗ്</value></data>
   <data name="signal.pick_catalog" xml:space="preserve"><value>തിരയാൻ ഒരു കാറ്റലോഗ് നമ്പർ തിരഞ്ഞെടുക്കുക</value></data>
+  <data name="signal.catalog_stop_counting" xml:space="preserve"><value>ഈ കാറ്റലോഗ് നമ്പർ കണക്കാക്കുന്നത് നിർത്തുക</value></data>
+  <data name="signal.catalog_count_again" xml:space="preserve"><value>ഈ കാറ്റലോഗ് നമ്പർ വീണ്ടും കണക്കാക്കുക</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ഡിസ്‌ക് ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>അടുക്കൽ ചേർക്കുക</value></data>

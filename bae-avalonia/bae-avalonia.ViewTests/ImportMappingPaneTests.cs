@@ -180,6 +180,87 @@ public sealed class ImportMappingPaneTests
                 Loc.Chrome("import.rerun_identify")));
     }
 
+    // The numbers the answers themselves carry stand beside the signal badges,
+    // each counted until it is struck out. Striking one out sends back the
+    // whole value of what this candidate's identification asks about, with
+    // what the run looks up untouched — so nothing is looked up again.
+    [AvaloniaFact]
+    public void StrikingOutACatalogNumberSendsTheChoiceAndLooksNothingUp()
+    {
+        var writes = new List<BridgeLookupChoices>();
+        var identified = new List<string>();
+        var (pane, _) = Show(
+            Detail(metadataProvenance: null, edit: BlankEdit()),
+            running: RunOffering(new BridgeCatalogAgreement("BST 84055", false)),
+            identified: identified,
+            initialPresentation: ImportMetadataPresentation.FindOnline,
+            lookupChoiceWrites: writes);
+
+        Assert.Contains("BST 84055", Texts(pane));
+        Chip(pane, Loc.Chrome("signal.catalog_stop_counting"))
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        var written = Assert.Single(writes);
+        Assert.Equal(new[] { "BST 84055" }, written.DiscountedCatalogs);
+        Assert.Empty(written.ChosenCatalogs);
+        Assert.Empty(identified);
+    }
+
+    // A number already struck out offers the way back, and taking it sends the
+    // value with nothing struck out.
+    [AvaloniaFact]
+    public void AStruckOutCatalogNumberOffersTheWayBack()
+    {
+        var writes = new List<BridgeLookupChoices>();
+        var detail = Detail(
+            metadataProvenance: null,
+            edit: BlankEdit(),
+            lookupChoices: new BridgeLookupChoices(
+                DiscIdExcluded: false,
+                BarcodeExcluded: false,
+                ChosenCatalogs: [],
+                DiscountedCatalogs: ["BST 84055"]));
+        var (pane, _) = Show(
+            detail,
+            running: RunOffering(new BridgeCatalogAgreement("BST 84055", true)),
+            initialPresentation: ImportMetadataPresentation.FindOnline,
+            lookupChoiceWrites: writes);
+
+        Chip(pane, Loc.Chrome("signal.catalog_count_again"))
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.Empty(Assert.Single(writes).DiscountedCatalogs);
+    }
+
+    // Striking a number out is not the same decision as taking one out of the
+    // run: the numbers the run looks up are carried through untouched.
+    [AvaloniaFact]
+    public void StrikingANumberOutLeavesWhatTheRunLooksUpAlone()
+    {
+        var writes = new List<BridgeLookupChoices>();
+        var detail = Detail(
+            metadataProvenance: null,
+            edit: BlankEdit(),
+            lookupChoices: new BridgeLookupChoices(
+                DiscIdExcluded: true,
+                BarcodeExcluded: false,
+                ChosenCatalogs: ["BST 84055"],
+                DiscountedCatalogs: []));
+        var (pane, _) = Show(
+            detail,
+            running: RunOffering(new BridgeCatalogAgreement("BST 84055", false)),
+            initialPresentation: ImportMetadataPresentation.FindOnline,
+            lookupChoiceWrites: writes);
+
+        Chip(pane, Loc.Chrome("signal.catalog_stop_counting"))
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        var written = Assert.Single(writes);
+        Assert.True(written.DiscIdExcluded);
+        Assert.Equal(new[] { "BST 84055" }, written.ChosenCatalogs);
+        Assert.Equal(new[] { "BST 84055" }, written.DiscountedCatalogs);
+    }
+
     [AvaloniaFact]
     public void TheSearchFormStartsBlankAndKeepsWhatIsTypedAcrossQueryTypes()
     {
@@ -473,7 +554,8 @@ public sealed class ImportMappingPaneTests
         ulong applicationRevision = 1,
         List<Action<BridgeImportCandidateDetail?>>? detailCallbacks = null,
         List<(string Key, BridgeSearchQuery Query)>? searches = null,
-        List<string>? openedAlbums = null)
+        List<string>? openedAlbums = null,
+        List<BridgeLookupChoices>? lookupChoiceWrites = null)
     {
         // Controls may only be built on the headless session's dispatcher
         // thread, which [AvaloniaFact] is what supplies.
@@ -532,6 +614,13 @@ public sealed class ImportMappingPaneTests
             // The run the pane and the progress line both read. Absent leaves
             // the candidate at rest, where the card offers the Import button.
             CandidateRuntime = _ => running,
+            // What a badge or a chip sends back. Core decides whether it also
+            // starts a run; nothing here does.
+            SetCandidateLookupChoices = (_, choices) =>
+            {
+                lookupChoiceWrites?.Add(choices);
+                return Task.FromResult((true, (string?)null));
+            },
         };
         var app = AppService.Stubbed(
             new SessionStore(Dispatcher.UIThread),
@@ -626,7 +715,8 @@ public sealed class ImportMappingPaneTests
         BridgeImportFailure? failure = null,
         BridgeRawReleaseEdit? edit = null,
         ulong metadataRevision = 1,
-        BridgeTriageImportStatus? importStatus = null) =>
+        BridgeTriageImportStatus? importStatus = null,
+        BridgeLookupChoices? lookupChoices = null) =>
         new(
             Candidate: new BridgeFolderCandidate(
                 Combination: null,
@@ -689,7 +779,7 @@ public sealed class ImportMappingPaneTests
                 new BridgeCoverImageSource.Local("/Music/Incoming/Album/cover.jpg"),
                 new BridgeCoverImageSource.Local("/Music/Incoming/Album/cover.jpg")),
             Signals: null,
-            LookupChoices: NativeBae.NoLookupChoices(),
+            LookupChoices: lookupChoices ?? LookupChoiceEdits.Untouched(),
             Failure: failure,
             // This fixture has not visited Find Online or entered a query.
             Session: new BridgeCandidateSession(
@@ -770,6 +860,38 @@ public sealed class ImportMappingPaneTests
         Array.Empty<BridgeTrackUserEdit>());
 
     /// <summary>A verdict whose signals narrowed nothing out.</summary>
+    /// <summary>A settled run offering `agreements` as its catalog chips, with
+    /// one barcode signal so the badge row has a badge beside them.</summary>
+    private static BridgeCandidateRuntimeSnapshot RunOffering(
+        params BridgeCatalogAgreement[] agreements) =>
+        new(
+            new BridgeIdentifyState.Found(
+                null,
+                Array.Empty<BridgeReleaseGroup>(),
+                new Dictionary<string, BridgeLibraryStatus>(),
+                1,
+                new Dictionary<string, BridgeAgreements>(),
+                NothingNarrowedOut(),
+                agreements),
+            new BridgeSignalsToolbar(new[]
+            {
+                new BridgeToolbarSignal(
+                    BridgeSignalKind.Barcode,
+                    "0123456789012",
+                    BridgeSignalOrigin.Artwork,
+                    new BridgeSignalState.NoMatch(),
+                    false,
+                    Array.Empty<BridgeSignalOption>()),
+            }),
+            null,
+            null);
+
+    /// <summary>The one chip whose tooltip is `tip`.</summary>
+    private static Button Chip(Control pane, string tip) =>
+        Assert.Single(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(ToolTip.GetTip(button), tip));
+
     private static BridgeNarrowedOut NothingNarrowedOut() =>
         new(
             Array.Empty<BridgeReleaseGroup>(),

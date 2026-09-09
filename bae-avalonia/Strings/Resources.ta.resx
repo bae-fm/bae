@@ -207,6 +207,8 @@
   <data name="signal.kind.barcode" xml:space="preserve"><value>பட்டைக் குறியீடு</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>பட்டியல்</value></data>
   <data name="signal.pick_catalog" xml:space="preserve"><value>தேட ஒரு பட்டியல் எண்ணைத் தேர்ந்தெடுக்கவும்</value></data>
+  <data name="signal.catalog_stop_counting" xml:space="preserve"><value>இந்தப் பட்டியல் எண்ணைக் கணக்கிடுவதை நிறுத்து</value></data>
+  <data name="signal.catalog_count_again" xml:space="preserve"><value>இந்தப் பட்டியல் எண்ணை மீண்டும் கணக்கிடு</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>கலைஞர்</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>வரிசையைச் சேர்</value></data>

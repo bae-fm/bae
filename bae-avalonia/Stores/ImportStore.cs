@@ -339,6 +339,12 @@ internal sealed class ImportStore : IDisposable
         BridgeCandidateRuntimeSnapshot? runtime) =>
         _import.ProjectRun(runtime);
 
+    /// <summary>The catalog numbers a settled state's answers carry that the
+    /// candidate's own text states — the chips the badge row offers beside the
+    /// signals.</summary>
+    public List<CatalogAgreement> ProjectCatalogAgreements(BridgeIdentifyState state) =>
+        _import.ProjectCatalogAgreements(state);
+
     /// <summary>Put one candidate under its own query: the pane reads its
     /// folder, its files and its resumed identify state from there, and a value
     /// of null says the key names no scanned folder any more.</summary>

@@ -32,17 +32,28 @@ internal sealed partial class ImportMappingPane
     {
         var column = new StackPanel { Spacing = 8 };
         var signals = _import.ProjectRun(_runtime).Signals;
-        if (signals.Count > 0 && _key is { } signalKey)
+        var agreements = _import.ProjectCatalogAgreements(ShownIdentifyState);
+        if ((signals.Count > 0 || agreements.Count > 0) && _key is { } signalKey)
         {
             column.Children.Add(SignalBadgeRow.Build(
                 signals,
+                agreements,
                 // The badge acts on one part; what goes back is the whole
                 // value, and core starts the run that reads it.
                 (kind, value) => _ = _app.Import.SetCandidateLookupChoices(
                     signalKey,
-                    NativeBae.Toggling(
-                        _candidate?.LookupChoices ?? NativeBae.NoLookupChoices(),
+                    LookupChoiceEdits.Toggling(
+                        _candidate?.LookupChoices ?? LookupChoiceEdits.Untouched(),
                         kind,
+                        value)),
+                // The chip acts on what the folder is taken to state, not on
+                // what is looked up: the same whole value goes back, and core
+                // starts no run for it — the candidate's next detail carries
+                // the same answers ranked by it.
+                value => _ = _app.Import.SetCandidateLookupChoices(
+                    signalKey,
+                    LookupChoiceEdits.Discounting(
+                        _candidate?.LookupChoices ?? LookupChoiceEdits.Untouched(),
                         value)),
                 () => _ = _app.Import.RerunIdentifyForCandidate(signalKey)));
         }

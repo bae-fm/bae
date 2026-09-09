@@ -59,6 +59,13 @@ internal sealed class ImportService
         List<SignalBadge> Signals)> ProjectRun
     { get; init; } = NativeBae.ImportRun;
 
+    /// <summary>The catalog numbers the candidate's own text states about the
+    /// releases a settled identify state is offering — the chips the badge row
+    /// carries. A pure projection over what the stream already delivered, so
+    /// it needs no handle.</summary>
+    public Func<BridgeIdentifyState, List<CatalogAgreement>> ProjectCatalogAgreements
+    { get; init; } = NativeBae.CatalogAgreements;
+
     /// <summary>The pressing rows a set of album cards offers as choices, each
     /// already picked down to the release committing it applies. A pure
     /// projection over what the stream already delivered — it needs no handle,

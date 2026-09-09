@@ -162,7 +162,7 @@ internal sealed class ReleaseActionDialogs
             // A library release is not a scanned candidate, so nothing stores
             // what its run asks about: this dialog holds it and hands it back
             // with every run it starts.
-            var choices = NativeBae.NoLookupChoices();
+            var choices = LookupChoiceEdits.Untouched();
 
             // A pipeline interaction takes the results list back from a typed
             // search: the search run is dropped, and the pipeline's own matches
@@ -172,7 +172,21 @@ internal sealed class ReleaseActionDialogs
             {
                 _app.Import.ClearCandidateSearch(key);
                 results.ResumePipeline();
-                choices = NativeBae.Toggling(choices, kind, value);
+                choices = LookupChoiceEdits.Toggling(choices, kind, value);
+                _app.Import.AutoIdentifyRelease(key, releaseId, choices);
+            }
+
+            // Striking a catalog number out asks the providers nothing — it
+            // says what their answers are ranked by. A scanned candidate
+            // re-ranks its stored answers on the next read of it; a library
+            // release has nothing stored to re-rank, so the run is the only
+            // place its ranking is decided and this starts another. The
+            // response cache answers what the last one already asked.
+            void ToggleAgreement(string value)
+            {
+                _app.Import.ClearCandidateSearch(key);
+                results.ResumePipeline();
+                choices = LookupChoiceEdits.Discounting(choices, value);
                 _app.Import.AutoIdentifyRelease(key, releaseId, choices);
             }
 
@@ -206,13 +220,16 @@ internal sealed class ReleaseActionDialogs
             void ShowRun(BridgeCandidateRuntimeSnapshot? runtime)
             {
                 var (runStatus, matches, badges) = _app.Import.ProjectRun(runtime);
+                var agreements = _app.Import.ProjectCatalogAgreements(
+                    runtime?.IdentifyState ?? new BridgeIdentifyState.Idle());
                 var line = runStatus?.LocalizedLine ?? string.Empty;
                 pipelineStatus.Text = line;
                 pipelineStatus.IsVisible = line.Length > 0;
                 badgeHost.Children.Clear();
-                if (badges.Count > 0)
+                if (badges.Count > 0 || agreements.Count > 0)
                 {
-                    badgeHost.Children.Add(SignalBadgeRow.Build(badges, ToggleSignal, Rerun));
+                    badgeHost.Children.Add(SignalBadgeRow.Build(
+                        badges, agreements, ToggleSignal, ToggleAgreement, Rerun));
                 }
                 // A submitted search owns the list while it exists; its
                 // providers land one at a time, so this runs once per landing.

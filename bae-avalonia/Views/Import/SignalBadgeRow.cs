@@ -8,18 +8,22 @@ using Avalonia.Media;
 
 namespace Bae.Desktop;
 
-// The signals-toolbar badge row used by the release re-identify dialog: one
-// badge per signal (kind label, truncated value, lookup-state visual) and a
-// trailing re-run control. Clicking a badge takes its signal in or out of the
-// run; a signal that offers a choice — the catalog, over every number
-// extracted from the candidate — opens its list instead, one number checked at
-// a time. The re-derived state arrives through the candidate stream. Every
-// color reads a theme brush.
+// The signals-toolbar badge row: one badge per signal (kind label, truncated
+// value, lookup-state visual), then the catalog numbers the answers carry as
+// chips, then a trailing re-run control. Clicking a badge takes its signal in
+// or out of the run; a signal that offers a choice — the catalog, over every
+// number extracted from the candidate — opens its list instead, one number
+// checked at a time. Clicking a chip strikes its number out of what the
+// folder is taken to state, or counts it again; nothing is looked up either
+// way. The re-derived state arrives through the candidate stream. Every color
+// reads a theme brush.
 internal static class SignalBadgeRow
 {
     public static Control Build(
         IReadOnlyList<SignalBadge> signals,
+        IReadOnlyList<CatalogAgreement> agreements,
         Action<string, string> onToggleSignal,
+        Action<string> onToggleAgreement,
         Action onRerun)
     {
         var badges = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
@@ -29,8 +33,70 @@ internal static class SignalBadgeRow
                 ? BuildChoiceBadge(signal, onToggleSignal)
                 : BuildBadge(signal, onToggleSignal));
         }
+        foreach (var agreement in agreements)
+        {
+            badges.Children.Add(BuildAgreementChip(agreement, onToggleAgreement));
+        }
         badges.Children.Add(RerunButton(onRerun));
         return badges;
+    }
+
+    // One catalog number the folder states about a release the run is
+    // offering. Counted, it carries the accent the matched rows carry; struck
+    // out, it is dimmed and struck through, and stands as the way back.
+    private static Button BuildAgreementChip(
+        CatalogAgreement agreement, Action<string> onToggleAgreement)
+    {
+        var counted = !agreement.Discounted;
+        var inner = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 5,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var check = new TextBlock
+        {
+            Text = counted ? "✓" : "○",
+            FontSize = 11,
+            FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        check[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
+            counted ? "BaeAccentBrush" : "BaeTextSecondaryBrush");
+        inner.Children.Add(check);
+
+        var number = new TextBlock
+        {
+            Text = TextTruncation.MiddleTruncate(agreement.Value, 20),
+            FontSize = 11,
+            FontFamily = new FontFamily("monospace"),
+            MaxWidth = 140,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextDecorations = counted ? null : TextDecorations.Strikethrough,
+        };
+        number[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
+            counted ? "BaeAccentBrush" : "BaeTextSecondaryBrush");
+        inner.Children.Add(number);
+
+        var chip = new Button
+        {
+            Content = inner,
+            Background = Brushes.Transparent,
+            Padding = new Thickness(8, 3),
+            MinWidth = 0,
+            MinHeight = 0,
+            CornerRadius = new CornerRadius(8),
+            BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 0, 6, 0),
+            Opacity = counted ? 1.0 : 0.45,
+        };
+        chip[!Button.BorderBrushProperty] = new DynamicResourceExtension("BaeHairlineBrush");
+        ToolTip.SetTip(chip, Loc.Chrome(counted
+            ? "signal.catalog_stop_counting"
+            : "signal.catalog_count_again"));
+        chip.Click += (_, _) => onToggleAgreement(agreement.Value);
+        return chip;
     }
 
     private static Button RerunButton(Action onRerun)
