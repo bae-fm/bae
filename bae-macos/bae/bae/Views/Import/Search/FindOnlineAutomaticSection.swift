@@ -149,7 +149,7 @@ struct FindOnlineAutomaticSection: View {
             groups: state.identifiedGroups,
             isImporting: state.isImporting,
             libraryStatuses: state.libraryStatuses,
-            provenance: state.identifiedProvenance,
+            agreements: state.identifiedAgreements,
             selectedReleaseId: state.selectedReleaseId
                 ?? state.finalizingPressing?.lead.releaseId,
             loadingReleaseId: state.loadingReleaseId

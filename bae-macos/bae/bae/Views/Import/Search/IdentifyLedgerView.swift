@@ -43,7 +43,7 @@ struct IdentifyLedgerView: View {
 
     @ViewBuilder
     private var discIdGroup: some View {
-        let label = SignalBadgeStyle.label(for: .discId)
+        let label = SignalBadgeStyle.label(for: BridgeSignalKind.discId)
         switch run.discId {
         case .reading:
             LedgerGroupLabel(text: label, working: true)
@@ -129,7 +129,7 @@ struct IdentifyLedgerView: View {
 
     @ViewBuilder
     private var barcodeGroup: some View {
-        let label = SignalBadgeStyle.label(for: .barcode)
+        let label = SignalBadgeStyle.label(for: BridgeSignalKind.barcode)
         switch run.barcode {
         case .absent:
             LedgerGroupLabel(text: label, nothing: true)
