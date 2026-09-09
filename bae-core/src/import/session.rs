@@ -88,11 +88,13 @@ mod tests {
     #[test]
     fn a_fresh_pane_opens_where_the_default_source_points() {
         assert_eq!(
-            CandidateSession::initial(None, false, DefaultImportMetadataSource::FindOnline).presentation,
+            CandidateSession::initial(None, false, DefaultImportMetadataSource::FindOnline)
+                .presentation,
             MetadataPresentation::FindOnline
         );
         assert_eq!(
-            CandidateSession::initial(None, false, DefaultImportMetadataSource::FileTags).presentation,
+            CandidateSession::initial(None, false, DefaultImportMetadataSource::FileTags)
+                .presentation,
             MetadataPresentation::FileTags
         );
         assert_eq!(
