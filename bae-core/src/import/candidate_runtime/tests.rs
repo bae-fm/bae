@@ -86,6 +86,7 @@ fn triangulating() -> crate::identify::IdentifyState {
 
 fn manual_only() -> crate::identify::IdentifyState {
     crate::identify::IdentifyState::ManualOnly {
+        ledger: None,
         track_count: 9,
         context: signals_context(9),
     }
@@ -602,6 +603,7 @@ fn discarding_an_unstorable_answer_leaves_nothing_in_flight() {
         key,
         1,
         crate::identify::IdentifyState::NotFoundAnywhere {
+            ledger: None,
             context: signals_context(9),
         },
     ));

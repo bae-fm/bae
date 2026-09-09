@@ -66,11 +66,26 @@ async fn metadata_or_failed_verdict(
                 "sweep: could not project metadata for {} ({error}); storing the failure",
                 candidate.key()
             );
-            let track_count = match verdict {
-                TerminalVerdict::Found { track_count, .. }
-                | TerminalVerdict::Failed { track_count, .. }
-                | TerminalVerdict::ManualOnly { track_count } => *track_count,
-                TerminalVerdict::NotFoundAnywhere => 0,
+            // The lookups ran and showed what they showed; what could not be
+            // fetched is the release detail behind the match they settled on.
+            // So the run's ledger carries onto the failure that replaces its
+            // verdict, rather than the pane losing the run it just watched.
+            let (track_count, ledger) = match verdict {
+                TerminalVerdict::Found {
+                    track_count,
+                    ledger,
+                    ..
+                }
+                | TerminalVerdict::Failed {
+                    track_count,
+                    ledger,
+                    ..
+                }
+                | TerminalVerdict::ManualOnly {
+                    track_count,
+                    ledger,
+                } => (*track_count, ledger.take()),
+                TerminalVerdict::NotFoundAnywhere { ledger } => (0, ledger.take()),
             };
             *verdict = TerminalVerdict::Failed {
                 failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(
@@ -79,6 +94,7 @@ async fn metadata_or_failed_verdict(
                     },
                 )],
                 track_count,
+                ledger,
             };
             crate::import::CandidateMetadataDraft {
                 draft: candidate.blank_source().draft,
@@ -280,6 +296,7 @@ async fn settle_lead(
     let TerminalVerdict::Found {
         matches,
         track_count,
+        ledger,
         ..
     } = verdict
     else {
@@ -321,6 +338,7 @@ async fn settle_lead(
                     crate::import::search::import_error_to_lookup_failure(&error),
                 )],
                 track_count: *track_count,
+                ledger: ledger.take(),
             };
             return Ok(SettledLead::NoExternalRelease);
         }
@@ -362,6 +380,7 @@ async fn settle_lead(
                     },
                 )],
                 track_count: *track_count,
+                ledger: ledger.take(),
             };
             Ok(SettledLead::NoExternalRelease)
         }

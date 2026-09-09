@@ -393,7 +393,7 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
     let outcome = finish_candidate(
         &fixture.context(),
         &entry,
-        TerminalVerdict::NotFoundAnywhere.resume_state(None, &LookupChoices::default(), &|_| {
+        TerminalVerdict::NotFoundAnywhere { ledger: None }.resume_state(&|_| {
             unreachable!("a no-match verdict names no release")
         }),
         &CancellationToken::new(),
@@ -444,7 +444,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
             state: row
                 .verdict
                 .clone()
-                .resume_state(None, &LookupChoices::default(), &not_in_library),
+                .resume_state(&not_in_library),
             priority: CallPriority::Background,
         });
     tokio::time::timeout(Duration::from_secs(10), async {

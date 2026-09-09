@@ -1,7 +1,11 @@
 use super::*;
 use crate::db::LibraryStatus;
-use crate::identify::state::{BarcodeProgress, DiscidProgress};
-use crate::import::{LookupChoices, MetadataSource};
+use crate::identify::state::{
+    step, BarcodeEvidence, BarcodeProgress, DiscIdEvidence, DiscidProgress, IdentifyEvent,
+};
+use crate::identify::view::{BarcodeStepView, IdentifyStateView, LookupView};
+use crate::identify::{CatalogProgress, ProviderBarcodeLookup};
+use crate::import::MetadataSource;
 
 fn mk_result(release_id: &str) -> MetadataResult {
     MetadataResult::for_test(MetadataSource::MusicBrainz, release_id, Some("group-1"))
@@ -49,6 +53,7 @@ fn found_state() -> IdentifyState {
             by_catalog: false,
         }],
         narrowed_out: NarrowedOut::default(),
+        ledger: None,
         context: mk_context(11),
     }
 }
@@ -73,156 +78,60 @@ fn found_drops_library_status_and_keeps_the_rest() {
             matched_barcode: None,
             narrowed_out: Vec::new(),
             narrowed_out_provenance: Vec::new(),
+            ledger: None,
         }
     );
 }
 
-/// A candidate whose signals were never stored stands its verdict back up
-/// with its matches, and with the barcode that found them: the barcode rows
-/// say which image each was read off, so without this pointer a resumed
-/// candidate could not tell which of several images the release was
-/// identified from.
+/// The ledger the run showed is what the verdict carries away: the terminal
+/// state records it once, and conversion moves it rather than deriving
+/// anything of its own.
 #[test]
-fn a_resumed_found_keeps_the_barcode_that_matched() {
-    let verdict = TerminalVerdict::Found {
-        matches: vec![mk_result("rel-1")],
-        track_count: 11,
-        provenance: vec![ResultProvenance {
-            by_disc_id: false,
-            by_barcode: true,
-            by_catalog: false,
-        }],
-        matched_barcode: Some("5099969394522".to_string()),
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
-    };
-    let IdentifyState::Found { context, .. } =
-        verdict.resume_state(None, &LookupChoices::default(), &|result| {
-            LibraryStatus::absent(&result.release_id)
-        })
-    else {
-        panic!("a found verdict resumes as Found");
-    };
-    assert_eq!(context.barcode.matched.as_deref(), Some("5099969394522"));
-    // With no stored signals there are no inputs to stand the run back up
-    // from, so the resumed state has no ledger and no signals toolbar.
-    assert!(context.barcode.codes.is_empty());
-    assert!(!context.has_inputs());
-}
-
-/// The signals stored beside a verdict: a disc ID read off a rip log, one
-/// barcode read off the back cover, one catalog number off the sheet.
-fn stored_signals() -> Signals {
-    Signals {
-        disc_id: DiscIdSignal::Computed {
-            disc_id: "disc-1".to_string(),
-            track_count: 11,
-            source_file: Some("rip/Album.LOG".to_string()),
-        },
-        barcode: BarcodeSignal::Settled {
-            codes: vec![crate::signals::SourcedValue::in_file(
-                "5099969394522".to_string(),
-                crate::signals::SignalOrigin::Artwork,
-                "back.jpg".to_string(),
-            )],
-        },
-        text: crate::signals::TextSignal::Settled {
-            catalogs: vec![crate::signals::SourcedValue::new(
-                "LBL-1".to_string(),
-                crate::signals::SignalOrigin::CueSheet,
-            )],
-            free_text: Vec::new(),
-        },
-        durations: Default::default(),
-    }
-}
-
-/// A candidate's stored signals are the run's inputs, so a verdict resumed
-/// with them carries what extraction read — every sighting with where it
-/// was read — and the run stands back up from it. The numbers the person
-/// had chosen are not stored, so they come back as numbers to choose.
-#[test]
-fn a_resumed_verdict_carries_the_stored_signal_inputs() {
-    let verdict = TerminalVerdict::Failed {
-        failures: vec![IdentifyFailure::Barcode(SourceFailure {
-            source: MetadataSource::Discogs,
-            failure: LookupFailure::Provider { status: Some(503) },
-        })],
-        track_count: 11,
-    };
-    let IdentifyState::Failed { context, .. } = verdict.resume_state(
-        Some(&stored_signals()),
-        &LookupChoices::default(),
-        &|result| LibraryStatus::absent(&result.release_id),
-    ) else {
-        panic!("a failed verdict resumes as Failed");
-    };
-    assert!(context.has_inputs());
-    assert_eq!(context.disc.signal, stored_signals().disc_id);
-    assert_eq!(context.barcode.code_values(), vec!["5099969394522"]);
-    assert_eq!(
-        context.barcode.codes[0].origin_path.as_deref(),
-        Some("back.jpg")
-    );
-    assert!(context.barcode.had_source);
-    assert_eq!(context.catalog.number_values(), vec!["LBL-1"]);
-    assert!(context.catalog.chosen.is_empty());
-    // The verdict names only the provider that failed, so only that
-    // provider's walk is laid out: nothing stored says the other was asked,
-    // and a walk for it would claim it was.
-    assert_eq!(
-        context.barcode.walks,
-        vec![RecordedWalk {
-            source: MetadataSource::Discogs,
-            end: WalkEnd::Failed {
-                code: "5099969394522".to_string(),
+fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
+    let mut context = mk_context(9);
+    context.barcode.had_source = true;
+    context.barcode.codes = vec![crate::signals::SourcedValue::new(
+        "012345".to_string(),
+        crate::signals::SignalOrigin::Artwork,
+    )];
+    context.providers = vec![MetadataSource::MusicBrainz];
+    let (settled, _) = step(
+        IdentifyState::Triangulating {
+            discid: DiscidProgress::Skipped { track_count: 9 },
+            barcode: BarcodeProgress::Lookups {
+                codes: vec!["012345".to_string()],
+                providers: vec![ProviderBarcodeLookup {
+                    source: MetadataSource::MusicBrainz,
+                    state: crate::identify::BarcodeLookupState::Trying { index: 0 },
+                }],
             },
-        }]
+            catalog: CatalogProgress::Skipped,
+            context,
+        },
+        IdentifyEvent::BarcodeLookupAnswered {
+            source: MetadataSource::MusicBrainz,
+            for_barcode: "012345".to_string(),
+            outcome: Ok(vec![(mk_result("rel-1"), LibraryStatus::absent("rel-1"))]),
+        },
     );
-}
-
-/// The run's provider list is not stored, so a resumed run lays out the
-/// sources the verdict names and no others. No source is assumed to have been
-/// asked: a verdict naming only one draws one column, whichever it is.
-#[test]
-fn a_resumed_run_lists_the_providers_the_verdict_names() {
-    let musicbrainz_only = TerminalVerdict::Failed {
-        failures: vec![IdentifyFailure::DiscId(LookupFailure::Network)],
-        track_count: 11,
+    let IdentifyStateView::Found {
+        run: Some(shown), ..
+    } = IdentifyStateView::from(settled.clone())
+    else {
+        panic!("the run found one release");
     };
-    let IdentifyState::Failed { context, .. } = musicbrainz_only.resume_state(
-        Some(&stored_signals()),
-        &LookupChoices::default(),
-        &|result| LibraryStatus::absent(&result.release_id),
-    ) else {
-        panic!("a failed verdict resumes as Failed");
+    let verdict = TerminalVerdict::try_from(settled).unwrap();
+    let TerminalVerdict::Found { ledger, .. } = &verdict else {
+        panic!("a found state stores as a found verdict");
     };
-    assert_eq!(context.providers, vec![MetadataSource::MusicBrainz]);
-
-    let found_on_discogs = TerminalVerdict::Found {
-        matches: vec![MetadataResult::for_test(
-            MetadataSource::Discogs,
-            "dg-1",
-            Some("g"),
-        )],
-        track_count: 11,
-        provenance: vec![ResultProvenance {
-            by_disc_id: false,
-            by_barcode: true,
-            by_catalog: false,
-        }],
-        matched_barcode: Some("5099969394522".to_string()),
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
+    assert_eq!(ledger.as_ref(), Some(&shown));
+    let BarcodeStepView::Rows { rows, .. } = &shown.barcode else {
+        panic!("one row per code, got {:?}", shown.barcode);
     };
-    let IdentifyState::Found { context, .. } = found_on_discogs.resume_state(
-        Some(&stored_signals()),
-        &LookupChoices::default(),
-        &|result| LibraryStatus::absent(&result.release_id),
-    ) else {
-        panic!("a found verdict resumes as Found");
-    };
-    assert_eq!(context.providers, vec![MetadataSource::Discogs]);
+    assert!(matches!(
+        rows[0].cells[0].lookup,
+        LookupView::Found { count: 1, .. }
+    ));
 }
 
 fn disc_id_only() -> ResultProvenance {
@@ -281,11 +190,10 @@ fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
         matched_barcode: None,
         narrowed_out: vec![mk_result("rel-out")],
         narrowed_out_provenance: vec![disc_id_only()],
+        ledger: None,
     };
     let IdentifyState::Found { narrowed_out, .. } =
-        verdict.resume_state(None, &LookupChoices::default(), &|result| {
-            LibraryStatus::absent(&result.release_id)
-        })
+        verdict.resume_state(&|result| LibraryStatus::absent(&result.release_id))
     else {
         panic!("a found verdict resumes as Found");
     };
@@ -315,6 +223,7 @@ fn a_recorded_discid_failure_derives_and_stores_as_failed() {
         TerminalVerdict::Failed {
             failures,
             track_count: 11,
+            ..
         } if failures == vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Provider {
                 status: None
             })]
@@ -363,6 +272,7 @@ fn a_union_of_disagreeing_signals_stores_as_one_match_list() {
             matched_barcode: Some("012345".to_string()),
             narrowed_out: Vec::new(),
             narrowed_out_provenance: Vec::new(),
+            ledger: None,
         }
     );
 }
@@ -397,6 +307,7 @@ fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
         TerminalVerdict::Failed {
             failures,
             track_count: 9,
+            ..
         } if failures == vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Network)]
     ));
 }
@@ -406,8 +317,14 @@ fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
 #[test]
 fn clean_not_found_anywhere_is_terminal() {
     let context = mk_context(7);
-    let verdict = TerminalVerdict::try_from(IdentifyState::NotFoundAnywhere { context });
-    assert!(matches!(verdict, Ok(TerminalVerdict::NotFoundAnywhere)));
+    let verdict = TerminalVerdict::try_from(IdentifyState::NotFoundAnywhere {
+        ledger: None,
+        context,
+    });
+    assert!(matches!(
+        verdict,
+        Ok(TerminalVerdict::NotFoundAnywhere { ledger: None })
+    ));
 }
 
 /// A disc-ID lookup failure derives to `Failed`, never to no-match.
@@ -423,6 +340,7 @@ fn discid_failure_derives_to_failed() {
         TerminalVerdict::Failed {
             failures,
             track_count: 7,
+            ..
         } if failures == vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Network)]
     ));
 }
@@ -443,6 +361,7 @@ fn barcode_failure_derives_to_failed() {
         TerminalVerdict::Failed {
             failures,
             track_count: 7,
+            ..
         } if failures == vec![IdentifyFailure::Barcode(SourceFailure {
             source: MetadataSource::Discogs,
             failure: crate::signals::LookupFailure::Timeout,
@@ -536,67 +455,10 @@ fn chosen_catalog_failure_derives_to_failed() {
         TerminalVerdict::Failed {
             failures,
             track_count: 7,
+            ..
         } if failures == vec![IdentifyFailure::Catalog(SourceFailure {
             source: MetadataSource::MusicBrainz,
             failure: crate::signals::LookupFailure::Network,
         })]
     ));
-}
-
-/// The choices belong to the candidate, not to the run, so a resumed pane
-/// shows what the person decided: the signals they left out are laid out as
-/// unasked, and the number they chose is chosen with what the run found by
-/// catalog on it.
-#[test]
-fn a_resumed_verdict_carries_the_stored_lookup_choices() {
-    let verdict = TerminalVerdict::Found {
-        matches: vec![mk_result("rel-1")],
-        track_count: 11,
-        provenance: vec![ResultProvenance {
-            by_disc_id: false,
-            by_barcode: false,
-            by_catalog: true,
-        }],
-        matched_barcode: None,
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
-    };
-    let choices = LookupChoices {
-        disc_id_excluded: true,
-        barcode_excluded: true,
-        // "LBL-1" is one of the stored numbers; the other is not, so it is not
-        // one of the values on the list and does not come back chosen.
-        chosen_catalogs: vec!["LBL-1".to_string(), "GONE-9".to_string()],
-    };
-    let IdentifyState::Found { context, .. } =
-        verdict.resume_state(Some(&stored_signals()), &choices, &|result| {
-            LibraryStatus::absent(&result.release_id)
-        })
-    else {
-        panic!("a found verdict resumes as Found");
-    };
-    assert!(context.disc.excluded);
-    assert!(context.barcode.excluded);
-    assert_eq!(context.catalog.chosen_values(), vec!["LBL-1"]);
-    assert_eq!(
-        context.catalog.chosen[0]
-            .results
-            .iter()
-            .map(|(result, _)| result.release_id.as_str())
-            .collect::<Vec<_>>(),
-        vec!["rel-1"],
-        "the chosen number carries what the run found by catalog"
-    );
-    // The signals the run left out were never asked about, so they stand back
-    // up as unasked rather than as lookups that found nothing.
-    assert_eq!(
-        crate::identify::state::settled_discid_progress(&context),
-        crate::identify::DiscidProgress::NotAsked { track_count: 11 }
-    );
-    assert_eq!(
-        crate::identify::state::settled_barcode_progress(&context),
-        crate::identify::BarcodeProgress::NotAsked {
-            codes: vec!["5099969394522".to_string()],
-        }
-    );
 }

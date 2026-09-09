@@ -19,7 +19,10 @@ use crate::signals::candidate_text::normalize;
 
 /// An album, as one or both sources describe it, with the pressings they
 /// surfaced for it.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// `Serialize`/`Deserialize`: named by a ledger cell that found releases,
+/// and the ledger is what `identify::TerminalVerdict` persists.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ReleaseGroup {
     /// Stable card identity: the first source's group id, or the lone
     /// release's id when no source named a group.
@@ -45,7 +48,7 @@ pub struct ReleaseGroup {
 }
 
 /// One source carrying a group, and where its editorial page for it is.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReleaseGroupSource {
     pub source: MetadataSource,
     /// Editorial URL for the group on this source (release-group on
@@ -58,7 +61,7 @@ pub struct ReleaseGroupSource {
 /// whole: `releases[0]` (MusicBrainz when both carry it) is the release the
 /// draft is read from, and each further entry is the same pressing as another
 /// source has it, claimed alongside it.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Pressing {
     pub releases: Vec<MetadataResult>,
 }

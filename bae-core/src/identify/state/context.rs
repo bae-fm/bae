@@ -3,8 +3,12 @@
 //!
 //! Held apart from the reducer because it is what makes a re-combine free:
 //! each answer that lands folds into it instead of re-fetching what the others
-//! found, and lifting a settled state into a stored verdict reads it to tell
-//! "nothing was learned" apart from "the lookup ran and found nothing".
+//! found, and it is what tells "nothing was learned" apart from "the lookup
+//! ran and found nothing".
+//!
+//! It belongs to the run. A state stood back up from a stored verdict carries
+//! an empty one: that run is over, and what it showed is the ledger the state
+//! carries.
 //!
 //! One type per signal, each holding that signal's input, whether the current
 //! selection uses it, what its lookup returned, and how it failed — the four
@@ -108,27 +112,6 @@ impl DiscIdEvidence {
     }
 }
 
-/// Where one provider's walk through the codes ended. Recorded when the pipe
-/// settles, so a settled run can be laid out code by code — which code each
-/// provider matched, or that it tried every one, or which it failed on — and
-/// a pipe stood back up from the evidence is the one that settled.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RecordedWalk {
-    pub source: MetadataSource,
-    pub end: WalkEnd,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum WalkEnd {
-    /// The walk stopped at `code`, which matched.
-    Matched { code: String },
-    /// Every code tried, none matched.
-    Exhausted,
-    /// The walk stopped at `code`, which the provider could not answer. The
-    /// reason is the provider's entry in `BarcodeEvidence::failures`.
-    Failed { code: String },
-}
-
 /// The candidate's barcodes and what asking about them produced. Every
 /// configured provider walks the codes on its own, so failures are per
 /// provider — and reading the codes off the artwork can itself fail, before any
@@ -159,9 +142,6 @@ pub struct BarcodeEvidence {
     pub scan_failure: Option<LookupFailure>,
     /// Which barcode produced `results`. `None` until matched.
     pub matched: Option<String>,
-    /// Where each provider's walk ended, once the pipe settled. Empty while
-    /// nothing has settled, and for evidence stood up from a stored verdict.
-    pub walks: Vec<RecordedWalk>,
 }
 
 impl BarcodeEvidence {
@@ -180,14 +160,12 @@ impl BarcodeEvidence {
 
     /// Record what the settled pipe found. Both settled shapes carry provider
     /// failures: a lookup one provider answered and another failed is `Done`
-    /// with failures on it. The matched code competes against the one already
-    /// recorded, so a pipe stood back up from this evidence keeps it.
+    /// with failures on it.
     fn record(&mut self, progress: &BarcodeProgress) {
         self.results = progress.results();
         self.failures = progress.failures();
         self.scan_failure = progress.scan_failure().cloned();
         self.matched = progress.matched_barcode();
-        self.walks = progress.walks();
     }
 
     /// The codes the walks ask, each once, in the order they were first seen.
@@ -328,6 +306,14 @@ impl CatalogEvidence {
             .collect()
     }
 
+    /// Every chosen number's provider failures, in chosen order.
+    pub(super) fn recorded_failures(&self) -> Vec<SourceFailure> {
+        self.chosen
+            .iter()
+            .flat_map(|chosen| chosen.failures.iter().cloned())
+            .collect()
+    }
+
     /// Failures belonging to evidence the current selection still uses: every
     /// chosen number's.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
@@ -378,6 +364,23 @@ pub struct SignalsContext {
     pub track_count: u32,
 }
 
+impl Default for SignalsContext {
+    /// Nothing read, nobody asked. Two states hold it: a run before its first
+    /// snapshot, and a state stood back up from a stored verdict — that run is
+    /// over, and what it showed is the ledger the state carries, not anything
+    /// re-derived from here.
+    fn default() -> Self {
+        Self {
+            providers: Vec::new(),
+            artwork: ArtworkScan::Absent,
+            disc: DiscIdEvidence::default(),
+            barcode: BarcodeEvidence::default(),
+            catalog: CatalogEvidence::default(),
+            track_count: 0,
+        }
+    }
+}
+
 impl SignalsContext {
     /// No signals known yet — the context on entry to `Triangulating`, before
     /// the first `SignalsUpdated`. `providers` is what the run will ask, and
@@ -387,7 +390,6 @@ impl SignalsContext {
     pub(super) fn started(providers: Vec<MetadataSource>, choices: LookupChoices) -> Self {
         Self {
             providers,
-            artwork: ArtworkScan::Absent,
             disc: DiscIdEvidence {
                 excluded: choices.disc_id_excluded,
                 ..Default::default()
@@ -404,7 +406,7 @@ impl SignalsContext {
                     .map(ChosenCatalog::new)
                     .collect(),
             },
-            track_count: 0,
+            ..Default::default()
         }
     }
 

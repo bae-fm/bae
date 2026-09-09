@@ -40,6 +40,7 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
         matched_barcode: None,
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
+        ledger: None,
     }
 }
 
@@ -116,6 +117,7 @@ fn what_agreement_narrowed_out_is_not_a_match() {
             by_barcode: false,
             by_catalog: false,
         }],
+        ledger: None,
     };
     assert_eq!(
         classify(&verdict, 2_400_000, &[status("mb-1", false, false)]),
@@ -236,12 +238,19 @@ fn an_unverifiable_match_is_never_admitted() {
 #[test]
 fn every_other_verdict_names_its_own_question() {
     assert_eq!(
-        classify(&TerminalVerdict::NotFoundAnywhere, 2_400_000, &[]),
+        classify(
+            &TerminalVerdict::NotFoundAnywhere { ledger: None },
+            2_400_000,
+            &[]
+        ),
         QueueClassification::NeedsYou(NeedsYou::NoMatch)
     );
     assert_eq!(
         classify(
-            &TerminalVerdict::ManualOnly { track_count: 11 },
+            &TerminalVerdict::ManualOnly {
+                track_count: 11,
+                ledger: None,
+            },
             2_400_000,
             &[]
         ),
@@ -297,14 +306,21 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
             ),
             1,
         ),
-        (TerminalVerdict::NotFoundAnywhere, 0),
-        (TerminalVerdict::ManualOnly { track_count: 11 }, 0),
+        (TerminalVerdict::NotFoundAnywhere { ledger: None }, 0),
+        (
+            TerminalVerdict::ManualOnly {
+                track_count: 11,
+                ledger: None,
+            },
+            0,
+        ),
         (
             TerminalVerdict::Failed {
                 failures: vec![crate::identify::IdentifyFailure::DiscId(
                     crate::signals::LookupFailure::Network,
                 )],
                 track_count: 11,
+                ledger: None,
             },
             0,
         ),
@@ -326,11 +342,11 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
                 assert_eq!(lead.source_tracks, matches[0].source_tracks);
                 assert!(lead.by_disc_id, "the lead carries its own provenance");
             }
-            TerminalVerdict::NotFoundAnywhere => {
+            TerminalVerdict::NotFoundAnywhere { .. } => {
                 assert_eq!(summary.kind, VerdictKind::NotFound);
                 assert_eq!(summary.track_count, None);
             }
-            TerminalVerdict::ManualOnly { track_count } => {
+            TerminalVerdict::ManualOnly { track_count, .. } => {
                 assert_eq!(summary.kind, VerdictKind::ManualOnly);
                 assert_eq!(summary.track_count, Some(*track_count));
             }

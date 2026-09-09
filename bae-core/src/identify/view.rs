@@ -14,6 +14,10 @@
 //! behind. Those are domain decisions, so they are made here, once, and a field
 //! that must not cross is simply absent from the type.
 //!
+//! The ledger, [`IdentifyRunView`], is also what a run stores: the reducer
+//! records it once as the run ends, and a settled state — live or stood back
+//! up from its stored verdict — carries that recording rather than a rebuild.
+//!
 //! The transports (`bae-bridge`'s uniffi records, `bae-automation`'s JSON) mirror
 //! this view into their own wire types field by field and decide nothing.
 
@@ -29,7 +33,11 @@ use crate::import::MetadataSource;
 use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
 
 /// How one provider's lookup of one value is going — one cell of the ledger.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// `Serialize`/`Deserialize`, here and on everything else the ledger is made
+/// of: a run records its ledger when it ends, and
+/// [`super::TerminalVerdict`] persists it.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum LookupView {
     /// Not asked yet: the provider's walk through the codes has not reached
     /// this one.
@@ -52,7 +60,7 @@ pub enum LookupView {
 
 /// One place a value was read: the origin, the file where the origin is one,
 /// and where on that image where the detector said.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ValueSource {
     pub origin: SignalOrigin,
     /// The candidate-relative path of the file, where the origin is a file.
@@ -61,7 +69,7 @@ pub struct ValueSource {
 }
 
 /// One provider's cell of a value's row.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ProviderCell {
     pub source: MetadataSource,
     pub lookup: LookupView,
@@ -69,7 +77,7 @@ pub struct ProviderCell {
 
 /// One value extraction found, as a row of the ledger: where it was found,
 /// and every provider's lookup of it.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SignalValueRow {
     pub value: String,
     /// Every place the value was read, in the order it was read there.
@@ -79,14 +87,14 @@ pub struct SignalValueRow {
 }
 
 /// Which kind of artifact a disc ID was read off.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DiscIdFileKind {
     Log,
     Cue,
 }
 
 /// The file a disc ID was read off.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DiscIdFile {
     pub kind: DiscIdFileKind,
     /// The candidate-relative path.
@@ -98,7 +106,7 @@ pub struct DiscIdFile {
 /// endpoint, so this step has one lookup and no cells. That one provider is
 /// also why the step, alone among them, has to say when it was not asked: the
 /// other steps say it by drawing no column for the source.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum DiscIdStepView {
     /// Extraction has not reported yet.
     Reading,
@@ -124,7 +132,7 @@ pub enum DiscIdStepView {
 
 /// The barcode: read off the artwork and the CUE sheets, then every provider
 /// tries the codes in order on its own.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum BarcodeStepView {
     /// No barcode source at all.
     Absent,
@@ -143,7 +151,7 @@ pub enum BarcodeStepView {
 
 /// One catalog number extraction found and the run is not looking up: a
 /// tile, offered for the person to activate.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CatalogCandidateView {
     pub value: String,
     pub sources: Vec<ValueSource>,
@@ -151,7 +159,7 @@ pub struct CatalogCandidateView {
 
 /// The catalog number: the run looks up only the numbers the person picks
 /// out of the ones extraction turned up, each on its own.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum CatalogStepView {
     /// Extraction found no catalog number to offer, and is not still looking.
     NoneFound,
@@ -169,7 +177,7 @@ pub enum CatalogStepView {
 /// The run as a ledger: the three signals, each carrying what extraction
 /// produced for it and every provider's lookup of it, so a surface lists the
 /// run row by row and each cell settles on its own.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct IdentifyRunView {
     /// The providers the run asks, in the order their cells are listed. Named
     /// up front so a surface can draw the columns before any row exists.
@@ -200,11 +208,11 @@ impl NarrowedOutView {
 
 /// One candidate's identify state as a surface renders it.
 ///
-/// A settled state carries the run it settled as, so the ledger stays up
-/// beside the matches. It carries none when extraction handed the run nothing
-/// to lay out: a folder with no disc ID, no barcode source and no catalog
-/// number, or a verdict stood back up from the store, whose signal inputs were
-/// never stored.
+/// A settled state carries the ledger its run recorded when it ended, so what
+/// the pane shows afterwards is the last frame the run showed. It carries none
+/// when extraction handed the run nothing to lay out — a folder with no disc
+/// ID, no barcode source and no catalog number — and for a verdict whose
+/// stored row records none.
 #[derive(Debug, Clone)]
 pub enum IdentifyStateView {
     Idle,
@@ -301,11 +309,12 @@ impl From<IdentifyState> for IdentifyStateView {
                 track_count,
                 provenance,
                 narrowed_out,
-                context,
+                ledger,
+                context: _,
             } => {
                 let (groups, provenance) = fold_matches(matches, provenance);
                 IdentifyStateView::Found {
-                    run: settled_run_view(&context),
+                    run: ledger,
                     groups,
                     library_statuses,
                     track_count,
@@ -314,16 +323,17 @@ impl From<IdentifyState> for IdentifyStateView {
                 }
             }
 
-            IdentifyState::NotFoundAnywhere { context } => IdentifyStateView::NotFoundAnywhere {
-                run: settled_run_view(&context),
-            },
+            IdentifyState::NotFoundAnywhere { ledger, context: _ } => {
+                IdentifyStateView::NotFoundAnywhere { run: ledger }
+            }
 
             IdentifyState::ManualOnly {
                 track_count,
-                context,
+                ledger,
+                context: _,
             } => IdentifyStateView::ManualOnly {
                 track_count,
-                run: settled_run_view(&context),
+                run: ledger,
             },
 
             IdentifyState::Failed {
@@ -333,11 +343,12 @@ impl From<IdentifyState> for IdentifyStateView {
                 provenance,
                 narrowed_out,
                 track_count: _,
-                context,
+                ledger,
+                context: _,
             } => {
                 let (groups, provenance) = fold_matches(matches, provenance);
                 IdentifyStateView::Failed {
-                    run: settled_run_view(&context),
+                    run: ledger,
                     failures,
                     groups,
                     library_statuses,
@@ -415,21 +426,10 @@ fn fold_narrowed_out(narrowed_out: NarrowedOut) -> NarrowedOutView {
     }
 }
 
-/// The ledger of a settled state: its pipes stood back up from the context,
-/// laid out as they settled. None when extraction handed the run nothing.
-fn settled_run_view(context: &SignalsContext) -> Option<IdentifyRunView> {
-    if !context.has_inputs() {
-        return None;
-    }
-    Some(run_view(
-        &super::state::settled_discid_progress(context),
-        &super::state::settled_barcode_progress(context),
-        &super::state::settled_catalog_progress(context),
-        context,
-    ))
-}
-
-fn run_view(
+/// The run as it stands: the three pipes laid out against the inputs and the
+/// providers the run asks. The reducer records this when the run ends, and
+/// what it recorded is what every later reader shows.
+pub(super) fn run_view(
     discid: &DiscidProgress,
     barcode: &BarcodeProgress,
     catalog: &CatalogProgress,

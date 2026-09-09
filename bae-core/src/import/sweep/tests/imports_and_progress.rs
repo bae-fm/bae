@@ -629,7 +629,7 @@ async fn a_cancelled_candidate_writes_no_row() {
     );
 
     // `save` itself refuses under a cancelled token, whatever reached it.
-    let verdict = TerminalVerdict::NotFoundAnywhere;
+    let verdict = TerminalVerdict::NotFoundAnywhere { ledger: None };
     let cancelled = CancellationToken::new();
     cancelled.cancel();
     assert!(matches!(

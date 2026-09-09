@@ -441,7 +441,7 @@ pub(super) fn load_candidate_detail_on(
             resumed_identify_state = identify
                 .verdict
                 .clone()
-                .resume_state(signals.as_ref(), &lookup_choices, &status_of);
+                .resume_state(&status_of);
         }
         if picked.is_some() {
             matched = release

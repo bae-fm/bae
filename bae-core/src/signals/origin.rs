@@ -6,7 +6,12 @@ use super::candidate_text::Source;
 /// The surface a signal value was harvested from — a coarse, UI-facing projection of
 /// the internal `Source` (plus the inherent origins of the disc-ID and CUE-`CATALOG`
 /// signals), so a badge can say where its value came from without leaking file paths.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// `Serialize`/`Deserialize`: carried on the ledger a run records, which
+/// `identify::TerminalVerdict` persists.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum SignalOrigin {
     /// The disc's table of contents (LOG/CUE).
     DiscToc,
@@ -45,12 +50,36 @@ impl SignalOrigin {
 ///
 /// Built only through [`ImageRegion::new`], which admits only finite fractions
 /// inside the image, so two regions compare exactly.
-#[derive(Debug, Clone, Copy, PartialEq)]
+///
+/// `Serialize`/`Deserialize`: carried on the ledger a run records, which
+/// `identify::TerminalVerdict` persists. Reading one back goes through
+/// [`ImageRegion::new`] like every other way in, so a stored value that does
+/// not describe a box inside the image is refused rather than admitted.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(try_from = "StoredImageRegion")]
 pub struct ImageRegion {
     pub x: f32,
     pub y: f32,
     pub width: f32,
     pub height: f32,
+}
+
+/// A region's four fractions as they are stored.
+#[derive(Debug, serde::Deserialize)]
+struct StoredImageRegion {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+}
+
+impl TryFrom<StoredImageRegion> for ImageRegion {
+    type Error = String;
+
+    fn try_from(stored: StoredImageRegion) -> Result<Self, Self::Error> {
+        ImageRegion::new(stored.x, stored.y, stored.width, stored.height)
+            .ok_or_else(|| format!("{stored:?} is not a region inside the image"))
+    }
 }
 
 impl Eq for ImageRegion {}
@@ -82,7 +111,7 @@ impl ImageRegion {
 /// naming its own file and region. A surface that lists values folds the
 /// sightings of one value together; a surface that puts chips on files reads
 /// them one by one.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SourcedValue {
     pub value: String,
     pub origin: SignalOrigin,

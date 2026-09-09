@@ -6,7 +6,7 @@
 //! candidate can neither hold two verdicts nor keep matches without one.
 
 use super::*;
-use crate::identify::{IdentifyFailure, ResultProvenance, TerminalVerdict};
+use crate::identify::{IdentifyFailure, IdentifyRunView, ResultProvenance, TerminalVerdict};
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::MetadataSource;
@@ -45,10 +45,24 @@ pub(super) fn insert_verdict(
             matched_barcode,
             ..
         } => ("found", Some(*track_count), matched_barcode.as_deref()),
-        TerminalVerdict::NotFoundAnywhere => ("not_found", None, None),
-        TerminalVerdict::ManualOnly { track_count } => ("manual_only", Some(*track_count), None),
+        TerminalVerdict::NotFoundAnywhere { .. } => ("not_found", None, None),
+        TerminalVerdict::ManualOnly { track_count, .. } => {
+            ("manual_only", Some(*track_count), None)
+        }
         TerminalVerdict::Failed { track_count, .. } => ("failed", Some(*track_count), None),
     };
+    // The ledger the run recorded, stored whole: no query reads into it, and
+    // what it draws is the run laid out cell by cell.
+    let ledger_json = verdict
+        .ledger()
+        .map(|ledger| {
+            serde_json::to_string(ledger).map_err(|error| {
+                DbError::Message(format!(
+                    "failed to serialize the identify ledger for {content_hash}: {error}"
+                ))
+            })
+        })
+        .transpose()?;
     let failures_json = match verdict {
         TerminalVerdict::Failed { failures, .. } => {
             if failures.is_empty() {
@@ -63,7 +77,7 @@ pub(super) fn insert_verdict(
             })?)
         }
         TerminalVerdict::Found { .. }
-        | TerminalVerdict::NotFoundAnywhere
+        | TerminalVerdict::NotFoundAnywhere { .. }
         | TerminalVerdict::ManualOnly { .. } => None,
     };
     let probed = i64::try_from(identification.probed_total_duration_ms).map_err(|_| {
@@ -74,14 +88,15 @@ pub(super) fn insert_verdict(
     sql.execute(
         "INSERT INTO import_candidate_verdict \
              (content_hash, kind, track_count, matched_barcode, failures_json, \
-              probed_total_duration_ms, identified_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
+              ledger_json, probed_total_duration_ms, identified_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             kind,
             track_count,
             matched_barcode,
             failures_json,
+            ledger_json,
             probed,
             identification.identified_at.to_rfc3339(),
         ],
@@ -139,7 +154,7 @@ fn insert_matches(
                 )?;
             }
         }
-        TerminalVerdict::NotFoundAnywhere
+        TerminalVerdict::NotFoundAnywhere { .. }
         | TerminalVerdict::ManualOnly { .. }
         | TerminalVerdict::Failed { .. } => {}
     }
@@ -306,12 +321,13 @@ pub(super) struct VerdictRow {
     pub(super) track_count: Option<i64>,
     pub(super) matched_barcode: Option<String>,
     pub(super) failures_json: Option<String>,
+    pub(super) ledger_json: Option<String>,
     pub(super) probed_total_duration_ms: i64,
     pub(super) identified_at: DateTime<Utc>,
 }
 
 pub(super) const VERDICT_COLUMNS: &str = "content_hash, kind, track_count, matched_barcode, \
-     failures_json, probed_total_duration_ms, identified_at";
+     failures_json, ledger_json, probed_total_duration_ms, identified_at";
 
 pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
     Ok(VerdictRow {
@@ -320,6 +336,7 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
         track_count: row.get("track_count")?,
         matched_barcode: row.get("matched_barcode")?,
         failures_json: row.get("failures_json")?,
+        ledger_json: row.get("ledger_json")?,
         probed_total_duration_ms: row.get("probed_total_duration_ms")?,
         identified_at: super::rfc3339_column(row, "identified_at")?,
     })
@@ -336,9 +353,19 @@ pub(super) fn identification_of(
         track_count,
         matched_barcode,
         failures_json,
+        ledger_json,
         probed_total_duration_ms,
         identified_at,
     } = row;
+    let ledger: Option<IdentifyRunView> = ledger_json
+        .map(|json| {
+            serde_json::from_str(&json).map_err(|error| {
+                DbError::Message(format!(
+                    "the identify ledger for {content_hash} is unreadable: {error}"
+                ))
+            })
+        })
+        .transpose()?;
     let count_of = || {
         track_count
             .ok_or_else(|| {
@@ -366,11 +393,13 @@ pub(super) fn identification_of(
                 matched_barcode,
                 narrowed_out,
                 narrowed_out_provenance,
+                ledger,
             }
         }
-        "not_found" => TerminalVerdict::NotFoundAnywhere,
+        "not_found" => TerminalVerdict::NotFoundAnywhere { ledger },
         "manual_only" => TerminalVerdict::ManualOnly {
             track_count: count_of()?,
+            ledger,
         },
         "failed" => {
             let json = failures_json.ok_or_else(|| {
@@ -391,6 +420,7 @@ pub(super) fn identification_of(
             TerminalVerdict::Failed {
                 failures,
                 track_count: count_of()?,
+                ledger,
             }
         }
         other => return Err(unreadable("verdict kind", other)),

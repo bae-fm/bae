@@ -52,7 +52,7 @@ async fn scanned_with_source(
     candidate
 }
 
-fn verdict(release_id: &str) -> TerminalVerdict {
+fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -> TerminalVerdict {
     TerminalVerdict::Found {
         matches: vec![MetadataResult {
             source: MetadataSource::MusicBrainz,
@@ -81,34 +81,21 @@ fn verdict(release_id: &str) -> TerminalVerdict {
         matched_barcode: None,
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
+        ledger,
     }
 }
 
 async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &str) {
-    save_verdict_with_signals(
-        db,
-        candidate,
-        release_id,
-        crate::signals::Signals {
-            disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
-            barcode: crate::signals::BarcodeSignal::Absent,
-            text: crate::signals::TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
-            durations: crate::import::probe::SourceDurations::totalling(1_000),
-        },
-    )
-    .await;
+    save_verdict_with_ledger(db, candidate, release_id, None).await;
 }
 
-/// Store the verdict beside the signals the run read it off — the pair one
-/// write lands, and what a resumed candidate stands its ledger back up from.
-async fn save_verdict_with_signals(
+/// Store a verdict and the ledger its run recorded, beside the signals
+/// extraction read — the group one write lands.
+async fn save_verdict_with_ledger(
     db: &Database,
     candidate: &FolderCandidate,
     release_id: &str,
-    signals: crate::signals::Signals,
+    ledger: Option<crate::identify::IdentifyRunView>,
 ) {
     assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
@@ -118,8 +105,16 @@ async fn save_verdict_with_signals(
                 metadata_revision: 0,
             },
             folder_path: candidate.path.to_string_lossy().into_owned(),
-            verdict: verdict(release_id),
-            signals,
+            verdict: verdict(release_id, ledger),
+            signals: crate::signals::Signals {
+                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                barcode: crate::signals::BarcodeSignal::Absent,
+                text: crate::signals::TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                durations: crate::import::probe::SourceDurations::totalling(1_000),
+            },
             metadata: {
                 let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
                 crate::import::CandidateMetadataDraft {
@@ -386,32 +381,36 @@ async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
     );
 }
 
-/// The signals stored beside the verdict are the run's inputs, so a resumed
-/// candidate stands the whole ledger back up — the disc ID on its row, with
-/// what MusicBrainz answered about it — rather than the matches alone.
+/// The ledger stored with the verdict is what a resumed candidate shows: the
+/// disc ID on its row, with what MusicBrainz answered about it, rather than
+/// the matches alone.
 #[tokio::test]
-async fn the_detail_resumes_the_ledger_the_run_settled_with() {
+async fn the_detail_resumes_the_ledger_the_run_recorded() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
-    save_verdict_with_signals(
-        &db,
-        &candidate,
-        "mb-verdict",
-        crate::signals::Signals {
-            disc_id: crate::signals::DiscIdSignal::Computed {
-                disc_id: "disc-1".to_string(),
-                track_count: 1,
-                source_file: Some("rip/Album.LOG".to_string()),
+    let ledger = crate::identify::IdentifyRunView {
+        providers: vec![MetadataSource::MusicBrainz],
+        disc_id: crate::identify::DiscIdStepView::Read {
+            disc_id: "disc-1".to_string(),
+            source: Some(crate::identify::DiscIdFile {
+                kind: crate::identify::DiscIdFileKind::Log,
+                file: "rip/Album.LOG".to_string(),
+            }),
+            lookup: crate::identify::LookupView::Found {
+                count: 1,
+                groups: crate::import::release_group::group_results(vec![
+                    MetadataResult::for_test(
+                        MetadataSource::MusicBrainz,
+                        "mb-verdict",
+                        Some("group-1"),
+                    ),
+                ]),
             },
-            barcode: crate::signals::BarcodeSignal::Absent,
-            text: crate::signals::TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
-            durations: crate::import::probe::SourceDurations::totalling(1_000),
         },
-    )
-    .await;
+        barcode: crate::identify::BarcodeStepView::Absent,
+        catalog: crate::identify::CatalogStepView::NoneFound,
+    };
+    save_verdict_with_ledger(&db, &candidate, "mb-verdict", Some(ledger.clone())).await;
 
     let detail = db
         .load_import_candidate(&candidate.path.to_string_lossy())
@@ -422,8 +421,9 @@ async fn the_detail_resumes_the_ledger_the_run_settled_with() {
     let crate::identify::IdentifyStateView::Found { run: Some(run), .. } =
         crate::identify::IdentifyStateView::from(detail.resumed_identify_state)
     else {
-        panic!("a stored Found resumes with the run it settled as");
+        panic!("a stored Found resumes with the ledger its run recorded");
     };
+    assert_eq!(run, ledger);
     assert_eq!(run.providers, vec![MetadataSource::MusicBrainz]);
     let crate::identify::DiscIdStepView::Read {
         disc_id,

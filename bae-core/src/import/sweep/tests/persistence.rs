@@ -14,7 +14,7 @@ fn duplicate_content_hashes_share_one_identify_job() {
 
     let stored = HashMap::from([(
         first.files.content_hash(),
-        row_with_verdict(&first, TerminalVerdict::NotFoundAnywhere),
+        row_with_verdict(&first, TerminalVerdict::NotFoundAnywhere { ledger: None }),
     )]);
     let planned = Pass::new(vec![first.into(), second.into()], &stored);
     assert!(planned.queued().is_empty());
@@ -123,6 +123,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
         matched_barcode: None,
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
+        ledger: None,
     }
 }
 
@@ -313,7 +314,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
     let not_in_library =
         |result: &MetadataResult| crate::db::LibraryStatus::absent(&result.release_id);
     let found =
-        multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1").resume_state(None, &LookupChoices::default(), &not_in_library);
+        multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1").resume_state(&not_in_library);
     let changed = |run: u64, state: IdentifyState| ImportEvent::IdentifyStateChanged {
         candidate_key: key.clone(),
         run: crate::identify::IdentifyRunId::for_test(run),

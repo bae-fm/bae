@@ -1,13 +1,13 @@
 use super::*;
 use crate::db::LibraryStatus;
 use crate::identify::state::{
-    BarcodeEvidence, BarcodeLookupState, CatalogEvidence, ChosenCatalog, DiscIdEvidence,
-    ProviderBarcodeLookup, ProviderLookup, RecordedWalk, WalkEnd,
+    step, BarcodeEvidence, BarcodeLookupState, CatalogEvidence, ChosenCatalog, DiscIdEvidence,
+    IdentifyEvent, ProviderBarcodeLookup, ProviderLookup,
 };
 use crate::identify::{IdentifyFailure, TerminalVerdict};
-use crate::import::search::{MetadataResult, SourceFailure};
-use crate::import::{LookupChoices, MetadataSource};
-use crate::signals::{BarcodeSignal, SignalOrigin, Signals, SourcedValue, TextSignal};
+use crate::import::search::MetadataResult;
+use crate::import::MetadataSource;
+use crate::signals::{SignalOrigin, SourcedValue};
 
 const MB: MetadataSource = MetadataSource::MusicBrainz;
 const DG: MetadataSource = MetadataSource::Discogs;
@@ -345,78 +345,87 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
     );
 }
 
-/// A settled state lays its run out as it settled — the walks each provider
-/// recorded — so the ledger stays up beside the matches.
+/// The ledger a settled state carries is the frame the run last showed, with
+/// whatever was still being asked settled onto it. Nothing is rebuilt, so a
+/// cell that had landed does not move when the run ends.
 #[test]
-fn a_settled_state_carries_the_run_it_settled_as() {
+fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     let mut context = context();
     context.barcode.codes = vec![
         SourcedValue::new("A".to_string(), SignalOrigin::Artwork),
         SourcedValue::new("B".to_string(), SignalOrigin::Artwork),
     ];
-    context.barcode.results = vec![result(MB, "mb-1")];
-    context.barcode.matched = Some("B".to_string());
-    context.barcode.failures = vec![SourceFailure {
-        source: DG,
-        failure: LookupFailure::Network,
-    }];
-    context.barcode.walks = vec![
-        RecordedWalk {
+    let in_flight = IdentifyState::Triangulating {
+        discid: DiscidProgress::Skipped { track_count: 9 },
+        barcode: BarcodeProgress::Lookups {
+            codes: vec!["A".to_string(), "B".to_string()],
+            providers: vec![
+                ProviderBarcodeLookup {
+                    source: MB,
+                    state: BarcodeLookupState::Trying { index: 1 },
+                },
+                ProviderBarcodeLookup {
+                    source: DG,
+                    state: BarcodeLookupState::Failed {
+                        failure: LookupFailure::Network,
+                        index: 0,
+                    },
+                },
+            ],
+        },
+        catalog: CatalogProgress::Skipped,
+        context,
+    };
+    let last_frame = run_of(in_flight.clone());
+    let (settled, _) = step(
+        in_flight,
+        IdentifyEvent::BarcodeLookupAnswered {
             source: MB,
-            end: WalkEnd::Matched {
-                code: "B".to_string(),
-            },
+            for_barcode: "B".to_string(),
+            outcome: Ok(vec![result(MB, "mb-1")]),
         },
-        RecordedWalk {
-            source: DG,
-            end: WalkEnd::Failed {
-                code: "A".to_string(),
-            },
-        },
-    ];
-    let state = crate::identify::state::re_derive_for_tests(context);
-    assert!(matches!(state, IdentifyState::Failed { .. }));
-    let run = run_of(state);
-    let rows = barcode_rows(&run);
+    );
+    assert!(matches!(settled, IdentifyState::Failed { .. }));
+    let ledger = run_of(settled);
+
+    assert_eq!(ledger.providers, last_frame.providers);
+    assert_eq!(ledger.disc_id, last_frame.disc_id);
+    let before = barcode_rows(&last_frame);
+    let after = barcode_rows(&ledger);
+    assert_eq!(cells(&after[0]), cells(&before[0]));
     assert!(matches!(
-        cells(&rows[0]).as_slice(),
-        [
-            LookupView::NoMatch,
-            LookupView::Failed {
-                failure: LookupFailure::Network
-            }
-        ]
+        cells(&before[1]).as_slice(),
+        [LookupView::LookingUp, LookupView::NotAsked]
     ));
     assert!(matches!(
-        cells(&rows[1]).as_slice(),
+        cells(&after[1]).as_slice(),
         [LookupView::Found { count: 1, .. }, LookupView::NotAsked]
     ));
 }
 
-/// A verdict stood back up from the store retained no signal inputs, so it
-/// has no run to lay out; so does a folder that carries nothing to look up.
+/// A folder that carries nothing to look up records no ledger: there is no
+/// run to lay out, so the pane offers manual search on its own.
 #[test]
-fn a_state_with_no_inputs_has_no_run() {
+fn a_run_with_no_inputs_records_no_ledger() {
     let blank = SignalsContext {
         providers: Vec::new(),
         barcode: BarcodeEvidence::default(),
         ..context()
     };
+    let settled = crate::identify::state::settle_for_tests(
+        DiscidProgress::Skipped { track_count: 9 },
+        BarcodeProgress::Skipped,
+        CatalogProgress::Skipped,
+        blank,
+    );
     assert!(matches!(
-        IdentifyStateView::from(IdentifyState::ManualOnly {
-            track_count: 9,
-            context: blank.clone(),
-        }),
+        IdentifyStateView::from(settled),
         IdentifyStateView::ManualOnly { run: None, .. }
-    ));
-    assert!(matches!(
-        IdentifyStateView::from(IdentifyState::NotFoundAnywhere { context: blank }),
-        IdentifyStateView::NotFoundAnywhere { run: None }
     ));
 }
 
 /// A folder with nothing to look up automatically but catalog numbers to
-/// offer still has a run: the tiles, waiting to be activated.
+/// offer still records a run: the tiles, waiting to be activated.
 #[test]
 fn a_manual_only_folder_with_catalog_numbers_offers_them() {
     let mut context = SignalsContext {
@@ -428,11 +437,13 @@ fn a_manual_only_folder_with_catalog_numbers_offers_them() {
         "LBL-1".to_string(),
         SignalOrigin::FolderName,
     )];
-    let IdentifyStateView::ManualOnly { run: Some(run), .. } =
-        IdentifyStateView::from(IdentifyState::ManualOnly {
-            track_count: 9,
-            context,
-        })
+    let settled = crate::identify::state::settle_for_tests(
+        DiscidProgress::Skipped { track_count: 9 },
+        BarcodeProgress::Skipped,
+        CatalogProgress::Skipped,
+        context,
+    );
+    let IdentifyStateView::ManualOnly { run: Some(run), .. } = IdentifyStateView::from(settled)
     else {
         panic!("a run with tiles");
     };
@@ -485,30 +496,52 @@ fn a_found_lookup_names_its_releases() {
 
 // ── Resuming a stored verdict ───────────────────────────────────────────────
 
-/// The signals a candidate stores beside its verdict: a disc ID read off a rip
-/// log, one barcode read off the back cover, one catalog number off the sheet.
-fn stored_signals() -> Signals {
-    Signals {
-        disc_id: DiscIdSignal::Computed {
+/// One run's recorded ledger: a disc ID read off a rip log that named one
+/// release, and one barcode both providers were asked about — MusicBrainz
+/// finding nothing, Discogs finding a release of its own.
+fn recorded_ledger() -> IdentifyRunView {
+    IdentifyRunView {
+        providers: vec![MB, DG],
+        disc_id: DiscIdStepView::Read {
             disc_id: "disc-1".to_string(),
-            track_count: 9,
-            source_file: Some("rip/Album.LOG".to_string()),
+            source: Some(DiscIdFile {
+                kind: DiscIdFileKind::Log,
+                file: "rip/Album.LOG".to_string(),
+            }),
+            lookup: LookupView::Found {
+                count: 1,
+                groups: group_results(vec![MetadataResult::for_test(MB, "mb-1", Some("g"))]),
+            },
         },
-        barcode: BarcodeSignal::Settled {
-            codes: vec![SourcedValue::in_file(
-                "0123456789012".to_string(),
-                SignalOrigin::Artwork,
-                "back.jpg".to_string(),
-            )],
+        barcode: BarcodeStepView::Rows {
+            scanning: false,
+            rows: vec![SignalValueRow {
+                value: "0123456789012".to_string(),
+                sources: vec![ValueSource {
+                    origin: SignalOrigin::Artwork,
+                    file: Some("back.jpg".to_string()),
+                    region: None,
+                }],
+                cells: vec![
+                    ProviderCell {
+                        source: MB,
+                        lookup: LookupView::NoMatch,
+                    },
+                    ProviderCell {
+                        source: DG,
+                        lookup: LookupView::Found {
+                            count: 1,
+                            groups: group_results(vec![MetadataResult::for_test(
+                                DG,
+                                "dg-1",
+                                Some("g"),
+                            )]),
+                        },
+                    },
+                ],
+            }],
         },
-        text: TextSignal::Settled {
-            catalogs: vec![SourcedValue::new(
-                "LBL-1".to_string(),
-                SignalOrigin::CueSheet,
-            )],
-            free_text: Vec::new(),
-        },
-        durations: Default::default(),
+        catalog: CatalogStepView::NoneFound,
     }
 }
 
@@ -516,151 +549,53 @@ fn not_in_library(result: &MetadataResult) -> LibraryStatus {
     LibraryStatus::absent(&result.release_id)
 }
 
-/// A stored failure resumes with the ledger the run failed on: the provider
-/// that could not answer warns on the code it was asked about, which is what
-/// puts that cell's Retry back on screen.
-///
-/// Only that provider is laid out. The stored verdict names it and no other,
-/// and no source is assumed to have been asked — a second column would claim
-/// a source ran when nothing stored says it did.
+/// A stored verdict shows the ledger its run recorded, cell for cell — every
+/// provider the run asked has its column, including one whose every answer
+/// the agreement then narrowed out of the matches.
 #[test]
-fn a_resumed_failure_lays_out_the_run_it_failed_on() {
-    let verdict = TerminalVerdict::Failed {
-        failures: vec![IdentifyFailure::Barcode(SourceFailure {
-            source: DG,
-            failure: LookupFailure::Provider { status: Some(503) },
-        })],
-        track_count: 9,
-    };
-    let run = run_of(verdict.resume_state(
-        Some(&stored_signals()),
-        &LookupChoices::default(),
-        &not_in_library,
-    ));
-    assert_eq!(run.providers, vec![DG]);
-    let rows = barcode_rows(&run);
-    assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0].value, "0123456789012");
-    assert_eq!(
-        cells(&rows[0]),
-        vec![&LookupView::Failed {
-            failure: LookupFailure::Provider { status: Some(503) },
-        }]
-    );
-}
-
-/// A stored `Found` resumes with the ledger it settled on: the disc ID's count
-/// on its own row, beside the file it was read off, and the barcode's count on
-/// the code the verdict names, under the provider that answered about it.
-#[test]
-fn a_resumed_found_lays_out_the_run_it_settled_on() {
+fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
     let verdict = TerminalVerdict::Found {
-        matches: vec![
-            MetadataResult::for_test(MB, "mb-1", Some("g")),
-            MetadataResult::for_test(DG, "dg-1", Some("g")),
-        ],
+        matches: vec![MetadataResult::for_test(MB, "mb-1", Some("g"))],
         track_count: 9,
-        provenance: vec![
-            ResultProvenance {
-                by_disc_id: true,
-                by_barcode: false,
-                by_catalog: false,
-            },
-            ResultProvenance {
-                by_disc_id: false,
-                by_barcode: true,
-                by_catalog: false,
-            },
-        ],
+        provenance: vec![ResultProvenance {
+            by_disc_id: true,
+            by_barcode: false,
+            by_catalog: false,
+        }],
         matched_barcode: Some("0123456789012".to_string()),
-        narrowed_out: Vec::new(),
-        narrowed_out_provenance: Vec::new(),
+        narrowed_out: vec![MetadataResult::for_test(DG, "dg-1", Some("g"))],
+        narrowed_out_provenance: vec![ResultProvenance {
+            by_disc_id: false,
+            by_barcode: true,
+            by_catalog: false,
+        }],
+        ledger: Some(recorded_ledger()),
     };
-    let run = run_of(verdict.resume_state(
-        Some(&stored_signals()),
-        &LookupChoices::default(),
-        &not_in_library,
-    ));
+    let run = run_of(verdict.resume_state(&not_in_library));
+    assert_eq!(run, recorded_ledger());
     assert_eq!(run.providers, vec![MB, DG]);
-    let DiscIdStepView::Read { source, lookup, .. } = &run.disc_id else {
-        panic!("a disc ID that was read, got {:?}", run.disc_id);
-    };
-    assert!(matches!(lookup, LookupView::Found { count: 1, .. }));
-    assert_eq!(
-        source,
-        &Some(DiscIdFile {
-            kind: DiscIdFileKind::Log,
-            file: "rip/Album.LOG".to_string(),
-        })
-    );
-    let rows = barcode_rows(&run);
-    assert_eq!(rows.len(), 1);
     assert!(matches!(
-        cells(&rows[0]).as_slice(),
+        cells(&barcode_rows(&run)[0]).as_slice(),
         [LookupView::NoMatch, LookupView::Found { count: 1, .. }]
     ));
 }
 
-/// Nothing found anywhere names no source, so a resumed run lays out no
-/// columns: every source that was asked answered with nothing, and which
-/// sources those were is not stored. The codes and the disc ID still stand —
-/// they are the candidate's, not the run's — with no cell claiming a source
-/// was asked about them.
+/// A verdict with no recorded ledger has none to show, and the pane offers
+/// the re-run in the failure lines instead.
 #[test]
-fn a_resumed_empty_run_lays_out_no_provider_it_cannot_name() {
-    let run = run_of(TerminalVerdict::NotFoundAnywhere.resume_state(
-        Some(&stored_signals()),
-        &LookupChoices::default(),
-        &|_| unreachable!("a no-match verdict names no release"),
-    ));
-    assert!(run.providers.is_empty());
-    assert!(cells(&barcode_rows(&run)[0]).is_empty());
-    assert!(matches!(
-        run.disc_id,
-        DiscIdStepView::Read {
-            lookup: LookupView::NoMatch,
-            ..
-        }
-    ));
-}
-
-/// A verdict whose candidate has no stored signals has no inputs to lay a
-/// ledger out from, so it resumes without one — and the pane offers the
-/// re-run in the failure lines instead.
-#[test]
-fn a_verdict_resumed_without_stored_signals_has_no_run() {
+fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
     let verdict = TerminalVerdict::Failed {
         failures: vec![IdentifyFailure::DiscId(LookupFailure::Network)],
         track_count: 9,
+        ledger: None,
     };
     assert!(matches!(
-        IdentifyStateView::from(verdict.resume_state(
-            None,
-            &LookupChoices::default(),
-            &not_in_library
-        )),
+        IdentifyStateView::from(verdict.resume_state(&not_in_library)),
         IdentifyStateView::Failed { run: None, .. }
     ));
 }
 
 // ── What agreement narrowed out ─────────────────────────────────────────────
-
-/// The barcode walks a settled context needs to stand its ledger back up: one
-/// provider matched the code, the other tried it and found nothing.
-fn settled_walks() -> Vec<RecordedWalk> {
-    vec![
-        RecordedWalk {
-            source: MB,
-            end: WalkEnd::Matched {
-                code: "A".to_string(),
-            },
-        },
-        RecordedWalk {
-            source: DG,
-            end: WalkEnd::Exhausted,
-        },
-    ]
-}
 
 /// Agreement is what shortens the list, so what it discarded stays on the
 /// state: its own cards, its own statuses, and the provenance saying which
@@ -676,7 +611,6 @@ fn a_settled_state_lists_what_agreement_narrowed_out() {
     context.disc.results = vec![result(MB, "mb-shared"), result(MB, "mb-only")];
     context.barcode.results = vec![result(MB, "mb-shared")];
     context.barcode.matched = Some("A".to_string());
-    context.barcode.walks = settled_walks();
 
     let IdentifyStateView::Found {
         groups,
@@ -719,7 +653,6 @@ fn signals_that_agree_on_nothing_narrow_nothing_out() {
     context.disc.results = vec![result(MB, "mb-disc")];
     context.barcode.results = vec![result(MB, "mb-barcode")];
     context.barcode.matched = Some("A".to_string());
-    context.barcode.walks = settled_walks();
 
     let IdentifyStateView::Found {
         groups,

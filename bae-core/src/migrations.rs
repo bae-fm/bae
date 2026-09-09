@@ -123,6 +123,11 @@ pub fn all() -> Vec<coven::Migration> {
             "candidate_lookup_choices",
             include_str!("../migrations/023_candidate_lookup_choices.sql"),
         ),
+        coven::Migration::sql(
+            24,
+            "candidate_verdict_ledger",
+            include_str!("../migrations/024_candidate_verdict_ledger.sql"),
+        ),
     ]
 }
 

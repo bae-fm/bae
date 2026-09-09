@@ -180,13 +180,13 @@ impl VerdictSummary {
                     .first()
                     .map(|result| LeadMatch::of(result, provenance.first())),
             },
-            TerminalVerdict::NotFoundAnywhere => Self {
+            TerminalVerdict::NotFoundAnywhere { .. } => Self {
                 kind: VerdictKind::NotFound,
                 track_count: None,
                 pressing_count: 0,
                 lead: None,
             },
-            TerminalVerdict::ManualOnly { track_count } => Self {
+            TerminalVerdict::ManualOnly { track_count, .. } => Self {
                 kind: VerdictKind::ManualOnly,
                 track_count: Some(*track_count),
                 pressing_count: 0,

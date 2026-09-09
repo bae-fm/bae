@@ -8,11 +8,16 @@
 //! reducer hands their results to `combine` and lands on `Found`,
 //! `NotFoundAnywhere`, or `Failed`.
 //!
+//! Settling also records the run's ledger — the layout every surface has been
+//! drawing while it ran — onto the terminal state, so what the run showed
+//! survives the run.
+//!
 //! `step` takes a state and an event and returns the next state plus the side
 //! effects for the service to run. No I/O, no async, nothing outside itself.
 
 use super::combine::{combine_results, CombineOutcome, NarrowedOut, ResultProvenance};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
+use super::view::{run_view, IdentifyRunView};
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{LookupChoices, MetadataSource};
@@ -21,17 +26,20 @@ use crate::signals::{ArtworkScan, BarcodeSignal, LookupFailure, SignalOrigin, Si
 /// One candidate's identify state.
 ///
 /// Every state but `Idle` carries a [`SignalsContext`], so the toolbar
-/// projection always has its signal values and a settled state can be read
-/// back as the run that produced it.
+/// projection always has its signal values.
+///
+/// Every settled state carries the ledger its run recorded as it ended — the
+/// last frame the run showed, with the lookups that were still in flight
+/// settled onto it. `None` when extraction handed the run nothing to lay out,
+/// and for a state stood back up from a verdict whose row records none.
 #[derive(Clone, Debug, PartialEq)]
 pub enum IdentifyState {
     Idle,
 
     /// Lookups in flight. Each signal progresses independently; `settle_if_ready`
-    /// combines them into a terminal state once all three are settled. The
-    /// catalog pipe rests at `Skipped` until a number is chosen — which is also
-    /// what puts a settled state back here, with the other two standing back up
-    /// from their stored results rather than running again.
+    /// combines them into a terminal state once all three are settled, and
+    /// records the ledger they settled as. The catalog pipe rests at `Skipped`
+    /// until a number is chosen.
     Triangulating {
         discid: DiscidProgress,
         barcode: BarcodeProgress,
@@ -50,10 +58,12 @@ pub enum IdentifyState {
         /// The releases the signals' agreement left out of `matches`. Empty
         /// when nothing was narrowed.
         narrowed_out: NarrowedOut,
+        ledger: Option<IdentifyRunView>,
         context: SignalsContext,
     },
 
     NotFoundAnywhere {
+        ledger: Option<IdentifyRunView>,
         context: SignalsContext,
     },
 
@@ -62,6 +72,7 @@ pub enum IdentifyState {
     /// ran and matched nothing — here none ran, so the UI offers manual search.
     ManualOnly {
         track_count: u32,
+        ledger: Option<IdentifyRunView>,
         context: SignalsContext,
     },
 
@@ -83,6 +94,7 @@ pub enum IdentifyState {
         /// resumed from its stored verdict.
         narrowed_out: NarrowedOut,
         track_count: u32,
+        ledger: Option<IdentifyRunView>,
         context: SignalsContext,
     },
 }
@@ -94,7 +106,7 @@ impl IdentifyState {
         match self {
             IdentifyState::Triangulating { context, .. }
             | IdentifyState::Found { context, .. }
-            | IdentifyState::NotFoundAnywhere { context }
+            | IdentifyState::NotFoundAnywhere { context, .. }
             | IdentifyState::ManualOnly { context, .. }
             | IdentifyState::Failed { context, .. } => Some(context),
             IdentifyState::Idle => None,
@@ -587,6 +599,14 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     context.track_count = track_count;
     context.record_results(&discid, &barcode, &catalog);
 
+    // The ledger this run showed, as its last frame showed it: the same
+    // layout the driver has been publishing, with every lookup now settled.
+    // It is computed here and nowhere else — every later reader shows what
+    // was recorded rather than standing the pipes back up.
+    let ledger = context
+        .has_inputs()
+        .then(|| run_view(&discid, &barcode, &catalog, &context));
+
     // Nothing had anything to run. Offer manual search rather than claim we
     // looked and found nothing.
     if matches!(discid, DiscidProgress::Skipped { .. })
@@ -596,13 +616,14 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         return (
             IdentifyState::ManualOnly {
                 track_count,
+                ledger,
                 context,
             },
             vec![],
         );
     }
 
-    (re_derive(context), vec![])
+    (re_derive(context, ledger), vec![])
 }
 
 /// Re-combine over the non-excluded signals and lift the outcome into a state.
@@ -611,7 +632,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 ///
 /// Both sides empty — because the lookups found nothing, or because the user
 /// excluded the signals that did — lands on `NotFoundAnywhere`.
-fn re_derive(context: SignalsContext) -> IdentifyState {
+fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> IdentifyState {
     // Combine first, whatever failed: a provider that did not answer never
     // invalidates what the others found, and a failed state that hid those
     // matches would leave a person looking at an empty pane while one source
@@ -642,11 +663,12 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
             provenance,
             narrowed_out,
             track_count,
+            ledger,
             context,
         };
     }
     if matches.is_empty() {
-        return IdentifyState::NotFoundAnywhere { context };
+        return IdentifyState::NotFoundAnywhere { ledger, context };
     }
     IdentifyState::Found {
         matches,
@@ -654,6 +676,7 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
         track_count,
         provenance,
         narrowed_out,
+        ledger,
         context,
     }
 }
@@ -662,18 +685,12 @@ mod context;
 mod progress;
 
 pub use context::{
-    BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence, RecordedWalk, SignalsContext,
-    WalkEnd,
+    BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence, SignalsContext,
 };
 use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
     discid_progress_state, settled_identity_state, settled_track_count, start_barcode_progress,
     start_catalog_progress, start_discid_progress,
-};
-/// The pipes a settled context stands back up as — what the view lays a
-/// settled run out from.
-pub(crate) use progress::{
-    settled_barcode_progress, settled_catalog_progress, settled_discid_progress,
 };
 pub use progress::{
     BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
@@ -687,8 +704,28 @@ mod tests;
 
 /// `re_derive` for tests in sibling modules: the one path that turns a settled
 /// context into a terminal state, so a test can build the state a real run
-/// would reach rather than hand-assembling one.
+/// would reach rather than hand-assembling one. It records no ledger — a test
+/// that wants one drives the pipes through [`step`].
 #[cfg(test)]
 pub(crate) fn re_derive_for_tests(context: SignalsContext) -> IdentifyState {
-    re_derive(context)
+    re_derive(context, None)
+}
+
+/// The terminal state these settled pipes land on, ledger and all — the one
+/// path a run ends by, for tests in sibling modules that want the run
+/// recorded as a real one would record it.
+#[cfg(test)]
+pub(crate) fn settle_for_tests(
+    discid: DiscidProgress,
+    barcode: BarcodeProgress,
+    catalog: CatalogProgress,
+    context: SignalsContext,
+) -> IdentifyState {
+    settle_if_ready(IdentifyState::Triangulating {
+        discid,
+        barcode,
+        catalog,
+        context,
+    })
+    .0
 }

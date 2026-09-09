@@ -41,7 +41,7 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
                     metadata_revision: 0,
                 },
                 folder_path: late.to_string_lossy().into_owned(),
-                verdict: TerminalVerdict::NotFoundAnywhere,
+                verdict: TerminalVerdict::NotFoundAnywhere { ledger: None },
                 signals: settled_signals(Default::default()),
                 metadata: blank_metadata_for_dir(&late),
             })
@@ -69,7 +69,7 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
         .expect("the late candidate keeps its row");
     assert_eq!(
         late_row.identify.map(|identify| identify.verdict),
-        Some(TerminalVerdict::NotFoundAnywhere),
+        Some(TerminalVerdict::NotFoundAnywhere { ledger: None }),
         "an answered candidate is not identified again"
     );
 }

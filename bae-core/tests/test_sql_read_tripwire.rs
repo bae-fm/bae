@@ -85,7 +85,7 @@ async fn pure_reads_use_the_read_connection() {
                 metadata_revision: 7,
             },
             folder_path: format!("{root}/Album"),
-            verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere,
+            verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
             signals: bae_core::signals::Signals {
                 disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 0 },
                 barcode: bae_core::signals::BarcodeSignal::Absent,

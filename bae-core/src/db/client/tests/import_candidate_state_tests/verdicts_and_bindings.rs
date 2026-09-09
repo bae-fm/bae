@@ -1,5 +1,8 @@
 use super::super::*;
-use crate::identify::{ResultProvenance, TerminalVerdict};
+use crate::identify::{
+    DiscIdFile, DiscIdFileKind, DiscIdStepView, IdentifyRunView, LookupView, ResultProvenance,
+    TerminalVerdict,
+};
 use crate::import::watched_folder::host_root;
 use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
 use crate::import::search::MetadataResult;
@@ -31,23 +34,48 @@ fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
     }
 }
 
+/// The ledger the sample verdict's run recorded: one disc ID, read off a rip
+/// log, that named the release the verdict settled on.
+fn sample_ledger() -> IdentifyRunView {
+    IdentifyRunView {
+        providers: vec![MetadataSource::MusicBrainz],
+        disc_id: DiscIdStepView::Read {
+            disc_id: "disc-1".to_string(),
+            source: Some(DiscIdFile {
+                kind: DiscIdFileKind::Log,
+                file: "rip/Album.LOG".to_string(),
+            }),
+            lookup: LookupView::Found {
+                count: 1,
+                groups: crate::import::release_group::group_results(vec![sample_match()]),
+            },
+        },
+        barcode: crate::identify::BarcodeStepView::Absent,
+        catalog: crate::identify::CatalogStepView::NoneFound,
+    }
+}
+
+fn sample_match() -> MetadataResult {
+    MetadataResult {
+        source: MetadataSource::MusicBrainz,
+        release_id: "rel-1".to_string(),
+        title: "Album".to_string(),
+        artist: Some("Artist".to_string()),
+        year: Some(1999),
+        format: Some("CD".to_string()),
+        label: Some("Label".to_string()),
+        catalog_number: Some("CAT-1".to_string()),
+        country: Some("US".to_string()),
+        barcode: None,
+        cover_art: None,
+        source_group_id: Some("group-1".to_string()),
+        source_tracks: None,
+    }
+}
+
 fn sample_verdict() -> TerminalVerdict {
     TerminalVerdict::Found {
-        matches: vec![MetadataResult {
-            source: MetadataSource::MusicBrainz,
-            release_id: "rel-1".to_string(),
-            title: "Album".to_string(),
-            artist: Some("Artist".to_string()),
-            year: Some(1999),
-            format: Some("CD".to_string()),
-            label: Some("Label".to_string()),
-            catalog_number: Some("CAT-1".to_string()),
-            country: Some("US".to_string()),
-            barcode: None,
-            cover_art: None,
-            source_group_id: Some("group-1".to_string()),
-            source_tracks: None,
-        }],
+        matches: vec![sample_match()],
         track_count: 11,
         provenance: vec![ResultProvenance {
             by_disc_id: true,
@@ -57,6 +85,7 @@ fn sample_verdict() -> TerminalVerdict {
         matched_barcode: Some("5099969394522".to_string()),
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
+        ledger: Some(sample_ledger()),
     }
 }
 
@@ -95,9 +124,10 @@ fn new_candidate_row(
     }
 }
 
-/// Save a verdict, read it back, and check the provenance survived the JSON
-/// round trip along with everything else — a stripped `by_disc_id` or a
-/// dropped catalog number wouldn't show up in a looser comparison.
+/// Save a verdict, read it back, and check the provenance and the run's
+/// ledger survived the JSON round trip along with everything else — a
+/// stripped `by_disc_id`, a dropped catalog number, or a ledger cell that
+/// lost its release cards wouldn't show up in a looser comparison.
 #[tokio::test]
 async fn round_trip_preserves_the_verdict_including_provenance() {
     let (db, _tmp) = empty_db().await;
@@ -127,6 +157,53 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
         identify.verdict, verdict,
         "the verdict must round-trip exactly, provenance included"
     );
+}
+
+/// A verdict recorded with no ledger reads back with none: the column is
+/// empty, and the pane draws the settled lists without a run beside them.
+#[tokio::test]
+async fn a_verdict_with_no_ledger_reads_back_without_one() {
+    let (db, _tmp) = empty_db().await;
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let TerminalVerdict::Found {
+        matches,
+        track_count,
+        provenance,
+        matched_barcode,
+        narrowed_out,
+        narrowed_out_provenance,
+        ..
+    } = sample_verdict()
+    else {
+        panic!("the sample verdict is a found one");
+    };
+    let verdict = TerminalVerdict::Found {
+        matches,
+        track_count,
+        provenance,
+        matched_barcode,
+        narrowed_out,
+        narrowed_out_provenance,
+        ledger: None,
+    };
+    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict, 2_700_000);
+    store_candidate_state(&db, &candidate, &row.folder_path).await;
+
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .unwrap();
+
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    let identify = loaded
+        .get(&hash)
+        .expect("row present under its content hash")
+        .identify
+        .as_ref()
+        .expect("a stored verdict reads back as an identify result");
+    assert_eq!(identify.verdict, verdict);
 }
 
 /// The releases agreement narrowed out are stored under the same verdict as
@@ -162,6 +239,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
             by_barcode: false,
             by_catalog: false,
         }],
+        ledger: Some(sample_ledger()),
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict, 2_700_000);
     store_candidate_state(&db, &candidate, &row.folder_path).await;
@@ -305,7 +383,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
 }
 
 fn found_nothing() -> TerminalVerdict {
-    TerminalVerdict::NotFoundAnywhere
+    TerminalVerdict::NotFoundAnywhere { ledger: None }
 }
 
 /// A pick identification derived from its own single match belongs to that
