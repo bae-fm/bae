@@ -1,4 +1,5 @@
 use super::*;
+use crate::identify::IdentifyFailure;
 use crate::import::{LookupChoices, MetadataSource};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 
@@ -311,6 +312,50 @@ fn nothing_to_run_waits_for_the_settled_text() {
     assert!(
         matches!(state, IdentifyState::ManualOnly { track_count: 7, .. }),
         "the settled snapshot answers it, got {state:?}"
+    );
+}
+
+/// An extraction that could not gather its inputs fails every signal in its
+/// one snapshot. The run settles on it as a failure with nothing dispatched:
+/// a loud end, where a snapshot that never came would have left it waiting.
+#[test]
+fn an_aborted_extraction_settles_the_run_as_failed() {
+    let failure = LookupFailure::Diagnostic {
+        detail: "fast-pass spawn_blocking failed: task panicked".to_string(),
+    };
+    let aborted = Signals {
+        disc_id: DiscIdSignal::Failed {
+            failure: failure.clone(),
+            track_count: 0,
+        },
+        barcode: BarcodeSignal::Failed {
+            failure: failure.clone(),
+            codes: vec![],
+        },
+        text: TextSignal::Failed {
+            failure: failure.clone(),
+            catalogs: vec![],
+            free_text: vec![],
+        },
+        text_pool: Vec::new(),
+        durations: crate::import::probe::SourceDurations::default(),
+    };
+    let (state, effects) = update(started(), aborted);
+    assert!(effects.is_empty(), "nothing is asked, got {effects:?}");
+    let IdentifyState::Failed { failures, .. } = &state else {
+        panic!("the run settles as failed, got {state:?}");
+    };
+    assert!(
+        failures
+            .iter()
+            .any(|f| matches!(f, IdentifyFailure::DiscId(f) if *f == failure)),
+        "the disc ID failure carries the abort's detail, got {failures:?}"
+    );
+    assert!(
+        failures
+            .iter()
+            .any(|f| matches!(f, IdentifyFailure::BarcodeScan(f) if *f == failure)),
+        "the barcode scan failure carries it too, got {failures:?}"
     );
 }
 

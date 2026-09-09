@@ -63,8 +63,9 @@ pub enum ImportEvent {
     },
     /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
     /// classified text), emitted on every transition — extraction start, each
-    /// source/OCR completion, natural end, and cancellation. The reducer writes
-    /// it wholesale, so it needs no partial-update logic.
+    /// source/OCR completion, natural end, and an abort, which fails every
+    /// signal rather than going silent. The reducer writes it wholesale, so it
+    /// needs no partial-update logic.
     SignalsUpdated {
         candidate_key: String,
         /// The identify run this snapshot was extracted for. Starting a run

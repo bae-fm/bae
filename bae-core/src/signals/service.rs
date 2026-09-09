@@ -27,6 +27,12 @@
 //! sweep pass and the explicit-lookup recorder storing a verdict beside its
 //! snapshot, the candidate runtime, the UI.
 //!
+//! An extraction that cannot gather its inputs — a blocking task that died,
+//! a folder whose timing does not read, a library release whose files do not
+//! resolve — says so with one snapshot that fails every signal, so the run it
+//! feeds settles as a failure rather than waiting on a snapshot that is not
+//! coming.
+//!
 //! A snapshot goes out only while its extraction is the key's current one.
 //! Starting a run replaces the extraction behind the previous run of the same
 //! candidate, and that one may still be mid-pass; nothing it has left to say
@@ -198,7 +204,7 @@ impl ExtractionServiceInner {
             analyzer.analyze(&path)
         })
         .await
-        .ok_or(LookupFailure::ArtworkAnalysis)
+        .map_err(|_| LookupFailure::ArtworkAnalysis)
     }
 }
 
@@ -275,12 +281,25 @@ async fn run_extraction(
         // One scan derives every non-OCR signal in a single blocking hop, then
         // the artwork OCR streams.
         ExtractionSource::Candidate { candidate } => {
-            let Some(fast) = run_fast_pass_blocking(&inner.runtime_handle, move || {
+            let fast = match run_fast_pass_blocking(&inner.runtime_handle, move || {
                 gather_non_ocr_sources(&candidate.source_folders(), candidate.files())
             })
             .await
-            else {
-                return;
+            {
+                Ok(fast) => fast,
+                Err(detail) => {
+                    let failure = LookupFailure::Diagnostic { detail };
+                    emit_aborted_signals(
+                        &inner,
+                        &extraction,
+                        DiscIdSignal::Failed {
+                            failure: failure.clone(),
+                            track_count: 0,
+                        },
+                        failure,
+                    );
+                    return;
+                }
             };
             let mut pool = Pool::default();
             for line in fast.lines {
@@ -357,6 +376,12 @@ async fn run_extraction(
                         ),
                         Err(e) => {
                             error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
+                            emit_aborted_signals(
+                                &inner,
+                                &extraction,
+                                disc_id,
+                                LookupFailure::Diagnostic { detail: e },
+                            );
                             return;
                         }
                     }
@@ -384,30 +409,37 @@ async fn run_extraction(
     }
 }
 
-async fn run_fast_pass_blocking<F>(runtime_handle: &Handle, task: F) -> Option<FastPass>
+/// The fast pass, or why it could not be had: the task died, or the folder's
+/// timing does not read.
+async fn run_fast_pass_blocking<F>(runtime_handle: &Handle, task: F) -> Result<FastPass, String>
 where
     F: FnOnce() -> Result<FastPass, crate::import::ImportError> + Send + 'static,
 {
-    match run_blocking(runtime_handle, "fast-pass spawn_blocking failed", task).await {
-        Some(Ok(pass)) => Some(pass),
-        Some(Err(error)) => {
+    match run_blocking(runtime_handle, "fast-pass spawn_blocking failed", task).await? {
+        Ok(pass) => Ok(pass),
+        Err(error) => {
             error!("signals: folder timing is invalid: {error}; aborting extraction");
-            None
+            Err(format!("folder timing is invalid: {error}"))
         }
-        None => None,
     }
 }
 
-async fn run_blocking<T, F>(runtime_handle: &Handle, failure_context: &str, task: F) -> Option<T>
+/// The blocking task's value, or why there is none: it panicked or was
+/// cancelled with the runtime.
+async fn run_blocking<T, F>(
+    runtime_handle: &Handle,
+    failure_context: &str,
+    task: F,
+) -> Result<T, String>
 where
     T: Send + 'static,
     F: FnOnce() -> T + Send + 'static,
 {
     match runtime_handle.spawn_blocking(task).await {
-        Ok(value) => Some(value),
+        Ok(value) => Ok(value),
         Err(e) => {
             error!("signals: {failure_context}: {e}; aborting extraction");
-            None
+            Err(format!("{failure_context}: {e}"))
         }
     }
 }
@@ -638,6 +670,41 @@ fn emit_failed_ocr_signals(
             durations: gathered.durations,
         },
         artwork,
+    );
+}
+
+/// Say that extraction could not gather its inputs at all: one snapshot with
+/// every signal failed and the artwork pass failed before it read anything.
+/// The run it feeds settles on it as a failure, which is the loud end an
+/// extraction that went silent would deny it.
+fn emit_aborted_signals(
+    inner: &ExtractionServiceInner,
+    extraction: &RunningExtraction,
+    disc_id: DiscIdSignal,
+    failure: LookupFailure,
+) {
+    emit_signals(
+        inner,
+        extraction,
+        Signals {
+            disc_id,
+            barcode: BarcodeSignal::Failed {
+                failure: failure.clone(),
+                codes: Vec::new(),
+            },
+            text: TextSignal::Failed {
+                failure: failure.clone(),
+                catalogs: Vec::new(),
+                free_text: Vec::new(),
+            },
+            text_pool: Vec::new(),
+            durations: crate::import::probe::SourceDurations::default(),
+        },
+        ArtworkScan::Failed {
+            failure,
+            read: 0,
+            total: 0,
+        },
     );
 }
 
