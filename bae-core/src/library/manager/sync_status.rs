@@ -492,7 +492,9 @@ mod tests {
         let conflict = coven::WriteRebaseConflict {
             write_id: write_id.clone(),
             affected_rows: rows.clone(),
-            reason: coven::WriteRebaseConflictReason::MissingTarget,
+            reason: coven::WriteRebaseConflictReason::Constraint {
+                message: "CHECK constraint failed".to_string(),
+            },
         };
         let block = coven::WriteBlock::RebaseConflict(conflict.clone());
         for status in [
@@ -509,7 +511,7 @@ mod tests {
             assert_eq!(operation.id, "write:write-conflict");
             assert_eq!(operation.description, "releases/release-3");
             assert_eq!(operation.error, conflict.to_string());
-            assert!(operation.error.contains("the edited row is absent"));
+            assert!(operation.error.contains("CHECK constraint failed"));
         }
     }
 
