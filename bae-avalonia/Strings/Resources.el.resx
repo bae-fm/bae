@@ -1,0 +1,544 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Αναζήτηση</value></data>
+  <data name="toolbar.libraries" xml:space="preserve"><value>βιβλιοθήκες</value></data>
+  <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>τυχαία αναπαραγωγή βιβλιοθήκης</value></data>
+  <data name="toolbar.storage" xml:space="preserve"><value>αποθήκευση</value></data>
+  <data name="toolbar.settings" xml:space="preserve"><value>ρυθμίσεις</value></data>
+  <data name="action.cancel" xml:space="preserve"><value>Ακύρωση</value></data>
+  <data name="action.close" xml:space="preserve"><value>Κλείσιμο</value></data>
+  <data name="action.delete" xml:space="preserve"><value>Διαγραφή</value></data>
+  <data name="action.import" xml:space="preserve"><value>Εισαγωγή</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
+  <data name="action.play" xml:space="preserve"><value>Αναπαραγωγή</value></data>
+  <data name="action.save" xml:space="preserve"><value>Αποθήκευση</value></data>
+  <data name="action.search" xml:space="preserve"><value>αναζήτηση</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>Αυτό αφαιρεί την κυκλοφορία από τη βιβλιοθήκη.</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>δεν ήταν δυνατή η διαγραφή</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>διαγραφή κυκλοφορίας;</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>επεξεργασία</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>δεν ήταν δυνατή η φόρτωση του επεξεργαστή μεταδεδομένων</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>Επαναφορά στην πηγή</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>δεν ήταν δυνατή η επαναφορά στην πηγή</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>επεξεργασία μεταδεδομένων</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>δεν ήταν δυνατό το άνοιγμα αυτού του άλμπουμ</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>επανάληψη ταυτοποίησης</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>Επανάληψη ταυτοποίησης</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>επανάληψη ταυτοποίησης</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>Κυκλοφορία</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>τυχαία σειρά</value></data>
+  <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
+  <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
+  <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
+  <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>η σύνδεση cloud απέτυχε</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>σύνδεση στο {provider}…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>η σύνδεση cloud δεν έχει διαμορφωθεί σε αυτή την έκδοση (λείπει το oauth-creds.json)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>αυτή η έκδοση δεν υποστηρίζει συγχρονισμό με {provider}</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>αλλαγή εξωφύλλου</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>δεν ήταν δυνατή η ανάκτηση απομακρυσμένων εξωφύλλων</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>ανάκτηση εξωφύλλων…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>δεν ήταν δυνατή η φόρτωση των εικόνων αυτής της κυκλοφορίας</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Δεν υπάρχει διαθέσιμο εξώφυλλο. Η εισαγωγή χρησιμοποιεί το προεπιλεγμένο εξώφυλλο.</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>Δεν βρέθηκαν απομακρυσμένα εξώφυλλα</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>Επιλέξτε εξώφυλλο ή αφήστε το κενό για χρήση του προεπιλεγμένου.</value></data>
+  <data name="cover.refresh" xml:space="preserve"><value>Ανανέωση</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>Αρχεία κυκλοφορίας</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>Απομακρυσμένες πηγές</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>Εξώφυλλο</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>δεν ήταν δυνατή η εμφάνιση απομακρυσμένων εξωφύλλων: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>πίσω</value></data>
+  <data name="action.copy" xml:space="preserve"><value>αντιγραφή</value></data>
+  <data name="action.done" xml:space="preserve"><value>τέλος</value></data>
+  <data name="action.scan" xml:space="preserve"><value>σάρωση…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>σφάλμα αναπαραγωγής</value></data>
+  <data name="error.title" xml:space="preserve"><value>σφάλμα</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>δεν ήταν δυνατή η φόρτωση της συλλογής</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {βρέθηκε (#)} other {βρέθηκαν (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>ταυτοποίηση…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>μόνο χειροκίνητη αναζήτηση</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>δεν βρέθηκε</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>αυτή η κυκλοφορία βρίσκεται ήδη στη βιβλιοθήκη σας</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>επιλογή φακέλου και σάρωση</value></data>
+  <data name="import.complete" xml:space="preserve"><value>έγινε εισαγωγή</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# κομμάτι} other {# κομμάτια}}</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>σάρωση και εισαγωγή</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>σύρετε φάκελο για εισαγωγή</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>δεν ήταν δυνατή η ανάγνωση του στοιχείου που σύρατε</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>σφάλμα εισαγωγής</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>δεν ήταν δυνατή η φόρτωση της κυκλοφορίας προς εισαγωγή</value></data>
+  <data name="import.failed" xml:space="preserve"><value>η εισαγωγή απέτυχε</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>καλλιτέχνης (χειροκίνητη αναζήτηση)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>δεν βρέθηκαν κυκλοφορίες</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>Η διάρκεια του αρχείου δεν ταιριάζει με αυτή της κυκλοφορίας.</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Επιλέξτε φάκελο από τη λίστα για να τον αντιστοιχίσετε σε κυκλοφορία.</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Λεπτομέρειες</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>εισαγωγή {percent}%</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>Εκτέλεση ξανά</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Καρφιτσωμένο</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Cloud</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>προβολή στη βιβλιοθήκη</value></data>
+  <data name="join.title" xml:space="preserve"><value>σύνδεση σε βιβλιοθήκη</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Σαρώστε τον κωδικό σύζευξης που εμφανίζεται σε μια συσκευή που βρίσκεται ήδη στη βιβλιοθήκη σας.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Επικολλήστε τον κωδικό σύζευξης</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Αυτός ο κωδικός σύζευξης δεν είναι έγκυρος.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>σύνδεση</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>σύνδεση στη {name}…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>δεν ήταν δυνατή η σύνδεση στη βιβλιοθήκη</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  ενεργή</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>νέα βιβλιοθήκη</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>μετονομασία</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>βιβλιοθήκες</value></data>
+  <data name="library.empty" xml:space="preserve"><value>Κανένα άλμπουμ</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>δεν ήταν δυνατή η φόρτωση της βιβλιοθήκης</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Δοκιμή ξανά</value></data>
+  <data name="library.locked" xml:space="preserve"><value>η βιβλιοθήκη είναι κλειδωμένη</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>δεν ήταν δυνατό το άνοιγμα της βιβλιοθήκης</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>Αυτή η βιβλιοθήκη είναι κρυπτογραφημένη και το κλειδί της δεν βρίσκεται σε αυτή τη συσκευή. Εισαγάγετε το δεκαεξαδικό κλειδί 64 χαρακτήρων για να την ξεκλειδώσετε.</value></data>
+  <data name="library.unlock.confirm" xml:space="preserve"><value>Ξεκλείδωμα</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>δεκαεξαδικό κλειδί 64 χαρακτήρων</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>ξεκλείδωμα βιβλιοθήκης</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>Προσθήκη στην ουρά</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>Αλλαγή εξωφύλλου…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>Διαγραφή…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>Εξαγωγή…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Αποθήκευση ως…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Αποθήκευση ως</value></data>
+  <data name="menu.play" xml:space="preserve"><value>Αναπαραγωγή</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>Αναπαραγωγή ως επόμενο</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>Ορισμός ως κύρια κυκλοφορία</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>ορίστηκε ως κύρια κυκλοφορία</value></data>
+  <data name="members.title" xml:space="preserve"><value>συσκευές</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>αυτή η συσκευή</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>κάτοχος</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>μέλος</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>ακόλουθος</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>δεν ήταν δυνατή η φόρτωση των συσκευών</value></data>
+  <data name="members.add" xml:space="preserve"><value>προσθήκη συσκευής…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>αφαίρεση</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>αυτή η συσκευή θα χάσει την πρόσβαση και το κλειδί της βιβλιοθήκης θα αντικατασταθεί. κάντε ξανά κλικ στην αφαίρεση για επιβεβαίωση.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>προσθήκη συσκευής</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Σαρώστε αυτόν τον κωδικό στη συσκευή που συνδέεται στη βιβλιοθήκη σας.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>έγκριση αυτής της συσκευής;</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>θα προστεθεί στη βιβλιοθήκη σας και θα μπορεί να συγχρονίζεται.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>έγκριση</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>έγκριση συσκευής…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>δεν ήταν δυνατή η έγκριση αυτής της συσκευής</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Αναμονή για τη συσκευή…</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>μετάβαση στο άλμπουμ</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>διαγραφή</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>δεν ήταν δυνατή η φόρτωση των εξερχομένων</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>παύση</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>δεν ήταν δυνατή η ανάγνωση των εξερχομένων</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>συνέχιση</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>επανάληψη τώρα</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>εκκαθάριση</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>εκκαθάριση του αναπαραγωγή από</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>εκκαθάριση του ακολουθεί</value></data>
+  <data name="queue.remove_item" xml:space="preserve"><value>Αφαίρεση από την ουρά</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>Αναπαραγωγή από</value></data>
+  <data name="queue.section.your_library" xml:space="preserve"><value>Η βιβλιοθήκη σας</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>Ακολουθεί</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>απενεργοποίηση τυχαίας σειράς</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>τυχαία σειρά</value></data>
+  <data name="queue.title" xml:space="preserve"><value>ουρά</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>κωδικός επαναφοράς</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>επικολλήστε τον κωδικό επαναφοράς</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>επαναφορά</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>η επαναφορά απέτυχε</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>Επαναφορά από το cloud</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>επαναφορά από το cloud</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>μη έγκυρος κωδικός επαναφοράς</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>επαναφορά…</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>κλειδί πρόσβασης</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>κάδος S3</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>τερματικό σημείο (προαιρετικό)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>πρόθεμα κλειδιού (προαιρετικό)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>περιοχή</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>μυστικό κλειδί</value></data>
+  <data name="search.failed" xml:space="preserve"><value>Η αναζήτηση απέτυχε</value></data>
+  <data name="search.field.album" xml:space="preserve"><value>άλμπουμ</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>καλλιτέχνης</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>καμία αντιστοίχιση</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Διακριτικό Discogs</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>επανέλεγχος</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Το Discogs απέρριψε αυτό το κλειδί. Ελέγξτε το και αποθηκεύστε ξανά.</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>αφαίρεση διακριτικού</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>αποθήκευση διακριτικού</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>δεν ήταν δυνατή η αποθήκευση του κλειδιού. Κάτι πήγε στραβά.</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Διακριτικό API Discogs</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>Επικύρωση…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Παύση ανάμεσα σε πλευρές και δίσκους</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>Μετάδοση</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>Ενεργοποίηση μετάδοσης</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>Αναπαράγει σε δέκτες Cast, AirPlay και UPnP στο δίκτυό σας. Όταν είναι ανενεργό, το bae δεν αναζητά συσκευές.</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>Απενεργοποίηση μετάδοσης;</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>Αυτό θα σταματήσει τη μετάδοση σε {device}.</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>Απενεργοποίηση</value></data>
+  <data name="settings.library_label" xml:space="preserve"><value>Βιβλιοθήκη: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>ενημερώσεις</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>έκδοση {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Έλεγχος για ενημερώσεις</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>έλεγχος…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>ενημερωμένο</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>λήψη… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>η έκδοση {version} είναι έτοιμη. Κάντε επανεκκίνηση για ενημέρωση</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>Επανεκκίνηση τώρα</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>δεν ήταν δυνατός ο έλεγχος για ενημερώσεις</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>κλείδωμα βιβλιοθήκης</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>ανάκτηση</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>ο κωδικός ανάκτησης επαναφέρει αυτή τη βιβλιοθήκη σε νέα συσκευή όταν δεν έχετε άλλη συσκευή για να την εγκρίνει. όποιος τον έχει αποκτά πλήρη πρόσβαση. Κρατήστε τον μυστικό.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>κωδικός ανάκτησης</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>εμφάνιση κωδικού ανάκτησης…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(μη διαθέσιμο: είναι συνδεδεμένος ο συγχρονισμός;)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>σύνδεση S3</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>σύνδεση στο S3…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>με δυνατότητα περιήγησης: αποθηκευμένο χωρίς κρυπτογράφηση</value></data>
+  <data name="settings.storage.mode" xml:space="preserve"><value>αποθήκευση</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>αδιαφανές: κρυπτογράφηση από άκρο σε άκρο</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>αποσύνδεση</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} κάντε ξανά κλικ στην αποσύνδεση για επιβεβαίωση.</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>συγχρονισμός τώρα</value></data>
+  <data name="settings.title" xml:space="preserve"><value>ρυθμίσεις</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>εξαίρεση σήματος</value></data>
+  <data name="signal.include" xml:space="preserve"><value>συμπερίληψη σήματος</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>Γραμμωτός κώδικας</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>Κατάλογος</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>Επιλέξτε αριθμό καταλόγου για αναζήτηση</value></data>
+  <data name="signal.catalog_stop_counting" xml:space="preserve"><value>Να μην προσμετράται αυτός ο αριθμός καταλόγου</value></data>
+  <data name="signal.catalog_count_again" xml:space="preserve"><value>Να προσμετράται ξανά αυτός ο αριθμός καταλόγου</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>ID δίσκου</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>καλλιτέχνης</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>προσθήκη ταξινόμησης</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>αλλαγή πεδίου ταξινόμησης</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>αφαίρεση ταξινόμησης</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>ημερομηνία προσθήκης</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>αύξουσα ταξινόμηση</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>φθίνουσα ταξινόμηση</value></data>
+  <data name="sort.name" xml:space="preserve"><value>όνομα</value></data>
+  <data name="sort.title" xml:space="preserve"><value>τίτλος</value></data>
+  <data name="sort.year" xml:space="preserve"><value>έτος</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Μετακίνηση στο cloud</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Καρφίτσωμα</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Τοπική διάθεση…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Ξεκαρφίτσωμα</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# αρχείο} other {# αρχεία}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>δεν ήταν δυνατή η φόρτωση της αποθήκευσης</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>δεν ήταν δυνατή η ανάγνωση της αποθήκευσης</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Cloud</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Καρφιτσωμένο</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Τοπικά</value></data>
+  <data name="storage.title" xml:space="preserve"><value>αποθήκευση</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>σφάλμα συγχρονισμού</value></data>
+  <data name="sync.reconnect" xml:space="preserve"><value>Επανασύνδεση</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Δοκιμή ξανά</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>ο συγχρονισμός σάς περιμένει</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>αλλαγή βιβλιοθήκης</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>αλλαγή κοινής χρήσης</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>εκκαθάριση cloud</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>συγχρονίστηκε {time}</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>συγχρονισμός…</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>Δεν ήταν δυνατή η προετοιμασία της εξαγωγής.</value></data>
+  <data name="welcome.subtitle" xml:space="preserve"><value>Ξεκινήστε με τη μουσική σας βιβλιοθήκη.</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>Δεν ήταν δυνατή η δημιουργία της βιβλιοθήκης.</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>επιλέξτε βιβλιοθήκη</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>Σύνδεση σε βιβλιοθήκη</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>Δημιουργία νέας βιβλιοθήκης</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>οι βιβλιοθήκες σας</value></data>
+  <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>συνδεδεμένο</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>αποθηκεύτηκε. Δεν ήταν δυνατή η επικύρωση ακόμη (εκτός σύνδεσης). θα γίνει νέα προσπάθεια.</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>αρχικοποίηση</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>Συγχρονισμός: μη συνδεδεμένος</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>έτοιμο</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Συγχρονισμός: {provider}{account}, {state}</value></data>
+  <data name="download.title" xml:space="preserve"><value>λήψεις</value></data>
+  <data name="download.paused" xml:space="preserve"><value>σε παύση</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>σε ουρά</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>γίνεται λήψη</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>απέτυχε</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>Αυτοματισμός</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>Ενεργοποίηση διακομιστή MCP</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>Θύρα</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>ανανέωση κατάστασης</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>αντιγραφή διακριτικού</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>εναλλαγή διακριτικού</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>Διακομιστής MCP: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>Ο διακομιστής MCP είναι ανενεργός</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>Μη έγκυρη διαμόρφωση διακομιστή MCP</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>Το διακριτικό MCP δεν είναι διαθέσιμο</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>Δεν ήταν δυνατή η εκκίνηση του διακομιστή MCP</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>Ο διακομιστής MCP σταμάτησε</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>εισαγάγετε θύρα από 1 έως 65535</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>Η κατάσταση MCP δεν είναι διαθέσιμη</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>Το διακριτικό MCP δεν είναι διαθέσιμο</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>το διακριτικό αντιγράφηκε</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>το διακριτικό αντικαταστάθηκε και αντιγράφηκε</value></data>
+  <data name="settings.subsonic.label" xml:space="preserve"><value>Subsonic</value></data>
+  <data name="settings.subsonic.enable" xml:space="preserve"><value>Ενεργοποίηση διακομιστή Subsonic</value></data>
+  <data name="settings.subsonic.port" xml:space="preserve"><value>Θύρα</value></data>
+  <data name="settings.subsonic.username" xml:space="preserve"><value>Όνομα χρήστη</value></data>
+  <data name="settings.subsonic.allow_network" xml:space="preserve"><value>Να επιτρέπονται συνδέσεις από άλλες συσκευές του δικτύου</value></data>
+  <data name="settings.subsonic.password" xml:space="preserve"><value>Κωδικός πρόσβασης</value></data>
+  <data name="settings.subsonic.save_password" xml:space="preserve"><value>αποθήκευση κωδικού πρόσβασης</value></data>
+  <data name="settings.subsonic.password_help" xml:space="preserve"><value>Ο κωδικός πρόσβασης αποθηκεύεται στο μπρελόκ, όχι στο αρχείο διαμόρφωσης. Οι πελάτες πιστοποιούνται με το όνομα χρήστη και τον κωδικό πρόσβασης.</value></data>
+  <data name="settings.subsonic.password_saved" xml:space="preserve"><value>ο κωδικός πρόσβασης αποθηκεύτηκε</value></data>
+  <data name="settings.subsonic.refresh" xml:space="preserve"><value>ανανέωση κατάστασης</value></data>
+  <data name="settings.subsonic.invalid_port" xml:space="preserve"><value>εισαγάγετε θύρα από 1 έως 65535</value></data>
+  <data name="settings.subsonic.status.running" xml:space="preserve"><value>Διακομιστής Subsonic: {url}</value></data>
+  <data name="settings.subsonic.status.disabled" xml:space="preserve"><value>Ο διακομιστής Subsonic είναι ανενεργός</value></data>
+  <data name="settings.subsonic.status.invalid_config" xml:space="preserve"><value>Μη έγκυρη διαμόρφωση διακομιστή Subsonic</value></data>
+  <data name="settings.subsonic.status.credential_unavailable" xml:space="preserve"><value>Το διαπιστευτήριο Subsonic δεν είναι διαθέσιμο</value></data>
+  <data name="settings.subsonic.status.bind_failed" xml:space="preserve"><value>Δεν ήταν δυνατή η εκκίνηση του διακομιστή Subsonic</value></data>
+  <data name="settings.subsonic.status.server_failed" xml:space="preserve"><value>Ο διακομιστής Subsonic σταμάτησε</value></data>
+  <data name="settings.subsonic.status_unavailable" xml:space="preserve"><value>Η κατάσταση Subsonic δεν είναι διαθέσιμη</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>Άλμπουμ</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>Συνθέτες</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>Καλλιτέχνες</value></data>
+  <data name="library.empty_guidance" xml:space="preserve"><value>Εισαγάγετε λίγη μουσική για να ξεκινήσετε</value></data>
+  <data name="section.library" xml:space="preserve"><value>Βιβλιοθήκη</value></data>
+  <data name="section.import" xml:space="preserve"><value>Εισαγωγή</value></data>
+  <data name="toolbar.close_library" xml:space="preserve"><value>κλείσιμο βιβλιοθήκης</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>Κανένας συνθέτης</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>Κανένας καλλιτέχνης</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>Άλμπουμ</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>Καλλιτέχνες</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>Κομμάτια</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>Συνθέτες</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>Έργα</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>Κυκλοφορίες</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>Συντελεστές</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>Ηχογραφήσεις</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>Δεν ήταν δυνατό το άνοιγμα των λεπτομερειών του συνθέτη</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>Δεν ήταν δυνατό το άνοιγμα των λεπτομερειών του καλλιτέχνη</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>Δεν ήταν δυνατό το άνοιγμα των λεπτομερειών του έργου</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} έργα</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} άλμπουμ</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>Κομμάτια</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>Κυκλοφορία</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>Μορφές</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>Προεπιλογές</value></data>
+  <data name="settings.formats.defaults_footer" xml:space="preserve"><value>Η μορφή με την οποία ξεκινά το Αποθήκευση ως…</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>Για προχωρημένους</value></data>
+  <data name="settings.formats.preset_name" xml:space="preserve"><value>Όνομα</value></data>
+  <data name="settings.formats.preset_track" xml:space="preserve"><value>Κομμάτι</value></data>
+  <data name="settings.formats.preset_release" xml:space="preserve"><value>Κυκλοφορία</value></data>
+  <data name="settings.formats.preset_pregap" xml:space="preserve"><value>Pregap</value></data>
+  <data name="settings.formats.pregap.append_except_htoa" xml:space="preserve"><value>Προσάρτηση εκτός HTOA</value></data>
+  <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>Προσάρτηση μαζί με το HTOA</value></data>
+  <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>Εξαίρεση</value></data>
+  <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>Ένα αρχείο + CUE</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>Ονομασία αρχείων</value></data>
+  <data name="settings.formats.add_token" xml:space="preserve"><value>Προσθήκη:</value></data>
+  <data name="settings.formats.remove_token" xml:space="preserve"><value>Αφαίρεση {token}</value></data>
+  <data name="settings.formats.token.title" xml:space="preserve"><value>Τίτλος</value></data>
+  <data name="settings.formats.token.artist" xml:space="preserve"><value>Καλλιτέχνης</value></data>
+  <data name="settings.formats.token.album" xml:space="preserve"><value>Άλμπουμ</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>Έτος κυκλοφορίας</value></data>
+  <data name="settings.formats.token.track_number" xml:space="preserve"><value>Κομμάτι αρ.</value></data>
+  <data name="settings.formats.token.disc_number" xml:space="preserve"><value>Δίσκος αρ.</value></data>
+  <data name="settings.formats.token.track_total" xml:space="preserve"><value>Σύνολο κομματιών</value></data>
+  <data name="settings.formats.sample.title" xml:space="preserve"><value>Τίτλος κομματιού</value></data>
+  <data name="settings.formats.sample.artist" xml:space="preserve"><value>Όνομα καλλιτέχνη</value></data>
+  <data name="settings.formats.sample.album" xml:space="preserve"><value>Τίτλος άλμπουμ</value></data>
+  <data name="settings.formats.preview" xml:space="preserve"><value>Προεπισκόπηση: {filename}</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Οι μορφές εμφανίζονται στο Αποθήκευση ως… για κομμάτια και κυκλοφορίες.</value></data>
+  <data name="settings.formats.preset_format" xml:space="preserve"><value>Μορφή</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>Προσθήκη μορφής</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>Διαγραφή μορφής</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>Διαγραφή της μορφής «{name}»;</value></data>
+  <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_aac" xml:space="preserve"><value>AAC {kbps} kbps</value></data>
+  <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>Εμφάνιση στο Αποθήκευση ως… για</value></data>
+  <data name="settings.formats.embed_cover" xml:space="preserve"><value>Ενσωμάτωση εξωφύλλου</value></data>
+  <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>Βάθος bit</value></data>
+  <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>Πηγή</value></data>
+  <data name="settings.formats.bit_depth.bits16" xml:space="preserve"><value>16 bit</value></data>
+  <data name="settings.formats.bit_depth.bits24" xml:space="preserve"><value>24 bit</value></data>
+  <data name="settings.formats.bit_depth.bits32" xml:space="preserve"><value>32 bit</value></data>
+  <data name="settings.formats.bitrate" xml:space="preserve"><value>Ρυθμός bit</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>Μεταφόρτωση</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>Σε ουρά</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>Νέα προσπάθεια</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>Τέλος</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>Μεταφόρτωση ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>Σε ουρά ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>Νέα προσπάθεια ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>τίτλος άλμπουμ</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>καλλιτέχνες άλμπουμ (χωρισμένοι με κόμμα)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>έτος</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>μορφή</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>εταιρεία</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>αριθμός καταλόγου</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>χώρα</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>γραμμωτός κώδικας</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>κομμάτια</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>τίτλος</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>καλλιτέχνης</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>πλευρά</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>αρ.</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>καλλιτέχνης άλμπουμ</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>Παράλειψη ταυτοποίησης</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>εισαγωγή στη θέση {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>η ουρά είναι κενή</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>σύρετε άλμπουμ εδώ ή αναπαραγάγετε ένα άλμπουμ</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Η ταυτότητα ενημερώθηκε.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Να αντληθούν τα πεδία άλμπουμ, κομματιών και πιεστηρίου από τη νέα ταυτοποιημένη πηγή; Οι δικές σας αλλαγές θα αντικατασταθούν.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Ανανέωση από τη νέα πηγή</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Διατήρηση των τρεχόντων μεταδεδομένων</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Παραλείφθηκε</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Παράλειψη</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Επαναφορά σε εισαγόμενα</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Αφαίρεση φακέλου</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>Ταξινόμηση και παρακολουθούμενοι φάκελοι</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Νεότερα πρώτα</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Παλαιότερα πρώτα</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Όνομα φακέλου (Α–Ω)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Όνομα φακέλου (Ω–Α)</value></data>
+  <data name="import.tab.pending" xml:space="preserve"><value>Σε εκκρεμότητα</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Τέλος</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Ταυτοποίηση</value></data>
+  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Μετάβαση σε υποψήφιο που ταυτοποιείται ακόμη</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} επιλεγμένα</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Επιλογή όλων</value></data>
+  <data name="import.footbar.select_none" xml:space="preserve"><value>Καμία επιλογή</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>Εισαγωγή {count}</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Εισαγωγή ούτως ή άλλως</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Δοκιμή ξανά</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>Χειροκίνητη αναζήτηση</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Δεν βρέθηκαν αυτόματες αντιστοιχίσεις</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>Σήματα</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Απέτυχε</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>Έτοιμο</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Αναμονή ταυτοποίησης</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Ταυτοποίηση…</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Φίλτρο…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Προσθήκη φακέλου…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Δεν υπάρχει τίποτα εδώ ακόμη</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Καμία αντιστοίχιση</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# εισαγωγή δεν μπόρεσε να ξεκινήσει} other {# εισαγωγές δεν μπόρεσαν να ξεκινήσουν}}</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>εμφάνιση χρόνου που απομένει</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>εμφάνιση χρόνου που πέρασε</value></data>
+  <data name="output.title" xml:space="preserve"><value>εξαγωγή και αποθήκευση</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>εξαγωγή {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>αποθήκευση {percent}%</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>Δεν ήταν δυνατή η ανάγνωση του {name}: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>εμφάνιση στην Εξερεύνηση</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>αντιγραφή ID</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>το ID της βιβλιοθήκης αντιγράφηκε</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>δεν ήταν δυνατό το άνοιγμα του φακέλου της βιβλιοθήκης</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Επαναφορά κατά την εκκίνηση</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Αποθηκεύει το τρέχον κομμάτι, τη θέση, την ουρά και την ένταση κατά την έξοδο και τα επαναφέρει στην επόμενη εκκίνηση.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} από {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>δεν ήταν δυνατή η φόρτωση της εικόνας</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>προηγούμενη εικόνα</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>επόμενη εικόνα</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>Όλα</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Τοπικά</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Cloud</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>Ουρά συγχρονισμού</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>Άλμπουμ</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>Καλλιτέχνης</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>Μορφή</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>Αποθήκευση</value></data>
+  <data name="storage.concurrency.downloads" xml:space="preserve"><value>Ταυτόχρονες λήψεις</value></data>
+  <data name="storage.concurrency.uploads" xml:space="preserve"><value>Ταυτόχρονες μεταφορτώσεις</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>Αρχεία</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>Μέγεθος</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# κυκλοφορία} other {# κυκλοφορίες}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Σύνολο: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Αφαίρεση</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Αφαιρεί αυτή τη βιβλιοθήκη και τα ληφθέντα αρχεία της από αυτό το PC. Η βιβλιοθήκη σας στο cloud παραμένει ανέπαφη. Μπορείτε να την επαναφέρετε εδώ αργότερα.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Αυτή η βιβλιοθήκη δεν είναι συγχρονισμένη. Η αφαίρεσή της διαγράφει οριστικά τον κατάλογό της. Άλμπουμ, αλλαγές μεταδεδομένων και ιστορικό αναπαραγωγής. Τα αρχεία ήχου στους φακέλους σας δεν διαγράφονται.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>αφαίρεση αυτής της βιβλιοθήκης από αυτό το PC</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Η βιβλιοθήκη σας στο cloud παραμένει ανέπαφη. Μπορείτε να την επαναφέρετε αργότερα από την οθόνη υποδοχής.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Αυτή η βιβλιοθήκη δεν συγχρονίστηκε ποτέ. Ο κατάλογός της θα διαγραφεί οριστικά· τα αρχεία ήχου στους φακέλους σας δεν διαγράφονται.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Ορισμένες αλλαγές δεν ολοκλήρωσαν τη μεταφόρτωση και θα χαθούν.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Κάντε ξανά κλικ στο κουμπί για επιβεβαίωση.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Δεν ήταν δυνατή η αφαίρεση της βιβλιοθήκης: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Καρφίτσωμα</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Αναπαραγωγή # άλμπουμ} other {Αναπαραγωγή # άλμπουμ}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Αναπαραγωγή # άλμπουμ ως επόμενο} other {Αναπαραγωγή # άλμπουμ ως επόμενα}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Προσθήκη # άλμπουμ στην ουρά} other {Προσθήκη # άλμπουμ στην ουρά}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Καρφίτσωμα # άλμπουμ} other {Καρφίτσωμα # άλμπουμ}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>άνοιγμα με {name}</value></data>
+  <data name="nowplaying.pause" xml:space="preserve"><value>Παύση</value></data>
+  <data name="nowplaying.mute" xml:space="preserve"><value>Σίγαση</value></data>
+  <data name="nowplaying.unmute" xml:space="preserve"><value>Κατάργηση σίγασης</value></data>
+  <data name="nowplaying.previous" xml:space="preserve"><value>Προηγούμενο κομμάτι</value></data>
+  <data name="nowplaying.next" xml:space="preserve"><value>Επόμενο κομμάτι</value></data>
+  <data name="nowplaying.repeat_off" xml:space="preserve"><value>Επανάληψη: ανενεργή</value></data>
+  <data name="nowplaying.repeat_context" xml:space="preserve"><value>Επανάληψη: πλαίσιο</value></data>
+  <data name="nowplaying.repeat_track" xml:space="preserve"><value>Επανάληψη: κομμάτι</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>Αναπαράγεται τώρα</value></data>
+  <data name="nowplaying.cast" xml:space="preserve"><value>Μετάδοση</value></data>
+  <data name="nowplaying.casting_to" xml:space="preserve"><value>Μετάδοση σε {device}</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>Αποσύνδεση</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>Δεν βρέθηκαν συσκευές Cast</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>συλλογή στοιχείων</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>συλλογή στοιχείων</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>Ανανέωση</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>Ανανέωση…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>Συνένωση σε μία κυκλοφορία</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>Διατήρηση ως ξεχωριστές κυκλοφορίες</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Εκκίνηση σύζευξης…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Αναμονή έγκρισης…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Αποτύπωμα: {fingerprint}</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Χειροκίνητη εισαγωγή</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Καλλιτέχνης άλμπουμ</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>Βιβλιοθήκη</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>Νέο</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Προσθήκη</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Αφαίρεση</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Τίτλος άλμπουμ</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Εφαρμογή</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Εκκαθάριση μεταδεδομένων</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>Τα αρχεία του υποψηφίου και οι αντιστοιχίσεις παραμένουν αμετάβλητα.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Εκκαθάριση μεταδεδομένων;</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Αναζήτηση στο διαδίκτυο</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Αναζήτηση στο διαδίκτυο…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Δοκιμάστε να διαβάσετε ξανά τον υποψήφιο.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Γενικά</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Προεπιλεγμένη πηγή μεταδεδομένων</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Αναζήτηση στο διαδίκτυο</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>Αυτόματη ταυτοποίηση</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Οι νέοι υποψήφιοι ταυτοποιούνται μόλις εντοπιστούν, καθώς και όταν ανοίγει η Αναζήτηση στο διαδίκτυο. Όταν είναι ανενεργή, ο σύνδεσμος Ταυτοποίηση ξεκινά μια εκτέλεση.</value></data>
+  <data name="settings.import.search_source" xml:space="preserve"><value>Αναζήτηση στο {source}</value></data>
+  <data name="settings.import.sources_help" xml:space="preserve"><value>Η Αναζήτηση στο διαδίκτυο ρωτά τις πηγές που είναι επιλεγμένες εδώ.</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Καμία</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>Διαδικτυακή αναζήτηση</value></data>
+  <data name="action.clear" xml:space="preserve"><value>εκκαθάριση</value></data>
+  <data name="action.retry" xml:space="preserve"><value>δοκιμή ξανά</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>αποτελέσματα για {query}</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>αναζήτηση στο {source}…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>Το {source} δεν απάντησε: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>Το {source} δεν έχει ρυθμιστεί</value></data>
+  <data name="appearance.title" xml:space="preserve"><value>Εμφάνιση</value></data>
+  <data name="appearance.mode" xml:space="preserve"><value>Λειτουργία</value></data>
+  <data name="appearance.system" xml:space="preserve"><value>Σύστημα</value></data>
+  <data name="appearance.light" xml:space="preserve"><value>Φωτεινή</value></data>
+  <data name="appearance.dark" xml:space="preserve"><value>Σκοτεινή</value></data>
+  <data name="appearance.accent" xml:space="preserve"><value>Χρώμα τονισμού</value></data>
+  <data name="appearance.tone" xml:space="preserve"><value>Απόχρωση φόντου</value></data>
+  <data name="appearance.neutral" xml:space="preserve"><value>Ουδέτερο</value></data>
+  <data name="appearance.slate" xml:space="preserve"><value>Σχιστόλιθος</value></data>
+  <data name="appearance.plum" xml:space="preserve"><value>Δαμάσκηνο</value></data>
+  <data name="appearance.blue" xml:space="preserve"><value>Μπλε</value></data>
+  <data name="appearance.indigo" xml:space="preserve"><value>Ινδικό</value></data>
+  <data name="appearance.purple" xml:space="preserve"><value>Μοβ</value></data>
+  <data name="appearance.pink" xml:space="preserve"><value>Ροζ</value></data>
+  <data name="appearance.red" xml:space="preserve"><value>Κόκκινο</value></data>
+  <data name="appearance.amber" xml:space="preserve"><value>Κεχριμπάρι</value></data>
+  <data name="appearance.green" xml:space="preserve"><value>Πράσινο</value></data>
+  <data name="appearance.teal" xml:space="preserve"><value>Γαλαζοπράσινο</value></data>
+  <data name="appearance.save_failed" xml:space="preserve"><value>Δεν ήταν δυνατή η αποθήκευση της εμφάνισης: {error}</value></data>
+  <data name="appearance.midnight" xml:space="preserve"><value>Μεσάνυχτα</value></data>
+  <data name="appearance.forest" xml:space="preserve"><value>Δάσος</value></data>
+  <data name="appearance.sand" xml:space="preserve"><value>Άμμος</value></data>
+  <data name="cover.unlinked" xml:space="preserve"><value>Συνδέστε μια κυκλοφορία Discogs ή MusicBrainz για να περιηγηθείτε στις εικόνες της.</value></data>
+  <data name="import.search.identification_results" xml:space="preserve"><value>Αποτελέσματα ταυτοποίησης</value></data>
+</root>

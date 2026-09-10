@@ -36,8 +36,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork download stopped."
+            "state": "translated",
+            "value": "Η λήψη των γραφικών σταμάτησε."
           }
         },
         "en": {
@@ -209,8 +209,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading artwork…"
+            "state": "translated",
+            "value": "Λήψη γραφικών…"
           }
         },
         "en": {
@@ -382,8 +382,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Some artwork couldn’t be downloaded."
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η λήψη ορισμένων γραφικών."
           }
         },
         "en": {
@@ -555,8 +555,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finding artwork…"
+            "state": "translated",
+            "value": "Εύρεση γραφικών…"
           }
         },
         "en": {
@@ -728,8 +728,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld-bit"
+            "state": "translated",
+            "value": "%lld bit"
           }
         },
         "en": {
@@ -901,7 +901,7 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%lld kbps"
           }
         },
@@ -1074,8 +1074,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld ch"
+            "state": "translated",
+            "value": "%lld καν."
           }
         },
         "en": {
@@ -1247,8 +1247,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "mono"
+            "state": "translated",
+            "value": "μονοφωνικό"
           }
         },
         "en": {
@@ -1420,8 +1420,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "stereo"
+            "state": "translated",
+            "value": "στερεοφωνικό"
           }
         },
         "en": {
@@ -1593,8 +1593,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Audio"
+            "state": "translated",
+            "value": "Ήχος"
           }
         },
         "en": {
@@ -1766,7 +1766,7 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "CUE"
           }
         },
@@ -1939,7 +1939,7 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": " · "
           }
         },
@@ -2112,8 +2112,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Various"
+            "state": "translated",
+            "value": "Διάφορα"
           }
         },
         "en": {
@@ -2285,7 +2285,7 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@ kHz"
           }
         },
@@ -2458,8 +2458,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Local only"
+            "state": "translated",
+            "value": "Μόνο τοπικά"
           }
         },
         "en": {
@@ -2631,8 +2631,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "S3-compatible"
+            "state": "translated",
+            "value": "Συμβατό με S3"
           }
         },
         "en": {
@@ -2804,8 +2804,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$@ of %2$@"
+            "state": "translated",
+            "value": "%1$@ από %2$@"
           }
         },
         "en": {
@@ -2977,8 +2977,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld hr"
+            "state": "translated",
+            "value": "%lld ώ"
           }
         },
         "en": {
@@ -3168,7 +3168,7 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%1$@, %2$@"
           }
         },
@@ -3341,8 +3341,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld min"
+            "state": "translated",
+            "value": "%lld λ"
           }
         },
         "en": {
@@ -3514,8 +3514,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This AirPlay receiver isn't supported."
+            "state": "translated",
+            "value": "Αυτός ο δέκτης AirPlay δεν υποστηρίζεται."
           }
         },
         "en": {
@@ -3687,8 +3687,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong with your settings."
+            "state": "translated",
+            "value": "Κάτι πήγε στραβά με τις ρυθμίσεις σας."
           }
         },
         "en": {
@@ -3860,8 +3860,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check your cloud credentials and try again."
+            "state": "translated",
+            "value": "Ελέγξτε τα διαπιστευτήρια cloud και δοκιμάστε ξανά."
           }
         },
         "en": {
@@ -4033,8 +4033,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong reading your library."
+            "state": "translated",
+            "value": "Κάτι πήγε στραβά κατά την ανάγνωση της βιβλιοθήκης σας."
           }
         },
         "en": {
@@ -4206,8 +4206,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The export couldn't be completed."
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η ολοκλήρωση της εξαγωγής."
           }
         },
         "en": {
@@ -4379,8 +4379,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The import couldn't be completed."
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η ολοκλήρωση της εισαγωγής."
           }
         },
         "en": {
@@ -4552,8 +4552,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong."
+            "state": "translated",
+            "value": "Κάτι πήγε στραβά."
           }
         },
         "en": {
@@ -4725,8 +4725,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't access your device's secure storage."
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η πρόσβαση στην ασφαλή αποθήκευση της συσκευής σας."
           }
         },
         "en": {
@@ -4898,8 +4898,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong updating library sharing."
+            "state": "translated",
+            "value": "Κάτι πήγε στραβά κατά την ενημέρωση της κοινής χρήσης της βιβλιοθήκης."
           }
         },
         "en": {
@@ -5071,8 +5071,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the cloud. Check your connection and try again."
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η επικοινωνία με το cloud. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά."
           }
         },
         "en": {
@@ -5244,8 +5244,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The save couldn't be completed."
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η ολοκλήρωση της αποθήκευσης."
           }
         },
         "en": {
@@ -5417,8 +5417,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket wasn't found. Check its name and the credentials' access to it."
+            "state": "translated",
+            "value": "Αυτός ο κάδος δεν βρέθηκε. Ελέγξτε το όνομά του και την πρόσβαση των διαπιστευτηρίων σε αυτόν."
           }
         },
         "en": {
@@ -5590,8 +5590,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check the bucket, region, endpoint, and key prefix."
+            "state": "translated",
+            "value": "Ελέγξτε τον κάδο, την περιοχή, το τερματικό σημείο και το πρόθεμα κλειδιού."
           }
         },
         "en": {
@@ -5763,8 +5763,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket and key prefix already contain a different library. Use an empty key prefix, or join or restore that library."
+            "state": "translated",
+            "value": "Αυτός ο κάδος και το πρόθεμα κλειδιού περιέχουν ήδη μια άλλη βιβλιοθήκη. Χρησιμοποιήστε κενό πρόθεμα κλειδιού ή συνδεθείτε ή επαναφέρετε εκείνη τη βιβλιοθήκη."
           }
         },
         "en": {
@@ -5936,8 +5936,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Allow these credentials to read, write, list, and delete objects in this bucket."
+            "state": "translated",
+            "value": "Επιτρέψτε σε αυτά τα διαπιστευτήρια να διαβάζουν, να γράφουν, να απαριθμούν και να διαγράφουν αντικείμενα σε αυτόν τον κάδο."
           }
         },
         "en": {
@@ -6109,8 +6109,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This cloud storage has no available space."
+            "state": "translated",
+            "value": "Αυτός ο αποθηκευτικός χώρος cloud δεν έχει διαθέσιμο χώρο."
           }
         },
         "en": {
@@ -6282,8 +6282,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The region or endpoint doesn't match this bucket."
+            "state": "translated",
+            "value": "Η περιοχή ή το τερματικό σημείο δεν ταιριάζει με αυτόν τον κάδο."
           }
         },
         "en": {
@@ -6455,8 +6455,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This library has no device identity. Create, join, or restore the library again."
+            "state": "translated",
+            "value": "Αυτή η βιβλιοθήκη δεν έχει ταυτότητα συσκευής. Δημιουργήστε, συνδεθείτε ή επαναφέρετε ξανά τη βιβλιοθήκη."
           }
         },
         "en": {
@@ -6628,8 +6628,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This pairing code expired. Show a new code on the other device and try again."
+            "state": "translated",
+            "value": "Αυτός ο κωδικός σύζευξης έληξε. Εμφανίστε νέο κωδικό στην άλλη συσκευή και δοκιμάστε ξανά."
           }
         },
         "en": {
@@ -6801,8 +6801,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device ended this pairing. Start it again from there if you still want to join."
+            "state": "translated",
+            "value": "Η άλλη συσκευή τερμάτισε αυτή τη σύζευξη. Αν εξακολουθείτε να θέλετε να συνδεθείτε, ξεκινήστε την ξανά από εκεί."
           }
         },
         "en": {
@@ -6974,8 +6974,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device isn't running this join. Open bae on it, show a pairing code, and try again."
+            "state": "translated",
+            "value": "Η άλλη συσκευή δεν εκτελεί αυτή τη σύνδεση. Ανοίξτε το bae σε αυτήν, εμφανίστε κωδικό σύζευξης και δοκιμάστε ξανά."
           }
         },
         "en": {
@@ -7147,8 +7147,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This device's keychain is locked. Unlock the device and bae will pick up where it left off."
+            "state": "translated",
+            "value": "Το μπρελόκ αυτής της συσκευής είναι κλειδωμένο. Ξεκλειδώστε τη συσκευή και το bae θα συνεχίσει από εκεί που σταμάτησε."
           }
         },
         "en": {
@@ -7320,8 +7320,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "That library could not be found."
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η εύρεση εκείνης της βιβλιοθήκης."
           }
         },
         "en": {
@@ -7493,8 +7493,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Update the app to continue syncing."
+            "state": "translated",
+            "value": "Ενημερώστε την εφαρμογή για να συνεχιστεί ο συγχρονισμός."
           }
         },
         "en": {
@@ -7666,8 +7666,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "not a track"
+            "state": "translated",
+            "value": "δεν είναι κομμάτι"
           }
         },
         "en": {
@@ -7839,8 +7839,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "slot %lld"
+            "state": "translated",
+            "value": "θέση %lld"
           }
         },
         "en": {
@@ -8012,8 +8012,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "slots %1$lld–%2$lld"
+            "state": "translated",
+            "value": "θέσεις %1$lld–%2$lld"
           }
         },
         "en": {
@@ -8185,8 +8185,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import has already completed and can no longer be edited."
+            "state": "translated",
+            "value": "Αυτή η εισαγωγή έχει ήδη ολοκληρωθεί και δεν μπορεί πλέον να επεξεργαστεί."
           }
         },
         "en": {
@@ -8358,8 +8358,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import is already running and can no longer be edited."
+            "state": "translated",
+            "value": "Αυτή η εισαγωγή εκτελείται ήδη και δεν μπορεί πλέον να επεξεργαστεί."
           }
         },
         "en": {
@@ -8531,8 +8531,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from barcode %@ in this image"
+            "state": "translated",
+            "value": "Η κυκλοφορία ταυτοποιήθηκε αυτόματα από τον γραμμωτό κώδικα %@ σε αυτή την εικόνα"
           }
         },
         "en": {
@@ -8704,8 +8704,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from disc ID %@ from this file"
+            "state": "translated",
+            "value": "Η κυκλοφορία ταυτοποιήθηκε αυτόματα από το ID δίσκου %@ από αυτό το αρχείο"
           }
         },
         "en": {
@@ -8877,8 +8877,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Network folder. Changes made on other computers are checked every %lld minutes."
+            "state": "translated",
+            "value": "Φάκελος δικτύου. Οι αλλαγές που γίνονται σε άλλους υπολογιστές ελέγχονται κάθε %lld λεπτά."
           }
         },
         "en": {
@@ -9050,8 +9050,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte audio file: %@"
+            "state": "translated",
+            "value": "κατεστραμμένο ή μηδενικού μεγέθους αρχείο ήχου: %@"
           }
         },
         "en": {
@@ -9223,8 +9223,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte image: %@"
+            "state": "translated",
+            "value": "κατεστραμμένη ή μηδενικού μεγέθους εικόνα: %@"
           }
         },
         "en": {
@@ -9396,8 +9396,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "no valid audio files"
+            "state": "translated",
+            "value": "κανένα έγκυρο αρχείο ήχου"
           }
         },
         "en": {
@@ -9569,8 +9569,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finalizing..."
+            "state": "translated",
+            "value": "Οριστικοποίηση..."
           }
         },
         "en": {
@@ -9742,8 +9742,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Measuring loudness..."
+            "state": "translated",
+            "value": "Μέτρηση ηχηρότητας..."
           }
         },
         "en": {
@@ -9915,8 +9915,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reading files..."
+            "state": "translated",
+            "value": "Ανάγνωση αρχείων..."
           }
         },
         "en": {
@@ -10088,8 +10088,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queued..."
+            "state": "translated",
+            "value": "Σε ουρά..."
           }
         },
         "en": {
@@ -10261,8 +10261,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Validating source files..."
+            "state": "translated",
+            "value": "Επικύρωση αρχείων προέλευσης..."
           }
         },
         "en": {
@@ -10434,8 +10434,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: audio the release doesn’t name"
+            "state": "translated",
+            "value": "%1$lld αρχεία, %2$lld κομμάτια: ήχος που δεν κατονομάζει η κυκλοφορία"
           }
         },
         "en": {
@@ -10607,8 +10607,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: tracks with no audio"
+            "state": "translated",
+            "value": "%1$lld αρχεία, %2$lld κομμάτια: κομμάτια χωρίς ήχο"
           }
         },
         "en": {
@@ -10780,8 +10780,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork"
+            "state": "translated",
+            "value": "Γραφικά"
           }
         },
         "en": {
@@ -10953,8 +10953,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Audio"
+            "state": "translated",
+            "value": "Ήχος"
           }
         },
         "en": {
@@ -11126,8 +11126,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cover"
+            "state": "translated",
+            "value": "Εξώφυλλο"
           }
         },
         "en": {
@@ -11299,8 +11299,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Document"
+            "state": "translated",
+            "value": "Έγγραφο"
           }
         },
         "en": {
@@ -11472,8 +11472,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Not a track"
+            "state": "translated",
+            "value": "Δεν είναι κομμάτι"
           }
         },
         "en": {
@@ -11645,8 +11645,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Other"
+            "state": "translated",
+            "value": "Άλλο"
           }
         },
         "en": {
@@ -11818,8 +11818,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Track sheet"
+            "state": "translated",
+            "value": "Φύλλο κομματιών"
           }
         },
         "en": {
@@ -11991,8 +11991,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ audio can't be split by a sheet"
+            "state": "translated",
+            "value": "Ο ήχος %@ δεν μπορεί να διαιρεθεί από φύλλο"
           }
         },
         "en": {
@@ -12164,8 +12164,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The sheet’s track times fall outside this audio"
+            "state": "translated",
+            "value": "Οι χρόνοι των κομματιών του φύλλου βρίσκονται εκτός αυτού του ήχου"
           }
         },
         "en": {
@@ -12337,8 +12337,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This audio can’t be read"
+            "state": "translated",
+            "value": "Αυτός ο ήχος δεν μπορεί να διαβαστεί"
           }
         },
         "en": {
@@ -12510,8 +12510,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Already in your library"
+            "state": "translated",
+            "value": "Ήδη στη βιβλιοθήκη σας"
           }
         },
         "en": {
@@ -12683,8 +12683,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length: %1$@ in the folder, %2$@ on the release"
+            "state": "translated",
+            "value": "Διάρκεια: %1$@ στον φάκελο, %2$@ στην κυκλοφορία"
           }
         },
         "en": {
@@ -12856,8 +12856,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Could not read the track lengths in the folder"
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η ανάγνωση των διαρκειών των κομματιών στον φάκελο"
           }
         },
         "en": {
@@ -13029,8 +13029,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Online lookup failed"
+            "state": "translated",
+            "value": "Η διαδικτυακή αναζήτηση απέτυχε"
           }
         },
         "en": {
@@ -13202,8 +13202,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Nothing matched this folder"
+            "state": "translated",
+            "value": "Τίποτα δεν ταίριαξε με αυτόν τον φάκελο"
           }
         },
         "en": {
@@ -13375,8 +13375,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "No disc ID and no barcode to look up"
+            "state": "translated",
+            "value": "Δεν υπάρχει ID δίσκου ούτε γραμμωτός κώδικας για αναζήτηση"
           }
         },
         "en": {
@@ -13647,14 +13647,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld match"
+                  "state": "translated",
+                  "value": "%lld αντιστοίχιση"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld matches"
+                  "state": "translated",
+                  "value": "%lld αντιστοιχίσεις"
                 }
               }
             }
@@ -14135,8 +14135,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The release states no track lengths"
+            "state": "translated",
+            "value": "Η κυκλοφορία δεν αναφέρει διάρκειες κομματιών"
           }
         },
         "en": {
@@ -14308,8 +14308,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks: %1$lld in the folder, %2$lld on the release"
+            "state": "translated",
+            "value": "Κομμάτια: %1$lld στον φάκελο, %2$lld στην κυκλοφορία"
           }
         },
         "en": {
@@ -14481,8 +14481,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album title is required"
+            "state": "translated",
+            "value": "Ο τίτλος του άλμπουμ είναι υποχρεωτικός"
           }
         },
         "en": {
@@ -14654,8 +14654,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist name is required"
+            "state": "translated",
+            "value": "Το όνομα του καλλιτέχνη είναι υποχρεωτικό"
           }
         },
         "en": {
@@ -14827,8 +14827,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Year must be a number"
+            "state": "translated",
+            "value": "Το έτος πρέπει να είναι αριθμός"
           }
         },
         "en": {
@@ -15000,8 +15000,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album must have at least one artist"
+            "state": "translated",
+            "value": "Το άλμπουμ πρέπει να έχει τουλάχιστον έναν καλλιτέχνη"
           }
         },
         "en": {
@@ -15173,8 +15173,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork analysis failed"
+            "state": "translated",
+            "value": "Η ανάλυση των γραφικών απέτυχε"
           }
         },
         "en": {
@@ -15346,8 +15346,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "artwork analysis failed"
+            "state": "translated",
+            "value": "η ανάλυση των γραφικών απέτυχε"
           }
         },
         "en": {
@@ -15519,8 +15519,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "busy (%lld)"
+            "state": "translated",
+            "value": "απασχολημένο (%lld)"
           }
         },
         "en": {
@@ -15692,8 +15692,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "failed"
+            "state": "translated",
+            "value": "απέτυχε"
           }
         },
         "en": {
@@ -15865,8 +15865,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "couldn't connect"
+            "state": "translated",
+            "value": "δεν ήταν δυνατή η σύνδεση"
           }
         },
         "en": {
@@ -16038,8 +16038,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "error %lld"
+            "state": "translated",
+            "value": "σφάλμα %lld"
           }
         },
         "en": {
@@ -16211,8 +16211,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "error"
+            "state": "translated",
+            "value": "σφάλμα"
           }
         },
         "en": {
@@ -16384,8 +16384,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "timed out"
+            "state": "translated",
+            "value": "λήξη χρόνου"
           }
         },
         "en": {
@@ -16557,8 +16557,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't look this up"
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η αναζήτηση αυτού"
           }
         },
         "en": {
@@ -16730,8 +16730,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the metadata provider"
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η επικοινωνία με τον πάροχο μεταδεδομένων"
           }
         },
         "en": {
@@ -16903,8 +16903,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error (%lld)"
+            "state": "translated",
+            "value": "Ο πάροχος μεταδεδομένων επέστρεψε σφάλμα (%lld)"
           }
         },
         "en": {
@@ -17076,8 +17076,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error"
+            "state": "translated",
+            "value": "Ο πάροχος μεταδεδομένων επέστρεψε σφάλμα"
           }
         },
         "en": {
@@ -17249,8 +17249,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider timed out"
+            "state": "translated",
+            "value": "Ο πάροχος μεταδεδομένων δεν απάντησε εγκαίρως"
           }
         },
         "en": {
@@ -17422,8 +17422,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing %1$@ of %2$@"
+            "state": "translated",
+            "value": "Προετοιμασία %1$@ από %2$@"
           }
         },
         "en": {
@@ -17595,8 +17595,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Uploading %1$@ of %2$@"
+            "state": "translated",
+            "value": "Μεταφόρτωση %1$@ από %2$@"
           }
         },
         "en": {
@@ -17768,8 +17768,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld cancelling"
+            "state": "translated",
+            "value": "%lld ακυρώνονται"
           }
         },
         "en": {
@@ -17941,8 +17941,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ remaining"
+            "state": "translated",
+            "value": "απομένουν %@"
           }
         },
         "en": {
@@ -18114,8 +18114,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist image"
+            "state": "translated",
+            "value": "Εικόνα καλλιτέχνη"
           }
         },
         "en": {
@@ -18287,8 +18287,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing from cloud"
+            "state": "translated",
+            "value": "Αφαίρεση από το cloud"
           }
         },
         "en": {
@@ -18559,14 +18559,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending delete"
+                  "state": "translated",
+                  "value": "%lld εκκρεμής διαγραφή"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending deletes"
+                  "state": "translated",
+                  "value": "%lld εκκρεμείς διαγραφές"
                 }
               }
             }
@@ -19047,8 +19047,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld prepared"
+            "state": "translated",
+            "value": "%lld έτοιμα"
           }
         },
         "en": {
@@ -19220,8 +19220,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld preparing"
+            "state": "translated",
+            "value": "%lld προετοιμάζονται"
           }
         },
         "en": {
@@ -19393,8 +19393,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld publishing"
+            "state": "translated",
+            "value": "%lld δημοσιεύονται"
           }
         },
         "en": {
@@ -19566,8 +19566,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Retrying (%lld)"
+            "state": "translated",
+            "value": "Νέα προσπάθεια (%lld)"
           }
         },
         "en": {
@@ -19739,8 +19739,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source unavailable"
+            "state": "translated",
+            "value": "Η πηγή δεν είναι διαθέσιμη"
           }
         },
         "en": {
@@ -19912,7 +19912,7 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@/s"
           }
         },
@@ -20085,8 +20085,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploaded"
+            "state": "translated",
+            "value": "%lld μεταφορτώθηκαν"
           }
         },
         "en": {
@@ -20258,8 +20258,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Activating device…"
+            "state": "translated",
+            "value": "Ενεργοποίηση συσκευής…"
           }
         },
         "en": {
@@ -20431,8 +20431,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Granting cloud access…"
+            "state": "translated",
+            "value": "Παραχώρηση πρόσβασης στο cloud…"
           }
         },
         "en": {
@@ -20604,8 +20604,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing invitation…"
+            "state": "translated",
+            "value": "Προετοιμασία πρόσκλησης…"
           }
         },
         "en": {
@@ -20777,8 +20777,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing library…"
+            "state": "translated",
+            "value": "Προετοιμασία βιβλιοθήκης…"
           }
         },
         "en": {
@@ -20950,8 +20950,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the joining device…"
+            "state": "translated",
+            "value": "Αναμονή για τη συσκευή που συνδέεται…"
           }
         },
         "en": {
@@ -21123,8 +21123,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access request…"
+            "state": "translated",
+            "value": "Αναμονή αιτήματος πρόσβασης στο cloud…"
           }
         },
         "en": {
@@ -21296,8 +21296,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for device registration request…"
+            "state": "translated",
+            "value": "Αναμονή αιτήματος καταχώρισης συσκευής…"
           }
         },
         "en": {
@@ -21469,8 +21469,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cancelling pairing…"
+            "state": "translated",
+            "value": "Ακύρωση σύζευξης…"
           }
         },
         "en": {
@@ -21642,8 +21642,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Catching up with library changes…"
+            "state": "translated",
+            "value": "Ενημέρωση με τις αλλαγές της βιβλιοθήκης…"
           }
         },
         "en": {
@@ -21815,8 +21815,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading library snapshot…"
+            "state": "translated",
+            "value": "Λήψη στιγμιότυπου βιβλιοθήκης…"
           }
         },
         "en": {
@@ -21988,8 +21988,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Installing library snapshot…"
+            "state": "translated",
+            "value": "Εγκατάσταση στιγμιότυπου βιβλιοθήκης…"
           }
         },
         "en": {
@@ -22161,8 +22161,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Requesting cloud access…"
+            "state": "translated",
+            "value": "Αίτημα πρόσβασης στο cloud…"
           }
         },
         "en": {
@@ -22334,8 +22334,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Saving library…"
+            "state": "translated",
+            "value": "Αποθήκευση βιβλιοθήκης…"
           }
         },
         "en": {
@@ -22507,8 +22507,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for activation…"
+            "state": "translated",
+            "value": "Αναμονή ενεργοποίησης…"
           }
         },
         "en": {
@@ -22680,8 +22680,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for approval…"
+            "state": "translated",
+            "value": "Αναμονή έγκρισης…"
           }
         },
         "en": {
@@ -22853,8 +22853,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the library…"
+            "state": "translated",
+            "value": "Αναμονή για τη βιβλιοθήκη…"
           }
         },
         "en": {
@@ -23026,8 +23026,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access…"
+            "state": "translated",
+            "value": "Αναμονή πρόσβασης στο cloud…"
           }
         },
         "en": {
@@ -23199,8 +23199,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Registering device…"
+            "state": "translated",
+            "value": "Καταχώριση συσκευής…"
           }
         },
         "en": {
@@ -23372,8 +23372,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reconnect to play this release. It isn't downloaded to this device yet."
+            "state": "translated",
+            "value": "Επανασυνδεθείτε για να αναπαραγάγετε αυτή την κυκλοφορία. Δεν έχει ληφθεί ακόμη σε αυτή τη συσκευή."
           }
         },
         "en": {
@@ -23545,8 +23545,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This release is still uploading. Try again when it finishes."
+            "state": "translated",
+            "value": "Αυτή η κυκλοφορία μεταφορτώνεται ακόμη. Δοκιμάστε ξανά όταν ολοκληρωθεί."
           }
         },
         "en": {
@@ -23718,8 +23718,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between discs. Change the CD, then press Play."
+            "state": "translated",
+            "value": "Η αναπαραγωγή είναι σε παύση ανάμεσα στους δίσκους. Αλλάξτε το CD και πατήστε Αναπαραγωγή."
           }
         },
         "en": {
@@ -23891,8 +23891,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %@ ended"
+            "state": "translated",
+            "value": "Ο δίσκος %@ τελείωσε"
           }
         },
         "en": {
@@ -24064,8 +24064,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the cassette, then press Play."
+            "state": "translated",
+            "value": "Η αναπαραγωγή είναι σε παύση ανάμεσα στις πλευρές. Γυρίστε την κασέτα και πατήστε Αναπαραγωγή."
           }
         },
         "en": {
@@ -24237,8 +24237,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the vinyl, then press Play."
+            "state": "translated",
+            "value": "Η αναπαραγωγή είναι σε παύση ανάμεσα στις πλευρές. Γυρίστε τον δίσκο βινυλίου και πατήστε Αναπαραγωγή."
           }
         },
         "en": {
@@ -24410,8 +24410,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Side %@ ended"
+            "state": "translated",
+            "value": "Η πλευρά %@ τελείωσε"
           }
         },
         "en": {
@@ -24583,8 +24583,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld downloading"
+            "state": "translated",
+            "value": "%lld λαμβάνονται"
           }
         },
         "en": {
@@ -24756,8 +24756,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld failed"
+            "state": "translated",
+            "value": "%lld απέτυχαν"
           }
         },
         "en": {
@@ -24929,8 +24929,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld in progress"
+            "state": "translated",
+            "value": "%lld σε εξέλιξη"
           }
         },
         "en": {
@@ -25102,8 +25102,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld queued"
+            "state": "translated",
+            "value": "%lld σε ουρά"
           }
         },
         "en": {
@@ -25275,8 +25275,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploading"
+            "state": "translated",
+            "value": "%lld μεταφορτώνονται"
           }
         },
         "en": {
@@ -25448,8 +25448,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Media"
+            "state": "translated",
+            "value": "Μέσο"
           }
         },
         "en": {
@@ -25720,14 +25720,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld release is only stored in the cloud. It will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld κυκλοφορία είναι αποθηκευμένη μόνο στο cloud. Δεν θα μπορεί να αναπαραχθεί μέχρι να επανασυνδεθείτε."
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld releases are only stored in the cloud. They will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld κυκλοφορίες είναι αποθηκευμένες μόνο στο cloud. Δεν θα μπορούν να αναπαραχθούν μέχρι να επανασυνδεθείτε."
                 }
               }
             }
@@ -26202,8 +26202,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "Δίσκος %lld"
           }
         },
         "en": {
@@ -26375,8 +26375,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Side %@"
+            "state": "translated",
+            "value": "Πλευρά %@"
           }
         },
         "en": {
@@ -26548,8 +26548,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Making Local…"
+            "state": "translated",
+            "value": "Τοπική διάθεση…"
           }
         },
         "en": {
@@ -26721,8 +26721,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queueing for Cloud…"
+            "state": "translated",
+            "value": "Τοποθέτηση σε ουρά για το cloud…"
           }
         },
         "en": {
@@ -26894,8 +26894,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Pinning for offline"
+            "state": "translated",
+            "value": "Καρφίτσωμα για εκτός σύνδεσης"
           }
         },
         "en": {
@@ -27067,8 +27067,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing local copy"
+            "state": "translated",
+            "value": "Αφαίρεση τοπικού αντιγράφου"
           }
         },
         "en": {
@@ -27240,8 +27240,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "This source identity is linked to two artists in your library. Choose the record to keep; its albums, tracks, credits, and source links will be combined with the other record."
+            "state": "translated",
+            "value": "Αυτή η ταυτότητα πηγής συνδέεται με δύο καλλιτέχνες στη βιβλιοθήκη σας. Επιλέξτε την εγγραφή που θα διατηρηθεί· τα άλμπουμ, τα κομμάτια, οι συντελεστές και οι σύνδεσμοι πηγής της θα συνενωθούν με την άλλη εγγραφή."
           }
         },
         "en": {
@@ -27413,8 +27413,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep Discogs Artist"
+            "state": "translated",
+            "value": "Διατήρηση του καλλιτέχνη Discogs"
           }
         },
         "en": {
@@ -27586,8 +27586,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep MusicBrainz Artist"
+            "state": "translated",
+            "value": "Διατήρηση του καλλιτέχνη MusicBrainz"
           }
         },
         "en": {
@@ -27759,8 +27759,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Awaiting a release"
+            "state": "translated",
+            "value": "Αναμονή για κυκλοφορία"
           }
         },
         "en": {
@@ -28031,14 +28031,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld row still has no name"
+                  "state": "translated",
+                  "value": "%lld γραμμή δεν έχει ακόμη όνομα"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld rows still have no name"
+                  "state": "translated",
+                  "value": "%lld γραμμές δεν έχουν ακόμη όνομα"
                 }
               }
             }
@@ -28513,8 +28513,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't scan %@"
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η σάρωση του %@"
           }
         },
         "en": {
@@ -28686,8 +28686,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist"
+            "state": "translated",
+            "value": "Καλλιτέχνης"
           }
         },
         "en": {
@@ -28859,8 +28859,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Name"
+            "state": "translated",
+            "value": "Όνομα"
           }
         },
         "en": {
@@ -29032,8 +29032,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source"
+            "state": "translated",
+            "value": "Πηγή"
           }
         },
         "en": {
@@ -29205,8 +29205,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Title"
+            "state": "translated",
+            "value": "Τίτλος"
           }
         },
         "en": {
@@ -29378,8 +29378,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Files"
+            "state": "translated",
+            "value": "Αρχεία"
           }
         },
         "en": {
@@ -29551,8 +29551,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks"
+            "state": "translated",
+            "value": "Κομμάτια"
           }
         },
         "en": {
@@ -29724,8 +29724,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "File tags"
+            "state": "translated",
+            "value": "Ετικέτες αρχείου"
           }
         },
         "en": {
@@ -29897,8 +29897,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "From file tags"
+            "state": "translated",
+            "value": "Από τις ετικέτες αρχείου"
           }
         },
         "en": {
@@ -30070,8 +30070,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Metadata"
+            "state": "translated",
+            "value": "Μεταδεδομένα"
           }
         },
         "en": {
@@ -30243,8 +30243,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Role"
+            "state": "translated",
+            "value": "Ρόλος"
           }
         },
         "en": {
@@ -30416,8 +30416,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Scanning folders"
+            "state": "translated",
+            "value": "Σάρωση φακέλων"
           }
         },
         "en": {
@@ -30589,8 +30589,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld found"
+            "state": "translated",
+            "value": "%lld βρέθηκαν"
           }
         },
         "en": {
@@ -30762,8 +30762,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Asked for %@"
+            "state": "translated",
+            "value": "Ζητήθηκε %@"
           }
         },
         "en": {
@@ -30935,8 +30935,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose audio…"
+            "state": "translated",
+            "value": "Επιλογή ήχου…"
           }
         },
         "en": {
@@ -31108,8 +31108,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Describes nothing"
+            "state": "translated",
+            "value": "Δεν περιγράφει τίποτα"
           }
         },
         "en": {
@@ -31281,8 +31281,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "Δίσκος %lld"
           }
         },
         "en": {
@@ -31454,8 +31454,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Which disc of the release this sheet's entries are"
+            "state": "translated",
+            "value": "Σε ποιον δίσκο της κυκλοφορίας αντιστοιχούν οι καταχωρίσεις αυτού του φύλλου"
           }
         },
         "en": {
@@ -31627,8 +31627,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Ignored"
+            "state": "translated",
+            "value": "Αγνοήθηκε"
           }
         },
         "en": {
@@ -31800,8 +31800,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose file…"
+            "state": "translated",
+            "value": "Επιλογή αρχείου…"
           }
         },
         "en": {
@@ -31973,8 +31973,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length"
+            "state": "translated",
+            "value": "Διάρκεια"
           }
         },
         "en": {
@@ -32146,8 +32146,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Drop"
+            "state": "translated",
+            "value": "Απόρριψη"
           }
         },
         "en": {
@@ -32319,8 +32319,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Leave this track out — this folder has no audio for it."
+            "state": "translated",
+            "value": "Αφήστε αυτό το κομμάτι εκτός — αυτός ο φάκελος δεν έχει ήχο γι’ αυτό."
           }
         },
         "en": {
@@ -32492,8 +32492,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Exclude"
+            "state": "translated",
+            "value": "Εξαίρεση"
           }
         },
         "en": {
@@ -32665,8 +32665,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Take this file out of the tracklist; it stays under Files."
+            "state": "translated",
+            "value": "Βγάλτε αυτό το αρχείο από τη λίστα κομματιών· παραμένει στα Αρχεία."
           }
         },
         "en": {
@@ -32838,8 +32838,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "No file"
+            "state": "translated",
+            "value": "Κανένα αρχείο"
           }
         },
         "en": {
@@ -33011,8 +33011,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Play"
+            "state": "translated",
+            "value": "Αναπαραγωγή"
           }
         },
         "en": {
@@ -33184,8 +33184,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Put back"
+            "state": "translated",
+            "value": "Επαναφορά"
           }
         },
         "en": {
@@ -33357,8 +33357,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Stop"
+            "state": "translated",
+            "value": "Διακοπή"
           }
         },
         "en": {
@@ -33530,8 +33530,8 @@
         },
         "el": {
           "stringUnit": {
-            "state": "new",
-            "value": "Untitled"
+            "state": "translated",
+            "value": "Χωρίς τίτλο"
           }
         },
         "en": {

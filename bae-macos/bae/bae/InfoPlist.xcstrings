@@ -11,6 +11,12 @@
             "value" : "bae"
           }
         },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae"
+          }
+        },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
@@ -38,6 +44,12 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
+            "value" : "bae"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
             "value" : "bae"
           }
         },
@@ -92,6 +104,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae uses the camera to scan codes when pairing or recovering a library."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το bae χρησιμοποιεί την κάμερα για σάρωση κωδικών κατά τη σύζευξη ή την ανάκτηση βιβλιοθήκης."
           }
         },
         "es" : {
@@ -229,6 +247,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae pairs devices and finds speakers and TVs on your local network."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το bae συζεύγνυει συσκευές και βρίσκει ηχεία και τηλεοράσεις στο τοπικό σας δίκτυο."
           }
         },
         "es" : {

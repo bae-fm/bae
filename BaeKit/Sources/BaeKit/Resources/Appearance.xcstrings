@@ -33,6 +33,12 @@
             "value": "Modus"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Λειτουργία"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -167,6 +173,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "System"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σύστημα"
           }
         },
         "es": {
@@ -305,6 +317,12 @@
             "value": "Hell"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Φωτεινή"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -439,6 +457,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dunkel"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σκοτεινή"
           }
         },
         "es": {
@@ -577,6 +601,12 @@
             "value": "Akzentfarbe"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Χρώμα τονισμού"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -711,6 +741,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hintergrundton"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Απόχρωση φόντου"
           }
         },
         "es": {
@@ -849,6 +885,12 @@
             "value": "Neutral"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ουδέτερο"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -983,6 +1025,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Schiefer"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σχιστόλιθος"
           }
         },
         "es": {
@@ -1121,6 +1169,12 @@
             "value": "Pflaume"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δαμάσκηνο"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -1255,6 +1309,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Blau"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μπλε"
           }
         },
         "es": {
@@ -1393,6 +1453,12 @@
             "value": "Indigo"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ινδικό"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -1527,6 +1593,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Violett"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μοβ"
           }
         },
         "es": {
@@ -1665,6 +1737,12 @@
             "value": "Rosa"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ροζ"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -1799,6 +1877,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rot"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κόκκινο"
           }
         },
         "es": {
@@ -1937,6 +2021,12 @@
             "value": "Bernstein"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κεχριμπάρι"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -2071,6 +2161,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Grün"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Πράσινο"
           }
         },
         "es": {
@@ -2209,6 +2305,12 @@
             "value": "Blaugrün"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Γαλαζοπράσινο"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -2343,6 +2445,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mitternacht"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μεσάνυχτα"
           }
         },
         "es": {
@@ -2481,6 +2589,12 @@
             "value": "Wald"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δάσος"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -2615,6 +2729,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sand"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Άμμος"
           }
         },
         "es": {

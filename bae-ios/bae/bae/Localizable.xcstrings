@@ -33,6 +33,12 @@
             "value": "Erscheinungsbild"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Εμφάνιση"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -271,6 +277,12 @@
             "state": "translated",
             "value": "%1$@ de %2$@"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ από %2$@"
+          }
         }
       }
     },
@@ -403,6 +415,12 @@
           }
         },
         "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        },
+        "el": {
           "stringUnit": {
             "state": "translated",
             "value": "%1$@, %2$@"
@@ -879,6 +897,24 @@
               }
             }
           }
+        },
+        "el": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld αρχείο"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld αρχεία"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -1014,6 +1050,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Adaugă la coadă"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Προσθήκη στην ουρά"
           }
         }
       }
@@ -1151,6 +1193,12 @@
             "state": "translated",
             "value": "Albume"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Άλμπουμ"
+          }
         }
       }
     },
@@ -1286,6 +1334,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Crescător"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αύξουσα"
           }
         }
       }
@@ -1423,6 +1477,12 @@
             "state": "translated",
             "value": "Autorizarea s-a încheiat fără un cod."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η εξουσιοδότηση ολοκληρώθηκε χωρίς κωδικό."
+          }
         }
       }
     },
@@ -1558,6 +1618,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Accesul la cameră este refuzat. Activează-l în Configurări pentru a scana coduri QR."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η πρόσβαση στην κάμερα έχει απορριφθεί. Ενεργοποιήστε τη στις Ρυθμίσεις για σάρωση κωδικών QR."
           }
         }
       }
@@ -1695,6 +1761,12 @@
             "state": "translated",
             "value": "Camera nu este disponibilă"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η κάμερα δεν είναι διαθέσιμη"
+          }
         }
       }
     },
@@ -1830,6 +1902,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Este necesară permisiunea camerei pentru a scana coduri QR"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Απαιτείται άδεια κάμερας για τη σάρωση κωδικών QR"
           }
         }
       }
@@ -1967,6 +2045,12 @@
             "state": "translated",
             "value": "Anulează"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ακύρωση"
+          }
         }
       }
     },
@@ -2103,6 +2187,12 @@
             "state": "translated",
             "value": "Golește"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Εκκαθάριση"
+          }
         }
       }
     },
@@ -2137,6 +2227,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Clear Playing From"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Εκκαθάριση του Αναπαραγωγή από"
           }
         },
         "es": {
@@ -2274,6 +2370,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Clear Up Next"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Εκκαθάριση του Ακολουθεί"
           }
         },
         "es": {
@@ -2514,6 +2616,12 @@
             "state": "translated",
             "value": "Închide"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κλείσιμο"
+          }
         }
       }
     },
@@ -2649,6 +2757,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Conectarea la cloud nu este configurată în această versiune (lipsește oauth-creds.json)."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η σύνδεση cloud δεν έχει διαμορφωθεί σε αυτή την έκδοση (λείπει το oauth-creds.json)."
           }
         }
       }
@@ -2786,6 +2900,12 @@
             "state": "translated",
             "value": "Sincronizare cloud"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Συγχρονισμός cloud"
+          }
         }
       }
     },
@@ -2922,6 +3042,12 @@
             "state": "translated",
             "value": "Restrânge"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σύμπτυξη"
+          }
         }
       }
     },
@@ -2955,6 +3081,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Composer detail not found"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν βρέθηκαν λεπτομέρειες συνθέτη"
           }
         },
         "es": {
@@ -3092,6 +3224,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Composers"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Συνθέτες"
           }
         },
         "es": {
@@ -3331,6 +3469,12 @@
             "state": "translated",
             "value": "Conectează"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σύνδεση"
+          }
         }
       }
     },
@@ -3466,6 +3610,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Se conectează la biblioteca ta"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σύνδεση στη βιβλιοθήκη σας"
           }
         }
       }
@@ -3603,6 +3753,12 @@
             "state": "translated",
             "value": "Intrarea camerei nu a putut fi adăugată la sesiune"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η προσθήκη της εισόδου κάμερας στη συνεδρία"
+          }
         }
       }
     },
@@ -3738,6 +3894,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ieșirea de metadate nu a putut fi adăugată la sesiune"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η προσθήκη της εξόδου μεταδεδομένων στη συνεδρία"
           }
         }
       }
@@ -3875,6 +4037,12 @@
             "state": "translated",
             "value": "Intrarea camerei nu a putut fi creată: %@"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η δημιουργία εισόδου κάμερας: %@"
+          }
         }
       }
     },
@@ -4010,6 +4178,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Conectarea la cloud nu a putut fi afișată din fereastra curentă."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η εμφάνιση της σύνδεσης cloud από το τρέχον παράθυρο."
           }
         }
       }
@@ -4147,6 +4321,12 @@
             "state": "translated",
             "value": "oauth-creds.json nu a putut fi citit: %@"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η ανάγνωση του oauth-creds.json: %@"
+          }
         }
       }
     },
@@ -4181,6 +4361,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Credits"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Συντελεστές"
           }
         },
         "es": {
@@ -4420,6 +4606,12 @@
             "state": "translated",
             "value": "Descrescător"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Φθίνουσα"
+          }
         }
       }
     },
@@ -4555,6 +4747,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deconectat"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αποσυνδεδεμένο"
           }
         }
       }
@@ -4692,6 +4890,12 @@
             "state": "translated",
             "value": "Închide"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Απόρριψη"
+          }
         }
       }
     },
@@ -4827,6 +5031,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gata"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Τέλος"
           }
         }
       }
@@ -4964,6 +5174,12 @@
             "state": "translated",
             "value": "Descarcă"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Λήψη"
+          }
         }
       }
     },
@@ -5099,6 +5315,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descărcat"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Έγινε λήψη"
           }
         }
       }
@@ -5236,6 +5458,12 @@
             "state": "translated",
             "value": "Descărcări"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Λήψεις"
+          }
         }
       }
     },
@@ -5371,6 +5599,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cheie de criptare (64 de caractere hexazecimale)"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κλειδί κρυπτογράφησης (64 δεκαεξαδικοί χαρακτήρες)"
           }
         }
       }
@@ -5509,6 +5743,12 @@
             "state": "translated",
             "value": "Eroare"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σφάλμα"
+          }
         }
       }
     },
@@ -5644,6 +5884,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Extinde Se redă acum"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ανάπτυξη του Αναπαράγεται τώρα"
           }
         }
       }
@@ -5781,6 +6027,12 @@
             "state": "translated",
             "value": "Bibliotecă"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Βιβλιοθήκη"
+          }
         }
       }
     },
@@ -5916,6 +6168,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bibliotecă blocată"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η βιβλιοθήκη είναι κλειδωμένη"
           }
         }
       }
@@ -6053,6 +6311,12 @@
             "state": "translated",
             "value": "Se încarcă"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Φόρτωση"
+          }
         }
       }
     },
@@ -6188,6 +6452,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Doar local"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μόνο τοπικά"
           }
         }
       }
@@ -6325,6 +6595,12 @@
             "state": "translated",
             "value": "Fără sunet"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σίγαση"
+          }
         }
       }
     },
@@ -6460,6 +6736,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Piesa următoare"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επόμενο κομμάτι"
           }
         }
       }
@@ -6597,6 +6879,12 @@
             "state": "translated",
             "value": "Încă niciun album. Se sincronizează din cloud…"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κανένα άλμπουμ ακόμη. Συγχρονισμός από το cloud…"
+          }
         }
       }
     },
@@ -6631,6 +6919,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "No composers"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κανένας συνθέτης"
           }
         },
         "es": {
@@ -6870,6 +7164,12 @@
             "state": "translated",
             "value": "Nicio descărcare"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Καμία λήψη"
+          }
         }
       }
     },
@@ -7005,6 +7305,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Niciun rezultat pentru „%@”"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κανένα αποτέλεσμα για «%@»"
           }
         }
       }
@@ -7142,6 +7448,12 @@
             "state": "translated",
             "value": "Nimic în continuare"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ακολουθεί τίποτα"
+          }
         }
       }
     },
@@ -7277,6 +7589,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Se redă acum"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αναπαράγεται τώρα"
           }
         }
       }
@@ -7414,6 +7732,12 @@
             "state": "translated",
             "value": "Pornit"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ενεργό"
+          }
         }
       }
     },
@@ -7448,6 +7772,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pairing code"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κωδικός σύζευξης"
           }
         },
         "es": {
@@ -7585,6 +7915,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Paste pairing code"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επικολλήστε τον κωδικό σύζευξης"
           }
         },
         "es": {
@@ -7824,6 +8160,12 @@
             "state": "translated",
             "value": "Pauză"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Παύση"
+          }
         }
       }
     },
@@ -7857,6 +8199,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pause between sides and discs"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Παύση ανάμεσα σε πλευρές και δίσκους"
           }
         },
         "es": {
@@ -8096,6 +8444,12 @@
             "state": "translated",
             "value": "În pauză"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σε παύση"
+          }
         }
       }
     },
@@ -8231,6 +8585,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Redă"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αναπαραγωγή"
           }
         }
       }
@@ -8368,6 +8728,12 @@
             "state": "translated",
             "value": "Redă ca următor"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αναπαραγωγή ως επόμενο"
+          }
         }
       }
     },
@@ -8401,6 +8767,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Playback"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αναπαραγωγή"
           }
         },
         "es": {
@@ -8641,6 +9013,12 @@
             "state": "translated",
             "value": "Se redă din"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αναπαραγωγή από"
+          }
         }
       }
     },
@@ -8776,6 +9154,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Piesa anterioară"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Προηγούμενο κομμάτι"
           }
         }
       }
@@ -8913,6 +9297,12 @@
             "state": "translated",
             "value": "Coadă"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ουρά"
+          }
         }
       }
     },
@@ -9048,6 +9438,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coada este goală"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η ουρά είναι κενή"
           }
         }
       }
@@ -9185,6 +9581,12 @@
             "state": "translated",
             "value": "Reconectează"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επανασύνδεση"
+          }
         }
       }
     },
@@ -9219,6 +9621,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Recordings"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ηχογραφήσεις"
           }
         },
         "es": {
@@ -9356,6 +9764,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Releases"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κυκλοφορίες"
           }
         },
         "es": {
@@ -9595,6 +10009,12 @@
             "state": "translated",
             "value": "Elimină"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αφαίρεση"
+          }
         }
       }
     },
@@ -9730,6 +10150,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elimină descărcarea"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αφαίρεση λήψης"
           }
         }
       }
@@ -9867,6 +10293,12 @@
             "state": "translated",
             "value": "Elimină această bibliotecă de pe acest dispozitiv"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή"
+          }
         }
       }
     },
@@ -10002,6 +10434,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elimini această bibliotecă de pe acest dispozitiv?"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή;"
           }
         }
       }
@@ -10139,6 +10577,12 @@
             "state": "translated",
             "value": "Elimină această bibliotecă și fișierele descărcate de pe acest dispozitiv. Biblioteca ta din cloud rămâne neatinsă. Poți reasocia acest dispozitiv mai târziu."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αφαιρεί αυτή τη βιβλιοθήκη και τα ληφθέντα αρχεία της από αυτή τη συσκευή. Η βιβλιοθήκη σας στο cloud παραμένει ανέπαφη. Μπορείτε να συζεύξετε ξανά αυτή τη συσκευή αργότερα."
+          }
         }
       }
     },
@@ -10274,6 +10718,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mod de repetare"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Λειτουργία επανάληψης"
           }
         }
       }
@@ -10411,6 +10861,12 @@
             "state": "translated",
             "value": "Reia"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Συνέχιση"
+          }
         }
       }
     },
@@ -10547,6 +11003,12 @@
             "state": "translated",
             "value": "Reîncearcă"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δοκιμή ξανά"
+          }
         }
       }
     },
@@ -10581,6 +11043,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scan this code on the device joining your library."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σαρώστε αυτόν τον κωδικό στη συσκευή που συνδέεται στη βιβλιοθήκη σας."
           }
         },
         "es": {
@@ -10821,6 +11289,12 @@
             "state": "translated",
             "value": "Caută"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αναζήτηση"
+          }
         }
       }
     },
@@ -10957,6 +11431,12 @@
             "state": "translated",
             "value": "Setări"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ρυθμίσεις"
+          }
         }
       }
     },
@@ -11092,6 +11572,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aleatoriu"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Τυχαία σειρά"
           }
         }
       }
@@ -11230,6 +11716,12 @@
             "state": "translated",
             "value": "Redă biblioteca aleatoriu"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Τυχαία αναπαραγωγή βιβλιοθήκης"
+          }
         }
       }
     },
@@ -11264,6 +11756,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Starting pairing..."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Εκκίνηση σύζευξης..."
           }
         },
         "es": {
@@ -11503,6 +12001,12 @@
             "state": "translated",
             "value": "Stare"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κατάσταση"
+          }
         }
       }
     },
@@ -11638,6 +12142,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sincronizare"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Συγχρονισμός"
           }
         }
       }
@@ -11775,6 +12285,12 @@
             "state": "translated",
             "value": "Sincronizat"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Συγχρονισμένο"
+          }
         }
       }
     },
@@ -11910,6 +12426,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Se sincronizează…"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Συγχρονισμός…"
           }
         }
       }
@@ -12047,6 +12569,12 @@
             "state": "translated",
             "value": "Cheia de criptare a acestei biblioteci nu se află în breloc. Introdu cheia hexazecimală de 64 de caractere pentru a debloca."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Το κλειδί κρυπτογράφησης αυτής της βιβλιοθήκης δεν βρίσκεται στο μπρελόκ. Εισαγάγετε το δεκαεξαδικό κλειδί 64 χαρακτήρων για ξεκλείδωμα."
+          }
         }
       }
     },
@@ -12182,6 +12710,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Furnizorul a returnat un URL de autorizare invalid."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ο πάροχος επέστρεψε μη έγκυρο URL εξουσιοδότησης."
           }
         }
       }
@@ -12319,6 +12853,12 @@
             "state": "translated",
             "value": "Această bibliotecă necesită conectare la cloud, care nu este configurată în această versiune."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αυτή η βιβλιοθήκη χρειάζεται σύνδεση cloud, η οποία δεν έχει διαμορφωθεί σε αυτή την έκδοση."
+          }
         }
       }
     },
@@ -12454,6 +12994,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Piese"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κομμάτια"
           }
         }
       }
@@ -12592,6 +13138,12 @@
             "state": "translated",
             "value": "Oprește redarea aleatorie"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Απενεργοποίηση τυχαίας σειράς"
+          }
         }
       }
     },
@@ -12727,6 +13279,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deblochează"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ξεκλείδωμα"
           }
         }
       }
@@ -12864,6 +13422,12 @@
             "state": "translated",
             "value": "Activează sunetul"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κατάργηση σίγασης"
+          }
         }
       }
     },
@@ -12999,6 +13563,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Urmează"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ακολουθεί"
           }
         }
       }
@@ -13136,6 +13706,12 @@
             "state": "translated",
             "value": "Volum"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ένταση"
+          }
         }
       }
     },
@@ -13170,6 +13746,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Waiting for approval..."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αναμονή έγκρισης..."
           }
         },
         "es": {
@@ -13307,6 +13889,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Waiting for the device..."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αναμονή για τη συσκευή..."
           }
         },
         "es": {
@@ -13546,6 +14134,12 @@
             "state": "translated",
             "value": "Așteaptă descărcarea"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αναμονή λήψης"
+          }
         }
       }
     },
@@ -13579,6 +14173,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Work detail not found"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν βρέθηκαν λεπτομέρειες έργου"
           }
         },
         "es": {
@@ -13716,6 +14316,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Works"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Έργα"
           }
         },
         "es": {
@@ -13956,6 +14562,12 @@
             "state": "translated",
             "value": "Biblioteca ta"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η βιβλιοθήκη σας"
+          }
         }
       }
     },
@@ -14092,6 +14704,12 @@
             "state": "translated",
             "value": "Biblioteca ta din cloud rămâne neatinsă."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η βιβλιοθήκη σας στο cloud παραμένει ανέπαφη."
+          }
         }
       }
     },
@@ -14224,6 +14842,12 @@
           }
         },
         "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae"
+          }
+        },
+        "el": {
           "stringUnit": {
             "state": "translated",
             "value": "bae"
@@ -14364,6 +14988,12 @@
             "state": "translated",
             "value": "oauth-creds.json nu conține date de autentificare pentru niciun furnizor."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Το oauth-creds.json δεν περιέχει διαπιστευτήρια παρόχου."
+          }
         }
       }
     },
@@ -14499,6 +15129,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "oauth-creds.json este malformat: %@"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Το oauth-creds.json είναι κακοδιατυπωμένο: %@"
           }
         }
       }
@@ -14636,6 +15272,12 @@
             "state": "translated",
             "value": "În oauth-creds.json lipsește client_id sau redirect_uri pentru %@."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Από το oauth-creds.json λείπει το client_id ή το redirect_uri για %@."
+          }
         }
       }
     },
@@ -14772,6 +15414,12 @@
             "state": "translated",
             "value": "se sincronizează…"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "συγχρονισμός…"
+          }
         }
       }
     },
@@ -14806,6 +15454,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Check that this matches the fingerprint shown on the new device before approving."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Πριν εγκρίνετε, ελέγξτε ότι ταιριάζει με το αποτύπωμα που εμφανίζεται στη νέα συσκευή."
           }
         },
         "es": {
@@ -15046,6 +15700,12 @@
             "state": "translated",
             "value": "Se conectează..."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σύνδεση..."
+          }
         }
       }
     },
@@ -15182,6 +15842,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deconectează"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αποσύνδεση"
           }
         }
       }
@@ -15320,6 +15986,12 @@
             "state": "translated",
             "value": "Deconectezi sincronizarea?"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αποσύνδεση συγχρονισμού;"
+          }
         }
       }
     },
@@ -15456,6 +16128,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aceasta va opri sincronizarea și va elimina configurația furnizorului de cloud."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αυτό θα σταματήσει τον συγχρονισμό και θα αφαιρέσει τη διαμόρφωση του παρόχου cloud."
           }
         }
       }
@@ -15594,6 +16272,12 @@
             "state": "translated",
             "value": "Nu s-au putut verifica edițiile stocate doar în cloud: %@"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατός ο έλεγχος για κυκλοφορίες που υπάρχουν μόνο στο cloud: %@"
+          }
         }
       }
     },
@@ -15730,6 +16414,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deconectarea a eșuat: %@"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η αποσύνδεση απέτυχε: %@"
           }
         }
       }
@@ -15868,6 +16558,12 @@
             "state": "translated",
             "value": "Furnizor"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Πάροχος"
+          }
         }
       }
     },
@@ -16004,6 +16700,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cont"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Λογαριασμός"
           }
         }
       }
@@ -16142,6 +16844,12 @@
             "state": "translated",
             "value": "Container"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κάδος"
+          }
         }
       }
     },
@@ -16278,6 +16986,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Regiune"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Περιοχή"
           }
         }
       }
@@ -16416,6 +17130,12 @@
             "state": "translated",
             "value": "Punct final"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Τερματικό σημείο"
+          }
         }
       }
     },
@@ -16552,6 +17272,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Suspendă încărcările"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Παύση μεταφορτώσεων"
           }
         }
       }
@@ -16690,6 +17416,12 @@
             "state": "translated",
             "value": "Cât timp sunt suspendate, modificările așteaptă pe acest dispozitiv și se încarcă la reluare."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Όσο είναι σε παύση, οι αλλαγές περιμένουν σε αυτή τη συσκευή και μεταφορτώνονται όταν συνεχίσετε."
+          }
         }
       }
     },
@@ -16827,6 +17559,12 @@
             "state": "translated",
             "value": "Pentru a sincroniza din nou această bibliotecă, asociază acest dispozitiv de pe un altul."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Για να συγχρονίσετε ξανά αυτή τη βιβλιοθήκη, συζεύξτε αυτή τη συσκευή από μια άλλη."
+          }
         }
       }
     },
@@ -16861,6 +17599,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Artists"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Καλλιτέχνες"
           }
         },
         "es": {
@@ -17000,6 +17744,12 @@
             "value": "No artists"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κανένας καλλιτέχνης"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -17134,6 +17884,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Artist detail not found"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν βρέθηκαν λεπτομέρειες καλλιτέχνη"
           }
         },
         "es": {
@@ -17273,6 +18029,12 @@
             "value": "Name"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Όνομα"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -17407,6 +18169,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Restore on launch"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επαναφορά κατά την εκκίνηση"
           }
         },
         "es": {
@@ -17545,6 +18313,12 @@
             "value": "Restores the last session's track, position, queue, and volume when the app opens."
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επαναφέρει το κομμάτι, τη θέση, την ουρά και την ένταση της τελευταίας συνεδρίας όταν ανοίγει η εφαρμογή."
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -17681,6 +18455,12 @@
             "value": "About"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σχετικά"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -17815,6 +18595,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Version"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Έκδοση"
           }
         },
         "es": {
@@ -17954,6 +18740,12 @@
             "value": "Cast"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μετάδοση"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -18089,6 +18881,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Casting"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μετάδοση"
           }
         },
         "es": {
@@ -18228,6 +19026,12 @@
             "value": "Casting to %@"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μετάδοση σε %@"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -18363,6 +19167,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "No Cast devices found"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν βρέθηκαν συσκευές Cast"
           }
         },
         "es": {
@@ -18502,6 +19312,12 @@
             "value": "Enable casting"
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ενεργοποίηση μετάδοσης"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -18637,6 +19453,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Turn off casting?"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Απενεργοποίηση μετάδοσης;"
           }
         },
         "es": {
@@ -18776,6 +19598,12 @@
             "value": "This will stop casting to %@."
           }
         },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αυτό θα σταματήσει τη μετάδοση σε %@."
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -18911,6 +19739,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Turn Off"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Απενεργοποίηση"
           }
         },
         "es": {
@@ -19151,6 +19985,12 @@
             "state": "translated",
             "value": "Redă către receptoare Cast și AirPlay din rețeaua ta. Când e oprit, bae nu caută dispozitive."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αναπαράγει σε δέκτες Cast και AirPlay στο δίκτυό σας. Όταν είναι ανενεργό, το bae δεν αναζητά συσκευές."
+          }
         }
       }
     },
@@ -19184,6 +20024,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dieses Gerät"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αυτή η συσκευή"
           }
         },
         "es": {
@@ -19424,6 +20270,12 @@
             "state": "translated",
             "value": "Nu s-a putut crea un cod de restaurare"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η δημιουργία κωδικού επαναφοράς"
+          }
         }
       }
     },
@@ -19560,6 +20412,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codul de restaurare nu a putut fi salvat în brelocul tău"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατή η αποθήκευση του κωδικού επαναφοράς στο μπρελόκ σας"
           }
         }
       }
@@ -19698,6 +20556,12 @@
             "state": "translated",
             "value": "Nu s-a putut verifica starea contului iCloud."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατός ο έλεγχος της κατάστασης του λογαριασμού iCloud."
+          }
         }
       }
     },
@@ -19834,6 +20698,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nu s-a putut verifica starea contului iCloud: %@"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατός ο έλεγχος της κατάστασης του λογαριασμού iCloud: %@"
           }
         }
       }
@@ -19972,6 +20842,12 @@
             "state": "translated",
             "value": "Pe acest dispozitiv nu este conectat niciun cont iCloud. Deschide Configurări sistem → Apple ID, conectează-te, apoi încearcă din nou."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σε αυτή τη συσκευή δεν έχει συνδεθεί λογαριασμός iCloud. Ανοίξτε Ρυθμίσεις συστήματος → Apple ID, συνδεθείτε και δοκιμάστε ξανά."
+          }
         }
       }
     },
@@ -20108,6 +20984,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud este restricționat pe acest dispozitiv (control parental sau MDM). bae nu îl poate folosi pentru sincronizare."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Το iCloud είναι περιορισμένο σε αυτή τη συσκευή (γονικός έλεγχος ή MDM). Το bae δεν μπορεί να το χρησιμοποιήσει για συγχρονισμό."
           }
         }
       }
@@ -20246,6 +21128,12 @@
             "state": "translated",
             "value": "Nu s-a putut determina starea contului iCloud. Verifică rețeaua și încearcă din nou."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν ήταν δυνατός ο προσδιορισμός της κατάστασης του λογαριασμού iCloud. Ελέγξτε το δίκτυό σας και δοκιμάστε ξανά."
+          }
         }
       }
     },
@@ -20382,6 +21270,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud este temporar indisponibil. Încearcă din nou în câteva momente."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Το iCloud είναι προσωρινά μη διαθέσιμο. Δοκιμάστε ξανά σε λίγο."
           }
         }
       }
@@ -20520,6 +21414,12 @@
             "state": "translated",
             "value": "Stare neașteptată a contului iCloud (%lld)."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μη αναμενόμενη κατάσταση λογαριασμού iCloud (%lld)."
+          }
         }
       }
     },
@@ -20656,6 +21556,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nu ești conectat la iCloud. Deschide Configurări sistem → Apple ID, conectează-te, apoi încearcă din nou."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δεν έχετε συνδεθεί στο iCloud. Ανοίξτε Ρυθμίσεις συστήματος → Apple ID, συνδεθείτε και δοκιμάστε ξανά."
           }
         }
       }
@@ -20794,6 +21700,12 @@
             "state": "translated",
             "value": "Spațiul tău iCloud este plin. Eliberează spațiu în Configurări sistem → Apple ID → iCloud pentru a continua sincronizarea."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ο αποθηκευτικός χώρος iCloud είναι πλήρης. Ελευθερώστε χώρο στις Ρυθμίσεις συστήματος → Apple ID → iCloud για να συνεχιστεί ο συγχρονισμός."
+          }
         }
       }
     },
@@ -20931,6 +21843,12 @@
             "state": "translated",
             "value": "bae nu are permisiunea de a folosi iCloud. Deschide Configurări sistem → Apple ID → iCloud → Aplicații care folosesc iCloud și activează bae."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Το bae δεν έχει άδεια χρήσης του iCloud. Ανοίξτε Ρυθμίσεις συστήματος → Apple ID → iCloud → Εφαρμογές που χρησιμοποιούν το iCloud και ενεργοποιήστε το bae."
+          }
         }
       }
     },
@@ -21067,6 +21985,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zona de sincronizare iCloud a dispărut. Reconectează-te în setările de sincronizare pentru a o recrea."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η ζώνη συγχρονισμού iCloud χάθηκε. Επανασυνδεθείτε στις ρυθμίσεις συγχρονισμού για να δημιουργηθεί ξανά."
           }
         }
       }
@@ -21217,6 +22141,12 @@
             "state": "translated",
             "value": "%lld albume"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld άλμπουμ"
+          }
         }
       }
     },
@@ -21366,6 +22296,12 @@
             "state": "translated",
             "value": "%lld opere"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld έργα"
+          }
         }
       }
     },
@@ -21501,6 +22437,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Adaugă un dispozitiv"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Προσθήκη συσκευής"
           }
         }
       }
@@ -21639,6 +22581,12 @@
             "state": "translated",
             "value": "Adaugă un dispozitiv…"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Προσθήκη συσκευής…"
+          }
         }
       }
     },
@@ -21776,6 +22724,12 @@
             "state": "translated",
             "value": "Adaugă acest dispozitiv la o bibliotecă pe care o ai deja pe alt dispozitiv."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Προσθέστε αυτή τη συσκευή σε βιβλιοθήκη που έχετε ήδη σε άλλη συσκευή."
+          }
         }
       }
     },
@@ -21911,6 +22865,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Oricine are acest cod are acces complet la biblioteca ta. Păstrează-l secret. Folosește-l doar pentru a restaura pe un dispozitiv nou, când nu ai altul la îndemână."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Όποιος έχει αυτόν τον κωδικό αποκτά πλήρη πρόσβαση στη βιβλιοθήκη σας. Κρατήστε τον μυστικό. Χρησιμοποιήστε τον μόνο για επαναφορά σε νέα συσκευή, όταν δεν έχετε άλλη διαθέσιμη."
           }
         }
       }
@@ -22049,6 +23009,12 @@
             "state": "translated",
             "value": "Aprobă"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Έγκριση"
+          }
         }
       }
     },
@@ -22184,6 +23150,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aprobi acest dispozitiv?"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Έγκριση αυτής της συσκευής;"
           }
         }
       }
@@ -22322,6 +23294,12 @@
             "state": "translated",
             "value": "Autorizarea s-a încheiat fără o stare."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Η εξουσιοδότηση ολοκληρώθηκε χωρίς κατάσταση."
+          }
         }
       }
     },
@@ -22458,6 +23436,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Înapoi"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Πίσω"
           }
         }
       }
@@ -22596,6 +23580,12 @@
             "state": "translated",
             "value": "Copiază codul"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αντιγραφή κωδικού"
+          }
         }
       }
     },
@@ -22732,6 +23722,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cod de asociere a dispozitivului"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κωδικός σύζευξης συσκευής"
           }
         }
       }
@@ -22870,6 +23866,12 @@
             "state": "translated",
             "value": "Dispozitive"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Συσκευές"
+          }
         }
       }
     },
@@ -23006,6 +24008,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dispozitivele care partajează această bibliotecă. Aprobă un dispozitiv nou sau elimină unul."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Οι συσκευές που μοιράζονται αυτή τη βιβλιοθήκη. Εγκρίνετε μια νέα συσκευή ή αφαιρέστε κάποια."
           }
         }
       }
@@ -23144,6 +24152,12 @@
             "state": "translated",
             "value": "Urmăritor"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ακόλουθος"
+          }
         }
       }
     },
@@ -23279,6 +24293,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Va pierde accesul, iar cheia bibliotecii va fi rotită. Dispozitivele rămase în bibliotecă primesc automat cheia nouă."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Θα χάσει την πρόσβαση και το κλειδί της βιβλιοθήκης θα αντικατασταθεί. Οι συσκευές που παραμένουν στη βιβλιοθήκη λαμβάνουν αυτόματα νέο κλειδί."
           }
         }
       }
@@ -23417,6 +24437,12 @@
             "state": "translated",
             "value": "Alătură-te"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σύνδεση"
+          }
         }
       }
     },
@@ -23552,6 +24578,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alătură-te unei biblioteci"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σύνδεση σε βιβλιοθήκη"
           }
         }
       }
@@ -23690,6 +24722,12 @@
             "state": "translated",
             "value": "Membru"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μέλος"
+          }
         }
       }
     },
@@ -23826,6 +24864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dispozitive"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μέλη"
           }
         }
       }
@@ -23964,6 +25008,12 @@
             "state": "translated",
             "value": "Proprietar"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κάτοχος"
+          }
         }
       }
     },
@@ -24100,6 +25150,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lipește codul de recuperare"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επικολλήστε τον κωδικό ανάκτησης"
           }
         }
       }
@@ -24238,6 +25294,12 @@
             "state": "translated",
             "value": "Lipește codul tău de recuperare"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επικολλήστε τον κωδικό ανάκτησής σας"
+          }
         }
       }
     },
@@ -24375,6 +25437,12 @@
             "state": "translated",
             "value": "Lipește codul tău de recuperare. Folosește-l doar când nu ai alt dispozitiv care să îl aprobe pe acesta."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επικολλήστε τον κωδικό ανάκτησής σας. Χρησιμοποιήστε τον μόνο όταν δεν έχετε άλλη συσκευή για να εγκρίνει αυτή."
+          }
         }
       }
     },
@@ -24510,6 +25578,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cod de recuperare"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Κωδικός ανάκτησης"
           }
         }
       }
@@ -24648,6 +25722,12 @@
             "state": "translated",
             "value": "Elimini acest dispozitiv?"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αφαίρεση αυτής της συσκευής;"
+          }
         }
       }
     },
@@ -24784,6 +25864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scanează"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σάρωση"
           }
         }
       }
@@ -24922,6 +26008,12 @@
             "state": "translated",
             "value": "Scanează codul de recuperare"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σάρωση κωδικού ανάκτησης"
+          }
         }
       }
     },
@@ -25058,6 +26150,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scanează codul afișat de un dispozitiv aflat deja în biblioteca ta."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σαρώστε τον κωδικό που εμφανίζει μια συσκευή που βρίσκεται ήδη στη βιβλιοθήκη σας."
           }
         }
       }
@@ -25196,6 +26294,12 @@
             "state": "translated",
             "value": "Arată codul de recuperare…"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Εμφάνιση κωδικού ανάκτησης…"
+          }
         }
       }
     },
@@ -25332,6 +26436,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descărcări simultane"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ταυτόχρονες λήψεις"
           }
         }
       }
@@ -25470,6 +26580,12 @@
             "state": "translated",
             "value": "Eroare de sincronizare"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Σφάλμα συγχρονισμού"
+          }
         }
       }
     },
@@ -25605,6 +26721,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Această bibliotecă folosește un furnizor la care această versiune nu se poate conecta."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αυτή η βιβλιοθήκη χρησιμοποιεί πάροχο με τον οποίο αυτή η έκδοση δεν μπορεί να συνδεθεί."
           }
         }
       }
@@ -25743,6 +26865,12 @@
             "state": "translated",
             "value": "Încearcă din nou"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Δοκιμάστε ξανά"
+          }
         }
       }
     },
@@ -25878,6 +27006,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codul tău de recuperare restaurează această bibliotecă pe un dispozitiv nou când nu ai alt dispozitiv care să o aprobe. Oricine îl are obține acces complet. Păstrează-l secret."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ο κωδικός ανάκτησης επαναφέρει αυτή τη βιβλιοθήκη σε νέα συσκευή όταν δεν έχετε άλλη συσκευή για να την εγκρίνει. Όποιος τον έχει αποκτά πλήρη πρόσβαση. Κρατήστε τον μυστικό."
           }
         }
       }
@@ -26016,6 +27150,12 @@
             "state": "translated",
             "value": "bae pregătește biblioteca pe acest dispozitiv."
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Το bae ρυθμίζει τη βιβλιοθήκη σε αυτή τη συσκευή."
+          }
         }
       }
     },
@@ -26152,6 +27292,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deconectat, dar codul de restaurare nu a putut fi eliminat: %@"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Έγινε αποσύνδεση, αλλά δεν ήταν δυνατή η αφαίρεση του κωδικού επαναφοράς: %@"
           }
         }
       }
@@ -26290,6 +27436,12 @@
             "state": "translated",
             "value": "Sincronizarea te așteaptă"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ο συγχρονισμός σάς περιμένει"
+          }
         }
       }
     },
@@ -26426,6 +27578,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Modificare de bibliotecă"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αλλαγή βιβλιοθήκης"
           }
         }
       }
@@ -26564,6 +27722,12 @@
             "state": "translated",
             "value": "Modificare de partajare"
           }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αλλαγή κοινής χρήσης"
+          }
         }
       }
     },
@@ -26700,6 +27864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Curățare cloud"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Εκκαθάριση cloud"
           }
         }
       }
