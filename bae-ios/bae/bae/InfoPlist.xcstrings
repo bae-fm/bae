@@ -106,6 +106,12 @@
             "value": "O bae usa a câmera para escanear códigos ao emparelhar ou restaurar uma biblioteca."
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O bae usa a câmara para digitalizar códigos ao emparelhar ou recuperar uma biblioteca."
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -247,6 +253,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "O bae emparelha dispositivos e encontra alto-falantes e TVs na sua rede local."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O bae emparelha dispositivos e encontra colunas e televisores na sua rede local."
           }
         },
         "ro": {

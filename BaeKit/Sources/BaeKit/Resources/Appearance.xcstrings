@@ -105,6 +105,12 @@
             "value": "Modo"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -242,6 +248,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Sistema"
@@ -389,6 +401,12 @@
             "value": "Claro"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claro"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -526,6 +544,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuro"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Escuro"
@@ -673,6 +697,12 @@
             "value": "Cor de destaque"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cor de destaque"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -815,6 +845,12 @@
             "value": "Tom do fundo"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tom de fundo"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -952,6 +988,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neutro"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Neutro"
@@ -1099,6 +1141,12 @@
             "value": "Ardósia"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ardósia"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -1236,6 +1284,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ameixa"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Ameixa"
@@ -1383,6 +1437,12 @@
             "value": "Azul"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Azul"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -1520,6 +1580,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Índigo"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Índigo"
@@ -1667,6 +1733,12 @@
             "value": "Roxo"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roxo"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -1804,6 +1876,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rosa"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Rosa"
@@ -1951,6 +2029,12 @@
             "value": "Vermelho"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vermelho"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -2088,6 +2172,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âmbar"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Âmbar"
@@ -2235,6 +2325,12 @@
             "value": "Verde"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verde"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -2377,6 +2473,12 @@
             "value": "Azul-petróleo"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turquesa"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -2514,6 +2616,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meia-noite"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Meia-noite"
@@ -2661,6 +2769,12 @@
             "value": "Floresta"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Floresta"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -2798,6 +2912,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Areia"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Areia"

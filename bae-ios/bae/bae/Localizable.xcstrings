@@ -105,6 +105,12 @@
             "value": "Aparência"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aspeto"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -283,6 +289,12 @@
             "state": "translated",
             "value": "%1$@ από %2$@"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ de %2$@"
+          }
         }
       }
     },
@@ -421,6 +433,12 @@
           }
         },
         "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "%1$@, %2$@"
@@ -915,6 +933,24 @@
               }
             }
           }
+        },
+        "pt-PT": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ficheiro"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ficheiros"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -1056,6 +1092,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Προσθήκη στην ουρά"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar à fila"
           }
         }
       }
@@ -1199,6 +1241,12 @@
             "state": "translated",
             "value": "Άλμπουμ"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Álbuns"
+          }
         }
       }
     },
@@ -1340,6 +1388,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Αύξουσα"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ascendente"
           }
         }
       }
@@ -1483,6 +1537,12 @@
             "state": "translated",
             "value": "Η εξουσιοδότηση ολοκληρώθηκε χωρίς κωδικό."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A autorização terminou sem um código."
+          }
         }
       }
     },
@@ -1624,6 +1684,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Η πρόσβαση στην κάμερα έχει απορριφθεί. Ενεργοποιήστε τη στις Ρυθμίσεις για σάρωση κωδικών QR."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O acesso à câmara foi recusado. Ative-o nas Definições para digitalizar códigos QR."
           }
         }
       }
@@ -1767,6 +1833,12 @@
             "state": "translated",
             "value": "Η κάμερα δεν είναι διαθέσιμη"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Câmara indisponível"
+          }
         }
       }
     },
@@ -1908,6 +1980,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Απαιτείται άδεια κάμερας για τη σάρωση κωδικών QR"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "É necessária permissão de câmara para digitalizar códigos QR"
           }
         }
       }
@@ -2051,6 +2129,12 @@
             "state": "translated",
             "value": "Ακύρωση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
         }
       }
     },
@@ -2193,6 +2277,12 @@
             "state": "translated",
             "value": "Εκκαθάριση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpar"
+          }
         }
       }
     },
@@ -2299,6 +2389,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Limpar a fonte de reprodução"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpar A reproduzir de"
           }
         },
         "ro": {
@@ -2442,6 +2538,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Limpar “A seguir”"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpar A seguir"
           }
         },
         "ro": {
@@ -2622,6 +2724,12 @@
             "state": "translated",
             "value": "Κλείσιμο"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fechar"
+          }
         }
       }
     },
@@ -2763,6 +2871,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Η σύνδεση cloud δεν έχει διαμορφωθεί σε αυτή την έκδοση (λείπει το oauth-creds.json)."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O início de sessão na nuvem não está configurado nesta versão (falta o oauth-creds.json)."
           }
         }
       }
@@ -2906,6 +3020,12 @@
             "state": "translated",
             "value": "Συγχρονισμός cloud"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronização na nuvem"
+          }
         }
       }
     },
@@ -3048,6 +3168,12 @@
             "state": "translated",
             "value": "Σύμπτυξη"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduzir"
+          }
         }
       }
     },
@@ -3150,6 +3276,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalhes do compositor não encontrados"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Detalhes do compositor não encontrados"
@@ -3293,6 +3425,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compositores"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Compositores"
@@ -3475,6 +3613,12 @@
             "state": "translated",
             "value": "Σύνδεση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ligar"
+          }
         }
       }
     },
@@ -3616,6 +3760,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Σύνδεση στη βιβλιοθήκη σας"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A ligar à sua biblioteca"
           }
         }
       }
@@ -3759,6 +3909,12 @@
             "state": "translated",
             "value": "Δεν ήταν δυνατή η προσθήκη της εισόδου κάμερας στη συνεδρία"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível adicionar a entrada da câmara à sessão"
+          }
         }
       }
     },
@@ -3900,6 +4056,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Δεν ήταν δυνατή η προσθήκη της εξόδου μεταδεδομένων στη συνεδρία"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível adicionar a saída de metadados à sessão"
           }
         }
       }
@@ -4043,6 +4205,12 @@
             "state": "translated",
             "value": "Δεν ήταν δυνατή η δημιουργία εισόδου κάμερας: %@"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível criar a entrada da câmara: %@"
+          }
         }
       }
     },
@@ -4184,6 +4352,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Δεν ήταν δυνατή η εμφάνιση της σύνδεσης cloud από το τρέχον παράθυρο."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível apresentar o início de sessão na nuvem a partir da janela atual."
           }
         }
       }
@@ -4327,6 +4501,12 @@
             "state": "translated",
             "value": "Δεν ήταν δυνατή η ανάγνωση του oauth-creds.json: %@"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível ler o oauth-creds.json: %@"
+          }
         }
       }
     },
@@ -4430,6 +4610,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créditos"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Créditos"
@@ -4612,6 +4798,12 @@
             "state": "translated",
             "value": "Φθίνουσα"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descendente"
+          }
         }
       }
     },
@@ -4753,6 +4945,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Αποσυνδεδεμένο"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desligado"
           }
         }
       }
@@ -4896,6 +5094,12 @@
             "state": "translated",
             "value": "Απόρριψη"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar"
+          }
         }
       }
     },
@@ -5037,6 +5241,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Τέλος"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concluído"
           }
         }
       }
@@ -5180,6 +5390,12 @@
             "state": "translated",
             "value": "Λήψη"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transferir"
+          }
         }
       }
     },
@@ -5321,6 +5537,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Έγινε λήψη"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transferido"
           }
         }
       }
@@ -5464,6 +5686,12 @@
             "state": "translated",
             "value": "Λήψεις"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transferências"
+          }
         }
       }
     },
@@ -5605,6 +5833,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Κλειδί κρυπτογράφησης (64 δεκαεξαδικοί χαρακτήρες)"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chave de encriptação (64 carateres hexadecimais)"
           }
         }
       }
@@ -5749,6 +5983,12 @@
             "state": "translated",
             "value": "Σφάλμα"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erro"
+          }
         }
       }
     },
@@ -5890,6 +6130,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ανάπτυξη του Αναπαράγεται τώρα"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expandir A reproduzir"
           }
         }
       }
@@ -6033,6 +6279,12 @@
             "state": "translated",
             "value": "Βιβλιοθήκη"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biblioteca"
+          }
         }
       }
     },
@@ -6174,6 +6426,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Η βιβλιοθήκη είναι κλειδωμένη"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biblioteca bloqueada"
           }
         }
       }
@@ -6317,6 +6575,12 @@
             "state": "translated",
             "value": "Φόρτωση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A carregar"
+          }
         }
       }
     },
@@ -6458,6 +6722,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Μόνο τοπικά"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apenas local"
           }
         }
       }
@@ -6601,6 +6871,12 @@
             "state": "translated",
             "value": "Σίγαση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Silenciar"
+          }
         }
       }
     },
@@ -6742,6 +7018,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Επόμενο κομμάτι"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faixa seguinte"
           }
         }
       }
@@ -6885,6 +7167,12 @@
             "state": "translated",
             "value": "Κανένα άλμπουμ ακόμη. Συγχρονισμός από το cloud…"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ainda não há álbuns. A sincronizar a partir da nuvem…"
+          }
         }
       }
     },
@@ -6991,6 +7279,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nenhum compositor"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sem compositores"
           }
         },
         "ro": {
@@ -7170,6 +7464,12 @@
             "state": "translated",
             "value": "Καμία λήψη"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sem transferências"
+          }
         }
       }
     },
@@ -7311,6 +7611,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Κανένα αποτέλεσμα για «%@»"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sem resultados para «%@»"
           }
         }
       }
@@ -7454,6 +7760,12 @@
             "state": "translated",
             "value": "Δεν ακολουθεί τίποτα"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada a seguir"
+          }
         }
       }
     },
@@ -7595,6 +7907,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Αναπαράγεται τώρα"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A reproduzir"
           }
         }
       }
@@ -7738,6 +8056,12 @@
             "state": "translated",
             "value": "Ενεργό"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ligado"
+          }
         }
       }
     },
@@ -7844,6 +8168,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Código de pareamento"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código de emparelhamento"
           }
         },
         "ro": {
@@ -7987,6 +8317,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cole o código de pareamento"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cole o código de emparelhamento"
           }
         },
         "ro": {
@@ -8166,6 +8502,12 @@
             "state": "translated",
             "value": "Παύση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausa"
+          }
         }
       }
     },
@@ -8268,6 +8610,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausa entre lados e discos"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Pausa entre lados e discos"
@@ -8450,6 +8798,12 @@
             "state": "translated",
             "value": "Σε παύση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Em pausa"
+          }
         }
       }
     },
@@ -8591,6 +8945,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Αναπαραγωγή"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduzir"
           }
         }
       }
@@ -8734,6 +9094,12 @@
             "state": "translated",
             "value": "Αναπαραγωγή ως επόμενο"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduzir a seguir"
+          }
         }
       }
     },
@@ -8836,6 +9202,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reprodução"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Reprodução"
@@ -9019,6 +9391,12 @@
             "state": "translated",
             "value": "Αναπαραγωγή από"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A reproduzir de"
+          }
         }
       }
     },
@@ -9160,6 +9538,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Προηγούμενο κομμάτι"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faixa anterior"
           }
         }
       }
@@ -9303,6 +9687,12 @@
             "state": "translated",
             "value": "Ουρά"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fila"
+          }
         }
       }
     },
@@ -9444,6 +9834,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Η ουρά είναι κενή"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A fila está vazia"
           }
         }
       }
@@ -9587,6 +9983,12 @@
             "state": "translated",
             "value": "Επανασύνδεση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voltar a ligar"
+          }
         }
       }
     },
@@ -9690,6 +10092,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gravações"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Gravações"
@@ -9836,6 +10244,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lançamentos"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edições"
           }
         },
         "ro": {
@@ -10015,6 +10429,12 @@
             "state": "translated",
             "value": "Αφαίρεση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover"
+          }
         }
       }
     },
@@ -10156,6 +10576,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Αφαίρεση λήψης"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover transferência"
           }
         }
       }
@@ -10299,6 +10725,12 @@
             "state": "translated",
             "value": "Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover esta biblioteca deste dispositivo"
+          }
         }
       }
     },
@@ -10440,6 +10872,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή;"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover esta biblioteca deste dispositivo?"
           }
         }
       }
@@ -10583,6 +11021,12 @@
             "state": "translated",
             "value": "Αφαιρεί αυτή τη βιβλιοθήκη και τα ληφθέντα αρχεία της από αυτή τη συσκευή. Η βιβλιοθήκη σας στο cloud παραμένει ανέπαφη. Μπορείτε να συζεύξετε ξανά αυτή τη συσκευή αργότερα."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove esta biblioteca e os respetivos ficheiros transferidos deste dispositivo. A sua biblioteca na nuvem fica intacta. Pode voltar a emparelhar este dispositivo mais tarde."
+          }
         }
       }
     },
@@ -10724,6 +11168,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Λειτουργία επανάληψης"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo de repetição"
           }
         }
       }
@@ -10867,6 +11317,12 @@
             "state": "translated",
             "value": "Συνέχιση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retomar"
+          }
         }
       }
     },
@@ -11009,6 +11465,12 @@
             "state": "translated",
             "value": "Δοκιμή ξανά"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir"
+          }
         }
       }
     },
@@ -11115,6 +11577,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escaneie este código no dispositivo que está entrando na sua biblioteca."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digitalize este código no dispositivo que vai aderir à sua biblioteca."
           }
         },
         "ro": {
@@ -11295,6 +11763,12 @@
             "state": "translated",
             "value": "Αναζήτηση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pesquisar"
+          }
         }
       }
     },
@@ -11437,6 +11911,12 @@
             "state": "translated",
             "value": "Ρυθμίσεις"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Definições"
+          }
         }
       }
     },
@@ -11578,6 +12058,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Τυχαία σειρά"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aleatório"
           }
         }
       }
@@ -11722,6 +12208,12 @@
             "state": "translated",
             "value": "Τυχαία αναπαραγωγή βιβλιοθήκης"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduzir biblioteca aleatoriamente"
+          }
         }
       }
     },
@@ -11828,6 +12320,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Iniciando pareamento…"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A iniciar o emparelhamento..."
           }
         },
         "ro": {
@@ -12007,6 +12505,12 @@
             "state": "translated",
             "value": "Κατάσταση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estado"
+          }
         }
       }
     },
@@ -12148,6 +12652,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Συγχρονισμός"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronização"
           }
         }
       }
@@ -12291,6 +12801,12 @@
             "state": "translated",
             "value": "Συγχρονισμένο"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronizado"
+          }
         }
       }
     },
@@ -12432,6 +12948,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Συγχρονισμός…"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A sincronizar…"
           }
         }
       }
@@ -12575,6 +13097,12 @@
             "state": "translated",
             "value": "Το κλειδί κρυπτογράφησης αυτής της βιβλιοθήκης δεν βρίσκεται στο μπρελόκ. Εισαγάγετε το δεκαεξαδικό κλειδί 64 χαρακτήρων για ξεκλείδωμα."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A chave de encriptação desta biblioteca não está no porta-chaves. Introduza a chave hexadecimal de 64 carateres para desbloquear."
+          }
         }
       }
     },
@@ -12716,6 +13244,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ο πάροχος επέστρεψε μη έγκυρο URL εξουσιοδότησης."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O fornecedor devolveu um URL de autorização inválido."
           }
         }
       }
@@ -12859,6 +13393,12 @@
             "state": "translated",
             "value": "Αυτή η βιβλιοθήκη χρειάζεται σύνδεση cloud, η οποία δεν έχει διαμορφωθεί σε αυτή την έκδοση."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta biblioteca precisa de início de sessão na nuvem, que não está configurado nesta versão."
+          }
         }
       }
     },
@@ -13000,6 +13540,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Κομμάτια"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faixas"
           }
         }
       }
@@ -13144,6 +13690,12 @@
             "state": "translated",
             "value": "Απενεργοποίηση τυχαίας σειράς"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desligar a reprodução aleatória"
+          }
         }
       }
     },
@@ -13285,6 +13837,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ξεκλείδωμα"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desbloquear"
           }
         }
       }
@@ -13428,6 +13986,12 @@
             "state": "translated",
             "value": "Κατάργηση σίγασης"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repor som"
+          }
         }
       }
     },
@@ -13569,6 +14133,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ακολουθεί"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A seguir"
           }
         }
       }
@@ -13712,6 +14282,12 @@
             "state": "translated",
             "value": "Ένταση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume"
+          }
         }
       }
     },
@@ -13818,6 +14394,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aguardando aprovação…"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À espera de aprovação..."
           }
         },
         "ro": {
@@ -13961,6 +14543,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aguardando o dispositivo…"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À espera do dispositivo..."
           }
         },
         "ro": {
@@ -14140,6 +14728,12 @@
             "state": "translated",
             "value": "Αναμονή λήψης"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À espera de transferência"
+          }
         }
       }
     },
@@ -14242,6 +14836,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalhes da obra não encontrados"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Detalhes da obra não encontrados"
@@ -14385,6 +14985,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obras"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Obras"
@@ -14568,6 +15174,12 @@
             "state": "translated",
             "value": "Η βιβλιοθήκη σας"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A sua biblioteca"
+          }
         }
       }
     },
@@ -14710,6 +15322,12 @@
             "state": "translated",
             "value": "Η βιβλιοθήκη σας στο cloud παραμένει ανέπαφη."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A sua biblioteca na nuvem fica intacta."
+          }
         }
       }
     },
@@ -14848,6 +15466,12 @@
           }
         },
         "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "bae"
@@ -14994,6 +15618,12 @@
             "state": "translated",
             "value": "Το oauth-creds.json δεν περιέχει διαπιστευτήρια παρόχου."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O oauth-creds.json não contém credenciais de nenhum fornecedor."
+          }
         }
       }
     },
@@ -15135,6 +15765,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Το oauth-creds.json είναι κακοδιατυπωμένο: %@"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O oauth-creds.json está malformado: %@"
           }
         }
       }
@@ -15278,6 +15914,12 @@
             "state": "translated",
             "value": "Από το oauth-creds.json λείπει το client_id ή το redirect_uri για %@."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falta o client_id ou o redirect_uri para %@ no oauth-creds.json."
+          }
         }
       }
     },
@@ -15420,6 +16062,12 @@
             "state": "translated",
             "value": "συγχρονισμός…"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a sincronizar…"
+          }
         }
       }
     },
@@ -15526,6 +16174,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verifique se isto corresponde à impressão digital mostrada no novo dispositivo antes de aprovar."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifique se corresponde à impressão digital apresentada no novo dispositivo antes de aprovar."
           }
         },
         "ro": {
@@ -15706,6 +16360,12 @@
             "state": "translated",
             "value": "Σύνδεση..."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A iniciar sessão..."
+          }
         }
       }
     },
@@ -15848,6 +16508,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Αποσύνδεση"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desligar"
           }
         }
       }
@@ -15992,6 +16658,12 @@
             "state": "translated",
             "value": "Αποσύνδεση συγχρονισμού;"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desligar a sincronização?"
+          }
         }
       }
     },
@@ -16134,6 +16806,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Αυτό θα σταματήσει τον συγχρονισμό και θα αφαιρέσει τη διαμόρφωση του παρόχου cloud."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isto vai parar a sincronização e remover a configuração do fornecedor de nuvem."
           }
         }
       }
@@ -16278,6 +16956,12 @@
             "state": "translated",
             "value": "Δεν ήταν δυνατός ο έλεγχος για κυκλοφορίες που υπάρχουν μόνο στο cloud: %@"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível verificar as edições guardadas apenas na nuvem: %@"
+          }
         }
       }
     },
@@ -16420,6 +17104,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Η αποσύνδεση απέτυχε: %@"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível desligar: %@"
           }
         }
       }
@@ -16564,6 +17254,12 @@
             "state": "translated",
             "value": "Πάροχος"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fornecedor"
+          }
         }
       }
     },
@@ -16706,6 +17402,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Λογαριασμός"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conta"
           }
         }
       }
@@ -16850,6 +17552,12 @@
             "state": "translated",
             "value": "Κάδος"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contentor"
+          }
         }
       }
     },
@@ -16992,6 +17700,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Περιοχή"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Região"
           }
         }
       }
@@ -17136,6 +17850,12 @@
             "state": "translated",
             "value": "Τερματικό σημείο"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponto final"
+          }
         }
       }
     },
@@ -17278,6 +17998,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Παύση μεταφορτώσεων"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suspender envios"
           }
         }
       }
@@ -17422,6 +18148,12 @@
             "state": "translated",
             "value": "Όσο είναι σε παύση, οι αλλαγές περιμένουν σε αυτή τη συσκευή και μεταφορτώνονται όταν συνεχίσετε."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enquanto estiverem suspensos, as alterações ficam à espera neste dispositivo e são enviadas quando retomar."
+          }
         }
       }
     },
@@ -17565,6 +18297,12 @@
             "state": "translated",
             "value": "Για να συγχρονίσετε ξανά αυτή τη βιβλιοθήκη, συζεύξτε αυτή τη συσκευή από μια άλλη."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para voltar a sincronizar esta biblioteca, emparelhe este dispositivo a partir de outro."
+          }
         }
       }
     },
@@ -17668,6 +18406,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Artistas"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Artistas"
@@ -17816,6 +18560,12 @@
             "value": "Nenhum artista"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sem artistas"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -17953,6 +18703,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalhes do artista não encontrados"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Detalhes do artista não encontrados"
@@ -18101,6 +18857,12 @@
             "value": "Nome"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nome"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -18241,6 +19003,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Restaurar ao abrir"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar ao iniciar"
           }
         },
         "ro": {
@@ -18385,6 +19153,12 @@
             "value": "Restaura a faixa, a posição, a fila e o volume da última sessão ao abrir o app."
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaura a faixa, a posição, a fila e o volume da última sessão quando a app abre."
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -18527,6 +19301,12 @@
             "value": "Sobre"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acerca"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -18664,6 +19444,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versão"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Versão"
@@ -18812,6 +19598,12 @@
             "value": "Transmitir"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transmitir"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -18950,6 +19742,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transmissão"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Transmissão"
@@ -19098,6 +19896,12 @@
             "value": "Transmitindo para %@"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A transmitir para %@"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -19239,6 +20043,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nenhum dispositivo encontrado"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foram encontrados dispositivos Cast"
           }
         },
         "ro": {
@@ -19384,6 +20194,12 @@
             "value": "Ativar a transmissão"
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar transmissão"
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -19525,6 +20341,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Desativar a transmissão?"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desligar a transmissão?"
           }
         },
         "ro": {
@@ -19670,6 +20492,12 @@
             "value": "Isso interromperá a transmissão para %@."
           }
         },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isto vai parar a transmissão para %@."
+          }
+        },
         "ro": {
           "stringUnit": {
             "state": "translated",
@@ -19811,6 +20639,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Desativar"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desligar"
           }
         },
         "ro": {
@@ -19991,6 +20825,12 @@
             "state": "translated",
             "value": "Αναπαράγει σε δέκτες Cast και AirPlay στο δίκτυό σας. Όταν είναι ανενεργό, το bae δεν αναζητά συσκευές."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduz em recetores Cast e AirPlay na sua rede. Quando está desligado, o bae não procura dispositivos."
+          }
         }
       }
     },
@@ -20093,6 +20933,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este dispositivo"
+          }
+        },
+        "pt-PT": {
           "stringUnit": {
             "state": "translated",
             "value": "Este dispositivo"
@@ -20276,6 +21122,12 @@
             "state": "translated",
             "value": "Δεν ήταν δυνατή η δημιουργία κωδικού επαναφοράς"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível criar um código de restauro"
+          }
         }
       }
     },
@@ -20418,6 +21270,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Δεν ήταν δυνατή η αποθήκευση του κωδικού επαναφοράς στο μπρελόκ σας"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível guardar o código de restauro no seu porta-chaves"
           }
         }
       }
@@ -20562,6 +21420,12 @@
             "state": "translated",
             "value": "Δεν ήταν δυνατός ο έλεγχος της κατάστασης του λογαριασμού iCloud."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível verificar o estado da conta iCloud."
+          }
         }
       }
     },
@@ -20704,6 +21568,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Δεν ήταν δυνατός ο έλεγχος της κατάστασης του λογαριασμού iCloud: %@"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível verificar o estado da conta iCloud: %@"
           }
         }
       }
@@ -20848,6 +21718,12 @@
             "state": "translated",
             "value": "Σε αυτή τη συσκευή δεν έχει συνδεθεί λογαριασμός iCloud. Ανοίξτε Ρυθμίσεις συστήματος → Apple ID, συνδεθείτε και δοκιμάστε ξανά."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não há nenhuma conta iCloud com sessão iniciada neste dispositivo. Abra Definições do Sistema → ID Apple para iniciar sessão e tente novamente."
+          }
         }
       }
     },
@@ -20990,6 +21866,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Το iCloud είναι περιορισμένο σε αυτή τη συσκευή (γονικός έλεγχος ή MDM). Το bae δεν μπορεί να το χρησιμοποιήσει για συγχρονισμό."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O iCloud está restringido neste dispositivo (controlo parental ou MDM). O bae não o pode usar para sincronizar."
           }
         }
       }
@@ -21134,6 +22016,12 @@
             "state": "translated",
             "value": "Δεν ήταν δυνατός ο προσδιορισμός της κατάστασης του λογαριασμού iCloud. Ελέγξτε το δίκτυό σας και δοκιμάστε ξανά."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível determinar o estado da conta iCloud. Verifique a rede e tente novamente."
+          }
         }
       }
     },
@@ -21276,6 +22164,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Το iCloud είναι προσωρινά μη διαθέσιμο. Δοκιμάστε ξανά σε λίγο."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O iCloud está temporariamente indisponível. Tente novamente dentro de momentos."
           }
         }
       }
@@ -21420,6 +22314,12 @@
             "state": "translated",
             "value": "Μη αναμενόμενη κατάσταση λογαριασμού iCloud (%lld)."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estado inesperado da conta iCloud (%lld)."
+          }
         }
       }
     },
@@ -21562,6 +22462,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Δεν έχετε συνδεθεί στο iCloud. Ανοίξτε Ρυθμίσεις συστήματος → Apple ID, συνδεθείτε και δοκιμάστε ξανά."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não tem sessão iniciada no iCloud. Abra Definições do Sistema → ID Apple para iniciar sessão e tente novamente."
           }
         }
       }
@@ -21706,6 +22612,12 @@
             "state": "translated",
             "value": "Ο αποθηκευτικός χώρος iCloud είναι πλήρης. Ελευθερώστε χώρο στις Ρυθμίσεις συστήματος → Apple ID → iCloud για να συνεχιστεί ο συγχρονισμός."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O seu armazenamento do iCloud está cheio. Liberte espaço em Definições do Sistema → ID Apple → iCloud para continuar a sincronizar."
+          }
         }
       }
     },
@@ -21849,6 +22761,12 @@
             "state": "translated",
             "value": "Το bae δεν έχει άδεια χρήσης του iCloud. Ανοίξτε Ρυθμίσεις συστήματος → Apple ID → iCloud → Εφαρμογές που χρησιμοποιούν το iCloud και ενεργοποιήστε το bae."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O bae não tem permissão para usar o iCloud. Abra Definições do Sistema → ID Apple → iCloud → Apps que usam o iCloud e ative o bae."
+          }
         }
       }
     },
@@ -21991,6 +22909,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Η ζώνη συγχρονισμού iCloud χάθηκε. Επανασυνδεθείτε στις ρυθμίσεις συγχρονισμού για να δημιουργηθεί ξανά."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A zona de sincronização do iCloud desapareceu. Volte a ligar nas definições de sincronização para a recriar."
           }
         }
       }
@@ -22147,6 +23071,12 @@
             "state": "translated",
             "value": "%lld άλμπουμ"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld álbuns"
+          }
         }
       }
     },
@@ -22302,6 +23232,12 @@
             "state": "translated",
             "value": "%lld έργα"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld obras"
+          }
         }
       }
     },
@@ -22443,6 +23379,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Προσθήκη συσκευής"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar um dispositivo"
           }
         }
       }
@@ -22587,6 +23529,12 @@
             "state": "translated",
             "value": "Προσθήκη συσκευής…"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar um dispositivo…"
+          }
         }
       }
     },
@@ -22730,6 +23678,12 @@
             "state": "translated",
             "value": "Προσθέστε αυτή τη συσκευή σε βιβλιοθήκη που έχετε ήδη σε άλλη συσκευή."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicione este dispositivo a uma biblioteca que já tenha noutro dispositivo."
+          }
         }
       }
     },
@@ -22871,6 +23825,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Όποιος έχει αυτόν τον κωδικό αποκτά πλήρη πρόσβαση στη βιβλιοθήκη σας. Κρατήστε τον μυστικό. Χρησιμοποιήστε τον μόνο για επαναφορά σε νέα συσκευή, όταν δεν έχετε άλλη διαθέσιμη."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quem tiver este código tem acesso total à sua biblioteca. Mantenha-o secreto. Use-o apenas para restaurar num dispositivo novo, quando não tiver outro disponível."
           }
         }
       }
@@ -23015,6 +23975,12 @@
             "state": "translated",
             "value": "Έγκριση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprovar"
+          }
         }
       }
     },
@@ -23156,6 +24122,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Έγκριση αυτής της συσκευής;"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprovar este dispositivo?"
           }
         }
       }
@@ -23300,6 +24272,12 @@
             "state": "translated",
             "value": "Η εξουσιοδότηση ολοκληρώθηκε χωρίς κατάσταση."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A autorização terminou sem um estado."
+          }
         }
       }
     },
@@ -23442,6 +24420,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Πίσω"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voltar"
           }
         }
       }
@@ -23586,6 +24570,12 @@
             "state": "translated",
             "value": "Αντιγραφή κωδικού"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar código"
+          }
         }
       }
     },
@@ -23728,6 +24718,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Κωδικός σύζευξης συσκευής"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código de emparelhamento do dispositivo"
           }
         }
       }
@@ -23872,6 +24868,12 @@
             "state": "translated",
             "value": "Συσκευές"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivos"
+          }
         }
       }
     },
@@ -24014,6 +25016,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Οι συσκευές που μοιράζονται αυτή τη βιβλιοθήκη. Εγκρίνετε μια νέα συσκευή ή αφαιρέστε κάποια."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivos que partilham esta biblioteca. Aprove um dispositivo novo ou remova um."
           }
         }
       }
@@ -24158,6 +25166,12 @@
             "state": "translated",
             "value": "Ακόλουθος"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguidor"
+          }
         }
       }
     },
@@ -24299,6 +25313,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Θα χάσει την πρόσβαση και το κλειδί της βιβλιοθήκης θα αντικατασταθεί. Οι συσκευές που παραμένουν στη βιβλιοθήκη λαμβάνουν αυτόματα νέο κλειδί."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perderá o acesso e a chave da biblioteca será substituída. Os dispositivos que continuam na biblioteca recebem a nova chave automaticamente."
           }
         }
       }
@@ -24443,6 +25463,12 @@
             "state": "translated",
             "value": "Σύνδεση"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aderir"
+          }
         }
       }
     },
@@ -24584,6 +25610,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Σύνδεση σε βιβλιοθήκη"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aderir a uma biblioteca"
           }
         }
       }
@@ -24728,6 +25760,12 @@
             "state": "translated",
             "value": "Μέλος"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membro"
+          }
         }
       }
     },
@@ -24870,6 +25908,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Μέλη"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membros"
           }
         }
       }
@@ -25014,6 +26058,12 @@
             "state": "translated",
             "value": "Κάτοχος"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proprietário"
+          }
         }
       }
     },
@@ -25156,6 +26206,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Επικολλήστε τον κωδικό ανάκτησης"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cole o código de recuperação"
           }
         }
       }
@@ -25300,6 +26356,12 @@
             "state": "translated",
             "value": "Επικολλήστε τον κωδικό ανάκτησής σας"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cole o seu código de recuperação"
+          }
         }
       }
     },
@@ -25443,6 +26505,12 @@
             "state": "translated",
             "value": "Επικολλήστε τον κωδικό ανάκτησής σας. Χρησιμοποιήστε τον μόνο όταν δεν έχετε άλλη συσκευή για να εγκρίνει αυτή."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cole o seu código de recuperação. Use isto apenas quando não tiver outro dispositivo disponível para aprovar este."
+          }
         }
       }
     },
@@ -25584,6 +26652,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Κωδικός ανάκτησης"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código de recuperação"
           }
         }
       }
@@ -25728,6 +26802,12 @@
             "state": "translated",
             "value": "Αφαίρεση αυτής της συσκευής;"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover este dispositivo?"
+          }
         }
       }
     },
@@ -25870,6 +26950,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Σάρωση"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digitalizar"
           }
         }
       }
@@ -26014,6 +27100,12 @@
             "state": "translated",
             "value": "Σάρωση κωδικού ανάκτησης"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digitalizar código de recuperação"
+          }
         }
       }
     },
@@ -26156,6 +27248,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Σαρώστε τον κωδικό που εμφανίζει μια συσκευή που βρίσκεται ήδη στη βιβλιοθήκη σας."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digitalize o código apresentado por um dispositivo que já esteja na sua biblioteca."
           }
         }
       }
@@ -26300,6 +27398,12 @@
             "state": "translated",
             "value": "Εμφάνιση κωδικού ανάκτησης…"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar código de recuperação…"
+          }
         }
       }
     },
@@ -26442,6 +27546,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ταυτόχρονες λήψεις"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transferências em simultâneo"
           }
         }
       }
@@ -26586,6 +27696,12 @@
             "state": "translated",
             "value": "Σφάλμα συγχρονισμού"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erro de sincronização"
+          }
         }
       }
     },
@@ -26727,6 +27843,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Αυτή η βιβλιοθήκη χρησιμοποιεί πάροχο με τον οποίο αυτή η έκδοση δεν μπορεί να συνδεθεί."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta biblioteca usa um fornecedor a que esta versão não se consegue ligar."
           }
         }
       }
@@ -26871,6 +27993,12 @@
             "state": "translated",
             "value": "Δοκιμάστε ξανά"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tentar novamente"
+          }
         }
       }
     },
@@ -27012,6 +28140,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ο κωδικός ανάκτησης επαναφέρει αυτή τη βιβλιοθήκη σε νέα συσκευή όταν δεν έχετε άλλη συσκευή για να την εγκρίνει. Όποιος τον έχει αποκτά πλήρη πρόσβαση. Κρατήστε τον μυστικό."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O seu código de recuperação restaura esta biblioteca num dispositivo novo quando não tem outro disponível para a aprovar. Quem o tiver fica com acesso total. Mantenha-o secreto."
           }
         }
       }
@@ -27156,6 +28290,12 @@
             "state": "translated",
             "value": "Το bae ρυθμίζει τη βιβλιοθήκη σε αυτή τη συσκευή."
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O bae está a preparar a biblioteca neste dispositivo."
+          }
         }
       }
     },
@@ -27298,6 +28438,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Έγινε αποσύνδεση, αλλά δεν ήταν δυνατή η αφαίρεση του κωδικού επαναφοράς: %@"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desligado, mas não foi possível remover o código de restauro: %@"
           }
         }
       }
@@ -27442,6 +28588,12 @@
             "state": "translated",
             "value": "Ο συγχρονισμός σάς περιμένει"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A sincronização está à sua espera"
+          }
         }
       }
     },
@@ -27584,6 +28736,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Αλλαγή βιβλιοθήκης"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alteração da biblioteca"
           }
         }
       }
@@ -27728,6 +28886,12 @@
             "state": "translated",
             "value": "Αλλαγή κοινής χρήσης"
           }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alteração de partilha"
+          }
         }
       }
     },
@@ -27870,6 +29034,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Εκκαθάριση cloud"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpeza da nuvem"
           }
         }
       }

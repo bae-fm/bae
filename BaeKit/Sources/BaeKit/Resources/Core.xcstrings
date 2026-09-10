@@ -126,8 +126,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork download stopped."
+            "state": "translated",
+            "value": "A transferência de imagens parou."
           }
         },
         "ro": {
@@ -299,8 +299,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading artwork…"
+            "state": "translated",
+            "value": "A transferir imagens…"
           }
         },
         "ro": {
@@ -472,8 +472,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Some artwork couldn’t be downloaded."
+            "state": "translated",
+            "value": "Não foi possível transferir algumas imagens."
           }
         },
         "ro": {
@@ -645,8 +645,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finding artwork…"
+            "state": "translated",
+            "value": "A procurar imagens…"
           }
         },
         "ro": {
@@ -818,8 +818,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld-bit"
+            "state": "translated",
+            "value": "%lld bits"
           }
         },
         "ro": {
@@ -991,7 +991,7 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%lld kbps"
           }
         },
@@ -1164,8 +1164,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld ch"
+            "state": "translated",
+            "value": "%lld can."
           }
         },
         "ro": {
@@ -1337,7 +1337,7 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "mono"
           }
         },
@@ -1510,8 +1510,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "stereo"
+            "state": "translated",
+            "value": "estéreo"
           }
         },
         "ro": {
@@ -1683,8 +1683,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Audio"
+            "state": "translated",
+            "value": "Áudio"
           }
         },
         "ro": {
@@ -1856,7 +1856,7 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "CUE"
           }
         },
@@ -2029,7 +2029,7 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": " · "
           }
         },
@@ -2202,8 +2202,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Various"
+            "state": "translated",
+            "value": "Vários"
           }
         },
         "ro": {
@@ -2375,7 +2375,7 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@ kHz"
           }
         },
@@ -2548,8 +2548,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Local only"
+            "state": "translated",
+            "value": "Apenas local"
           }
         },
         "ro": {
@@ -2721,8 +2721,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "S3-compatible"
+            "state": "translated",
+            "value": "Compatível com S3"
           }
         },
         "ro": {
@@ -2894,8 +2894,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$@ of %2$@"
+            "state": "translated",
+            "value": "%1$@ de %2$@"
           }
         },
         "ro": {
@@ -3085,8 +3085,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld hr"
+            "state": "translated",
+            "value": "%lld h"
           }
         },
         "ro": {
@@ -3258,7 +3258,7 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%1$@, %2$@"
           }
         },
@@ -3431,7 +3431,7 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%lld min"
           }
         },
@@ -3604,8 +3604,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This AirPlay receiver isn't supported."
+            "state": "translated",
+            "value": "Este recetor AirPlay não é suportado."
           }
         },
         "ro": {
@@ -3777,8 +3777,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong with your settings."
+            "state": "translated",
+            "value": "Algo correu mal com as suas definições."
           }
         },
         "ro": {
@@ -3950,8 +3950,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check your cloud credentials and try again."
+            "state": "translated",
+            "value": "Verifique as suas credenciais de nuvem e tente novamente."
           }
         },
         "ro": {
@@ -4123,8 +4123,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong reading your library."
+            "state": "translated",
+            "value": "Algo correu mal ao ler a sua biblioteca."
           }
         },
         "ro": {
@@ -4296,8 +4296,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The export couldn't be completed."
+            "state": "translated",
+            "value": "Não foi possível concluir a exportação."
           }
         },
         "ro": {
@@ -4469,8 +4469,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The import couldn't be completed."
+            "state": "translated",
+            "value": "Não foi possível concluir a importação."
           }
         },
         "ro": {
@@ -4642,8 +4642,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong."
+            "state": "translated",
+            "value": "Algo correu mal."
           }
         },
         "ro": {
@@ -4815,8 +4815,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't access your device's secure storage."
+            "state": "translated",
+            "value": "Não foi possível aceder ao armazenamento seguro do seu dispositivo."
           }
         },
         "ro": {
@@ -4988,8 +4988,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong updating library sharing."
+            "state": "translated",
+            "value": "Algo correu mal ao atualizar a partilha da biblioteca."
           }
         },
         "ro": {
@@ -5161,8 +5161,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the cloud. Check your connection and try again."
+            "state": "translated",
+            "value": "Não foi possível contactar a nuvem. Verifique a ligação e tente novamente."
           }
         },
         "ro": {
@@ -5334,8 +5334,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The save couldn't be completed."
+            "state": "translated",
+            "value": "Não foi possível concluir a gravação."
           }
         },
         "ro": {
@@ -5507,8 +5507,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket wasn't found. Check its name and the credentials' access to it."
+            "state": "translated",
+            "value": "Este contentor não foi encontrado. Verifique o nome e o acesso das credenciais ao mesmo."
           }
         },
         "ro": {
@@ -5680,8 +5680,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check the bucket, region, endpoint, and key prefix."
+            "state": "translated",
+            "value": "Verifique o contentor, a região, o ponto final e o prefixo de chave."
           }
         },
         "ro": {
@@ -5853,8 +5853,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket and key prefix already contain a different library. Use an empty key prefix, or join or restore that library."
+            "state": "translated",
+            "value": "Este contentor e prefixo de chave já contêm outra biblioteca. Use um prefixo de chave vazio ou adira a essa biblioteca ou restaure-a."
           }
         },
         "ro": {
@@ -6026,8 +6026,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Allow these credentials to read, write, list, and delete objects in this bucket."
+            "state": "translated",
+            "value": "Permita que estas credenciais leiam, escrevam, listem e eliminem objetos neste contentor."
           }
         },
         "ro": {
@@ -6199,8 +6199,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This cloud storage has no available space."
+            "state": "translated",
+            "value": "Este armazenamento na nuvem não tem espaço disponível."
           }
         },
         "ro": {
@@ -6372,8 +6372,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The region or endpoint doesn't match this bucket."
+            "state": "translated",
+            "value": "A região ou o ponto final não correspondem a este contentor."
           }
         },
         "ro": {
@@ -6545,8 +6545,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This library has no device identity. Create, join, or restore the library again."
+            "state": "translated",
+            "value": "Esta biblioteca não tem identidade de dispositivo. Crie, adira ou restaure a biblioteca novamente."
           }
         },
         "ro": {
@@ -6718,8 +6718,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This pairing code expired. Show a new code on the other device and try again."
+            "state": "translated",
+            "value": "Este código de emparelhamento expirou. Mostre um código novo no outro dispositivo e tente novamente."
           }
         },
         "ro": {
@@ -6891,8 +6891,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device ended this pairing. Start it again from there if you still want to join."
+            "state": "translated",
+            "value": "O outro dispositivo terminou este emparelhamento. Se ainda quiser aderir, inicie-o novamente a partir daí."
           }
         },
         "ro": {
@@ -7064,8 +7064,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device isn't running this join. Open bae on it, show a pairing code, and try again."
+            "state": "translated",
+            "value": "O outro dispositivo não está a executar esta adesão. Abra o bae nesse dispositivo, mostre um código de emparelhamento e tente novamente."
           }
         },
         "ro": {
@@ -7237,8 +7237,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This device's keychain is locked. Unlock the device and bae will pick up where it left off."
+            "state": "translated",
+            "value": "O porta-chaves deste dispositivo está bloqueado. Desbloqueie o dispositivo e o bae continua de onde ficou."
           }
         },
         "ro": {
@@ -7410,8 +7410,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "That library could not be found."
+            "state": "translated",
+            "value": "Não foi possível encontrar essa biblioteca."
           }
         },
         "ro": {
@@ -7583,8 +7583,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Update the app to continue syncing."
+            "state": "translated",
+            "value": "Atualize a app para continuar a sincronizar."
           }
         },
         "ro": {
@@ -7756,8 +7756,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "not a track"
+            "state": "translated",
+            "value": "não é faixa"
           }
         },
         "ro": {
@@ -7929,8 +7929,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "slot %lld"
+            "state": "translated",
+            "value": "posição %lld"
           }
         },
         "ro": {
@@ -8102,8 +8102,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "slots %1$lld–%2$lld"
+            "state": "translated",
+            "value": "posições %1$lld–%2$lld"
           }
         },
         "ro": {
@@ -8275,8 +8275,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import has already completed and can no longer be edited."
+            "state": "translated",
+            "value": "Esta importação já terminou e não pode continuar a ser editada."
           }
         },
         "ro": {
@@ -8448,8 +8448,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import is already running and can no longer be edited."
+            "state": "translated",
+            "value": "Esta importação já está a decorrer e não pode continuar a ser editada."
           }
         },
         "ro": {
@@ -8621,8 +8621,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from barcode %@ in this image"
+            "state": "translated",
+            "value": "A edição foi identificada automaticamente a partir do código de barras %@ nesta imagem"
           }
         },
         "ro": {
@@ -8794,8 +8794,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from disc ID %@ from this file"
+            "state": "translated",
+            "value": "A edição foi identificada automaticamente a partir do ID de disco %@ deste ficheiro"
           }
         },
         "ro": {
@@ -8967,8 +8967,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Network folder. Changes made on other computers are checked every %lld minutes."
+            "state": "translated",
+            "value": "Pasta de rede. As alterações feitas noutros computadores são verificadas a cada %lld minutos."
           }
         },
         "ro": {
@@ -9140,8 +9140,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte audio file: %@"
+            "state": "translated",
+            "value": "ficheiro de áudio danificado ou com zero bytes: %@"
           }
         },
         "ro": {
@@ -9313,8 +9313,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte image: %@"
+            "state": "translated",
+            "value": "imagem danificada ou com zero bytes: %@"
           }
         },
         "ro": {
@@ -9486,8 +9486,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "no valid audio files"
+            "state": "translated",
+            "value": "não há ficheiros de áudio válidos"
           }
         },
         "ro": {
@@ -9659,8 +9659,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finalizing..."
+            "state": "translated",
+            "value": "A finalizar..."
           }
         },
         "ro": {
@@ -9832,8 +9832,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Measuring loudness..."
+            "state": "translated",
+            "value": "A medir a intensidade sonora..."
           }
         },
         "ro": {
@@ -10005,8 +10005,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reading files..."
+            "state": "translated",
+            "value": "A ler os ficheiros..."
           }
         },
         "ro": {
@@ -10178,8 +10178,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queued..."
+            "state": "translated",
+            "value": "Em fila..."
           }
         },
         "ro": {
@@ -10351,8 +10351,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Validating source files..."
+            "state": "translated",
+            "value": "A validar os ficheiros de origem..."
           }
         },
         "ro": {
@@ -10524,8 +10524,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: audio the release doesn’t name"
+            "state": "translated",
+            "value": "%1$lld ficheiros, %2$lld faixas: áudio que a edição não nomeia"
           }
         },
         "ro": {
@@ -10697,8 +10697,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: tracks with no audio"
+            "state": "translated",
+            "value": "%1$lld ficheiros, %2$lld faixas: faixas sem áudio"
           }
         },
         "ro": {
@@ -10870,8 +10870,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork"
+            "state": "translated",
+            "value": "Imagem"
           }
         },
         "ro": {
@@ -11043,8 +11043,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Audio"
+            "state": "translated",
+            "value": "Áudio"
           }
         },
         "ro": {
@@ -11216,8 +11216,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cover"
+            "state": "translated",
+            "value": "Capa"
           }
         },
         "ro": {
@@ -11389,8 +11389,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Document"
+            "state": "translated",
+            "value": "Documento"
           }
         },
         "ro": {
@@ -11562,8 +11562,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Not a track"
+            "state": "translated",
+            "value": "Não é faixa"
           }
         },
         "ro": {
@@ -11735,8 +11735,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Other"
+            "state": "translated",
+            "value": "Outro"
           }
         },
         "ro": {
@@ -11908,8 +11908,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Track sheet"
+            "state": "translated",
+            "value": "Folha de faixas"
           }
         },
         "ro": {
@@ -12081,8 +12081,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ audio can't be split by a sheet"
+            "state": "translated",
+            "value": "O áudio %@ não pode ser dividido por uma folha"
           }
         },
         "ro": {
@@ -12254,8 +12254,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The sheet’s track times fall outside this audio"
+            "state": "translated",
+            "value": "Os tempos das faixas da folha estão fora deste áudio"
           }
         },
         "ro": {
@@ -12427,8 +12427,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This audio can’t be read"
+            "state": "translated",
+            "value": "Não é possível ler este áudio"
           }
         },
         "ro": {
@@ -12600,8 +12600,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Already in your library"
+            "state": "translated",
+            "value": "Já está na sua biblioteca"
           }
         },
         "ro": {
@@ -12773,8 +12773,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length: %1$@ in the folder, %2$@ on the release"
+            "state": "translated",
+            "value": "Duração: %1$@ na pasta, %2$@ na edição"
           }
         },
         "ro": {
@@ -12946,8 +12946,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Could not read the track lengths in the folder"
+            "state": "translated",
+            "value": "Não foi possível ler as durações das faixas na pasta"
           }
         },
         "ro": {
@@ -13119,8 +13119,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Online lookup failed"
+            "state": "translated",
+            "value": "A pesquisa online falhou"
           }
         },
         "ro": {
@@ -13292,8 +13292,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Nothing matched this folder"
+            "state": "translated",
+            "value": "Nada correspondeu a esta pasta"
           }
         },
         "ro": {
@@ -13465,8 +13465,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "No disc ID and no barcode to look up"
+            "state": "translated",
+            "value": "Não há ID de disco nem código de barras para procurar"
           }
         },
         "ro": {
@@ -13935,14 +13935,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld match"
+                  "state": "translated",
+                  "value": "%lld correspondência"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld matches"
+                  "state": "translated",
+                  "value": "%lld correspondências"
                 }
               }
             }
@@ -14225,8 +14225,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The release states no track lengths"
+            "state": "translated",
+            "value": "A edição não indica durações das faixas"
           }
         },
         "ro": {
@@ -14398,8 +14398,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks: %1$lld in the folder, %2$lld on the release"
+            "state": "translated",
+            "value": "Faixas: %1$lld na pasta, %2$lld na edição"
           }
         },
         "ro": {
@@ -14571,8 +14571,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album title is required"
+            "state": "translated",
+            "value": "O título do álbum é obrigatório"
           }
         },
         "ro": {
@@ -14744,8 +14744,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist name is required"
+            "state": "translated",
+            "value": "O nome do artista é obrigatório"
           }
         },
         "ro": {
@@ -14917,8 +14917,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Year must be a number"
+            "state": "translated",
+            "value": "O ano tem de ser um número"
           }
         },
         "ro": {
@@ -15090,8 +15090,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album must have at least one artist"
+            "state": "translated",
+            "value": "O álbum tem de ter pelo menos um artista"
           }
         },
         "ro": {
@@ -15263,8 +15263,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork analysis failed"
+            "state": "translated",
+            "value": "A análise da imagem falhou"
           }
         },
         "ro": {
@@ -15436,8 +15436,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "artwork analysis failed"
+            "state": "translated",
+            "value": "a análise da imagem falhou"
           }
         },
         "ro": {
@@ -15609,8 +15609,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "busy (%lld)"
+            "state": "translated",
+            "value": "ocupado (%lld)"
           }
         },
         "ro": {
@@ -15782,8 +15782,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "failed"
+            "state": "translated",
+            "value": "falhou"
           }
         },
         "ro": {
@@ -15955,8 +15955,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "couldn't connect"
+            "state": "translated",
+            "value": "não foi possível ligar"
           }
         },
         "ro": {
@@ -16128,8 +16128,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "error %lld"
+            "state": "translated",
+            "value": "erro %lld"
           }
         },
         "ro": {
@@ -16301,8 +16301,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "error"
+            "state": "translated",
+            "value": "erro"
           }
         },
         "ro": {
@@ -16474,8 +16474,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "timed out"
+            "state": "translated",
+            "value": "tempo esgotado"
           }
         },
         "ro": {
@@ -16647,8 +16647,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't look this up"
+            "state": "translated",
+            "value": "Não foi possível procurar isto"
           }
         },
         "ro": {
@@ -16820,8 +16820,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the metadata provider"
+            "state": "translated",
+            "value": "Não foi possível contactar o fornecedor de metadados"
           }
         },
         "ro": {
@@ -16993,8 +16993,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error (%lld)"
+            "state": "translated",
+            "value": "O fornecedor de metadados devolveu um erro (%lld)"
           }
         },
         "ro": {
@@ -17166,8 +17166,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error"
+            "state": "translated",
+            "value": "O fornecedor de metadados devolveu um erro"
           }
         },
         "ro": {
@@ -17339,8 +17339,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider timed out"
+            "state": "translated",
+            "value": "O fornecedor de metadados excedeu o tempo limite"
           }
         },
         "ro": {
@@ -17512,8 +17512,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing %1$@ of %2$@"
+            "state": "translated",
+            "value": "A preparar %1$@ de %2$@"
           }
         },
         "ro": {
@@ -17685,8 +17685,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Uploading %1$@ of %2$@"
+            "state": "translated",
+            "value": "A enviar %1$@ de %2$@"
           }
         },
         "ro": {
@@ -17858,8 +17858,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld cancelling"
+            "state": "translated",
+            "value": "%lld a cancelar"
           }
         },
         "ro": {
@@ -18031,8 +18031,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ remaining"
+            "state": "translated",
+            "value": "falta %@"
           }
         },
         "ro": {
@@ -18204,8 +18204,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist image"
+            "state": "translated",
+            "value": "Imagem do artista"
           }
         },
         "ro": {
@@ -18377,8 +18377,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing from cloud"
+            "state": "translated",
+            "value": "A remover da nuvem"
           }
         },
         "ro": {
@@ -18847,14 +18847,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending delete"
+                  "state": "translated",
+                  "value": "%lld eliminação pendente"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending deletes"
+                  "state": "translated",
+                  "value": "%lld eliminações pendentes"
                 }
               }
             }
@@ -19137,8 +19137,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld prepared"
+            "state": "translated",
+            "value": "%lld preparados"
           }
         },
         "ro": {
@@ -19310,8 +19310,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld preparing"
+            "state": "translated",
+            "value": "%lld a preparar"
           }
         },
         "ro": {
@@ -19483,8 +19483,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld publishing"
+            "state": "translated",
+            "value": "%lld a publicar"
           }
         },
         "ro": {
@@ -19656,8 +19656,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Retrying (%lld)"
+            "state": "translated",
+            "value": "A repetir (%lld)"
           }
         },
         "ro": {
@@ -19829,8 +19829,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source unavailable"
+            "state": "translated",
+            "value": "Fonte indisponível"
           }
         },
         "ro": {
@@ -20002,7 +20002,7 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@/s"
           }
         },
@@ -20175,8 +20175,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploaded"
+            "state": "translated",
+            "value": "%lld enviados"
           }
         },
         "ro": {
@@ -20348,8 +20348,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Activating device…"
+            "state": "translated",
+            "value": "A ativar o dispositivo…"
           }
         },
         "ro": {
@@ -20521,8 +20521,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Granting cloud access…"
+            "state": "translated",
+            "value": "A conceder acesso à nuvem…"
           }
         },
         "ro": {
@@ -20694,8 +20694,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing invitation…"
+            "state": "translated",
+            "value": "A preparar o convite…"
           }
         },
         "ro": {
@@ -20867,8 +20867,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing library…"
+            "state": "translated",
+            "value": "A preparar a biblioteca…"
           }
         },
         "ro": {
@@ -21040,8 +21040,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the joining device…"
+            "state": "translated",
+            "value": "À espera do dispositivo que está a aderir…"
           }
         },
         "ro": {
@@ -21213,8 +21213,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access request…"
+            "state": "translated",
+            "value": "À espera do pedido de acesso à nuvem…"
           }
         },
         "ro": {
@@ -21386,8 +21386,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for device registration request…"
+            "state": "translated",
+            "value": "À espera do pedido de registo do dispositivo…"
           }
         },
         "ro": {
@@ -21559,8 +21559,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cancelling pairing…"
+            "state": "translated",
+            "value": "A cancelar o emparelhamento…"
           }
         },
         "ro": {
@@ -21732,8 +21732,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Catching up with library changes…"
+            "state": "translated",
+            "value": "A pôr em dia as alterações da biblioteca…"
           }
         },
         "ro": {
@@ -21905,8 +21905,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading library snapshot…"
+            "state": "translated",
+            "value": "A transferir a cópia da biblioteca…"
           }
         },
         "ro": {
@@ -22078,8 +22078,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Installing library snapshot…"
+            "state": "translated",
+            "value": "A instalar a cópia da biblioteca…"
           }
         },
         "ro": {
@@ -22251,8 +22251,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Requesting cloud access…"
+            "state": "translated",
+            "value": "A pedir acesso à nuvem…"
           }
         },
         "ro": {
@@ -22424,8 +22424,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Saving library…"
+            "state": "translated",
+            "value": "A guardar a biblioteca…"
           }
         },
         "ro": {
@@ -22597,8 +22597,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for activation…"
+            "state": "translated",
+            "value": "À espera da ativação…"
           }
         },
         "ro": {
@@ -22770,8 +22770,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for approval…"
+            "state": "translated",
+            "value": "À espera de aprovação…"
           }
         },
         "ro": {
@@ -22943,8 +22943,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the library…"
+            "state": "translated",
+            "value": "À espera da biblioteca…"
           }
         },
         "ro": {
@@ -23116,8 +23116,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access…"
+            "state": "translated",
+            "value": "À espera de acesso à nuvem…"
           }
         },
         "ro": {
@@ -23289,8 +23289,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Registering device…"
+            "state": "translated",
+            "value": "A registar o dispositivo…"
           }
         },
         "ro": {
@@ -23462,8 +23462,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reconnect to play this release. It isn't downloaded to this device yet."
+            "state": "translated",
+            "value": "Volte a ligar-se para reproduzir esta edição. Ainda não está transferida para este dispositivo."
           }
         },
         "ro": {
@@ -23635,8 +23635,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This release is still uploading. Try again when it finishes."
+            "state": "translated",
+            "value": "Esta edição ainda está a ser enviada. Tente novamente quando terminar."
           }
         },
         "ro": {
@@ -23808,8 +23808,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between discs. Change the CD, then press Play."
+            "state": "translated",
+            "value": "A reprodução está em pausa entre discos. Troque o CD e prima Reproduzir."
           }
         },
         "ro": {
@@ -23981,8 +23981,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %@ ended"
+            "state": "translated",
+            "value": "O disco %@ terminou"
           }
         },
         "ro": {
@@ -24154,8 +24154,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the cassette, then press Play."
+            "state": "translated",
+            "value": "A reprodução está em pausa entre lados. Vire a cassete e prima Reproduzir."
           }
         },
         "ro": {
@@ -24327,8 +24327,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the vinyl, then press Play."
+            "state": "translated",
+            "value": "A reprodução está em pausa entre lados. Vire o vinil e prima Reproduzir."
           }
         },
         "ro": {
@@ -24500,8 +24500,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Side %@ ended"
+            "state": "translated",
+            "value": "O lado %@ terminou"
           }
         },
         "ro": {
@@ -24673,8 +24673,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld downloading"
+            "state": "translated",
+            "value": "%lld a transferir"
           }
         },
         "ro": {
@@ -24846,8 +24846,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld failed"
+            "state": "translated",
+            "value": "%lld falhados"
           }
         },
         "ro": {
@@ -25019,8 +25019,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld in progress"
+            "state": "translated",
+            "value": "%lld em curso"
           }
         },
         "ro": {
@@ -25192,8 +25192,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld queued"
+            "state": "translated",
+            "value": "%lld em fila"
           }
         },
         "ro": {
@@ -25365,8 +25365,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploading"
+            "state": "translated",
+            "value": "%lld a enviar"
           }
         },
         "ro": {
@@ -25538,8 +25538,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Media"
+            "state": "translated",
+            "value": "Suporte"
           }
         },
         "ro": {
@@ -26008,14 +26008,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld release is only stored in the cloud. It will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld edição está guardada apenas na nuvem. Ficará impossível de reproduzir até se voltar a ligar."
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld releases are only stored in the cloud. They will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld edições estão guardadas apenas na nuvem. Ficarão impossíveis de reproduzir até se voltar a ligar."
                 }
               }
             }
@@ -26292,8 +26292,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "Disco %lld"
           }
         },
         "ro": {
@@ -26465,8 +26465,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Side %@"
+            "state": "translated",
+            "value": "Lado %@"
           }
         },
         "ro": {
@@ -26638,8 +26638,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Making Local…"
+            "state": "translated",
+            "value": "A tornar local…"
           }
         },
         "ro": {
@@ -26811,8 +26811,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queueing for Cloud…"
+            "state": "translated",
+            "value": "A pôr em fila para a nuvem…"
           }
         },
         "ro": {
@@ -26984,8 +26984,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Pinning for offline"
+            "state": "translated",
+            "value": "A fixar para offline"
           }
         },
         "ro": {
@@ -27157,8 +27157,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing local copy"
+            "state": "translated",
+            "value": "A remover a cópia local"
           }
         },
         "ro": {
@@ -27330,8 +27330,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "This source identity is linked to two artists in your library. Choose the record to keep; its albums, tracks, credits, and source links will be combined with the other record."
+            "state": "translated",
+            "value": "Esta identidade de origem está associada a dois artistas na sua biblioteca. Escolha o registo a manter; os álbuns, faixas, créditos e ligações de origem dele serão combinados com o outro registo."
           }
         },
         "ro": {
@@ -27503,8 +27503,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep Discogs Artist"
+            "state": "translated",
+            "value": "Manter o artista do Discogs"
           }
         },
         "ro": {
@@ -27676,8 +27676,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep MusicBrainz Artist"
+            "state": "translated",
+            "value": "Manter o artista do MusicBrainz"
           }
         },
         "ro": {
@@ -27849,8 +27849,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Awaiting a release"
+            "state": "translated",
+            "value": "À espera de uma edição"
           }
         },
         "ro": {
@@ -28319,14 +28319,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld row still has no name"
+                  "state": "translated",
+                  "value": "%lld linha continua sem nome"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld rows still have no name"
+                  "state": "translated",
+                  "value": "%lld linhas continuam sem nome"
                 }
               }
             }
@@ -28603,8 +28603,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't scan %@"
+            "state": "translated",
+            "value": "Não foi possível analisar %@"
           }
         },
         "ro": {
@@ -28776,8 +28776,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist"
+            "state": "translated",
+            "value": "Artista"
           }
         },
         "ro": {
@@ -28949,8 +28949,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Name"
+            "state": "translated",
+            "value": "Nome"
           }
         },
         "ro": {
@@ -29122,8 +29122,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source"
+            "state": "translated",
+            "value": "Fonte"
           }
         },
         "ro": {
@@ -29295,8 +29295,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Title"
+            "state": "translated",
+            "value": "Título"
           }
         },
         "ro": {
@@ -29468,8 +29468,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Files"
+            "state": "translated",
+            "value": "Ficheiros"
           }
         },
         "ro": {
@@ -29641,8 +29641,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks"
+            "state": "translated",
+            "value": "Faixas"
           }
         },
         "ro": {
@@ -29814,8 +29814,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "File tags"
+            "state": "translated",
+            "value": "Etiquetas do ficheiro"
           }
         },
         "ro": {
@@ -29987,8 +29987,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "From file tags"
+            "state": "translated",
+            "value": "A partir das etiquetas do ficheiro"
           }
         },
         "ro": {
@@ -30160,8 +30160,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Metadata"
+            "state": "translated",
+            "value": "Metadados"
           }
         },
         "ro": {
@@ -30333,8 +30333,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Role"
+            "state": "translated",
+            "value": "Papel"
           }
         },
         "ro": {
@@ -30506,8 +30506,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Scanning folders"
+            "state": "translated",
+            "value": "A analisar pastas"
           }
         },
         "ro": {
@@ -30679,8 +30679,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld found"
+            "state": "translated",
+            "value": "%lld encontrados"
           }
         },
         "ro": {
@@ -30852,8 +30852,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Asked for %@"
+            "state": "translated",
+            "value": "Pediu %@"
           }
         },
         "ro": {
@@ -31025,8 +31025,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose audio…"
+            "state": "translated",
+            "value": "Escolher áudio…"
           }
         },
         "ro": {
@@ -31198,8 +31198,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Describes nothing"
+            "state": "translated",
+            "value": "Não descreve nada"
           }
         },
         "ro": {
@@ -31371,8 +31371,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "Disco %lld"
           }
         },
         "ro": {
@@ -31544,8 +31544,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Which disc of the release this sheet's entries are"
+            "state": "translated",
+            "value": "A que disco da edição pertencem as entradas desta folha"
           }
         },
         "ro": {
@@ -31717,8 +31717,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Ignored"
+            "state": "translated",
+            "value": "Ignorado"
           }
         },
         "ro": {
@@ -31890,8 +31890,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose file…"
+            "state": "translated",
+            "value": "Escolher ficheiro…"
           }
         },
         "ro": {
@@ -32063,8 +32063,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length"
+            "state": "translated",
+            "value": "Duração"
           }
         },
         "ro": {
@@ -32236,8 +32236,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Drop"
+            "state": "translated",
+            "value": "Deixar de fora"
           }
         },
         "ro": {
@@ -32409,8 +32409,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Leave this track out — this folder has no audio for it."
+            "state": "translated",
+            "value": "Deixe esta faixa de fora — esta pasta não tem áudio para ela."
           }
         },
         "ro": {
@@ -32582,8 +32582,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Exclude"
+            "state": "translated",
+            "value": "Excluir"
           }
         },
         "ro": {
@@ -32755,8 +32755,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Take this file out of the tracklist; it stays under Files."
+            "state": "translated",
+            "value": "Retire este ficheiro da lista de faixas; continua em Ficheiros."
           }
         },
         "ro": {
@@ -32928,8 +32928,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "No file"
+            "state": "translated",
+            "value": "Sem ficheiro"
           }
         },
         "ro": {
@@ -33101,8 +33101,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Play"
+            "state": "translated",
+            "value": "Reproduzir"
           }
         },
         "ro": {
@@ -33274,8 +33274,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Put back"
+            "state": "translated",
+            "value": "Repor"
           }
         },
         "ro": {
@@ -33447,8 +33447,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Stop"
+            "state": "translated",
+            "value": "Parar"
           }
         },
         "ro": {
@@ -33620,8 +33620,8 @@
         },
         "pt-PT": {
           "stringUnit": {
-            "state": "new",
-            "value": "Untitled"
+            "state": "translated",
+            "value": "Sem título"
           }
         },
         "ro": {
