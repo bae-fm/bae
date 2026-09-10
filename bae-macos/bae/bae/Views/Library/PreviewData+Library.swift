@@ -35,20 +35,21 @@
                 )
             }
 
-        static let composerWorkGroup = BridgeComposerWorkGroup(
-            id: "group-0",
-            parent: workSummaries[0],
-            works: Array(workSummaries[1...]),
-        )
-
+        /// One parent work with its children (the indented branch of the works
+        /// list), then a lone work in a group of its own.
         static let composerDetail = BridgeComposerDetail(
             composer: composerSummary,
             workGroups: [
                 BridgeComposerWorkGroup(
                     id: "group-0",
+                    parent: workSummaries[0],
+                    works: Array(workSummaries[1..<3]),
+                ),
+                BridgeComposerWorkGroup(
+                    id: "group-1",
                     parent: nil,
-                    works: workSummaries,
-                )
+                    works: [workSummaries[3]],
+                ),
             ],
             unlinkedReleaseRoles: [
                 BridgeReleaseRoleSummary(
@@ -74,6 +75,45 @@
             ],
             defaultWorkId: "work-0",
         )
+
+        /// A composer detail whose works list runs far past any viewport: one
+        /// single-work group per work, each work carrying its own cover
+        /// reference, so a mounted row shows up as a distinct image request.
+        static func largeComposerDetail(
+            workCount: Int
+        ) -> BridgeComposerDetail {
+            let workGroups = (0..<workCount)
+                .map { (index: Int) -> BridgeComposerWorkGroup in
+                    BridgeComposerWorkGroup(
+                        id: "group-\(index)",
+                        parent: nil,
+                        works: [
+                            BridgeWorkSummary(
+                                workId: "work-\(index)",
+                                title: "Work Title \(index + 1)",
+                                disambiguation: nil,
+                                workType: nil,
+                                parentWorkId: nil,
+                                composerNames: "Composer Name",
+                                linkedReleaseCount: 1,
+                                representativeReleaseId: nil,
+                                representativeCover: BridgeImageRef(
+                                    id: "cover-\(index)",
+                                    version: "1",
+                                    imageType: .cover
+                                ),
+                            )
+                        ],
+                    )
+                }
+            return BridgeComposerDetail(
+                composer: composerSummary,
+                workGroups: workGroups,
+                unlinkedReleaseRoles: [],
+                unlinkedTrackRoles: [],
+                defaultWorkId: nil,
+            )
+        }
 
         // MARK: - Works
 
