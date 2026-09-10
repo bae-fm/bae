@@ -901,10 +901,6 @@ internal static partial class NativeBae
         return (revision, error);
     }
 
-    internal static (BridgeReleaseUserEdit? Edit, string? Error) PreviewFileTags(
-        AppHandle handle, string candidateKey) =>
-        CaptureBridgeValue(() => Await(() => handle.PreviewFileTagsForFolder(candidateKey)));
-
     internal static string? SetCandidateAlbumArtists(
         AppHandle handle,
         string candidateKey,

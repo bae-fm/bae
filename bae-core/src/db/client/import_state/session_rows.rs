@@ -8,7 +8,6 @@ fn presentation_column(presentation: MetadataPresentation) -> &'static str {
     match presentation {
         MetadataPresentation::Draft => "draft",
         MetadataPresentation::FindOnline => "find_online",
-        MetadataPresentation::FileTags => "file_tags",
     }
 }
 
@@ -16,7 +15,6 @@ fn presentation_of(column: &str) -> Result<MetadataPresentation, DbError> {
     match column {
         "draft" => Ok(MetadataPresentation::Draft),
         "find_online" => Ok(MetadataPresentation::FindOnline),
-        "file_tags" => Ok(MetadataPresentation::FileTags),
         other => Err(DbError::Message(format!(
             "unreadable session presentation {other:?}"
         ))),

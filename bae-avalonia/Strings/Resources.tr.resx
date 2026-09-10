@@ -468,13 +468,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>Ekle</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Kaldır</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Albüm adı</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>Uygula</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>Meta verileri temizle</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Adayın dosyaları ve eşleme seçimleri değişmeden kalır.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Meta veriler temizlensin mi?</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Etiketlere sıfırla</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Etiketlere sıfırlansın mı?</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Taslak, dosyaların etiketleriyle değiştirilir. Adayın dosyaları ve eşleme seçimleri değişmeden kalır.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Çevrimiçi bul</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Çevrimiçi bul…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>Adayı yeniden okumayı deneyin.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Genel</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Otomatik tanımla</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Etiketlerden ön doldur</value></data>

@@ -188,8 +188,6 @@ internal sealed class ImportService
             "ImportService stub: ClearCandidateMetadata not wired");
 
     /// <summary>Read the folder's embedded tags without selecting them.</summary>
-    public Func<string, Task<(bool Current, (BridgeReleaseUserEdit? Edit, string? Error) Result)>> PreviewFileTags { get; init; }
-        = _ => throw new InvalidOperationException("ImportService stub: PreviewFileTags not wired");
 
     /// <summary>Replace the candidate's ordered album-artist assignments.</summary>
     public Func<string, IReadOnlyList<BridgeArtistAssignment>, Task<(bool Current, string? Error)>> SetCandidateAlbumArtists { get; init; }
@@ -321,9 +319,6 @@ internal sealed class ImportService
         ClearCandidateMetadata = candidateKey =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.ClearCandidateMetadata(handle, candidateKey)),
-        PreviewFileTags = candidateKey =>
-            session.RunForCurrentHandle(handle =>
-                NativeBae.PreviewFileTags(handle, candidateKey)),
         SetCandidateAlbumArtists = (candidateKey, assignments) =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.SetCandidateAlbumArtists(

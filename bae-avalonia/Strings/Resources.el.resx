@@ -495,13 +495,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>Προσθήκη</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Αφαίρεση</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Τίτλος άλμπουμ</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>Εφαρμογή</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>Εκκαθάριση μεταδεδομένων</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Τα αρχεία του υποψηφίου και οι αντιστοιχίσεις παραμένουν αμετάβλητα.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Εκκαθάριση μεταδεδομένων;</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Επαναφορά στις ετικέτες</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Επαναφορά στις ετικέτες;</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Το προσχέδιο αντικαθίσταται από τις ετικέτες των αρχείων. Τα αρχεία του υποψηφίου και οι αντιστοιχίσεις παραμένουν αμετάβλητα.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Αναζήτηση στο διαδίκτυο</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Αναζήτηση στο διαδίκτυο…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>Δοκιμάστε να διαβάσετε ξανά τον υποψήφιο.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Γενικά</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Αυτόματη ταυτοποίηση</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Προσυμπλήρωση από ετικέτες</value></data>

@@ -31,8 +31,7 @@ public sealed class ImportMetadataSourceSectionTests
                 var cover = Assert.Single(section.GetLogicalDescendants().OfType<Image>());
                 var coverTop = cover.TranslatePoint(default, section)!.Value.Y;
                 foreach (var label in new[] {
-                    Loc.Chrome("import.metadata.find_online_ellipsis"),
-                    Loc.Core("ui.import.metadata.file_tags") + "…" })
+                    Loc.Chrome("import.metadata.find_online_ellipsis") })
                 {
                     var button = ButtonNamed(section, label);
                     var origin = button.TranslatePoint(default, section)!.Value;
@@ -45,7 +44,7 @@ public sealed class ImportMetadataSourceSectionTests
     }
 
     [AvaloniaFact]
-    public void BlankDraftOffersBothPrefillSourcesAndEditableFields()
+    public void BlankDraftOffersFindOnlineAndEditableFields()
     {
         var presentations = new List<ImportMetadataPresentation>();
         var section = Build(
@@ -53,15 +52,8 @@ public sealed class ImportMetadataSourceSectionTests
             onPresent: presentations.Add);
 
         Click(section, Loc.Chrome("import.metadata.find_online_ellipsis"));
-        Click(section, Loc.Core("ui.import.metadata.file_tags") + "…");
 
-        Assert.Equal(
-            new[]
-            {
-                ImportMetadataPresentation.FindOnline,
-                ImportMetadataPresentation.FileTags,
-            },
-            presentations);
+        Assert.Equal(new[] { ImportMetadataPresentation.FindOnline }, presentations);
         Assert.Contains(
             section.GetLogicalDescendants().OfType<TextBox>(),
             field => field.Text == "Album Title");
@@ -102,21 +94,14 @@ public sealed class ImportMetadataSourceSectionTests
             onClearMetadata: () => clears++);
 
         Click(section, Loc.Chrome("import.metadata.find_online_ellipsis"));
-        Click(section, Loc.Core("ui.import.metadata.file_tags") + "…");
         Click(section, Loc.Chrome("import.metadata.clear"));
 
-        Assert.Equal(
-            new[]
-            {
-                ImportMetadataPresentation.FindOnline,
-                ImportMetadataPresentation.FileTags,
-            },
-            presentations);
+        Assert.Equal(new[] { ImportMetadataPresentation.FindOnline }, presentations);
         Assert.Equal(1, clears);
     }
 
     [AvaloniaFact]
-    public void AppliedDraftKeepsDetailsWithMetadataAndClearApartFromSources()
+    public void AppliedDraftKeepsDetailsWithTheDraftCommandsApartFromFindOnline()
     {
         var section = Build(draftIsBlank: false);
         var details = Assert.Single(
@@ -129,14 +114,16 @@ public sealed class ImportMetadataSourceSectionTests
         var findOnline = ButtonNamed(
             section,
             Loc.Chrome("import.metadata.find_online_ellipsis"));
-        var fileTags = ButtonNamed(
-            section,
-            Loc.Core("ui.import.metadata.file_tags") + "…");
+        var reset = ButtonNamed(section, Loc.Chrome("import.metadata.reset_to_tags"));
         var clear = ButtonNamed(section, Loc.Chrome("import.metadata.clear"));
 
-        Assert.Same(findOnline.GetLogicalParent(), fileTags.GetLogicalParent());
+        // Identifying the candidate leads; the two commands that rewrite the
+        // draft in place sit together, apart from it.
+        Assert.Same(reset.GetLogicalParent(), clear.GetLogicalParent());
         Assert.NotSame(findOnline.GetLogicalParent(), clear.GetLogicalParent());
-        Assert.Equal(HorizontalAlignment.Right, clear.HorizontalAlignment);
+        Assert.Equal(
+            HorizontalAlignment.Right,
+            Assert.IsType<StackPanel>(clear.GetLogicalParent()).HorizontalAlignment);
     }
 
     [AvaloniaFact]
@@ -147,29 +134,37 @@ public sealed class ImportMetadataSourceSectionTests
         Assert.Contains("FLAC · 44.1 kHz · 16-bit · stereo", Texts(section));
     }
 
+    /// The card offers the two commands that rewrite the draft where it
+    /// stands, and each dispatches its own. There is no surface to review the
+    /// tags on first: choosing Reset to tags is the whole command.
     [AvaloniaFact]
-    public void FileTagsPreviewAppliesTheDisplayedSource()
+    public void TheCardOffersResetToTagsAndClearMetadata()
     {
-        var applications = 0;
+        var resets = 0;
+        var clears = 0;
         var section = Build(
-            presentation: ImportMetadataPresentation.FileTags,
-            fileTagsPreview: FileTagsEdit(),
-            onUseFileTags: () => applications++);
+            onResetToTags: () => resets++,
+            onClearMetadata: () => clears++);
 
-        Click(section, Loc.Chrome("import.metadata.apply"));
+        Click(section, Loc.Chrome("import.metadata.reset_to_tags"));
+        Click(section, Loc.Chrome("import.metadata.clear"));
 
-        Assert.Equal(1, applications);
-        Assert.Contains("Album Title", Texts(section));
+        Assert.Equal(1, resets);
+        Assert.Equal(1, clears);
     }
 
+    /// The draft and Find online are the only surfaces the slot shows.
     [AvaloniaFact]
-    public void FileTagsReadShowsProgress()
+    public void TheSlotOffersNoFileTagsBrowser()
     {
-        var section = Build(
-            presentation: ImportMetadataPresentation.FileTags,
-            isReading: true);
+        var section = Build();
 
-        Assert.Single(section.GetLogicalDescendants().OfType<Spinner>());
+        Assert.DoesNotContain(
+            Loc.Core("ui.import.metadata.file_tags") + "…",
+            Texts(section));
+        Assert.Equal(
+            new[] { ImportMetadataPresentation.Draft, ImportMetadataPresentation.FindOnline },
+            Enum.GetValues<ImportMetadataPresentation>());
     }
 
     [AvaloniaFact]
@@ -213,24 +208,12 @@ public sealed class ImportMetadataSourceSectionTests
             string.Empty),
         Array.Empty<BridgeRawTrackEdit>());
 
-    private static BridgeReleaseUserEdit FileTagsEdit() => new(
-        "Album Title",
-        new BridgeArtistAssignment[]
-        {
-            new BridgeArtistAssignment.New(
-                new BridgeNewArtistSeed("Artist Name", null, null, null)),
-        },
-        1991,
-        new BridgePressingEdit(1996, "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
-        Array.Empty<BridgeTrackUserEdit>());
-
     private static Control Build(
         ImportMetadataPresentation presentation = ImportMetadataPresentation.Draft,
         bool draftIsBlank = false,
         bool isReading = false,
-        BridgeReleaseUserEdit? fileTagsPreview = null,
         Action<ImportMetadataPresentation>? onPresent = null,
-        Action? onUseFileTags = null,
+        Action? onResetToTags = null,
         Action? onClearMetadata = null,
         Action<BridgeCandidateEditField, string>? onEditField = null,
         string? title = null,
@@ -246,17 +229,13 @@ public sealed class ImportMetadataSourceSectionTests
             SourceAudioLine = sourceAudioLine,
             ProvenanceChips = [],
             IsReading = isReading,
-            FileTagsPreview = fileTagsPreview,
-            FileTagsMetaLine = "CD · 1996",
-            FileTagsError = null,
             LookupOptions = new TextBlock { Text = "Search form" },
             LoadCover = null,
             HasCoverOptions = false,
             CommitRow = null,
             Library = new LibraryService(),
             OnPresent = onPresent ?? (_ => { }),
-            OnReadFileTags = () => { },
-            OnUseFileTags = onUseFileTags ?? (() => { }),
+            OnResetToTags = onResetToTags ?? (() => { }),
             OnClearMetadata = onClearMetadata ?? (() => { }),
             OnEditCover = () => { },
             OnSelectCover = _ => { },

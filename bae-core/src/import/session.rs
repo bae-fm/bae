@@ -9,13 +9,12 @@
 
 use crate::import::MetadataProvenance;
 
-/// Which surface the pane's metadata slot shows: the draft, or one of the
-/// browsers a person opens to fill it from.
+/// Which surface the pane's metadata slot shows: the candidate's draft, or the
+/// Find online page a person opens to identify it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MetadataPresentation {
     Draft,
     FindOnline,
-    FileTags,
 }
 
 /// Which query the typed-search form is asking.

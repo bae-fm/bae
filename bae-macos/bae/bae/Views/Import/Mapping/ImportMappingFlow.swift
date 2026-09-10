@@ -29,7 +29,7 @@ struct ImportMappingServices {
 /// leaves behind, what naming a row changes, what assigning a cue to a disc
 /// re-reads — is exercised without a view hierarchy.
 enum ImportMappingFlow {
-    /// Put the draft or one temporary source browser in the metadata slot.
+    /// Put the draft, or the Find online page, in the metadata slot.
     @MainActor
     static func presentMetadata(
         _ presentation: CandidateMetadataPresentation,
@@ -48,60 +48,14 @@ enum ImportMappingFlow {
             if services.identifyAutomatically {
                 services.importer.identifyForExplicitLookup(candidate.key)
             }
-        case .fileTags:
-            loadFileTagsPreview(key: candidate.key, services: services)
         }
     }
 
+    /// Replace the draft with what the candidate's own files say. The tags are
+    /// read and applied in one command — there is no surface to review them on
+    /// first, so nothing here decides whether the read is worth applying.
     @MainActor
-    static func loadFileTagsPreview(
-        key: String,
-        services: ImportMappingServices
-    ) {
-        guard
-            let session = services.importStore.beginFileTagsPreview(key: key)
-        else { return }
-        let task = Task { @MainActor [weak session] in
-            do {
-                let edit = try await services.importer.previewFileTags(key)
-                guard let session else { return }
-                services.importStore.fileTagsPreviewSucceeded(
-                    key: key,
-                    session: session,
-                    edit: edit
-                )
-            }
-            catch is CancellationError {
-                guard let session else { return }
-                services.importStore.fileTagsPreviewFailed(
-                    key: key,
-                    session: session,
-                    error: nil
-                )
-            }
-            catch {
-                guard let session else { return }
-                services.importStore.fileTagsPreviewFailed(
-                    key: key,
-                    session: session,
-                    error: error.displayLine.map {
-                        String(localized: "Couldn't read file tags: \($0)")
-                    }
-                )
-            }
-        }
-        session.install(task)
-    }
-
-    @MainActor
-    static func useFileTags(
-        key: String,
-        services: ImportMappingServices
-    ) {
-        guard
-            services.importStore.candidate(forKey: key)?
-                .fileTagsPreview.edit != nil
-        else { return }
+    static func resetToTags(key: String, services: ImportMappingServices) {
         ImportSearchFlow.applyMetadata(
             importer: services.importer,
             importStore: services.importStore,

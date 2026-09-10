@@ -468,13 +468,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>Añadir</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Eliminar</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Título del álbum</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>Aplicar</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>Borrar metadatos</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Los archivos del candidato y las opciones de asignación no cambiarán.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>¿Borrar los metadatos?</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Restablecer a las etiquetas</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>¿Restablecer a las etiquetas?</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>El borrador se sustituye por las etiquetas de los archivos. Los archivos del candidato y las opciones de asignación no cambiarán.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Buscar en línea</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Buscar en línea…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>Intenta leer el candidato de nuevo.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>General</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identificar automáticamente</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Rellenar con las etiquetas</value></data>

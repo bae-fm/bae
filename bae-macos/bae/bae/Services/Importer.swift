@@ -56,8 +56,6 @@ private struct ImportOperations: Sendable {
         @Sendable (String, BridgeMetadataProvenance) async throws -> UInt64
     let applyCandidateFileTags: @Sendable (String) async throws -> UInt64
     let clearCandidateMetadata: @Sendable (String) async throws -> UInt64
-    let previewFileTags:
-        @Sendable (String) async throws -> BridgeReleaseUserEdit
     let setSheetDisc:
         @Sendable (String, String, BridgeSheetDisc) async throws -> Void
     let setFileRole:
@@ -163,9 +161,6 @@ extension ImportOperations {
             },
             clearCandidateMetadata: {
                 try await handle.clearCandidateMetadata(candidateKey: $0)
-            },
-            previewFileTags: {
-                try await handle.previewFileTagsForFolder(candidateKey: $0)
             },
             setSheetDisc: {
                 try await handle.setSheetDisc(
@@ -365,9 +360,6 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String) async throws -> UInt64 = { _ in
                 throw StubError.notImplemented
             },
-        previewFileTags:
-            @escaping @Sendable (String) async throws -> BridgeReleaseUserEdit =
-            { _ in throw StubError.notImplemented },
         setSheetDisc:
             @escaping @Sendable (String, String, BridgeSheetDisc) async throws
             -> Void = { _, _, _ in },
@@ -469,7 +461,6 @@ final class Importer: Sendable, Observable {
             applyCandidateExternalMetadata: applyCandidateExternalMetadata,
             applyCandidateFileTags: applyCandidateFileTags,
             clearCandidateMetadata: clearCandidateMetadata,
-            previewFileTags: previewFileTags,
             setSheetDisc: setSheetDisc,
             setFileRole: setFileRole,
             identifyForExplicitLookup: identifyForExplicitLookup,
@@ -580,13 +571,6 @@ extension Importer {
 
     func clearCandidateMetadata(_ candidateKey: String) async throws -> UInt64 {
         try await operations.clearCandidateMetadata(candidateKey)
-    }
-
-    /// Read the candidate's file-tag snapshot without choosing it as the seed.
-    func previewFileTags(_ candidateKey: String) async throws
-        -> BridgeReleaseUserEdit
-    {
-        try await operations.previewFileTags(candidateKey)
     }
 
     func setSheetDisc(

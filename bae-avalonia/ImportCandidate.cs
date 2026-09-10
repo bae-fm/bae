@@ -77,76 +77,19 @@ public sealed class ImportCandidate
     internal BridgeMetadataProvenance.ExternalRelease? PickedRelease =>
         MetadataProvenance as BridgeMetadataProvenance.ExternalRelease;
 
-    /// <summary>The draft or temporary source browser occupying the metadata
-    /// slot. Browsing never replaces the stored draft.</summary>
+    /// <summary>The draft, or the Find online page, occupying the metadata
+    /// slot. Opening the page never replaces the stored draft.</summary>
     internal ImportMetadataPresentation MetadataPresentation { get; private set; } =
         ImportMetadataPresentation.Draft;
-
-    /// <summary>The state of this candidate's lazy File Tags preview.</summary>
-    internal ImportFileTagsPreviewStatus FileTagsPreviewStatus { get; private set; } =
-        ImportFileTagsPreviewStatus.Unloaded;
-
-    internal BridgeReleaseUserEdit? FileTagsPreview { get; private set; }
-    internal string? FileTagsPreviewError { get; private set; }
-    private object? _fileTagsPreviewSession;
 
     internal void PresentMetadata(ImportMetadataPresentation presentation) =>
         MetadataPresentation = presentation;
 
-    /// <summary>Carry navigation and the lazy preview over a fresh live detail
-    /// for this same candidate. A changed file set invalidates the preview.</summary>
+    /// <summary>Carry navigation over a fresh live detail for this same
+    /// candidate.</summary>
     internal void PreserveSessionState(ImportCandidate existing)
     {
         MetadataPresentation = existing.MetadataPresentation;
-        if (existing.Files?.FileTagsIdentity != Files?.FileTagsIdentity)
-        {
-            return;
-        }
-        FileTagsPreviewStatus = existing.FileTagsPreviewStatus;
-        FileTagsPreview = existing.FileTagsPreview;
-        FileTagsPreviewError = existing.FileTagsPreviewError;
-        _fileTagsPreviewSession = existing._fileTagsPreviewSession;
-    }
-
-    internal object? BeginFileTagsPreview()
-    {
-        if (MetadataProvenance is BridgeMetadataProvenance.FileTags
-            || FileTagsPreviewStatus is ImportFileTagsPreviewStatus.Loading
-                or ImportFileTagsPreviewStatus.Loaded)
-        {
-            return null;
-        }
-        var session = new object();
-        _fileTagsPreviewSession = session;
-        FileTagsPreviewStatus = ImportFileTagsPreviewStatus.Loading;
-        FileTagsPreviewError = null;
-        return session;
-    }
-
-    internal bool CompleteFileTagsPreview(object session, BridgeReleaseUserEdit edit)
-    {
-        if (!ReferenceEquals(_fileTagsPreviewSession, session))
-        {
-            return false;
-        }
-        _fileTagsPreviewSession = null;
-        FileTagsPreviewStatus = ImportFileTagsPreviewStatus.Loaded;
-        FileTagsPreview = edit;
-        FileTagsPreviewError = null;
-        return true;
-    }
-
-    internal bool FailFileTagsPreview(object session, string? error)
-    {
-        if (!ReferenceEquals(_fileTagsPreviewSession, session))
-        {
-            return false;
-        }
-        _fileTagsPreviewSession = null;
-        FileTagsPreviewStatus = ImportFileTagsPreviewStatus.Failed;
-        FileTagsPreview = null;
-        FileTagsPreviewError = error;
-        return true;
     }
 
     /// <summary>The on-disk folder to identify/import.</summary>
@@ -172,15 +115,6 @@ internal enum ImportMetadataPresentation
 {
     Draft,
     FindOnline,
-    FileTags,
-}
-
-internal enum ImportFileTagsPreviewStatus
-{
-    Unloaded,
-    Loading,
-    Loaded,
-    Failed,
 }
 
 /// <summary>A candidate's readable evidence file (CUE sheet, rip log, info

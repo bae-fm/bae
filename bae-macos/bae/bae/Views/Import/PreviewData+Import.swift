@@ -256,7 +256,7 @@
                 placement: .ready,
                 skipAction: .skip,
                 actions: [
-                    .importReady, .identify, .useFileMetadata, .clearMetadata,
+                    .importReady, .identify, .resetToTags, .clearMetadata,
                     .skip,
                 ],
                 matched: nil,

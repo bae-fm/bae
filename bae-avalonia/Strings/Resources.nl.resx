@@ -468,13 +468,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>Voeg toe</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Verwijderen</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Albumtitel</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>Toepassen</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>Metagegevens wissen</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>De bestanden en toewijzingen van de kandidaat blijven ongewijzigd.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Metagegevens wissen?</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Terugzetten naar tags</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Terugzetten naar tags?</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Het concept wordt vervangen door de tags van de bestanden. De bestanden en toewijzingen van de kandidaat blijven ongewijzigd.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Online zoeken</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Online zoeken…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>Probeer de kandidaat opnieuw te lezen.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Algemeen</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Automatisch identificeren</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Vooraf invullen met tags</value></data>

@@ -14,10 +14,6 @@ async fn a_pick_the_person_made_names_them_as_the_author() {
     );
 
     handle
-        .preview_file_tags_for_folder(key.clone())
-        .await
-        .unwrap();
-    handle
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::FileTags,

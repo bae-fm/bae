@@ -106,6 +106,30 @@ internal sealed class ImportDialogs
         return column;
     });
 
+    /// <summary>Ask before replacing the draft with what the candidate's own
+    /// files say — the same shape as clearing, which is the other command that
+    /// rewrites the draft in place.</summary>
+    internal Task ConfirmResetToTags(Func<Task> reset) => _host.Show(close =>
+    {
+        var column = DialogUi.Column();
+        column.Children.Add(DialogUi.Title(
+            Loc.Chrome("import.metadata.reset_to_tags_title")));
+        column.Children.Add(DialogUi.Body(
+            Loc.Chrome("import.metadata.reset_to_tags_body")));
+
+        var cancel = new Button { Content = Loc.Chrome("action.cancel") };
+        cancel.Click += (_, _) => close();
+        var confirm = DialogUi.Primary(Loc.Chrome("import.metadata.reset_to_tags"));
+        confirm.Click += async (_, _) =>
+        {
+            confirm.IsEnabled = false;
+            await reset();
+            close();
+        };
+        column.Children.Add(DialogUi.Actions(cancel, confirm));
+        return column;
+    });
+
     private StackPanel BuildCoverPicker(
         List<BridgeRemoteCover> remoteCovers, List<LocalArtwork> localArtwork, Action<PickedCover> onPick)
     {

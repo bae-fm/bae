@@ -37,8 +37,7 @@ struct ImportMappingPane: View {
     let mappingActions: ImportMappingActions
     let commitActions: ImportCommitActions
     let onPresentMetadata: (CandidateMetadataPresentation) -> Void
-    let onReadFileTags: () -> Void
-    let onUseFileTags: () -> Void
+    let onResetToTags: () -> Void
     let onClearMetadata: () -> Void
     let onEditCover: () -> Void
     let onSelectCover: (BridgeCoverSelection) -> Void
@@ -116,11 +115,7 @@ struct ImportMappingPane: View {
         ImportMetadataSourceSection(
             candidate: candidate,
             runtime: runtime,
-            fileTagsPreviewSummary: candidate.fileTagsPreview.edit.map {
-                ImportReleaseSummary(candidate: candidate, fileTags: $0)
-            },
-            isReading: isApplyingMetadata
-                || candidate.fileTagsPreview.isLoading,
+            isReading: isApplyingMetadata,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
             editActions: editActions,
@@ -128,8 +123,7 @@ struct ImportMappingPane: View {
             endEditing: endEditing,
             commit: commitControls,
             onPresent: onPresentMetadata,
-            onReadFileTags: onReadFileTags,
-            onUseFileTags: onUseFileTags,
+            onResetToTags: onResetToTags,
             onClearMetadata: onClearMetadata,
             onEditCover: onEditCover,
             onSelectCover: onSelectCover,

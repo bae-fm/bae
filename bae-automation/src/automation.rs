@@ -246,18 +246,6 @@ impl Automation {
         Ok(EmptyResponse {})
     }
 
-    pub async fn preview_file_tags(
-        &self,
-        candidate_key: String,
-    ) -> Result<AutomationReleaseUserEdit, AutomationError> {
-        self.get_candidate(candidate_key.clone()).await?;
-        let edit = self
-            .services
-            .import_preview_file_tags_for_folder(candidate_key)
-            .await?;
-        Ok(AutomationReleaseUserEdit::from_core(edit))
-    }
-
     pub async fn start_import(
         &self,
         request: AutomationStartImport,
@@ -509,10 +497,6 @@ impl Automation {
                     self.set_candidate_cover(input.candidate_key, input.cover)
                         .await?,
                 )
-            }
-            AutomationTool::ImportFileTagsPreview => {
-                let input: CandidateKeyInput = from_value(args)?;
-                to_value(self.preview_file_tags(input.candidate_key).await?)
             }
             AutomationTool::ImportStart => {
                 let input: AutomationStartImport = from_value(args)?;

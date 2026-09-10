@@ -468,13 +468,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>Hinzufügen</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Entfernen</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Albumtitel</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>Anwenden</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>Metadaten löschen</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Die Dateien des Kandidaten und die Zuordnungen bleiben unverändert.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Metadaten löschen?</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Auf Tags zurücksetzen</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Auf Tags zurücksetzen?</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Der Entwurf wird durch die Tags der Dateien ersetzt. Die Dateien des Kandidaten und die Zuordnungen bleiben unverändert.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Online suchen</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Online suchen…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>Versuche, den Kandidaten erneut zu lesen.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Allgemein</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Automatisch identifizieren</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Aus Tags vorausfüllen</value></data>

@@ -26,7 +26,7 @@ bae imports the formats it plays: FLAC, MP3, APE, ALAC and AAC in `.m4a`, WAV, A
 
 Every candidate owns one editable metadata draft. It can begin blank, be filled from an online release, or be filled from the files' tags. Typing into the blank draft is direct entry, not a separate metadata source.
 
-Opening **Find online…** or **File tags…** replaces the top card with that source's browser without changing the draft. Applying a result replaces the draft and returns to the editable card. Use the card's menu to find another release, apply file tags, or clear the metadata and return to a blank draft. Clearing metadata keeps the candidate's files and track layout.
+Opening **Find release…** replaces the top card with the Find online page without changing the draft; applying a result replaces the draft and returns to the editable card. The card's menu holds the two commands that rewrite the draft where it stands: **Reset to tags**, which replaces it with what the candidate's own files say, and **Clear metadata**, which empties it. Each asks first, and neither touches the candidate's files or track layout.
 
 ### Find online
 
@@ -48,11 +48,11 @@ The source browser shows the search form, identification progress, signals, and 
 
 Automatic identification uses this same path. Two import settings say what happens when a candidate is added, and neither one constrains the other. **Pre-fill with tags** creates the candidate's draft from its files' tags; with it off the draft starts blank. **Identify automatically** runs identification for every candidate that has no result for the files it has right now; with it off, you start each run yourself. A pre-filled draft is a starting point, not an answer, so it does not stop a run.
 
-### File Tags
+### File tags
 
-File tags reads embedded audio tags and CUE metadata when the source is opened, and when the pre-fill reads them as a candidate is added. Review the preview, then select **Apply** to replace the draft with that exact snapshot. Import fails before writing to the library if the candidate or observed audio files change after the preview.
+File tags are read when the pre-fill reads them as a candidate is added, and again whenever **Reset to tags** is chosen. Either way the draft is replaced by that exact reading — embedded audio tags and CUE metadata — and the card redraws on it. Import fails before writing to the library if the candidate or its audio files changed after the reading.
 
-The editable card shows a quiet File tags chip after that snapshot is applied. A draft filled only by typing has no source chip.
+The editable card shows a quiet File tags chip while that reading is what the draft holds. A draft filled only by typing has no source chip.
 
 ## Confirm and import
 

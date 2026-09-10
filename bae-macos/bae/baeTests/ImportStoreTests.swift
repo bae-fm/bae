@@ -154,7 +154,7 @@ private func readyRow(
         placement: .ready,
         skipAction: .skip,
         actions: [
-            .importReady, .identify, .useFileMetadata, .clearMetadata, .skip,
+            .importReady, .identify, .resetToTags, .clearMetadata, .skip,
         ],
         matched: matchedRelease(
             releaseId: "rel-\(key)",
@@ -293,7 +293,6 @@ struct ImportStoreCandidateDetailTests {
             name: "A"
         )
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
-        existing.fileTagsPreview = .loaded(MappingFixtures.albumSeed)
         store.selectedCandidates["/w1/a"] = existing
 
         // Same key, renamed + skip flipped, and the pane's stored session
@@ -305,7 +304,7 @@ struct ImportStoreCandidateDetailTests {
                 watchedFolderPath: "/w1",
                 name: "A-renamed",
                 skipped: true,
-                presentation: .fileTags
+                presentation: .findOnline
             )
         )
 
@@ -313,38 +312,11 @@ struct ImportStoreCandidateDetailTests {
         // The work this pane holds in memory survives; the read only re-read
         // the folder.
         #expect(merged.libraryStatuses["rel-1"] != nil)
-        #expect(merged.fileTagsPreview.edit == MappingFixtures.albumSeed)
         // The pane's session is the candidate's, so it comes with the read.
-        #expect(merged.metadataPresentation == .fileTags)
+        #expect(merged.metadataPresentation == .findOnline)
         // Scan fields come from the incoming read.
         #expect(merged.displayName == "A-renamed")
         #expect(merged.files.files.isEmpty)
-    }
-
-    @Test("changed File Tags identity discards the loaded preview")
-    func changedFileTagsIdentityDiscardsPreview() {
-        var existing = folderCandidate(
-            folderPath: "/w1/a",
-            watchedFolderPath: "/w1",
-            name: "A"
-        )
-        existing.files = bridgeFiles(
-            fileTagsIdentity: "scanned-audio-a"
-        )
-        existing.fileTagsPreview = .loaded(MappingFixtures.albumSeed)
-
-        var replacement = folderCandidate(
-            folderPath: "/w1/a",
-            watchedFolderPath: "/w1",
-            name: "A"
-        )
-        replacement.files = bridgeFiles(
-            fileTagsIdentity: "scanned-audio-b"
-        )
-
-        let merged = replacement.withSessionState(from: existing)
-
-        #expect(merged.fileTagsPreview == .unloaded)
     }
 }
 

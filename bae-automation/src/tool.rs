@@ -14,7 +14,6 @@ pub enum AutomationTool {
     ImportCandidateMetadataProvenanceSelect,
     ImportCandidateEditFieldSet,
     ImportCandidateCoverSet,
-    ImportFileTagsPreview,
     ImportStart,
     ReleaseDetailGet,
     ReleaseExport,
@@ -27,7 +26,7 @@ pub enum AutomationTool {
 }
 
 impl AutomationTool {
-    const DESCRIPTORS: [AutomationToolDescriptor; 22] = [
+    const DESCRIPTORS: [AutomationToolDescriptor; 21] = [
         AutomationToolDescriptor {
             tool: AutomationTool::ConfigGet,
             name: "config_get",
@@ -99,12 +98,6 @@ impl AutomationTool {
             name: "import_candidate_cover_set",
             description: "Choose the cover a candidate commits with",
             schema: Some(schema_object::<CandidateCoverInput>),
-        },
-        AutomationToolDescriptor {
-            tool: AutomationTool::ImportFileTagsPreview,
-            name: "import_file_tags_preview",
-            description: "Preview file-tag metadata for a folder",
-            schema: Some(schema_object::<FolderInput>),
         },
         AutomationToolDescriptor {
             tool: AutomationTool::ImportStart,

@@ -42,7 +42,7 @@ extension ImportView {
             // actions differ in what the row offers, not in what core does.
             case .identify, .retryIdentification:
                 importer.rerunIdentifyForCandidate(key)
-            case .useFileMetadata:
+            case .resetToTags:
                 _ = try await importer.applyCandidateFileTags(key)
             case .clearMetadata:
                 _ = try await importer.clearCandidateMetadata(key)

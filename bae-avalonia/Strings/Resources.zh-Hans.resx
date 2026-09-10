@@ -468,13 +468,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>添加</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>移除</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>专辑标题</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>应用</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>清除元数据</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>候选项的文件和映射选择将保持不变。</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>清除元数据？</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>重置为标签</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>重置为标签？</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>草稿将被文件标签替换。 候选项的文件和映射选择将保持不变。</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>在线查找</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在线查找…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>请尝试重新读取候选项。</value></data>
   <data name="import.search.general" xml:space="preserve"><value>常规</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>自动识别</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>用标签预填充</value></data>

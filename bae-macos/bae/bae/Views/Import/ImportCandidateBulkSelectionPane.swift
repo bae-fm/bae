@@ -48,7 +48,7 @@ struct ImportCandidateBulkSelectionPane: View {
                     .offers
                 ) { offer in
                     Button {
-                        if offer.action == .useFileMetadata
+                        if offer.action == .resetToTags
                             || offer.action == .clearMetadata
                         {
                             confirmation = offer

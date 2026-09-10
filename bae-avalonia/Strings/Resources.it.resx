@@ -468,13 +468,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>Aggiungi</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Rimuovi</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Titolo dell’album</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>Applica</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>Cancella metadati</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>I file del candidato e le scelte di associazione rimarranno invariati.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Cancellare i metadati?</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Ripristina dai tag</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Ripristinare dai tag?</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>La bozza viene sostituita dai tag dei file. I file del candidato e le scelte di associazione rimarranno invariati.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Trova online</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Trova online…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>Prova a leggere di nuovo il candidato.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Generale</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifica automaticamente</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Precompila dai tag</value></data>

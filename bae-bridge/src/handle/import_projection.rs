@@ -242,7 +242,7 @@ mirror_enum! {
         ImportReady,
         Identify,
         RetryIdentification,
-        UseFileMetadata,
+        ResetToTags,
         ClearMetadata,
         Skip,
         Restore,

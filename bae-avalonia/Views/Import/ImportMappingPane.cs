@@ -235,8 +235,7 @@ internal sealed partial class ImportMappingPane : UserControl
     private static string CandidatePresentationFingerprint(ImportCandidate? candidate) =>
         candidate is null
             ? string.Empty
-            : $"{candidate.MetadataPresentation}|{candidate.FileTagsPreviewStatus}"
-                + $"|{candidate.FileTagsPreviewError}";
+            : $"{candidate.MetadataPresentation}";
 
     private static string ImportStatusFingerprint(
         BridgeTriageImportStatus? status) => status switch
@@ -378,9 +377,6 @@ internal sealed partial class ImportMappingPane : UserControl
                 {
                     _ = _import.StartInteractiveLookup(key);
                 }
-                break;
-            case ImportMetadataPresentation.FileTags:
-                _ = _import.LoadFileTagsPreview(key);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(
@@ -557,11 +553,7 @@ internal sealed partial class ImportMappingPane : UserControl
         MetaLine = MetaLine(),
         SourceAudioLine = SourceAudioLine(_candidate?.Files),
         ProvenanceChips = ProvenanceChips(),
-        IsReading = PickInFlight() is not null
-            || _candidate?.FileTagsPreviewStatus == ImportFileTagsPreviewStatus.Loading,
-        FileTagsPreview = _candidate?.FileTagsPreview,
-        FileTagsMetaLine = FileTagsMetaLine(),
-        FileTagsError = _candidate?.FileTagsPreviewError,
+        IsReading = PickInFlight() is not null,
         LookupOptions = _candidate?.MetadataPresentation
             == ImportMetadataPresentation.FindOnline
             ? BuildSearchEditor()
@@ -574,21 +566,27 @@ internal sealed partial class ImportMappingPane : UserControl
             || (_candidate?.Release?.CoverArt.Length ?? 0) > 0,
         Library = _app.Library,
         OnPresent = PresentMetadata,
-        OnReadFileTags = () =>
-        {
-            if (_key is { } key)
-            {
-                _ = _import.LoadFileTagsPreview(key);
-            }
-        },
-        OnUseFileTags = () => _ = ApplyMetadata(
-            new BridgeMetadataProvenance.FileTags()),
+        OnResetToTags = () => _ = ResetToTags(),
         OnClearMetadata = () => _ = ClearMetadata(),
         OnEditCover = () => _ = ChooseCover(),
         OnSelectCover = selection => _ = SetCover(selection),
         OnEditField = (field, value) => _ = SetEditField(field, value),
         OnEditArtists = assignments => _ = SetAlbumArtists(assignments),
     };
+
+    /// Replace the draft with what the candidate's own files say. Destructive
+    /// like clearing is — it replaces what the draft holds — so it asks first.
+    private async Task ResetToTags()
+    {
+        if (_key is not { } key)
+        {
+            return;
+        }
+        await _dialogs.ConfirmResetToTags(async () =>
+        {
+            await ApplyMetadata(new BridgeMetadataProvenance.FileTags());
+        });
+    }
 
     private async Task ClearMetadata()
     {
@@ -694,18 +692,6 @@ internal sealed partial class ImportMappingPane : UserControl
     }
 
     private bool DraftIsBlank() => _candidate?.Detail?.MetadataDraftIsBlank ?? true;
-
-    private string FileTagsMetaLine()
-    {
-        if (_candidate?.FileTagsPreview is not { } preview)
-        {
-            return string.Empty;
-        }
-        return string.Join(
-            "  ·  ",
-            Loc.Core("ui.import.metadata.from_file_tags"),
-            Loc.Chrome("import.candidate.tracks", "count", preview.Tracks.LongLength));
-    }
 
     private string MetadataTitle()
     {

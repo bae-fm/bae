@@ -447,7 +447,7 @@
                 actions: (metadataProvenance == nil
                     && edit.albumTitle.isEmpty ? [] : [.importReady])
                     + [
-                        .identify, .useFileMetadata, .clearMetadata,
+                        .identify, .resetToTags, .clearMetadata,
                         .skip,
                     ],
                 matched: nil,
@@ -606,35 +606,6 @@
             ),
             mapping: blankDraftMappingTable,
         )
-
-        /// The same unresolved folder immediately after File Tags is opened,
-        /// before its lazy read begins.
-        @MainActor
-        static let unreadFileTagsMappingCandidate: Candidate = {
-            var candidate = unidentifiedMappingCandidate
-            candidate.session.presentation = .fileTags
-            return candidate
-        }()
-
-        /// The same unresolved folder after its tags have been read, before
-        /// they are applied to its metadata draft.
-        @MainActor
-        static let unidentifiedFileTagsMappingCandidate: Candidate = {
-            var candidate = unidentifiedMappingCandidate
-            candidate.session.presentation = .fileTags
-            candidate.fileTagsPreview = .loaded(releaseSeedBridge)
-            return candidate
-        }()
-
-        @MainActor
-        static let loadingFileTagsMappingCandidate: Candidate = {
-            var candidate = unidentifiedMappingCandidate
-            candidate.session.presentation = .fileTags
-            candidate.fileTagsPreview = .loading(
-                CandidateFileTagsPreviewSession()
-            )
-            return candidate
-        }()
 
         @MainActor
         static let blankDraftMappingCandidate = unidentifiedMappingCandidate

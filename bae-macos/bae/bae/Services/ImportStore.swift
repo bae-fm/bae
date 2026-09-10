@@ -317,50 +317,6 @@ class ImportStore {
 }
 
 extension ImportStore {
-    func beginFileTagsPreview(key: String) -> CandidateFileTagsPreviewSession? {
-        guard let candidate = candidate(forKey: key) else { return nil }
-        guard !candidate.fileTagsPreview.isLoading else { return nil }
-        let session = CandidateFileTagsPreviewSession()
-        clearPaneError(forKey: key)
-        mutateCandidate(forKey: key) { candidate in
-            candidate.fileTagsPreview = .loading(session)
-        }
-        return session
-    }
-
-    func fileTagsPreviewSucceeded(
-        key: String,
-        session: CandidateFileTagsPreviewSession,
-        edit: BridgeReleaseUserEdit
-    ) {
-        guard
-            case .loading(let current) = candidate(forKey: key)?
-                .fileTagsPreview,
-            current === session
-        else { return }
-        mutateCandidate(forKey: key) {
-            $0.fileTagsPreview = .loaded(edit)
-        }
-    }
-
-    func fileTagsPreviewFailed(
-        key: String,
-        session: CandidateFileTagsPreviewSession,
-        error: String?
-    ) {
-        guard
-            case .loading(let current) = candidate(forKey: key)?
-                .fileTagsPreview,
-            current === session
-        else { return }
-        mutateCandidate(forKey: key) { candidate in
-            candidate.fileTagsPreview = .failed
-        }
-        if let error {
-            recordPaneError(error, forKey: key)
-        }
-    }
-
     private func mutateSelectedCandidate(
         key: String,
         _ mutate: (inout Candidate) -> Void

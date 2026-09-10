@@ -352,9 +352,6 @@ internal static class ShotCapture
         AddMetadataSource(
             grid, 1, 1, presentation: ImportMetadataPresentation.FindOnline,
             lookupOptions: new TextBlock { Text = "Search form and results" });
-        AddMetadataSource(
-            grid, 2, 1, presentation: ImportMetadataPresentation.FileTags,
-            fileTagsPreview: PreviewMetadata());
         return new ScrollViewer { Content = grid };
     }
 
@@ -366,7 +363,6 @@ internal static class ShotCapture
         bool draftIsBlank = false,
         BridgeRawReleaseEdit? edit = null,
         string? provenanceLabel = null,
-        BridgeReleaseUserEdit? fileTagsPreview = null,
         Control? lookupOptions = null)
     {
         var section = new ImportMetadataSourceSection
@@ -392,17 +388,13 @@ internal static class ShotCapture
                 ? [new ProvenanceChip(label, null)]
                 : [],
             IsReading = false,
-            FileTagsPreview = fileTagsPreview,
-            FileTagsMetaLine = Loc.Core("ui.import.metadata.from_file_tags"),
-            FileTagsError = null,
             LookupOptions = lookupOptions,
             LoadCover = null,
             HasCoverOptions = false,
             CommitRow = null,
             Library = PreviewArtistLibrary(),
             OnPresent = _ => { },
-            OnReadFileTags = () => { },
-            OnUseFileTags = () => { },
+            OnResetToTags = () => { },
             OnClearMetadata = () => { },
             OnEditCover = () => { },
             OnSelectCover = _ => { },
@@ -422,19 +414,6 @@ internal static class ShotCapture
         Grid.SetRow(card, row);
         grid.Children.Add(card);
     }
-
-    private static BridgeReleaseUserEdit PreviewMetadata() => new(
-        "Album Title",
-        PreviewArtists(),
-        1991,
-        new BridgePressingEdit(
-            1996,
-            "CD",
-            "Label Name",
-            "CAT-1",
-            "UK",
-            "0123456789012"),
-        Array.Empty<BridgeTrackUserEdit>());
 
     private static BridgeRawReleaseEdit PreviewRawMetadata() => new(
         "Album Title",

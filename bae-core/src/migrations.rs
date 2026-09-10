@@ -143,6 +143,11 @@ pub fn all() -> Vec<coven::Migration> {
             "scan_candidate_drops_initial_source",
             include_str!("../migrations/027_scan_candidate_drops_initial_source.sql"),
         ),
+        coven::Migration::sql(
+            28,
+            "candidate_session_drops_file_tags",
+            include_str!("../migrations/028_candidate_session_drops_file_tags.sql"),
+        ),
     ]
 }
 

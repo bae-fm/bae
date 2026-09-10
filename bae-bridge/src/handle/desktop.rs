@@ -428,22 +428,6 @@ forward! {
                 .map_err(BridgeError::import)
         }
 
-        /// Project the embedded tags of a folder's audio files into the
-        /// editor's user-edit shape. Used by the File Tags source
-        /// affordance: the UI calls this to populate the editor before
-        /// the user verifies/edits and commits with
-        /// `BridgeReleaseReseed::FileTags`.
-        fn preview_file_tags_for_folder(
-            candidate_key: String,
-        ) -> crate::types::BridgeReleaseUserEdit {
-            let edit = this
-                .services
-                .import_preview_file_tags_for_folder(candidate_key)
-                .await
-                .map_err(BridgeError::import)?;
-            Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
-        }
-
         /// Record the cover the user chose for a candidate. Nothing comes back:
         /// the per-candidate subscription delivers the pane's next value.
         fn set_candidate_cover(candidate_key: String, cover: BridgeCoverSelection) -> () {

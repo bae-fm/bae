@@ -134,14 +134,8 @@ extension ImportView {
             onPresentMetadata: {
                 presentMetadata($0, for: candidate)
             },
-            onReadFileTags: {
-                ImportMappingFlow.loadFileTagsPreview(
-                    key: candidate.key,
-                    services: mappingServices
-                )
-            },
-            onUseFileTags: {
-                ImportMappingFlow.useFileTags(
+            onResetToTags: {
+                ImportMappingFlow.resetToTags(
                     key: candidate.key,
                     services: mappingServices
                 )

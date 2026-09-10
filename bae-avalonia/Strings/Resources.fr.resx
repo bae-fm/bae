@@ -468,13 +468,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>Ajouter</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Supprimer</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Titre de l’album</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>Appliquer</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>Effacer les métadonnées</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Les fichiers du candidat et les choix de correspondance resteront inchangés.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Effacer les métadonnées ?</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Réinitialiser aux tags</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Réinitialiser aux tags ?</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Le brouillon est remplacé par les tags des fichiers. Les fichiers du candidat et les choix de correspondance resteront inchangés.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Rechercher en ligne</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Rechercher en ligne…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>Essayez de relire le candidat.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Général</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifier automatiquement</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Préremplir avec les tags</value></data>

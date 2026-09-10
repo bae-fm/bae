@@ -28,17 +28,13 @@ internal sealed class ImportMetadataSourceSection
     /// partner the pick carried. Empty when there is no provenance.</summary>
     internal required IReadOnlyList<ProvenanceChip> ProvenanceChips { get; init; }
     internal required bool IsReading { get; init; }
-    internal required BridgeReleaseUserEdit? FileTagsPreview { get; init; }
-    internal required string FileTagsMetaLine { get; init; }
-    internal required string? FileTagsError { get; init; }
     internal required Control? LookupOptions { get; init; }
     internal required Action<Image>? LoadCover { get; init; }
     internal required bool HasCoverOptions { get; init; }
     internal required Control? CommitRow { get; init; }
     internal required LibraryService Library { get; init; }
     internal required Action<ImportMetadataPresentation> OnPresent { get; init; }
-    internal required Action OnReadFileTags { get; init; }
-    internal required Action OnUseFileTags { get; init; }
+    internal required Action OnResetToTags { get; init; }
     internal required Action OnClearMetadata { get; init; }
     internal required Action OnEditCover { get; init; }
     internal required Action<BridgeCoverSelection> OnSelectCover { get; init; }
@@ -51,7 +47,6 @@ internal sealed class ImportMetadataSourceSection
         {
             ImportMetadataPresentation.Draft => DraftContent(),
             ImportMetadataPresentation.FindOnline => FindOnlineContent(),
-            ImportMetadataPresentation.FileTags => FileTagsContent(),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(Presentation), Presentation, "Unknown metadata presentation"),
         };
@@ -86,7 +81,7 @@ internal sealed class ImportMetadataSourceSection
             Edit,
             ProvenanceChips,
             SourceActions(),
-            ClearMetadataAction(),
+            CandidateActions(),
             includeSelectedValues: true);
     }
 
@@ -120,9 +115,6 @@ internal sealed class ImportMetadataSourceSection
         actions.Children.Add(ActionButton(
             Loc.Chrome("import.metadata.find_online_ellipsis"),
             () => OnPresent(ImportMetadataPresentation.FindOnline)));
-        actions.Children.Add(ActionButton(
-            Loc.Core("ui.import.metadata.file_tags") + "…",
-            () => OnPresent(ImportMetadataPresentation.FileTags)));
         foreach (var action in actions.Children)
         {
             action.Margin = new Thickness(0, 0, 6, 6);
@@ -130,58 +122,29 @@ internal sealed class ImportMetadataSourceSection
         return actions;
     }
 
-    private Control ClearMetadataAction()
+    /// <summary>The two commands that rewrite the draft in place. Both are
+    /// destructive — each replaces what the draft holds — and the pane asks
+    /// before running either.</summary>
+    private Control CandidateActions()
     {
-        var clear = ActionButton(
-            Loc.Chrome("import.metadata.clear"),
-            OnClearMetadata);
-        clear.HorizontalAlignment = HorizontalAlignment.Right;
-        clear[!Button.ForegroundProperty] =
-            new DynamicResourceExtension("BaeDangerBrush");
-        return clear;
-    }
-
-    private Control FileTagsContent()
-    {
-        var column = new StackPanel { Spacing = 8 };
-        column.Children.Add(BrowserHeader(Loc.Core("ui.import.metadata.file_tags")));
-        if (FileTagsPreview is { } preview)
+        var actions = new StackPanel
         {
-            column.Children.Add(Card(
-                preview.AlbumTitle,
-                ArtistAssignmentDisplay.Join(preview.AlbumArtistAssignments),
-                FileTagsMetaLine,
-                SourceAudioLine,
-                edit: null,
-                provenanceChips: [],
-                actionControl: ActionButton(
-                    Loc.Chrome("import.metadata.apply"),
-                    OnUseFileTags),
-                destructiveAction: null,
-                includeSelectedValues: false));
-            return column;
-        }
-        if (IsReading)
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            HorizontalAlignment = HorizontalAlignment.Right,
+        };
+        foreach (var (label, run) in new (string, Action)[]
         {
-            column.Children.Add(new Spinner
-            {
-                Width = 16,
-                Height = 16,
-                HorizontalAlignment = HorizontalAlignment.Center,
-            });
-            return column;
-        }
-        column.Children.Add(ActionButton(
-            Loc.Chrome("import.metadata.try_again"),
-            OnReadFileTags));
-        if (FileTagsError is { Length: > 0 } error)
+            (Loc.Chrome("import.metadata.reset_to_tags"), OnResetToTags),
+            (Loc.Chrome("import.metadata.clear"), OnClearMetadata),
+        })
         {
-            var line = DialogUi.Danger();
-            line.Text = error;
-            line.IsVisible = true;
-            column.Children.Add(line);
+            var button = ActionButton(label, run);
+            button[!Button.ForegroundProperty] =
+                new DynamicResourceExtension("BaeDangerBrush");
+            actions.Children.Add(button);
         }
-        return column;
+        return actions;
     }
 
     private Control BrowserHeader(string title)

@@ -33,48 +33,6 @@ fn file_tag_snapshot_match(
 }
 
 impl ImportServiceHandle {
-    /// Project a File Tags candidate into a `ReleaseUserEdit` so the
-    /// edit-metadata form can seed itself from what's on disk: the parsed CUE
-    /// track layout for CUE-backed candidates, embedded tags for per-track-file
-    /// ones. This backs "Use File Tags" — the UI previews, then shows the editor
-    /// for verification before commit.
-    ///
-    /// This is only the seed. Import consumes the same stored snapshot, so the
-    /// editor and commit agree on the file facts under the user's edits.
-    pub async fn preview_file_tags_for_folder(
-        &self,
-        candidate_key: String,
-    ) -> Result<crate::import::ReleaseUserEdit, crate::import::ImportError> {
-        Ok(self.file_tag_seed(&candidate_key).await?.0)
-    }
-
-    /// The release the folder's own files describe: the parsed CUE track layout
-    /// for CUE-backed candidates, embedded tags for per-track-file ones, with
-    /// the files it was read from.
-    async fn file_tag_seed(
-        &self,
-        candidate_key: &str,
-    ) -> Result<
-        (
-            crate::import::ReleaseUserEdit,
-            crate::import::folder_scanner::CategorizedFiles,
-        ),
-        crate::import::ImportError,
-    > {
-        let (candidate, snapshot) = self.file_tag_snapshot(candidate_key).await?;
-
-        let clock = self.clock.clone();
-        let ids = self.ids.clone();
-        tokio::task::spawn_blocking(move || {
-            let edit = candidate.file_tag_edit(&snapshot, clock.as_ref(), ids.as_ref())?;
-            Ok((edit, candidate.into_files()))
-        })
-        .await
-        .map_err(|e| crate::import::ImportError::Internal {
-            detail: format!("file-tag preview projection task failed: {e}"),
-        })?
-    }
-
     pub(super) async fn file_tag_snapshot(
         &self,
         candidate_key: &str,

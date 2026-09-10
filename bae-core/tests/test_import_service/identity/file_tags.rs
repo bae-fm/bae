@@ -73,7 +73,7 @@ async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
 }
 
 #[tokio::test]
-async fn file_tags_preview_for_cue_matches_commit_layout() {
+async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -90,27 +90,31 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
         .refresh_watched_folder(candidate_key.clone())
         .await
         .unwrap();
-    let preview = f
+    // The draft the folder's own tags seeded at discovery — what the pane
+    // shows, and what the commit below has to agree with.
+    let draft = f
         .handle
-        .preview_file_tags_for_folder(candidate_key)
+        .candidate_pane(&candidate_key)
         .await
-        .unwrap();
+        .unwrap()
+        .expect("the scanned candidate reads back")
+        .metadata_draft;
 
-    assert_eq!(preview.album_title, "Test Album");
+    assert_eq!(draft.album_title, "Test Album");
     assert_eq!(
-        preview.album_artist_assignments,
+        draft.album_artist_assignments,
         vec![file_tag_artist_assignment("Test Artist")]
     );
-    assert_eq!(preview.pressing.year, None);
-    assert_eq!(preview.pressing.format, None);
+    assert_eq!(draft.pressing.year, "");
+    assert_eq!(draft.pressing.format, "");
 
-    let preview_tracks: Vec<(String, TrackArtistAssignments)> = preview
+    let draft_tracks: Vec<(String, TrackArtistAssignments)> = draft
         .tracks
         .iter()
         .map(|t| (t.title.clone(), t.artist_assignments.clone()))
         .collect();
     assert_eq!(
-        preview_tracks,
+        draft_tracks,
         vec![
             (
                 "Track One (Silence)".to_string(),
@@ -139,11 +143,11 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
     let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
-    assert_eq!(preview.album_title, album.title);
+    assert_eq!(draft.album_title, album.title);
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert_eq!(preview.pressing.year, release.pressing.year);
-    assert_eq!(preview.pressing.format, release.pressing.format);
+    assert_eq!(release.pressing.year, None, "the tags state no year");
+    assert_eq!(release.pressing.format, None, "and no medium");
 
     let album_detail =
         f.db.find_album_detail(&album_id)
@@ -160,7 +164,7 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
         .iter()
         .all(|artist| artist.sort_name.is_none()));
     assert_eq!(
-        preview.album_artist_assignments,
+        draft.album_artist_assignments,
         committed_album_artist_assignments
     );
 
@@ -185,7 +189,7 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
             )
         })
         .collect();
-    assert_eq!(preview_tracks, committed_tracks);
+    assert_eq!(draft_tracks, committed_tracks);
 }
 
 /// A tagged rip whose only artwork is embedded in the audio (no folder

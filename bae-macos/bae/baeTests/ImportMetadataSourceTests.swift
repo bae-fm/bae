@@ -16,11 +16,8 @@ private final class MetadataSourceRecorder {
     var externalApplications: [ExternalMetadataApplication] = []
     var fileTagApplications: [String] = []
     var clearedKeys: [String] = []
-    var previewedKeys: [String] = []
     var identifiedKeys: [String] = []
     var errors: [String] = []
-    var previewResults = [MappingFixtures.albumSeed]
-    var previewFailure: (any Error)?
 
     var importer: Importer {
         Importer(
@@ -44,14 +41,6 @@ private final class MetadataSourceRecorder {
             clearCandidateMetadata: { [self] key in
                 await MainActor.run { clearedKeys.append(key) }
                 return 1
-            },
-            previewFileTags: { [self] key in
-                try await MainActor.run {
-                    previewedKeys.append(key)
-                    if let previewFailure { throw previewFailure }
-                    precondition(!previewResults.isEmpty)
-                    return previewResults.removeFirst()
-                }
             },
             identifyForExplicitLookup: { [self] key in
                 identifiedKeys.append(key)
@@ -94,7 +83,7 @@ extension ImportMetadataSourceTests {
         store.sessionWriter = .recording { writes.record($0) }
 
         store.presentMetadata(
-            .fileTags,
+            .findOnline,
             forKey: MappingFixtures.candidateKey
         )
         await waitUntil {
@@ -107,87 +96,40 @@ extension ImportMetadataSourceTests {
                 mapping: nil,
                 edit: MappingFixtures.blankEdit,
                 metadataProvenance: nil,
-                presentation: .fileTags
+                presentation: .findOnline
             )
         )
 
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataPresentation == .fileTags
+                .metadataPresentation == .findOnline
         )
         #expect(
             writes.presentations(forKey: MappingFixtures.candidateKey)
-                == [.fileTags]
+                == [.findOnline]
         )
     }
 
-    @Test("File tags are previewed without changing the draft")
-    func fileTagsPreviewDoesNotApply() async throws {
+    /// Resetting to tags is one command: it replaces the draft with what the
+    /// candidate's own files say and leaves the pane on the draft it wrote.
+    /// There is no surface to review the tags on first.
+    @Test("resetting to tags applies the files' tags to the draft")
+    func resetToTagsAppliesTheFilesTags() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
         let recorder = MetadataSourceRecorder()
-        let before = try #require(
-            store.candidate(forKey: MappingFixtures.candidateKey)
-        )
-        let beforeDetail = try #require(before.detail)
 
-        ImportMappingFlow.presentMetadata(
-            .fileTags,
-            for: before,
+        ImportMappingFlow.resetToTags(
+            key: MappingFixtures.candidateKey,
             services: recorder.services(store)
         )
         await waitUntil {
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .fileTagsPreview.edit != nil
-        }
-
-        let previewing = try #require(
-            store.candidate(forKey: MappingFixtures.candidateKey)
-        )
-        #expect(previewing.metadataProvenance == MappingFixtures.provenance)
-        #expect(previewing.detail == beforeDetail)
-        #expect(recorder.previewedKeys == [MappingFixtures.candidateKey])
-        #expect(recorder.fileTagApplications.isEmpty)
-    }
-
-    @Test("applying File tags stores the draft as where the pane is")
-    func fileTagsApplicationStoresTheDraft() async throws {
-        let writes = SessionWriteRecorder()
-        let store = MappingFixtures.store(
-            mapping: MappingFixtures.thirteenFileTable
-        )
-        store.sessionWriter = .recording { writes.record($0) }
-        let recorder = MetadataSourceRecorder()
-        let services = recorder.services(store)
-        let candidate = try #require(
-            store.candidate(forKey: MappingFixtures.candidateKey)
-        )
-        ImportMappingFlow.presentMetadata(
-            .fileTags,
-            for: candidate,
-            services: services
-        )
-        await waitUntil {
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .fileTagsPreview.edit != nil
-        }
-
-        ImportMappingFlow.useFileTags(
-            key: MappingFixtures.candidateKey,
-            services: services
-        )
-        await waitUntil {
-            writes.presentations(forKey: MappingFixtures.candidateKey).last
-                == .draft
+            recorder.fileTagApplications == [MappingFixtures.candidateKey]
         }
 
         #expect(recorder.fileTagApplications == [MappingFixtures.candidateKey])
-        #expect(
-            store.metadataApplicationSession(
-                forKey: MappingFixtures.candidateKey
-            ) == nil
-        )
+        #expect(recorder.errors.isEmpty)
     }
 
     @Test("applying an online result stores the draft as where the pane is")
@@ -252,36 +194,6 @@ extension ImportMetadataSourceTests {
         #expect(recorder.errors.isEmpty)
     }
 
-    @Test("a failed File tags preview remains retryable")
-    func failedFileTagsPreviewRemainsRetryable() async throws {
-        let store = MappingFixtures.store(mapping: nil, presentation: .fileTags)
-        let recorder = MetadataSourceRecorder()
-        recorder.previewFailure = StubError.notImplemented
-        let candidate = try #require(
-            store.candidate(forKey: MappingFixtures.candidateKey)
-        )
-
-        ImportMappingFlow.presentMetadata(
-            .fileTags,
-            for: candidate,
-            services: recorder.services(store)
-        )
-        await waitUntil {
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .fileTagsPreview == .failed
-        }
-
-        ImportMappingFlow.loadFileTagsPreview(
-            key: MappingFixtures.candidateKey,
-            services: recorder.services(store)
-        )
-        await waitUntil { recorder.previewedKeys.count == 2 }
-        #expect(
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataPresentation == .fileTags
-        )
-    }
-
     private func waitUntil(_ predicate: () -> Bool) async {
         for _ in 0..<100 where !predicate() {
             await Task.yield()
@@ -292,48 +204,23 @@ extension ImportMetadataSourceTests {
 
 @MainActor
 final class ImportFileTagsRepeatabilityTests: XCTestCase {
-    func testFileTagsCanBeReadAndAppliedAgainWithoutClearingMetadata()
+    /// Resetting to tags twice reads the files twice and writes the draft
+    /// twice: the command carries no memory of an earlier read, so nothing has
+    /// to be cleared between them.
+    func testTheDraftCanBeResetToTagsAgainWithoutClearingMetadata()
         async throws
     {
         let key = MappingFixtures.candidateKey
-        let writes = SessionWriteRecorder()
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
-        store.sessionWriter = .recording { writes.record($0) }
         let recorder = MetadataSourceRecorder()
         let services = recorder.services(store)
-        let previews = repeatablePreviews()
-        recorder.previewResults = previews
 
-        for (offset, preview) in previews.enumerated() {
-            let applications = offset + 1
-            let candidate = try XCTUnwrap(store.candidate(forKey: key))
-            if offset > 0 {
-                XCTAssertEqual(
-                    candidate.fileTagsPreview.edit,
-                    previews[offset - 1]
-                )
-            }
-            ImportMappingFlow.presentMetadata(
-                .fileTags,
-                for: candidate,
-                services: services
-            )
-            XCTAssertTrue(
-                try XCTUnwrap(store.candidate(forKey: key))
-                    .fileTagsPreview.isLoading
-            )
-            try await waitUntil {
-                recorder.previewedKeys.count == applications
-                    && store.candidate(forKey: key)?.fileTagsPreview.edit
-                        == preview
-            }
-
-            ImportMappingFlow.useFileTags(key: key, services: services)
+        for applications in 1...2 {
+            ImportMappingFlow.resetToTags(key: key, services: services)
             try await waitUntil {
                 recorder.fileTagApplications.count == applications
-                    && writes.presentations(forKey: key).last == .draft
             }
             store.applyCandidateDetail(
                 key: key,
@@ -349,26 +236,11 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
             )
         }
 
-        XCTAssertEqual(recorder.previewedKeys, [key, key])
         XCTAssertEqual(recorder.fileTagApplications, [key, key])
         XCTAssertEqual(
             store.candidate(forKey: key)?.metadataProvenance,
             .fileTags
         )
-    }
-
-    private func repeatablePreviews() -> [BridgeReleaseUserEdit] {
-        [
-            MappingFixtures.albumSeed,
-            BridgeReleaseUserEdit(
-                albumTitle: "Updated Album Title",
-                albumArtistAssignments: MappingFixtures.albumSeed
-                    .albumArtistAssignments,
-                albumYear: MappingFixtures.albumSeed.albumYear,
-                pressing: MappingFixtures.albumSeed.pressing,
-                tracks: MappingFixtures.albumSeed.tracks
-            ),
-        ]
     }
 
     private func waitUntil(_ predicate: () -> Bool) async throws {
@@ -468,23 +340,22 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         host.layoutSubtreeIfNeeded()
         await Task.yield()
         host.layoutSubtreeIfNeeded()
-        let layout = try focusLayout(in: host)
+        let findOnline = try findOnlineFrame(in: host)
+        let menu = try menuFrame(in: host)
         let cover = try coverFrame(in: host)
 
-        // The source controls have the card's first row to themselves: neither
-        // shares a band with the cover, and they read left to right.
-        XCTAssertFalse(layout.findOnline.intersects(cover))
-        XCTAssertFalse(layout.fileTags.intersects(cover))
+        // The card's actions have its first row to themselves: neither shares
+        // a band with the cover, and they read left to right — the one that
+        // identifies the candidate first, the menu of what rewrites its draft
+        // after it.
+        XCTAssertFalse(findOnline.intersects(cover))
+        XCTAssertFalse(menu.intersects(cover))
         XCTAssertTrue(
-            layout.findOnline.maxY <= cover.minY
-                || layout.findOnline.minY >= cover.maxY
+            findOnline.maxY <= cover.minY || findOnline.minY >= cover.maxY
         )
-        XCTAssertLessThan(layout.findOnline.maxX, layout.fileTags.minX)
-        XCTAssertFalse(layout.findOnline.intersects(layout.fileTags))
-        try click(at: layout.findOnline.center, in: host, window: window)
-        try click(at: layout.fileTags.center, in: host, window: window)
+        XCTAssertLessThan(findOnline.maxX, menu.minX)
+        try click(at: findOnline.center, in: host, window: window)
         XCTAssertEqual(recorder.findOnlineCount, 1)
-        XCTAssertEqual(recorder.fileTagsCount, 1)
 
         window.contentView = nil
         window.orderOut(nil)
@@ -519,7 +390,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             commit: nil,
             sourceActions: ImportReleaseSourceActions(
                 findOnline: { recorder.findOnlineCount += 1 },
-                useFileTags: { recorder.fileTagsCount += 1 },
+                resetToTags: { recorder.resetCount += 1 },
                 clearMetadata: { recorder.clearCount += 1 }
             ),
             localCoverSelections: [:],
@@ -531,23 +402,21 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         .environment(Library.stub())
     }
 
-    /// The two source buttons, as the key-view loop finds them, left to right.
-    private func focusLayout(
-        in host: NSView
-    ) throws -> MetadataCardFocusLayout {
-        let controls = focusFrames(in: host)
-            .filter { $0.height >= 20 }
-            .sorted {
-                if abs($0.midY - $1.midY) < 2 { return $0.minX < $1.minX }
-                return $0.midY < $1.midY
-            }
-        let findOnline = try XCTUnwrap(controls.first)
-        let fileTags = try XCTUnwrap(controls.dropFirst().first)
-        XCTAssertEqual(controls.count, 2)
-        return MetadataCardFocusLayout(
-            findOnline: findOnline,
-            fileTags: fileTags
-        )
+    /// The one button the card puts in the key-view loop: identifying the
+    /// candidate. Everything that rewrites the draft is in the menu beside it.
+    private func findOnlineFrame(in host: NSView) throws -> NSRect {
+        let controls = focusFrames(in: host).filter { $0.height >= 20 }
+        XCTAssertEqual(controls.count, 1)
+        return try XCTUnwrap(controls.first)
+    }
+
+    /// The menu the two draft commands live behind.
+    private func menuFrame(in host: NSView) throws -> NSRect {
+        let menus = SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSPopUpButton }
+        XCTAssertEqual(menus.count, 1)
+        let menu = try XCTUnwrap(menus.first)
+        return menu.convert(menu.bounds, to: host)
     }
 
     private func focusFrames(in host: NSView) -> [NSRect] {
@@ -662,7 +531,7 @@ extension ImportMetadataCardLayoutTests {
         window.orderOut(nil)
     }
 
-    func testMatchedReleaseKeepsBothSourceActions() async {
+    func testMatchedReleaseKeepsTheCardActions() async {
         let recorder = MetadataCardActionRecorder()
         let (window, host) = SnapshotTestSupport.hostInWindow(
             metadataHeader(
@@ -678,8 +547,11 @@ extension ImportMetadataCardLayoutTests {
         )
         await SnapshotTestSupport.settle(host)
 
-        let sourceControls = focusFrames(in: host).filter { $0.height >= 20 }
-        XCTAssertEqual(sourceControls.count, 2)
+        XCTAssertEqual(
+            focusFrames(in: host).filter { $0.height >= 20 }.count,
+            1
+        )
+        XCTAssertNoThrow(try menuFrame(in: host))
         window.contentView = nil
         window.orderOut(nil)
     }
@@ -786,7 +658,7 @@ extension ImportMetadataCardLayoutTests {
 @MainActor
 private final class MetadataCardActionRecorder {
     var findOnlineCount = 0
-    var fileTagsCount = 0
+    var resetCount = 0
     var clearCount = 0
 }
 
@@ -794,11 +666,6 @@ extension NSRect {
     fileprivate var center: NSPoint {
         NSPoint(x: midX, y: midY)
     }
-}
-
-private struct MetadataCardFocusLayout {
-    let findOnline: NSRect
-    let fileTags: NSRect
 }
 
 /// Every presentation write the store made, so a test can read what it would

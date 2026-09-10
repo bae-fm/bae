@@ -161,10 +161,6 @@ async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
     let hash = fixture.candidate.files.content_hash();
     let handle = fixture.handle;
     let key = fixture.key;
-    handle
-        .preview_file_tags_for_folder(key.clone())
-        .await
-        .unwrap();
     let revision = handle
         .select_candidate_metadata_provenance(
             key.clone(),
@@ -379,19 +375,6 @@ async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
         .await
         .unwrap();
     assert_eq!(reader.read_count(), 2);
-    let preview = handle
-        .preview_file_tags_for_folder(key.clone())
-        .await
-        .unwrap();
-    assert_eq!(preview.album_title, "Album Title");
-    assert_eq!(
-        preview
-            .tracks
-            .iter()
-            .map(|track| track.title.as_str())
-            .collect::<Vec<_>>(),
-        vec!["Track Title 1", "Track Title 2"]
-    );
     let second = handle
         .file_tag_snapshot_with_reader(&key, reader.clone())
         .await
@@ -731,10 +714,6 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
         tmp: _tmp,
         ..
     } = stored_candidate().await;
-    handle
-        .preview_file_tags_for_folder(key.clone())
-        .await
-        .unwrap();
     let mut events = handle.subscribe_events();
 
     // One poll asks for the pick; dropping the future at the end of the block

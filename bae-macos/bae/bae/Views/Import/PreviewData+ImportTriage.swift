@@ -242,7 +242,7 @@
             placement: .ready,
             skipAction: .skip,
             actions: [
-                .importReady, .identify, .useFileMetadata, .clearMetadata,
+                .importReady, .identify, .resetToTags, .clearMetadata,
                 .skip,
             ],
             matched: triageMatch(
@@ -267,7 +267,7 @@
                 reason: .severalMatches(count: 2)
             ),
             skipAction: .skip,
-            actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
+            actions: [.identify, .resetToTags, .clearMetadata, .skip],
             // Several matches — the pressing is exactly what's unsettled, so
             // there is no `pressing` to show yet, only the lead's title and
             // artist.
@@ -294,7 +294,7 @@
                 reason: .severalMatches(count: 2)
             ),
             skipAction: .skip,
-            actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
+            actions: [.identify, .resetToTags, .clearMetadata, .skip],
             matched: nil,
             metadataSummary: nil
         )
@@ -305,7 +305,7 @@
                 reason: .trackCountDisagrees(local: 1, source: 10)
             ),
             skipAction: .skip,
-            actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
+            actions: [.identify, .resetToTags, .clearMetadata, .skip],
             matched: triageMatch(
                 releaseId: "rel-track-mismatch",
                 title: "Album Title Seven",
@@ -321,7 +321,7 @@
                 reason: .alreadyInLibrary
             ),
             skipAction: .skip,
-            actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
+            actions: [.identify, .resetToTags, .clearMetadata, .skip],
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: "Album Title (Reissue)",
@@ -338,7 +338,7 @@
                 reason: .noMatch
             ),
             skipAction: .skip,
-            actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
+            actions: [.identify, .resetToTags, .clearMetadata, .skip],
             matched: nil,
             metadataSummary: nil
         )
@@ -407,7 +407,7 @@
             for: importTabFailedCandidate,
             placement: .failed,
             skipAction: nil,
-            actions: [.identify, .useFileMetadata, .clearMetadata],
+            actions: [.identify, .resetToTags, .clearMetadata],
             matched: triageMatch(
                 releaseId: "rel-failed",
                 title: importTabFailedCandidate.displayName,
@@ -431,7 +431,7 @@
                 placement: .ready,
                 skipAction: .skip,
                 actions: [
-                    .importReady, .identify, .useFileMetadata, .clearMetadata,
+                    .importReady, .identify, .resetToTags, .clearMetadata,
                     .skip,
                 ],
                 matched: triageMatch(
@@ -455,7 +455,7 @@
                     reason: .noMatch
                 ),
                 skipAction: .skip,
-                actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
+                actions: [.identify, .resetToTags, .clearMetadata, .skip],
                 matched: nil,
                 metadataSummary: nil
             ),

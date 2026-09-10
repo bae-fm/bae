@@ -419,68 +419,6 @@ internal sealed partial class ImportStore : IDisposable
         }
     }
 
-    public object? BeginFileTagsPreview(string key)
-    {
-        if (!_candidates.TryGetValue(key, out var candidate))
-        {
-            return null;
-        }
-        var session = candidate.BeginFileTagsPreview();
-        if (session is not null)
-        {
-            Changed?.Invoke();
-        }
-        return session;
-    }
-
-    public void CompleteFileTagsPreview(
-        string key, object session, BridgeReleaseUserEdit edit)
-    {
-        if (_candidates.TryGetValue(key, out var candidate)
-            && candidate.CompleteFileTagsPreview(session, edit))
-        {
-            Changed?.Invoke();
-        }
-    }
-
-    public void FailFileTagsPreview(string key, object session, string? error)
-    {
-        if (_candidates.TryGetValue(key, out var candidate)
-            && candidate.FailFileTagsPreview(session, error))
-        {
-            Changed?.Invoke();
-        }
-    }
-
-    /// <summary>Read File Tags for this candidate without selecting them. The
-    /// session token prevents a late result from changing a replacement
-    /// candidate.</summary>
-    public async Task LoadFileTagsPreview(string key)
-    {
-        var session = BeginFileTagsPreview(key);
-        if (session is null)
-        {
-            return;
-        }
-        var (current, result) = await _import.PreviewFileTags(key);
-        if (!current)
-        {
-            FailFileTagsPreview(key, session, null);
-            return;
-        }
-        if (result.Error is { } error)
-        {
-            FailFileTagsPreview(key, session, error);
-            return;
-        }
-        if (result.Edit is null)
-        {
-            FailFileTagsPreview(key, session, Loc.Chrome("import.failed"));
-            return;
-        }
-        CompleteFileTagsPreview(key, session, result.Edit);
-    }
-
     public async Task<ulong?> ApplyCandidateExternalMetadata(
         string key,
         BridgeMetadataProvenance.ExternalRelease provenance) =>

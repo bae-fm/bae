@@ -495,13 +495,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>Hozzáadás</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Eltávolítás</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Album címe</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>Alkalmaz</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>Metaadatok törlése</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>A jelölt fájljai és a hozzárendelések változatlanok maradnak.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Törlöd a metaadatokat?</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Visszaállítás a címkékre</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Visszaállítod a címkékre?</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>A piszkozat helyére a fájlok címkéi kerülnek. A jelölt fájljai és a hozzárendelések változatlanok maradnak.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Keresés online</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Keresés online…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>Próbáld újra beolvasni a jelöltet.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Általános</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Automatikus azonosítás</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Előkitöltés a címkékből</value></data>

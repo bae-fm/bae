@@ -468,13 +468,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>追加</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>削除</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>アルバムタイトル</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>適用</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>メタデータを消去</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>候補のファイルとマッピングの選択は変更されません。</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>メタデータを消去しますか？</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>タグにリセット</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>タグにリセットしますか？</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>下書きはファイルのタグに置き換わります。 候補のファイルとマッピングの選択は変更されません。</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>オンラインで検索</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>オンラインで検索…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>候補をもう一度読み込んでください。</value></data>
   <data name="import.search.general" xml:space="preserve"><value>一般</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>自動で識別</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>タグから事前入力</value></data>

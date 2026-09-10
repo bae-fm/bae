@@ -58,8 +58,7 @@
                     viewInLibrary: { _ in },
                 ),
                 onPresentMetadata: { _ in },
-                onReadFileTags: {},
-                onUseFileTags: {},
+                onResetToTags: {},
                 onClearMetadata: {},
                 onEditCover: {},
                 onSelectCover: { _ in },
@@ -189,54 +188,6 @@
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.unidentifiedMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
-        )
-        .frame(width: 1212, height: 700)
-        .importPreviewEnvironment()
-    }
-
-    #Preview("Mapping pane — File tags, before read") {
-        @Previewable
-        @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
-        ImportMappingPreview.make(
-            candidate: PreviewData.unreadFileTagsMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
-        )
-        .frame(width: 1212, height: 700)
-        .importPreviewEnvironment()
-    }
-
-    #Preview("Mapping pane — File tags read, not selected") {
-        @Previewable
-        @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
-        ImportMappingPreview.make(
-            candidate: PreviewData.unidentifiedFileTagsMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
-        )
-        .frame(width: 1212, height: 700)
-        .importPreviewEnvironment()
-    }
-
-    #Preview("Mapping pane — File tags loading") {
-        @Previewable
-        @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
-        ImportMappingPreview.make(
-            candidate: PreviewData.loadingFileTagsMappingCandidate,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )

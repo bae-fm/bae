@@ -51,13 +51,11 @@ final class ReleaseLibraryStatusObservation: Equatable, @unchecked Sendable {
 enum CandidateMetadataPresentation: Equatable {
     case draft
     case findOnline
-    case fileTags
 
     init(bridge: BridgeMetadataPresentation) {
         switch bridge {
         case .draft: self = .draft
         case .findOnline: self = .findOnline
-        case .fileTags: self = .fileTags
         }
     }
 
@@ -65,7 +63,6 @@ enum CandidateMetadataPresentation: Equatable {
         switch self {
         case .draft: .draft
         case .findOnline: .findOnline
-        case .fileTags: .fileTags
         }
     }
 }
@@ -98,43 +95,6 @@ final class CandidateMetadataApplicationSession: Equatable,
         rhs: CandidateMetadataApplicationSession
     ) -> Bool {
         lhs === rhs
-    }
-}
-
-final class CandidateFileTagsPreviewSession: Equatable, @unchecked Sendable {
-    private var task: Task<Void, Never>?
-
-    func install(_ task: Task<Void, Never>) {
-        precondition(self.task == nil)
-        self.task = task
-    }
-
-    deinit {
-        task?.cancel()
-    }
-
-    static func == (
-        lhs: CandidateFileTagsPreviewSession,
-        rhs: CandidateFileTagsPreviewSession
-    ) -> Bool {
-        lhs === rhs
-    }
-}
-
-enum CandidateFileTagsPreviewState: Equatable {
-    case unloaded
-    case loading(CandidateFileTagsPreviewSession)
-    case loaded(BridgeReleaseUserEdit)
-    case failed
-
-    var isLoading: Bool {
-        if case .loading = self { return true }
-        return false
-    }
-
-    var edit: BridgeReleaseUserEdit? {
-        guard case .loaded(let edit) = self else { return nil }
-        return edit
     }
 }
 
@@ -309,12 +269,9 @@ struct Candidate: Equatable, Identifiable {
         chosenCatalogs: [],
         discountedCatalogs: []
     )
-    /// The lazy File Tags read for this candidate. It is session state rather
-    /// than candidate detail: reading tags does not choose that seed.
-    var fileTagsPreview: CandidateFileTagsPreviewState = .unloaded
-
-    /// The draft or temporary source browser occupying the metadata slot.
-    /// Browsing never replaces the stored draft; applying a result does.
+    /// The draft, or the Find online page, occupying the metadata slot.
+    /// Opening the page never replaces the stored draft; applying a result
+    /// does.
     var metadataPresentation: CandidateMetadataPresentation {
         session.presentation
     }
@@ -367,9 +324,6 @@ struct Candidate: Equatable, Identifiable {
         var copy = self
         copy.libraryStatuses = existing.libraryStatuses
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
-        copy.fileTagsPreview =
-            files.fileTagsIdentity == existing.files.fileTagsIdentity
-            ? existing.fileTagsPreview : .unloaded
         return copy
     }
 

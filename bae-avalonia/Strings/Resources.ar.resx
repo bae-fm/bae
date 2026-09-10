@@ -468,13 +468,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>إضافة</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>إزالة</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>عنوان الألبوم</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>تطبيق</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>مسح البيانات الوصفية</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>ستبقى ملفات العنصر المرشّح وخيارات المطابقة دون تغيير.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>مسح البيانات الوصفية؟</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>إعادة التعيين إلى الوسوم</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>إعادة التعيين إلى الوسوم؟</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>ستحل وسوم الملفات محل المسودة. ستبقى ملفات العنصر المرشّح وخيارات المطابقة دون تغيير.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>البحث عبر الإنترنت…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>حاول قراءة العنصر المرشّح مرة أخرى.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>عام</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>تحديد الهوية تلقائيًا</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>التعبئة المسبقة من الوسوم</value></data>

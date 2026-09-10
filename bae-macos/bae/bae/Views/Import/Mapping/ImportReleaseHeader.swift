@@ -18,7 +18,10 @@ struct ImportCommitControls {
 
 struct ImportReleaseSourceActions {
     let findOnline: () -> Void
-    let useFileTags: () -> Void
+    /// Replace the draft with what the candidate's own files say. Not a
+    /// surface to browse: the tags are read and applied, and the card redraws
+    /// on the draft they wrote.
+    let resetToTags: () -> Void
     let clearMetadata: () -> Void
 }
 
@@ -60,6 +63,8 @@ struct ImportReleaseHeader: View {
     private var configStore
     @State
     private var confirmsClear = false
+    @State
+    private var confirmsReset = false
     @State
     private var coverDropTargeted = false
     @State
@@ -103,15 +108,29 @@ struct ImportReleaseHeader: View {
                 "The candidate files and mapping choices will remain unchanged."
             )
         }
+        .confirmationDialog(
+            "Reset to tags?",
+            isPresented: $confirmsReset,
+            titleVisibility: .visible
+        ) {
+            Button("Reset to tags", role: .destructive) {
+                sourceActions.resetToTags()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "The draft is replaced by the files' tags. The candidate files and mapping choices will remain unchanged."
+            )
+        }
     }
 
     /// The card's one row of actions: where the draft's metadata comes from
     /// on the left and, once there is something to commit, the commit on the
     /// right — storage, the unanswered tally, and the Import action.
     ///
-    /// The source controls are one constant set in every draft state: both
-    /// sources replace the same draft, so neither is promoted over the other,
-    /// and clearing sits behind the ellipsis.
+    /// Identifying the candidate leads; the two commands that rewrite the
+    /// draft from something already at hand — the files' own tags, or nothing
+    /// — sit together behind the ellipsis, each behind its own confirmation.
     private var actionRow: some View {
         HStack(alignment: .center, spacing: 16) {
             HStack(spacing: 8) {
@@ -119,11 +138,7 @@ struct ImportReleaseHeader: View {
                     sourceActions.findOnline()
                 }
                 .buttonStyle(.bordered)
-                Button("Use file metadata") {
-                    sourceActions.useFileTags()
-                }
-                .buttonStyle(.bordered)
-                clearMetadataMenu
+                candidateMenu
             }
             .disabled(isReading)
             Spacer(minLength: 12)
@@ -172,14 +187,19 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    private var clearMetadataMenu: some View {
+    /// The two commands that rewrite the draft in place. Both are destructive
+    /// — each replaces what the draft holds — and both ask first.
+    private var candidateMenu: some View {
         Menu {
+            Button("Reset to tags", role: .destructive) {
+                confirmsReset = true
+            }
             Button("Clear metadata", role: .destructive) {
                 confirmsClear = true
             }
         } label: {
             Image(systemName: "ellipsis")
-                .accessibilityLabel(Text("Clear metadata"))
+                .accessibilityLabel(Text("Metadata"))
         }
         .menuStyle(.button)
         .buttonStyle(.bordered)
@@ -288,7 +308,7 @@ struct ImportReleaseHeader: View {
             commit: nil,
             sourceActions: ImportReleaseSourceActions(
                 findOnline: {},
-                useFileTags: {},
+                resetToTags: {},
                 clearMetadata: {}
             ),
             localCoverSelections: [:],

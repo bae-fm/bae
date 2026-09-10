@@ -468,13 +468,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>הוסף</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>הסר</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>שם האלבום</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>החלה</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>ניקוי המטא־נתונים</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>קובצי המועמד ובחירות המיפוי יישארו ללא שינוי.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>לנקות את המטא־נתונים?</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>איפוס לתגיות</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>לאפס לתגיות?</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>הטיוטה תוחלף בתגיות הקבצים. קובצי המועמד ובחירות המיפוי יישארו ללא שינוי.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>חיפוש באינטרנט</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>חיפוש באינטרנט…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>נסו לקרוא שוב את המועמד.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>כללי</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>זיהוי אוטומטי</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>מילוי מראש מהתגיות</value></data>

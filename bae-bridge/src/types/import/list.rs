@@ -191,7 +191,6 @@ pub struct BridgeImportCandidateDetail {
 pub enum BridgeMetadataPresentation {
     Draft,
     FindOnline,
-    FileTags,
 }
 
 /// Which query the typed-search form is asking. Mirrors
@@ -229,7 +228,7 @@ mirror_enum! {
     BridgeMetadataPresentation = bae_core::import::MetadataPresentation,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: { Draft, FindOnline, FileTags },
+    variants: { Draft, FindOnline },
 }
 
 mirror_enum! {

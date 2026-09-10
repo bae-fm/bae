@@ -583,9 +583,6 @@ public sealed class ImportMappingPaneTests
             },
             RetryCandidateSearch = _ => true,
             ClearCandidateSearch = _ => true,
-            PreviewFileTags = _ => Task.FromResult((
-                true,
-                ((BridgeReleaseUserEdit?)FileTagsEdit(), (string?)null))),
             // A gate, where one is handed in, holds the read open so a test
             // can act while the pick is still in flight.
             ApplyCandidateExternalMetadata = async (_, provenance) =>

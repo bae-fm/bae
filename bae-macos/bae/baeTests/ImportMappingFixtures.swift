@@ -470,7 +470,7 @@ extension MappingFixtures {
                 skipAction: .skip,
                 actions: (metadataProvenance == nil && edit.albumTitle.isEmpty
                     ? [] : [.importReady]) + [
-                        .identify, .useFileMetadata, .clearMetadata, .skip,
+                        .identify, .resetToTags, .clearMetadata, .skip,
                     ],
                 matched: nil,
                 metadataSummary: nil,

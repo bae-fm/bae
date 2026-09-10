@@ -495,13 +495,14 @@
   <data name="artist.assignments.add" xml:space="preserve"><value>Pridať</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Odstrániť</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Názov albumu</value></data>
-  <data name="import.metadata.apply" xml:space="preserve"><value>Použiť</value></data>
   <data name="import.metadata.clear" xml:space="preserve"><value>Vymazať metadáta</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Súbory kandidáta a priradenia zostanú nezmenené.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Vymazať metadáta?</value></data>
+  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Obnoviť zo značiek</value></data>
+  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Obnoviť zo značiek?</value></data>
+  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Koncept nahradia značky súborov. Súbory kandidáta a priradenia zostanú nezmenené.</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Nájsť online</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Nájsť online…</value></data>
-  <data name="import.metadata.try_again" xml:space="preserve"><value>Skúsiť kandidáta prečítať znova.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Všeobecné</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifikovať automaticky</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Predvyplniť zo značiek</value></data>

@@ -123,7 +123,7 @@ internal static class ImportCandidateFixtures
         Actionable: true,
         Placement: new BridgeTriagePlacement.Ready(),
         SkipAction: BridgeTriageSkipAction.Skip,
-        Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.UseFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
+        Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToTags, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
         Matched: null,
         MetadataSummary: null,
         CoverThumbnail: null,
@@ -176,10 +176,4 @@ internal static class ImportCandidateFixtures
             new BridgeNewArtistSeed("Artist Name", null, null, null)),
     ];
 
-    internal static BridgeReleaseUserEdit FileTagsEdit() => new(
-        "Album Title",
-        ArtistAssignments(),
-        1991,
-        new BridgePressingEdit(1996, "CD", "Label Name", "CAT-1", "UK", null),
-        Array.Empty<BridgeTrackUserEdit>());
 }

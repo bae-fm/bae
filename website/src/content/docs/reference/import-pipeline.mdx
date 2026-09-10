@@ -15,7 +15,7 @@ A CUE sheet turns one audio image into a track list. The parser handles pregaps 
 
 Each candidate stores one editable metadata draft and optional provenance. The draft may be blank, populated directly, populated from an external release, or populated from a stored file-tag snapshot. Provenance records where the current draft began; later edits do not erase it. Direct entry and a cleared draft have no provenance.
 
-The top metadata slot displays either the draft, the Find online browser, or the File tags browser. Opening or closing a browser does not rewrite the draft. Applying a source replaces the draft, its provenance, and its selected source cover in one database transaction while retaining the candidate's file roles, CUE bindings, disc assignments, and other mapping decisions.
+The top metadata slot displays either the draft or the Find online page. Opening or closing that page does not rewrite the draft. Applying a source — a release picked there, or the candidate's own file tags through "Reset to tags" — replaces the draft, its provenance, and its selected source cover in one database transaction while retaining the candidate's file roles, CUE bindings, disc assignments, and other mapping decisions.
 
 ### Find online
 
@@ -33,7 +33,7 @@ Two library settings govern what happens when a candidate is added, and neither 
 
 ### File Tags
 
-File tags reads embedded audio tags and CUE metadata lazily unless the pre-fill reads them as a candidate is added. The preview stores a snapshot stamped with the candidate's scan generation, file-edit revision, and observed audio files. Applying it replaces the draft from that exact snapshot. Commit consumes the same snapshot and fails before library writes if its stamp or observations changed; it does not read a different answer.
+File tags are read at two moments and nowhere else: the pre-fill reads them as a candidate is added, and "Reset to tags" reads them again on demand. Each read stores a snapshot stamped with the candidate's scan generation, file-edit revision, and observed audio files, and replaces the draft from that exact snapshot in the same transaction. Commit consumes the stored snapshot and fails before library writes if its stamp or observations changed; it does not read a different answer.
 
 Direct entry performs no metadata I/O. The blank draft's release and track fields are editable immediately, and it becomes importable when the required fields and mappings validate. The candidate list does not treat missing provenance as an error or a request for attention.
 
