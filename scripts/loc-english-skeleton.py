@@ -97,6 +97,11 @@ RESX_CHROME_EN = "bae-avalonia/Strings/Resources.resx"
 # `%1$lld` is one token, not `%1$l` plus the letters "ld": the specifier is
 # matched whole so a positional integer argument reads as an integer.
 PLACEHOLDER_RE = re.compile(r"%\d+\$(?:lld|[a-zA-Z@])|%lld|%@|%[sd]|\{[^}]+\}")
+
+# A URL is the same in every language, and its path segments are English words
+# nobody translated ("…/settings/developers"). Strip it before tokenizing, or a
+# correct translation that keeps the link reads as English skeleton.
+URL_RE = re.compile(r"\bhttps?://\S+", re.IGNORECASE)
 ICU_PLURAL_WORDS = {"plural", "one", "other", "few", "many", "zero", "#"}
 
 TECHNICAL_PROPER_NOUNS = {
@@ -326,7 +331,7 @@ def mf1_placeholders_match(en_value, target_value, plural_leaf=False):
 
 
 def tokenize(s):
-    return [w.lower() for w in WORD_RE.findall(strip_placeholders(s))]
+    return [w.lower() for w in WORD_RE.findall(URL_RE.sub(" ", strip_placeholders(s)))]
 
 
 # ── Glued morphology ─────────────────────────────────────────────────────────
@@ -393,6 +398,7 @@ _LOCALE_EXCLUDE = {
     "it": {"a", "in", "i", "e", "via", "or", "con"},
     "tr": {"a", "in", "e", "or", "and"},
     "nl": {"is", "was", "been", "of", "in", "a", "on", "met", "aan", "via", "account"},
+    "da": {"for", "session", "start"},
 }
 
 # Loanwords the good entries already use — legitimate, never English-skeleton

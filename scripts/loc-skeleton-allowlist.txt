@@ -318,3 +318,6 @@ zh-Hans	cloud_provider_s3
 zh-Hant	S3-compatible
 zh-Hant	cloud_provider_s3
 sv	s3.field.bucket
+da	Pause uploads
+da	settings_pause_uploads
+da	s3.field.bucket

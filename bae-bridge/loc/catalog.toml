@@ -33,6 +33,7 @@ ro = "Acest import rulează deja și nu mai poate fi editat."
 el = "Αυτή η εισαγωγή εκτελείται ήδη και δεν μπορεί πλέον να επεξεργαστεί."
 pt-PT = "Esta importação já está a decorrer e não pode continuar a ser editada."
 sv = "Den här importen körs redan och kan inte längre redigeras."
+da = "Denne import kører allerede og kan ikke længere redigeres."
 
 [messages."core.import.error.candidate_already_imported"]
 comment = "Import edit rejected because this candidate has already completed importing."
@@ -63,6 +64,7 @@ ro = "Acest import s-a încheiat deja și nu mai poate fi editat."
 el = "Αυτή η εισαγωγή έχει ήδη ολοκληρωθεί και δεν μπορεί πλέον να επεξεργαστεί."
 pt-PT = "Esta importação já terminou e não pode continuar a ser editada."
 sv = "Den här importen är redan klar och kan inte längre redigeras."
+da = "Denne import er allerede afsluttet og kan ikke længere redigeres."
 
 [messages."core.import.validation.empty_album_title"]
 comment = "Import edit: the album title field is blank."
@@ -93,6 +95,7 @@ ro = "Titlul albumului este obligatoriu"
 el = "Ο τίτλος του άλμπουμ είναι υποχρεωτικός"
 pt-PT = "O título do álbum é obrigatório"
 sv = "Albumtitel krävs"
+da = "Albumtitel er påkrævet"
 [messages."core.import.validation.no_album_artist"]
 comment = "Import edit: no album artist was entered."
 value = "Album must have at least one artist"
@@ -122,6 +125,7 @@ ro = "Albumul trebuie să aibă cel puțin un artist"
 el = "Το άλμπουμ πρέπει να έχει τουλάχιστον έναν καλλιτέχνη"
 pt-PT = "O álbum tem de ter pelo menos um artista"
 sv = "Albumet måste ha minst en artist"
+da = "Albummet skal have mindst én kunstner"
 [messages."core.import.validation.empty_artist_name"]
 comment = "Import edit: a new artist entry has a blank name."
 value = "Artist name is required"
@@ -151,6 +155,7 @@ ro = "Numele artistului este obligatoriu"
 el = "Το όνομα του καλλιτέχνη είναι υποχρεωτικό"
 pt-PT = "O nome do artista é obrigatório"
 sv = "Artistnamn krävs"
+da = "Kunstnernavn er påkrævet"
 [messages."core.import.validation.invalid_year"]
 comment = "Import edit: the year field is not a number."
 value = "Year must be a number"
@@ -180,6 +185,7 @@ ro = "Anul trebuie să fie un număr"
 el = "Το έτος πρέπει να είναι αριθμός"
 pt-PT = "O ano tem de ser um número"
 sv = "Året måste vara ett tal"
+da = "År skal være et tal"
 [messages."core.import.sheet.refused_codec"]
 comment = "Import file pane: a track sheet names an audio file bae can't carve tracks out of, because the codec can't back single-file CUE playback ({codec} is the codec name, e.g. MP3). The audio still imports, as one track."
 args = { codec = "Str" }
@@ -210,6 +216,7 @@ ro = "Audio {codec} nu poate fi împărțit după o foaie"
 el = "Ο ήχος {codec} δεν μπορεί να διαιρεθεί από φύλλο"
 pt-PT = "O áudio {codec} não pode ser dividido por uma folha"
 sv = "{codec}-ljud kan inte delas upp med ett ark"
+da = "{codec}-lyd kan ikke deles op efter et ark"
 
 [messages."core.import.sheet.refused_unreadable"]
 comment = "Import file pane: an audio file cannot back a track sheet's binding because bae cannot read the file at all — a truncated download, or otherwise broken audio. Shown on the file in the sheet's audio picker."
@@ -240,6 +247,7 @@ ro = "Acest audio nu poate fi citit"
 el = "Αυτός ο ήχος δεν μπορεί να διαβαστεί"
 pt-PT = "Não é possível ler este áudio"
 sv = "Det här ljudet kan inte läsas"
+da = "Denne lyd kan ikke læses"
 
 [messages."core.import.sheet.refused_timing"]
 comment = "Import file pane: an audio file cannot back a track sheet because the sheet names track boundaries beyond the measured end of the file. Shown on the file in the sheet's audio picker."
@@ -270,6 +278,7 @@ ro = "Timpii pieselor din foaie cad în afara acestui audio"
 el = "Οι χρόνοι των κομματιών του φύλλου βρίσκονται εκτός αυτού του ήχου"
 pt-PT = "Os tempos das faixas da folha estão fora deste áudio"
 sv = "Arkets spårtider ligger utanför det här ljudet"
+da = "Arkets sportider ligger uden for denne lyd"
 
 [messages."core.import.invalid.corrupt_audio"]
 comment = "Import scan: a folder's audio file is corrupt or zero-byte ({path} is the file path)."
@@ -301,6 +310,7 @@ ro = "fișier audio corupt sau de zero octeți: {path}"
 el = "κατεστραμμένο ή μηδενικού μεγέθους αρχείο ήχου: {path}"
 pt-PT = "ficheiro de áudio danificado ou com zero bytes: {path}"
 sv = "skadad eller tom ljudfil: {path}"
+da = "beskadiget eller tom lydfil: {path}"
 [messages."core.import.invalid.corrupt_image"]
 comment = "Import scan: a folder's image is corrupt or zero-byte ({path} is the file path)."
 args = { path = "Str" }
@@ -331,6 +341,7 @@ ro = "imagine coruptă sau de zero octeți: {path}"
 el = "κατεστραμμένη ή μηδενικού μεγέθους εικόνα: {path}"
 pt-PT = "imagem danificada ou com zero bytes: {path}"
 sv = "skadad eller tom bild: {path}"
+da = "beskadiget eller tomt billede: {path}"
 [messages."core.import.invalid.no_valid_audio"]
 comment = "Import scan: the folder has no usable audio files."
 value = "no valid audio files"
@@ -364,6 +375,7 @@ ro = "niciun fișier audio valid"
 el = "κανένα έγκυρο αρχείο ήχου"
 pt-PT = "não há ficheiros de áudio válidos"
 sv = "inga giltiga ljudfiler"
+da = "ingen gyldige lydfiler"
 [messages."core.error.category.database"]
 comment = "Generic error line: a database operation failed."
 value = "Something went wrong reading your library."
@@ -393,6 +405,7 @@ ro = "Ceva nu a mers bine la citirea bibliotecii tale."
 el = "Κάτι πήγε στραβά κατά την ανάγνωση της βιβλιοθήκης σας."
 pt-PT = "Algo correu mal ao ler a sua biblioteca."
 sv = "Något gick fel när ditt bibliotek lästes."
+da = "Noget gik galt, da dit bibliotek blev læst."
 [messages."core.error.category.config"]
 comment = "Generic error line: a configuration or settings operation failed."
 value = "Something went wrong with your settings."
@@ -422,6 +435,7 @@ ro = "Ceva nu a mers bine cu setările tale."
 el = "Κάτι πήγε στραβά με τις ρυθμίσεις σας."
 pt-PT = "Algo correu mal com as suas definições."
 sv = "Något gick fel med dina inställningar."
+da = "Noget gik galt med dine indstillinger."
 [messages."core.error.sync_update_required"]
 comment = "Sync stopped because another device wrote a newer library schema."
 value = "Update the app to continue syncing."
@@ -451,6 +465,7 @@ ro = "Actualizează aplicația pentru a continua sincronizarea."
 el = "Ενημερώστε την εφαρμογή για να συνεχιστεί ο συγχρονισμός."
 pt-PT = "Atualize a app para continuar a sincronizar."
 sv = "Uppdatera appen för att fortsätta synkronisera."
+da = "Opdater appen for at fortsætte synkroniseringen."
 
 [messages."core.error.category.internal"]
 comment = "Generic error line: an unexpected internal failure."
@@ -481,6 +496,7 @@ ro = "Ceva nu a mers bine."
 el = "Κάτι πήγε στραβά."
 pt-PT = "Algo correu mal."
 sv = "Något gick fel."
+da = "Noget gik galt."
 [messages."core.error.category.import"]
 comment = "Generic error line: importing a release failed."
 value = "The import couldn't be completed."
@@ -510,6 +526,7 @@ ro = "Importul nu a putut fi finalizat."
 el = "Δεν ήταν δυνατή η ολοκλήρωση της εισαγωγής."
 pt-PT = "Não foi possível concluir a importação."
 sv = "Importen kunde inte slutföras."
+da = "Importen kunne ikke gennemføres."
 [messages."core.error.category.export"]
 comment = "Generic error line: exporting failed."
 value = "The export couldn't be completed."
@@ -541,6 +558,7 @@ ro = "Exportul nu a putut fi finalizat."
 el = "Δεν ήταν δυνατή η ολοκλήρωση της εξαγωγής."
 pt-PT = "Não foi possível concluir a exportação."
 sv = "Exporten kunde inte slutföras."
+da = "Eksporten kunne ikke gennemføres."
 [messages."core.error.category.save"]
 comment = "Generic error line: a save (rendered output) failed."
 value = "The save couldn't be completed."
@@ -570,6 +588,7 @@ ro = "Salvarea nu a putut fi finalizată."
 el = "Δεν ήταν δυνατή η ολοκλήρωση της αποθήκευσης."
 pt-PT = "Não foi possível concluir a gravação."
 sv = "Sparandet kunde inte slutföras."
+da = "Lagringen kunne ikke gennemføres."
 
 [messages."core.error.cloud_setup.permission_denied"]
 comment = "Cloud setup failed because the credentials lack at least one required object permission."
@@ -600,6 +619,7 @@ ro = "Permite acestor date de autentificare să citească, să scrie, să listez
 el = "Επιτρέψτε σε αυτά τα διαπιστευτήρια να διαβάζουν, να γράφουν, να απαριθμούν και να διαγράφουν αντικείμενα σε αυτόν τον κάδο."
 pt-PT = "Permita que estas credenciais leiam, escrevam, listem e eliminem objetos neste contentor."
 sv = "Ge de här uppgifterna rätt att läsa, skriva, lista och radera objekt i den här bucketen."
+da = "Giv disse loginoplysninger ret til at læse, skrive, vise og slette objekter i denne bucket."
 
 [messages."core.error.cloud_setup.container_not_found"]
 comment = "Cloud setup failed because the named bucket was not visible to the provider request."
@@ -630,6 +650,7 @@ ro = "Acest container nu a fost găsit. Verifică-i numele și accesul datelor d
 el = "Αυτός ο κάδος δεν βρέθηκε. Ελέγξτε το όνομά του και την πρόσβαση των διαπιστευτηρίων σε αυτόν."
 pt-PT = "Este contentor não foi encontrado. Verifique o nome e o acesso das credenciais ao mesmo."
 sv = "Den här bucketen hittades inte. Kontrollera namnet och att uppgifterna har åtkomst till den."
+da = "Denne bucket blev ikke fundet. Kontroller navnet og loginoplysningernes adgang til den."
 
 [messages."core.error.cloud_setup.region_mismatch"]
 comment = "Cloud setup failed because the configured region or endpoint does not identify the bucket's location."
@@ -660,6 +681,7 @@ ro = "Regiunea sau punctul final nu se potrivește cu acest container."
 el = "Η περιοχή ή το τερματικό σημείο δεν ταιριάζει με αυτόν τον κάδο."
 pt-PT = "A região ou o ponto final não correspondem a este contentor."
 sv = "Regionen eller slutpunkten stämmer inte med den här bucketen."
+da = "Regionen eller slutpunktet passer ikke til denne bucket."
 
 [messages."core.error.cloud_setup.quota_exceeded"]
 comment = "Cloud setup failed because the provider reports no available storage quota."
@@ -690,6 +712,7 @@ ro = "Această stocare cloud nu mai are spațiu disponibil."
 el = "Αυτός ο αποθηκευτικός χώρος cloud δεν έχει διαθέσιμο χώρο."
 pt-PT = "Este armazenamento na nuvem não tem espaço disponível."
 sv = "Den här molnlagringen har inget ledigt utrymme."
+da = "Denne skylagring har ingen ledig plads."
 
 [messages."core.error.cloud_setup.invalid_configuration"]
 comment = "Cloud setup failed because the provider settings do not form a valid location."
@@ -720,6 +743,7 @@ ro = "Verifică containerul, regiunea, punctul final și prefixul de cheie."
 el = "Ελέγξτε τον κάδο, την περιοχή, το τερματικό σημείο και το πρόθεμα κλειδιού."
 pt-PT = "Verifique o contentor, a região, o ponto final e o prefixo de chave."
 sv = "Kontrollera bucket, region, slutpunkt och nyckelprefix."
+da = "Kontroller bucket, region, slutpunkt og nøglepræfiks."
 
 [messages."core.error.cloud_setup.location_occupied"]
 comment = "Creating a library was refused because the bucket and key prefix already belong to another library."
@@ -750,6 +774,7 @@ ro = "Acest container și prefix de cheie conțin deja o altă bibliotecă. Folo
 el = "Αυτός ο κάδος και το πρόθεμα κλειδιού περιέχουν ήδη μια άλλη βιβλιοθήκη. Χρησιμοποιήστε κενό πρόθεμα κλειδιού ή συνδεθείτε ή επαναφέρετε εκείνη τη βιβλιοθήκη."
 pt-PT = "Este contentor e prefixo de chave já contêm outra biblioteca. Use um prefixo de chave vazio ou adira a essa biblioteca ou restaure-a."
 sv = "Den här bucketen och nyckelprefixet innehåller redan ett annat bibliotek. Använd ett tomt nyckelprefix, eller anslut dig till eller återställ det biblioteket."
+da = "Denne bucket og dette nøglepræfiks indeholder allerede et andet bibliotek. Brug et tomt nøglepræfiks, eller deltag i eller gendan det bibliotek."
 
 [messages."core.error.identity_missing"]
 comment = "The local library has no established device identity and cannot participate in sync."
@@ -780,6 +805,7 @@ ro = "Această bibliotecă nu are o identitate de dispozitiv. Creează, alătur�
 el = "Αυτή η βιβλιοθήκη δεν έχει ταυτότητα συσκευής. Δημιουργήστε, συνδεθείτε ή επαναφέρετε ξανά τη βιβλιοθήκη."
 pt-PT = "Esta biblioteca não tem identidade de dispositivo. Crie, adira ou restaure a biblioteca novamente."
 sv = "Det här biblioteket har ingen enhetsidentitet. Skapa, anslut dig till eller återställ biblioteket igen."
+da = "Dette bibliotek har ingen enhedsidentitet. Opret, deltag i eller gendan biblioteket igen."
 
 [messages."core.error.category.credentials"]
 comment = "Generic error line: the cloud provider rejected the credentials or the setup is misconfigured."
@@ -810,6 +836,7 @@ ro = "Verifică datele de autentificare pentru cloud și încearcă din nou."
 el = "Ελέγξτε τα διαπιστευτήρια cloud και δοκιμάστε ξανά."
 pt-PT = "Verifique as suas credenciais de nuvem e tente novamente."
 sv = "Kontrollera dina molnuppgifter och försök igen."
+da = "Kontroller dine skyloginoplysninger, og prøv igen."
 
 [messages."core.error.category.network"]
 comment = "Generic error line: the cloud backend or the network to it was unreachable."
@@ -840,6 +867,7 @@ ro = "Nu s-a putut ajunge la cloud. Verifică conexiunea și încearcă din nou.
 el = "Δεν ήταν δυνατή η επικοινωνία με το cloud. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά."
 pt-PT = "Não foi possível contactar a nuvem. Verifique a ligação e tente novamente."
 sv = "Kunde inte nå molnet. Kontrollera din anslutning och försök igen."
+da = "Skyen kunne ikke nås. Kontroller din forbindelse, og prøv igen."
 
 [messages."core.error.category.keyring"]
 comment = "Generic error line: the OS keyring (secure credential store) couldn't be read or written."
@@ -870,6 +898,7 @@ ro = "Nu s-a putut accesa stocarea securizată a dispozitivului tău."
 el = "Δεν ήταν δυνατή η πρόσβαση στην ασφαλή αποθήκευση της συσκευής σας."
 pt-PT = "Não foi possível aceder ao armazenamento seguro do seu dispositivo."
 sv = "Kunde inte komma åt enhetens säkra lagring."
+da = "Der kunne ikke opnås adgang til enhedens sikre lagring."
 
 [messages."core.error.category.airplay_unsupported"]
 comment = "Error line shown in the device picker when an AirPlay receiver can't be driven — it demands a PIN, or offers only audio encryption the sender doesn't implement."
@@ -900,6 +929,7 @@ ro = "Acest receptor AirPlay nu este acceptat."
 el = "Αυτός ο δέκτης AirPlay δεν υποστηρίζεται."
 pt-PT = "Este recetor AirPlay não é suportado."
 sv = "Den här AirPlay-mottagaren stöds inte."
+da = "Denne AirPlay-modtager understøttes ikke."
 
 [messages."core.error.join.expired"]
 comment = "The device-pairing join ended because the pairing code passed its deadline; a retry needs a fresh code."
@@ -930,6 +960,7 @@ ro = "Acest cod de asociere a expirat. Afișează un cod nou pe celălalt dispoz
 el = "Αυτός ο κωδικός σύζευξης έληξε. Εμφανίστε νέο κωδικό στην άλλη συσκευή και δοκιμάστε ξανά."
 pt-PT = "Este código de emparelhamento expirou. Mostre um código novo no outro dispositivo e tente novamente."
 sv = "Den här parkopplingskoden har gått ut. Visa en ny kod på den andra enheten och försök igen."
+da = "Denne parringskode er udløbet. Vis en ny kode på den anden enhed, og prøv igen."
 
 [messages."core.error.join.owner_offline"]
 comment = "The device-pairing join ended because the inviting device never took its next step; both devices must run the join at once."
@@ -960,6 +991,7 @@ ro = "Celălalt dispozitiv nu rulează această alăturare. Deschide bae pe el, 
 el = "Η άλλη συσκευή δεν εκτελεί αυτή τη σύνδεση. Ανοίξτε το bae σε αυτήν, εμφανίστε κωδικό σύζευξης και δοκιμάστε ξανά."
 pt-PT = "O outro dispositivo não está a executar esta adesão. Abra o bae nesse dispositivo, mostre um código de emparelhamento e tente novamente."
 sv = "Den andra enheten kör inte den här anslutningen. Öppna bae där, visa en parkopplingskod och försök igen."
+da = "Den anden enhed kører ikke denne tilslutning. Åbn bae på den, vis en parringskode, og prøv igen."
 
 [messages."core.error.join.owner_ended"]
 comment = "The device-pairing join ended because the inviting device withdrew the attempt."
@@ -990,6 +1022,7 @@ ro = "Celălalt dispozitiv a încheiat această asociere. Dacă tot vrei să te 
 el = "Η άλλη συσκευή τερμάτισε αυτή τη σύζευξη. Αν εξακολουθείτε να θέλετε να συνδεθείτε, ξεκινήστε την ξανά από εκεί."
 pt-PT = "O outro dispositivo terminou este emparelhamento. Se ainda quiser aderir, inicie-o novamente a partir daí."
 sv = "Den andra enheten avslutade den här parkopplingen. Om du fortfarande vill ansluta dig, starta den därifrån igen."
+da = "Den anden enhed afsluttede denne parring. Hvis du stadig vil deltage, skal du starte den derfra igen."
 
 [messages."core.error.keyring.locked"]
 comment = "The OS keychain refused the read because the session is locked or the display is asleep; the key is present and the read succeeds again after unlock."
@@ -1020,6 +1053,7 @@ ro = "Brelocul acestui dispozitiv este blocat. Deblochează dispozitivul și bae
 el = "Το μπρελόκ αυτής της συσκευής είναι κλειδωμένο. Ξεκλειδώστε τη συσκευή και το bae θα συνεχίσει από εκεί που σταμάτησε."
 pt-PT = "O porta-chaves deste dispositivo está bloqueado. Desbloqueie o dispositivo e o bae continua de onde ficou."
 sv = "Den här enhetens nyckelring är låst. Lås upp enheten så fortsätter bae där den slutade."
+da = "Denne enheds nøglering er låst. Lås enheden op, så fortsætter bae, hvor den slap."
 
 [messages."core.error.category.membership"]
 comment = "Generic error line: a library-sharing membership operation failed."
@@ -1050,6 +1084,7 @@ ro = "Ceva nu a mers bine la actualizarea partajării bibliotecii."
 el = "Κάτι πήγε στραβά κατά την ενημέρωση της κοινής χρήσης της βιβλιοθήκης."
 pt-PT = "Algo correu mal ao atualizar a partilha da biblioteca."
 sv = "Något gick fel när bibliotekets delning uppdaterades."
+da = "Noget gik galt, da bibliotekets deling blev opdateret."
 [messages."core.error.not_found.library"]
 comment = "Error line: the requested library no longer exists."
 value = "That library could not be found."
@@ -1079,6 +1114,7 @@ ro = "Acea bibliotecă nu a putut fi găsită."
 el = "Δεν ήταν δυνατή η εύρεση εκείνης της βιβλιοθήκης."
 pt-PT = "Não foi possível encontrar essa biblioteca."
 sv = "Det biblioteket kunde inte hittas."
+da = "Det bibliotek kunne ikke findes."
 
 # Actionable playback failures: the user can do something to fix these.
 
@@ -1111,6 +1147,7 @@ ro = "Reconectează-te pentru a reda această ediție. Încă nu este descărcat
 el = "Επανασυνδεθείτε για να αναπαραγάγετε αυτή την κυκλοφορία. Δεν έχει ληφθεί ακόμη σε αυτή τη συσκευή."
 pt-PT = "Volte a ligar-se para reproduzir esta edição. Ainda não está transferida para este dispositivo."
 sv = "Anslut igen för att spela den här utgåvan. Den är inte hämtad till den här enheten än."
+da = "Forbind igen for at afspille denne udgivelse. Den er ikke hentet til denne enhed endnu."
 [messages."core.playback.error.upload_pending"]
 comment = "Playback error: a track's cloud upload is still queued."
 value = "This release is still uploading. Try again when it finishes."
@@ -1140,6 +1177,7 @@ ro = "Această ediție se încarcă încă. Încearcă din nou când se termină
 el = "Αυτή η κυκλοφορία μεταφορτώνεται ακόμη. Δοκιμάστε ξανά όταν ολοκληρωθεί."
 pt-PT = "Esta edição ainda está a ser enviada. Tente novamente quando terminar."
 sv = "Den här utgåvan laddas fortfarande upp. Försök igen när det är klart."
+da = "Denne udgivelse uploades stadig. Prøv igen, når det er færdigt."
 [messages."core.playback.pause.side_ended.title"]
 comment = "Alert title shown when playback pauses after a physical side ends ({label} is the side letter A/B/C… computed by core)."
 args = { label = "Str" }
@@ -1170,6 +1208,7 @@ ro = "Fața {label} s-a terminat"
 el = "Η πλευρά {label} τελείωσε"
 pt-PT = "O lado {label} terminou"
 sv = "Sida {label} är slut"
+da = "Side {label} er slut"
 [messages."core.playback.pause.side_ended.message.vinyl"]
 comment = "Alert body shown when playback pauses between vinyl sides."
 value = "Playback paused between sides. Turn the vinyl, then press Play."
@@ -1199,6 +1238,7 @@ ro = "Redarea este în pauză între fețe. Întoarce discul de vinil, apoi apas
 el = "Η αναπαραγωγή είναι σε παύση ανάμεσα στις πλευρές. Γυρίστε τον δίσκο βινυλίου και πατήστε Αναπαραγωγή."
 pt-PT = "A reprodução está em pausa entre lados. Vire o vinil e prima Reproduzir."
 sv = "Uppspelningen pausades mellan sidorna. Vänd på vinylskivan och tryck på Spela."
+da = "Afspilningen er sat på pause mellem siderne. Vend vinylpladen, og tryk på Afspil."
 [messages."core.playback.pause.side_ended.message.cassette"]
 comment = "Alert body shown when playback pauses between cassette sides."
 value = "Playback paused between sides. Turn the cassette, then press Play."
@@ -1228,6 +1268,7 @@ ro = "Redarea este în pauză între fețe. Întoarce caseta, apoi apasă Redă.
 el = "Η αναπαραγωγή είναι σε παύση ανάμεσα στις πλευρές. Γυρίστε την κασέτα και πατήστε Αναπαραγωγή."
 pt-PT = "A reprodução está em pausa entre lados. Vire a cassete e prima Reproduzir."
 sv = "Uppspelningen pausades mellan sidorna. Vänd på kassetten och tryck på Spela."
+da = "Afspilningen er sat på pause mellem siderne. Vend kassettebåndet, og tryk på Afspil."
 [messages."core.import.prepare.queued"]
 comment = "Import progress: waiting for the import worker."
 value = "Queued..."
@@ -1257,6 +1298,7 @@ ro = "În coadă..."
 el = "Σε ουρά..."
 pt-PT = "Em fila..."
 sv = "I kö..."
+da = "I kø..."
 
 [messages."core.import.prepare.validating_source_files"]
 comment = "Import progress: validating that source files still match the scan."
@@ -1287,6 +1329,7 @@ ro = "Se validează fișierele sursă..."
 el = "Επικύρωση αρχείων προέλευσης..."
 pt-PT = "A validar os ficheiros de origem..."
 sv = "Validerar källfilerna..."
+da = "Validerer kildefilerne..."
 [messages."core.import.phase.reading_files"]
 comment = "Import progress: reading and hashing each source file."
 value = "Reading files..."
@@ -1316,6 +1359,7 @@ ro = "Se citesc fișierele..."
 el = "Ανάγνωση αρχείων..."
 pt-PT = "A ler os ficheiros..."
 sv = "Läser filer..."
+da = "Læser filer..."
 
 [messages."core.import.phase.measuring_loudness"]
 comment = "Import progress: decoding each track to measure its loudness."
@@ -1346,6 +1390,7 @@ ro = "Se măsoară sonoritatea..."
 el = "Μέτρηση ηχηρότητας..."
 pt-PT = "A medir a intensidade sonora..."
 sv = "Mäter ljudstyrkan..."
+da = "Måler lydstyrken..."
 [messages."core.import.phase.finalizing"]
 comment = "Import progress: writing the library rows and committing the import."
 value = "Finalizing..."
@@ -1375,6 +1420,7 @@ ro = "Se finalizează..."
 el = "Οριστικοποίηση..."
 pt-PT = "A finalizar..."
 sv = "Slutför..."
+da = "Afslutter..."
 [messages."core.audio.label"]
 comment = "Column label for the codec and technical properties of source audio files."
 value = "Audio"
@@ -1404,6 +1450,7 @@ ro = "Audio"
 el = "Ήχος"
 pt-PT = "Áudio"
 sv = "Ljud"
+da = "Lyd"
 
 [messages."core.audio.layout.cue"]
 comment = "Source-audio layout: tracks are defined by a CUE sheet. CUE is a technical acronym."
@@ -1434,6 +1481,7 @@ ro = "CUE"
 el = "CUE"
 pt-PT = "CUE"
 sv = "CUE"
+da = "CUE"
 
 [messages."core.release.media"]
 comment = "Field and column label for a release's physical or published media, such as CD, vinyl, or cassette."
@@ -1464,6 +1512,7 @@ ro = "Suport"
 el = "Μέσο"
 pt-PT = "Suporte"
 sv = "Media"
+da = "Medie"
 
 [messages."core.audio.channels.mono"]
 comment = "Audio format: single-channel audio."
@@ -1494,6 +1543,7 @@ ro = "mono"
 el = "μονοφωνικό"
 pt-PT = "mono"
 sv = "mono"
+da = "mono"
 [messages."core.audio.channels.stereo"]
 comment = "Audio format: two-channel audio."
 value = "stereo"
@@ -1523,6 +1573,7 @@ ro = "stereo"
 el = "στερεοφωνικό"
 pt-PT = "estéreo"
 sv = "stereo"
+da = "stereo"
 [messages."core.audio.list_separator"]
 comment = "Separator between compact source-audio facts."
 value = " · "
@@ -1552,6 +1603,7 @@ ro = " · "
 el = " · "
 pt-PT = " · "
 sv = " · "
+da = " · "
 [messages."core.audio.mixed"]
 comment = "Source-audio summary label for more than one distinct descriptor."
 value = "Various"
@@ -1581,6 +1633,7 @@ ro = "Diverse"
 el = "Διάφορα"
 pt-PT = "Vários"
 sv = "Blandat"
+da = "Diverse"
 [messages."core.audio.sample_rate_khz"]
 comment = "Audio sample rate in kilohertz; value is already locale-formatted."
 args = { value = "Str" }
@@ -1611,6 +1664,7 @@ ro = "{value} kHz"
 el = "{value} kHz"
 pt-PT = "{value} kHz"
 sv = "{value} kHz"
+da = "{value} kHz"
 [messages."core.audio.bitrate_kbps"]
 comment = "Average audio bitrate in kilobits per second."
 args = { value = "Int" }
@@ -1641,6 +1695,7 @@ ro = "{value} kbps"
 el = "{value} kbps"
 pt-PT = "{value} kbps"
 sv = "{value} kbps"
+da = "{value} kbps"
 [messages."core.audio.bit_depth"]
 comment = "Audio bit depth."
 args = { value = "Int" }
@@ -1671,6 +1726,7 @@ ro = "{value} biți"
 el = "{value} bit"
 pt-PT = "{value} bits"
 sv = "{value} bitar"
+da = "{value} bit"
 [messages."core.audio.channels.count"]
 comment = "Audio channel count when no named mono/stereo word applies."
 args = { value = "Int" }
@@ -1701,6 +1757,7 @@ ro = "{value} can."
 el = "{value} καν."
 pt-PT = "{value} can."
 sv = "{value} kan."
+da = "{value} kan."
 [messages."core.track.side"]
 comment = "Track grouping: header for a physical side, e.g. 'Side A' ({letter} is the side letter A/B/C… computed by core)."
 args = { letter = "Str" }
@@ -1731,6 +1788,7 @@ ro = "Fața {letter}"
 el = "Πλευρά {letter}"
 pt-PT = "Lado {letter}"
 sv = "Sida {letter}"
+da = "Side {letter}"
 [messages."core.track.disc"]
 comment = "Track grouping: header for a disc in a multi-disc release, e.g. 'Disc 2' ({disc} is the disc number computed by core)."
 args = { disc = "Int" }
@@ -1761,6 +1819,7 @@ ro = "Discul {disc}"
 el = "Δίσκος {disc}"
 pt-PT = "Disco {disc}"
 sv = "Skiva {disc}"
+da = "Disk {disc}"
 [messages."core.duration.hours"]
 comment = "Album total playing time, whole hours (e.g. \"3 hr\"). Shown when the total has no leftover minutes."
 args = { hours = "Int" }
@@ -1791,6 +1850,7 @@ ro = "{hours} h"
 el = "{hours} ώ"
 pt-PT = "{hours} h"
 sv = "{hours} tim"
+da = "{hours} t"
 [messages."core.duration.hours_minutes"]
 comment = "Album total playing time joining its hours and minutes parts (e.g. \"3 hr, 42 min\"). Both are pre-formatted by the core.duration.hours / core.duration.minutes messages."
 args = { hours = "Str", minutes = "Str" }
@@ -1821,6 +1881,7 @@ ro = "{hours}, {minutes}"
 el = "{hours}, {minutes}"
 pt-PT = "{hours}, {minutes}"
 sv = "{hours}, {minutes}"
+da = "{hours}, {minutes}"
 [messages."core.duration.minutes"]
 comment = "Album total playing time, whole minutes (e.g. \"39 min\")."
 args = { minutes = "Int" }
@@ -1851,6 +1912,7 @@ ro = "{minutes} min"
 el = "{minutes} λ"
 pt-PT = "{minutes} min"
 sv = "{minutes} min"
+da = "{minutes} min"
 [messages."core.cloud.s3_compatible"]
 comment = "Cloud provider: any S3-compatible storage."
 value = "S3-compatible"
@@ -1880,6 +1942,7 @@ ro = "Compatibil cu S3"
 el = "Συμβατό με S3"
 pt-PT = "Compatível com S3"
 sv = "S3-kompatibel"
+da = "S3-kompatibel"
 [messages."core.cloud.local_only"]
 comment = "Cloud provider: the library syncs nowhere (local only)."
 value = "Local only"
@@ -1909,6 +1972,7 @@ ro = "Doar local"
 el = "Μόνο τοπικά"
 pt-PT = "Apenas local"
 sv = "Endast lokalt"
+da = "Kun lokalt"
 [messages."core.transfer.action.pin"]
 comment = "Storage transfer: present-continuous verb while pinning a release for offline."
 value = "Pinning for offline"
@@ -1938,6 +2002,7 @@ ro = "Se fixează pentru offline"
 el = "Καρφίτσωμα για εκτός σύνδεσης"
 pt-PT = "A fixar para offline"
 sv = "Fäster för offline"
+da = "Fastgør til offline"
 [messages."core.transfer.action.unpin"]
 comment = "Storage transfer: present-continuous verb while removing a release's local copy."
 value = "Removing local copy"
@@ -1967,6 +2032,7 @@ ro = "Se elimină copia locală"
 el = "Αφαίρεση τοπικού αντιγράφου"
 pt-PT = "A remover a cópia local"
 sv = "Tar bort den lokala kopian"
+da = "Fjerner den lokale kopi"
 [messages."core.transfer.action.make_remote"]
 comment = "Storage transfer: validating a Local release and adding its upload to the Cloud queue."
 value = "Queueing for Cloud…"
@@ -1996,6 +2062,7 @@ ro = "Se pune la coadă pentru cloud…"
 el = "Τοποθέτηση σε ουρά για το cloud…"
 pt-PT = "A pôr em fila para a nuvem…"
 sv = "Ställer i kö för molnet…"
+da = "Sætter i kø til skyen…"
 [messages."core.transfer.action.make_local"]
 comment = "Storage transfer: materializing a Cloud release on this device before committing it as Local."
 value = "Making Local…"
@@ -2025,6 +2092,7 @@ ro = "Se face local…"
 el = "Τοπική διάθεση…"
 pt-PT = "A tornar local…"
 sv = "Gör lokal…"
+da = "Gør lokal…"
 [messages."core.lookup.failure.network"]
 comment = "Metadata lookup failed: couldn't reach the provider (no network response)."
 value = "Couldn't reach the metadata provider"
@@ -2054,6 +2122,7 @@ ro = "Nu s-a putut ajunge la furnizorul de metadate"
 el = "Δεν ήταν δυνατή η επικοινωνία με τον πάροχο μεταδεδομένων"
 pt-PT = "Não foi possível contactar o fornecedor de metadados"
 sv = "Kunde inte nå metadataleverantören"
+da = "Metadataudbyderen kunne ikke nås"
 [messages."core.lookup.failure.provider"]
 comment = "Metadata lookup failed: the provider returned an HTTP error response ({status} is the HTTP status code)."
 args = { status = "Int" }
@@ -2084,6 +2153,7 @@ ro = "Furnizorul de metadate a returnat o eroare ({status})"
 el = "Ο πάροχος μεταδεδομένων επέστρεψε σφάλμα ({status})"
 pt-PT = "O fornecedor de metadados devolveu um erro ({status})"
 sv = "Metadataleverantören svarade med ett fel ({status})"
+da = "Metadataudbyderen svarede med en fejl ({status})"
 [messages."core.lookup.failure.provider_unknown"]
 comment = "Metadata lookup failed: the provider returned an error with no status code to show. No-status fallback for core.lookup.failure.provider."
 value = "The metadata provider returned an error"
@@ -2113,6 +2183,7 @@ ro = "Furnizorul de metadate a returnat o eroare"
 el = "Ο πάροχος μεταδεδομένων επέστρεψε σφάλμα"
 pt-PT = "O fornecedor de metadados devolveu um erro"
 sv = "Metadataleverantören svarade med ett fel"
+da = "Metadataudbyderen svarede med en fejl"
 [messages."core.lookup.failure.timeout"]
 comment = "Metadata lookup failed: the request to the provider timed out."
 value = "The metadata provider timed out"
@@ -2142,6 +2213,7 @@ ro = "Furnizorul de metadate nu a răspuns la timp"
 el = "Ο πάροχος μεταδεδομένων δεν απάντησε εγκαίρως"
 pt-PT = "O fornecedor de metadados excedeu o tempo limite"
 sv = "Metadataleverantören svarade inte i tid"
+da = "Metadataudbyderen svarede ikke i tide"
 [messages."core.lookup.failure.artwork_analysis"]
 comment = "Signal extraction failed: artwork analysis stopped before barcode/text extraction finished."
 value = "Artwork analysis failed"
@@ -2171,6 +2243,7 @@ ro = "Analiza graficii a eșuat"
 el = "Η ανάλυση των γραφικών απέτυχε"
 pt-PT = "A análise da imagem falhou"
 sv = "Analysen av grafiken misslyckades"
+da = "Analysen af grafikken mislykkedes"
 [messages."core.lookup.failure.diagnostic"]
 comment = "Metadata lookup failed for a local reason (the typed variant carries no translated copy). Generic line shown alongside the opaque, log-only detail."
 value = "Couldn't look this up"
@@ -2200,6 +2273,7 @@ ro = "Nu s-a putut căuta acest lucru"
 el = "Δεν ήταν δυνατή η αναζήτηση αυτού"
 pt-PT = "Não foi possível procurar isto"
 sv = "Kunde inte slå upp detta"
+da = "Dette kunne ikke slås op"
 [messages."core.lookup.failure.brief.network"]
 comment = "Metadata lookup failed: brief reason ending a line that already names the source and the step (e.g. 'MusicBrainz barcode search: couldn't connect'). No network response."
 value = "couldn't connect"
@@ -2229,6 +2303,7 @@ ro = "nu s-a putut conecta"
 el = "δεν ήταν δυνατή η σύνδεση"
 pt-PT = "não foi possível ligar"
 sv = "kunde inte ansluta"
+da = "kunne ikke forbinde"
 
 [messages."core.lookup.failure.brief.timeout"]
 comment = "Metadata lookup failed: brief reason ending a line that already names the source and the step. The request timed out."
@@ -2259,6 +2334,7 @@ ro = "timp expirat"
 el = "λήξη χρόνου"
 pt-PT = "tempo esgotado"
 sv = "tiden gick ut"
+da = "tiden udløb"
 
 [messages."core.lookup.failure.brief.busy"]
 comment = "Metadata lookup failed: brief reason ending a line that already names the source and the step. The provider refused for now with HTTP 429 or 503 ({status} is the code)."
@@ -2290,6 +2366,7 @@ ro = "ocupat ({status})"
 el = "απασχολημένο ({status})"
 pt-PT = "ocupado ({status})"
 sv = "upptagen ({status})"
+da = "optaget ({status})"
 
 [messages."core.lookup.failure.brief.provider"]
 comment = "Metadata lookup failed: brief reason ending a line that already names the source and the step. The provider returned an HTTP error ({status} is the code)."
@@ -2321,6 +2398,7 @@ ro = "eroare {status}"
 el = "σφάλμα {status}"
 pt-PT = "erro {status}"
 sv = "fel {status}"
+da = "fejl {status}"
 
 [messages."core.lookup.failure.brief.provider_unknown"]
 comment = "Metadata lookup failed: brief reason ending a line that already names the source and the step. The provider returned an error with no status code. No-status fallback for core.lookup.failure.brief.provider."
@@ -2351,6 +2429,7 @@ ro = "eroare"
 el = "σφάλμα"
 pt-PT = "erro"
 sv = "fel"
+da = "fejl"
 
 [messages."core.lookup.failure.brief.artwork_analysis"]
 comment = "Signal extraction failed: brief reason ending a line that already names the step. Artwork analysis stopped before barcode/text extraction finished."
@@ -2381,6 +2460,7 @@ ro = "analiza graficii a eșuat"
 el = "η ανάλυση των γραφικών απέτυχε"
 pt-PT = "a análise da imagem falhou"
 sv = "analysen av grafiken misslyckades"
+da = "analysen af grafikken mislykkedes"
 
 [messages."core.lookup.failure.brief.diagnostic"]
 comment = "Metadata lookup failed for a local reason: brief reason ending a line that already names the source and the step. The opaque detail is log-only."
@@ -2411,6 +2491,7 @@ ro = "eșuat"
 el = "απέτυχε"
 pt-PT = "falhou"
 sv = "misslyckades"
+da = "mislykkedes"
 
 [messages."core.queue.uploading"]
 comment = "Storage queue: count currently uploading."
@@ -2442,6 +2523,7 @@ ro = "{count} se încarcă"
 el = "{count} μεταφορτώνονται"
 pt-PT = "{count} a enviar"
 sv = "{count} laddas upp"
+da = "{count} uploades"
 
 [messages."core.outbox.preparing"]
 comment = "Cloud upload queue: count whose source files are being verified and sealed into upload spools."
@@ -2473,6 +2555,7 @@ ro = "{count} se pregătesc"
 el = "{count} προετοιμάζονται"
 pt-PT = "{count} a preparar"
 sv = "{count} förbereds"
+da = "{count} forberedes"
 
 [messages."core.outbox.prepared"]
 comment = "Cloud upload queue: count whose durable upload spools are prepared and waiting for a provider."
@@ -2504,6 +2587,7 @@ ro = "{count} pregătite"
 el = "{count} έτοιμα"
 pt-PT = "{count} preparados"
 sv = "{count} förberedda"
+da = "{count} forberedt"
 
 [messages."core.outbox.uploaded"]
 comment = "Cloud upload queue: count whose cloud objects exist but whose release is not published yet."
@@ -2535,6 +2619,7 @@ ro = "{count} încărcate"
 el = "{count} μεταφορτώθηκαν"
 pt-PT = "{count} enviados"
 sv = "{count} uppladdade"
+da = "{count} uploadet"
 
 [messages."core.outbox.publishing"]
 comment = "Cloud upload queue: count of releases whose uploaded objects are being published."
@@ -2566,6 +2651,7 @@ ro = "{count} se publică"
 el = "{count} δημοσιεύονται"
 pt-PT = "{count} a publicar"
 sv = "{count} publiceras"
+da = "{count} publiceres"
 
 [messages."core.outbox.cancelling"]
 comment = "Cloud upload queue: count of release transitions currently being cancelled."
@@ -2597,6 +2683,7 @@ ro = "{count} se anulează"
 el = "{count} ακυρώνονται"
 pt-PT = "{count} a cancelar"
 sv = "{count} avbryts"
+da = "{count} annulleres"
 
 [messages."core.outbox.retrying"]
 comment = "Cloud upload queue: count whose failed attempt is waiting to retry."
@@ -2628,6 +2715,7 @@ ro = "Se reîncearcă ({count})"
 el = "Νέα προσπάθεια ({count})"
 pt-PT = "A repetir ({count})"
 sv = "Försöker igen ({count})"
+da = "Prøver igen ({count})"
 
 [messages."core.outbox.source_unavailable"]
 comment = "Storage upload queue: the local source file or volume needed for an upload is not available."
@@ -2658,6 +2746,7 @@ ro = "Sursă indisponibilă"
 el = "Η πηγή δεν είναι διαθέσιμη"
 pt-PT = "Fonte indisponível"
 sv = "Källan är inte tillgänglig"
+da = "Kilden er ikke tilgængelig"
 
 [messages."core.pairing.cancelling"]
 comment = "Existing-device pairing sheet: shown while the pairing attempt is being cancelled."
@@ -2688,6 +2777,7 @@ ro = "Se anulează asocierea…"
 el = "Ακύρωση σύζευξης…"
 pt-PT = "A cancelar o emparelhamento…"
 sv = "Avbryter parkopplingen…"
+da = "Annullerer parringen…"
 [messages."core.queue.downloading"]
 comment = "Storage queue: count currently downloading."
 args = { count = "Int" }
@@ -2718,6 +2808,7 @@ ro = "{count} se descarcă"
 el = "{count} λαμβάνονται"
 pt-PT = "{count} a transferir"
 sv = "{count} hämtas"
+da = "{count} hentes"
 [messages."core.queue.output"]
 comment = "Storage queue: count currently being written (export or save); rows are kind-labeled."
 args = { count = "Int" }
@@ -2748,6 +2839,7 @@ ro = "{count} în curs"
 el = "{count} σε εξέλιξη"
 pt-PT = "{count} em curso"
 sv = "{count} pågår"
+da = "{count} i gang"
 
 [messages."core.queue.failed"]
 comment = "Storage queue: count that failed."
@@ -2779,6 +2871,7 @@ ro = "{count} eșuate"
 el = "{count} απέτυχαν"
 pt-PT = "{count} falhados"
 sv = "{count} misslyckades"
+da = "{count} mislykkedes"
 [messages."core.queue.queued"]
 comment = "Storage queue: count waiting to transfer."
 args = { count = "Int" }
@@ -2809,6 +2902,7 @@ ro = "{count} în coadă"
 el = "{count} σε ουρά"
 pt-PT = "{count} em fila"
 sv = "{count} i kö"
+da = "{count} i kø"
 [messages."core.outbox.bytes.preparing"]
 comment = "Cloud upload queue: label beside a progress bar that is filling with source bytes read while preparing ({done}/{total} are pre-formatted byte counts)."
 args = { done = "Str", total = "Str" }
@@ -2839,6 +2933,7 @@ ro = "Se pregătește {done} din {total}"
 el = "Προετοιμασία {done} από {total}"
 pt-PT = "A preparar {done} de {total}"
 sv = "Förbereder {done} av {total}"
+da = "Forbereder {done} af {total}"
 
 
 [messages."core.outbox.bytes.uploading"]
@@ -2871,6 +2966,7 @@ ro = "Se încarcă {done} din {total}"
 el = "Μεταφόρτωση {done} από {total}"
 pt-PT = "A enviar {done} de {total}"
 sv = "Laddar upp {done} av {total}"
+da = "Uploader {done} af {total}"
 
 
 [messages."core.download.bytes_progress"]
@@ -2903,6 +2999,7 @@ ro = "{done} din {total}"
 el = "{done} από {total}"
 pt-PT = "{done} de {total}"
 sv = "{done} av {total}"
+da = "{done} af {total}"
 
 [messages."core.artwork_cache.scanning"]
 comment = "Post-open library status: finding artwork whose cache policy requires a local copy."
@@ -2932,6 +3029,7 @@ ro = "Se caută grafica…"
 el = "Εύρεση γραφικών…"
 pt-PT = "A procurar imagens…"
 sv = "Söker grafik…"
+da = "Finder grafik…"
 
 [messages."core.artwork_cache.downloading"]
 comment = "Post-open library status: downloading artwork required by the cache policy."
@@ -2961,6 +3059,7 @@ ro = "Se descarcă grafica…"
 el = "Λήψη γραφικών…"
 pt-PT = "A transferir imagens…"
 sv = "Hämtar grafik…"
+da = "Henter grafik…"
 
 [messages."core.artwork_cache.cancelled"]
 comment = "Post-open library status: the user stopped artwork downloads."
@@ -2990,6 +3089,7 @@ ro = "Descărcarea graficii s-a oprit."
 el = "Η λήψη των γραφικών σταμάτησε."
 pt-PT = "A transferência de imagens parou."
 sv = "Hämtningen av grafik stoppades."
+da = "Hentningen af grafik stoppede."
 
 [messages."core.artwork_cache.failed"]
 comment = "Post-open library status: artwork required by the cache policy could not be downloaded."
@@ -3019,6 +3119,7 @@ ro = "O parte din grafică nu a putut fi descărcată."
 el = "Δεν ήταν δυνατή η λήψη ορισμένων γραφικών."
 pt-PT = "Não foi possível transferir algumas imagens."
 sv = "En del grafik kunde inte hämtas."
+da = "Noget grafik kunne ikke hentes."
 [messages."core.outbox.throughput"]
 comment = "Storage queue: upload speed ({rate} is a pre-formatted byte count, e.g. '5.2 MB')."
 args = { rate = "Str" }
@@ -3049,6 +3150,7 @@ ro = "{rate}/s"
 el = "{rate}/s"
 pt-PT = "{rate}/s"
 sv = "{rate}/s"
+da = "{rate}/s"
 [messages."core.outbox.eta"]
 comment = "Storage queue: estimated time remaining ({duration} is a pre-formatted duration)."
 args = { duration = "Str" }
@@ -3079,6 +3181,7 @@ ro = "{duration} rămase"
 el = "απομένουν {duration}"
 pt-PT = "falta {duration}"
 sv = "{duration} kvar"
+da = "{duration} tilbage"
 [messages."core.outbox.pending_deletes"]
 comment = "Storage queue: number of cloud deletes still pending."
 args = { count = "Int" }
@@ -3109,6 +3212,7 @@ ro = "{count, plural, one {# ștergere în așteptare} few {# ștergeri în așt
 el = "{count, plural, one {# εκκρεμής διαγραφή} other {# εκκρεμείς διαγραφές}}"
 pt-PT = "{count, plural, one {# eliminação pendente} other {# eliminações pendentes}}"
 sv = "{count, plural, one {# väntande radering} other {# väntande raderingar}}"
+da = "{count, plural, one {# ventende sletning} other {# ventende sletninger}}"
 [messages."core.outbox.file.artist_image"]
 comment = "Storage upload queue: an image representing an artist."
 value = "Artist image"
@@ -3138,6 +3242,7 @@ ro = "Imaginea artistului"
 el = "Εικόνα καλλιτέχνη"
 pt-PT = "Imagem do artista"
 sv = "Artistbild"
+da = "Kunstnerbillede"
 [messages."core.outbox.file.unwinding"]
 comment = "Storage upload queue: a queued file whose release was deleted, so the upload is being taken back out of the cloud."
 value = "Removing from cloud"
@@ -3167,6 +3272,7 @@ ro = "Se elimină din cloud"
 el = "Αφαίρεση από το cloud"
 pt-PT = "A remover da nuvem"
 sv = "Tas bort från molnet"
+da = "Fjernes fra skyen"
 
 [messages."core.sync.cloud_only_releases"]
 comment = "Disconnect-sync confirmation: how many releases are stored only in the cloud and will become unplayable. The UI appends this to its own base 'this will stop syncing' sentence."
@@ -3198,6 +3304,7 @@ ro = "{count, plural, one {# ediție este stocată doar în cloud. Va deveni ner
 el = "{count, plural, one {# κυκλοφορία είναι αποθηκευμένη μόνο στο cloud. Δεν θα μπορεί να αναπαραχθεί μέχρι να επανασυνδεθείτε.} other {# κυκλοφορίες είναι αποθηκευμένες μόνο στο cloud. Δεν θα μπορούν να αναπαραχθούν μέχρι να επανασυνδεθείτε.}}"
 pt-PT = "{count, plural, one {# edição está guardada apenas na nuvem. Ficará impossível de reproduzir até se voltar a ligar.} other {# edições estão guardadas apenas na nuvem. Ficarão impossíveis de reproduzir até se voltar a ligar.}}"
 sv = "{count, plural, one {# utgåva finns bara i molnet. Den går inte att spela förrän du ansluter igen.} other {# utgåvor finns bara i molnet. De går inte att spela förrän du ansluter igen.}}"
+da = "{count, plural, one {# udgivelse findes kun i skyen. Den kan ikke afspilles, før du forbinder igen.} other {# udgivelser findes kun i skyen. De kan ikke afspilles, før du forbinder igen.}}"
 [messages."core.import.triage.already_in_library"]
 comment = "Import triage row: the matched release (or its album) is already in the library."
 value = "Already in your library"
@@ -3227,6 +3334,7 @@ ro = "Deja în biblioteca ta"
 el = "Ήδη στη βιβλιοθήκη σας"
 pt-PT = "Já está na sua biblioteca"
 sv = "Finns redan i ditt bibliotek"
+da = "Allerede i dit bibliotek"
 [messages."core.import.triage.several_matches"]
 comment = "Import triage row: how many pressings matched, so the user picks one."
 args = { count = "Int" }
@@ -3257,6 +3365,7 @@ ro = "{count, plural, one {# potrivire} few {# potriviri} other {# de potriviri}
 el = "{count, plural, one {# αντιστοίχιση} other {# αντιστοιχίσεις}}"
 pt-PT = "{count, plural, one {# correspondência} other {# correspondências}}"
 sv = "{count, plural, one {# träff} other {# träffar}}"
+da = "{count, plural, one {# match} other {# match}}"
 [messages."core.import.triage.no_match"]
 comment = "Import triage row: both signals ran and matched nothing anywhere."
 value = "Nothing matched this folder"
@@ -3286,6 +3395,7 @@ ro = "Nimic nu s-a potrivit cu acest dosar"
 el = "Τίποτα δεν ταίριαξε με αυτόν τον φάκελο"
 pt-PT = "Nada correspondeu a esta pasta"
 sv = "Ingenting matchade den här mappen"
+da = "Intet passede til denne mappe"
 [messages."core.import.triage.lookup_failed"]
 comment = "Import triage: an automatic metadata-provider lookup failed and awaits an explicit retry."
 value = "Online lookup failed"
@@ -3315,6 +3425,7 @@ ro = "Căutarea online a eșuat"
 el = "Η διαδικτυακή αναζήτηση απέτυχε"
 pt-PT = "A pesquisa online falhou"
 sv = "Sökningen på nätet misslyckades"
+da = "Onlineopslaget mislykkedes"
 [messages."core.import.triage.nothing_to_look_up"]
 comment = "Import triage row: no disc-ID artifact and no barcode source, so no lookup ran."
 value = "No disc ID and no barcode to look up"
@@ -3344,6 +3455,7 @@ ro = "Niciun ID de disc și niciun cod de bare de căutat"
 el = "Δεν υπάρχει ID δίσκου ούτε γραμμωτός κώδικας για αναζήτηση"
 pt-PT = "Não há ID de disco nem código de barras para procurar"
 sv = "Inget skiv-ID och ingen streckkod att slå upp"
+da = "Der er intet disk-id og ingen stregkode at slå op"
 [messages."core.import.triage.track_count_disagrees"]
 comment = "Import triage row: the folder and the release disagree on how many tracks there are."
 args = { local = "Int", source = "Int" }
@@ -3374,6 +3486,7 @@ ro = "Piese: {local} în dosar, {source} pe ediție"
 el = "Κομμάτια: {local} στον φάκελο, {source} στην κυκλοφορία"
 pt-PT = "Faixas: {local} na pasta, {source} na edição"
 sv = "Spår: {local} i mappen, {source} på utgåvan"
+da = "Spor: {local} i mappen, {source} på udgivelsen"
 [messages."core.import.triage.durations_disagree"]
 comment = "Import triage row: the folder and the release disagree on total length. Both values are durations the UI formatted for its own locale first."
 args = { probed = "Str", source = "Str" }
@@ -3404,6 +3517,7 @@ ro = "Durată: {probed} în dosar, {source} pe ediție"
 el = "Διάρκεια: {probed} στον φάκελο, {source} στην κυκλοφορία"
 pt-PT = "Duração: {probed} na pasta, {source} na edição"
 sv = "Längd: {probed} i mappen, {source} på utgåvan"
+da = "Længde: {probed} i mappen, {source} på udgivelsen"
 [messages."core.import.triage.source_lengths_unknown"]
 comment = "Import triage row: the release lists no track lengths, so the total cannot be checked."
 value = "The release states no track lengths"
@@ -3433,6 +3547,7 @@ ro = "Ediția nu indică durate ale pieselor"
 el = "Η κυκλοφορία δεν αναφέρει διάρκειες κομματιών"
 pt-PT = "A edição não indica durações das faixas"
 sv = "Utgåvan anger inga spårlängder"
+da = "Udgivelsen angiver ingen sporlængder"
 [messages."core.import.triage.local_duration_unknown"]
 comment = "Import triage row: the folder audio would not probe, so there is no local total to compare."
 value = "Could not read the track lengths in the folder"
@@ -3462,6 +3577,7 @@ ro = "Nu s-au putut citi duratele pieselor din dosar"
 el = "Δεν ήταν δυνατή η ανάγνωση των διαρκειών των κομματιών στον φάκελο"
 pt-PT = "Não foi possível ler as durações das faixas na pasta"
 sv = "Kunde inte läsa spårlängderna i mappen"
+da = "Sporlængderne i mappen kunne ikke læses"
 
 [messages."ui.import.sheet.choose_audio"]
 comment = "Import file pane: label of the control that binds a track sheet to one of the folder's audio files, shown when the sheet describes nothing yet."
@@ -3492,6 +3608,7 @@ ro = "Alege audio…"
 el = "Επιλογή ήχου…"
 pt-PT = "Escolher áudio…"
 sv = "Välj ljud…"
+da = "Vælg lyd…"
 
 [messages."ui.import.sheet.describes_nothing"]
 comment = "Import file pane: the choice that clears a track sheet's binding, leaving it describing nothing. Listed alongside the folder's audio files in the sheet's picker."
@@ -3522,6 +3639,7 @@ ro = "Nu descrie nimic"
 el = "Δεν περιγράφει τίποτα"
 pt-PT = "Não descreve nada"
 sv = "Beskriver ingenting"
+da = "Beskriver intet"
 
 [messages."ui.import.sheet.asked_for"]
 comment = "Import file pane: what an unbound track sheet's FILE directive named, shown next to \u201cDescribes nothing yet\u201d so the user can see what the sheet was looking for. {names} is a comma-joined list of filenames."
@@ -3553,6 +3671,7 @@ ro = "S-a cerut {names}"
 el = "Ζητήθηκε {names}"
 pt-PT = "Pediu {names}"
 sv = "Efterfrågade {names}"
+da = "Bad om {names}"
 
 # ── The mapping pane ─────────────────────────────────────────────────────────
 # One surface where a folder becomes a release: the release header, the file
@@ -3589,6 +3708,7 @@ ro = "Dosar de rețea. Modificările făcute pe alte computere sunt verificate l
 el = "Φάκελος δικτύου. Οι αλλαγές που γίνονται σε άλλους υπολογιστές ελέγχονται κάθε {minutes} λεπτά."
 pt-PT = "Pasta de rede. As alterações feitas noutros computadores são verificadas a cada {minutes} minutos."
 sv = "Nätverksmapp. Ändringar som görs på andra datorer kontrolleras var {minutes}:e minut."
+da = "Netværksmappe. Ændringer foretaget på andre computere kontrolleres hvert {minutes}. minut."
 
 [messages."ui.import.scan.activity"]
 comment = "Import filter bar, short hover label for the indeterminate activity control shown while watched folders are being scanned."
@@ -3619,6 +3739,7 @@ ro = "Se scanează dosarele"
 el = "Σάρωση φακέλων"
 pt-PT = "A analisar pastas"
 sv = "Genomsöker mappar"
+da = "Scanner mapper"
 
 [messages."ui.import.scan.found"]
 comment = "Import folder-scan activity: live number of candidates found in the active scan generation."
@@ -3650,6 +3771,7 @@ ro = "{count} găsite"
 el = "{count} βρέθηκαν"
 pt-PT = "{count} encontrados"
 sv = "{count} hittade"
+da = "{count} fundet"
 
 [messages."core.import.evidence.barcode_in_image"]
 comment = "Import pane, hover over an artwork thumbnail: identification matched the release on a barcode read off this image ({value} is the barcode digits)."
@@ -3681,6 +3803,7 @@ ro = "Ediția a fost identificată automat din codul de bare {value} din aceast�
 el = "Η κυκλοφορία ταυτοποιήθηκε αυτόματα από τον γραμμωτό κώδικα {value} σε αυτή την εικόνα"
 pt-PT = "A edição foi identificada automaticamente a partir do código de barras {value} nesta imagem"
 sv = "Utgåvan identifierades automatiskt från streckkoden {value} i den här bilden"
+da = "Udgivelsen blev automatisk identificeret ud fra stregkoden {value} på dette billede"
 
 [messages."core.import.evidence.disc_id_from_file"]
 comment = "Import pane, hover over a rip log or cue sheet row: identification matched the release on a disc ID computed from this file ({value} is the disc ID)."
@@ -3712,6 +3835,7 @@ ro = "Ediția a fost identificată automat din ID-ul de disc {value} din acest f
 el = "Η κυκλοφορία ταυτοποιήθηκε αυτόματα από το ID δίσκου {value} από αυτό το αρχείο"
 pt-PT = "A edição foi identificada automaticamente a partir do ID de disco {value} deste ficheiro"
 sv = "Utgåvan identifierades automatiskt från skiv-ID:t {value} från den här filen"
+da = "Udgivelsen blev automatisk identificeret ud fra disk-id'et {value} fra denne fil"
 
 [messages."core.import.role.audio"]
 comment = "Import roles table, Role column: the file is playable audio. Also the label of the option that puts a file back among the release's tracks after it was taken out."
@@ -3742,6 +3866,7 @@ ro = "Audio"
 el = "Ήχος"
 pt-PT = "Áudio"
 sv = "Ljud"
+da = "Lyd"
 
 [messages."core.import.role.track_sheet"]
 comment = "Import roles table, Role column: a parsed CUE sheet, which carves the release's tracks out of the audio it names."
@@ -3772,6 +3897,7 @@ ro = "Foaie de piese"
 el = "Φύλλο κομματιών"
 pt-PT = "Folha de faixas"
 sv = "Spårark"
+da = "Sporark"
 
 [messages."core.import.role.cover"]
 comment = "Import roles table, Role column: the image that leads the release."
@@ -3802,6 +3928,7 @@ ro = "Copertă"
 el = "Εξώφυλλο"
 pt-PT = "Capa"
 sv = "Omslag"
+da = "Omslag"
 
 [messages."core.import.role.artwork"]
 comment = "Import roles table, Role column: any image in the folder other than the one that leads the release."
@@ -3832,6 +3959,7 @@ ro = "Grafică"
 el = "Γραφικά"
 pt-PT = "Imagem"
 sv = "Grafik"
+da = "Grafik"
 
 [messages."core.import.role.document"]
 comment = "Import roles table, Role column: readable evidence carried with the release — a rip log, a tracklist, a playlist."
@@ -3862,6 +3990,7 @@ ro = "Document"
 el = "Έγγραφο"
 pt-PT = "Documento"
 sv = "Dokument"
+da = "Dokument"
 
 [messages."core.import.role.other"]
 comment = "Import roles table, Role column: a file in the folder bae does not recognize — a scene sidecar, a stray video, a file with no extension. It is still carried with the release."
@@ -3892,6 +4021,7 @@ ro = "Altele"
 el = "Άλλο"
 pt-PT = "Outro"
 sv = "Övrigt"
+da = "Andet"
 
 [messages."core.import.role.not_a_track"]
 comment = "Import roles table: the option that takes an audio file out of the release's tracklist. The file is still imported and stored with the release — it just stops being one of the tracks."
@@ -3922,6 +4052,7 @@ ro = "Nu e piesă"
 el = "Δεν είναι κομμάτι"
 pt-PT = "Não é faixa"
 sv = "Inte ett spår"
+da = "Ikke et spor"
 
 [messages."core.import.becomes.slot"]
 comment = "Import roles table, Becomes column: this file backs exactly one of the release's track slots. {slot} counts the release's slots from one."
@@ -3953,6 +4084,7 @@ ro = "poziția {slot}"
 el = "θέση {slot}"
 pt-PT = "posição {slot}"
 sv = "plats {slot}"
+da = "plads {slot}"
 
 [messages."core.import.becomes.slots"]
 comment = "Import roles table, Becomes column: this file backs a run of the release's track slots — a bound track sheet carving several tracks out of one container. {first} and {last} count the release's slots from one and are inclusive."
@@ -3984,6 +4116,7 @@ ro = "pozițiile {first}–{last}"
 el = "θέσεις {first}–{last}"
 pt-PT = "posições {first}–{last}"
 sv = "platserna {first}–{last}"
+da = "pladserne {first}–{last}"
 
 [messages."core.import.becomes.not_a_track"]
 comment = "Import roles table, Becomes column: this file backs none of the release's track slots. It is still carried with the release — an image, a document, an unbound track sheet, the container a bound sheet carves its slots out of, or a file somebody took out of the tracklist."
@@ -4014,6 +4147,7 @@ ro = "nu e piesă"
 el = "δεν είναι κομμάτι"
 pt-PT = "não é faixa"
 sv = "inte ett spår"
+da = "ikke et spor"
 
 [messages."core.import.reconciliation.more_files"]
 comment = "Import slot table, the line above it: the folder holds more audio than the release's tracklist names, so some rows have no track behind them. Stated, never blocking."
@@ -4045,6 +4179,7 @@ ro = "{files} fișiere, {tracks} piese: audio pe care ediția nu îl numește"
 el = "{files} αρχεία, {tracks} κομμάτια: ήχος που δεν κατονομάζει η κυκλοφορία"
 pt-PT = "{files} ficheiros, {tracks} faixas: áudio que a edição não nomeia"
 sv = "{files} filer, {tracks} spår: ljud som utgåvan inte namnger"
+da = "{files} filer, {tracks} spor: lyd, som udgivelsen ikke nævner"
 
 [messages."core.import.reconciliation.more_tracks"]
 comment = "Import slot table, the line above it: the release's tracklist names more tracks than the folder holds audio for, so some rows have no file behind them. Stated, never blocking."
@@ -4076,6 +4211,7 @@ ro = "{files} fișiere, {tracks} piese: piese fără audio"
 el = "{files} αρχεία, {tracks} κομμάτια: κομμάτια χωρίς ήχο"
 pt-PT = "{files} ficheiros, {tracks} faixas: faixas sem áudio"
 sv = "{files} filer, {tracks} spår: spår utan ljud"
+da = "{files} filer, {tracks} spor: spor uden lyd"
 
 [messages."ui.import.roles.column.role"]
 comment = "Import roles table: column header over the job each file does."
@@ -4106,6 +4242,7 @@ ro = "Rol"
 el = "Ρόλος"
 pt-PT = "Papel"
 sv = "Roll"
+da = "Rolle"
 
 [messages."ui.import.slots.column.length"]
 comment = "Import slot table: column header over the two lengths on each row — the file's own, probed from disk, over the one the release states."
@@ -4136,6 +4273,7 @@ ro = "Durată"
 el = "Διάρκεια"
 pt-PT = "Duração"
 sv = "Längd"
+da = "Længde"
 
 [messages."ui.import.slots.choose_file"]
 comment = "Import slot table: the leading action on a row the release names but no audio backs — pick one of the folder's files for it."
@@ -4166,6 +4304,7 @@ ro = "Alege fișierul…"
 el = "Επιλογή αρχείου…"
 pt-PT = "Escolher ficheiro…"
 sv = "Välj fil…"
+da = "Vælg fil…"
 
 [messages."ui.import.slots.drop"]
 comment = "Import slot table: the second action on a row the release names but no audio backs — leave the row out of the import entirely."
@@ -4196,6 +4335,7 @@ ro = "Renunță"
 el = "Απόρριψη"
 pt-PT = "Deixar de fora"
 sv = "Utelämna"
+da = "Udelad"
 
 [messages."ui.import.slots.exclude"]
 comment = "Import slot table: the action on a row backed by audio the release does not name — take the file out of the tracklist. It is still stored with the release."
@@ -4226,6 +4366,7 @@ ro = "Exclude"
 el = "Εξαίρεση"
 pt-PT = "Excluir"
 sv = "Uteslut"
+da = "Udelad"
 
 [messages."ui.import.slots.exclude_help"]
 comment = "Import mapping table: tooltip on the X of a row backed by audio the release does not name — what excluding the file does."
@@ -4256,6 +4397,7 @@ ro = "Scoate acest fișier din lista de piese; rămâne la Fișiere."
 el = "Βγάλτε αυτό το αρχείο από τη λίστα κομματιών· παραμένει στα Αρχεία."
 pt-PT = "Retire este ficheiro da lista de faixas; continua em Ficheiros."
 sv = "Ta ut den här filen ur spårlistan; den ligger kvar under Filer."
+da = "Tag denne fil ud af sporlisten; den bliver under Filer."
 
 [messages."ui.import.slots.drop_help"]
 comment = "Import mapping table: tooltip on the X of a row the release names but no audio backs — what dropping the track does."
@@ -4286,6 +4428,7 @@ ro = "Lasă această piesă deoparte — acest dosar nu are audio pentru ea."
 el = "Αφήστε αυτό το κομμάτι εκτός — αυτός ο φάκελος δεν έχει ήχο γι’ αυτό."
 pt-PT = "Deixe esta faixa de fora — esta pasta não tem áudio para ela."
 sv = "Utelämna det här spåret — den här mappen har inget ljud för det."
+da = "Udelad dette spor — denne mappe har ingen lyd til det."
 
 [messages."ui.import.slots.put_back"]
 comment = "Import roles table: the action that puts a file the user took out back among the release's tracks."
@@ -4316,6 +4459,7 @@ ro = "Pune la loc"
 el = "Επαναφορά"
 pt-PT = "Repor"
 sv = "Lägg tillbaka"
+da = "Sæt tilbage"
 
 [messages."ui.import.slots.play"]
 comment = "Import slot table: play the audio behind this row."
@@ -4346,6 +4490,7 @@ ro = "Redă"
 el = "Αναπαραγωγή"
 pt-PT = "Reproduzir"
 sv = "Spela"
+da = "Afspil"
 
 [messages."ui.import.slots.stop"]
 comment = "Import slot table: stop the audio playing from this row."
@@ -4376,6 +4521,7 @@ ro = "Oprește"
 el = "Διακοπή"
 pt-PT = "Parar"
 sv = "Stoppa"
+da = "Stop"
 
 [messages."ui.import.slots.untitled"]
 comment = "Import slot table: placeholder in the title field of a row nobody has named yet. Committing without a name titles the track after its file."
@@ -4406,6 +4552,7 @@ ro = "Fără titlu"
 el = "Χωρίς τίτλο"
 pt-PT = "Sem título"
 sv = "Namnlös"
+da = "Uden titel"
 
 [messages."ui.import.slots.no_file"]
 comment = "Import slot table: shown in the file column of a row the release names but no audio backs."
@@ -4436,6 +4583,7 @@ ro = "Niciun fișier"
 el = "Κανένα αρχείο"
 pt-PT = "Sem ficheiro"
 sv = "Ingen fil"
+da = "Ingen fil"
 
 [messages."ui.import.commit.unanswered"]
 comment = "Import commit bar: how many rows nobody has named yet. Stated, never blocking — committing anyway titles each of them after its file."
@@ -4467,6 +4615,7 @@ ro = "{count, plural, one {# rând tot nu are nume} few {# rânduri tot nu au nu
 el = "{count, plural, one {# γραμμή δεν έχει ακόμη όνομα} other {# γραμμές δεν έχουν ακόμη όνομα}}"
 pt-PT = "{count, plural, one {# linha continua sem nome} other {# linhas continuam sem nome}}"
 sv = "{count, plural, one {# rad saknar fortfarande namn} other {# rader saknar fortfarande namn}}"
+da = "{count, plural, one {# række mangler stadig et navn} other {# rækker mangler stadig et navn}}"
 
 [messages."ui.import.metadata.title"]
 comment = "Import mapping pane: heading of the section holding the release the folder is being read as and where that reading comes from."
@@ -4497,6 +4646,7 @@ ro = "Metadate"
 el = "Μεταδεδομένα"
 pt-PT = "Metadados"
 sv = "Metadata"
+da = "Metadata"
 
 [messages."ui.import.artist_identity_conflict.explanation"]
 comment = "Import artist identity conflict: explanation above the two survivor choices."
@@ -4527,6 +4677,7 @@ ro = "Această identitate din sursă este legată de doi artiști din biblioteca
 el = "Αυτή η ταυτότητα πηγής συνδέεται με δύο καλλιτέχνες στη βιβλιοθήκη σας. Επιλέξτε την εγγραφή που θα διατηρηθεί· τα άλμπουμ, τα κομμάτια, οι συντελεστές και οι σύνδεσμοι πηγής της θα συνενωθούν με την άλλη εγγραφή."
 pt-PT = "Esta identidade de origem está associada a dois artistas na sua biblioteca. Escolha o registo a manter; os álbuns, faixas, créditos e ligações de origem dele serão combinados com o outro registo."
 sv = "Den här källidentiteten är länkad till två artister i ditt bibliotek. Välj posten som ska behållas; dess album, spår, medverkanden och källänkar slås ihop med den andra posten."
+da = "Denne kildeidentitet er knyttet til to kunstnere i dit bibliotek. Vælg den post, der skal beholdes; dens album, spor, medvirkende og kildelinks lægges sammen med den anden post."
 
 [messages."ui.import.artist_identity_conflict.keep_discogs"]
 comment = "Import artist identity conflict: button choosing the existing Discogs-linked artist record as the survivor."
@@ -4557,6 +4708,7 @@ ro = "Păstrează artistul Discogs"
 el = "Διατήρηση του καλλιτέχνη Discogs"
 pt-PT = "Manter o artista do Discogs"
 sv = "Behåll Discogs-artisten"
+da = "Behold Discogs-kunstneren"
 
 [messages."ui.import.artist_identity_conflict.keep_musicbrainz"]
 comment = "Import artist identity conflict: button choosing the existing MusicBrainz-linked artist record as the survivor."
@@ -4587,6 +4739,7 @@ ro = "Păstrează artistul MusicBrainz"
 el = "Διατήρηση του καλλιτέχνη MusicBrainz"
 pt-PT = "Manter o artista do MusicBrainz"
 sv = "Behåll MusicBrainz-artisten"
+da = "Behold MusicBrainz-kunstneren"
 
 [messages."ui.import.metadata.file_tags"]
 comment = "Import metadata control: take the metadata from the folder's own audio files — their embedded tags, or the track sheets they come with. One of three presentation modes."
@@ -4617,6 +4770,7 @@ ro = "Etichetele fișierului"
 el = "Ετικέτες αρχείου"
 pt-PT = "Etiquetas do ficheiro"
 sv = "Filtaggar"
+da = "Filmærker"
 
 [messages."ui.import.metadata.from_file_tags"]
 comment = "Import metadata card: where the selected metadata came from when it was read from the folder's embedded audio-file tags."
@@ -4647,6 +4801,7 @@ ro = "Din etichetele fișierului"
 el = "Από τις ετικέτες αρχείου"
 pt-PT = "A partir das etiquetas do ficheiro"
 sv = "Från filtaggar"
+da = "Fra filmærker"
 
 [messages."ui.import.mapping.tracks_title"]
 comment = "Import mapping, section heading over the release's tracks."
@@ -4677,6 +4832,7 @@ ro = "Piese"
 el = "Κομμάτια"
 pt-PT = "Faixas"
 sv = "Spår"
+da = "Spor"
 
 [messages."ui.import.mapping.files_title"]
 comment = "Import mapping, section heading over the folder's other files: documents, logs, anything carried with the release but not one of its tracks."
@@ -4707,6 +4863,7 @@ ro = "Fișiere"
 el = "Αρχεία"
 pt-PT = "Ficheiros"
 sv = "Filer"
+da = "Filer"
 
 [messages."ui.import.mapping.column.title"]
 comment = "Import mapping, Tracks section column header: the track's title."
@@ -4737,6 +4894,7 @@ ro = "Titlu"
 el = "Τίτλος"
 pt-PT = "Título"
 sv = "Titel"
+da = "Titel"
 
 [messages."ui.import.mapping.column.artist"]
 comment = "Import mapping, Tracks section column header: the track's artist."
@@ -4767,6 +4925,7 @@ ro = "Artist"
 el = "Καλλιτέχνης"
 pt-PT = "Artista"
 sv = "Artist"
+da = "Kunstner"
 
 [messages."ui.import.mapping.column.name"]
 comment = "Import mapping, Files section column header: the file's own name on disk."
@@ -4797,6 +4956,7 @@ ro = "Nume"
 el = "Όνομα"
 pt-PT = "Nome"
 sv = "Namn"
+da = "Navn"
 
 [messages."ui.import.mapping.column.source"]
 comment = "Import mapping table: column header over what the folder offers for each row — a file, or one entry of a track sheet."
@@ -4827,6 +4987,7 @@ ro = "Sursă"
 el = "Πηγή"
 pt-PT = "Fonte"
 sv = "Källa"
+da = "Kilde"
 
 [messages."ui.import.sheet.disc"]
 comment = "Import mapping table: which disc of the release a track sheet's entries are. Cue filenames are arbitrary, so this is a decision rather than something read off a name."
@@ -4858,6 +5019,7 @@ ro = "Discul {number}"
 el = "Δίσκος {number}"
 pt-PT = "Disco {number}"
 sv = "Skiva {number}"
+da = "Disk {number}"
 
 [messages."ui.import.sheet.ignored"]
 comment = "Import mapping table: the disc assignment that takes a track sheet's entries out of the tracklist entirely. Its container becomes loose audio again."
@@ -4888,6 +5050,7 @@ ro = "Ignorat"
 el = "Αγνοήθηκε"
 pt-PT = "Ignorado"
 sv = "Ignorerad"
+da = "Ignoreret"
 
 [messages."ui.import.sheet.disc_help"]
 comment = "Import mapping table: tooltip on the disc-assignment control of a track sheet."
@@ -4918,6 +5081,7 @@ ro = "Cărui disc al ediției îi aparțin intrările acestei foi"
 el = "Σε ποιον δίσκο της κυκλοφορίας αντιστοιχούν οι καταχωρίσεις αυτού του φύλλου"
 pt-PT = "A que disco da edição pertencem as entradas desta folha"
 sv = "Vilken skiva i utgåvan det här arkets poster tillhör"
+da = "Hvilken disk i udgivelsen dette arks poster hører til"
 
 [messages."ui.import.becomes.awaiting_pick"]
 comment = "Import mapping table, Becomes column: no release has been picked yet, so what this row's audio becomes is still the open question."
@@ -4948,6 +5112,7 @@ ro = "Așteaptă o ediție"
 el = "Αναμονή για κυκλοφορία"
 pt-PT = "À espera de uma edição"
 sv = "Väntar på en utgåva"
+da = "Venter på en udgivelse"
 
 [messages."core.pairing.join.waiting_for_approval"]
 comment = "Joining device: waiting for the existing device to approve it."
@@ -4977,6 +5142,7 @@ ro = "Se așteaptă aprobarea…"
 el = "Αναμονή έγκρισης…"
 pt-PT = "À espera de aprovação…"
 sv = "Väntar på godkännande…"
+da = "Venter på godkendelse…"
 
 [messages."core.pairing.join.requesting_provider_access"]
 comment = "Joining device: requesting access to the library's cloud provider."
@@ -5006,6 +5172,7 @@ ro = "Se solicită accesul la cloud…"
 el = "Αίτημα πρόσβασης στο cloud…"
 pt-PT = "A pedir acesso à nuvem…"
 sv = "Begär molnåtkomst…"
+da = "Anmoder om skyadgang…"
 
 [messages."core.pairing.join.waiting_for_provider_access"]
 comment = "Joining device: waiting for the existing device to grant cloud-provider access."
@@ -5035,6 +5202,7 @@ ro = "Se așteaptă accesul la cloud…"
 el = "Αναμονή πρόσβασης στο cloud…"
 pt-PT = "À espera de acesso à nuvem…"
 sv = "Väntar på molnåtkomst…"
+da = "Venter på skyadgang…"
 
 [messages."core.pairing.registering_device"]
 comment = "Device pairing: registering the joining device in the library membership."
@@ -5064,6 +5232,7 @@ ro = "Se înregistrează dispozitivul…"
 el = "Καταχώριση συσκευής…"
 pt-PT = "A registar o dispositivo…"
 sv = "Registrerar enheten…"
+da = "Registrerer enheden…"
 
 [messages."core.pairing.join.waiting_for_library"]
 comment = "Joining device: waiting for the existing device to prepare the library."
@@ -5093,6 +5262,7 @@ ro = "Se așteaptă biblioteca…"
 el = "Αναμονή για τη βιβλιοθήκη…"
 pt-PT = "À espera da biblioteca…"
 sv = "Väntar på biblioteket…"
+da = "Venter på biblioteket…"
 
 [messages."core.pairing.join.downloading_snapshot"]
 comment = "Joining device: downloading the library database snapshot."
@@ -5122,6 +5292,7 @@ ro = "Se descarcă instantaneul bibliotecii…"
 el = "Λήψη στιγμιότυπου βιβλιοθήκης…"
 pt-PT = "A transferir a cópia da biblioteca…"
 sv = "Hämtar bibliotekets ögonblicksbild…"
+da = "Henter bibliotekets øjebliksbillede…"
 
 [messages."core.pairing.join.installing_snapshot"]
 comment = "Joining device: installing the downloaded library database snapshot."
@@ -5151,6 +5322,7 @@ ro = "Se instalează instantaneul bibliotecii…"
 el = "Εγκατάσταση στιγμιότυπου βιβλιοθήκης…"
 pt-PT = "A instalar a cópia da biblioteca…"
 sv = "Installerar bibliotekets ögonblicksbild…"
+da = "Installerer bibliotekets øjebliksbillede…"
 
 [messages."core.pairing.join.waiting_for_activation"]
 comment = "Joining device: waiting for the existing device to activate it."
@@ -5180,6 +5352,7 @@ ro = "Se așteaptă activarea…"
 el = "Αναμονή ενεργοποίησης…"
 pt-PT = "À espera da ativação…"
 sv = "Väntar på aktivering…"
+da = "Venter på aktivering…"
 
 [messages."core.pairing.join.catching_up"]
 comment = "Joining device: applying library changes made after the snapshot."
@@ -5209,6 +5382,7 @@ ro = "Se recuperează modificările bibliotecii…"
 el = "Ενημέρωση με τις αλλαγές της βιβλιοθήκης…"
 pt-PT = "A pôr em dia as alterações da biblioteca…"
 sv = "Hämtar ikapp bibliotekets ändringar…"
+da = "Indhenter bibliotekets ændringer…"
 
 [messages."core.pairing.join.saving_library"]
 comment = "Joining device: saving the joined library on this device."
@@ -5238,6 +5412,7 @@ ro = "Se salvează biblioteca…"
 el = "Αποθήκευση βιβλιοθήκης…"
 pt-PT = "A guardar a biblioteca…"
 sv = "Sparar biblioteket…"
+da = "Gemmer biblioteket…"
 
 [messages."core.pairing.admit.preparing_invitation"]
 comment = "Existing device: preparing the sealed invitation for the joining device."
@@ -5267,6 +5442,7 @@ ro = "Se pregătește invitația…"
 el = "Προετοιμασία πρόσκλησης…"
 pt-PT = "A preparar o convite…"
 sv = "Förbereder inbjudan…"
+da = "Forbereder invitationen…"
 
 [messages."core.pairing.admit.waiting_for_provider_access_request"]
 comment = "Existing device: waiting for the joining device's cloud-access request."
@@ -5296,6 +5472,7 @@ ro = "Se așteaptă cererea de acces la cloud…"
 el = "Αναμονή αιτήματος πρόσβασης στο cloud…"
 pt-PT = "À espera do pedido de acesso à nuvem…"
 sv = "Väntar på begäran om molnåtkomst…"
+da = "Venter på anmodning om skyadgang…"
 
 [messages."core.pairing.admit.granting_provider_access"]
 comment = "Existing device: granting the joining device access to the cloud provider."
@@ -5325,6 +5502,7 @@ ro = "Se acordă accesul la cloud…"
 el = "Παραχώρηση πρόσβασης στο cloud…"
 pt-PT = "A conceder acesso à nuvem…"
 sv = "Ger molnåtkomst…"
+da = "Giver skyadgang…"
 
 [messages."core.pairing.admit.waiting_for_registration_request"]
 comment = "Existing device: waiting for the joining device's signed registration request."
@@ -5354,6 +5532,7 @@ ro = "Se așteaptă cererea de înregistrare a dispozitivului…"
 el = "Αναμονή αιτήματος καταχώρισης συσκευής…"
 pt-PT = "À espera do pedido de registo do dispositivo…"
 sv = "Väntar på begäran om enhetsregistrering…"
+da = "Venter på anmodning om enhedsregistrering…"
 
 [messages."core.pairing.admit.preparing_library"]
 comment = "Existing device: preparing the library snapshot and pinned-file manifest for the joining device."
@@ -5383,6 +5562,7 @@ ro = "Se pregătește biblioteca…"
 el = "Προετοιμασία βιβλιοθήκης…"
 pt-PT = "A preparar a biblioteca…"
 sv = "Förbereder biblioteket…"
+da = "Forbereder biblioteket…"
 
 [messages."core.pairing.admit.waiting_for_joining_device"]
 comment = "Existing device: waiting while the joining device downloads and installs the library."
@@ -5412,6 +5592,7 @@ ro = "Se așteaptă dispozitivul care se alătură…"
 el = "Αναμονή για τη συσκευή που συνδέεται…"
 pt-PT = "À espera do dispositivo que está a aderir…"
 sv = "Väntar på enheten som ansluter sig…"
+da = "Venter på den enhed, der deltager…"
 
 [messages."core.pairing.admit.activating_device"]
 comment = "Existing device: activating the joining device after it reports readiness."
@@ -5441,6 +5622,7 @@ ro = "Se activează dispozitivul…"
 el = "Ενεργοποίηση συσκευής…"
 pt-PT = "A ativar o dispositivo…"
 sv = "Aktiverar enheten…"
+da = "Aktiverer enheden…"
 
 [messages."ui.import.folder.scan_failed"]
 comment = "Alert headline when reading a watched folder fails; {folder} is the folder's path. The failure's own untranslated text is shown beneath it."
@@ -5472,6 +5654,7 @@ ro = "Nu s-a putut scana {folder}"
 el = "Δεν ήταν δυνατή η σάρωση του {folder}"
 pt-PT = "Não foi possível analisar {folder}"
 sv = "Kunde inte genomsöka {folder}"
+da = "Kunne ikke scanne {folder}"
 
 [messages."core.playback.pause.disc_ended.title"]
 comment = "Alert title shown when playback pauses after a CD ends ({label} is the disc number)."
@@ -5503,6 +5686,7 @@ ro = "Discul {label} s-a terminat"
 el = "Ο δίσκος {label} τελείωσε"
 pt-PT = "O disco {label} terminou"
 sv = "Skiva {label} är slut"
+da = "Disk {label} er slut"
 
 [messages."core.playback.pause.disc_ended.message.cd"]
 comment = "Alert body shown when playback pauses between CDs."
@@ -5533,3 +5717,4 @@ ro = "Redarea este în pauză între discuri. Schimbă CD-ul, apoi apasă Redă.
 el = "Η αναπαραγωγή είναι σε παύση ανάμεσα στους δίσκους. Αλλάξτε το CD και πατήστε Αναπαραγωγή."
 pt-PT = "A reprodução está em pausa entre discos. Troque o CD e prima Reproduzir."
 sv = "Uppspelningen pausades mellan skivorna. Byt CD och tryck på Spela."
+da = "Afspilningen er sat på pause mellem diskene. Skift cd, og tryk på Afspil."

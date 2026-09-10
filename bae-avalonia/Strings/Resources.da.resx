@@ -1,0 +1,544 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Søg</value></data>
+  <data name="toolbar.libraries" xml:space="preserve"><value>biblioteker</value></data>
+  <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>bland biblioteket</value></data>
+  <data name="toolbar.storage" xml:space="preserve"><value>lagring</value></data>
+  <data name="toolbar.settings" xml:space="preserve"><value>indstillinger</value></data>
+  <data name="action.cancel" xml:space="preserve"><value>Annuller</value></data>
+  <data name="action.close" xml:space="preserve"><value>Luk</value></data>
+  <data name="action.delete" xml:space="preserve"><value>Slet</value></data>
+  <data name="action.import" xml:space="preserve"><value>Importer</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
+  <data name="action.play" xml:space="preserve"><value>Afspil</value></data>
+  <data name="action.save" xml:space="preserve"><value>Gem</value></data>
+  <data name="action.search" xml:space="preserve"><value>søg</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>Dette fjerner udgivelsen fra biblioteket.</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>kunne ikke slettes</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>slet udgivelsen?</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>rediger</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>metadataeditoren kunne ikke indlæses</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>Nulstil til kilden</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>kunne ikke nulstilles til kilden</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>rediger metadata</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>dette album kunne ikke åbnes</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>identificer igen</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>Identificer igen</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>identificer igen</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>Udgivelse</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>bland</value></data>
+  <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
+  <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
+  <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
+  <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>skylogin mislykkedes</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>logger ind på {provider}…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>skylogin er ikke konfigureret i denne version (ingen oauth-creds.json)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>denne version understøtter ikke synkronisering med {provider}</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>skift omslag</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>fjernomslagene kunne ikke hentes</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>henter omslag…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>denne udgivelses billeder kunne ikke indlæses</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Der er intet omslag til rådighed. Importen bruger standardomslaget.</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>Der blev ikke fundet nogen fjernomslag</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>Vælg et omslag, eller lad det stå tomt for at bruge standardomslaget.</value></data>
+  <data name="cover.refresh" xml:space="preserve"><value>Opdater</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>Udgivelsens filer</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>Fjernkilder</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>Omslag</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>fjernomslagene kunne ikke vises: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>tilbage</value></data>
+  <data name="action.copy" xml:space="preserve"><value>kopier</value></data>
+  <data name="action.done" xml:space="preserve"><value>færdig</value></data>
+  <data name="action.scan" xml:space="preserve"><value>scan…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>afspilningsfejl</value></data>
+  <data name="error.title" xml:space="preserve"><value>fejl</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>galleriet kunne ikke indlæses</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {fundet (#)} other {fundet (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>identificerer…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>kun manuel søgning</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>ikke fundet</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>denne udgivelse er allerede i dit bibliotek</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>vælg mappe, og scan</value></data>
+  <data name="import.complete" xml:space="preserve"><value>importeret</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# spor} other {# spor}}</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>scan og importer</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>slip en mappe for at importere</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>det slupne emne kunne ikke læses</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>importfejl</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>udgivelsen, der skal importeres, kunne ikke indlæses</value></data>
+  <data name="import.failed" xml:space="preserve"><value>importen mislykkedes</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>kunstner (manuel søgning)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>der blev ikke fundet nogen udgivelser</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>Filens længde stemmer ikke med udgivelsens.</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Vælg en mappe på listen for at knytte den til en udgivelse.</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Detaljer</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>importerer {percent}%</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>Kør igen</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Fastgjort</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Sky</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>vis i biblioteket</value></data>
+  <data name="join.title" xml:space="preserve"><value>deltag i et bibliotek</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Scan parringskoden, der vises på en enhed, som allerede er i dit bibliotek.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Indsæt parringskoden</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Denne parringskode er ikke gyldig.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>deltag</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>deltager i {name}…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>kunne ikke deltage i biblioteket</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  aktivt</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>nyt bibliotek</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>omdøb</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>biblioteker</value></data>
+  <data name="library.empty" xml:space="preserve"><value>Ingen album</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>biblioteket kunne ikke indlæses</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Prøv igen</value></data>
+  <data name="library.locked" xml:space="preserve"><value>biblioteket er låst</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>biblioteket kunne ikke åbnes</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>Dette bibliotek er krypteret, og dets nøgle findes ikke på denne enhed. Indtast den 64 tegn lange hexadecimale nøgle for at låse det op.</value></data>
+  <data name="library.unlock.confirm" xml:space="preserve"><value>Lås op</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64 tegn lang hexadecimal nøgle</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>lås biblioteket op</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>Føj til kø</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>Skift omslag…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>Slet…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>Eksporter…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Gem som…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Gem som</value></data>
+  <data name="menu.play" xml:space="preserve"><value>Afspil</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>Afspil som næste</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>Angiv som primær udgivelse</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>angivet som primær udgivelse</value></data>
+  <data name="members.title" xml:space="preserve"><value>enheder</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>denne enhed</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>ejer</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>medlem</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>følger</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>enhederne kunne ikke indlæses</value></data>
+  <data name="members.add" xml:space="preserve"><value>tilføj en enhed…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>fjern</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>denne enhed mister adgangen, og bibliotekets nøgle udskiftes. klik på fjern igen for at bekræfte.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>tilføj en enhed</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Scan denne kode på den enhed, der deltager i dit bibliotek.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>godkend denne enhed?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>den føjes til dit bibliotek og kan synkronisere.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>godkend</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>godkender enheden…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>denne enhed kunne ikke godkendes</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Venter på enheden…</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>gå til albummet</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>slet</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>udbakken kunne ikke indlæses</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>pause</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>udbakken kunne ikke læses</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>fortsæt</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>prøv igen nu</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>ryd</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>ryd afspilles fra</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>ryd næste</value></data>
+  <data name="queue.remove_item" xml:space="preserve"><value>Fjern fra køen</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>Afspilles fra</value></data>
+  <data name="queue.section.your_library" xml:space="preserve"><value>Dit bibliotek</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>Næste</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>slå bland fra</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>bland</value></data>
+  <data name="queue.title" xml:space="preserve"><value>kø</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>gendannelseskode</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>indsæt gendannelseskoden</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>gendan</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>gendannelsen mislykkedes</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>Gendan fra skyen</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>gendan fra skyen</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>ugyldig gendannelseskode</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>gendanner…</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>adgangsnøgle</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>S3-bucket</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>slutpunkt (valgfrit)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>nøglepræfiks (valgfrit)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>region</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>hemmelig nøgle</value></data>
+  <data name="search.failed" xml:space="preserve"><value>Søgningen mislykkedes</value></data>
+  <data name="search.field.album" xml:space="preserve"><value>album</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>kunstner</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>ingen match</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs-token</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>kontroller igen</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs afviste denne nøgle. Kontroller den, og gem igen.</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>fjern token</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>gem token</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>nøglen kunne ikke gemmes. Noget gik galt.</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API-token</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>Validerer…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause mellem sider og diske</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>Caster</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>Slå casting til</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>Afspiller til Cast-, AirPlay- og UPnP-modtagere på dit netværk. Når det er slået fra, søger bae ikke efter enheder.</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>Vil du slå casting fra?</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>Dette stopper casting til {device}.</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>Slå fra</value></data>
+  <data name="settings.library_label" xml:space="preserve"><value>Bibliotek: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>opdateringer</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>version {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Søg efter opdateringer</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>kontrollerer…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>opdateret</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>henter… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>version {version} er klar. Genstart for at opdatere</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>Genstart nu</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>der kunne ikke søges efter opdateringer</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>lås biblioteket</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>gendannelse</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>din gendannelseskode gendanner dette bibliotek på en ny enhed, når du ikke har andre enheder til at godkende den. alle med den får fuld adgang. Hold den hemmelig.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>gendannelseskode</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>vis gendannelseskode…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ikke tilgængelig: er synkroniseringen forbundet?)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>forbind S3</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>forbinder til S3…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>kan gennemses: gemt ukrypteret</value></data>
+  <data name="settings.storage.mode" xml:space="preserve"><value>lagring</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>uigennemsigtig: krypteret hele vejen</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>afbryd forbindelsen</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} klik på afbryd forbindelsen igen for at bekræfte.</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>synkroniser nu</value></data>
+  <data name="settings.title" xml:space="preserve"><value>indstillinger</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>udelad signalet</value></data>
+  <data name="signal.include" xml:space="preserve"><value>medtag signalet</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>Stregkode</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>Katalog</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>Vælg et katalognummer at slå op</value></data>
+  <data name="signal.catalog_stop_counting" xml:space="preserve"><value>Hold op med at tælle dette katalognummer</value></data>
+  <data name="signal.catalog_count_again" xml:space="preserve"><value>Tæl dette katalognummer igen</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>Disk-id</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>kunstner</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>tilføj sortering</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>skift sorteringsfelt</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>fjern sortering</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>tilføjet</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>sorter stigende</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>sorter faldende</value></data>
+  <data name="sort.name" xml:space="preserve"><value>navn</value></data>
+  <data name="sort.title" xml:space="preserve"><value>titel</value></data>
+  <data name="sort.year" xml:space="preserve"><value>år</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Flyt til skyen</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Fastgør</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Gør lokal…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Frigør</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# fil} other {# filer}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>lagringen kunne ikke indlæses</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>lagringen kunne ikke læses</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Sky</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Fastgjort</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Lokalt</value></data>
+  <data name="storage.title" xml:space="preserve"><value>lagring</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>synkroniseringsfejl</value></data>
+  <data name="sync.reconnect" xml:space="preserve"><value>Forbind igen</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Prøv igen</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>synkroniseringen venter på dig</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>biblioteksændring</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>delingsændring</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>skyoprydning</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>synkroniseret {time}</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>synkroniserer…</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>Eksporten kunne ikke forberedes.</value></data>
+  <data name="welcome.subtitle" xml:space="preserve"><value>Kom i gang med dit musikbibliotek.</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>Biblioteket kunne ikke oprettes.</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>vælg et bibliotek</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>Deltag i et bibliotek</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>Opret nyt bibliotek</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>dine biblioteker</value></data>
+  <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>forbundet</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>gemt. Kunne ikke valideres endnu (offline). vi prøver igen.</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>initialiserer</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>Synkronisering: ikke forbundet</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>klar</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Synkronisering: {provider}{account}, {state}</value></data>
+  <data name="download.title" xml:space="preserve"><value>overførsler</value></data>
+  <data name="download.paused" xml:space="preserve"><value>på pause</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>i kø</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>henter</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>mislykkedes</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>Automatisering</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>Slå MCP-serveren til</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>Port</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>opdater status</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>kopier token</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>udskift token</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCP-server: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP-serveren er slået fra</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>Ugyldig MCP-serverkonfiguration</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP-token er ikke tilgængelig</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP-serveren kunne ikke starte</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP-serveren stoppede</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>indtast en port fra 1 til 65535</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP-status er ikke tilgængelig</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP-token er ikke tilgængelig</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>token er kopieret</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>token er udskiftet og kopieret</value></data>
+  <data name="settings.subsonic.label" xml:space="preserve"><value>Subsonic</value></data>
+  <data name="settings.subsonic.enable" xml:space="preserve"><value>Slå Subsonic-serveren til</value></data>
+  <data name="settings.subsonic.port" xml:space="preserve"><value>Port</value></data>
+  <data name="settings.subsonic.username" xml:space="preserve"><value>Brugernavn</value></data>
+  <data name="settings.subsonic.allow_network" xml:space="preserve"><value>Tillad forbindelser fra andre enheder på netværket</value></data>
+  <data name="settings.subsonic.password" xml:space="preserve"><value>Adgangskode</value></data>
+  <data name="settings.subsonic.save_password" xml:space="preserve"><value>gem adgangskoden</value></data>
+  <data name="settings.subsonic.password_help" xml:space="preserve"><value>Adgangskoden gemmes i nøgleringen, ikke i konfigurationsfilen. Klienterne godkendes med brugernavnet og adgangskoden.</value></data>
+  <data name="settings.subsonic.password_saved" xml:space="preserve"><value>adgangskoden er gemt</value></data>
+  <data name="settings.subsonic.refresh" xml:space="preserve"><value>opdater status</value></data>
+  <data name="settings.subsonic.invalid_port" xml:space="preserve"><value>indtast en port fra 1 til 65535</value></data>
+  <data name="settings.subsonic.status.running" xml:space="preserve"><value>Subsonic-server: {url}</value></data>
+  <data name="settings.subsonic.status.disabled" xml:space="preserve"><value>Subsonic-serveren er slået fra</value></data>
+  <data name="settings.subsonic.status.invalid_config" xml:space="preserve"><value>Ugyldig Subsonic-serverkonfiguration</value></data>
+  <data name="settings.subsonic.status.credential_unavailable" xml:space="preserve"><value>Subsonic-loginoplysningerne er ikke tilgængelige</value></data>
+  <data name="settings.subsonic.status.bind_failed" xml:space="preserve"><value>Subsonic-serveren kunne ikke starte</value></data>
+  <data name="settings.subsonic.status.server_failed" xml:space="preserve"><value>Subsonic-serveren stoppede</value></data>
+  <data name="settings.subsonic.status_unavailable" xml:space="preserve"><value>Subsonic-status er ikke tilgængelig</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>Album</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>Komponister</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>Kunstnere</value></data>
+  <data name="library.empty_guidance" xml:space="preserve"><value>Importer noget musik for at komme i gang</value></data>
+  <data name="section.library" xml:space="preserve"><value>Bibliotek</value></data>
+  <data name="section.import" xml:space="preserve"><value>Importer</value></data>
+  <data name="toolbar.close_library" xml:space="preserve"><value>luk biblioteket</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>Ingen komponister</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>Ingen kunstnere</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>Album</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>Kunstnere</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>Spor</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>Komponister</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>Værker</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>Udgivelser</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>Medvirkende</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>Indspilninger</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>Komponistdetaljerne kunne ikke åbnes</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>Kunstnerdetaljerne kunne ikke åbnes</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>Værkdetaljerne kunne ikke åbnes</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} værker</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} album</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>Spor</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>Udgivelse</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>Formater</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>Standarder</value></data>
+  <data name="settings.formats.defaults_footer" xml:space="preserve"><value>Formatet, som Gem som… starter med.</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>Avanceret</value></data>
+  <data name="settings.formats.preset_name" xml:space="preserve"><value>Navn</value></data>
+  <data name="settings.formats.preset_track" xml:space="preserve"><value>Spor</value></data>
+  <data name="settings.formats.preset_release" xml:space="preserve"><value>Udgivelse</value></data>
+  <data name="settings.formats.preset_pregap" xml:space="preserve"><value>Pregap</value></data>
+  <data name="settings.formats.pregap.append_except_htoa" xml:space="preserve"><value>Tilføj til sidst, undtagen HTOA</value></data>
+  <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>Tilføj til sidst, inklusive HTOA</value></data>
+  <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>Udelad</value></data>
+  <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>Én fil + CUE</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>Navngivning af filer</value></data>
+  <data name="settings.formats.add_token" xml:space="preserve"><value>Tilføj:</value></data>
+  <data name="settings.formats.remove_token" xml:space="preserve"><value>Fjern {token}</value></data>
+  <data name="settings.formats.token.title" xml:space="preserve"><value>Titel</value></data>
+  <data name="settings.formats.token.artist" xml:space="preserve"><value>Kunstner</value></data>
+  <data name="settings.formats.token.album" xml:space="preserve"><value>Album</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>Udgivelsesår</value></data>
+  <data name="settings.formats.token.track_number" xml:space="preserve"><value>Spor nr.</value></data>
+  <data name="settings.formats.token.disc_number" xml:space="preserve"><value>Disk nr.</value></data>
+  <data name="settings.formats.token.track_total" xml:space="preserve"><value>Antal spor</value></data>
+  <data name="settings.formats.sample.title" xml:space="preserve"><value>Sportitel</value></data>
+  <data name="settings.formats.sample.artist" xml:space="preserve"><value>Kunstnernavn</value></data>
+  <data name="settings.formats.sample.album" xml:space="preserve"><value>Albumtitel</value></data>
+  <data name="settings.formats.preview" xml:space="preserve"><value>Forhåndsvisning: {filename}</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Formaterne vises i Gem som… for spor og udgivelser.</value></data>
+  <data name="settings.formats.preset_format" xml:space="preserve"><value>Format</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>Tilføj format</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>Slet format</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>Vil du slette formatet “{name}”?</value></data>
+  <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_aac" xml:space="preserve"><value>AAC {kbps} kbps</value></data>
+  <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>Vis i Gem som… for</value></data>
+  <data name="settings.formats.embed_cover" xml:space="preserve"><value>Indlejr omslaget</value></data>
+  <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>Bitdybde</value></data>
+  <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>Kilde</value></data>
+  <data name="settings.formats.bit_depth.bits16" xml:space="preserve"><value>16 bit</value></data>
+  <data name="settings.formats.bit_depth.bits24" xml:space="preserve"><value>24 bit</value></data>
+  <data name="settings.formats.bit_depth.bits32" xml:space="preserve"><value>32 bit</value></data>
+  <data name="settings.formats.bitrate" xml:space="preserve"><value>Bithastighed</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>Uploader</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>I kø</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>Prøver igen</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>Færdig</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>Uploader ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>I kø ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>Prøver igen ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>albumtitel</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>albumkunstnere (adskilt af komma)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>år</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>format</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>selskab</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>katalognummer</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>land</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>stregkode</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>spor</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>titel</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>kunstner</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>side</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>nr.</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>albumkunstner</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>Spring identifikationen over</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>indsæt på plads {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>køen er tom</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>træk album hertil, eller afspil et album</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Identiteten er opdateret.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Vil du hente album-, spor- og presningsfelterne fra den nyligt identificerede kilde? Dine egne ændringer overskrives.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Opdater fra den nye kilde</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Behold de nuværende metadata</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Sprunget over</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Spring over</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Sæt tilbage som importeret</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Fjern mappen</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>Sortering og overvågede mapper</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Nyeste først</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Ældste først</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Mappenavn (A–Å)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Mappenavn (Å–A)</value></data>
+  <data name="import.tab.pending" xml:space="preserve"><value>Afventer</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Færdig</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Identificerer</value></data>
+  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Gå til en kandidat, der stadig identificeres</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} valgt</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Vælg alle</value></data>
+  <data name="import.footbar.select_none" xml:space="preserve"><value>Fravælg alle</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>Importer {count}</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Importer alligevel</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Prøv igen</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>Søg manuelt</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Der blev ikke fundet nogen automatiske match</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>Signaler</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Mislykkedes</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>Klar</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Venter på identifikation</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Identificerer…</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Filter…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Tilføj en mappe…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Der er ikke noget her endnu</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Ingen match</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# import kunne ikke starte} other {# importer kunne ikke starte}}</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>vis resterende tid</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>vis forløbet tid</value></data>
+  <data name="output.title" xml:space="preserve"><value>eksporter og gem</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>eksporterer {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>gemmer {percent}%</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>Kunne ikke læse {name}: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>vis i Stifinder</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>kopier id</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>bibliotekets id er kopieret</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>bibliotekets mappe kunne ikke åbnes</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Gendan ved start</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Gemmer det aktuelle spor, positionen, køen og lydstyrken ved lukning og gendanner dem ved næste start.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} af {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>billedet kunne ikke indlæses</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>forrige billede</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>næste billede</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>Alle</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Lokalt</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Sky</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>Synkroniseringskø</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>Kunstner</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>Format</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>Lagring</value></data>
+  <data name="storage.concurrency.downloads" xml:space="preserve"><value>Samtidige overførsler</value></data>
+  <data name="storage.concurrency.uploads" xml:space="preserve"><value>Samtidige uploads</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>Filer</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>Størrelse</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# udgivelse} other {# udgivelser}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>I alt: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Fjern</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Fjerner dette bibliotek og dets hentede filer fra denne pc. Dit bibliotek i skyen er urørt. Du kan gendanne det her senere.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Dette bibliotek er ikke synkroniseret. Hvis du fjerner det, slettes dets katalog permanent. Album, metadataændringer og afspilningshistorik. Lydfilerne i dine mapper slettes ikke.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>fjern dette bibliotek fra denne pc</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Dit bibliotek i skyen er urørt. Du kan gendanne det senere fra velkomstskærmen.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Dette bibliotek er aldrig blevet synkroniseret. Dets katalog slettes permanent; lydfilerne i dine mapper slettes ikke.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Nogle ændringer er ikke uploadet færdigt og går tabt.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Klik på knappen igen for at bekræfte.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Biblioteket kunne ikke fjernes: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Fastgør</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Afspil # album} other {Afspil # album}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Afspil # album som næste} other {Afspil # album som næste}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Føj # album til køen} other {Føj # album til køen}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Fastgør # album} other {Fastgør # album}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>åbn med {name}</value></data>
+  <data name="nowplaying.pause" xml:space="preserve"><value>Pause</value></data>
+  <data name="nowplaying.mute" xml:space="preserve"><value>Slå lyden fra</value></data>
+  <data name="nowplaying.unmute" xml:space="preserve"><value>Slå lyden til</value></data>
+  <data name="nowplaying.previous" xml:space="preserve"><value>Forrige spor</value></data>
+  <data name="nowplaying.next" xml:space="preserve"><value>Næste spor</value></data>
+  <data name="nowplaying.repeat_off" xml:space="preserve"><value>Gentag: fra</value></data>
+  <data name="nowplaying.repeat_context" xml:space="preserve"><value>Gentag: kontekst</value></data>
+  <data name="nowplaying.repeat_track" xml:space="preserve"><value>Gentag: spor</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>Afspilles nu</value></data>
+  <data name="nowplaying.cast" xml:space="preserve"><value>Cast</value></data>
+  <data name="nowplaying.casting_to" xml:space="preserve"><value>Caster til {device}</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>Afbryd forbindelsen</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>Der blev ikke fundet nogen Cast-enheder</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>komponentgalleri</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>komponentgalleri</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>Opdater</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>Opdaterer…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>Slå sammen til én udgivelse</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>Behold som separate udgivelser</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Starter parringen…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Venter på godkendelse…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Fingeraftryk: {fingerprint}</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Indtast manuelt</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Albumkunstner</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>Bibliotek</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>Ny</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Tilføj</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Fjern</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Albumtitel</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Anvend</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Ryd metadata</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>Kandidatens filer og tilknytninger forbliver uændrede.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Ryd metadata?</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Slå op online</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Slå op online…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Prøv at læse kandidaten igen.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Generelt</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Standardkilde til metadata</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Slå op online</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identificer automatisk</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nye kandidater identificeres, efterhånden som de findes, og når Slå op online åbnes. Når det er slået fra, starter linket Identificer en kørsel.</value></data>
+  <data name="settings.import.search_source" xml:space="preserve"><value>Søg på {source}</value></data>
+  <data name="settings.import.sources_help" xml:space="preserve"><value>Slå op online spørger de kilder, der er markeret her.</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Ingen</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>Onlineopslag</value></data>
+  <data name="action.clear" xml:space="preserve"><value>ryd</value></data>
+  <data name="action.retry" xml:space="preserve"><value>prøv igen</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>resultater for {query}</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>søger på {source}…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} svarede ikke: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} er ikke konfigureret</value></data>
+  <data name="appearance.title" xml:space="preserve"><value>Udseende</value></data>
+  <data name="appearance.mode" xml:space="preserve"><value>Tilstand</value></data>
+  <data name="appearance.system" xml:space="preserve"><value>System</value></data>
+  <data name="appearance.light" xml:space="preserve"><value>Lys</value></data>
+  <data name="appearance.dark" xml:space="preserve"><value>Mørk</value></data>
+  <data name="appearance.accent" xml:space="preserve"><value>Fremhævningsfarve</value></data>
+  <data name="appearance.tone" xml:space="preserve"><value>Baggrundstone</value></data>
+  <data name="appearance.neutral" xml:space="preserve"><value>Neutral</value></data>
+  <data name="appearance.slate" xml:space="preserve"><value>Skifer</value></data>
+  <data name="appearance.plum" xml:space="preserve"><value>Blomme</value></data>
+  <data name="appearance.blue" xml:space="preserve"><value>Blå</value></data>
+  <data name="appearance.indigo" xml:space="preserve"><value>Indigo</value></data>
+  <data name="appearance.purple" xml:space="preserve"><value>Lilla</value></data>
+  <data name="appearance.pink" xml:space="preserve"><value>Pink</value></data>
+  <data name="appearance.red" xml:space="preserve"><value>Rød</value></data>
+  <data name="appearance.amber" xml:space="preserve"><value>Rav</value></data>
+  <data name="appearance.green" xml:space="preserve"><value>Grøn</value></data>
+  <data name="appearance.teal" xml:space="preserve"><value>Turkis</value></data>
+  <data name="appearance.save_failed" xml:space="preserve"><value>Udseendet kunne ikke gemmes: {error}</value></data>
+  <data name="appearance.midnight" xml:space="preserve"><value>Midnat</value></data>
+  <data name="appearance.forest" xml:space="preserve"><value>Skov</value></data>
+  <data name="appearance.sand" xml:space="preserve"><value>Sand</value></data>
+  <data name="cover.unlinked" xml:space="preserve"><value>Tilknyt en Discogs- eller MusicBrainz-udgivelse for at gennemse dens billeder.</value></data>
+  <data name="import.search.identification_results" xml:space="preserve"><value>Identifikationsresultater</value></data>
+</root>

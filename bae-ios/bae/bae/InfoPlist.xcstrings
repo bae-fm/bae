@@ -22,16 +22,22 @@
             "value": "bae používá fotoaparát ke skenování kódů při párování nebo obnovení knihovny."
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "bae verwendet die Kamera, um beim Koppeln oder Wiederherstellen einer Mediathek Codes zu scannen."
+            "value": "bae bruger kameraet til at scanne koder ved parring eller gendannelse af et bibliotek."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "bae uses the camera to scan codes when pairing or recovering a library."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae verwendet die Kamera, um beim Koppeln oder Wiederherstellen einer Mediathek Codes zu scannen."
           }
         },
         "el": {
@@ -177,16 +183,22 @@
             "value": "bae páruje zařízení a vyhledává reproduktory a televizory ve vaší místní síti."
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "bae koppelt Geräte und findet Lautsprecher und Fernseher in deinem lokalen Netzwerk."
+            "value": "bae parrer enheder og finder højttalere og tv på dit lokale netværk."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "bae pairs devices and finds speakers and TVs on your local network."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae koppelt Geräte und findet Lautsprecher und Fernseher in deinem lokalen Netzwerk."
           }
         },
         "el": {

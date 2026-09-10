@@ -24,8 +24,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork download stopped."
+            "state": "translated",
+            "value": "Hentningen af grafik stoppede."
           }
         },
         "de": {
@@ -197,8 +197,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading artwork…"
+            "state": "translated",
+            "value": "Henter grafik…"
           }
         },
         "de": {
@@ -370,8 +370,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Some artwork couldn’t be downloaded."
+            "state": "translated",
+            "value": "Noget grafik kunne ikke hentes."
           }
         },
         "de": {
@@ -543,8 +543,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finding artwork…"
+            "state": "translated",
+            "value": "Finder grafik…"
           }
         },
         "de": {
@@ -716,8 +716,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld-bit"
+            "state": "translated",
+            "value": "%lld bit"
           }
         },
         "de": {
@@ -889,7 +889,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%lld kbps"
           }
         },
@@ -1062,8 +1062,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld ch"
+            "state": "translated",
+            "value": "%lld kan."
           }
         },
         "de": {
@@ -1235,7 +1235,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "mono"
           }
         },
@@ -1408,7 +1408,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "stereo"
           }
         },
@@ -1581,8 +1581,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Audio"
+            "state": "translated",
+            "value": "Lyd"
           }
         },
         "de": {
@@ -1754,7 +1754,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "CUE"
           }
         },
@@ -1927,7 +1927,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": " · "
           }
         },
@@ -2100,8 +2100,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Various"
+            "state": "translated",
+            "value": "Diverse"
           }
         },
         "de": {
@@ -2273,7 +2273,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@ kHz"
           }
         },
@@ -2446,8 +2446,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Local only"
+            "state": "translated",
+            "value": "Kun lokalt"
           }
         },
         "de": {
@@ -2619,8 +2619,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "S3-compatible"
+            "state": "translated",
+            "value": "S3-kompatibel"
           }
         },
         "de": {
@@ -2792,8 +2792,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$@ of %2$@"
+            "state": "translated",
+            "value": "%1$@ af %2$@"
           }
         },
         "de": {
@@ -2965,8 +2965,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld hr"
+            "state": "translated",
+            "value": "%lld t"
           }
         },
         "de": {
@@ -3156,7 +3156,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%1$@, %2$@"
           }
         },
@@ -3329,7 +3329,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%lld min"
           }
         },
@@ -3502,8 +3502,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This AirPlay receiver isn't supported."
+            "state": "translated",
+            "value": "Denne AirPlay-modtager understøttes ikke."
           }
         },
         "de": {
@@ -3675,8 +3675,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong with your settings."
+            "state": "translated",
+            "value": "Noget gik galt med dine indstillinger."
           }
         },
         "de": {
@@ -3848,8 +3848,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check your cloud credentials and try again."
+            "state": "translated",
+            "value": "Kontroller dine skyloginoplysninger, og prøv igen."
           }
         },
         "de": {
@@ -4021,8 +4021,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong reading your library."
+            "state": "translated",
+            "value": "Noget gik galt, da dit bibliotek blev læst."
           }
         },
         "de": {
@@ -4194,8 +4194,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The export couldn't be completed."
+            "state": "translated",
+            "value": "Eksporten kunne ikke gennemføres."
           }
         },
         "de": {
@@ -4367,8 +4367,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The import couldn't be completed."
+            "state": "translated",
+            "value": "Importen kunne ikke gennemføres."
           }
         },
         "de": {
@@ -4540,8 +4540,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong."
+            "state": "translated",
+            "value": "Noget gik galt."
           }
         },
         "de": {
@@ -4713,8 +4713,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't access your device's secure storage."
+            "state": "translated",
+            "value": "Der kunne ikke opnås adgang til enhedens sikre lagring."
           }
         },
         "de": {
@@ -4886,8 +4886,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong updating library sharing."
+            "state": "translated",
+            "value": "Noget gik galt, da bibliotekets deling blev opdateret."
           }
         },
         "de": {
@@ -5059,8 +5059,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the cloud. Check your connection and try again."
+            "state": "translated",
+            "value": "Skyen kunne ikke nås. Kontroller din forbindelse, og prøv igen."
           }
         },
         "de": {
@@ -5232,8 +5232,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The save couldn't be completed."
+            "state": "translated",
+            "value": "Lagringen kunne ikke gennemføres."
           }
         },
         "de": {
@@ -5405,8 +5405,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket wasn't found. Check its name and the credentials' access to it."
+            "state": "translated",
+            "value": "Denne bucket blev ikke fundet. Kontroller navnet og loginoplysningernes adgang til den."
           }
         },
         "de": {
@@ -5578,8 +5578,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check the bucket, region, endpoint, and key prefix."
+            "state": "translated",
+            "value": "Kontroller bucket, region, slutpunkt og nøglepræfiks."
           }
         },
         "de": {
@@ -5751,8 +5751,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket and key prefix already contain a different library. Use an empty key prefix, or join or restore that library."
+            "state": "translated",
+            "value": "Denne bucket og dette nøglepræfiks indeholder allerede et andet bibliotek. Brug et tomt nøglepræfiks, eller deltag i eller gendan det bibliotek."
           }
         },
         "de": {
@@ -5924,8 +5924,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Allow these credentials to read, write, list, and delete objects in this bucket."
+            "state": "translated",
+            "value": "Giv disse loginoplysninger ret til at læse, skrive, vise og slette objekter i denne bucket."
           }
         },
         "de": {
@@ -6097,8 +6097,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This cloud storage has no available space."
+            "state": "translated",
+            "value": "Denne skylagring har ingen ledig plads."
           }
         },
         "de": {
@@ -6270,8 +6270,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The region or endpoint doesn't match this bucket."
+            "state": "translated",
+            "value": "Regionen eller slutpunktet passer ikke til denne bucket."
           }
         },
         "de": {
@@ -6443,8 +6443,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This library has no device identity. Create, join, or restore the library again."
+            "state": "translated",
+            "value": "Dette bibliotek har ingen enhedsidentitet. Opret, deltag i eller gendan biblioteket igen."
           }
         },
         "de": {
@@ -6616,8 +6616,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This pairing code expired. Show a new code on the other device and try again."
+            "state": "translated",
+            "value": "Denne parringskode er udløbet. Vis en ny kode på den anden enhed, og prøv igen."
           }
         },
         "de": {
@@ -6789,8 +6789,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device ended this pairing. Start it again from there if you still want to join."
+            "state": "translated",
+            "value": "Den anden enhed afsluttede denne parring. Hvis du stadig vil deltage, skal du starte den derfra igen."
           }
         },
         "de": {
@@ -6962,8 +6962,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device isn't running this join. Open bae on it, show a pairing code, and try again."
+            "state": "translated",
+            "value": "Den anden enhed kører ikke denne tilslutning. Åbn bae på den, vis en parringskode, og prøv igen."
           }
         },
         "de": {
@@ -7135,8 +7135,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This device's keychain is locked. Unlock the device and bae will pick up where it left off."
+            "state": "translated",
+            "value": "Denne enheds nøglering er låst. Lås enheden op, så fortsætter bae, hvor den slap."
           }
         },
         "de": {
@@ -7308,8 +7308,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "That library could not be found."
+            "state": "translated",
+            "value": "Det bibliotek kunne ikke findes."
           }
         },
         "de": {
@@ -7481,8 +7481,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Update the app to continue syncing."
+            "state": "translated",
+            "value": "Opdater appen for at fortsætte synkroniseringen."
           }
         },
         "de": {
@@ -7654,8 +7654,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "not a track"
+            "state": "translated",
+            "value": "ikke et spor"
           }
         },
         "de": {
@@ -7827,8 +7827,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "slot %lld"
+            "state": "translated",
+            "value": "plads %lld"
           }
         },
         "de": {
@@ -8000,8 +8000,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "slots %1$lld–%2$lld"
+            "state": "translated",
+            "value": "pladserne %1$lld–%2$lld"
           }
         },
         "de": {
@@ -8173,8 +8173,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import has already completed and can no longer be edited."
+            "state": "translated",
+            "value": "Denne import er allerede afsluttet og kan ikke længere redigeres."
           }
         },
         "de": {
@@ -8346,8 +8346,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import is already running and can no longer be edited."
+            "state": "translated",
+            "value": "Denne import kører allerede og kan ikke længere redigeres."
           }
         },
         "de": {
@@ -8519,8 +8519,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from barcode %@ in this image"
+            "state": "translated",
+            "value": "Udgivelsen blev automatisk identificeret ud fra stregkoden %@ på dette billede"
           }
         },
         "de": {
@@ -8692,8 +8692,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from disc ID %@ from this file"
+            "state": "translated",
+            "value": "Udgivelsen blev automatisk identificeret ud fra disk-id'et %@ fra denne fil"
           }
         },
         "de": {
@@ -8865,8 +8865,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Network folder. Changes made on other computers are checked every %lld minutes."
+            "state": "translated",
+            "value": "Netværksmappe. Ændringer foretaget på andre computere kontrolleres hvert %lld. minut."
           }
         },
         "de": {
@@ -9038,8 +9038,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte audio file: %@"
+            "state": "translated",
+            "value": "beskadiget eller tom lydfil: %@"
           }
         },
         "de": {
@@ -9211,8 +9211,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte image: %@"
+            "state": "translated",
+            "value": "beskadiget eller tomt billede: %@"
           }
         },
         "de": {
@@ -9384,8 +9384,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "no valid audio files"
+            "state": "translated",
+            "value": "ingen gyldige lydfiler"
           }
         },
         "de": {
@@ -9557,8 +9557,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finalizing..."
+            "state": "translated",
+            "value": "Afslutter..."
           }
         },
         "de": {
@@ -9730,8 +9730,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Measuring loudness..."
+            "state": "translated",
+            "value": "Måler lydstyrken..."
           }
         },
         "de": {
@@ -9903,8 +9903,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reading files..."
+            "state": "translated",
+            "value": "Læser filer..."
           }
         },
         "de": {
@@ -10076,8 +10076,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queued..."
+            "state": "translated",
+            "value": "I kø..."
           }
         },
         "de": {
@@ -10249,8 +10249,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Validating source files..."
+            "state": "translated",
+            "value": "Validerer kildefilerne..."
           }
         },
         "de": {
@@ -10422,8 +10422,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: audio the release doesn’t name"
+            "state": "translated",
+            "value": "%1$lld filer, %2$lld spor: lyd, som udgivelsen ikke nævner"
           }
         },
         "de": {
@@ -10595,8 +10595,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: tracks with no audio"
+            "state": "translated",
+            "value": "%1$lld filer, %2$lld spor: spor uden lyd"
           }
         },
         "de": {
@@ -10768,8 +10768,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork"
+            "state": "translated",
+            "value": "Grafik"
           }
         },
         "de": {
@@ -10941,8 +10941,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Audio"
+            "state": "translated",
+            "value": "Lyd"
           }
         },
         "de": {
@@ -11114,8 +11114,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cover"
+            "state": "translated",
+            "value": "Omslag"
           }
         },
         "de": {
@@ -11287,8 +11287,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Document"
+            "state": "translated",
+            "value": "Dokument"
           }
         },
         "de": {
@@ -11460,8 +11460,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Not a track"
+            "state": "translated",
+            "value": "Ikke et spor"
           }
         },
         "de": {
@@ -11633,8 +11633,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Other"
+            "state": "translated",
+            "value": "Andet"
           }
         },
         "de": {
@@ -11806,8 +11806,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Track sheet"
+            "state": "translated",
+            "value": "Sporark"
           }
         },
         "de": {
@@ -11979,8 +11979,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ audio can't be split by a sheet"
+            "state": "translated",
+            "value": "%@-lyd kan ikke deles op efter et ark"
           }
         },
         "de": {
@@ -12152,8 +12152,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The sheet’s track times fall outside this audio"
+            "state": "translated",
+            "value": "Arkets sportider ligger uden for denne lyd"
           }
         },
         "de": {
@@ -12325,8 +12325,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This audio can’t be read"
+            "state": "translated",
+            "value": "Denne lyd kan ikke læses"
           }
         },
         "de": {
@@ -12498,8 +12498,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Already in your library"
+            "state": "translated",
+            "value": "Allerede i dit bibliotek"
           }
         },
         "de": {
@@ -12671,8 +12671,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length: %1$@ in the folder, %2$@ on the release"
+            "state": "translated",
+            "value": "Længde: %1$@ i mappen, %2$@ på udgivelsen"
           }
         },
         "de": {
@@ -12844,8 +12844,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Could not read the track lengths in the folder"
+            "state": "translated",
+            "value": "Sporlængderne i mappen kunne ikke læses"
           }
         },
         "de": {
@@ -13017,8 +13017,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Online lookup failed"
+            "state": "translated",
+            "value": "Onlineopslaget mislykkedes"
           }
         },
         "de": {
@@ -13190,8 +13190,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Nothing matched this folder"
+            "state": "translated",
+            "value": "Intet passede til denne mappe"
           }
         },
         "de": {
@@ -13363,8 +13363,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "No disc ID and no barcode to look up"
+            "state": "translated",
+            "value": "Der er intet disk-id og ingen stregkode at slå op"
           }
         },
         "de": {
@@ -13611,14 +13611,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
+                  "state": "translated",
                   "value": "%lld match"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld matches"
+                  "state": "translated",
+                  "value": "%lld match"
                 }
               }
             }
@@ -14123,8 +14123,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The release states no track lengths"
+            "state": "translated",
+            "value": "Udgivelsen angiver ingen sporlængder"
           }
         },
         "de": {
@@ -14296,8 +14296,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks: %1$lld in the folder, %2$lld on the release"
+            "state": "translated",
+            "value": "Spor: %1$lld i mappen, %2$lld på udgivelsen"
           }
         },
         "de": {
@@ -14469,8 +14469,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album title is required"
+            "state": "translated",
+            "value": "Albumtitel er påkrævet"
           }
         },
         "de": {
@@ -14642,8 +14642,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist name is required"
+            "state": "translated",
+            "value": "Kunstnernavn er påkrævet"
           }
         },
         "de": {
@@ -14815,8 +14815,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Year must be a number"
+            "state": "translated",
+            "value": "År skal være et tal"
           }
         },
         "de": {
@@ -14988,8 +14988,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album must have at least one artist"
+            "state": "translated",
+            "value": "Albummet skal have mindst én kunstner"
           }
         },
         "de": {
@@ -15161,8 +15161,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork analysis failed"
+            "state": "translated",
+            "value": "Analysen af grafikken mislykkedes"
           }
         },
         "de": {
@@ -15334,8 +15334,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "artwork analysis failed"
+            "state": "translated",
+            "value": "analysen af grafikken mislykkedes"
           }
         },
         "de": {
@@ -15507,8 +15507,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "busy (%lld)"
+            "state": "translated",
+            "value": "optaget (%lld)"
           }
         },
         "de": {
@@ -15680,8 +15680,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "failed"
+            "state": "translated",
+            "value": "mislykkedes"
           }
         },
         "de": {
@@ -15853,8 +15853,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "couldn't connect"
+            "state": "translated",
+            "value": "kunne ikke forbinde"
           }
         },
         "de": {
@@ -16026,8 +16026,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "error %lld"
+            "state": "translated",
+            "value": "fejl %lld"
           }
         },
         "de": {
@@ -16199,8 +16199,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "error"
+            "state": "translated",
+            "value": "fejl"
           }
         },
         "de": {
@@ -16372,8 +16372,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "timed out"
+            "state": "translated",
+            "value": "tiden udløb"
           }
         },
         "de": {
@@ -16545,8 +16545,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't look this up"
+            "state": "translated",
+            "value": "Dette kunne ikke slås op"
           }
         },
         "de": {
@@ -16718,8 +16718,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the metadata provider"
+            "state": "translated",
+            "value": "Metadataudbyderen kunne ikke nås"
           }
         },
         "de": {
@@ -16891,8 +16891,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error (%lld)"
+            "state": "translated",
+            "value": "Metadataudbyderen svarede med en fejl (%lld)"
           }
         },
         "de": {
@@ -17064,8 +17064,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error"
+            "state": "translated",
+            "value": "Metadataudbyderen svarede med en fejl"
           }
         },
         "de": {
@@ -17237,8 +17237,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider timed out"
+            "state": "translated",
+            "value": "Metadataudbyderen svarede ikke i tide"
           }
         },
         "de": {
@@ -17410,8 +17410,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing %1$@ of %2$@"
+            "state": "translated",
+            "value": "Forbereder %1$@ af %2$@"
           }
         },
         "de": {
@@ -17583,8 +17583,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Uploading %1$@ of %2$@"
+            "state": "translated",
+            "value": "Uploader %1$@ af %2$@"
           }
         },
         "de": {
@@ -17756,8 +17756,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld cancelling"
+            "state": "translated",
+            "value": "%lld annulleres"
           }
         },
         "de": {
@@ -17929,8 +17929,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ remaining"
+            "state": "translated",
+            "value": "%@ tilbage"
           }
         },
         "de": {
@@ -18102,8 +18102,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist image"
+            "state": "translated",
+            "value": "Kunstnerbillede"
           }
         },
         "de": {
@@ -18275,8 +18275,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing from cloud"
+            "state": "translated",
+            "value": "Fjernes fra skyen"
           }
         },
         "de": {
@@ -18523,14 +18523,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending delete"
+                  "state": "translated",
+                  "value": "%lld ventende sletning"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending deletes"
+                  "state": "translated",
+                  "value": "%lld ventende sletninger"
                 }
               }
             }
@@ -19035,8 +19035,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld prepared"
+            "state": "translated",
+            "value": "%lld forberedt"
           }
         },
         "de": {
@@ -19208,8 +19208,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld preparing"
+            "state": "translated",
+            "value": "%lld forberedes"
           }
         },
         "de": {
@@ -19381,8 +19381,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld publishing"
+            "state": "translated",
+            "value": "%lld publiceres"
           }
         },
         "de": {
@@ -19554,8 +19554,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Retrying (%lld)"
+            "state": "translated",
+            "value": "Prøver igen (%lld)"
           }
         },
         "de": {
@@ -19727,8 +19727,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source unavailable"
+            "state": "translated",
+            "value": "Kilden er ikke tilgængelig"
           }
         },
         "de": {
@@ -19900,7 +19900,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@/s"
           }
         },
@@ -20073,8 +20073,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploaded"
+            "state": "translated",
+            "value": "%lld uploadet"
           }
         },
         "de": {
@@ -20246,8 +20246,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Activating device…"
+            "state": "translated",
+            "value": "Aktiverer enheden…"
           }
         },
         "de": {
@@ -20419,8 +20419,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Granting cloud access…"
+            "state": "translated",
+            "value": "Giver skyadgang…"
           }
         },
         "de": {
@@ -20592,8 +20592,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing invitation…"
+            "state": "translated",
+            "value": "Forbereder invitationen…"
           }
         },
         "de": {
@@ -20765,8 +20765,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing library…"
+            "state": "translated",
+            "value": "Forbereder biblioteket…"
           }
         },
         "de": {
@@ -20938,8 +20938,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the joining device…"
+            "state": "translated",
+            "value": "Venter på den enhed, der deltager…"
           }
         },
         "de": {
@@ -21111,8 +21111,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access request…"
+            "state": "translated",
+            "value": "Venter på anmodning om skyadgang…"
           }
         },
         "de": {
@@ -21284,8 +21284,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for device registration request…"
+            "state": "translated",
+            "value": "Venter på anmodning om enhedsregistrering…"
           }
         },
         "de": {
@@ -21457,8 +21457,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cancelling pairing…"
+            "state": "translated",
+            "value": "Annullerer parringen…"
           }
         },
         "de": {
@@ -21630,8 +21630,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Catching up with library changes…"
+            "state": "translated",
+            "value": "Indhenter bibliotekets ændringer…"
           }
         },
         "de": {
@@ -21803,8 +21803,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading library snapshot…"
+            "state": "translated",
+            "value": "Henter bibliotekets øjebliksbillede…"
           }
         },
         "de": {
@@ -21976,8 +21976,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Installing library snapshot…"
+            "state": "translated",
+            "value": "Installerer bibliotekets øjebliksbillede…"
           }
         },
         "de": {
@@ -22149,8 +22149,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Requesting cloud access…"
+            "state": "translated",
+            "value": "Anmoder om skyadgang…"
           }
         },
         "de": {
@@ -22322,8 +22322,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Saving library…"
+            "state": "translated",
+            "value": "Gemmer biblioteket…"
           }
         },
         "de": {
@@ -22495,8 +22495,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for activation…"
+            "state": "translated",
+            "value": "Venter på aktivering…"
           }
         },
         "de": {
@@ -22668,8 +22668,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for approval…"
+            "state": "translated",
+            "value": "Venter på godkendelse…"
           }
         },
         "de": {
@@ -22841,8 +22841,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the library…"
+            "state": "translated",
+            "value": "Venter på biblioteket…"
           }
         },
         "de": {
@@ -23014,8 +23014,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access…"
+            "state": "translated",
+            "value": "Venter på skyadgang…"
           }
         },
         "de": {
@@ -23187,8 +23187,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Registering device…"
+            "state": "translated",
+            "value": "Registrerer enheden…"
           }
         },
         "de": {
@@ -23360,8 +23360,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reconnect to play this release. It isn't downloaded to this device yet."
+            "state": "translated",
+            "value": "Forbind igen for at afspille denne udgivelse. Den er ikke hentet til denne enhed endnu."
           }
         },
         "de": {
@@ -23533,8 +23533,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This release is still uploading. Try again when it finishes."
+            "state": "translated",
+            "value": "Denne udgivelse uploades stadig. Prøv igen, når det er færdigt."
           }
         },
         "de": {
@@ -23706,8 +23706,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between discs. Change the CD, then press Play."
+            "state": "translated",
+            "value": "Afspilningen er sat på pause mellem diskene. Skift cd, og tryk på Afspil."
           }
         },
         "de": {
@@ -23879,8 +23879,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %@ ended"
+            "state": "translated",
+            "value": "Disk %@ er slut"
           }
         },
         "de": {
@@ -24052,8 +24052,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the cassette, then press Play."
+            "state": "translated",
+            "value": "Afspilningen er sat på pause mellem siderne. Vend kassettebåndet, og tryk på Afspil."
           }
         },
         "de": {
@@ -24225,8 +24225,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the vinyl, then press Play."
+            "state": "translated",
+            "value": "Afspilningen er sat på pause mellem siderne. Vend vinylpladen, og tryk på Afspil."
           }
         },
         "de": {
@@ -24398,8 +24398,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Side %@ ended"
+            "state": "translated",
+            "value": "Side %@ er slut"
           }
         },
         "de": {
@@ -24571,8 +24571,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld downloading"
+            "state": "translated",
+            "value": "%lld hentes"
           }
         },
         "de": {
@@ -24744,8 +24744,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld failed"
+            "state": "translated",
+            "value": "%lld mislykkedes"
           }
         },
         "de": {
@@ -24917,8 +24917,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld in progress"
+            "state": "translated",
+            "value": "%lld i gang"
           }
         },
         "de": {
@@ -25090,8 +25090,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld queued"
+            "state": "translated",
+            "value": "%lld i kø"
           }
         },
         "de": {
@@ -25263,8 +25263,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploading"
+            "state": "translated",
+            "value": "%lld uploades"
           }
         },
         "de": {
@@ -25436,8 +25436,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Media"
+            "state": "translated",
+            "value": "Medie"
           }
         },
         "de": {
@@ -25684,14 +25684,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld release is only stored in the cloud. It will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld udgivelse findes kun i skyen. Den kan ikke afspilles, før du forbinder igen."
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld releases are only stored in the cloud. They will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld udgivelser findes kun i skyen. De kan ikke afspilles, før du forbinder igen."
                 }
               }
             }
@@ -26190,8 +26190,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "Disk %lld"
           }
         },
         "de": {
@@ -26363,7 +26363,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Side %@"
           }
         },
@@ -26536,8 +26536,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Making Local…"
+            "state": "translated",
+            "value": "Gør lokal…"
           }
         },
         "de": {
@@ -26709,8 +26709,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queueing for Cloud…"
+            "state": "translated",
+            "value": "Sætter i kø til skyen…"
           }
         },
         "de": {
@@ -26882,8 +26882,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Pinning for offline"
+            "state": "translated",
+            "value": "Fastgør til offline"
           }
         },
         "de": {
@@ -27055,8 +27055,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing local copy"
+            "state": "translated",
+            "value": "Fjerner den lokale kopi"
           }
         },
         "de": {
@@ -27228,8 +27228,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "This source identity is linked to two artists in your library. Choose the record to keep; its albums, tracks, credits, and source links will be combined with the other record."
+            "state": "translated",
+            "value": "Denne kildeidentitet er knyttet til to kunstnere i dit bibliotek. Vælg den post, der skal beholdes; dens album, spor, medvirkende og kildelinks lægges sammen med den anden post."
           }
         },
         "de": {
@@ -27401,8 +27401,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep Discogs Artist"
+            "state": "translated",
+            "value": "Behold Discogs-kunstneren"
           }
         },
         "de": {
@@ -27574,8 +27574,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep MusicBrainz Artist"
+            "state": "translated",
+            "value": "Behold MusicBrainz-kunstneren"
           }
         },
         "de": {
@@ -27747,8 +27747,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Awaiting a release"
+            "state": "translated",
+            "value": "Venter på en udgivelse"
           }
         },
         "de": {
@@ -27995,14 +27995,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld row still has no name"
+                  "state": "translated",
+                  "value": "%lld række mangler stadig et navn"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld rows still have no name"
+                  "state": "translated",
+                  "value": "%lld rækker mangler stadig et navn"
                 }
               }
             }
@@ -28501,8 +28501,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't scan %@"
+            "state": "translated",
+            "value": "Kunne ikke scanne %@"
           }
         },
         "de": {
@@ -28674,8 +28674,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist"
+            "state": "translated",
+            "value": "Kunstner"
           }
         },
         "de": {
@@ -28847,8 +28847,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Name"
+            "state": "translated",
+            "value": "Navn"
           }
         },
         "de": {
@@ -29020,8 +29020,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source"
+            "state": "translated",
+            "value": "Kilde"
           }
         },
         "de": {
@@ -29193,8 +29193,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Title"
+            "state": "translated",
+            "value": "Titel"
           }
         },
         "de": {
@@ -29366,8 +29366,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Files"
+            "state": "translated",
+            "value": "Filer"
           }
         },
         "de": {
@@ -29539,8 +29539,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks"
+            "state": "translated",
+            "value": "Spor"
           }
         },
         "de": {
@@ -29712,8 +29712,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "File tags"
+            "state": "translated",
+            "value": "Filmærker"
           }
         },
         "de": {
@@ -29885,8 +29885,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "From file tags"
+            "state": "translated",
+            "value": "Fra filmærker"
           }
         },
         "de": {
@@ -30058,7 +30058,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Metadata"
           }
         },
@@ -30231,8 +30231,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Role"
+            "state": "translated",
+            "value": "Rolle"
           }
         },
         "de": {
@@ -30404,8 +30404,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Scanning folders"
+            "state": "translated",
+            "value": "Scanner mapper"
           }
         },
         "de": {
@@ -30577,8 +30577,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld found"
+            "state": "translated",
+            "value": "%lld fundet"
           }
         },
         "de": {
@@ -30750,8 +30750,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Asked for %@"
+            "state": "translated",
+            "value": "Bad om %@"
           }
         },
         "de": {
@@ -30923,8 +30923,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose audio…"
+            "state": "translated",
+            "value": "Vælg lyd…"
           }
         },
         "de": {
@@ -31096,8 +31096,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Describes nothing"
+            "state": "translated",
+            "value": "Beskriver intet"
           }
         },
         "de": {
@@ -31269,8 +31269,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "Disk %lld"
           }
         },
         "de": {
@@ -31442,8 +31442,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Which disc of the release this sheet's entries are"
+            "state": "translated",
+            "value": "Hvilken disk i udgivelsen dette arks poster hører til"
           }
         },
         "de": {
@@ -31615,8 +31615,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Ignored"
+            "state": "translated",
+            "value": "Ignoreret"
           }
         },
         "de": {
@@ -31788,8 +31788,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose file…"
+            "state": "translated",
+            "value": "Vælg fil…"
           }
         },
         "de": {
@@ -31961,8 +31961,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length"
+            "state": "translated",
+            "value": "Længde"
           }
         },
         "de": {
@@ -32134,8 +32134,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Drop"
+            "state": "translated",
+            "value": "Udelad"
           }
         },
         "de": {
@@ -32307,8 +32307,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Leave this track out — this folder has no audio for it."
+            "state": "translated",
+            "value": "Udelad dette spor — denne mappe har ingen lyd til det."
           }
         },
         "de": {
@@ -32480,8 +32480,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Exclude"
+            "state": "translated",
+            "value": "Udelad"
           }
         },
         "de": {
@@ -32653,8 +32653,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Take this file out of the tracklist; it stays under Files."
+            "state": "translated",
+            "value": "Tag denne fil ud af sporlisten; den bliver under Filer."
           }
         },
         "de": {
@@ -32826,8 +32826,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "No file"
+            "state": "translated",
+            "value": "Ingen fil"
           }
         },
         "de": {
@@ -32999,8 +32999,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Play"
+            "state": "translated",
+            "value": "Afspil"
           }
         },
         "de": {
@@ -33172,8 +33172,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Put back"
+            "state": "translated",
+            "value": "Sæt tilbage"
           }
         },
         "de": {
@@ -33345,7 +33345,7 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Stop"
           }
         },
@@ -33518,8 +33518,8 @@
         },
         "da": {
           "stringUnit": {
-            "state": "new",
-            "value": "Untitled"
+            "state": "translated",
+            "value": "Uden titel"
           }
         },
         "de": {

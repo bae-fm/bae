@@ -27,6 +27,12 @@
             "value": "Vzhled"
           }
         },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udseende"
+          }
+        },
         "de": {
           "stringUnit": {
             "state": "translated",
@@ -307,6 +313,12 @@
             "state": "translated",
             "value": "%1$@ av %2$@"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ af %2$@"
+          }
         }
       }
     },
@@ -457,6 +469,12 @@
           }
         },
         "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        },
+        "da": {
           "stringUnit": {
             "state": "translated",
             "value": "%1$@, %2$@"
@@ -987,6 +1005,24 @@
               }
             }
           }
+        },
+        "da": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld fil"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld filer"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -1141,6 +1177,12 @@
             "state": "translated",
             "value": "Lägg till i kön"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Føj til kø"
+          }
         }
       }
     },
@@ -1291,6 +1333,12 @@
           }
         },
         "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Album"
+          }
+        },
+        "da": {
           "stringUnit": {
             "state": "translated",
             "value": "Album"
@@ -1449,6 +1497,12 @@
             "state": "translated",
             "value": "Stigande"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stigende"
+          }
         }
       }
     },
@@ -1602,6 +1656,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Auktoriseringen avslutades utan någon kod."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Godkendelsen sluttede uden en kode."
           }
         }
       }
@@ -1757,6 +1817,12 @@
             "state": "translated",
             "value": "Kameraåtkomsten är nekad. Slå på den i Inställningar för att skanna QR-koder."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adgang til kameraet er nægtet. Slå det til i Indstillinger for at scanne QR-koder."
+          }
         }
       }
     },
@@ -1910,6 +1976,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kameran är inte tillgänglig"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kameraet er ikke tilgængeligt"
           }
         }
       }
@@ -2065,6 +2137,12 @@
             "state": "translated",
             "value": "Kamerabehörighet krävs för att skanna QR-koder"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der kræves kameratilladelse for at scanne QR-koder"
+          }
         }
       }
     },
@@ -2218,6 +2296,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Avbryt"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuller"
           }
         }
       }
@@ -2373,6 +2457,12 @@
             "state": "translated",
             "value": "Rensa"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ryd"
+          }
         }
       }
     },
@@ -2397,16 +2487,22 @@
             "value": "Vymazat zdroj přehrávání"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wiedergabequelle leeren"
+            "value": "Ryd Afspilles fra"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Clear Playing From"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiedergabequelle leeren"
           }
         },
         "el": {
@@ -2552,16 +2648,22 @@
             "value": "Vymazat „Další v pořadí“"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "„Als Nächstes“ leeren"
+            "value": "Ryd Næste"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Clear Up Next"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„Als Nächstes“ leeren"
           }
         },
         "el": {
@@ -2838,6 +2940,12 @@
             "state": "translated",
             "value": "Stäng"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Luk"
+          }
         }
       }
     },
@@ -2991,6 +3099,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Molninloggning är inte konfigurerad i den här versionen (ingen oauth-creds.json)."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skylogin er ikke konfigureret i denne version (ingen oauth-creds.json)."
           }
         }
       }
@@ -3146,6 +3260,12 @@
             "state": "translated",
             "value": "Molnsynkronisering"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skysynkronisering"
+          }
         }
       }
     },
@@ -3300,6 +3420,12 @@
             "state": "translated",
             "value": "Fäll ihop"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sammenfold"
+          }
         }
       }
     },
@@ -3323,16 +3449,22 @@
             "value": "Detail skladatele nebyl nalezen"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Komponistendetails nicht gefunden"
+            "value": "Komponistdetaljer blev ikke fundet"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Composer detail not found"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komponistendetails nicht gefunden"
           }
         },
         "el": {
@@ -3478,16 +3610,22 @@
             "value": "Skladatelé"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Komponisten"
+            "value": "Komponister"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Composers"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komponisten"
           }
         },
         "el": {
@@ -3763,6 +3901,12 @@
             "state": "translated",
             "value": "Anslut"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forbind"
+          }
         }
       }
     },
@@ -3916,6 +4060,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ansluter till ditt bibliotek"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forbinder til dit bibliotek"
           }
         }
       }
@@ -4071,6 +4221,12 @@
             "state": "translated",
             "value": "Kamerainmatningen kunde inte läggas till i sessionen"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kameraets input kunne ikke føjes til sessionen"
+          }
         }
       }
     },
@@ -4224,6 +4380,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Metadatautmatningen kunde inte läggas till i sessionen"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metadata-output kunne ikke føjes til sessionen"
           }
         }
       }
@@ -4379,6 +4541,12 @@
             "state": "translated",
             "value": "Kamerainmatningen kunde inte skapas: %@"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kameraets input kunne ikke oprettes: %@"
+          }
         }
       }
     },
@@ -4532,6 +4700,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Molninloggningen kunde inte visas från det aktuella fönstret."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skylogin kunne ikke vises fra det aktuelle vindue."
           }
         }
       }
@@ -4687,6 +4861,12 @@
             "state": "translated",
             "value": "Kunde inte läsa oauth-creds.json: %@"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oauth-creds.json kunne ikke læses: %@"
+          }
         }
       }
     },
@@ -4711,13 +4891,19 @@
             "value": "Kredity"
           }
         },
-        "de": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medvirkende"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Credits"
           }
         },
-        "en": {
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Credits"
@@ -4996,6 +5182,12 @@
             "state": "translated",
             "value": "Fallande"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faldende"
+          }
         }
       }
     },
@@ -5149,6 +5341,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Frånkopplad"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forbindelsen er afbrudt"
           }
         }
       }
@@ -5304,6 +5502,12 @@
             "state": "translated",
             "value": "Avfärda"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afvis"
+          }
         }
       }
     },
@@ -5457,6 +5661,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Klar"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Færdig"
           }
         }
       }
@@ -5612,6 +5822,12 @@
             "state": "translated",
             "value": "Hämta"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hent"
+          }
         }
       }
     },
@@ -5765,6 +5981,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hämtad"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hentet"
           }
         }
       }
@@ -5920,6 +6142,12 @@
             "state": "translated",
             "value": "Hämtningar"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overførsler"
+          }
         }
       }
     },
@@ -6073,6 +6301,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Krypteringsnyckel (64 hexadecimala tecken)"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Krypteringsnøgle (64 hexadecimale tegn)"
           }
         }
       }
@@ -6229,6 +6463,12 @@
             "state": "translated",
             "value": "Fel"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fejl"
+          }
         }
       }
     },
@@ -6383,6 +6623,12 @@
             "state": "translated",
             "value": "Expandera Spelas nu"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fold Afspilles nu ud"
+          }
         }
       }
     },
@@ -6533,6 +6779,12 @@
           }
         },
         "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bibliotek"
+          }
+        },
+        "da": {
           "stringUnit": {
             "state": "translated",
             "value": "Bibliotek"
@@ -6691,6 +6943,12 @@
             "state": "translated",
             "value": "Biblioteket är låst"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biblioteket er låst"
+          }
         }
       }
     },
@@ -6844,6 +7102,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Läser in"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indlæser"
           }
         }
       }
@@ -6999,6 +7263,12 @@
             "state": "translated",
             "value": "Endast lokalt"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kun lokalt"
+          }
         }
       }
     },
@@ -7152,6 +7422,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ljud av"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slå lyden fra"
           }
         }
       }
@@ -7307,6 +7583,12 @@
             "state": "translated",
             "value": "Nästa spår"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Næste spor"
+          }
         }
       }
     },
@@ -7461,6 +7743,12 @@
             "state": "translated",
             "value": "Inga album än. Synkroniserar från molnet…"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ingen album endnu. Synkroniserer fra skyen…"
+          }
         }
       }
     },
@@ -7485,16 +7773,22 @@
             "value": "Žádní skladatelé"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keine Komponisten"
+            "value": "Ingen komponister"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "No composers"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Komponisten"
           }
         },
         "el": {
@@ -7770,6 +8064,12 @@
             "state": "translated",
             "value": "Inga hämtningar"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ingen overførsler"
+          }
         }
       }
     },
@@ -7923,6 +8223,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Inga resultat för ”%@”"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ingen resultater for “%@”"
           }
         }
       }
@@ -8078,6 +8384,12 @@
             "state": "translated",
             "value": "Inget härnäst"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intet næste"
+          }
         }
       }
     },
@@ -8231,6 +8543,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spelas nu"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afspilles nu"
           }
         }
       }
@@ -8386,6 +8704,12 @@
             "state": "translated",
             "value": "På"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Til"
+          }
         }
       }
     },
@@ -8410,16 +8734,22 @@
             "value": "Párovací kód"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kopplungscode"
+            "value": "Parringskode"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Pairing code"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopplungscode"
           }
         },
         "el": {
@@ -8565,16 +8895,22 @@
             "value": "Vložte párovací kód"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kopplungscode einfügen"
+            "value": "Indsæt parringskoden"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Paste pairing code"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopplungscode einfügen"
           }
         },
         "el": {
@@ -8850,6 +9186,12 @@
             "state": "translated",
             "value": "Paus"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
         }
       }
     },
@@ -8873,16 +9215,22 @@
             "value": "Pauza mezi stranami a disky"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pause zwischen Seiten und Discs"
+            "value": "Pause mellem sider og diske"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Pause between sides and discs"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause zwischen Seiten und Discs"
           }
         },
         "el": {
@@ -9158,6 +9506,12 @@
             "state": "translated",
             "value": "Pausad"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "På pause"
+          }
         }
       }
     },
@@ -9311,6 +9665,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spela"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afspil"
           }
         }
       }
@@ -9466,6 +9826,12 @@
             "state": "translated",
             "value": "Spela härnäst"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afspil som næste"
+          }
         }
       }
     },
@@ -9489,16 +9855,22 @@
             "value": "Přehrávání"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wiedergabe"
+            "value": "Afspilning"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Playback"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiedergabe"
           }
         },
         "el": {
@@ -9775,6 +10147,12 @@
             "state": "translated",
             "value": "Spelas från"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afspilles fra"
+          }
         }
       }
     },
@@ -9928,6 +10306,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Föregående spår"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forrige spor"
           }
         }
       }
@@ -10083,6 +10467,12 @@
             "state": "translated",
             "value": "Kö"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kø"
+          }
         }
       }
     },
@@ -10236,6 +10626,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kön är tom"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Køen er tom"
           }
         }
       }
@@ -10391,6 +10787,12 @@
             "state": "translated",
             "value": "Anslut igen"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forbind igen"
+          }
         }
       }
     },
@@ -10415,16 +10817,22 @@
             "value": "Nahrávky"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aufnahmen"
+            "value": "Indspilninger"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Recordings"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufnahmen"
           }
         },
         "el": {
@@ -10570,13 +10978,19 @@
             "value": "Vydání"
           }
         },
-        "de": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udgivelser"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Releases"
           }
         },
-        "en": {
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Releases"
@@ -10855,6 +11269,12 @@
             "state": "translated",
             "value": "Ta bort"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjern"
+          }
         }
       }
     },
@@ -11008,6 +11428,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ta bort hämtningen"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjern overførslen"
           }
         }
       }
@@ -11163,6 +11589,12 @@
             "state": "translated",
             "value": "Ta bort det här biblioteket från den här enheten"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjern dette bibliotek fra denne enhed"
+          }
         }
       }
     },
@@ -11316,6 +11748,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ta bort det här biblioteket från den här enheten?"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vil du fjerne dette bibliotek fra denne enhed?"
           }
         }
       }
@@ -11471,6 +11909,12 @@
             "state": "translated",
             "value": "Tar bort det här biblioteket och dess hämtade filer från den här enheten. Ditt bibliotek i molnet är orört. Du kan parkoppla den här enheten igen senare."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjerner dette bibliotek og dets hentede filer fra denne enhed. Dit bibliotek i skyen er urørt. Du kan parre denne enhed igen senere."
+          }
         }
       }
     },
@@ -11624,6 +12068,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Upprepningsläge"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gentagelsestilstand"
           }
         }
       }
@@ -11779,6 +12229,12 @@
             "state": "translated",
             "value": "Fortsätt"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fortsæt"
+          }
         }
       }
     },
@@ -11933,6 +12389,12 @@
             "state": "translated",
             "value": "Försök igen"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prøv igen"
+          }
         }
       }
     },
@@ -11957,16 +12419,22 @@
             "value": "Naskenujte tento kód na zařízení, které se připojuje k vaší knihovně."
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scanne diesen Code auf dem Gerät, das deiner Mediathek beitritt."
+            "value": "Scan denne kode på den enhed, der deltager i dit bibliotek."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Scan this code on the device joining your library."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanne diesen Code auf dem Gerät, das deiner Mediathek beitritt."
           }
         },
         "el": {
@@ -12243,6 +12711,12 @@
             "state": "translated",
             "value": "Sök"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Søg"
+          }
         }
       }
     },
@@ -12397,6 +12871,12 @@
             "state": "translated",
             "value": "Inställningar"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indstillinger"
+          }
         }
       }
     },
@@ -12550,6 +13030,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Blanda"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bland"
           }
         }
       }
@@ -12706,6 +13192,12 @@
             "state": "translated",
             "value": "Blanda biblioteket"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bland biblioteket"
+          }
         }
       }
     },
@@ -12730,16 +13222,22 @@
             "value": "Spouštění párování…"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kopplung wird gestartet…"
+            "value": "Starter parringen..."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Starting pairing..."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopplung wird gestartet…"
           }
         },
         "el": {
@@ -13015,6 +13513,12 @@
             "state": "translated",
             "value": "Status"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
         }
       }
     },
@@ -13165,6 +13669,12 @@
           }
         },
         "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synkronisering"
+          }
+        },
+        "da": {
           "stringUnit": {
             "state": "translated",
             "value": "Synkronisering"
@@ -13323,6 +13833,12 @@
             "state": "translated",
             "value": "Synkroniserad"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synkroniseret"
+          }
         }
       }
     },
@@ -13476,6 +13992,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Synkroniserar…"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synkroniserer…"
           }
         }
       }
@@ -13631,6 +14153,12 @@
             "state": "translated",
             "value": "Krypteringsnyckeln för det här biblioteket finns inte i nyckelringen. Ange den 64 tecken långa hexadecimala nyckeln för att låsa upp."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Krypteringsnøglen til dette bibliotek er ikke i nøgleringen. Indtast den 64 tegn lange hexadecimale nøgle for at låse op."
+          }
         }
       }
     },
@@ -13784,6 +14312,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Leverantören returnerade en ogiltig auktoriserings-URL."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udbyderen returnerede en ugyldig godkendelses-URL."
           }
         }
       }
@@ -13939,6 +14473,12 @@
             "state": "translated",
             "value": "Det här biblioteket kräver molninloggning, som inte är konfigurerad i den här versionen."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dette bibliotek kræver skylogin, som ikke er konfigureret i denne version."
+          }
         }
       }
     },
@@ -14092,6 +14632,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spår"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spor"
           }
         }
       }
@@ -14248,6 +14794,12 @@
             "state": "translated",
             "value": "Stäng av blandning"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slå bland fra"
+          }
         }
       }
     },
@@ -14401,6 +14953,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lås upp"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lås op"
           }
         }
       }
@@ -14556,6 +15114,12 @@
             "state": "translated",
             "value": "Ljud på"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slå lyden til"
+          }
         }
       }
     },
@@ -14709,6 +15273,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Härnäst"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Næste"
           }
         }
       }
@@ -14864,6 +15434,12 @@
             "state": "translated",
             "value": "Volym"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lydstyrke"
+          }
         }
       }
     },
@@ -14888,16 +15464,22 @@
             "value": "Čeká se na schválení…"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Warten auf Bestätigung…"
+            "value": "Venter på godkendelse..."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Waiting for approval..."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warten auf Bestätigung…"
           }
         },
         "el": {
@@ -15043,16 +15625,22 @@
             "value": "Čekání na zařízení…"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Warten auf das Gerät…"
+            "value": "Venter på enheden..."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Waiting for the device..."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warten auf das Gerät…"
           }
         },
         "el": {
@@ -15328,6 +15916,12 @@
             "state": "translated",
             "value": "Väntar på hämtning"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Venter på at blive hentet"
+          }
         }
       }
     },
@@ -15351,16 +15945,22 @@
             "value": "Detail díla nebyl nalezen"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Werkdetails nicht gefunden"
+            "value": "Værkdetaljer blev ikke fundet"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Work detail not found"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Werkdetails nicht gefunden"
           }
         },
         "el": {
@@ -15506,16 +16106,22 @@
             "value": "Díla"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Werke"
+            "value": "Værker"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Works"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Werke"
           }
         },
         "el": {
@@ -15792,6 +16398,12 @@
             "state": "translated",
             "value": "Ditt bibliotek"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit bibliotek"
+          }
         }
       }
     },
@@ -15946,6 +16558,12 @@
             "state": "translated",
             "value": "Ditt bibliotek i molnet är orört."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit bibliotek i skyen er urørt."
+          }
         }
       }
     },
@@ -16096,6 +16714,12 @@
           }
         },
         "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae"
+          }
+        },
+        "da": {
           "stringUnit": {
             "state": "translated",
             "value": "bae"
@@ -16254,6 +16878,12 @@
             "state": "translated",
             "value": "oauth-creds.json innehåller inga leverantörsuppgifter."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oauth-creds.json indeholder ingen udbyderoplysninger."
+          }
         }
       }
     },
@@ -16407,6 +17037,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "oauth-creds.json är felformaterad: %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oauth-creds.json er forkert udformet: %@"
           }
         }
       }
@@ -16562,6 +17198,12 @@
             "state": "translated",
             "value": "oauth-creds.json saknar client_id eller redirect_uri för %@."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oauth-creds.json mangler client_id eller redirect_uri for %@."
+          }
         }
       }
     },
@@ -16716,6 +17358,12 @@
             "state": "translated",
             "value": "synkroniserar…"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "synkroniserer…"
+          }
         }
       }
     },
@@ -16740,16 +17388,22 @@
             "value": "Před schválením zkontrolujte, že se shoduje s otiskem zobrazeným na novém zařízení."
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prüfe vor dem Genehmigen, dass dies mit dem Fingerabdruck auf dem neuen Gerät übereinstimmt."
+            "value": "Kontroller, at det stemmer overens med fingeraftrykket på den nye enhed, før du godkender."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Check that this matches the fingerprint shown on the new device before approving."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe vor dem Genehmigen, dass dies mit dem Fingerabdruck auf dem neuen Gerät übereinstimmt."
           }
         },
         "el": {
@@ -17026,6 +17680,12 @@
             "state": "translated",
             "value": "Loggar in..."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logger ind..."
+          }
         }
       }
     },
@@ -17180,6 +17840,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Koppla från"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afbryd forbindelsen"
           }
         }
       }
@@ -17336,6 +18002,12 @@
             "state": "translated",
             "value": "Koppla från synkroniseringen?"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afbryd synkroniseringen?"
+          }
         }
       }
     },
@@ -17490,6 +18162,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detta stoppar synkroniseringen och tar bort molnleverantörens konfiguration."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dette stopper synkroniseringen og fjerner skyudbyderens konfiguration."
           }
         }
       }
@@ -17646,6 +18324,12 @@
             "state": "translated",
             "value": "Kunde inte kontrollera utgåvor som bara finns i molnet: %@"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunne ikke kontrollere udgivelser, der kun findes i skyen: %@"
+          }
         }
       }
     },
@@ -17800,6 +18484,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Frånkopplingen misslyckades: %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forbindelsen kunne ikke afbrydes: %@"
           }
         }
       }
@@ -17956,6 +18646,12 @@
             "state": "translated",
             "value": "Leverantör"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udbyder"
+          }
         }
       }
     },
@@ -18107,6 +18803,12 @@
           }
         },
         "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konto"
+          }
+        },
+        "da": {
           "stringUnit": {
             "state": "translated",
             "value": "Konto"
@@ -18266,6 +18968,12 @@
             "state": "translated",
             "value": "Bucket"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
         }
       }
     },
@@ -18417,6 +19125,12 @@
           }
         },
         "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Region"
+          }
+        },
+        "da": {
           "stringUnit": {
             "state": "translated",
             "value": "Region"
@@ -18576,6 +19290,12 @@
             "state": "translated",
             "value": "Slutpunkt"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slutpunkt"
+          }
         }
       }
     },
@@ -18730,6 +19450,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pausa uppladdningar"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sæt uploads på pause"
           }
         }
       }
@@ -18886,6 +19612,12 @@
             "state": "translated",
             "value": "Under pausen väntar ändringarna på den här enheten och skickas upp när du fortsätter."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mens de er på pause, venter ændringerne på denne enhed og uploades, når du fortsætter."
+          }
         }
       }
     },
@@ -19041,6 +19773,12 @@
             "state": "translated",
             "value": "För att synkronisera det här biblioteket igen, parkoppla den här enheten från en annan enhet."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hvis du vil synkronisere dette bibliotek igen, skal du parre denne enhed fra en anden enhed."
+          }
         }
       }
     },
@@ -19065,16 +19803,22 @@
             "value": "Interpreti"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Künstler"
+            "value": "Kunstnere"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Artists"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Künstler"
           }
         },
         "el": {
@@ -19220,16 +19964,22 @@
             "value": "Žádní interpreti"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keine Künstler"
+            "value": "Ingen kunstnere"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "No artists"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Künstler"
           }
         },
         "el": {
@@ -19374,16 +20124,22 @@
             "value": "Detail interpreta nebyl nalezen"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Künstlerdetails nicht gefunden"
+            "value": "Kunstnerdetaljer blev ikke fundet"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Artist detail not found"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Künstlerdetails nicht gefunden"
           }
         },
         "el": {
@@ -19529,13 +20285,19 @@
             "value": "Název"
           }
         },
-        "de": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Navn"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Name"
           }
         },
-        "en": {
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Name"
@@ -19683,16 +20445,22 @@
             "value": "Obnovit při spuštění"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Beim Start wiederherstellen"
+            "value": "Gendan ved start"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Restore on launch"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Start wiederherstellen"
           }
         },
         "el": {
@@ -19837,16 +20605,22 @@
             "value": "Při otevření aplikace obnoví skladbu, pozici, frontu a hlasitost z poslední relace."
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stellt beim Öffnen der App den Titel, die Position, die Warteschlange und die Lautstärke der letzten Sitzung wieder her."
+            "value": "Gendanner sporet, positionen, køen og lydstyrken fra sidste session, når appen åbnes."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Restores the last session's track, position, queue, and volume when the app opens."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stellt beim Öffnen der App den Titel, die Position, die Warteschlange und die Lautstärke der letzten Sitzung wieder her."
           }
         },
         "el": {
@@ -19991,16 +20765,22 @@
             "value": "O aplikaci"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Über"
+            "value": "Om"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "About"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über"
           }
         },
         "el": {
@@ -20145,13 +20925,19 @@
             "value": "Verze"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
             "value": "Version"
           }
         },
         "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Version"
@@ -20300,16 +21086,22 @@
             "value": "Odesílat"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Übertragen"
+            "value": "Cast"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Cast"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übertragen"
           }
         },
         "el": {
@@ -20455,16 +21247,22 @@
             "value": "Odesílání"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Übertragung"
+            "value": "Caster"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Casting"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übertragung"
           }
         },
         "el": {
@@ -20610,16 +21408,22 @@
             "value": "Odesílání do %@"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Übertragung an %@"
+            "value": "Caster til %@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Casting to %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übertragung an %@"
           }
         },
         "el": {
@@ -20765,16 +21569,22 @@
             "value": "Nenalezena žádná zařízení"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keine Cast-Geräte gefunden"
+            "value": "Der blev ikke fundet nogen Cast-enheder"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "No Cast devices found"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Cast-Geräte gefunden"
           }
         },
         "el": {
@@ -20920,16 +21730,22 @@
             "value": "Povolit odesílání"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Übertragung aktivieren"
+            "value": "Slå casting til"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Enable casting"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übertragung aktivieren"
           }
         },
         "el": {
@@ -21075,16 +21891,22 @@
             "value": "Vypnout odesílání?"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Übertragung ausschalten?"
+            "value": "Vil du slå casting fra?"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Turn off casting?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übertragung ausschalten?"
           }
         },
         "el": {
@@ -21230,16 +22052,22 @@
             "value": "Tím se ukončí odesílání do %@."
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Damit wird die Übertragung an %@ beendet."
+            "value": "Dette stopper casting til %@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "This will stop casting to %@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Damit wird die Übertragung an %@ beendet."
           }
         },
         "el": {
@@ -21385,16 +22213,22 @@
             "value": "Vypnout"
           }
         },
-        "de": {
+        "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ausschalten"
+            "value": "Slå fra"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Turn Off"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausschalten"
           }
         },
         "el": {
@@ -21671,6 +22505,12 @@
             "state": "translated",
             "value": "Spelar till Cast- och AirPlay-mottagare i ditt nätverk. När det är avstängt söker bae inte efter enheter."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afspiller til Cast- og AirPlay-modtagere på dit netværk. Når det er slået fra, søger bae ikke efter enheder."
+          }
         }
       }
     },
@@ -21698,6 +22538,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Toto zařízení"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Denne enhed"
           }
         },
         "de": {
@@ -21980,6 +22826,12 @@
             "state": "translated",
             "value": "Kunde inte skapa någon återställningskod"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der kunne ikke oprettes en gendannelseskode"
+          }
         }
       }
     },
@@ -22134,6 +22986,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Återställningskoden kunde inte sparas i din nyckelring"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gendannelseskoden kunne ikke gemmes i din nøglering"
           }
         }
       }
@@ -22290,6 +23148,12 @@
             "state": "translated",
             "value": "Kunde inte kontrollera iCloud-kontots status."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunne ikke kontrollere iCloud-kontoens status."
+          }
         }
       }
     },
@@ -22444,6 +23308,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kunde inte kontrollera iCloud-kontots status: %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunne ikke kontrollere iCloud-kontoens status: %@"
           }
         }
       }
@@ -22600,6 +23470,12 @@
             "state": "translated",
             "value": "Inget iCloud-konto är inloggat på den här enheten. Öppna Systeminställningar → Apple-ID för att logga in och försök sedan igen."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der er ikke logget ind på nogen iCloud-konto på denne enhed. Åbn Systemindstillinger → Apple-id for at logge ind, og prøv så igen."
+          }
         }
       }
     },
@@ -22754,6 +23630,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud är begränsad på den här enheten (föräldrakontroll eller MDM). bae kan inte använda den för synkronisering."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud er begrænset på denne enhed (forældrekontrol eller MDM). bae kan ikke bruge den til synkronisering."
           }
         }
       }
@@ -22910,6 +23792,12 @@
             "state": "translated",
             "value": "Kunde inte fastställa iCloud-kontots status. Kontrollera nätverket och försök igen."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud-kontoens status kunne ikke fastslås. Kontroller netværket, og prøv igen."
+          }
         }
       }
     },
@@ -23064,6 +23952,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud är tillfälligt otillgänglig. Försök igen om en stund."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud er midlertidigt utilgængelig. Prøv igen om et øjeblik."
           }
         }
       }
@@ -23220,6 +24114,12 @@
             "state": "translated",
             "value": "Oväntad status för iCloud-kontot (%lld)."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uventet status for iCloud-kontoen (%lld)."
+          }
         }
       }
     },
@@ -23374,6 +24274,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Du är inte inloggad på iCloud. Öppna Systeminställningar → Apple-ID för att logga in och försök sedan igen."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du er ikke logget ind på iCloud. Åbn Systemindstillinger → Apple-id for at logge ind, og prøv så igen."
           }
         }
       }
@@ -23530,6 +24436,12 @@
             "state": "translated",
             "value": "Ditt iCloud-utrymme är fullt. Frigör utrymme i Systeminställningar → Apple-ID → iCloud för att fortsätta synkronisera."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Din iCloud-lagring er fuld. Frigør plads i Systemindstillinger → Apple-id → iCloud for at fortsætte synkroniseringen."
+          }
         }
       }
     },
@@ -23685,6 +24597,12 @@
             "state": "translated",
             "value": "bae har inte behörighet att använda iCloud. Öppna Systeminställningar → Apple-ID → iCloud → Appar som använder iCloud och slå på bae."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae har ikke tilladelse til at bruge iCloud. Åbn Systemindstillinger → Apple-id → iCloud → Apps, der bruger iCloud, og slå bae til."
+          }
         }
       }
     },
@@ -23839,6 +24757,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud-synkroniseringszonen är borta. Anslut igen i synkroniseringsinställningarna för att återskapa den."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud-synkroniseringszonen findes ikke længere. Forbind igen i synkroniseringsindstillingerne for at genskabe den."
           }
         }
       }
@@ -24003,6 +24927,12 @@
           }
         },
         "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld album"
+          }
+        },
+        "da": {
           "stringUnit": {
             "state": "translated",
             "value": "%lld album"
@@ -24174,6 +25104,12 @@
             "state": "translated",
             "value": "%lld verk"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld værker"
+          }
         }
       }
     },
@@ -24327,6 +25263,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lägg till en enhet"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilføj en enhed"
           }
         }
       }
@@ -24483,6 +25425,12 @@
             "state": "translated",
             "value": "Lägg till en enhet…"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilføj en enhed…"
+          }
         }
       }
     },
@@ -24638,6 +25586,12 @@
             "state": "translated",
             "value": "Lägg till den här enheten i ett bibliotek som du redan har på en annan enhet."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Føj denne enhed til et bibliotek, du allerede har på en anden enhed."
+          }
         }
       }
     },
@@ -24791,6 +25745,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alla som har den här koden får full åtkomst till ditt bibliotek. Håll den hemlig. Använd den bara för att återställa på en ny enhet när du inte har någon annan enhet tillgänglig."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle med denne kode har fuld adgang til dit bibliotek. Hold den hemmelig. Brug den kun til at gendanne på en ny enhed, når du ikke har andre enheder til rådighed."
           }
         }
       }
@@ -24947,6 +25907,12 @@
             "state": "translated",
             "value": "Godkänn"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Godkend"
+          }
         }
       }
     },
@@ -25100,6 +26066,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Godkänn den här enheten?"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Godkend denne enhed?"
           }
         }
       }
@@ -25256,6 +26228,12 @@
             "state": "translated",
             "value": "Auktoriseringen avslutades utan något tillstånd."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Godkendelsen sluttede uden en tilstand."
+          }
         }
       }
     },
@@ -25410,6 +26388,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tillbaka"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilbage"
           }
         }
       }
@@ -25566,6 +26550,12 @@
             "state": "translated",
             "value": "Kopiera koden"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopier koden"
+          }
         }
       }
     },
@@ -25720,6 +26710,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enhetens parkopplingskod"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enhedens parringskode"
           }
         }
       }
@@ -25876,6 +26872,12 @@
             "state": "translated",
             "value": "Enheter"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enheder"
+          }
         }
       }
     },
@@ -26030,6 +27032,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enheter som delar det här biblioteket. Godkänn en ny enhet eller ta bort en."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enheder, der deler dette bibliotek. Godkend en ny enhed, eller fjern en."
           }
         }
       }
@@ -26186,6 +27194,12 @@
             "state": "translated",
             "value": "Följare"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Følger"
+          }
         }
       }
     },
@@ -26339,6 +27353,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Den förlorar åtkomsten och bibliotekets nyckel byts ut. Enheter som är kvar i biblioteket får en ny nyckel automatiskt."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den mister adgangen, og bibliotekets nøgle udskiftes. Enheder, der bliver i biblioteket, får automatisk en ny nøgle."
           }
         }
       }
@@ -26495,6 +27515,12 @@
             "state": "translated",
             "value": "Anslut dig"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deltag"
+          }
         }
       }
     },
@@ -26649,6 +27675,12 @@
             "state": "translated",
             "value": "Anslut dig till ett bibliotek"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deltag i et bibliotek"
+          }
         }
       }
     },
@@ -26800,6 +27832,12 @@
           }
         },
         "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medlem"
+          }
+        },
+        "da": {
           "stringUnit": {
             "state": "translated",
             "value": "Medlem"
@@ -26959,6 +27997,12 @@
             "state": "translated",
             "value": "Medlemmar"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medlemmer"
+          }
         }
       }
     },
@@ -27113,6 +28157,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ägare"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejer"
           }
         }
       }
@@ -27269,6 +28319,12 @@
             "state": "translated",
             "value": "Klistra in återställningskoden"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indsæt gendannelseskoden"
+          }
         }
       }
     },
@@ -27423,6 +28479,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Klistra in din återställningskod"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indsæt din gendannelseskode"
           }
         }
       }
@@ -27579,6 +28641,12 @@
             "state": "translated",
             "value": "Klistra in din återställningskod. Använd detta bara när du inte har någon annan enhet som kan godkänna den här."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indsæt din gendannelseskode. Brug kun dette, når du ikke har andre enheder til at godkende denne."
+          }
         }
       }
     },
@@ -27732,6 +28800,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Återställningskod"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gendannelseskode"
           }
         }
       }
@@ -27888,6 +28962,12 @@
             "state": "translated",
             "value": "Ta bort den här enheten?"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vil du fjerne denne enhed?"
+          }
         }
       }
     },
@@ -28042,6 +29122,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skanna"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan"
           }
         }
       }
@@ -28198,6 +29284,12 @@
             "state": "translated",
             "value": "Skanna återställningskod"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan gendannelseskode"
+          }
         }
       }
     },
@@ -28352,6 +29444,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skanna koden som visas av en enhet som redan finns i ditt bibliotek."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan koden, der vises på en enhed, som allerede er i dit bibliotek."
           }
         }
       }
@@ -28508,6 +29606,12 @@
             "state": "translated",
             "value": "Visa återställningskod…"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vis gendannelseskode…"
+          }
         }
       }
     },
@@ -28662,6 +29766,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Samtidiga hämtningar"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samtidige overførsler"
           }
         }
       }
@@ -28818,6 +29928,12 @@
             "state": "translated",
             "value": "Synkroniseringsfel"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synkroniseringsfejl"
+          }
         }
       }
     },
@@ -28971,6 +30087,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Det här biblioteket använder en leverantör som den här versionen inte kan ansluta till."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dette bibliotek bruger en udbyder, som denne version ikke kan forbinde til."
           }
         }
       }
@@ -29127,6 +30249,12 @@
             "state": "translated",
             "value": "Försök igen"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prøv igen"
+          }
         }
       }
     },
@@ -29280,6 +30408,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Din återställningskod återställer det här biblioteket på en ny enhet när du inte har någon annan enhet som kan godkänna den. Alla som har den får full åtkomst. Håll den hemlig."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Din gendannelseskode gendanner dette bibliotek på en ny enhed, når du ikke har andre enheder til at godkende den. Alle med den får fuld adgang. Hold den hemmelig."
           }
         }
       }
@@ -29436,6 +30570,12 @@
             "state": "translated",
             "value": "bae ställer in biblioteket på den här enheten."
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae opsætter biblioteket på denne enhed."
+          }
         }
       }
     },
@@ -29590,6 +30730,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Frånkopplad, men återställningskoden kunde inte tas bort: %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forbindelsen blev afbrudt, men gendannelseskoden kunne ikke fjernes: %@"
           }
         }
       }
@@ -29746,6 +30892,12 @@
             "state": "translated",
             "value": "Synkroniseringen väntar på dig"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synkroniseringen venter på dig"
+          }
         }
       }
     },
@@ -29900,6 +31052,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Biblioteksändring"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biblioteksændring"
           }
         }
       }
@@ -30056,6 +31214,12 @@
             "state": "translated",
             "value": "Delningsändring"
           }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delingsændring"
+          }
         }
       }
     },
@@ -30210,6 +31374,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Molnstädning"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skyoprydning"
           }
         }
       }
