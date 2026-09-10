@@ -1,58 +1,91 @@
 #!/usr/bin/env python3
-"""Flag English-skeleton entries: an it/tr/vi/nl catalog value that is still
-mostly the English source sentence, either untranslated or with a single
-glossary noun swapped in (sometimes with an English suffix glued onto a
-non-English stem, e.g. "Sincronizzazioneing", "Eşzamanlamaed", "Đồng bộed",
-"Importerened").
+"""Flag English-skeleton entries: a catalog value that is still mostly the
+English source sentence, either untranslated or with a single glossary noun
+swapped in (sometimes with an English suffix glued onto a non-English stem,
+e.g. "Sincronizzazioneing", "Eşzamanlamaed", "Importerened").
 
-Reads both xcstrings catalogs, the Android values-{it,tr,vi,nl}/strings.xml
-catalog, and the Avalonia app's Strings/Resources.{it,tr,vi,nl}.resx catalog —
-all four gate CI.
+Covers every locale bae ships — the set comes from `loc-gen locales`, i.e.
+bae-loc's TARGET_LOCALES, so this script keeps no list of its own. Reads both
+xcstrings catalogs, the Android values-<locale>/strings.xml catalogs, and the
+Avalonia app's Strings/Resources.<locale>.resx catalogs; all four gate CI. A
+locale with no chrome file of a given kind simply has nothing to scan there.
 
 Detectors:
-  - glued morphology: an English suffix (ing/ed/s) glued onto a non-English
-    stem — either (a) a word containing a non-ASCII letter immediately
-    followed by the suffix, or (b) a known glossary-noun ending followed by
-    the suffix. Locale-scoped: the ASCII-only variant of (a) false-positives
-    outside it/tr/vi/nl (e.g. Czech "před").
+  - glued morphology: an English suffix (ing/ed/s) welded onto a target-
+    language stem. Whether that is even distinguishable from native
+    inflection is a fact about the language — French "métadonnées" and Czech
+    "před" are ordinary words — so the detector runs only for locales in
+    GLUED_MORPHOLOGY_LOCALES, which carry a table of their own noun endings.
   - English skeleton: 2 or more English function/content words from a
     per-locale safe list (loanwords and words that are also valid in the
-    target language are excluded per locale).
+    target language are excluded per locale). Only ASCII tokens count; a
+    target-language word is never English evidence.
   - token overlap >= 0.7: share of the en source's tokens (placeholders,
     format tokens, digits, and technical proper nouns stripped) that appear
-    verbatim in the target value. Gates CI at this threshold. The 0.5-0.67
-    band catches more real breakage but only at ~70% precision (loanword-
-    heavy real translations live there), so it is report-only (--verbose).
+    verbatim in the target value. Needs at least two such tokens — a one-word
+    source that survives translation says nothing. Gates CI at this
+    threshold. The 0.5-0.67 band catches more real breakage but only at ~70%
+    precision (loanword-heavy real translations live there), so it is
+    report-only (--verbose).
 
 Adjudicated-legitimate hits (loanwords, short strings that happen to overlap)
 go in scripts/loc-skeleton-allowlist.txt as `locale\tkey` (or
 `locale\tkey\tplural-form` for a plural variation), mirroring
 loc-orphans-allowlist.txt's mechanics.
 
-Also verifies, for every it/tr/vi/nl value: the placeholder multiset
+Also verifies, for every value: the placeholder multiset
 (%@ / %lld / %n$… / {token}) matches its en source exactly. A mismatch is a
 translation defect regardless of what the other detectors say, so it is not
 allowlist-suppressible.
 
 Gates CI: exits non-zero if any strict-detector or placeholder-multiset hit in
-the two xcstrings catalogs, the Android catalog, or the ResX catalog is not
+the two xcstrings catalogs, the Android catalogs, or the ResX catalogs is not
 allowlisted (placeholder mismatches are never allowlist-suppressible).
 """
 import json
 import pathlib
 import re
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ALLOWLIST = ROOT / "scripts/loc-skeleton-allowlist.txt"
 
-TARGET_LOCALES = ("it", "tr", "vi", "nl")
+
+def shipping_locales():
+    """The locale set bae ships, straight from bae-loc's TARGET_LOCALES."""
+    out = subprocess.run(
+        ["cargo", "run", "-q", "-p", "bae-loc", "--bin", "loc-gen", "--", "locales"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if out.returncode != 0:
+        sys.exit(f"`loc-gen locales` failed:\n{out.stderr}")
+    locales = tuple(line.strip() for line in out.stdout.splitlines() if line.strip())
+    if not locales:
+        sys.exit("`loc-gen locales` printed nothing")
+    return locales
+
+
+def android_values_dir(locale):
+    """The Android resource qualifier carrying `locale`, mirroring bae-loc's
+    emitter: a bare language is `values-<lang>`, anything with a region or
+    script subtag needs the BCP-47 `b+` form."""
+    if "-" in locale:
+        lang, rest = locale.split("-", 1)
+        return f"values-b+{lang}+{rest}"
+    return f"values-{locale}"
+
+
+TARGET_LOCALES = shipping_locales()
 
 MAC_XCSTRINGS = "bae-macos/bae/bae/Localizable.xcstrings"
 IOS_XCSTRINGS = "bae-ios/bae/bae/Localizable.xcstrings"
 ANDROID_STRINGS = {
-    loc: f"bae-android/app/src/main/res/values-{loc}/strings.xml" for loc in TARGET_LOCALES
+    loc: f"bae-android/app/src/main/res/{android_values_dir(loc)}/strings.xml"
+    for loc in TARGET_LOCALES
 }
 RESX_CHROME = {
     loc: f"bae-avalonia/Strings/Resources.{loc}.resx" for loc in TARGET_LOCALES
@@ -61,7 +94,9 @@ RESX_CHROME_EN = "bae-avalonia/Strings/Resources.resx"
 
 # ── Placeholder / token stripping ───────────────────────────────────────────
 
-PLACEHOLDER_RE = re.compile(r"%\d+\$[a-zA-Z@]|%lld|%@|%[sd]|\{[^}]+\}")
+# `%1$lld` is one token, not `%1$l` plus the letters "ld": the specifier is
+# matched whole so a positional integer argument reads as an integer.
+PLACEHOLDER_RE = re.compile(r"%\d+\$(?:lld|[a-zA-Z@])|%lld|%@|%[sd]|\{[^}]+\}")
 ICU_PLURAL_WORDS = {"plural", "one", "other", "few", "many", "zero", "#"}
 
 TECHNICAL_PROPER_NOUNS = {
@@ -69,9 +104,19 @@ TECHNICAL_PROPER_NOUNS = {
     "onedrive", "google", "drive", "mcp", "api", "id", "url", "s3", "finder",
     "mac", "macos", "ios", "android", "windows", "cloudkit", "json", "xml",
     "http", "https", "www", "com", "flac", "mp3", "m4a", "aac", "wav", "cue",
+    # Formats, units, and protocol names: identical in every locale by nature,
+    # so their survival into a translation is not evidence of anything.
+    "alac", "aiff", "ogg", "opus", "dsd", "dsf", "pcm", "mqa", "ape",
+    "bit", "bits", "khz", "hz", "kbps", "kb", "mb", "gb", "tb", "ms",
+    "cd", "dvd", "sacd", "usb", "ip", "lan", "wifi", "dlna", "upnp",
+    "airplay", "chromecast", "sonos", "subsonic", "isrc", "upc", "ean",
+    "ocr", "toc",
 }
 
-WORD_RE = re.compile(r"[A-Za-z][A-Za-z']*")
+# Unicode-aware: a target-language word is one token, not an ASCII fragment
+# plus a stray letter. Splitting "Hasło" into "Has" + "o" invents an English
+# "has" that was never there, and pollutes the overlap token set besides.
+WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 
 
 def strip_placeholders(s):
@@ -80,6 +125,56 @@ def strip_placeholders(s):
 
 def placeholder_multiset(s):
     return sorted(PLACEHOLDER_RE.findall(s))
+
+
+_INT_SPECIFIERS = ("lld", "d")
+
+
+def positional_signature(s):
+    """The arguments a value substitutes, keyed by position rather than by
+    order of appearance.
+
+    Word order is the whole point of translating, so a locale that puts the
+    second argument first writes `%2$@ … %1$@` where English wrote `%@ … %@`.
+    Both substitute the same two arguments; comparing raw token order would
+    call the correct translation a defect. Apple and Android both number bare
+    specifiers by appearance, so this assigns those positions the same way and
+    compares what is left: {position or name: specifier}."""
+    signature = {}
+    implicit = 0
+    for token in PLACEHOLDER_RE.findall(s):
+        if token.startswith("{"):
+            signature[token] = "brace"
+            continue
+        if "$" in token:
+            index, specifier = token[1:].split("$", 1)
+            signature[int(index)] = specifier
+            continue
+        implicit += 1
+        signature[implicit] = token[1:]
+    return signature
+
+
+def placeholders_match(en_value, target_value, plural_leaf):
+    """Same arguments, whatever order the target puts them in.
+
+    `plural_leaf` is a single branch of a plural (an .xcstrings plural
+    variation, an Android `<plurals>` item). There the count itself may be
+    spelled out — Arabic's "one" branch reads "ملف واحد", not "1 ملف" — so a
+    branch may drop the integer argument. Every other argument must be
+    present; dropping one means the value can't say what it promises."""
+    en_signature = positional_signature(en_value)
+    target_signature = positional_signature(target_value)
+    if en_signature == target_signature:
+        return True
+    if not plural_leaf:
+        return False
+    dropped = {k: v for k, v in en_signature.items() if k not in target_signature}
+    return (
+        len(dropped) == 1
+        and next(iter(dropped.values())) in _INT_SPECIFIERS
+        and all(target_signature[k] == en_signature[k] for k in target_signature)
+    )
 
 
 # The ResX catalogs embed an entire ICU plural expression as one string value
@@ -96,7 +191,7 @@ def placeholder_multiset(s):
 # placeholder tokens (`%...`, `{name}`, `#`) wherever they occur, including
 # nested inside a branch; the plural argument name and branch keywords
 # (one/other/...) are ICU control syntax, not placeholders.
-_RESW_SIMPLE_FMT_RE = re.compile(r"%\d+\$[a-zA-Z@]|%lld|%@|%[sd]")
+_RESW_SIMPLE_FMT_RE = re.compile(r"%\d+\$(?:lld|[a-zA-Z@])|%lld|%@|%[sd]")
 _RESW_PLURAL_HEADER_RE = re.compile(r"\s*\w+\s*,\s*plural\s*,\s*")
 
 
@@ -198,22 +293,36 @@ def mf1_placeholder_multiset(s):
     return sorted(_extract_mf1_placeholders(s))
 
 
-def mf1_placeholders_match(en_value, target_value):
-    """Placeholder equality for an MF1 value, aware that CLDR plural-category
-    counts vary by locale (e.g. Vietnamese has only "other", no "one" —
-    dropping a category English uses is a correct translation, not a defect).
-    For a value that is a single top-level plural construct in both en and
-    the target: every category the target defines must exist in en with the
-    identical placeholder list (the target may omit an en category, never
-    invent one en lacks). Otherwise falls back to flat placeholder-multiset
-    equality, same as the other three catalogs."""
+def mf1_placeholders_match(en_value, target_value, plural_leaf=False):
+    """Placeholder equality for an MF1 value, aware of two ways a correct
+    translation legitimately differs from its English source inside a plural.
+
+    A locale's CLDR categories are its own: Arabic writes zero/two/few/many
+    where English has only one/other, and Japanese has only other. So a target
+    branch is held against the English branch of the same label, or against
+    English's `other` for a category English doesn't have.
+
+    Within a branch, `#` — the count itself — may be spelled out ("ملف واحد",
+    "un fichier"), so a branch may carry fewer `#` than its English
+    counterpart. Every other placeholder is an argument the message promises
+    to substitute, and must match exactly.
+
+    A value that isn't a single top-level plural construct in both languages
+    falls back to flat placeholder-multiset equality, same as the other
+    catalogs."""
     en_branches = _parse_top_level_plural(en_value)
     target_branches = _parse_top_level_plural(target_value)
-    if en_branches is not None and target_branches is not None:
-        if not set(target_branches) <= set(en_branches):
+    if en_branches is None or target_branches is None:
+        return placeholders_match(en_value, target_value, plural_leaf)
+    if "other" not in en_branches:
+        return False
+    for label, tokens in target_branches.items():
+        en_tokens = en_branches.get(label, en_branches["other"])
+        if [t for t in tokens if t != "#"] != [t for t in en_tokens if t != "#"]:
             return False
-        return all(target_branches[label] == en_branches[label] for label in target_branches)
-    return mf1_placeholder_multiset(en_value) == mf1_placeholder_multiset(target_value)
+        if tokens.count("#") > en_tokens.count("#"):
+            return False
+    return True
 
 
 def tokenize(s):
@@ -222,15 +331,32 @@ def tokenize(s):
 
 # ── Glued morphology ─────────────────────────────────────────────────────────
 
-SUFFIX_RE = re.compile(r"(ing|ed|s)\b", re.UNICODE)
+# An English suffix on a word only reads as glued-on where it is not also that
+# language's own inflection: -s ends ordinary French, Spanish, Portuguese, and
+# German plurals, and -ed ends Czech "před". So this detector is scoped to the
+# locales whose morphology it was written against, each of which contributes
+# the noun endings a mangled word gets welded onto. A locale joins the table
+# when a glued form is actually found in it; the others are covered by the
+# placeholder and token-overlap checks.
+GLOSSARY_NOUN_ENDINGS = {
+    "it": ("zione", "zioni"),
+    "nl": ("atie", "satie", "eren"),
+    "tr": ("lama", "leme"),
+}
+GLUED_MORPHOLOGY_LOCALES = tuple(GLOSSARY_NOUN_ENDINGS)
+
 NON_ASCII_WORD_RE = re.compile(r"\b\w*[^\x00-\x7f]\w*(ing|ed|s)\b", re.UNICODE)
 GLOSSARY_NOUN_ENDING_RE = re.compile(
-    r"\b\w*(zione|zioni|atie|satie|eren|lama|leme|hóa|bộ|xuống|nhập)(ing|ed|s)\b",
+    r"\b\w*("
+    + "|".join(sorted({e for es in GLOSSARY_NOUN_ENDINGS.values() for e in es}))
+    + r")(ing|ed|s)\b",
     re.UNICODE | re.IGNORECASE,
 )
 
 
-def glued_morphology_hits(value):
+def glued_morphology_hits(value, locale):
+    if locale not in GLUED_MORPHOLOGY_LOCALES:
+        return set()
     hits = set()
     for m in NON_ASCII_WORD_RE.finditer(value):
         hits.add(m.group(0))
@@ -260,11 +386,12 @@ _BASE_SAFE_WORDS = {
 }
 
 # Per-locale exclusions: real words in that language that collide with an
-# English safe word, so they must not count as English-skeleton evidence.
+# English safe word, so they must not count as English-skeleton evidence. A
+# locale earns an entry when one of its correct translations trips the
+# detector; an absent entry means none has.
 _LOCALE_EXCLUDE = {
     "it": {"a", "in", "i", "e", "via", "or", "con"},
     "tr": {"a", "in", "e", "or", "and"},
-    "vi": {"a", "in", "i", "e", "or", "con"},
     "nl": {"is", "was", "been", "of", "in", "a", "on", "met", "aan", "via", "account"},
 }
 
@@ -275,24 +402,31 @@ _LOANWORDS = {
     "token", "download", "id", "backup", "app", "sync",
 }
 
-SAFE_WORDS = {}
-for _loc in TARGET_LOCALES:
-    SAFE_WORDS[_loc] = _BASE_SAFE_WORDS - _LOCALE_EXCLUDE[_loc] - _LOANWORDS
+SAFE_WORDS = {
+    loc: _BASE_SAFE_WORDS - _LOCALE_EXCLUDE.get(loc, set()) - _LOANWORDS
+    for loc in TARGET_LOCALES
+}
 
 
 def english_skeleton_hits(value, locale):
-    words = tokenize(value)
     safe = SAFE_WORDS[locale]
-    return [w for w in words if w in safe]
+    return [w for w in tokenize(value) if w.isascii() and w in safe]
 
 
 # ── Token overlap ────────────────────────────────────────────────────────────
 
 
+# A source of one content word carries no signal: "Import" surviving as
+# "Import" is a loanword, not an untranslated sentence, and every such string
+# would otherwise score 1.00.
+MIN_OVERLAP_TOKENS = 2
+
+
 def token_overlap(en_value, target_value):
-    en_tokens = [t for t in tokenize(en_value) if t not in TECHNICAL_PROPER_NOUNS
+    en_tokens = [t for t in tokenize(en_value)
+                 if t.isascii() and t not in TECHNICAL_PROPER_NOUNS
                  and not t.isdigit()]
-    if not en_tokens:
+    if len(en_tokens) < MIN_OVERLAP_TOKENS:
         return None
     target_tokens = set(tokenize(target_value))
     shared = sum(1 for t in en_tokens if t in target_tokens)
@@ -436,7 +570,7 @@ def scan_leaves(leaves):
         for locale, target_value in values.items():
             scan_value = strip_icu(target_value)
             reasons = []
-            glued = glued_morphology_hits(scan_value)
+            glued = glued_morphology_hits(scan_value, locale)
             if glued:
                 reasons.append(f"glued morphology: {sorted(glued)}")
             skeleton = english_skeleton_hits(scan_value, locale)
@@ -463,13 +597,13 @@ def scan_leaves(leaves):
 
 def placeholder_mismatches(leaves, multiset_fn=placeholder_multiset, equal_fn=None):
     if equal_fn is None:
-        equal_fn = lambda en_value, target_value: multiset_fn(en_value) == multiset_fn(target_value)
+        equal_fn = placeholders_match
     mismatches = []
     for key, form, en_value, values in leaves:
         en_multiset = multiset_fn(en_value)
         for locale, target_value in values.items():
             target_multiset = multiset_fn(target_value)
-            if not equal_fn(en_value, target_value):
+            if not equal_fn(en_value, target_value, form is not None):
                 mismatches.append({
                     "key": key, "form": form, "locale": locale,
                     "en": en_value, "value": target_value,

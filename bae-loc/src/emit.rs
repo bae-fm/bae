@@ -7,12 +7,18 @@
 //! resource-file escaping and, for Android, sanitizing the dotted id into a
 //! legal resource name.
 //!
+//! Every target emits `TARGET_LOCALES` — the declared shipping set, not
+//! whatever the catalog happens to carry — so a locale the app claims to support
+//! always has a resource set. A message with no translation for one of them
+//! emits the English source at state `new`; `check::locale_coverage` is what
+//! keeps that from reaching a build.
+//!
 //! Only the message shapes bae actually authors are handled; anything else
 //! (plural combined with extra args, a plural embedded mid-sentence) returns an
 //! error so the build fails loudly instead of emitting wrong output.
 
 use crate::mf1::{self, Node, PluralSelector};
-use crate::{ArgType, Catalog, Message};
+use crate::{ArgType, Catalog, Message, SOURCE_LOCALE, TARGET_LOCALES};
 
 use crate::mf1::referenced_args as ordered_args;
 
@@ -81,8 +87,8 @@ fn string_unit_state(value: &str, state: &str) -> serde_json::Value {
 /// `translated`; a locale with no entry falls back to the English source at
 /// state `new` (the app still declares the locale; English shows until the slot
 /// is filled in).
-fn localized<'a>(msg: &'a Message, locale: &str, src_lang: &str) -> (&'a str, &'static str) {
-    if locale == src_lang {
+fn localized<'a>(msg: &'a Message, locale: &str) -> (&'a str, &'static str) {
+    if locale == SOURCE_LOCALE {
         (msg.value.as_str(), "translated")
     } else if let Some(t) = msg.translations.get(locale) {
         (t.as_str(), "translated")
@@ -132,43 +138,35 @@ fn apple_unit(msg: &Message, value: &str, state: &str) -> Result<serde_json::Val
 }
 
 /// Build the `.xcstrings` `localizations` body for one message: the source
-/// locale (state `translated`) plus every catalog target locale — its
+/// locale (state `translated`) plus every shipping target locale — its
 /// translation at state `translated`, or the source value at `new` where that
 /// locale isn't translated yet.
-fn apple_localization(
-    msg: &Message,
-    src_lang: &str,
-    target_locales: &[&str],
-) -> Result<serde_json::Value, String> {
+fn apple_localization(msg: &Message) -> Result<serde_json::Value, String> {
     let mut locs = serde_json::Map::new();
     locs.insert(
-        src_lang.to_string(),
+        SOURCE_LOCALE.to_string(),
         apple_unit(msg, &msg.value, "translated")?,
     );
-    for loc in target_locales {
-        let (value, state) = localized(msg, loc, src_lang);
+    for loc in TARGET_LOCALES {
+        let (value, state) = localized(msg, loc);
         locs.insert((*loc).to_string(), apple_unit(msg, value, state)?);
     }
     Ok(serde_json::Value::Object(locs))
 }
 
 /// Emit the source-language `Core.xcstrings` for the whole catalog.
-pub fn apple_xcstrings(cat: &Catalog, src_lang: &str) -> Result<String, String> {
+pub fn apple_xcstrings(cat: &Catalog) -> Result<String, String> {
     let mut strings = serde_json::Map::new();
-    let target_locales = cat.target_locales(src_lang);
     for (id, msg) in &cat.messages {
         let mut entry = serde_json::Map::new();
         if let Some(comment) = &msg.comment {
             entry.insert("comment".to_string(), json_str(comment));
         }
-        entry.insert(
-            "localizations".to_string(),
-            apple_localization(msg, src_lang, &target_locales)?,
-        );
+        entry.insert("localizations".to_string(), apple_localization(msg)?);
         strings.insert(id.clone(), serde_json::Value::Object(entry));
     }
     let doc = serde_json::json!({
-        "sourceLanguage": src_lang,
+        "sourceLanguage": SOURCE_LOCALE,
         "strings": serde_json::Value::Object(strings),
         "version": "1.0",
     });
@@ -207,10 +205,10 @@ fn android_escape(s: &str) -> String {
 /// `<string>`; the MF1 value for that locale — its translation, or the English
 /// source where untranslated — is stored verbatim (escaped) for
 /// `android.icu.text.MessageFormat`.
-pub fn android_strings_xml(cat: &Catalog, locale: &str, src_lang: &str) -> String {
+pub fn android_strings_xml(cat: &Catalog, locale: &str) -> String {
     let mut out = String::from("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<resources>\n");
     for (id, msg) in &cat.messages {
-        let (value, _state) = localized(msg, locale, src_lang);
+        let (value, _state) = localized(msg, locale);
         out.push_str(&format!(
             "    <string name=\"{}\">{}</string>\n",
             sanitize_android_id(id),
@@ -235,7 +233,7 @@ fn android_values_dir(locale: &str) -> String {
 }
 
 /// Emit the full Android resource set: the source language under `values/`, plus
-/// one `values-<qualifier>/core_strings.xml` per catalog target locale carrying
+/// one `values-<qualifier>/core_strings.xml` per shipping target locale carrying
 /// that locale's translations (source-language values where a message isn't
 /// translated yet).
 /// Android resolves resources per directory, so a locale the app should
@@ -243,15 +241,15 @@ fn android_values_dir(locale: &str) -> String {
 /// `values/` and never registers as supported (so its plural rules and
 /// right-to-left layout selection don't apply). Returns `(relative path, file
 /// contents)` pairs.
-pub fn android_resource_files(cat: &Catalog, src_lang: &str) -> Vec<(String, String)> {
+pub fn android_resource_files(cat: &Catalog) -> Vec<(String, String)> {
     let mut files = vec![(
         "values/core_strings.xml".to_string(),
-        android_strings_xml(cat, src_lang, src_lang),
+        android_strings_xml(cat, SOURCE_LOCALE),
     )];
-    for loc in cat.target_locales(src_lang) {
+    for loc in TARGET_LOCALES {
         files.push((
             format!("{}/core_strings.xml", android_values_dir(loc)),
-            android_strings_xml(cat, loc, src_lang),
+            android_strings_xml(cat, loc),
         ));
     }
     files
@@ -274,14 +272,14 @@ fn xml_escape(s: &str) -> String {
 /// MF1 value for that locale — its translation, or the English source where
 /// untranslated — is stored verbatim (XML-escaped) for the `MessageFormat` NuGet
 /// at runtime.
-fn resx_table(cat: &Catalog, locale: &str, src_lang: &str) -> String {
+fn resx_table(cat: &Catalog, locale: &str) -> String {
     let mut out = String::from(
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<root>\n  \
          <resheader name=\"resmimetype\"><value>text/microsoft-resx</value></resheader>\n  \
          <resheader name=\"version\"><value>2.0</value></resheader>\n",
     );
     for (id, msg) in &cat.messages {
-        let (value, _state) = localized(msg, locale, src_lang);
+        let (value, _state) = localized(msg, locale);
         out.push_str(&format!(
             "  <data name=\"{}\" xml:space=\"preserve\"><value>{}</value></data>\n",
             xml_escape(id),
@@ -294,19 +292,19 @@ fn resx_table(cat: &Catalog, locale: &str, src_lang: &str) -> String {
 
 /// Emit the .NET satellite-assembly ResX set: `Core.resx` (the source language,
 /// the invariant fallback the main assembly embeds) plus one `Core.<culture>.resx`
-/// per catalog target locale (each a satellite assembly). .NET keys the fallback
+/// per shipping target locale (each a satellite assembly). .NET keys the fallback
 /// chain off the culture in the filename, so one flat directory carries every
 /// language. Mirrors the Apple emitter, which carries the same per-locale values
 /// inside one file.
-pub fn resx_all(cat: &Catalog, src_lang: &str) -> Vec<(std::path::PathBuf, String)> {
+pub fn resx_all(cat: &Catalog) -> Vec<(std::path::PathBuf, String)> {
     let mut files = vec![(
         std::path::PathBuf::from("Core.resx"),
-        resx_table(cat, src_lang, src_lang),
+        resx_table(cat, SOURCE_LOCALE),
     )];
-    for loc in cat.target_locales(src_lang) {
+    for loc in TARGET_LOCALES {
         files.push((
             std::path::PathBuf::from(format!("Core.{loc}.resx")),
-            resx_table(cat, loc, src_lang),
+            resx_table(cat, loc),
         ));
     }
     files
@@ -331,7 +329,7 @@ translations = { ar = "تعذر العثور على ذلك الإصدار", "zh-
 args = { position = "Int", total = "Int" }
 value = "Looking up barcode {position} of {total}"
 "#);
-        let json = apple_xcstrings(&c, "en").unwrap();
+        let json = apple_xcstrings(&c).unwrap();
         // Multi-arg becomes positional; single message text passes through.
         assert!(
             json.contains("Looking up barcode %1$lld of %2$lld"),
@@ -355,7 +353,7 @@ value = "Looking up barcode {position} of {total}"
 args = { count = "Int" }
 value = "{count, plural, one {# pending delete} other {# pending deletes}}"
 "#);
-        let json = apple_xcstrings(&c, "en").unwrap();
+        let json = apple_xcstrings(&c).unwrap();
         assert!(json.contains("\"plural\""), "{json}");
         assert!(json.contains("%lld pending delete"), "{json}");
         assert!(json.contains("%lld pending deletes"), "{json}");
@@ -368,7 +366,7 @@ value = "{count, plural, one {# pending delete} other {# pending deletes}}"
 args = { count = "Int", name = "Str" }
 value = "{count, plural, one {# thing for {name}} other {# things for {name}}}"
 "#);
-        assert!(apple_xcstrings(&c, "en").is_err());
+        assert!(apple_xcstrings(&c).is_err());
     }
 
     #[test]
@@ -381,7 +379,7 @@ value = "{count, plural, one {# pending delete} other {# pending deletes}}"
 [messages."core.error.not_found.release"]
 value = "that release couldn't be found"
 "#);
-        let xml = android_strings_xml(&c, "en", "en");
+        let xml = android_strings_xml(&c, "en");
         assert!(
             xml.contains("name=\"core_outbox_pending_deletes\""),
             "{xml}"
@@ -401,7 +399,7 @@ value = "that release couldn't be found"
 [messages."core.audio.list_separator"]
 value = " · "
 "#);
-        let xml = android_strings_xml(&c, "en", "en");
+        let xml = android_strings_xml(&c, "en");
         assert!(
             xml.contains("<string name=\"core_audio_list_separator\">\" · \"</string>"),
             "{xml}"
@@ -415,7 +413,7 @@ value = " · "
 args = { position = "Int", total = "Int" }
 value = "Looking up barcode {position} of {total}"
 "#);
-        let resx = resx_table(&c, "en", "en");
+        let resx = resx_table(&c, "en");
         assert!(
             resx.contains("name=\"core.identify.barcode.looking_up\""),
             "{resx}"
@@ -433,9 +431,10 @@ value = "Looking up barcode {position} of {total}"
 value = "that release couldn't be found"
 translations = { ar = "تعذر العثور على ذلك الإصدار", "zh-Hans" = "找不到该发行版" }
 "#);
-        let files = resx_all(&c, "en");
-        // Core.resx (invariant source) + one Core.<culture>.resx per target locale.
-        assert_eq!(files.len(), 3);
+        let files = resx_all(&c);
+        // Core.resx (invariant source) + one Core.<culture>.resx per shipping
+        // locale, translated or not.
+        assert_eq!(files.len(), 1 + TARGET_LOCALES.len());
         let paths: Vec<String> = files
             .iter()
             .map(|(p, _)| p.to_string_lossy().replace('\\', "/"))
@@ -490,9 +489,10 @@ translations = { ar = "تعذر العثور على ذلك الإصدار", "zh-
 value = "mono"
 translations = { ar = "أحادي", "zh-Hans" = "单声道" }
 "#);
-        let files = android_resource_files(&c, "en");
-        // One source `values/` file plus one per catalog target locale.
-        assert_eq!(files.len(), 3);
+        let files = android_resource_files(&c);
+        // One source `values/` file plus one per shipping locale, translated or
+        // not.
+        assert_eq!(files.len(), 1 + TARGET_LOCALES.len());
         let paths: Vec<&str> = files.iter().map(|(p, _)| p.as_str()).collect();
         assert!(paths.contains(&"values/core_strings.xml"), "{paths:?}");
         assert!(
@@ -520,14 +520,14 @@ translations = { pl = "{count, plural, one {# usunięcie oczekuje} few {# usuni�
 
         // Apple: the Spanish slot carries the translation; the Polish plural
         // expands to all four of its categories.
-        let json = apple_xcstrings(&c, "en").unwrap();
+        let json = apple_xcstrings(&c).unwrap();
         assert!(json.contains("no se encontró ese lanzamiento"), "{json}");
         assert!(json.contains("%lld usunięcia oczekują"), "{json}");
         assert!(json.contains("%lld usunięć oczekuje"), "{json}");
 
         // Android: the Spanish file carries the translation verbatim; a target
         // locale untranslated for this message keeps the English source.
-        let files = android_resource_files(&c, "en");
+        let files = android_resource_files(&c);
         let es = files
             .iter()
             .find(|(p, _)| p == "values-es/core_strings.xml")
@@ -540,7 +540,7 @@ translations = { pl = "{count, plural, one {# usunięcie oczekuje} few {# usuni�
         assert!(pl.1.contains("that release couldn"), "{}", pl.1);
 
         // ResX: the Polish Core.pl.resx carries the four-category MF1 verbatim.
-        let files = resx_all(&c, "en");
+        let files = resx_all(&c);
         let pl = files
             .iter()
             .find(|(p, _)| p.to_string_lossy() == "Core.pl.resx")

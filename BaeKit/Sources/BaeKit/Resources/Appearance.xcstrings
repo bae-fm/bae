@@ -21,12 +21,6 @@
             "value": "Режим"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "মোড"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -51,22 +45,10 @@
             "value": "Mode"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "મોડ"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "מצב"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "मोड"
           }
         },
         "hr": {
@@ -87,40 +69,16 @@
             "value": "モード"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಮೋಡ್"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "모드"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "മോഡ്"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "मोड"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Modus"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਮੋਡ"
           }
         },
         "pl": {
@@ -135,24 +93,6 @@
             "value": "Modo"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "முறை"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "మోడ్"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "โหมด"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -163,18 +103,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Режим"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "موڈ"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chế độ"
           }
         },
         "zh-Hans": {
@@ -211,12 +139,6 @@
             "value": "Системен"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "সিস্টেম"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -241,22 +163,10 @@
             "value": "Système"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "સિસ્ટમ"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "מערכת"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "सिस्टम"
           }
         },
         "hr": {
@@ -277,40 +187,16 @@
             "value": "システム"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಸಿಸ್ಟಂ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "시스템"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "സിസ്റ്റം"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "सिस्टीम"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Systeem"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਸਿਸਟਮ"
           }
         },
         "pl": {
@@ -325,24 +211,6 @@
             "value": "Sistema"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "கணினி அமைப்பு"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "సిస్టమ్"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ระบบ"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -353,18 +221,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Системний"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "سسٹم"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hệ thống"
           }
         },
         "zh-Hans": {
@@ -401,12 +257,6 @@
             "value": "Светъл"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "হালকা"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -431,22 +281,10 @@
             "value": "Clair"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "આછો"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "בהיר"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "हल्का"
           }
         },
         "hr": {
@@ -467,40 +305,16 @@
             "value": "ライト"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ತಿಳಿ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "라이트"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ഇളം"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "फिकट"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Licht"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਹਲਕਾ"
           }
         },
         "pl": {
@@ -515,24 +329,6 @@
             "value": "Claro"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "வெளிர்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "లేత"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "สว่าง"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -543,18 +339,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Світлий"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ہلکا"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sáng"
           }
         },
         "zh-Hans": {
@@ -591,12 +375,6 @@
             "value": "Тъмен"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "গাঢ়"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -621,22 +399,10 @@
             "value": "Sombre"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ઘેરો"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "כהה"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "गहरा"
           }
         },
         "hr": {
@@ -657,40 +423,16 @@
             "value": "ダーク"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಗಾಢ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "다크"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ഇരുണ്ട"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "गडद"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Donker"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਗੂੜ੍ਹਾ"
           }
         },
         "pl": {
@@ -705,24 +447,6 @@
             "value": "Escuro"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "இருள்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ముదురు"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "มืด"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -733,18 +457,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Темний"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "گہرا"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tối"
           }
         },
         "zh-Hans": {
@@ -781,12 +493,6 @@
             "value": "Акцентен цвят"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "অ্যাকসেন্ট রং"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -811,22 +517,10 @@
             "value": "Couleur d’accentuation"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "મુખ્ય રંગ"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "צבע הדגשה"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "मुख्य रंग"
           }
         },
         "hr": {
@@ -847,40 +541,16 @@
             "value": "アクセントカラー"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಮುಖ್ಯ ಬಣ್ಣ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "강조 색상"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "പ്രധാന നിറം"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "मुख्य रंग"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Accentkleur"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਮੁੱਖ ਰੰਗ"
           }
         },
         "pl": {
@@ -895,24 +565,6 @@
             "value": "Cor de destaque"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "முதன்மை நிறம்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ప్రధాన రంగు"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "สีเน้น"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -923,18 +575,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Акцентний колір"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "نمایاں رنگ"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Màu nhấn"
           }
         },
         "zh-Hans": {
@@ -971,12 +611,6 @@
             "value": "Тон на фона"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "পটভূমির আভা"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -1001,22 +635,10 @@
             "value": "Teinte du fond"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "પૃષ્ઠભૂમિની છટા"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "גוון הרקע"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "पृष्ठभूमि की रंगत"
           }
         },
         "hr": {
@@ -1037,40 +659,16 @@
             "value": "背景の色調"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಹಿನ್ನೆಲೆಯ ಛಾಯೆ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "배경 색조"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "പശ്ചാത്തല വർണഭാവം"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "पार्श्वभूमीची छटा"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Achtergrondtint"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਪਿਛੋਕੜ ਦੀ ਰੰਗਤ"
           }
         },
         "pl": {
@@ -1085,24 +683,6 @@
             "value": "Tom do fundo"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "பின்னணி நிறச்சாயல்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "నేపథ్య ఛాయ"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "โทนพื้นหลัง"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -1113,18 +693,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тон тла"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "پس منظر کی رنگت"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tông màu nền"
           }
         },
         "zh-Hans": {
@@ -1161,12 +729,6 @@
             "value": "Неутрален"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "নিরপেক্ষ"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -1191,22 +753,10 @@
             "value": "Neutre"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "તટસ્થ"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "ניטרלי"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "तटस्थ"
           }
         },
         "hr": {
@@ -1227,40 +777,16 @@
             "value": "ニュートラル"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ತಟಸ್ಥ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "중립"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "നിഷ്പക്ഷം"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "तटस्थ"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Neutraal"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਨਿਰਪੱਖ"
           }
         },
         "pl": {
@@ -1275,24 +801,6 @@
             "value": "Neutro"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "நடுநிலை"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "తటస్థం"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "กลาง"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -1303,18 +811,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нейтральний"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "غیر جانب دار"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Trung tính"
           }
         },
         "zh-Hans": {
@@ -1351,12 +847,6 @@
             "value": "Сивосин"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "স্লেট"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -1381,22 +871,10 @@
             "value": "Ardoise"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "સ્લેટ"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "צפחה"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "स्लेट"
           }
         },
         "hr": {
@@ -1417,40 +895,16 @@
             "value": "スレート"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಸ್ಲೇಟ್"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "슬레이트"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "സ്ലേറ്റ്"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "स्लेट"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Leisteen"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਸਲੇਟ"
           }
         },
         "pl": {
@@ -1465,24 +919,6 @@
             "value": "Ardósia"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ஸ்லேட்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "స్లేట్"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เทาอมฟ้า"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -1493,18 +929,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сланцевий"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "سلیٹ"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Xám đá"
           }
         },
         "zh-Hans": {
@@ -1541,12 +965,6 @@
             "value": "Сливов"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "প্লাম"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -1571,22 +989,10 @@
             "value": "Prune"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "પ્લમ"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "שזיף"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "प्लम"
           }
         },
         "hr": {
@@ -1607,40 +1013,16 @@
             "value": "プラム"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಪ್ಲಮ್"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "자두색"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "പ്ലം"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "प्लम"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Pruim"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਪਲਮ"
           }
         },
         "pl": {
@@ -1655,24 +1037,6 @@
             "value": "Ameixa"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "பிளம்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ప్లమ్"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ม่วงพลัม"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -1683,18 +1047,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сливовий"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "آلوبخارا"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tím mận"
           }
         },
         "zh-Hans": {
@@ -1731,12 +1083,6 @@
             "value": "Син"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "নীল"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -1761,22 +1107,10 @@
             "value": "Bleu"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "વાદળી"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "כחול"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "नीला"
           }
         },
         "hr": {
@@ -1797,40 +1131,16 @@
             "value": "ブルー"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ನೀಲಿ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "파랑"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "നീല"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "निळा"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Blauw"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਨੀਲਾ"
           }
         },
         "pl": {
@@ -1845,24 +1155,6 @@
             "value": "Azul"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "நீலம்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "నీలం"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "น้ำเงิน"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -1873,18 +1165,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Синій"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "نیلا"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Xanh dương"
           }
         },
         "zh-Hans": {
@@ -1921,12 +1201,6 @@
             "value": "Индиго"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ইন্ডিগো"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -1951,22 +1225,10 @@
             "value": "Indigo"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ઇન્ડિગો"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "אינדיגו"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "इंडिगो"
           }
         },
         "hr": {
@@ -1987,40 +1249,16 @@
             "value": "インディゴ"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಇಂಡಿಗೊ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "남색"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ഇൻഡിഗോ"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "इंडिगो"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Indigo"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਇੰਡੀਗੋ"
           }
         },
         "pl": {
@@ -2035,24 +1273,6 @@
             "value": "Índigo"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "கருநீலம்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ఇండిగో"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "คราม"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -2063,18 +1283,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Індиго"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "انڈیگو"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chàm"
           }
         },
         "zh-Hans": {
@@ -2111,12 +1319,6 @@
             "value": "Лилав"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "বেগুনি"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -2141,22 +1343,10 @@
             "value": "Violet"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "જાંબલી"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "סגול"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "बैंगनी"
           }
         },
         "hr": {
@@ -2177,40 +1367,16 @@
             "value": "パープル"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ನೇರಳೆ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "보라"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "പർപ്പിൾ"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "जांभळा"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Paars"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਜਾਮਨੀ"
           }
         },
         "pl": {
@@ -2225,24 +1391,6 @@
             "value": "Roxo"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ஊதா"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ఊదా"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ม่วง"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -2253,18 +1401,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Фіолетовий"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "جامنی"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tím"
           }
         },
         "zh-Hans": {
@@ -2301,12 +1437,6 @@
             "value": "Розов"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "গোলাপি"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -2331,22 +1461,10 @@
             "value": "Rose"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ગુલાબી"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "ורוד"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "गुलाबी"
           }
         },
         "hr": {
@@ -2367,40 +1485,16 @@
             "value": "ピンク"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಗುಲಾಬಿ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "분홍"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "പിങ്ക്"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "गुलाबी"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Roze"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਗੁਲਾਬੀ"
           }
         },
         "pl": {
@@ -2415,24 +1509,6 @@
             "value": "Rosa"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "இளஞ்சிவப்பு"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "గులాబీ"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ชมพู"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -2443,18 +1519,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Рожевий"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "گلابی"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hồng"
           }
         },
         "zh-Hans": {
@@ -2491,12 +1555,6 @@
             "value": "Червен"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "লাল"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -2521,22 +1579,10 @@
             "value": "Rouge"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "લાલ"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "אדום"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "लाल"
           }
         },
         "hr": {
@@ -2557,40 +1603,16 @@
             "value": "レッド"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಕೆಂಪು"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "빨강"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ചുവപ്പ്"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "लाल"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Rood"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਲਾਲ"
           }
         },
         "pl": {
@@ -2605,24 +1627,6 @@
             "value": "Vermelho"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "சிவப்பு"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ఎరుపు"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "แดง"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -2633,18 +1637,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Червоний"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "سرخ"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đỏ"
           }
         },
         "zh-Hans": {
@@ -2681,12 +1673,6 @@
             "value": "Кехлибарен"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "অ্যাম্বার"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -2711,22 +1697,10 @@
             "value": "Ambre"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "અંબર"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "ענבר"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ऐंबर"
           }
         },
         "hr": {
@@ -2747,40 +1721,16 @@
             "value": "アンバー"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಅಂಬರ್"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "호박색"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ആംബർ"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "अंबर"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Amber"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਅੰਬਰ"
           }
         },
         "pl": {
@@ -2795,24 +1745,6 @@
             "value": "Âmbar"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "அம்பர்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "అంబర్"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "อำพัน"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -2823,18 +1755,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Бурштиновий"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "کہربائی"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hổ phách"
           }
         },
         "zh-Hans": {
@@ -2871,12 +1791,6 @@
             "value": "Зелен"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "সবুজ"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -2901,22 +1815,10 @@
             "value": "Vert"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "લીલો"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "ירוק"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "हरा"
           }
         },
         "hr": {
@@ -2937,40 +1839,16 @@
             "value": "グリーン"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಹಸಿರು"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "초록"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "പച്ച"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "हिरवा"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Groen"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਹਰਾ"
           }
         },
         "pl": {
@@ -2985,24 +1863,6 @@
             "value": "Verde"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "பச்சை"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ఆకుపచ్చ"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เขียว"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -3013,18 +1873,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Зелений"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "سبز"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Xanh lá"
           }
         },
         "zh-Hans": {
@@ -3061,12 +1909,6 @@
             "value": "Синьозелен"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "নীলচে সবুজ"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -3091,22 +1933,10 @@
             "value": "Bleu canard"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "વાદળી લીલો"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "כחול־ירוק"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "नीला-हरा"
           }
         },
         "hr": {
@@ -3127,40 +1957,16 @@
             "value": "ティール"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ನೀಲಿ ಹಸಿರು"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "청록"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "നീലകലർന്ന പച്ച"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "निळसर हिरवा"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Blauwgroen"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਨੀਲਾ-ਹਰਾ"
           }
         },
         "pl": {
@@ -3175,24 +1981,6 @@
             "value": "Azul-petróleo"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "நீலப்பச்சை"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "నీలి ఆకుపచ్చ"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เขียวอมฟ้า"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -3203,18 +1991,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Синьо-зелений"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "نیلا سبز"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Xanh ngọc"
           }
         },
         "zh-Hans": {
@@ -3251,12 +2027,6 @@
             "value": "Среднощен"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "মধ্যরাত"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -3281,22 +2051,10 @@
             "value": "Minuit"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "મધરાત"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "חצות"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "आधी रात"
           }
         },
         "hr": {
@@ -3317,40 +2075,16 @@
             "value": "ミッドナイト"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಮಧ್ಯರಾತ್ರಿ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "미드나이트"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "അർധരാത്രി"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "मध्यरात्र"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Middernacht"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਅੱਧੀ ਰਾਤ"
           }
         },
         "pl": {
@@ -3365,24 +2099,6 @@
             "value": "Meia-noite"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "நள்ளிரவு"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "అర్ధరాత్రి"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เที่ยงคืน"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -3393,18 +2109,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Опівнічний"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "آدھی رات"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nửa đêm"
           }
         },
         "zh-Hans": {
@@ -3441,12 +2145,6 @@
             "value": "Горски"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "বন"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -3471,22 +2169,10 @@
             "value": "Forêt"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "વન"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "יער"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "वन"
           }
         },
         "hr": {
@@ -3507,40 +2193,16 @@
             "value": "フォレスト"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಅರಣ್ಯ"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "숲"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "വനം"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "वन"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Bos"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਜੰਗਲ"
           }
         },
         "pl": {
@@ -3555,24 +2217,6 @@
             "value": "Floresta"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "காடு"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "అడవి"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ป่า"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -3583,18 +2227,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Лісовий"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "جنگل"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rừng"
           }
         },
         "zh-Hans": {
@@ -3631,12 +2263,6 @@
             "value": "Пясъчен"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "বালি"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -3661,22 +2287,10 @@
             "value": "Sable"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "રેતી"
-          }
-        },
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "חול"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "रेत"
           }
         },
         "hr": {
@@ -3697,40 +2311,16 @@
             "value": "サンド"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಮರಳು"
-          }
-        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "모래"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "മണൽ"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "वाळू"
-          }
-        },
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Zand"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਰੇਤ"
           }
         },
         "pl": {
@@ -3745,24 +2335,6 @@
             "value": "Areia"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "மணல்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ఇసుక"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ทราย"
-          }
-        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -3773,18 +2345,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пісочний"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ریت"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cát"
           }
         },
         "zh-Hans": {

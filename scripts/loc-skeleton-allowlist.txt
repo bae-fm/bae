@@ -63,18 +63,10 @@ tr	Bucket
 tr	Disc ID
 tr	OK
 tr	S3-compatible
-vi	Album
-vi	Bucket
-vi	Disc ID
-vi	Disc TOC
-vi	Endpoint
-vi	OK
-vi	S3-compatible
 
 # Product/service names remain unchanged in every locale.
 it	Subsonic
 tr	Subsonic
-vi	Subsonic
 nl	Subsonic
 
 # Audio-format / bit-depth technical tokens — not translated in any locale.
@@ -91,12 +83,6 @@ tr	32-bit
 tr	AIFF
 tr	MP3
 tr	Opus
-vi	16-bit
-vi	24-bit
-vi	32-bit
-vi	AIFF
-vi	MP3
-vi	Opus
 nl	16-bit
 nl	24-bit
 nl	32-bit
@@ -112,8 +98,6 @@ it	e.g. 4943674251780
 it	e.g. WPCR-80001
 tr	e.g. 4943674251780
 tr	e.g. WPCR-80001
-vi	e.g. 4943674251780
-vi	e.g. WPCR-80001
 nl	e.g. 4943674251780
 nl	e.g. WPCR-80001
 
@@ -148,9 +132,6 @@ it	download_file_count	one
 it	download_remove
 tr	settings_bucket
 tr	cloud_provider_s3
-vi	settings_bucket
-vi	settings_endpoint
-vi	cloud_provider_s3
 nl	shuffle
 nl	queue_shuffle_on
 nl	search_section_albums
@@ -205,18 +186,6 @@ tr	settings.formats.bit_depth.bits16
 tr	settings.formats.bit_depth.bits24
 tr	settings.formats.bit_depth.bits32
 tr	edit.tracks.col_number
-vi	action.ok
-vi	cloud.provider.s3
-vi	s3.field.bucket
-vi	search.field.album
-vi	settings.discogs.label
-vi	settings.discogs.token_placeholder
-vi	signal.kind.disc_id
-vi	settings.formats.preset_pregap
-vi	settings.formats.bit_depth.bits16
-vi	settings.formats.bit_depth.bits24
-vi	settings.formats.bit_depth.bits32
-vi	storage.column.album
 nl	action.ok
 nl	album.release_picker
 nl	album.shuffle
@@ -280,17 +249,71 @@ tr	Pregap
 tr	settings.formats.codec_aac
 tr	settings.formats.codec_mp3
 tr	settings.formats.codec_opus
-vi	AAC %lld kbps
-vi	MP3 %lld kbps
-vi	Opus %lld kbps
-vi	Pregap
-vi	settings.formats.codec_aac
-vi	settings.formats.codec_mp3
-vi	settings.formats.codec_opus
-vi	settings.formats.token.album
 
 # Dutch color names retain the same spelling as English.
 nl	appearance_indigo
 nl	appearance_amber
 nl	appearance.indigo
 nl	appearance.amber
+
+# Technical labels and example values that every locale keeps verbatim: AWS
+# field names (Access Key, Secret Key, S3 bucket), the S3-compatible provider
+# label, and the barcode / catalogue-number examples shown under an input.
+# Read against each locale's neighbouring entries, which use the same terms.
+ar	S3-compatible
+ar	cloud_provider_s3
+bg	S3-compatible
+bg	cloud_provider_s3
+cs	S3-compatible
+cs	cloud_provider_s3
+cs	e.g. 4943674251780
+cs	e.g. WPCR-80001
+cs	s3.field.bucket
+de	Access Key
+de	Cloud sync
+de	S3-compatible
+de	Secret Key
+de	Separate discs
+de	cloud_provider_s3
+de	e.g. 4943674251780
+de	e.g. WPCR-80001
+de	s3.field.access_key
+de	s3.field.bucket
+de	s3.field.secret_key
+es	Any S3-compatible storage (AWS, Backblaze, Minio, ...)
+es	S3-compatible
+es	cloud_provider_s3
+es	e.g. 4943674251780
+es	e.g. WPCR-80001
+es	s3.field.bucket
+fr	Any S3-compatible storage (AWS, Backblaze, Minio, ...)
+fr	S3-compatible
+fr	cloud_provider_s3
+fr	e.g. 4943674251780
+fr	e.g. WPCR-80001
+fr	s3.field.bucket
+he	S3-compatible
+he	cloud_provider_s3
+hr	S3-compatible
+hr	cloud_provider_s3
+hr	e.g. 4943674251780
+hr	e.g. WPCR-80001
+ja	S3-compatible
+ja	cloud_provider_s3
+ko	S3-compatible
+ko	cloud_provider_s3
+pl	S3-compatible
+pl	cloud_provider_s3
+pl	e.g. 4943674251780
+pl	e.g. WPCR-80001
+pt-BR	S3-compatible
+pt-BR	cloud_provider_s3
+pt-BR	e.g. 4943674251780
+pt-BR	e.g. WPCR-80001
+pt-BR	s3.field.bucket
+uk	S3-compatible
+uk	cloud_provider_s3
+zh-Hans	S3-compatible
+zh-Hans	cloud_provider_s3
+zh-Hant	S3-compatible
+zh-Hant	cloud_provider_s3

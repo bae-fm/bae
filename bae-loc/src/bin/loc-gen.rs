@@ -1,7 +1,14 @@
-//! `loc-gen` — validate the master catalog and emit native resource files.
+//! `loc-gen` — validate the master catalog, emit native resource files, and
+//! print the shipping locale set.
 //!
-//!   loc-gen check  [--catalog &lt;path&gt;]
-//!   loc-gen emit   --target {apple|android|resx} --out-dir &lt;dir&gt; [--catalog &lt;path&gt;]
+//!   loc-gen check   [--catalog &lt;path&gt;]
+//!   loc-gen emit    --target {apple|android|resx} --out-dir &lt;dir&gt; [--catalog &lt;path&gt;]
+//!   loc-gen locales
+//!
+//! `locales` writes `bae_loc::TARGET_LOCALES`, one per line, so the Python
+//! catalog gates (`scripts/check_localizable_strings.py`,
+//! `scripts/loc-english-skeleton.py`) read the set from the crate that declares
+//! it instead of keeping a copy.
 //!
 //! `--catalog` defaults to `bae-bridge/loc/catalog.toml` (relative to the
 //! working directory, i.e. the repo root the build scripts run from).
@@ -10,9 +17,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use bae_loc::{check, emit, Catalog};
-
-const SOURCE_LANGUAGE: &str = "en";
+use bae_loc::{check, emit, Catalog, TARGET_LOCALES};
 
 fn main() -> ExitCode {
     match run() {
@@ -41,7 +46,7 @@ fn parse_args() -> Result<Args, String> {
     let mut i = 0;
     while i < raw.len() {
         match raw[i].as_str() {
-            "check" | "emit" => subcommand = Some(raw[i].clone()),
+            "check" | "emit" | "locales" => subcommand = Some(raw[i].clone()),
             "--catalog" => catalog = PathBuf::from(value(&raw, &mut i)?),
             "--target" => target = Some(value(&raw, &mut i)?.to_string()),
             "--out-dir" => out_dir = Some(PathBuf::from(value(&raw, &mut i)?)),
@@ -49,7 +54,7 @@ fn parse_args() -> Result<Args, String> {
         }
         i += 1;
     }
-    let subcommand = subcommand.ok_or("expected a subcommand: `check` or `emit`")?;
+    let subcommand = subcommand.ok_or("expected a subcommand: `check`, `emit` or `locales`")?;
     Ok(Args {
         subcommand,
         catalog,
@@ -67,11 +72,23 @@ fn value<'a>(raw: &'a [String], i: &mut usize) -> Result<&'a str, String> {
 
 fn run() -> Result<(), String> {
     let args = parse_args()?;
+
+    // The locale set is a compile-time constant; printing it must not depend on
+    // a catalog that parses, or the gates that read it can't run on a catalog
+    // they exist to diagnose.
+    if args.subcommand == "locales" {
+        for locale in TARGET_LOCALES {
+            println!("{locale}");
+        }
+        return Ok(());
+    }
+
     let src = fs::read_to_string(&args.catalog)
         .map_err(|e| format!("reading {}: {e}", args.catalog.display()))?;
     let catalog = Catalog::from_toml(&src).map_err(|e| format!("parsing catalog: {e}"))?;
 
-    // Both subcommands validate; emit must not write a broken catalog out.
+    // `check` and `emit` both validate each message; emit must not write a
+    // broken catalog out.
     if let Err(errs) = check::validate(&catalog) {
         return Err(format!(
             "{} catalog problem(s):\n  - {}",
@@ -82,7 +99,22 @@ fn run() -> Result<(), String> {
 
     match args.subcommand.as_str() {
         "check" => {
-            println!("loc-gen: {} messages, catalog ok", catalog.messages.len());
+            // Locale coverage gates `check` alone. `emit` fills a gap with the
+            // English source at state `new`, which is what lets a locale be
+            // added to `TARGET_LOCALES` and translated catalog by catalog; this
+            // is the gate that says the translating is finished.
+            if let Err(errs) = check::locale_coverage(&catalog) {
+                return Err(format!(
+                    "{} locale coverage problem(s):\n  - {}",
+                    errs.len(),
+                    errs.join("\n  - ")
+                ));
+            }
+            println!(
+                "loc-gen: {} messages, {} locales, catalog ok",
+                catalog.messages.len(),
+                TARGET_LOCALES.len()
+            );
             Ok(())
         }
         "emit" => emit_target(&args, &catalog),
@@ -102,15 +134,12 @@ fn emit_target(args: &Args, catalog: &Catalog) -> Result<(), String> {
 
     // Android emits a directory per shipping locale.
     let files: Vec<(PathBuf, String)> = match target {
-        "apple" => single_file(
-            "Core.xcstrings",
-            emit::apple_xcstrings(catalog, SOURCE_LANGUAGE)?,
-        ),
-        "android" => emit::android_resource_files(catalog, SOURCE_LANGUAGE)
+        "apple" => single_file("Core.xcstrings", emit::apple_xcstrings(catalog)?),
+        "android" => emit::android_resource_files(catalog)
             .into_iter()
             .map(|(rel, contents)| (PathBuf::from(rel), contents))
             .collect(),
-        "resx" => emit::resx_all(catalog, SOURCE_LANGUAGE),
+        "resx" => emit::resx_all(catalog),
         other => return Err(format!("unknown --target `{other}` (apple|android|resx)")),
     };
 

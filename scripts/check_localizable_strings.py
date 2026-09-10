@@ -10,8 +10,8 @@ platform's Localizable.xcstrings (`--platform macos` or `--platform ios`):
   2. every catalog entry is extracted from compiled code (no orphans), unless
      the build intentionally contains only a subset of the product's features;
   3. every catalog entry carries a "translated"-state value for every locale
-     the generated Core.xcstrings ships (the locale set single-sourced from
-     the bridge catalog).
+     bae ships (`loc-gen locales`, i.e. bae-loc's TARGET_LOCALES — this script
+     keeps no list of its own).
 
 Exits non-zero listing every offender. Xcode's parser-based catalog sync is
 not trustworthy for this codebase — it misses strings in some closure shapes
@@ -25,6 +25,7 @@ are inert data — there is no per-edition key set.
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -39,12 +40,10 @@ STRINGSDATA_TARGETS = ("bae", "BaeKit")
 PLATFORMS = {
     "macos": {
         "catalog": REPO / "bae-macos/bae/bae/Localizable.xcstrings",
-        "core": REPO / "bae-macos/bae/bae/Core.xcstrings",
         "derived_data": REPO / "bae-macos/bae/.build/derivedData",
     },
     "ios": {
         "catalog": REPO / "bae-ios/bae/bae/Localizable.xcstrings",
-        "core": REPO / "bae-ios/bae/bae/Core.xcstrings",
         "derived_data": REPO / "bae-ios/bae/.build/derivedData",
     },
 }
@@ -83,13 +82,19 @@ def extracted_keys(derived_data: Path) -> set[str]:
     return keys
 
 
-def locale_set(core_catalog: Path) -> set[str]:
-    core = json.loads(core_catalog.read_text())
-    locales: set[str] = set()
-    for entry in core["strings"].values():
-        locales |= set(entry.get("localizations", {}))
+def target_locales() -> set[str]:
+    """The shipping locale set, straight from bae-loc's TARGET_LOCALES."""
+    out = subprocess.run(
+        ["cargo", "run", "-q", "-p", "bae-loc", "--bin", "loc-gen", "--", "locales"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+    )
+    if out.returncode != 0:
+        sys.exit(f"`loc-gen locales` failed:\n{out.stderr}")
+    locales = {line.strip() for line in out.stdout.splitlines() if line.strip()}
     if not locales:
-        sys.exit(f"{core_catalog} lists no locales — run loc-gen first")
+        sys.exit("`loc-gen locales` printed nothing")
     return locales
 
 
@@ -110,16 +115,15 @@ def translated(localization: dict) -> bool:
 
 
 def untranslated(entry: dict, locales: set[str]) -> list[str]:
-    gaps = []
+    """The target locales this entry has no translated value for. The source
+    language is not among them — the key itself is the English source, so an
+    explicit en slot is optional."""
     localizations = entry.get("localizations", {})
-    for locale in sorted(locales):
-        if locale == "en" and locale not in localizations:
-            # The key itself is the English source; an explicit en slot is
-            # optional.
-            continue
-        if not translated(localizations.get(locale, {})):
-            gaps.append(locale)
-    return gaps
+    return [
+        locale
+        for locale in sorted(locales)
+        if not translated(localizations.get(locale, {}))
+    ]
 
 
 def main() -> int:
@@ -149,7 +153,7 @@ def main() -> int:
 
     extracted = extracted_keys(args.derived_data or platform["derived_data"])
     catalog = json.loads(platform["catalog"].read_text())["strings"]
-    locales = locale_set(platform["core"])
+    locales = target_locales()
 
     missing = sorted(extracted - catalog.keys())
     orphans = (
