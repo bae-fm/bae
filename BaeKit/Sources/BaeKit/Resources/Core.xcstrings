@@ -132,8 +132,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork download stopped."
+            "state": "translated",
+            "value": "Descărcarea graficii s-a oprit."
           }
         },
         "sk": {
@@ -305,8 +305,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading artwork…"
+            "state": "translated",
+            "value": "Se descarcă grafica…"
           }
         },
         "sk": {
@@ -478,8 +478,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Some artwork couldn’t be downloaded."
+            "state": "translated",
+            "value": "O parte din grafică nu a putut fi descărcată."
           }
         },
         "sk": {
@@ -651,8 +651,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finding artwork…"
+            "state": "translated",
+            "value": "Se caută grafica…"
           }
         },
         "sk": {
@@ -824,8 +824,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld-bit"
+            "state": "translated",
+            "value": "%lld biți"
           }
         },
         "sk": {
@@ -997,7 +997,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%lld kbps"
           }
         },
@@ -1170,8 +1170,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld ch"
+            "state": "translated",
+            "value": "%lld can."
           }
         },
         "sk": {
@@ -1343,7 +1343,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "mono"
           }
         },
@@ -1516,7 +1516,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "stereo"
           }
         },
@@ -1689,7 +1689,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Audio"
           }
         },
@@ -1862,7 +1862,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "CUE"
           }
         },
@@ -2035,7 +2035,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": " · "
           }
         },
@@ -2208,8 +2208,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Various"
+            "state": "translated",
+            "value": "Diverse"
           }
         },
         "sk": {
@@ -2381,7 +2381,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@ kHz"
           }
         },
@@ -2554,8 +2554,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Local only"
+            "state": "translated",
+            "value": "Doar local"
           }
         },
         "sk": {
@@ -2727,8 +2727,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "S3-compatible"
+            "state": "translated",
+            "value": "Compatibil cu S3"
           }
         },
         "sk": {
@@ -2900,8 +2900,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$@ of %2$@"
+            "state": "translated",
+            "value": "%1$@ din %2$@"
           }
         },
         "sk": {
@@ -3091,8 +3091,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld hr"
+            "state": "translated",
+            "value": "%lld h"
           }
         },
         "sk": {
@@ -3264,7 +3264,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%1$@, %2$@"
           }
         },
@@ -3437,7 +3437,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%lld min"
           }
         },
@@ -3610,8 +3610,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This AirPlay receiver isn't supported."
+            "state": "translated",
+            "value": "Acest receptor AirPlay nu este acceptat."
           }
         },
         "sk": {
@@ -3783,8 +3783,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong with your settings."
+            "state": "translated",
+            "value": "Ceva nu a mers bine cu setările tale."
           }
         },
         "sk": {
@@ -3956,8 +3956,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check your cloud credentials and try again."
+            "state": "translated",
+            "value": "Verifică datele de autentificare pentru cloud și încearcă din nou."
           }
         },
         "sk": {
@@ -4129,8 +4129,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong reading your library."
+            "state": "translated",
+            "value": "Ceva nu a mers bine la citirea bibliotecii tale."
           }
         },
         "sk": {
@@ -4302,8 +4302,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The export couldn't be completed."
+            "state": "translated",
+            "value": "Exportul nu a putut fi finalizat."
           }
         },
         "sk": {
@@ -4475,8 +4475,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The import couldn't be completed."
+            "state": "translated",
+            "value": "Importul nu a putut fi finalizat."
           }
         },
         "sk": {
@@ -4648,8 +4648,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong."
+            "state": "translated",
+            "value": "Ceva nu a mers bine."
           }
         },
         "sk": {
@@ -4821,8 +4821,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't access your device's secure storage."
+            "state": "translated",
+            "value": "Nu s-a putut accesa stocarea securizată a dispozitivului tău."
           }
         },
         "sk": {
@@ -4994,8 +4994,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong updating library sharing."
+            "state": "translated",
+            "value": "Ceva nu a mers bine la actualizarea partajării bibliotecii."
           }
         },
         "sk": {
@@ -5167,8 +5167,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the cloud. Check your connection and try again."
+            "state": "translated",
+            "value": "Nu s-a putut ajunge la cloud. Verifică conexiunea și încearcă din nou."
           }
         },
         "sk": {
@@ -5340,8 +5340,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The save couldn't be completed."
+            "state": "translated",
+            "value": "Salvarea nu a putut fi finalizată."
           }
         },
         "sk": {
@@ -5513,8 +5513,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket wasn't found. Check its name and the credentials' access to it."
+            "state": "translated",
+            "value": "Acest container nu a fost găsit. Verifică-i numele și accesul datelor de autentificare la el."
           }
         },
         "sk": {
@@ -5686,8 +5686,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check the bucket, region, endpoint, and key prefix."
+            "state": "translated",
+            "value": "Verifică containerul, regiunea, punctul final și prefixul de cheie."
           }
         },
         "sk": {
@@ -5859,8 +5859,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket and key prefix already contain a different library. Use an empty key prefix, or join or restore that library."
+            "state": "translated",
+            "value": "Acest container și prefix de cheie conțin deja o altă bibliotecă. Folosește un prefix de cheie gol sau alătură-te ori restaurează acea bibliotecă."
           }
         },
         "sk": {
@@ -6032,8 +6032,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Allow these credentials to read, write, list, and delete objects in this bucket."
+            "state": "translated",
+            "value": "Permite acestor date de autentificare să citească, să scrie, să listeze și să șteargă obiecte din acest container."
           }
         },
         "sk": {
@@ -6205,8 +6205,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This cloud storage has no available space."
+            "state": "translated",
+            "value": "Această stocare cloud nu mai are spațiu disponibil."
           }
         },
         "sk": {
@@ -6378,8 +6378,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The region or endpoint doesn't match this bucket."
+            "state": "translated",
+            "value": "Regiunea sau punctul final nu se potrivește cu acest container."
           }
         },
         "sk": {
@@ -6551,8 +6551,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This library has no device identity. Create, join, or restore the library again."
+            "state": "translated",
+            "value": "Această bibliotecă nu are o identitate de dispozitiv. Creează, alătură-te sau restaurează biblioteca din nou."
           }
         },
         "sk": {
@@ -6724,8 +6724,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This pairing code expired. Show a new code on the other device and try again."
+            "state": "translated",
+            "value": "Acest cod de asociere a expirat. Afișează un cod nou pe celălalt dispozitiv și încearcă din nou."
           }
         },
         "sk": {
@@ -6897,8 +6897,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device ended this pairing. Start it again from there if you still want to join."
+            "state": "translated",
+            "value": "Celălalt dispozitiv a încheiat această asociere. Dacă tot vrei să te alături, pornește-o din nou de acolo."
           }
         },
         "sk": {
@@ -7070,8 +7070,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device isn't running this join. Open bae on it, show a pairing code, and try again."
+            "state": "translated",
+            "value": "Celălalt dispozitiv nu rulează această alăturare. Deschide bae pe el, afișează un cod de asociere și încearcă din nou."
           }
         },
         "sk": {
@@ -7243,8 +7243,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This device's keychain is locked. Unlock the device and bae will pick up where it left off."
+            "state": "translated",
+            "value": "Brelocul acestui dispozitiv este blocat. Deblochează dispozitivul și bae va continua de unde a rămas."
           }
         },
         "sk": {
@@ -7416,8 +7416,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "That library could not be found."
+            "state": "translated",
+            "value": "Acea bibliotecă nu a putut fi găsită."
           }
         },
         "sk": {
@@ -7589,8 +7589,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Update the app to continue syncing."
+            "state": "translated",
+            "value": "Actualizează aplicația pentru a continua sincronizarea."
           }
         },
         "sk": {
@@ -7762,8 +7762,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "not a track"
+            "state": "translated",
+            "value": "nu e piesă"
           }
         },
         "sk": {
@@ -7935,8 +7935,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "slot %lld"
+            "state": "translated",
+            "value": "poziția %lld"
           }
         },
         "sk": {
@@ -8108,8 +8108,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "slots %1$lld–%2$lld"
+            "state": "translated",
+            "value": "pozițiile %1$lld–%2$lld"
           }
         },
         "sk": {
@@ -8281,8 +8281,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import has already completed and can no longer be edited."
+            "state": "translated",
+            "value": "Acest import s-a încheiat deja și nu mai poate fi editat."
           }
         },
         "sk": {
@@ -8454,8 +8454,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import is already running and can no longer be edited."
+            "state": "translated",
+            "value": "Acest import rulează deja și nu mai poate fi editat."
           }
         },
         "sk": {
@@ -8627,8 +8627,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from barcode %@ in this image"
+            "state": "translated",
+            "value": "Ediția a fost identificată automat din codul de bare %@ din această imagine"
           }
         },
         "sk": {
@@ -8800,8 +8800,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from disc ID %@ from this file"
+            "state": "translated",
+            "value": "Ediția a fost identificată automat din ID-ul de disc %@ din acest fișier"
           }
         },
         "sk": {
@@ -8973,8 +8973,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Network folder. Changes made on other computers are checked every %lld minutes."
+            "state": "translated",
+            "value": "Dosar de rețea. Modificările făcute pe alte computere sunt verificate la fiecare %lld minute."
           }
         },
         "sk": {
@@ -9146,8 +9146,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte audio file: %@"
+            "state": "translated",
+            "value": "fișier audio corupt sau de zero octeți: %@"
           }
         },
         "sk": {
@@ -9319,8 +9319,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte image: %@"
+            "state": "translated",
+            "value": "imagine coruptă sau de zero octeți: %@"
           }
         },
         "sk": {
@@ -9492,8 +9492,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "no valid audio files"
+            "state": "translated",
+            "value": "niciun fișier audio valid"
           }
         },
         "sk": {
@@ -9665,8 +9665,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finalizing..."
+            "state": "translated",
+            "value": "Se finalizează..."
           }
         },
         "sk": {
@@ -9838,8 +9838,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Measuring loudness..."
+            "state": "translated",
+            "value": "Se măsoară sonoritatea..."
           }
         },
         "sk": {
@@ -10011,8 +10011,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reading files..."
+            "state": "translated",
+            "value": "Se citesc fișierele..."
           }
         },
         "sk": {
@@ -10184,8 +10184,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queued..."
+            "state": "translated",
+            "value": "În coadă..."
           }
         },
         "sk": {
@@ -10357,8 +10357,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Validating source files..."
+            "state": "translated",
+            "value": "Se validează fișierele sursă..."
           }
         },
         "sk": {
@@ -10530,8 +10530,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: audio the release doesn’t name"
+            "state": "translated",
+            "value": "%1$lld fișiere, %2$lld piese: audio pe care ediția nu îl numește"
           }
         },
         "sk": {
@@ -10703,8 +10703,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: tracks with no audio"
+            "state": "translated",
+            "value": "%1$lld fișiere, %2$lld piese: piese fără audio"
           }
         },
         "sk": {
@@ -10876,8 +10876,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork"
+            "state": "translated",
+            "value": "Grafică"
           }
         },
         "sk": {
@@ -11049,7 +11049,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Audio"
           }
         },
@@ -11222,8 +11222,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cover"
+            "state": "translated",
+            "value": "Copertă"
           }
         },
         "sk": {
@@ -11395,7 +11395,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Document"
           }
         },
@@ -11568,8 +11568,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Not a track"
+            "state": "translated",
+            "value": "Nu e piesă"
           }
         },
         "sk": {
@@ -11741,8 +11741,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Other"
+            "state": "translated",
+            "value": "Altele"
           }
         },
         "sk": {
@@ -11914,8 +11914,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Track sheet"
+            "state": "translated",
+            "value": "Foaie de piese"
           }
         },
         "sk": {
@@ -12087,8 +12087,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ audio can't be split by a sheet"
+            "state": "translated",
+            "value": "Audio %@ nu poate fi împărțit după o foaie"
           }
         },
         "sk": {
@@ -12260,8 +12260,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The sheet’s track times fall outside this audio"
+            "state": "translated",
+            "value": "Timpii pieselor din foaie cad în afara acestui audio"
           }
         },
         "sk": {
@@ -12433,8 +12433,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This audio can’t be read"
+            "state": "translated",
+            "value": "Acest audio nu poate fi citit"
           }
         },
         "sk": {
@@ -12606,8 +12606,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Already in your library"
+            "state": "translated",
+            "value": "Deja în biblioteca ta"
           }
         },
         "sk": {
@@ -12779,8 +12779,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length: %1$@ in the folder, %2$@ on the release"
+            "state": "translated",
+            "value": "Durată: %1$@ în dosar, %2$@ pe ediție"
           }
         },
         "sk": {
@@ -12952,8 +12952,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Could not read the track lengths in the folder"
+            "state": "translated",
+            "value": "Nu s-au putut citi duratele pieselor din dosar"
           }
         },
         "sk": {
@@ -13125,8 +13125,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Online lookup failed"
+            "state": "translated",
+            "value": "Căutarea online a eșuat"
           }
         },
         "sk": {
@@ -13298,8 +13298,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Nothing matched this folder"
+            "state": "translated",
+            "value": "Nimic nu s-a potrivit cu acest dosar"
           }
         },
         "sk": {
@@ -13471,8 +13471,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "No disc ID and no barcode to look up"
+            "state": "translated",
+            "value": "Niciun ID de disc și niciun cod de bare de căutat"
           }
         },
         "sk": {
@@ -13951,16 +13951,22 @@
         "ro": {
           "variations": {
             "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld potriviri"
+                }
+              },
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld match"
+                  "state": "translated",
+                  "value": "%lld potrivire"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld matches"
+                  "state": "translated",
+                  "value": "%lld de potriviri"
                 }
               }
             }
@@ -14225,8 +14231,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The release states no track lengths"
+            "state": "translated",
+            "value": "Ediția nu indică durate ale pieselor"
           }
         },
         "sk": {
@@ -14398,8 +14404,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks: %1$lld in the folder, %2$lld on the release"
+            "state": "translated",
+            "value": "Piese: %1$lld în dosar, %2$lld pe ediție"
           }
         },
         "sk": {
@@ -14571,8 +14577,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album title is required"
+            "state": "translated",
+            "value": "Titlul albumului este obligatoriu"
           }
         },
         "sk": {
@@ -14744,8 +14750,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist name is required"
+            "state": "translated",
+            "value": "Numele artistului este obligatoriu"
           }
         },
         "sk": {
@@ -14917,8 +14923,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Year must be a number"
+            "state": "translated",
+            "value": "Anul trebuie să fie un număr"
           }
         },
         "sk": {
@@ -15090,8 +15096,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album must have at least one artist"
+            "state": "translated",
+            "value": "Albumul trebuie să aibă cel puțin un artist"
           }
         },
         "sk": {
@@ -15263,8 +15269,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork analysis failed"
+            "state": "translated",
+            "value": "Analiza graficii a eșuat"
           }
         },
         "sk": {
@@ -15436,8 +15442,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "artwork analysis failed"
+            "state": "translated",
+            "value": "analiza graficii a eșuat"
           }
         },
         "sk": {
@@ -15609,8 +15615,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "busy (%lld)"
+            "state": "translated",
+            "value": "ocupat (%lld)"
           }
         },
         "sk": {
@@ -15782,8 +15788,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "failed"
+            "state": "translated",
+            "value": "eșuat"
           }
         },
         "sk": {
@@ -15955,8 +15961,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "couldn't connect"
+            "state": "translated",
+            "value": "nu s-a putut conecta"
           }
         },
         "sk": {
@@ -16128,8 +16134,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "error %lld"
+            "state": "translated",
+            "value": "eroare %lld"
           }
         },
         "sk": {
@@ -16301,8 +16307,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "error"
+            "state": "translated",
+            "value": "eroare"
           }
         },
         "sk": {
@@ -16474,8 +16480,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "timed out"
+            "state": "translated",
+            "value": "timp expirat"
           }
         },
         "sk": {
@@ -16647,8 +16653,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't look this up"
+            "state": "translated",
+            "value": "Nu s-a putut căuta acest lucru"
           }
         },
         "sk": {
@@ -16820,8 +16826,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the metadata provider"
+            "state": "translated",
+            "value": "Nu s-a putut ajunge la furnizorul de metadate"
           }
         },
         "sk": {
@@ -16993,8 +16999,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error (%lld)"
+            "state": "translated",
+            "value": "Furnizorul de metadate a returnat o eroare (%lld)"
           }
         },
         "sk": {
@@ -17166,8 +17172,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error"
+            "state": "translated",
+            "value": "Furnizorul de metadate a returnat o eroare"
           }
         },
         "sk": {
@@ -17339,8 +17345,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider timed out"
+            "state": "translated",
+            "value": "Furnizorul de metadate nu a răspuns la timp"
           }
         },
         "sk": {
@@ -17512,8 +17518,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing %1$@ of %2$@"
+            "state": "translated",
+            "value": "Se pregătește %1$@ din %2$@"
           }
         },
         "sk": {
@@ -17685,8 +17691,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Uploading %1$@ of %2$@"
+            "state": "translated",
+            "value": "Se încarcă %1$@ din %2$@"
           }
         },
         "sk": {
@@ -17858,8 +17864,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld cancelling"
+            "state": "translated",
+            "value": "%lld se anulează"
           }
         },
         "sk": {
@@ -18031,8 +18037,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ remaining"
+            "state": "translated",
+            "value": "%@ rămase"
           }
         },
         "sk": {
@@ -18204,8 +18210,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist image"
+            "state": "translated",
+            "value": "Imaginea artistului"
           }
         },
         "sk": {
@@ -18377,8 +18383,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing from cloud"
+            "state": "translated",
+            "value": "Se elimină din cloud"
           }
         },
         "sk": {
@@ -18857,16 +18863,22 @@
         "ro": {
           "variations": {
             "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ștergeri în așteptare"
+                }
+              },
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending delete"
+                  "state": "translated",
+                  "value": "%lld ștergere în așteptare"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending deletes"
+                  "state": "translated",
+                  "value": "%lld de ștergeri în așteptare"
                 }
               }
             }
@@ -19131,8 +19143,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld prepared"
+            "state": "translated",
+            "value": "%lld pregătite"
           }
         },
         "sk": {
@@ -19304,8 +19316,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld preparing"
+            "state": "translated",
+            "value": "%lld se pregătesc"
           }
         },
         "sk": {
@@ -19477,8 +19489,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld publishing"
+            "state": "translated",
+            "value": "%lld se publică"
           }
         },
         "sk": {
@@ -19650,8 +19662,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Retrying (%lld)"
+            "state": "translated",
+            "value": "Se reîncearcă (%lld)"
           }
         },
         "sk": {
@@ -19823,8 +19835,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source unavailable"
+            "state": "translated",
+            "value": "Sursă indisponibilă"
           }
         },
         "sk": {
@@ -19996,7 +20008,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@/s"
           }
         },
@@ -20169,8 +20181,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploaded"
+            "state": "translated",
+            "value": "%lld încărcate"
           }
         },
         "sk": {
@@ -20342,8 +20354,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Activating device…"
+            "state": "translated",
+            "value": "Se activează dispozitivul…"
           }
         },
         "sk": {
@@ -20515,8 +20527,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Granting cloud access…"
+            "state": "translated",
+            "value": "Se acordă accesul la cloud…"
           }
         },
         "sk": {
@@ -20688,8 +20700,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing invitation…"
+            "state": "translated",
+            "value": "Se pregătește invitația…"
           }
         },
         "sk": {
@@ -20861,8 +20873,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing library…"
+            "state": "translated",
+            "value": "Se pregătește biblioteca…"
           }
         },
         "sk": {
@@ -21034,8 +21046,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the joining device…"
+            "state": "translated",
+            "value": "Se așteaptă dispozitivul care se alătură…"
           }
         },
         "sk": {
@@ -21207,8 +21219,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access request…"
+            "state": "translated",
+            "value": "Se așteaptă cererea de acces la cloud…"
           }
         },
         "sk": {
@@ -21380,8 +21392,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for device registration request…"
+            "state": "translated",
+            "value": "Se așteaptă cererea de înregistrare a dispozitivului…"
           }
         },
         "sk": {
@@ -21553,8 +21565,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cancelling pairing…"
+            "state": "translated",
+            "value": "Se anulează asocierea…"
           }
         },
         "sk": {
@@ -21726,8 +21738,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Catching up with library changes…"
+            "state": "translated",
+            "value": "Se recuperează modificările bibliotecii…"
           }
         },
         "sk": {
@@ -21899,8 +21911,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading library snapshot…"
+            "state": "translated",
+            "value": "Se descarcă instantaneul bibliotecii…"
           }
         },
         "sk": {
@@ -22072,8 +22084,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Installing library snapshot…"
+            "state": "translated",
+            "value": "Se instalează instantaneul bibliotecii…"
           }
         },
         "sk": {
@@ -22245,8 +22257,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Requesting cloud access…"
+            "state": "translated",
+            "value": "Se solicită accesul la cloud…"
           }
         },
         "sk": {
@@ -22418,8 +22430,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Saving library…"
+            "state": "translated",
+            "value": "Se salvează biblioteca…"
           }
         },
         "sk": {
@@ -22591,8 +22603,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for activation…"
+            "state": "translated",
+            "value": "Se așteaptă activarea…"
           }
         },
         "sk": {
@@ -22764,8 +22776,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for approval…"
+            "state": "translated",
+            "value": "Se așteaptă aprobarea…"
           }
         },
         "sk": {
@@ -22937,8 +22949,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the library…"
+            "state": "translated",
+            "value": "Se așteaptă biblioteca…"
           }
         },
         "sk": {
@@ -23110,8 +23122,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access…"
+            "state": "translated",
+            "value": "Se așteaptă accesul la cloud…"
           }
         },
         "sk": {
@@ -23283,8 +23295,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Registering device…"
+            "state": "translated",
+            "value": "Se înregistrează dispozitivul…"
           }
         },
         "sk": {
@@ -23456,8 +23468,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reconnect to play this release. It isn't downloaded to this device yet."
+            "state": "translated",
+            "value": "Reconectează-te pentru a reda această ediție. Încă nu este descărcată pe acest dispozitiv."
           }
         },
         "sk": {
@@ -23629,8 +23641,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This release is still uploading. Try again when it finishes."
+            "state": "translated",
+            "value": "Această ediție se încarcă încă. Încearcă din nou când se termină."
           }
         },
         "sk": {
@@ -23802,8 +23814,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between discs. Change the CD, then press Play."
+            "state": "translated",
+            "value": "Redarea este în pauză între discuri. Schimbă CD-ul, apoi apasă Redă."
           }
         },
         "sk": {
@@ -23975,8 +23987,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %@ ended"
+            "state": "translated",
+            "value": "Discul %@ s-a terminat"
           }
         },
         "sk": {
@@ -24148,8 +24160,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the cassette, then press Play."
+            "state": "translated",
+            "value": "Redarea este în pauză între fețe. Întoarce caseta, apoi apasă Redă."
           }
         },
         "sk": {
@@ -24321,8 +24333,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the vinyl, then press Play."
+            "state": "translated",
+            "value": "Redarea este în pauză între fețe. Întoarce discul de vinil, apoi apasă Redă."
           }
         },
         "sk": {
@@ -24494,8 +24506,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Side %@ ended"
+            "state": "translated",
+            "value": "Fața %@ s-a terminat"
           }
         },
         "sk": {
@@ -24667,8 +24679,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld downloading"
+            "state": "translated",
+            "value": "%lld se descarcă"
           }
         },
         "sk": {
@@ -24840,8 +24852,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld failed"
+            "state": "translated",
+            "value": "%lld eșuate"
           }
         },
         "sk": {
@@ -25013,8 +25025,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld in progress"
+            "state": "translated",
+            "value": "%lld în curs"
           }
         },
         "sk": {
@@ -25186,8 +25198,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld queued"
+            "state": "translated",
+            "value": "%lld în coadă"
           }
         },
         "sk": {
@@ -25359,8 +25371,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploading"
+            "state": "translated",
+            "value": "%lld se încarcă"
           }
         },
         "sk": {
@@ -25532,8 +25544,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Media"
+            "state": "translated",
+            "value": "Suport"
           }
         },
         "sk": {
@@ -26012,16 +26024,22 @@
         "ro": {
           "variations": {
             "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ediții sunt stocate doar în cloud. Vor deveni neredabile până te reconectezi."
+                }
+              },
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld release is only stored in the cloud. It will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld ediție este stocată doar în cloud. Va deveni neredabilă până te reconectezi."
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld releases are only stored in the cloud. They will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld de ediții sunt stocate doar în cloud. Vor deveni neredabile până te reconectezi."
                 }
               }
             }
@@ -26280,8 +26298,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "Discul %lld"
           }
         },
         "sk": {
@@ -26453,8 +26471,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Side %@"
+            "state": "translated",
+            "value": "Fața %@"
           }
         },
         "sk": {
@@ -26626,8 +26644,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Making Local…"
+            "state": "translated",
+            "value": "Se face local…"
           }
         },
         "sk": {
@@ -26799,8 +26817,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queueing for Cloud…"
+            "state": "translated",
+            "value": "Se pune la coadă pentru cloud…"
           }
         },
         "sk": {
@@ -26972,8 +26990,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Pinning for offline"
+            "state": "translated",
+            "value": "Se fixează pentru offline"
           }
         },
         "sk": {
@@ -27145,8 +27163,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing local copy"
+            "state": "translated",
+            "value": "Se elimină copia locală"
           }
         },
         "sk": {
@@ -27318,8 +27336,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "This source identity is linked to two artists in your library. Choose the record to keep; its albums, tracks, credits, and source links will be combined with the other record."
+            "state": "translated",
+            "value": "Această identitate din sursă este legată de doi artiști din biblioteca ta. Alege înregistrarea de păstrat; albumele, piesele, creditele și legăturile ei către surse vor fi combinate cu cealaltă."
           }
         },
         "sk": {
@@ -27491,8 +27509,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep Discogs Artist"
+            "state": "translated",
+            "value": "Păstrează artistul Discogs"
           }
         },
         "sk": {
@@ -27664,8 +27682,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep MusicBrainz Artist"
+            "state": "translated",
+            "value": "Păstrează artistul MusicBrainz"
           }
         },
         "sk": {
@@ -27837,8 +27855,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Awaiting a release"
+            "state": "translated",
+            "value": "Așteaptă o ediție"
           }
         },
         "sk": {
@@ -28317,16 +28335,22 @@
         "ro": {
           "variations": {
             "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld rânduri tot nu au nume"
+                }
+              },
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld row still has no name"
+                  "state": "translated",
+                  "value": "%lld rând tot nu are nume"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld rows still have no name"
+                  "state": "translated",
+                  "value": "%lld de rânduri tot nu au nume"
                 }
               }
             }
@@ -28585,8 +28609,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't scan %@"
+            "state": "translated",
+            "value": "Nu s-a putut scana %@"
           }
         },
         "sk": {
@@ -28758,7 +28782,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Artist"
           }
         },
@@ -28931,8 +28955,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Name"
+            "state": "translated",
+            "value": "Nume"
           }
         },
         "sk": {
@@ -29104,8 +29128,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source"
+            "state": "translated",
+            "value": "Sursă"
           }
         },
         "sk": {
@@ -29277,8 +29301,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Title"
+            "state": "translated",
+            "value": "Titlu"
           }
         },
         "sk": {
@@ -29450,8 +29474,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Files"
+            "state": "translated",
+            "value": "Fișiere"
           }
         },
         "sk": {
@@ -29623,8 +29647,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks"
+            "state": "translated",
+            "value": "Piese"
           }
         },
         "sk": {
@@ -29796,8 +29820,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "File tags"
+            "state": "translated",
+            "value": "Etichetele fișierului"
           }
         },
         "sk": {
@@ -29969,8 +29993,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "From file tags"
+            "state": "translated",
+            "value": "Din etichetele fișierului"
           }
         },
         "sk": {
@@ -30142,8 +30166,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Metadata"
+            "state": "translated",
+            "value": "Metadate"
           }
         },
         "sk": {
@@ -30315,8 +30339,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Role"
+            "state": "translated",
+            "value": "Rol"
           }
         },
         "sk": {
@@ -30488,8 +30512,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Scanning folders"
+            "state": "translated",
+            "value": "Se scanează dosarele"
           }
         },
         "sk": {
@@ -30661,8 +30685,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld found"
+            "state": "translated",
+            "value": "%lld găsite"
           }
         },
         "sk": {
@@ -30834,8 +30858,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Asked for %@"
+            "state": "translated",
+            "value": "S-a cerut %@"
           }
         },
         "sk": {
@@ -31007,8 +31031,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose audio…"
+            "state": "translated",
+            "value": "Alege audio…"
           }
         },
         "sk": {
@@ -31180,8 +31204,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Describes nothing"
+            "state": "translated",
+            "value": "Nu descrie nimic"
           }
         },
         "sk": {
@@ -31353,8 +31377,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "Discul %lld"
           }
         },
         "sk": {
@@ -31526,8 +31550,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Which disc of the release this sheet's entries are"
+            "state": "translated",
+            "value": "Cărui disc al ediției îi aparțin intrările acestei foi"
           }
         },
         "sk": {
@@ -31699,8 +31723,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Ignored"
+            "state": "translated",
+            "value": "Ignorat"
           }
         },
         "sk": {
@@ -31872,8 +31896,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose file…"
+            "state": "translated",
+            "value": "Alege fișierul…"
           }
         },
         "sk": {
@@ -32045,8 +32069,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length"
+            "state": "translated",
+            "value": "Durată"
           }
         },
         "sk": {
@@ -32218,8 +32242,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Drop"
+            "state": "translated",
+            "value": "Renunță"
           }
         },
         "sk": {
@@ -32391,8 +32415,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Leave this track out — this folder has no audio for it."
+            "state": "translated",
+            "value": "Lasă această piesă deoparte — acest dosar nu are audio pentru ea."
           }
         },
         "sk": {
@@ -32564,7 +32588,7 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Exclude"
           }
         },
@@ -32737,8 +32761,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Take this file out of the tracklist; it stays under Files."
+            "state": "translated",
+            "value": "Scoate acest fișier din lista de piese; rămâne la Fișiere."
           }
         },
         "sk": {
@@ -32910,8 +32934,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "No file"
+            "state": "translated",
+            "value": "Niciun fișier"
           }
         },
         "sk": {
@@ -33083,8 +33107,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Play"
+            "state": "translated",
+            "value": "Redă"
           }
         },
         "sk": {
@@ -33256,8 +33280,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Put back"
+            "state": "translated",
+            "value": "Pune la loc"
           }
         },
         "sk": {
@@ -33429,8 +33453,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Stop"
+            "state": "translated",
+            "value": "Oprește"
           }
         },
         "sk": {
@@ -33602,8 +33626,8 @@
         },
         "ro": {
           "stringUnit": {
-            "state": "new",
-            "value": "Untitled"
+            "state": "translated",
+            "value": "Fără titlu"
           }
         },
         "sk": {

@@ -100,6 +100,12 @@
             "value": "O bae usa a câmera para escanear códigos ao emparelhar ou restaurar uma biblioteca."
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae folosește camera pentru a scana coduri la asocierea sau recuperarea unei biblioteci."
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -229,6 +235,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "O bae emparelha dispositivos e encontra alto-falantes e TVs na sua rede local."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae asociază dispozitive și găsește boxe și televizoare în rețeaua ta locală."
           }
         },
         "sk": {

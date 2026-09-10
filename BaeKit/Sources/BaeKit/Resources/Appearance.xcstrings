@@ -99,6 +99,12 @@
             "value": "Modo"
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mod"
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -227,6 +233,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sistema"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistem"
           }
         },
         "sk": {
@@ -359,6 +371,12 @@
             "value": "Claro"
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Luminos"
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -487,6 +505,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escuro"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Întunecat"
           }
         },
         "sk": {
@@ -619,6 +643,12 @@
             "value": "Cor de destaque"
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Culoare de accent"
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -747,6 +777,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tom do fundo"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuanța fundalului"
           }
         },
         "sk": {
@@ -879,6 +915,12 @@
             "value": "Neutro"
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neutru"
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -1007,6 +1049,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ardósia"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ardezie"
           }
         },
         "sk": {
@@ -1139,6 +1187,12 @@
             "value": "Ameixa"
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prună"
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -1267,6 +1321,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Azul"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Albastru"
           }
         },
         "sk": {
@@ -1399,6 +1459,12 @@
             "value": "Índigo"
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indigo"
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -1527,6 +1593,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Roxo"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Violet"
           }
         },
         "sk": {
@@ -1659,6 +1731,12 @@
             "value": "Rosa"
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roz"
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -1787,6 +1865,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vermelho"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roșu"
           }
         },
         "sk": {
@@ -1919,6 +2003,12 @@
             "value": "Âmbar"
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chihlimbar"
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -2044,6 +2134,12 @@
           }
         },
         "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verde"
+          }
+        },
+        "ro": {
           "stringUnit": {
             "state": "translated",
             "value": "Verde"
@@ -2179,6 +2275,12 @@
             "value": "Azul-petróleo"
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turcoaz"
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -2307,6 +2409,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Meia-noite"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miez de noapte"
           }
         },
         "sk": {
@@ -2439,6 +2547,12 @@
             "value": "Floresta"
           }
         },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pădure"
+          }
+        },
         "sk": {
           "stringUnit": {
             "state": "translated",
@@ -2567,6 +2681,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Areia"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nisip"
           }
         },
         "sk": {
