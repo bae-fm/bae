@@ -93,8 +93,10 @@ struct QueueView: View {
                     // never rise above the other — a manual-lane row dragged
                     // over the context section rendered underneath it. The
                     // laziness deferred nothing anyway: the sections are the
-                    // only two children, and each materializes wholesale as
-                    // one cell.
+                    // only two children, and both are on screen from the
+                    // moment the pane opens. The rows WITHIN each section are
+                    // the lazy part — that is where a lane's thousands of
+                    // rows are.
                     VStack(spacing: 0) {
                         // The manual lane drains first, so it is shown first. It
                         // accepts external track drops (Play Next / Add to Queue

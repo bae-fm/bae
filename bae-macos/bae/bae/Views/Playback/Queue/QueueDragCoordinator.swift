@@ -1,26 +1,32 @@
+import BaeKit
 import Foundation
 
 /// A lane's geometry in the pane coordinate space, captured off the live
-/// layout. `rowHeight` is the rows-region height over the row count — rows
-/// are uniform by design (hover chrome toggles by opacity precisely so they
-/// never resize); zero while the lane is empty. `appendFrame` is the lane's
-/// trailing zone: the region past the last row that targets an
-/// insert-at-end — the whole target when the lane has no rows at all.
+/// layout. The row pitch is not read back from it: the rows region is a lazy
+/// stack, so the part of its measured height that is not built yet is
+/// SwiftUI's estimate. Rows are sized to `QueueSection.rowHeight` instead, and
+/// `rowCount` says whether this lane has any rows to map a cursor onto.
+/// `appendFrame` is the lane's trailing zone: the region past the last row
+/// that targets an insert-at-end — the whole target when the lane has no rows
+/// at all.
 private struct QueueLaneGeometry {
     var rowsFrame: CGRect = .null
-    var rowHeight: CGFloat = 0
+    var rowCount: Int = 0
     var appendFrame: CGRect = .null
 }
 
 /// The in-flight reorder drag. Owned by the row's own `DragGesture` — no
-/// AppKit drag session, no floating drag image, no item providers: the row
-/// itself tracks the cursor, sibling rows shift around it continuously, and
-/// the gesture's `onEnded` is the one deterministic end-of-drag signal
-/// (releases, including outside the pane, always deliver it).
+/// AppKit drag session, no floating drag image, no item providers: the lane
+/// draws a copy of the row under the cursor, sibling rows shift around its
+/// slot continuously, and the gesture's `onEnded` is the one deterministic
+/// end-of-drag signal (releases, including outside the pane, always deliver
+/// it).
 private struct ActiveQueueDrag {
     let lane: QueueLaneID
-    let entryId: String
-    let trackId: String
+    /// The row that was grabbed. The floating copy draws this value, never a
+    /// lookup by index: the canonical index the row started at belongs to
+    /// whichever row moves into it the moment core echoes a reorder.
+    let item: QueueItem
     /// The dragged row's canonical index in its lane at drag start (display
     /// order equals canonical order at that moment — no permutation is live).
     let startSlot: Int
@@ -31,15 +37,40 @@ private struct ActiveQueueDrag {
     var location: CGPoint
 }
 
-/// Shared drag state for both `QueueSection`s: the active gesture, each
-/// lane's measured geometry, and the post-commit hold. All display effects
-/// (sibling shifts, the dragged row's cursor tracking, the cross-lane
-/// insertion gap) are DERIVED from `active` + geometry per render — there is
-/// no stored permutation to go stale when the queue changes mid-drag.
+/// The released row while it glides from where the cursor let go of it into
+/// the slot it lands in. The floating copy keeps drawing it for that stretch
+/// (the in-place row stays hidden), so the release reads as the row settling
+/// rather than vanishing under the cursor and reappearing at its slot.
+private struct SettlingQueueRow {
+    let lane: QueueLaneID
+    /// The released row, as grabbed — see `ActiveQueueDrag.item`.
+    let item: QueueItem
+    /// The row's canonical index at grab time: what a held reorder's order
+    /// names it by.
+    let startSlot: Int
+    /// The display slot the row settles into: its start slot, or the slot a
+    /// held reorder placed it at.
+    var landingSlot: Int
+}
+
+/// What the source lane draws as the floating copy: the grabbed row itself
+/// and the top of the copy relative to the lane's rows region.
+struct QueueFloatingRow: Equatable {
+    let item: QueueItem
+    let top: CGFloat
+}
+
+/// Shared drag state for both `QueueSection`s: the active gesture, the row
+/// settling after a release, each lane's measured geometry, and the
+/// post-commit hold. All display effects (sibling shifts, the floating copy's
+/// position, the cross-lane insertion gap) are DERIVED from `active` +
+/// geometry per render — there is no stored permutation to go stale when the
+/// queue changes mid-drag.
 @MainActor
 @Observable
 final class QueueDragCoordinator {
     private var active: ActiveQueueDrag?
+    private var settling: SettlingQueueRow?
     private var geometry: [QueueLaneID: QueueLaneGeometry] = [:]
     /// A committed reorder's final display order, held per lane so the rows
     /// stay put between the gesture ending and core's snapshot echoing the
@@ -61,27 +92,33 @@ final class QueueDragCoordinator {
     }
 
     /// Whether the live drag is a context row currently aimed at the manual
-    /// lane. While it is, the dragged row sits back home (dimmed) and the
-    /// manual lane's insertion line is the ONE target indicator — a floating
-    /// row and a line drawn through each other read as broken.
+    /// lane. While it is, the context lane drops its permutation — its rows
+    /// sit in canonical order, since the row is leaving them — and the manual
+    /// lane's insertion line marks where the track would land. The dragged row
+    /// keeps following the cursor throughout.
     var isCrossLaneTargeting: Bool {
         manualInsertGap(manualCount: manualGapCount) != nil
     }
 
-    /// The dragged entry while a drag is live in `lane`, else `nil`.
-    func draggedEntryId(in lane: QueueLaneID) -> String? {
-        guard let active, active.lane == lane else {
-            return nil
+    /// The entry whose in-place row `lane` hides because the floating copy is
+    /// drawing it — the dragged row while a drag is live, the released row
+    /// while it settles — else `nil`.
+    func floatingEntryId(in lane: QueueLaneID) -> String? {
+        if let active, active.lane == lane {
+            return active.item.id
         }
-        return active.entryId
+        if let settling, settling.lane == lane {
+            return settling.item.id
+        }
+        return nil
     }
 
     func setRowsGeometry(_ lane: QueueLaneID, frame: CGRect, rowCount: Int) {
         var geo = geometry[lane] ?? QueueLaneGeometry()
         geo.rowsFrame = frame
-        geo.rowHeight = rowCount > 0 ? frame.height / CGFloat(rowCount) : 0
+        geo.rowCount = rowCount
         if geometry[lane]?.rowsFrame != geo.rowsFrame
-            || geometry[lane]?.rowHeight != geo.rowHeight
+            || geometry[lane]?.rowCount != geo.rowCount
         {
             geometry[lane] = geo
         }
@@ -97,25 +134,28 @@ final class QueueDragCoordinator {
 
     func begin(
         lane: QueueLaneID,
-        entryId: String,
-        trackId: String,
+        item: QueueItem,
         startSlot: Int,
         location: CGPoint
     ) {
         guard active == nil else {
             return
         }
+        // A new grab cuts a still-settling release short: the copy now draws
+        // this row, and the settled row's in-place view is shown again.
+        settling = nil
         let rowTop: CGFloat
         if let geo = geometry[lane] {
-            rowTop = geo.rowsFrame.minY + CGFloat(startSlot) * geo.rowHeight
+            rowTop =
+                geo.rowsFrame.minY + CGFloat(startSlot)
+                * QueueSection.rowHeight
         }
         else {
             rowTop = location.y
         }
         active = ActiveQueueDrag(
             lane: lane,
-            entryId: entryId,
-            trackId: trackId,
+            item: item,
             startSlot: startSlot,
             grabAnchorY: location.y - rowTop,
             location: location
@@ -132,14 +172,15 @@ final class QueueDragCoordinator {
     /// enter/leave events.
     func gapSlot(count: Int) -> Int? {
         guard let active, let geo = geometry[active.lane],
-            geo.rowHeight > 0,
+            geo.rowCount > 0,
             active.startSlot < count
         else {
             return nil
         }
+        let pitch = QueueSection.rowHeight
         let rel =
-            (active.location.y - active.grabAnchorY + geo.rowHeight / 2
-                - geo.rowsFrame.minY) / geo.rowHeight
+            (active.location.y - active.grabAnchorY + pitch / 2
+                - geo.rowsFrame.minY) / pitch
         return min(max(Int(rel.rounded(.down)), 0), count - 1)
     }
 
@@ -167,15 +208,24 @@ final class QueueDragCoordinator {
         return nil
     }
 
-    /// The dragged row's vertical offset from its current display slot, so it
-    /// tracks the cursor exactly while siblings animate around it.
-    func draggedRowOffset(displaySlot: Int) -> CGFloat {
-        guard let active, let geo = geometry[active.lane] else {
-            return 0
+    /// The row `lane` draws as a floating copy over its rows region: under
+    /// the cursor while a drag is live there, at its landing slot while a
+    /// released row settles. `nil` in any lane that has neither.
+    func floatingRow(in lane: QueueLaneID) -> QueueFloatingRow? {
+        if let active, active.lane == lane, let geo = geometry[lane] {
+            return QueueFloatingRow(
+                item: active.item,
+                top: active.location.y - active.grabAnchorY
+                    - geo.rowsFrame.minY
+            )
         }
-        let slotTop =
-            geo.rowsFrame.minY + CGFloat(displaySlot) * geo.rowHeight
-        return active.location.y - active.grabAnchorY - slotTop
+        if let settling, settling.lane == lane {
+            return QueueFloatingRow(
+                item: settling.item,
+                top: CGFloat(settling.landingSlot) * QueueSection.rowHeight
+            )
+        }
+        return nil
     }
 
     /// Where a context-row drag currently hovers in the MANUAL lane: the
@@ -191,9 +241,10 @@ final class QueueDragCoordinator {
         // Over the rows: the nearest between-row gap. Past them (or when the
         // lane has no rows at all — the whole lane is then just its trailing
         // zone), the append gap at the lane's end.
-        if manual.rowHeight > 0, active.location.y < manual.rowsFrame.maxY {
+        if manual.rowCount > 0, active.location.y < manual.rowsFrame.maxY {
             let rel =
-                (active.location.y - manual.rowsFrame.minY) / manual.rowHeight
+                (active.location.y - manual.rowsFrame.minY)
+                / QueueSection.rowHeight
             return min(max(Int(rel.rounded()), 0), manualCount)
         }
         if manual.appendFrame.contains(
@@ -208,13 +259,28 @@ final class QueueDragCoordinator {
     /// source lane's section, which owns the command callbacks and `itemAt`)
     /// executes the outcome; `reorder` holds the final order here until the
     /// revision bump.
+    ///
+    /// A same-lane release starts the row settling: the copy glides from the
+    /// cursor into the row's start slot — or, once the caller holds a
+    /// reorder, the slot that hold places it at — until the caller reports
+    /// the release animation `settled()`. A cross-lane release settles
+    /// nothing: the track lands in the other lane when the snapshot echoes,
+    /// and the source row is back in place at once.
     func finish(count: Int) -> Outcome {
         guard let active else {
             return .none
         }
         defer { self.active = nil }
         if let gap = manualInsertGap(manualCount: manualGapCount) {
-            return .insertIntoManual(trackId: active.trackId, gap: gap)
+            return .insertIntoManual(trackId: active.item.trackId, gap: gap)
+        }
+        if active.startSlot < count {
+            settling = SettlingQueueRow(
+                lane: active.lane,
+                item: active.item,
+                startSlot: active.startSlot,
+                landingSlot: active.startSlot
+            )
         }
         guard let order = displayOrder(for: active.lane, count: count),
             let gap = gapSlot(count: count)
@@ -222,7 +288,7 @@ final class QueueDragCoordinator {
             return .none
         }
         return .reorder(
-            entryId: active.entryId,
+            entryId: active.item.id,
             finalOrder: order,
             gap: gap,
             lane: active.lane
@@ -230,8 +296,20 @@ final class QueueDragCoordinator {
     }
 
     /// Keep a committed reorder's order on screen until core echoes it back.
+    /// The settling row lands in the slot this order places it at.
     func holdOrder(_ order: [Int], lane: QueueLaneID) {
         hold[lane] = order
+        if let settling, settling.lane == lane,
+            let slot = order.firstIndex(of: settling.startSlot)
+        {
+            self.settling?.landingSlot = slot
+        }
+    }
+
+    /// The release animation finished: the settled row's in-place view is
+    /// shown again and the floating copy is dropped.
+    func settled() {
+        settling = nil
     }
 
     /// Core's snapshot landed for this lane's revision: the canonical order
