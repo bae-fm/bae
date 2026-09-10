@@ -1,0 +1,544 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Keresés</value></data>
+  <data name="toolbar.libraries" xml:space="preserve"><value>könyvtárak</value></data>
+  <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>könyvtár keverése</value></data>
+  <data name="toolbar.storage" xml:space="preserve"><value>tárhely</value></data>
+  <data name="toolbar.settings" xml:space="preserve"><value>beállítások</value></data>
+  <data name="action.cancel" xml:space="preserve"><value>Mégse</value></data>
+  <data name="action.close" xml:space="preserve"><value>Bezárás</value></data>
+  <data name="action.delete" xml:space="preserve"><value>Törlés</value></data>
+  <data name="action.import" xml:space="preserve"><value>Importálás</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
+  <data name="action.play" xml:space="preserve"><value>Lejátszás</value></data>
+  <data name="action.save" xml:space="preserve"><value>Mentés</value></data>
+  <data name="action.search" xml:space="preserve"><value>keresés</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>Ezzel a kiadás kikerül a könyvtárból.</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>nem sikerült törölni</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>törlöd a kiadást?</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>szerkesztés</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>nem sikerült betölteni a metaadat-szerkesztőt</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>Visszaállítás a forrásra</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>nem sikerült visszaállítani a forrásra</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>metaadatok szerkesztése</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>ezt az albumot nem sikerült megnyitni</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>újraazonosítás</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>Újraazonosítás</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>újraazonosítás</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>Kiadás</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>keverés</value></data>
+  <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
+  <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
+  <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
+  <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>a felhős bejelentkezés nem sikerült</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>bejelentkezés ide: {provider}…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>a felhős bejelentkezés nincs beállítva ebben a buildben (nincs oauth-creds.json)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>ez a build nem támogatja a(z) {provider} szinkronizálást</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>borító cseréje</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>nem sikerült lekérni a távoli borítókat</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>borítók lekérése…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>nem sikerült betölteni a kiadás képeit</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Nincs elérhető borítókép. Az importálás az alapértelmezett borítót használja.</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>Nem található távoli borító</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>Válassz borítót, vagy hagyd üresen az alapértelmezetthez.</value></data>
+  <data name="cover.refresh" xml:space="preserve"><value>Frissítés</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>A kiadás fájljai</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>Távoli források</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>Borító</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>nem sikerült megjeleníteni a távoli borítókat: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>vissza</value></data>
+  <data name="action.copy" xml:space="preserve"><value>másolás</value></data>
+  <data name="action.done" xml:space="preserve"><value>kész</value></data>
+  <data name="action.scan" xml:space="preserve"><value>beolvasás…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>lejátszási hiba</value></data>
+  <data name="error.title" xml:space="preserve"><value>hiba</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>nem sikerült betölteni a galériát</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {találat (#)} other {találat (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>azonosítás…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>csak kézi keresés</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>nem található</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>ez a kiadás már a könyvtáradban van</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>mappaválasztás és átvizsgálás</value></data>
+  <data name="import.complete" xml:space="preserve"><value>importálva</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# szám} other {# szám}}</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>átvizsgálás és importálás</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>húzz ide egy mappát importáláshoz</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>az idehúzott elemet nem sikerült beolvasni</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>importálási hiba</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>nem sikerült betölteni az importálandó kiadást</value></data>
+  <data name="import.failed" xml:space="preserve"><value>az importálás nem sikerült</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>előadó (kézi keresés)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>nem található kiadás</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>A fájl hossza nem egyezik a kiadásban szereplővel.</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Válassz egy mappát a listából, hogy hozzárendeld egy kiadáshoz.</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Részletek</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>importálás {percent}%</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>Futtatás újra</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Rögzítve</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Felhő</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>megtekintés a könyvtárban</value></data>
+  <data name="join.title" xml:space="preserve"><value>csatlakozás könyvtárhoz</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Olvasd be a könyvtáradban már szereplő eszközön látható párosítási kódot.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Illeszd be a párosítási kódot</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Ez a párosítási kód érvénytelen.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>csatlakozás</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>csatlakozás ide: {name}…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>nem sikerült csatlakozni a könyvtárhoz</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  aktív</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>új könyvtár</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>átnevezés</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>könyvtárak</value></data>
+  <data name="library.empty" xml:space="preserve"><value>Nincs album</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>nem sikerült betölteni a könyvtárat</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Újra</value></data>
+  <data name="library.locked" xml:space="preserve"><value>a könyvtár zárolva van</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>nem sikerült megnyitni a könyvtárat</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>Ez a könyvtár titkosított, és a kulcsa nincs ezen az eszközön. A feloldáshoz add meg a 64 karakteres hexadecimális kulcsot.</value></data>
+  <data name="library.unlock.confirm" xml:space="preserve"><value>Feloldás</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64 karakteres hexadecimális kulcs</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>könyvtár feloldása</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>Hozzáadás a sorhoz</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>Borító cseréje…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>Törlés…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>Exportálás…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Mentés másként…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Mentés másként</value></data>
+  <data name="menu.play" xml:space="preserve"><value>Lejátszás</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>Lejátszás következőként</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>Beállítás elsődleges kiadásként</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>beállítva elsődleges kiadásként</value></data>
+  <data name="members.title" xml:space="preserve"><value>eszközök</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>ez az eszköz</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>tulajdonos</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>tag</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>követő</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>nem sikerült betölteni az eszközöket</value></data>
+  <data name="members.add" xml:space="preserve"><value>eszköz hozzáadása…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>eltávolítás</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>ez az eszköz elveszíti a hozzáférését, és a könyvtár kulcsa cserélődik. a megerősítéshez kattints újra az eltávolításra.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>eszköz hozzáadása</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Olvastasd be ezt a kódot a könyvtáradhoz csatlakozó eszközzel.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>jóváhagyod ezt az eszközt?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>bekerül a könyvtáradba, és szinkronizálhat.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>jóváhagyás</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>eszköz jóváhagyása…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>nem sikerült jóváhagyni ezt az eszközt</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Várakozás az eszközre…</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>ugrás az albumhoz</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>törlés</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>nem sikerült betölteni a kimenő tételeket</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>szünet</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>nem sikerült beolvasni a kimenő tételeket</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>folytatás</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>újra most</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>törlés</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>lejátszás innen törlése</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>következők törlése</value></data>
+  <data name="queue.remove_item" xml:space="preserve"><value>Eltávolítás a sorból</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>Lejátszás innen</value></data>
+  <data name="queue.section.your_library" xml:space="preserve"><value>A könyvtárad</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>Következők</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>keverés kikapcsolása</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>keverés</value></data>
+  <data name="queue.title" xml:space="preserve"><value>sor</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>visszaállítási kód</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>illeszd be a visszaállítási kódot</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>visszaállítás</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>a visszaállítás nem sikerült</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>Visszaállítás a felhőből</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>visszaállítás a felhőből</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>érvénytelen visszaállítási kód</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>visszaállítás…</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>hozzáférési kulcs</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>S3-tároló</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>végpont (nem kötelező)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>kulcselőtag (nem kötelező)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>régió</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>titkos kulcs</value></data>
+  <data name="search.failed" xml:space="preserve"><value>A keresés nem sikerült</value></data>
+  <data name="search.field.album" xml:space="preserve"><value>album</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>előadó</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>nincs találat</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs-token</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>újraellenőrzés</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>A Discogs elutasította ezt a kulcsot. Ellenőrizd, és mentsd újra.</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>token eltávolítása</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>token mentése</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>nem sikerült menteni a kulcsot. Valami hiba történt.</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API-token</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>Ellenőrzés…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Szünet a lemezoldalak és lemezek között</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>Átküldés</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>Átküldés bekapcsolása</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>A hálózatodon lévő Cast-, AirPlay- és UPnP-vevőkre játszik. Kikapcsolva a bae nem keres eszközöket.</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>Kikapcsolod az átküldést?</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>Ezzel leáll az átküldés ide: {device}.</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>Kikapcsolás</value></data>
+  <data name="settings.library_label" xml:space="preserve"><value>Könyvtár: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>frissítések</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>{version} verzió</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Frissítések keresése</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>ellenőrzés…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>naprakész</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>letöltés… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>a(z) {version} verzió készen áll. Indítsd újra a frissítéshez</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>Újraindítás most</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>nem sikerült frissítést keresni</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>könyvtár zárolása</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>helyreállítás</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>a helyreállítási kódod új eszközön állítja vissza ezt a könyvtárat, amikor nincs más eszközöd a jóváhagyáshoz. aki ismeri, teljes hozzáférést kap. Tartsd titokban.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>helyreállítási kód</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>helyreállítási kód megjelenítése…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(nem érhető el: kapcsolódik a szinkronizálás?)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>S3 csatlakoztatása</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>csatlakozás az S3-hoz…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>böngészhető: titkosítatlanul tárolva</value></data>
+  <data name="settings.storage.mode" xml:space="preserve"><value>tárhely</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>átlátszatlan: végpontok közötti titkosítás</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>leválasztás</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} a megerősítéshez kattints újra a leválasztásra.</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>szinkronizálás most</value></data>
+  <data name="settings.title" xml:space="preserve"><value>beállítások</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>jelzés kizárása</value></data>
+  <data name="signal.include" xml:space="preserve"><value>jelzés bevonása</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>Vonalkód</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>Katalógus</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>Válassz katalógusszámot a kereséshez</value></data>
+  <data name="signal.catalog_stop_counting" xml:space="preserve"><value>Ne számítson ez a katalógusszám</value></data>
+  <data name="signal.catalog_count_again" xml:space="preserve"><value>Számítson újra ez a katalógusszám</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>Lemezazonosító</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>előadó</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>rendezés hozzáadása</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>rendezési mező módosítása</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>rendezés eltávolítása</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>hozzáadás dátuma</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>növekvő sorrend</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>csökkenő sorrend</value></data>
+  <data name="sort.name" xml:space="preserve"><value>név</value></data>
+  <data name="sort.title" xml:space="preserve"><value>cím</value></data>
+  <data name="sort.year" xml:space="preserve"><value>év</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Áthelyezés a felhőbe</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Rögzítés</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Helyivé tétel…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Rögzítés feloldása</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# fájl} other {# fájl}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>nem sikerült betölteni a tárhelyet</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>nem sikerült beolvasni a tárhelyet</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Felhő</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Rögzítve</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Helyi</value></data>
+  <data name="storage.title" xml:space="preserve"><value>tárhely</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>szinkronizálási hiba</value></data>
+  <data name="sync.reconnect" xml:space="preserve"><value>Újrakapcsolódás</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Újra</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>a szinkronizálás rád vár</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>könyvtármódosítás</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>megosztásmódosítás</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>felhőtakarítás</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>szinkronizálva: {time}</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>szinkronizálás…</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>Az exportálást nem sikerült előkészíteni.</value></data>
+  <data name="welcome.subtitle" xml:space="preserve"><value>Vágj bele a zenei könyvtáradba.</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>A könyvtárat nem sikerült létrehozni.</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>válassz könyvtárat</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>Csatlakozás könyvtárhoz</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>Új könyvtár létrehozása</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>a könyvtáraid</value></data>
+  <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>kapcsolódva</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>mentve. Egyelőre nem sikerült ellenőrizni (offline). újra megpróbáljuk.</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>inicializálás</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>Szinkronizálás: nincs kapcsolat</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>kész</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Szinkronizálás: {provider}{account}, {state}</value></data>
+  <data name="download.title" xml:space="preserve"><value>letöltések</value></data>
+  <data name="download.paused" xml:space="preserve"><value>szüneteltetve</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>sorban</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>letöltés</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>sikertelen</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>Automatizálás</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP-kiszolgáló bekapcsolása</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>Port</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>állapot frissítése</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>token másolása</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>token cseréje</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCP-kiszolgáló: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP-kiszolgáló kikapcsolva</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>Érvénytelen MCP-kiszolgálóbeállítás</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>Az MCP-token nem érhető el</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>Az MCP-kiszolgálót nem sikerült elindítani</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>Az MCP-kiszolgáló leállt</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>adj meg egy portot 1 és 65535 között</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>Az MCP állapota nem érhető el</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>Az MCP-token nem érhető el</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>token másolva</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>token cserélve és másolva</value></data>
+  <data name="settings.subsonic.label" xml:space="preserve"><value>Subsonic</value></data>
+  <data name="settings.subsonic.enable" xml:space="preserve"><value>Subsonic-kiszolgáló bekapcsolása</value></data>
+  <data name="settings.subsonic.port" xml:space="preserve"><value>Port</value></data>
+  <data name="settings.subsonic.username" xml:space="preserve"><value>Felhasználónév</value></data>
+  <data name="settings.subsonic.allow_network" xml:space="preserve"><value>Kapcsolódás engedélyezése a hálózat többi eszközéről</value></data>
+  <data name="settings.subsonic.password" xml:space="preserve"><value>Jelszó</value></data>
+  <data name="settings.subsonic.save_password" xml:space="preserve"><value>jelszó mentése</value></data>
+  <data name="settings.subsonic.password_help" xml:space="preserve"><value>A jelszó a kulcstartóban tárolódik, nem a konfigurációs fájlban. A kliensek felhasználónévvel és jelszóval hitelesítenek.</value></data>
+  <data name="settings.subsonic.password_saved" xml:space="preserve"><value>jelszó mentve</value></data>
+  <data name="settings.subsonic.refresh" xml:space="preserve"><value>állapot frissítése</value></data>
+  <data name="settings.subsonic.invalid_port" xml:space="preserve"><value>adj meg egy portot 1 és 65535 között</value></data>
+  <data name="settings.subsonic.status.running" xml:space="preserve"><value>Subsonic-kiszolgáló: {url}</value></data>
+  <data name="settings.subsonic.status.disabled" xml:space="preserve"><value>Subsonic-kiszolgáló kikapcsolva</value></data>
+  <data name="settings.subsonic.status.invalid_config" xml:space="preserve"><value>Érvénytelen Subsonic-kiszolgálóbeállítás</value></data>
+  <data name="settings.subsonic.status.credential_unavailable" xml:space="preserve"><value>A Subsonic hitelesítő adata nem érhető el</value></data>
+  <data name="settings.subsonic.status.bind_failed" xml:space="preserve"><value>A Subsonic-kiszolgálót nem sikerült elindítani</value></data>
+  <data name="settings.subsonic.status.server_failed" xml:space="preserve"><value>A Subsonic-kiszolgáló leállt</value></data>
+  <data name="settings.subsonic.status_unavailable" xml:space="preserve"><value>A Subsonic állapota nem érhető el</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>Albumok</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>Zeneszerzők</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>Előadók</value></data>
+  <data name="library.empty_guidance" xml:space="preserve"><value>Importálj zenét a kezdéshez</value></data>
+  <data name="section.library" xml:space="preserve"><value>Könyvtár</value></data>
+  <data name="section.import" xml:space="preserve"><value>Importálás</value></data>
+  <data name="toolbar.close_library" xml:space="preserve"><value>könyvtár bezárása</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>Nincs zeneszerző</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>Nincs előadó</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>Albumok</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>Előadók</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>Számok</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>Zeneszerzők</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>Művek</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>Kiadások</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>Közreműködők</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>Felvételek</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>Nem sikerült megnyitni a zeneszerző adatlapját</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>Nem sikerült megnyitni az előadó adatlapját</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>Nem sikerült megnyitni a mű adatlapját</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} mű</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} album</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>Számok</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>Kiadás</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>Formátumok</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>Alapértékek</value></data>
+  <data name="settings.formats.defaults_footer" xml:space="preserve"><value>Ezzel a formátummal indul a Mentés másként…</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>Speciális</value></data>
+  <data name="settings.formats.preset_name" xml:space="preserve"><value>Név</value></data>
+  <data name="settings.formats.preset_track" xml:space="preserve"><value>Szám</value></data>
+  <data name="settings.formats.preset_release" xml:space="preserve"><value>Kiadás</value></data>
+  <data name="settings.formats.preset_pregap" xml:space="preserve"><value>Előhang</value></data>
+  <data name="settings.formats.pregap.append_except_htoa" xml:space="preserve"><value>Hozzáfűzés a HTOA kivételével</value></data>
+  <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>Hozzáfűzés a HTOA-val együtt</value></data>
+  <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>Kihagyás</value></data>
+  <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>Egy fájl + CUE</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>Fájlok elnevezése</value></data>
+  <data name="settings.formats.add_token" xml:space="preserve"><value>Hozzáadás:</value></data>
+  <data name="settings.formats.remove_token" xml:space="preserve"><value>{token} eltávolítása</value></data>
+  <data name="settings.formats.token.title" xml:space="preserve"><value>Cím</value></data>
+  <data name="settings.formats.token.artist" xml:space="preserve"><value>Előadó</value></data>
+  <data name="settings.formats.token.album" xml:space="preserve"><value>Album</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>Kiadás éve</value></data>
+  <data name="settings.formats.token.track_number" xml:space="preserve"><value>Szám sorszáma</value></data>
+  <data name="settings.formats.token.disc_number" xml:space="preserve"><value>Lemez sorszáma</value></data>
+  <data name="settings.formats.token.track_total" xml:space="preserve"><value>Számok összesen</value></data>
+  <data name="settings.formats.sample.title" xml:space="preserve"><value>Szám címe</value></data>
+  <data name="settings.formats.sample.artist" xml:space="preserve"><value>Előadó neve</value></data>
+  <data name="settings.formats.sample.album" xml:space="preserve"><value>Album címe</value></data>
+  <data name="settings.formats.preview" xml:space="preserve"><value>Előnézet: {filename}</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>A formátumok a számok és kiadások Mentés másként… menüjében jelennek meg.</value></data>
+  <data name="settings.formats.preset_format" xml:space="preserve"><value>Formátum</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>Formátum hozzáadása</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>Formátum törlése</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>Törlöd a(z) „{name}” formátumot?</value></data>
+  <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_aac" xml:space="preserve"><value>AAC {kbps} kbps</value></data>
+  <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>Megjelenjen a Mentés másként… menüben ehhez:</value></data>
+  <data name="settings.formats.embed_cover" xml:space="preserve"><value>Borítókép beágyazása</value></data>
+  <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>Bitmélység</value></data>
+  <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>Forrás</value></data>
+  <data name="settings.formats.bit_depth.bits16" xml:space="preserve"><value>16 bites</value></data>
+  <data name="settings.formats.bit_depth.bits24" xml:space="preserve"><value>24 bites</value></data>
+  <data name="settings.formats.bit_depth.bits32" xml:space="preserve"><value>32 bites</value></data>
+  <data name="settings.formats.bitrate" xml:space="preserve"><value>Bitráta</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>Feltöltés</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>Sorban</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>Újrapróbálkozás</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>Kész</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>Feltöltés ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>Sorban ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>Újrapróbálkozás ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>album címe</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>albumelőadók (vesszővel elválasztva)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>év</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>formátum</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>kiadó</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>katalógusszám</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>ország</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>vonalkód</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>számok</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>cím</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>előadó</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>oldal</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>sorsz.</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>albumelőadó</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>Azonosítás kihagyása</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>beszúrás ide: {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>a sor üres</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>húzz ide albumokat, vagy játssz le egy albumot</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Az azonosság frissült.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Betöltöd az album-, szám- és préselési mezőket az újonnan azonosított forrásból? A saját módosításaid felülíródnak.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Frissítés az új forrásból</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Jelenlegi metaadatok megtartása</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Kihagyva</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Kihagyás</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Visszahelyezés a függőbe</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Mappa eltávolítása</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>Rendezés és figyelt mappák</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Legújabb elöl</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Legrégebbi elöl</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Mappanév (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Mappanév (Z–A)</value></data>
+  <data name="import.tab.pending" xml:space="preserve"><value>Függőben</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Kész</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Azonosítás</value></data>
+  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Ugrás egy még azonosítás alatt álló jelöltre</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} kijelölve</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Összes kijelölése</value></data>
+  <data name="import.footbar.select_none" xml:space="preserve"><value>Kijelölés megszüntetése</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>{count} importálása</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Importálás mindenképp</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Újra</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>Kézi keresés</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Nincs automatikus találat</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>Jelzések</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Sikertelen</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>Kész</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Azonosításra vár</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Azonosítás…</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Szűrő…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Mappa hozzáadása…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Itt még nincs semmi</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Nincs találat</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# importálást nem sikerült elindítani} other {# importálást nem sikerült elindítani}}</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>hátralévő idő mutatása</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>eltelt idő mutatása</value></data>
+  <data name="output.title" xml:space="preserve"><value>exportálás és mentés</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>exportálás {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>mentés {percent}%</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>Nem sikerült beolvasni: {name}: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>megjelenítés az Intézőben</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>azonosító másolása</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>könyvtár-azonosító másolva</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>nem sikerült megnyitni a könyvtár mappáját</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Visszaállítás indításkor</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Kilépéskor menti az aktuális számot, a pozíciót, a sort és a hangerőt, és a következő indításkor visszaállítja őket.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} / {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>nem sikerült betölteni a képet</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>előző kép</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>következő kép</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>Mind</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Helyi</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Felhő</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>Szinkronizálási sor</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>Előadó</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>Formátum</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>Tárhely</value></data>
+  <data name="storage.concurrency.downloads" xml:space="preserve"><value>Egyidejű letöltések</value></data>
+  <data name="storage.concurrency.uploads" xml:space="preserve"><value>Egyidejű feltöltések</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>Fájlok</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>Méret</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# kiadás} other {# kiadás}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Összesen: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Eltávolítás</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Eltávolítja ezt a könyvtárat és letöltött fájljait erről a gépről. A felhőben lévő könyvtárad érintetlen marad. Később itt visszaállíthatod.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Ez a könyvtár nincs szinkronizálva. Az eltávolításával véglegesen törlöd a katalógusát. Az albumokat, a metaadat-módosításokat és a lejátszási előzményeket. A mappáidban lévő hangfájlok nem törlődnek.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>könyvtár eltávolítása erről a gépről</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>A felhőben lévő könyvtárad érintetlen marad. Később az üdvözlőképernyőről visszaállíthatod.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Ezt a könyvtárat még soha nem szinkronizálták. A katalógusa véglegesen törlődik; a mappáidban lévő hangfájlok nem törlődnek.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Néhány módosítás feltöltése még nem fejeződött be, és elveszik.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>A megerősítéshez kattints újra a gombra.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Nem sikerült eltávolítani a könyvtárat: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Rögzítés</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# album lejátszása} other {# album lejátszása}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# album lejátszása következőként} other {# album lejátszása következőként}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# album hozzáadása a sorhoz} other {# album hozzáadása a sorhoz}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# album rögzítése} other {# album rögzítése}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>megnyitás ezzel: {name}</value></data>
+  <data name="nowplaying.pause" xml:space="preserve"><value>Szünet</value></data>
+  <data name="nowplaying.mute" xml:space="preserve"><value>Némítás</value></data>
+  <data name="nowplaying.unmute" xml:space="preserve"><value>Némítás feloldása</value></data>
+  <data name="nowplaying.previous" xml:space="preserve"><value>Előző szám</value></data>
+  <data name="nowplaying.next" xml:space="preserve"><value>Következő szám</value></data>
+  <data name="nowplaying.repeat_off" xml:space="preserve"><value>Ismétlés: ki</value></data>
+  <data name="nowplaying.repeat_context" xml:space="preserve"><value>Ismétlés: környezet</value></data>
+  <data name="nowplaying.repeat_track" xml:space="preserve"><value>Ismétlés: szám</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>Most szól</value></data>
+  <data name="nowplaying.cast" xml:space="preserve"><value>Átküldés</value></data>
+  <data name="nowplaying.casting_to" xml:space="preserve"><value>Átküldés ide: {device}</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>Leválasztás</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>Nem található átküldési eszköz</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>komponensgaléria</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>komponensgaléria</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>Frissítés</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>Frissítés…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>Egyesítés egy kiadásba</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>Külön kiadásként megtartás</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Párosítás indítása…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Várakozás a jóváhagyásra…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Ujjlenyomat: {fingerprint}</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Kézi megadás</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Albumelőadó</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>Könyvtár</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>Új</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Hozzáadás</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Eltávolítás</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Album címe</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Alkalmaz</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Metaadatok törlése</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>A jelölt fájljai és a hozzárendelések változatlanok maradnak.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Törlöd a metaadatokat?</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Keresés online</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Keresés online…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Próbáld újra beolvasni a jelöltet.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Általános</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Alapértelmezett metaadatforrás</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Keresés online</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>Automatikus azonosítás</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Az új jelöltek azonosítása felfedezésükkor, illetve a Keresés online megnyitásakor történik. Kikapcsolva az Azonosítás hivatkozás indít egy futtatást.</value></data>
+  <data name="settings.import.search_source" xml:space="preserve"><value>Keresés itt: {source}</value></data>
+  <data name="settings.import.sources_help" xml:space="preserve"><value>A Keresés online az itt bejelölt forrásokat kérdezi le.</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Nincs</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>Online keresés</value></data>
+  <data name="action.clear" xml:space="preserve"><value>törlés</value></data>
+  <data name="action.retry" xml:space="preserve"><value>újra</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>találatok erre: {query}</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>keresés itt: {source}…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} nem válaszolt: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} nincs beállítva</value></data>
+  <data name="appearance.title" xml:space="preserve"><value>Megjelenés</value></data>
+  <data name="appearance.mode" xml:space="preserve"><value>Mód</value></data>
+  <data name="appearance.system" xml:space="preserve"><value>Rendszer</value></data>
+  <data name="appearance.light" xml:space="preserve"><value>Világos</value></data>
+  <data name="appearance.dark" xml:space="preserve"><value>Sötét</value></data>
+  <data name="appearance.accent" xml:space="preserve"><value>Kiemelőszín</value></data>
+  <data name="appearance.tone" xml:space="preserve"><value>Háttérárnyalat</value></data>
+  <data name="appearance.neutral" xml:space="preserve"><value>Semleges</value></data>
+  <data name="appearance.slate" xml:space="preserve"><value>Palaszürke</value></data>
+  <data name="appearance.plum" xml:space="preserve"><value>Szilva</value></data>
+  <data name="appearance.blue" xml:space="preserve"><value>Kék</value></data>
+  <data name="appearance.indigo" xml:space="preserve"><value>Indigó</value></data>
+  <data name="appearance.purple" xml:space="preserve"><value>Lila</value></data>
+  <data name="appearance.pink" xml:space="preserve"><value>Rózsaszín</value></data>
+  <data name="appearance.red" xml:space="preserve"><value>Piros</value></data>
+  <data name="appearance.amber" xml:space="preserve"><value>Borostyán</value></data>
+  <data name="appearance.green" xml:space="preserve"><value>Zöld</value></data>
+  <data name="appearance.teal" xml:space="preserve"><value>Türkiz</value></data>
+  <data name="appearance.save_failed" xml:space="preserve"><value>A megjelenést nem sikerült menteni: {error}</value></data>
+  <data name="appearance.midnight" xml:space="preserve"><value>Éjkék</value></data>
+  <data name="appearance.forest" xml:space="preserve"><value>Erdőzöld</value></data>
+  <data name="appearance.sand" xml:space="preserve"><value>Homok</value></data>
+  <data name="cover.unlinked" xml:space="preserve"><value>Társíts egy Discogs- vagy MusicBrainz-kiadást, hogy böngészhesd a képeit.</value></data>
+  <data name="import.search.identification_results" xml:space="preserve"><value>Azonosítási találatok</value></data>
+</root>

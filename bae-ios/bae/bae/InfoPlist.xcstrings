@@ -58,6 +58,12 @@
             "value": "bae koristi kameru za skeniranje kodova pri uparivanju ili vraćanju biblioteke."
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bae a kamerát kódok beolvasására használja párosításkor vagy könyvtár helyreállításakor."
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -181,6 +187,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "bae uparuje uređaje i pronalazi zvučnike i televizore na vašoj lokalnoj mreži."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bae eszközöket párosít, valamint hangszórókat és tévéket keres a helyi hálózatodon."
           }
         },
         "it": {

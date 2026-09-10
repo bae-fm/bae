@@ -57,6 +57,12 @@
             "value": "Izgled"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Megjelenés"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -247,6 +253,12 @@
             "state": "translated",
             "value": "%1$@ od %2$@"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ – %2$@"
+          }
         }
       }
     },
@@ -367,6 +379,12 @@
           }
         },
         "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        },
+        "hu": {
           "stringUnit": {
             "state": "translated",
             "value": "%1$@, %2$@"
@@ -801,6 +819,24 @@
               }
             }
           }
+        },
+        "hu": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld fájl"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld fájl"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -924,6 +960,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pridať do poradia"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hozzáadás a sorhoz"
           }
         }
       }
@@ -1049,6 +1091,12 @@
             "state": "translated",
             "value": "Albumy"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Albumok"
+          }
         }
       }
     },
@@ -1172,6 +1220,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vzostupne"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Növekvő"
           }
         }
       }
@@ -1297,6 +1351,12 @@
             "state": "translated",
             "value": "Autorizácia sa skončila bez kódu."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az engedélyezés kód nélkül fejeződött be."
+          }
         }
       }
     },
@@ -1420,6 +1480,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prístup ku kamere je zamietnutý. Zapni ho v Nastaveniach, aby si mohol skenovať QR kódy."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A kamera hozzáférése le van tiltva. Engedélyezd a Beállításokban a QR-kódok beolvasásához."
           }
         }
       }
@@ -1545,6 +1611,12 @@
             "state": "translated",
             "value": "Kamera nie je k dispozícii"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A kamera nem érhető el"
+          }
         }
       }
     },
@@ -1668,6 +1740,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Na skenovanie QR kódov je potrebné povolenie kamery"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A QR-kódok beolvasásához kameraengedély szükséges"
           }
         }
       }
@@ -1793,6 +1871,12 @@
             "state": "translated",
             "value": "Zrušiť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mégse"
+          }
         }
       }
     },
@@ -1917,6 +2001,12 @@
             "state": "translated",
             "value": "Vymazať"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Törlés"
+          }
         }
       }
     },
@@ -1975,6 +2065,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Očisti izvor reprodukcije"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lejátszás innen törlése"
           }
         },
         "it": {
@@ -2100,6 +2196,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Očisti „Sljedeće na redu“"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Következők törlése"
           }
         },
         "it": {
@@ -2292,6 +2394,12 @@
             "state": "translated",
             "value": "Zavrieť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bezárás"
+          }
         }
       }
     },
@@ -2415,6 +2523,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cloudové prihlásenie nie je v tomto zostavení nastavené (chýba oauth-creds.json)."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A felhős bejelentkezés nincs beállítva ebben a buildben (nincs oauth-creds.json)."
           }
         }
       }
@@ -2540,6 +2654,12 @@
             "state": "translated",
             "value": "Synchronizácia s cloudom"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Felhőszinkronizálás"
+          }
         }
       }
     },
@@ -2664,6 +2784,12 @@
             "state": "translated",
             "value": "Zbaliť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Összecsukás"
+          }
         }
       }
     },
@@ -2721,6 +2847,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detalji skladatelja nisu pronađeni"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A zeneszerző adatlapja nem található"
           }
         },
         "it": {
@@ -2846,6 +2978,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skladatelji"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeneszerzők"
           }
         },
         "it": {
@@ -3037,6 +3175,12 @@
             "state": "translated",
             "value": "Pripojiť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapcsolódás"
+          }
         }
       }
     },
@@ -3160,6 +3304,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pripája sa ku tvojej knižnici"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapcsolódás a könyvtáradhoz"
           }
         }
       }
@@ -3285,6 +3435,12 @@
             "state": "translated",
             "value": "Vstup z kamery sa nepodarilo pridať do relácie"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A kamerabemenetet nem sikerült hozzáadni a munkamenethez"
+          }
         }
       }
     },
@@ -3408,6 +3564,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Výstup metadát sa nepodarilo pridať do relácie"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A metaadat-kimenetet nem sikerült hozzáadni a munkamenethez"
           }
         }
       }
@@ -3533,6 +3695,12 @@
             "state": "translated",
             "value": "Vstup z kamery sa nepodarilo vytvoriť: %@"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A kamerabemenetet nem sikerült létrehozni: %@"
+          }
         }
       }
     },
@@ -3656,6 +3824,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cloudové prihlásenie sa nepodarilo zobraziť z aktuálneho okna."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A felhős bejelentkezést nem sikerült megjeleníteni az aktuális ablakból."
           }
         }
       }
@@ -3781,6 +3955,12 @@
             "state": "translated",
             "value": "Nepodarilo sa prečítať oauth-creds.json: %@"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az oauth-creds.json nem olvasható: %@"
+          }
         }
       }
     },
@@ -3839,6 +4019,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zasluge"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Közreműködők"
           }
         },
         "it": {
@@ -4030,6 +4216,12 @@
             "state": "translated",
             "value": "Zostupne"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Csökkenő"
+          }
         }
       }
     },
@@ -4153,6 +4345,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odpojené"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leválasztva"
           }
         }
       }
@@ -4278,6 +4476,12 @@
             "state": "translated",
             "value": "Zavrieť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bezárás"
+          }
         }
       }
     },
@@ -4401,6 +4605,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hotovo"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kész"
           }
         }
       }
@@ -4526,6 +4736,12 @@
             "state": "translated",
             "value": "Stiahnuť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letöltés"
+          }
         }
       }
     },
@@ -4649,6 +4865,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stiahnuté"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letöltve"
           }
         }
       }
@@ -4774,6 +4996,12 @@
             "state": "translated",
             "value": "Stiahnuté"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letöltések"
+          }
         }
       }
     },
@@ -4897,6 +5125,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Šifrovací kľúč (64 znakov v šestnástkovej sústave)"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Titkosítási kulcs (64 hexadecimális karakter)"
           }
         }
       }
@@ -5023,6 +5257,12 @@
             "state": "translated",
             "value": "Chyba"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiba"
+          }
         }
       }
     },
@@ -5146,6 +5386,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rozbaliť Prehráva sa"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Most szól kibontása"
           }
         }
       }
@@ -5271,6 +5517,12 @@
             "state": "translated",
             "value": "Knižnica"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Könyvtár"
+          }
         }
       }
     },
@@ -5394,6 +5646,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Knižnica je zamknutá"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A könyvtár zárolva"
           }
         }
       }
@@ -5519,6 +5777,12 @@
             "state": "translated",
             "value": "Načítava sa"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Betöltés"
+          }
         }
       }
     },
@@ -5642,6 +5906,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Len lokálne"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Csak helyi"
           }
         }
       }
@@ -5767,6 +6037,12 @@
             "state": "translated",
             "value": "Stlmiť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Némítás"
+          }
         }
       }
     },
@@ -5890,6 +6166,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ďalšia skladba"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Következő szám"
           }
         }
       }
@@ -6015,6 +6297,12 @@
             "state": "translated",
             "value": "Zatiaľ žiadne albumy. Synchronizuje sa z cloudu…"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Még nincs album. Szinkronizálás a felhőből…"
+          }
         }
       }
     },
@@ -6073,6 +6361,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nema skladatelja"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nincs zeneszerző"
           }
         },
         "it": {
@@ -6264,6 +6558,12 @@
             "state": "translated",
             "value": "Žiadne sťahovania"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nincs letöltés"
+          }
         }
       }
     },
@@ -6387,6 +6687,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Žiadne výsledky pre „%@“"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nincs találat erre: „%@”"
           }
         }
       }
@@ -6512,6 +6818,12 @@
             "state": "translated",
             "value": "Nič nenasleduje"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nincs következő"
+          }
         }
       }
     },
@@ -6635,6 +6947,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prehráva sa"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Most szól"
           }
         }
       }
@@ -6760,6 +7078,12 @@
             "state": "translated",
             "value": "Zapnuté"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Be"
+          }
         }
       }
     },
@@ -6818,6 +7142,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kod za uparivanje"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Párosítási kód"
           }
         },
         "it": {
@@ -6943,6 +7273,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zalijepi kod za uparivanje"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Illeszd be a párosítási kódot"
           }
         },
         "it": {
@@ -7134,6 +7470,12 @@
             "state": "translated",
             "value": "Pozastaviť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szünet"
+          }
         }
       }
     },
@@ -7191,6 +7533,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pauza između strana i diskova"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szünet a lemezoldalak és lemezek között"
           }
         },
         "it": {
@@ -7382,6 +7730,12 @@
             "state": "translated",
             "value": "Pozastavené"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szüneteltetve"
+          }
         }
       }
     },
@@ -7505,6 +7859,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prehrať"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lejátszás"
           }
         }
       }
@@ -7630,6 +7990,12 @@
             "state": "translated",
             "value": "Prehrať ako ďalšie"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lejátszás következőként"
+          }
         }
       }
     },
@@ -7687,6 +8053,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reprodukcija"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lejátszás"
           }
         },
         "it": {
@@ -7879,6 +8251,12 @@
             "state": "translated",
             "value": "Prehráva sa z"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lejátszás innen"
+          }
         }
       }
     },
@@ -8002,6 +8380,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Predchádzajúca skladba"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Előző szám"
           }
         }
       }
@@ -8127,6 +8511,12 @@
             "state": "translated",
             "value": "Poradie"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sor"
+          }
         }
       }
     },
@@ -8250,6 +8640,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Poradie je prázdne"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A sor üres"
           }
         }
       }
@@ -8375,6 +8771,12 @@
             "state": "translated",
             "value": "Znova pripojiť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Újrakapcsolódás"
+          }
         }
       }
     },
@@ -8433,6 +8835,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Snimke"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Felvételek"
           }
         },
         "it": {
@@ -8558,6 +8966,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izdanja"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiadások"
           }
         },
         "it": {
@@ -8749,6 +9163,12 @@
             "state": "translated",
             "value": "Odstrániť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eltávolítás"
+          }
         }
       }
     },
@@ -8872,6 +9292,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odstrániť stiahnuté"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letöltés eltávolítása"
           }
         }
       }
@@ -8997,6 +9423,12 @@
             "state": "translated",
             "value": "Odstrániť túto knižnicu z tohto zariadenia"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Könyvtár eltávolítása erről az eszközről"
+          }
         }
       }
     },
@@ -9120,6 +9552,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odstrániť túto knižnicu z tohto zariadenia?"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eltávolítod ezt a könyvtárat erről az eszközről?"
           }
         }
       }
@@ -9245,6 +9683,12 @@
             "state": "translated",
             "value": "Odstráni túto knižnicu a jej stiahnuté súbory z tohto zariadenia. Tvoja knižnica v cloude zostane nedotknutá. Toto zariadenie môžeš neskôr znova spárovať."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eltávolítja ezt a könyvtárat és letöltött fájljait erről az eszközről. A felhőben lévő könyvtárad érintetlen marad. Az eszközt később újra párosíthatod."
+          }
         }
       }
     },
@@ -9368,6 +9812,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Režim opakovania"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ismétlési mód"
           }
         }
       }
@@ -9493,6 +9943,12 @@
             "state": "translated",
             "value": "Pokračovať"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folytatás"
+          }
         }
       }
     },
@@ -9617,6 +10073,12 @@
             "state": "translated",
             "value": "Skúsiť znova"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Újra"
+          }
         }
       }
     },
@@ -9675,6 +10137,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skenirajte ovaj kod na uređaju koji se pridružuje vašoj fonoteci."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Olvastasd be ezt a kódot a könyvtáradhoz csatlakozó eszközzel."
           }
         },
         "it": {
@@ -9867,6 +10335,12 @@
             "state": "translated",
             "value": "Hľadať"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keresés"
+          }
         }
       }
     },
@@ -9991,6 +10465,12 @@
             "state": "translated",
             "value": "Nastavenia"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beállítások"
+          }
         }
       }
     },
@@ -10114,6 +10594,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Náhodne"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keverés"
           }
         }
       }
@@ -10240,6 +10726,12 @@
             "state": "translated",
             "value": "Náhodne prehrať knižnicu"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Könyvtár keverése"
+          }
         }
       }
     },
@@ -10298,6 +10790,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pokretanje uparivanja…"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Párosítás indítása..."
           }
         },
         "it": {
@@ -10489,6 +10987,12 @@
             "state": "translated",
             "value": "Stav"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Állapot"
+          }
         }
       }
     },
@@ -10612,6 +11116,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Synchronizácia"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szinkronizálás"
           }
         }
       }
@@ -10737,6 +11247,12 @@
             "state": "translated",
             "value": "Synchronizované"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szinkronizálva"
+          }
         }
       }
     },
@@ -10860,6 +11376,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Synchronizuje sa…"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szinkronizálás…"
           }
         }
       }
@@ -10985,6 +11507,12 @@
             "state": "translated",
             "value": "Šifrovací kľúč tejto knižnice nie je v kľúčenke. Na odomknutie zadaj 64-znakový šestnástkový kľúč."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ennek a könyvtárnak a titkosítási kulcsa nincs a kulcstartóban. A feloldáshoz add meg a 64 karakteres hexadecimális kulcsot."
+          }
         }
       }
     },
@@ -11108,6 +11636,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Poskytovateľ vrátil neplatnú autorizačnú URL."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A szolgáltató érvénytelen engedélyezési URL-t adott vissza."
           }
         }
       }
@@ -11233,6 +11767,12 @@
             "state": "translated",
             "value": "Táto knižnica vyžaduje cloudové prihlásenie, ktoré v tomto zostavení nie je nastavené."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ehhez a könyvtárhoz felhős bejelentkezés kell, ami ebben a buildben nincs beállítva."
+          }
         }
       }
     },
@@ -11356,6 +11896,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skladby"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Számok"
           }
         }
       }
@@ -11482,6 +12028,12 @@
             "state": "translated",
             "value": "Vypnúť náhodné prehrávanie"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keverés kikapcsolása"
+          }
         }
       }
     },
@@ -11605,6 +12157,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odomknúť"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feloldás"
           }
         }
       }
@@ -11730,6 +12288,12 @@
             "state": "translated",
             "value": "Zrušiť stlmenie"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Némítás feloldása"
+          }
         }
       }
     },
@@ -11853,6 +12417,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nasleduje"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Következők"
           }
         }
       }
@@ -11978,6 +12548,12 @@
             "state": "translated",
             "value": "Hlasitosť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hangerő"
+          }
         }
       }
     },
@@ -12036,6 +12612,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Čekanje odobrenja…"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Várakozás a jóváhagyásra..."
           }
         },
         "it": {
@@ -12161,6 +12743,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Čekanje uređaja…"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Várakozás az eszközre..."
           }
         },
         "it": {
@@ -12352,6 +12940,12 @@
             "state": "translated",
             "value": "Čaká na stiahnutie"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letöltésre vár"
+          }
         }
       }
     },
@@ -12409,6 +13003,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detalji djela nisu pronađeni"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A mű adatlapja nem található"
           }
         },
         "it": {
@@ -12534,6 +13134,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Djela"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Művek"
           }
         },
         "it": {
@@ -12726,6 +13332,12 @@
             "state": "translated",
             "value": "Tvoja knižnica"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A könyvtárad"
+          }
         }
       }
     },
@@ -12850,6 +13462,12 @@
             "state": "translated",
             "value": "Tvoja knižnica v cloude zostane nedotknutá."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A felhőben lévő könyvtárad érintetlen marad."
+          }
         }
       }
     },
@@ -12970,6 +13588,12 @@
           }
         },
         "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae"
+          }
+        },
+        "hu": {
           "stringUnit": {
             "state": "translated",
             "value": "bae"
@@ -13098,6 +13722,12 @@
             "state": "translated",
             "value": "oauth-creds.json neobsahuje žiadne poverenia poskytovateľov."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az oauth-creds.json nem tartalmaz szolgáltatói hitelesítő adatokat."
+          }
         }
       }
     },
@@ -13221,6 +13851,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "oauth-creds.json má chybný formát: %@"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az oauth-creds.json hibás formátumú: %@"
           }
         }
       }
@@ -13346,6 +13982,12 @@
             "state": "translated",
             "value": "V oauth-creds.json chýba client_id alebo redirect_uri pre %@."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az oauth-creds.json fájlból hiányzik a client_id vagy a redirect_uri ehhez: %@."
+          }
         }
       }
     },
@@ -13470,6 +14112,12 @@
             "state": "translated",
             "value": "synchronizuje sa…"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "szinkronizálás…"
+          }
         }
       }
     },
@@ -13528,6 +14176,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prije odobravanja provjerite podudara li se ovo s otiskom prikazanim na novom uređaju."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jóváhagyás előtt ellenőrizd, hogy megegyezik-e az új eszközön látható ujjlenyomattal."
           }
         },
         "it": {
@@ -13720,6 +14374,12 @@
             "state": "translated",
             "value": "Prihlasuje sa..."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bejelentkezés..."
+          }
         }
       }
     },
@@ -13844,6 +14504,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odpojiť"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leválasztás"
           }
         }
       }
@@ -13970,6 +14636,12 @@
             "state": "translated",
             "value": "Odpojiť synchronizáciu?"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leválasztod a szinkronizálást?"
+          }
         }
       }
     },
@@ -14094,6 +14766,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Týmto sa zastaví synchronizácia a odstráni sa konfigurácia poskytovateľa cloudu."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ezzel leáll a szinkronizálás, és törlődik a felhőszolgáltató beállítása."
           }
         }
       }
@@ -14220,6 +14898,12 @@
             "state": "translated",
             "value": "Nepodarilo sa overiť vydania uložené len v cloude: %@"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nem sikerült ellenőrizni a csak a felhőben tárolt kiadásokat: %@"
+          }
         }
       }
     },
@@ -14344,6 +15028,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odpojenie zlyhalo: %@"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A leválasztás nem sikerült: %@"
           }
         }
       }
@@ -14470,6 +15160,12 @@
             "state": "translated",
             "value": "Poskytovateľ"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szolgáltató"
+          }
         }
       }
     },
@@ -14594,6 +15290,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Účet"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fiók"
           }
         }
       }
@@ -14720,6 +15422,12 @@
             "state": "translated",
             "value": "Kontajner"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tároló"
+          }
         }
       }
     },
@@ -14844,6 +15552,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Región"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Régió"
           }
         }
       }
@@ -14970,6 +15684,12 @@
             "state": "translated",
             "value": "Koncový bod"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Végpont"
+          }
         }
       }
     },
@@ -15094,6 +15814,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pozastaviť odosielanie"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feltöltések szüneteltetése"
           }
         }
       }
@@ -15220,6 +15946,12 @@
             "state": "translated",
             "value": "Kým je pozastavené, zmeny čakajú na tomto zariadení a odošlú sa, keď budeš pokračovať."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szüneteltetés alatt a módosítások ezen az eszközön várakoznak, és a folytatáskor töltődnek fel."
+          }
         }
       }
     },
@@ -15345,6 +16077,12 @@
             "state": "translated",
             "value": "Ak chceš túto knižnicu znova synchronizovať, spáruj toto zariadenie z iného zariadenia."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ha újra szinkronizálnád ezt a könyvtárat, párosítsd ezt az eszközt egy másikról."
+          }
         }
       }
     },
@@ -15403,6 +16141,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izvođači"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Előadók"
           }
         },
         "it": {
@@ -15530,6 +16274,12 @@
             "value": "Nema izvođača"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nincs előadó"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -15652,6 +16402,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detalji izvođača nisu pronađeni"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az előadó adatlapja nem található"
           }
         },
         "it": {
@@ -15779,6 +16535,12 @@
             "value": "Naziv"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Név"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -15901,6 +16663,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vrati pri pokretanju"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visszaállítás indításkor"
           }
         },
         "it": {
@@ -16027,6 +16795,12 @@
             "value": "Pri otvaranju aplikacije vraća pjesmu, poziciju, red čekanja i glasnoću zadnje sesije."
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az app megnyitásakor visszaállítja az előző munkamenet számát, pozícióját, sorát és hangerejét."
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -16151,6 +16925,12 @@
             "value": "O aplikaciji"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Névjegy"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -16273,6 +17053,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verzija"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verzió"
           }
         },
         "it": {
@@ -16400,6 +17186,12 @@
             "value": "Emitiraj"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Átküldés"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -16523,6 +17315,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Emitiranje"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Átküldés"
           }
         },
         "it": {
@@ -16650,6 +17448,12 @@
             "value": "Emitiranje na %@"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Átküldés ide: %@"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -16773,6 +17577,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nema pronađenih uređaja"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nem található átküldési eszköz"
           }
         },
         "it": {
@@ -16900,6 +17710,12 @@
             "value": "Omogući emitiranje"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Átküldés bekapcsolása"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -17023,6 +17839,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Isključiti emitiranje?"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kikapcsolod az átküldést?"
           }
         },
         "it": {
@@ -17150,6 +17972,12 @@
             "value": "Time će se prekinuti emitiranje na %@."
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ezzel leáll az átküldés ide: %@."
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -17273,6 +18101,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Isključi"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kikapcsolás"
           }
         },
         "it": {
@@ -17465,6 +18299,12 @@
             "state": "translated",
             "value": "Prehráva na prijímače Cast a AirPlay v tvojej sieti. Keď je vypnuté, bae zariadenia nevyhľadáva."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A hálózatodon lévő Cast- és AirPlay-vevőkre játszik. Kikapcsolva a bae nem keres eszközöket."
+          }
         }
       }
     },
@@ -17522,6 +18362,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ovaj uređaj"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ez az eszköz"
           }
         },
         "it": {
@@ -17714,6 +18560,12 @@
             "state": "translated",
             "value": "Nepodarilo sa vytvoriť kód na obnovenie"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nem sikerült visszaállítási kódot létrehozni"
+          }
         }
       }
     },
@@ -17838,6 +18690,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kód na obnovenie sa nepodarilo uložiť do kľúčenky"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A visszaállítási kódot nem sikerült a kulcstartóba menteni"
           }
         }
       }
@@ -17964,6 +18822,12 @@
             "state": "translated",
             "value": "Nepodarilo sa zistiť stav účtu iCloud."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nem sikerült lekérdezni az iCloud-fiók állapotát."
+          }
         }
       }
     },
@@ -18088,6 +18952,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nepodarilo sa zistiť stav účtu iCloud: %@"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nem sikerült lekérdezni az iCloud-fiók állapotát: %@"
           }
         }
       }
@@ -18214,6 +19084,12 @@
             "state": "translated",
             "value": "Na tomto zariadení nie je prihlásený žiadny účet iCloud. Otvor Nastavenia systému → Apple ID, prihlás sa a skús to znova."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ezen az eszközön nincs bejelentkezve iCloud-fiók. Nyisd meg a Rendszerbeállítások → Apple-fiók menüpontot, jelentkezz be, majd próbáld újra."
+          }
         }
       }
     },
@@ -18338,6 +19214,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud je na tomto zariadení obmedzený (rodičovská kontrola alebo MDM). bae ho nemôže použiť na synchronizáciu."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az iCloud korlátozva van ezen az eszközön (szülői felügyelet vagy MDM). A bae nem tudja szinkronizálásra használni."
           }
         }
       }
@@ -18464,6 +19346,12 @@
             "state": "translated",
             "value": "Nepodarilo sa určiť stav účtu iCloud. Skontroluj sieť a skús to znova."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nem sikerült megállapítani az iCloud-fiók állapotát. Ellenőrizd a hálózatot, és próbáld újra."
+          }
         }
       }
     },
@@ -18588,6 +19476,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud je dočasne nedostupný. Skús to o chvíľu znova."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az iCloud átmenetileg nem érhető el. Próbáld újra kicsit később."
           }
         }
       }
@@ -18714,6 +19608,12 @@
             "state": "translated",
             "value": "Neočakávaný stav účtu iCloud (%lld)."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Váratlan iCloud-fiókállapot (%lld)."
+          }
         }
       }
     },
@@ -18838,6 +19738,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nie si prihlásený do iCloudu. Otvor Nastavenia systému → Apple ID, prihlás sa a skús to znova."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nem vagy bejelentkezve az iCloudba. Nyisd meg a Rendszerbeállítások → Apple-fiók menüpontot, jelentkezz be, majd próbáld újra."
           }
         }
       }
@@ -18964,6 +19870,12 @@
             "state": "translated",
             "value": "Tvoje úložisko iCloud je plné. Uvoľni miesto v Nastaveniach systému → Apple ID → iCloud, aby sa synchronizácia nezastavila."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az iCloud-tárhelyed megtelt. Szabadíts fel helyet a Rendszerbeállítások → Apple-fiók → iCloud alatt, hogy a szinkronizálás folytatódjon."
+          }
         }
       }
     },
@@ -19089,6 +20001,12 @@
             "state": "translated",
             "value": "bae nemá povolenie používať iCloud. Otvor Nastavenia systému → Apple ID → iCloud → Aplikácie používajúce iCloud a zapni bae."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bae nem használhatja az iCloudot. Nyisd meg a Rendszerbeállítások → Apple-fiók → iCloud → iCloudot használó appok menüpontot, és kapcsold be a bae-t."
+          }
         }
       }
     },
@@ -19213,6 +20131,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Synchronizačná zóna iCloud zmizla. Znova sa pripoj v nastaveniach synchronizácie, aby sa vytvorila nanovo."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az iCloud szinkronizálási zónája megszűnt. Kapcsolódj újra a szinkronizálási beállításokban, hogy létrejöjjön."
           }
         }
       }
@@ -19351,6 +20275,12 @@
             "state": "translated",
             "value": "%lld albumov"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld album"
+          }
         }
       }
     },
@@ -19488,6 +20418,12 @@
             "state": "translated",
             "value": "%lld diel"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld mű"
+          }
         }
       }
     },
@@ -19611,6 +20547,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pridať zariadenie"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eszköz hozzáadása"
           }
         }
       }
@@ -19737,6 +20679,12 @@
             "state": "translated",
             "value": "Pridať zariadenie…"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eszköz hozzáadása…"
+          }
         }
       }
     },
@@ -19862,6 +20810,12 @@
             "state": "translated",
             "value": "Pridaj toto zariadenie ku knižnici, ktorú už máš na inom zariadení."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add hozzá ezt az eszközt egy könyvtárhoz, ami már megvan egy másik eszközödön."
+          }
         }
       }
     },
@@ -19985,6 +20939,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ktokoľvek s týmto kódom má plný prístup k tvojej knižnici. Nechaj si ho pre seba. Použi ho len na obnovenie na novom zariadení, keď nemáš k dispozícii žiadne iné."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aki ismeri ezt a kódot, teljes hozzáférést kap a könyvtáradhoz. Tartsd titokban. Csak akkor használd új eszközön történő visszaállításhoz, ha nincs másik eszközöd."
           }
         }
       }
@@ -20111,6 +21071,12 @@
             "state": "translated",
             "value": "Schváliť"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jóváhagyás"
+          }
         }
       }
     },
@@ -20234,6 +21200,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Schváliť toto zariadenie?"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jóváhagyod ezt az eszközt?"
           }
         }
       }
@@ -20360,6 +21332,12 @@
             "state": "translated",
             "value": "Autorizácia sa skončila bez stavu."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az engedélyezés állapot nélkül fejeződött be."
+          }
         }
       }
     },
@@ -20484,6 +21462,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Späť"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vissza"
           }
         }
       }
@@ -20610,6 +21594,12 @@
             "state": "translated",
             "value": "Kopírovať kód"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kód másolása"
+          }
         }
       }
     },
@@ -20734,6 +21724,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Párovací kód zariadenia"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eszközpárosítási kód"
           }
         }
       }
@@ -20860,6 +21856,12 @@
             "state": "translated",
             "value": "Zariadenia"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eszközök"
+          }
         }
       }
     },
@@ -20984,6 +21986,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zariadenia, ktoré zdieľajú túto knižnicu. Schváľ nové zariadenie alebo niektoré odstráň."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ezek az eszközök osztoznak a könyvtáron. Hagyj jóvá egy új eszközt, vagy távolíts el egyet."
           }
         }
       }
@@ -21110,6 +22118,12 @@
             "state": "translated",
             "value": "Sledujúci"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Követő"
+          }
         }
       }
     },
@@ -21233,6 +22247,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stratí prístup a kľúč knižnice sa vymení. Zariadenia, ktoré v knižnici zostanú, si kľúč vymenia automaticky."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elveszíti a hozzáférését, és a könyvtár kulcsa cserélődik. A könyvtárban maradó eszközök automatikusan új kulcsot kapnak."
           }
         }
       }
@@ -21359,6 +22379,12 @@
             "state": "translated",
             "value": "Pripojiť sa"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Csatlakozás"
+          }
         }
       }
     },
@@ -21482,6 +22508,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pripojiť sa ku knižnici"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Csatlakozás könyvtárhoz"
           }
         }
       }
@@ -21608,6 +22640,12 @@
             "state": "translated",
             "value": "Člen"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tag"
+          }
         }
       }
     },
@@ -21732,6 +22770,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zariadenia"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eszközök"
           }
         }
       }
@@ -21858,6 +22902,12 @@
             "state": "translated",
             "value": "Vlastník"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tulajdonos"
+          }
         }
       }
     },
@@ -21982,6 +23032,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prilep obnovovací kód"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Illeszd be a helyreállítási kódot"
           }
         }
       }
@@ -22108,6 +23164,12 @@
             "state": "translated",
             "value": "Prilep svoj obnovovací kód"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Illeszd be a helyreállítási kódodat"
+          }
         }
       }
     },
@@ -22233,6 +23295,12 @@
             "state": "translated",
             "value": "Prilep svoj obnovovací kód. Použi to len vtedy, keď nemáš k dispozícii iné zariadenie, ktoré by toto schválilo."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Illeszd be a helyreállítási kódodat. Csak akkor használd, ha nincs más eszközöd ennek jóváhagyásához."
+          }
         }
       }
     },
@@ -22356,6 +23424,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Obnovovací kód"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helyreállítási kód"
           }
         }
       }
@@ -22482,6 +23556,12 @@
             "state": "translated",
             "value": "Odstrániť toto zariadenie?"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eltávolítod ezt az eszközt?"
+          }
         }
       }
     },
@@ -22606,6 +23686,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skenovať"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beolvasás"
           }
         }
       }
@@ -22732,6 +23818,12 @@
             "state": "translated",
             "value": "Naskenovať obnovovací kód"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helyreállítási kód beolvasása"
+          }
         }
       }
     },
@@ -22856,6 +23948,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Naskenuj kód zobrazený na zariadení, ktoré už v knižnici máš."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Olvasd be a könyvtáradban már szereplő eszközön látható kódot."
           }
         }
       }
@@ -22982,6 +24080,12 @@
             "state": "translated",
             "value": "Zobraziť obnovovací kód…"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helyreállítási kód megjelenítése…"
+          }
         }
       }
     },
@@ -23106,6 +24210,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Súbežné sťahovania"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Egyidejű letöltések"
           }
         }
       }
@@ -23232,6 +24342,12 @@
             "state": "translated",
             "value": "Chyba synchronizácie"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szinkronizálási hiba"
+          }
         }
       }
     },
@@ -23355,6 +24471,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Táto knižnica používa poskytovateľa, ku ktorému sa toto zostavenie nedokáže pripojiť."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ez a könyvtár olyan szolgáltatót használ, amelyhez ez a build nem tud kapcsolódni."
           }
         }
       }
@@ -23481,6 +24603,12 @@
             "state": "translated",
             "value": "Skúsiť znova"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próbáld újra"
+          }
         }
       }
     },
@@ -23604,6 +24732,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Obnovovací kód obnoví túto knižnicu na novom zariadení, keď nemáš k dispozícii iné zariadenie, ktoré by ho schválilo. Ktokoľvek s ním má plný prístup. Nechaj si ho pre seba."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A helyreállítási kódod új eszközön állítja vissza ezt a könyvtárat, amikor nincs más eszközöd a jóváhagyáshoz. Aki ismeri, teljes hozzáférést kap. Tartsd titokban."
           }
         }
       }
@@ -23730,6 +24864,12 @@
             "state": "translated",
             "value": "bae nastavuje knižnicu na tomto zariadení."
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bae beállítja a könyvtárat ezen az eszközön."
+          }
         }
       }
     },
@@ -23854,6 +24994,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odpojené, ale kód na obnovenie sa nepodarilo odstrániť: %@"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leválasztva, de a visszaállítási kódot nem sikerült eltávolítani: %@"
           }
         }
       }
@@ -23980,6 +25126,12 @@
             "state": "translated",
             "value": "Synchronizácia čaká na teba"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A szinkronizálás rád vár"
+          }
         }
       }
     },
@@ -24104,6 +25256,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zmena knižnice"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Könyvtármódosítás"
           }
         }
       }
@@ -24230,6 +25388,12 @@
             "state": "translated",
             "value": "Zmena zdieľania"
           }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Megosztásmódosítás"
+          }
         }
       }
     },
@@ -24354,6 +25518,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vyčistenie cloudu"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Felhőtakarítás"
           }
         }
       }

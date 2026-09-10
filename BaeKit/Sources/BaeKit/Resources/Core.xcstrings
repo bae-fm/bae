@@ -78,8 +78,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork download stopped."
+            "state": "translated",
+            "value": "A grafika letöltése leállt."
           }
         },
         "it": {
@@ -251,8 +251,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading artwork…"
+            "state": "translated",
+            "value": "Grafika letöltése…"
           }
         },
         "it": {
@@ -424,8 +424,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Some artwork couldn’t be downloaded."
+            "state": "translated",
+            "value": "Néhány grafikát nem sikerült letölteni."
           }
         },
         "it": {
@@ -597,8 +597,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finding artwork…"
+            "state": "translated",
+            "value": "Grafika keresése…"
           }
         },
         "it": {
@@ -770,8 +770,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld-bit"
+            "state": "translated",
+            "value": "%lld bites"
           }
         },
         "it": {
@@ -943,7 +943,7 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%lld kbps"
           }
         },
@@ -1116,8 +1116,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld ch"
+            "state": "translated",
+            "value": "%lld csat."
           }
         },
         "it": {
@@ -1289,8 +1289,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "mono"
+            "state": "translated",
+            "value": "monó"
           }
         },
         "it": {
@@ -1462,8 +1462,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "stereo"
+            "state": "translated",
+            "value": "sztereó"
           }
         },
         "it": {
@@ -1635,8 +1635,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Audio"
+            "state": "translated",
+            "value": "Hang"
           }
         },
         "it": {
@@ -1808,7 +1808,7 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "CUE"
           }
         },
@@ -1981,7 +1981,7 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": " · "
           }
         },
@@ -2154,8 +2154,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Various"
+            "state": "translated",
+            "value": "Vegyes"
           }
         },
         "it": {
@@ -2327,7 +2327,7 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@ kHz"
           }
         },
@@ -2500,8 +2500,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Local only"
+            "state": "translated",
+            "value": "Csak helyi"
           }
         },
         "it": {
@@ -2673,8 +2673,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "S3-compatible"
+            "state": "translated",
+            "value": "S3-kompatibilis"
           }
         },
         "it": {
@@ -2846,8 +2846,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$@ of %2$@"
+            "state": "translated",
+            "value": "%1$@ / %2$@"
           }
         },
         "it": {
@@ -3037,8 +3037,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld hr"
+            "state": "translated",
+            "value": "%lld ó"
           }
         },
         "it": {
@@ -3210,7 +3210,7 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%1$@, %2$@"
           }
         },
@@ -3383,8 +3383,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld min"
+            "state": "translated",
+            "value": "%lld p"
           }
         },
         "it": {
@@ -3556,8 +3556,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This AirPlay receiver isn't supported."
+            "state": "translated",
+            "value": "Ez az AirPlay-vevő nem támogatott."
           }
         },
         "it": {
@@ -3729,8 +3729,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong with your settings."
+            "state": "translated",
+            "value": "Hiba történt a beállításaiddal."
           }
         },
         "it": {
@@ -3902,8 +3902,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check your cloud credentials and try again."
+            "state": "translated",
+            "value": "Ellenőrizd a felhős hitelesítő adataidat, és próbáld újra."
           }
         },
         "it": {
@@ -4075,8 +4075,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong reading your library."
+            "state": "translated",
+            "value": "Hiba történt a könyvtárad beolvasásakor."
           }
         },
         "it": {
@@ -4248,8 +4248,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The export couldn't be completed."
+            "state": "translated",
+            "value": "Az exportálást nem sikerült befejezni."
           }
         },
         "it": {
@@ -4421,8 +4421,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The import couldn't be completed."
+            "state": "translated",
+            "value": "Az importálást nem sikerült befejezni."
           }
         },
         "it": {
@@ -4594,8 +4594,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong."
+            "state": "translated",
+            "value": "Hiba történt."
           }
         },
         "it": {
@@ -4767,8 +4767,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't access your device's secure storage."
+            "state": "translated",
+            "value": "Nem sikerült hozzáférni az eszközöd biztonságos tárolójához."
           }
         },
         "it": {
@@ -4940,8 +4940,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong updating library sharing."
+            "state": "translated",
+            "value": "Hiba történt a könyvtármegosztás frissítésekor."
           }
         },
         "it": {
@@ -5113,8 +5113,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the cloud. Check your connection and try again."
+            "state": "translated",
+            "value": "Nem sikerült elérni a felhőt. Ellenőrizd a kapcsolatot, és próbáld újra."
           }
         },
         "it": {
@@ -5286,8 +5286,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The save couldn't be completed."
+            "state": "translated",
+            "value": "A mentést nem sikerült befejezni."
           }
         },
         "it": {
@@ -5459,8 +5459,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket wasn't found. Check its name and the credentials' access to it."
+            "state": "translated",
+            "value": "Ez a tároló nem található. Ellenőrizd a nevét és a hitelesítő adatok hozzáférését."
           }
         },
         "it": {
@@ -5632,8 +5632,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check the bucket, region, endpoint, and key prefix."
+            "state": "translated",
+            "value": "Ellenőrizd a tárolót, a régiót, a végpontot és a kulcselőtagot."
           }
         },
         "it": {
@@ -5805,8 +5805,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket and key prefix already contain a different library. Use an empty key prefix, or join or restore that library."
+            "state": "translated",
+            "value": "Ez a tároló és kulcselőtag már egy másik könyvtárat tartalmaz. Használj üres kulcselőtagot, vagy csatlakozz ahhoz a könyvtárhoz, illetve állítsd vissza."
           }
         },
         "it": {
@@ -5978,8 +5978,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Allow these credentials to read, write, list, and delete objects in this bucket."
+            "state": "translated",
+            "value": "Engedélyezd, hogy ezek a hitelesítő adatok olvashassák, írhassák, listázhassák és törölhessék a tároló objektumait."
           }
         },
         "it": {
@@ -6151,8 +6151,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This cloud storage has no available space."
+            "state": "translated",
+            "value": "Ezen a felhőtárhelyen nincs szabad hely."
           }
         },
         "it": {
@@ -6324,8 +6324,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The region or endpoint doesn't match this bucket."
+            "state": "translated",
+            "value": "A régió vagy a végpont nem illik ehhez a tárolóhoz."
           }
         },
         "it": {
@@ -6497,8 +6497,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This library has no device identity. Create, join, or restore the library again."
+            "state": "translated",
+            "value": "Ennek a könyvtárnak nincs eszközazonossága. Hozd létre, csatlakozz hozzá, vagy állítsd vissza újra a könyvtárat."
           }
         },
         "it": {
@@ -6670,8 +6670,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This pairing code expired. Show a new code on the other device and try again."
+            "state": "translated",
+            "value": "Ez a párosítási kód lejárt. Jeleníts meg új kódot a másik eszközön, és próbáld újra."
           }
         },
         "it": {
@@ -6843,8 +6843,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device ended this pairing. Start it again from there if you still want to join."
+            "state": "translated",
+            "value": "A másik eszköz befejezte ezt a párosítást. Ha még csatlakoznál, indítsd el onnan újra."
           }
         },
         "it": {
@@ -7016,8 +7016,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device isn't running this join. Open bae on it, show a pairing code, and try again."
+            "state": "translated",
+            "value": "A másik eszköz nem futtatja ezt a csatlakozást. Nyisd meg rajta a bae-t, jeleníts meg egy párosítási kódot, és próbáld újra."
           }
         },
         "it": {
@@ -7189,8 +7189,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This device's keychain is locked. Unlock the device and bae will pick up where it left off."
+            "state": "translated",
+            "value": "Ennek az eszköznek a kulcstartója zárolva van. Oldd fel az eszközt, és a bae ott folytatja, ahol abbahagyta."
           }
         },
         "it": {
@@ -7362,8 +7362,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "That library could not be found."
+            "state": "translated",
+            "value": "Ez a könyvtár nem található."
           }
         },
         "it": {
@@ -7535,8 +7535,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Update the app to continue syncing."
+            "state": "translated",
+            "value": "A szinkronizálás folytatásához frissítsd az appot."
           }
         },
         "it": {
@@ -7708,8 +7708,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "not a track"
+            "state": "translated",
+            "value": "nem szám"
           }
         },
         "it": {
@@ -7881,8 +7881,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "slot %lld"
+            "state": "translated",
+            "value": "%lld. hely"
           }
         },
         "it": {
@@ -8054,8 +8054,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "slots %1$lld–%2$lld"
+            "state": "translated",
+            "value": "%1$lld–%2$lld. hely"
           }
         },
         "it": {
@@ -8227,8 +8227,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import has already completed and can no longer be edited."
+            "state": "translated",
+            "value": "Ez az importálás már befejeződött, és nem szerkeszthető tovább."
           }
         },
         "it": {
@@ -8400,8 +8400,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import is already running and can no longer be edited."
+            "state": "translated",
+            "value": "Ez az importálás már fut, és nem szerkeszthető tovább."
           }
         },
         "it": {
@@ -8573,8 +8573,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from barcode %@ in this image"
+            "state": "translated",
+            "value": "A kiadás automatikusan azonosítva a képen lévő %@ vonalkódból"
           }
         },
         "it": {
@@ -8746,8 +8746,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from disc ID %@ from this file"
+            "state": "translated",
+            "value": "A kiadás automatikusan azonosítva a fájlból származó %@ lemezazonosítóból"
           }
         },
         "it": {
@@ -8919,8 +8919,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Network folder. Changes made on other computers are checked every %lld minutes."
+            "state": "translated",
+            "value": "Hálózati mappa. A többi számítógépen végzett módosításokat %lld percenként ellenőrizzük."
           }
         },
         "it": {
@@ -9092,8 +9092,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte audio file: %@"
+            "state": "translated",
+            "value": "sérült vagy nulla bájtos hangfájl: %@"
           }
         },
         "it": {
@@ -9265,8 +9265,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte image: %@"
+            "state": "translated",
+            "value": "sérült vagy nulla bájtos kép: %@"
           }
         },
         "it": {
@@ -9438,8 +9438,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "no valid audio files"
+            "state": "translated",
+            "value": "nincs érvényes hangfájl"
           }
         },
         "it": {
@@ -9611,8 +9611,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finalizing..."
+            "state": "translated",
+            "value": "Véglegesítés..."
           }
         },
         "it": {
@@ -9784,8 +9784,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Measuring loudness..."
+            "state": "translated",
+            "value": "Hangerő mérése..."
           }
         },
         "it": {
@@ -9957,8 +9957,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reading files..."
+            "state": "translated",
+            "value": "Fájlok beolvasása..."
           }
         },
         "it": {
@@ -10130,8 +10130,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queued..."
+            "state": "translated",
+            "value": "Sorban..."
           }
         },
         "it": {
@@ -10303,8 +10303,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Validating source files..."
+            "state": "translated",
+            "value": "Forrásfájlok ellenőrzése..."
           }
         },
         "it": {
@@ -10476,8 +10476,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: audio the release doesn’t name"
+            "state": "translated",
+            "value": "%1$lld fájl, %2$lld szám: hang, amelyet a kiadás nem nevez meg"
           }
         },
         "it": {
@@ -10649,8 +10649,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: tracks with no audio"
+            "state": "translated",
+            "value": "%1$lld fájl, %2$lld szám: számok hang nélkül"
           }
         },
         "it": {
@@ -10822,8 +10822,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork"
+            "state": "translated",
+            "value": "Grafika"
           }
         },
         "it": {
@@ -10995,8 +10995,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Audio"
+            "state": "translated",
+            "value": "Hang"
           }
         },
         "it": {
@@ -11168,8 +11168,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cover"
+            "state": "translated",
+            "value": "Borító"
           }
         },
         "it": {
@@ -11341,8 +11341,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Document"
+            "state": "translated",
+            "value": "Dokumentum"
           }
         },
         "it": {
@@ -11514,8 +11514,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Not a track"
+            "state": "translated",
+            "value": "Nem szám"
           }
         },
         "it": {
@@ -11687,8 +11687,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Other"
+            "state": "translated",
+            "value": "Egyéb"
           }
         },
         "it": {
@@ -11860,8 +11860,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Track sheet"
+            "state": "translated",
+            "value": "Számlista"
           }
         },
         "it": {
@@ -12033,8 +12033,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ audio can't be split by a sheet"
+            "state": "translated",
+            "value": "A(z) %@ hangot nem lehet lapszerkezet szerint feldarabolni"
           }
         },
         "it": {
@@ -12206,8 +12206,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The sheet’s track times fall outside this audio"
+            "state": "translated",
+            "value": "A lap számidőpontjai kívül esnek ezen a hangon"
           }
         },
         "it": {
@@ -12379,8 +12379,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This audio can’t be read"
+            "state": "translated",
+            "value": "Ez a hang nem olvasható"
           }
         },
         "it": {
@@ -12552,8 +12552,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Already in your library"
+            "state": "translated",
+            "value": "Már a könyvtáradban van"
           }
         },
         "it": {
@@ -12725,8 +12725,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length: %1$@ in the folder, %2$@ on the release"
+            "state": "translated",
+            "value": "Hossz: %1$@ a mappában, %2$@ a kiadáson"
           }
         },
         "it": {
@@ -12898,8 +12898,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Could not read the track lengths in the folder"
+            "state": "translated",
+            "value": "Nem sikerült beolvasni a számok hosszát a mappában"
           }
         },
         "it": {
@@ -13071,8 +13071,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Online lookup failed"
+            "state": "translated",
+            "value": "Az online keresés nem sikerült"
           }
         },
         "it": {
@@ -13244,8 +13244,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Nothing matched this folder"
+            "state": "translated",
+            "value": "Ehhez a mappához semmi sem illett"
           }
         },
         "it": {
@@ -13417,8 +13417,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "No disc ID and no barcode to look up"
+            "state": "translated",
+            "value": "Nincs kikereshető lemezazonosító vagy vonalkód"
           }
         },
         "it": {
@@ -13791,14 +13791,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld match"
+                  "state": "translated",
+                  "value": "%lld találat"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld matches"
+                  "state": "translated",
+                  "value": "%lld találat"
                 }
               }
             }
@@ -14171,8 +14171,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The release states no track lengths"
+            "state": "translated",
+            "value": "A kiadás nem ad meg számhosszakat"
           }
         },
         "it": {
@@ -14344,8 +14344,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks: %1$lld in the folder, %2$lld on the release"
+            "state": "translated",
+            "value": "Számok: %1$lld a mappában, %2$lld a kiadáson"
           }
         },
         "it": {
@@ -14517,8 +14517,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album title is required"
+            "state": "translated",
+            "value": "Az album címe kötelező"
           }
         },
         "it": {
@@ -14690,8 +14690,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist name is required"
+            "state": "translated",
+            "value": "Az előadó neve kötelező"
           }
         },
         "it": {
@@ -14863,8 +14863,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Year must be a number"
+            "state": "translated",
+            "value": "Az évnek számnak kell lennie"
           }
         },
         "it": {
@@ -15036,8 +15036,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album must have at least one artist"
+            "state": "translated",
+            "value": "Az albumhoz legalább egy előadó kell"
           }
         },
         "it": {
@@ -15209,8 +15209,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork analysis failed"
+            "state": "translated",
+            "value": "A grafika elemzése nem sikerült"
           }
         },
         "it": {
@@ -15382,8 +15382,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "artwork analysis failed"
+            "state": "translated",
+            "value": "a grafika elemzése nem sikerült"
           }
         },
         "it": {
@@ -15555,8 +15555,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "busy (%lld)"
+            "state": "translated",
+            "value": "foglalt (%lld)"
           }
         },
         "it": {
@@ -15728,8 +15728,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "failed"
+            "state": "translated",
+            "value": "sikertelen"
           }
         },
         "it": {
@@ -15901,8 +15901,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "couldn't connect"
+            "state": "translated",
+            "value": "nem sikerült kapcsolódni"
           }
         },
         "it": {
@@ -16074,8 +16074,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "error %lld"
+            "state": "translated",
+            "value": "%lld hiba"
           }
         },
         "it": {
@@ -16247,8 +16247,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "error"
+            "state": "translated",
+            "value": "hiba"
           }
         },
         "it": {
@@ -16420,8 +16420,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "timed out"
+            "state": "translated",
+            "value": "időtúllépés"
           }
         },
         "it": {
@@ -16593,8 +16593,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't look this up"
+            "state": "translated",
+            "value": "Ezt nem sikerült kikeresni"
           }
         },
         "it": {
@@ -16766,8 +16766,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the metadata provider"
+            "state": "translated",
+            "value": "Nem sikerült elérni a metaadat-szolgáltatót"
           }
         },
         "it": {
@@ -16939,8 +16939,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error (%lld)"
+            "state": "translated",
+            "value": "A metaadat-szolgáltató hibát adott vissza (%lld)"
           }
         },
         "it": {
@@ -17112,8 +17112,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error"
+            "state": "translated",
+            "value": "A metaadat-szolgáltató hibát adott vissza"
           }
         },
         "it": {
@@ -17285,8 +17285,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider timed out"
+            "state": "translated",
+            "value": "A metaadat-szolgáltató időtúllépést jelzett"
           }
         },
         "it": {
@@ -17458,8 +17458,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing %1$@ of %2$@"
+            "state": "translated",
+            "value": "Előkészítés: %1$@ / %2$@"
           }
         },
         "it": {
@@ -17631,8 +17631,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Uploading %1$@ of %2$@"
+            "state": "translated",
+            "value": "Feltöltés: %1$@ / %2$@"
           }
         },
         "it": {
@@ -17804,8 +17804,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld cancelling"
+            "state": "translated",
+            "value": "%lld megszakítás alatt"
           }
         },
         "it": {
@@ -17977,8 +17977,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ remaining"
+            "state": "translated",
+            "value": "%@ van hátra"
           }
         },
         "it": {
@@ -18150,8 +18150,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist image"
+            "state": "translated",
+            "value": "Előadó képe"
           }
         },
         "it": {
@@ -18323,8 +18323,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing from cloud"
+            "state": "translated",
+            "value": "Eltávolítás a felhőből"
           }
         },
         "it": {
@@ -18697,14 +18697,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending delete"
+                  "state": "translated",
+                  "value": "%lld függő törlés"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending deletes"
+                  "state": "translated",
+                  "value": "%lld függő törlés"
                 }
               }
             }
@@ -19077,8 +19077,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld prepared"
+            "state": "translated",
+            "value": "%lld előkészítve"
           }
         },
         "it": {
@@ -19250,8 +19250,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld preparing"
+            "state": "translated",
+            "value": "%lld előkészítés alatt"
           }
         },
         "it": {
@@ -19423,8 +19423,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld publishing"
+            "state": "translated",
+            "value": "%lld közzététel alatt"
           }
         },
         "it": {
@@ -19596,8 +19596,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Retrying (%lld)"
+            "state": "translated",
+            "value": "Újrapróbálkozás (%lld)"
           }
         },
         "it": {
@@ -19769,8 +19769,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source unavailable"
+            "state": "translated",
+            "value": "A forrás nem érhető el"
           }
         },
         "it": {
@@ -19942,7 +19942,7 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@/s"
           }
         },
@@ -20115,8 +20115,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploaded"
+            "state": "translated",
+            "value": "%lld feltöltve"
           }
         },
         "it": {
@@ -20288,8 +20288,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Activating device…"
+            "state": "translated",
+            "value": "Eszköz aktiválása…"
           }
         },
         "it": {
@@ -20461,8 +20461,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Granting cloud access…"
+            "state": "translated",
+            "value": "Felhőhozzáférés megadása…"
           }
         },
         "it": {
@@ -20634,8 +20634,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing invitation…"
+            "state": "translated",
+            "value": "Meghívó előkészítése…"
           }
         },
         "it": {
@@ -20807,8 +20807,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing library…"
+            "state": "translated",
+            "value": "Könyvtár előkészítése…"
           }
         },
         "it": {
@@ -20980,8 +20980,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the joining device…"
+            "state": "translated",
+            "value": "Várakozás a csatlakozó eszközre…"
           }
         },
         "it": {
@@ -21153,8 +21153,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access request…"
+            "state": "translated",
+            "value": "Várakozás a felhőhozzáférési kérésre…"
           }
         },
         "it": {
@@ -21326,8 +21326,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for device registration request…"
+            "state": "translated",
+            "value": "Várakozás az eszközregisztrációs kérésre…"
           }
         },
         "it": {
@@ -21499,8 +21499,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cancelling pairing…"
+            "state": "translated",
+            "value": "Párosítás megszakítása…"
           }
         },
         "it": {
@@ -21672,8 +21672,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Catching up with library changes…"
+            "state": "translated",
+            "value": "Könyvtármódosítások behozása…"
           }
         },
         "it": {
@@ -21845,8 +21845,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading library snapshot…"
+            "state": "translated",
+            "value": "Könyvtárpillanatkép letöltése…"
           }
         },
         "it": {
@@ -22018,8 +22018,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Installing library snapshot…"
+            "state": "translated",
+            "value": "Könyvtárpillanatkép telepítése…"
           }
         },
         "it": {
@@ -22191,8 +22191,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Requesting cloud access…"
+            "state": "translated",
+            "value": "Felhőhozzáférés kérése…"
           }
         },
         "it": {
@@ -22364,8 +22364,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Saving library…"
+            "state": "translated",
+            "value": "Könyvtár mentése…"
           }
         },
         "it": {
@@ -22537,8 +22537,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for activation…"
+            "state": "translated",
+            "value": "Várakozás az aktiválásra…"
           }
         },
         "it": {
@@ -22710,8 +22710,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for approval…"
+            "state": "translated",
+            "value": "Várakozás a jóváhagyásra…"
           }
         },
         "it": {
@@ -22883,8 +22883,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the library…"
+            "state": "translated",
+            "value": "Várakozás a könyvtárra…"
           }
         },
         "it": {
@@ -23056,8 +23056,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access…"
+            "state": "translated",
+            "value": "Várakozás a felhőhozzáférésre…"
           }
         },
         "it": {
@@ -23229,8 +23229,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Registering device…"
+            "state": "translated",
+            "value": "Eszköz regisztrálása…"
           }
         },
         "it": {
@@ -23402,8 +23402,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reconnect to play this release. It isn't downloaded to this device yet."
+            "state": "translated",
+            "value": "A kiadás lejátszásához kapcsolódj újra. Erre az eszközre még nincs letöltve."
           }
         },
         "it": {
@@ -23575,8 +23575,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This release is still uploading. Try again when it finishes."
+            "state": "translated",
+            "value": "Ez a kiadás még feltöltés alatt áll. Próbáld újra, amikor befejeződik."
           }
         },
         "it": {
@@ -23748,8 +23748,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between discs. Change the CD, then press Play."
+            "state": "translated",
+            "value": "A lejátszás szünetel a lemezek között. Cseréld ki a CD-t, majd nyomd meg a Lejátszás gombot."
           }
         },
         "it": {
@@ -23921,8 +23921,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %@ ended"
+            "state": "translated",
+            "value": "A(z) %@ lemez véget ért"
           }
         },
         "it": {
@@ -24094,8 +24094,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the cassette, then press Play."
+            "state": "translated",
+            "value": "A lejátszás szünetel az oldalak között. Fordítsd meg a kazettát, majd nyomd meg a Lejátszás gombot."
           }
         },
         "it": {
@@ -24267,8 +24267,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the vinyl, then press Play."
+            "state": "translated",
+            "value": "A lejátszás szünetel az oldalak között. Fordítsd meg a bakelitet, majd nyomd meg a Lejátszás gombot."
           }
         },
         "it": {
@@ -24440,8 +24440,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Side %@ ended"
+            "state": "translated",
+            "value": "A(z) %@ oldal véget ért"
           }
         },
         "it": {
@@ -24613,8 +24613,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld downloading"
+            "state": "translated",
+            "value": "%lld letöltés alatt"
           }
         },
         "it": {
@@ -24786,8 +24786,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld failed"
+            "state": "translated",
+            "value": "%lld sikertelen"
           }
         },
         "it": {
@@ -24959,8 +24959,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld in progress"
+            "state": "translated",
+            "value": "%lld folyamatban"
           }
         },
         "it": {
@@ -25132,8 +25132,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld queued"
+            "state": "translated",
+            "value": "%lld sorban"
           }
         },
         "it": {
@@ -25305,8 +25305,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploading"
+            "state": "translated",
+            "value": "%lld feltöltés alatt"
           }
         },
         "it": {
@@ -25478,8 +25478,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Media"
+            "state": "translated",
+            "value": "Adathordozó"
           }
         },
         "it": {
@@ -25852,14 +25852,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld release is only stored in the cloud. It will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld kiadás csak a felhőben van tárolva. Amíg újra nem kapcsolódsz, nem lesz lejátszható."
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld releases are only stored in the cloud. They will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld kiadás csak a felhőben van tárolva. Amíg újra nem kapcsolódsz, nem lesznek lejátszhatók."
                 }
               }
             }
@@ -26226,8 +26226,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "%lld. lemez"
           }
         },
         "it": {
@@ -26399,8 +26399,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Side %@"
+            "state": "translated",
+            "value": "%@ oldal"
           }
         },
         "it": {
@@ -26572,8 +26572,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Making Local…"
+            "state": "translated",
+            "value": "Helyivé tétel…"
           }
         },
         "it": {
@@ -26745,8 +26745,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queueing for Cloud…"
+            "state": "translated",
+            "value": "Sorba állítás a felhőbe…"
           }
         },
         "it": {
@@ -26918,8 +26918,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Pinning for offline"
+            "state": "translated",
+            "value": "Rögzítés offline használatra"
           }
         },
         "it": {
@@ -27091,8 +27091,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing local copy"
+            "state": "translated",
+            "value": "Helyi másolat eltávolítása"
           }
         },
         "it": {
@@ -27264,8 +27264,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "This source identity is linked to two artists in your library. Choose the record to keep; its albums, tracks, credits, and source links will be combined with the other record."
+            "state": "translated",
+            "value": "Ez a forrásazonosság két előadóhoz kapcsolódik a könyvtáradban. Válaszd ki a megtartandó rekordot; albumai, számai, közreműködései és forráskapcsolatai egyesülnek a másikkal."
           }
         },
         "it": {
@@ -27437,8 +27437,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep Discogs Artist"
+            "state": "translated",
+            "value": "Discogs-előadó megtartása"
           }
         },
         "it": {
@@ -27610,8 +27610,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep MusicBrainz Artist"
+            "state": "translated",
+            "value": "MusicBrainz-előadó megtartása"
           }
         },
         "it": {
@@ -27783,8 +27783,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Awaiting a release"
+            "state": "translated",
+            "value": "Kiadásra vár"
           }
         },
         "it": {
@@ -28157,14 +28157,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld row still has no name"
+                  "state": "translated",
+                  "value": "%lld sornak még nincs neve"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld rows still have no name"
+                  "state": "translated",
+                  "value": "%lld sornak még nincs neve"
                 }
               }
             }
@@ -28531,8 +28531,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't scan %@"
+            "state": "translated",
+            "value": "Nem sikerült átvizsgálni: %@"
           }
         },
         "it": {
@@ -28704,8 +28704,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist"
+            "state": "translated",
+            "value": "Előadó"
           }
         },
         "it": {
@@ -28877,8 +28877,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Name"
+            "state": "translated",
+            "value": "Név"
           }
         },
         "it": {
@@ -29050,8 +29050,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source"
+            "state": "translated",
+            "value": "Forrás"
           }
         },
         "it": {
@@ -29223,8 +29223,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Title"
+            "state": "translated",
+            "value": "Cím"
           }
         },
         "it": {
@@ -29396,8 +29396,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Files"
+            "state": "translated",
+            "value": "Fájlok"
           }
         },
         "it": {
@@ -29569,8 +29569,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks"
+            "state": "translated",
+            "value": "Számok"
           }
         },
         "it": {
@@ -29742,8 +29742,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "File tags"
+            "state": "translated",
+            "value": "Fájlcímkék"
           }
         },
         "it": {
@@ -29915,8 +29915,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "From file tags"
+            "state": "translated",
+            "value": "Fájlcímkékből"
           }
         },
         "it": {
@@ -30088,8 +30088,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Metadata"
+            "state": "translated",
+            "value": "Metaadatok"
           }
         },
         "it": {
@@ -30261,8 +30261,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Role"
+            "state": "translated",
+            "value": "Szerep"
           }
         },
         "it": {
@@ -30434,8 +30434,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Scanning folders"
+            "state": "translated",
+            "value": "Mappák átvizsgálása"
           }
         },
         "it": {
@@ -30607,8 +30607,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld found"
+            "state": "translated",
+            "value": "%lld találat"
           }
         },
         "it": {
@@ -30780,8 +30780,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Asked for %@"
+            "state": "translated",
+            "value": "Ezt kérte: %@"
           }
         },
         "it": {
@@ -30953,8 +30953,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose audio…"
+            "state": "translated",
+            "value": "Hang kiválasztása…"
           }
         },
         "it": {
@@ -31126,8 +31126,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Describes nothing"
+            "state": "translated",
+            "value": "Nem ír le semmit"
           }
         },
         "it": {
@@ -31299,8 +31299,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "%lld. lemez"
           }
         },
         "it": {
@@ -31472,8 +31472,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Which disc of the release this sheet's entries are"
+            "state": "translated",
+            "value": "A kiadás melyik lemezéhez tartoznak ennek a lapnak a tételei"
           }
         },
         "it": {
@@ -31645,8 +31645,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Ignored"
+            "state": "translated",
+            "value": "Figyelmen kívül hagyva"
           }
         },
         "it": {
@@ -31818,8 +31818,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose file…"
+            "state": "translated",
+            "value": "Fájl kiválasztása…"
           }
         },
         "it": {
@@ -31991,8 +31991,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length"
+            "state": "translated",
+            "value": "Hossz"
           }
         },
         "it": {
@@ -32164,8 +32164,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Drop"
+            "state": "translated",
+            "value": "Kihagyás"
           }
         },
         "it": {
@@ -32337,8 +32337,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Leave this track out — this folder has no audio for it."
+            "state": "translated",
+            "value": "Hagyd ki ezt a számot — ehhez a mappához nincs hang."
           }
         },
         "it": {
@@ -32510,8 +32510,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Exclude"
+            "state": "translated",
+            "value": "Kihagyás"
           }
         },
         "it": {
@@ -32683,8 +32683,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Take this file out of the tracklist; it stays under Files."
+            "state": "translated",
+            "value": "Vedd ki ezt a fájlt a számlistából; a Fájlok között marad."
           }
         },
         "it": {
@@ -32856,8 +32856,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "No file"
+            "state": "translated",
+            "value": "Nincs fájl"
           }
         },
         "it": {
@@ -33029,8 +33029,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Play"
+            "state": "translated",
+            "value": "Lejátszás"
           }
         },
         "it": {
@@ -33202,8 +33202,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Put back"
+            "state": "translated",
+            "value": "Vissza"
           }
         },
         "it": {
@@ -33375,8 +33375,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Stop"
+            "state": "translated",
+            "value": "Leállítás"
           }
         },
         "it": {
@@ -33548,8 +33548,8 @@
         },
         "hu": {
           "stringUnit": {
-            "state": "new",
-            "value": "Untitled"
+            "state": "translated",
+            "value": "Névtelen"
           }
         },
         "it": {

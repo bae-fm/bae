@@ -57,6 +57,12 @@
             "value": "Način"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mód"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -179,6 +185,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sustav"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rendszer"
           }
         },
         "it": {
@@ -305,6 +317,12 @@
             "value": "Svijetli"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Világos"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -427,6 +445,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tamni"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sötét"
           }
         },
         "it": {
@@ -553,6 +577,12 @@
             "value": "Boja naglaska"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiemelőszín"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -675,6 +705,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ton pozadine"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Háttérárnyalat"
           }
         },
         "it": {
@@ -801,6 +837,12 @@
             "value": "Neutralni"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Semleges"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -923,6 +965,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Škriljevac"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palaszürke"
           }
         },
         "it": {
@@ -1049,6 +1097,12 @@
             "value": "Šljiva"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szilva"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -1171,6 +1225,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Plava"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kék"
           }
         },
         "it": {
@@ -1297,6 +1357,12 @@
             "value": "Indigo"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indigó"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -1419,6 +1485,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ljubičasta"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lila"
           }
         },
         "it": {
@@ -1545,6 +1617,12 @@
             "value": "Ružičasta"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rózsaszín"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -1667,6 +1745,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Crvena"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Piros"
           }
         },
         "it": {
@@ -1793,6 +1877,12 @@
             "value": "Jantarna"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borostyán"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -1915,6 +2005,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zelena"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zöld"
           }
         },
         "it": {
@@ -2041,6 +2137,12 @@
             "value": "Modrozelena"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Türkiz"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -2163,6 +2265,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ponoć"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Éjkék"
           }
         },
         "it": {
@@ -2289,6 +2397,12 @@
             "value": "Šuma"
           }
         },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erdőzöld"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -2411,6 +2525,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pijesak"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homok"
           }
         },
         "it": {
