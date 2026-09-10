@@ -94,6 +94,12 @@
             "value": "O bae usa a câmera para escanear códigos ao emparelhar ou restaurar uma biblioteca."
           }
         },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae používa kameru na skenovanie kódov pri párovaní alebo obnove knižnice."
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -211,6 +217,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "O bae emparelha dispositivos e encontra alto-falantes e TVs na sua rede local."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae páruje zariadenia a nachádza reproduktory a televízory v tvojej lokálnej sieti."
           }
         },
         "tr": {

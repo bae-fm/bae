@@ -93,6 +93,12 @@
             "value": "Aparência"
           }
         },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vzhľad"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -235,6 +241,12 @@
             "state": "translated",
             "value": "%1$@ van %2$@"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ od %2$@"
+          }
         }
       }
     },
@@ -349,6 +361,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        },
+        "sk": {
           "stringUnit": {
             "state": "translated",
             "value": "%1$@, %2$@"
@@ -753,6 +771,36 @@
               }
             }
           }
+        },
+        "sk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld súbor"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld súbory"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld súboru"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld súborov"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -870,6 +918,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Toevoegen aan wachtrij"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pridať do poradia"
           }
         }
       }
@@ -989,6 +1043,12 @@
             "state": "translated",
             "value": "Albums"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Albumy"
+          }
         }
       }
     },
@@ -1106,6 +1166,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Oplopend"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vzostupne"
           }
         }
       }
@@ -1225,6 +1291,12 @@
             "state": "translated",
             "value": "Autorisatie voltooid zonder code."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autorizácia sa skončila bez kódu."
+          }
         }
       }
     },
@@ -1342,6 +1414,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cameratoegang is geweigerd. Schakel dit in Instellingen in om QR-codes te scannen."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prístup ku kamere je zamietnutý. Zapni ho v Nastaveniach, aby si mohol skenovať QR kódy."
           }
         }
       }
@@ -1461,6 +1539,12 @@
             "state": "translated",
             "value": "Camera niet beschikbaar"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera nie je k dispozícii"
+          }
         }
       }
     },
@@ -1578,6 +1662,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cameratoestemming is vereist om QR-codes te scannen"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Na skenovanie QR kódov je potrebné povolenie kamery"
           }
         }
       }
@@ -1697,6 +1787,12 @@
             "state": "translated",
             "value": "Annuleren"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zrušiť"
+          }
         }
       }
     },
@@ -1815,6 +1911,12 @@
             "state": "translated",
             "value": "Wissen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vymazať"
+          }
         }
       }
     },
@@ -1909,6 +2011,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Limpar a fonte de reprodução"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vymazať Prehráva sa z"
           }
         },
         "tr": {
@@ -2028,6 +2136,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Limpar “A seguir”"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vymazať Nasleduje"
           }
         },
         "tr": {
@@ -2172,6 +2286,12 @@
             "state": "translated",
             "value": "Sluiten"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zavrieť"
+          }
         }
       }
     },
@@ -2289,6 +2409,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cloudaanmelding is niet geconfigureerd in deze build (geen oauth-creds.json)."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloudové prihlásenie nie je v tomto zostavení nastavené (chýba oauth-creds.json)."
           }
         }
       }
@@ -2408,6 +2534,12 @@
             "state": "translated",
             "value": "Cloudsynchronisatie"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizácia s cloudom"
+          }
         }
       }
     },
@@ -2526,6 +2658,12 @@
             "state": "translated",
             "value": "Inklappen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zbaliť"
+          }
         }
       }
     },
@@ -2619,6 +2757,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detalhes do compositor não encontrados"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podrobnosti o skladateľovi sa nenašli"
           }
         },
         "tr": {
@@ -2738,6 +2882,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Compositores"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skladatelia"
           }
         },
         "tr": {
@@ -2881,6 +3031,12 @@
             "state": "translated",
             "value": "Verbinden"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pripojiť"
+          }
         }
       }
     },
@@ -2998,6 +3154,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verbinden met je bibliotheek"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pripája sa ku tvojej knižnici"
           }
         }
       }
@@ -3117,6 +3279,12 @@
             "state": "translated",
             "value": "Kan camera-invoer niet aan sessie toevoegen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vstup z kamery sa nepodarilo pridať do relácie"
+          }
         }
       }
     },
@@ -3234,6 +3402,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kan metadata-uitvoer niet aan sessie toevoegen"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Výstup metadát sa nepodarilo pridať do relácie"
           }
         }
       }
@@ -3353,6 +3527,12 @@
             "state": "translated",
             "value": "Kan camera-invoer niet aanmaken: %@"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vstup z kamery sa nepodarilo vytvoriť: %@"
+          }
         }
       }
     },
@@ -3470,6 +3650,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kan cloudaanmelding niet vanuit het huidige venster tonen."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloudové prihlásenie sa nepodarilo zobraziť z aktuálneho okna."
           }
         }
       }
@@ -3589,6 +3775,12 @@
             "state": "translated",
             "value": "Kan oauth-creds.json niet lezen: %@"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nepodarilo sa prečítať oauth-creds.json: %@"
+          }
         }
       }
     },
@@ -3683,6 +3875,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Créditos"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podieľali sa"
           }
         },
         "tr": {
@@ -3826,6 +4024,12 @@
             "state": "translated",
             "value": "Aflopend"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zostupne"
+          }
         }
       }
     },
@@ -3943,6 +4147,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Niet verbonden"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpojené"
           }
         }
       }
@@ -4062,6 +4272,12 @@
             "state": "translated",
             "value": "Sluiten"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zavrieť"
+          }
         }
       }
     },
@@ -4179,6 +4395,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gereed"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hotovo"
           }
         }
       }
@@ -4298,6 +4520,12 @@
             "state": "translated",
             "value": "Downloaden"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stiahnuť"
+          }
         }
       }
     },
@@ -4415,6 +4643,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gedownload"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stiahnuté"
           }
         }
       }
@@ -4534,6 +4768,12 @@
             "state": "translated",
             "value": "Downloads"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stiahnuté"
+          }
         }
       }
     },
@@ -4651,6 +4891,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Versleutelingssleutel (64 hexadecimale tekens)"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Šifrovací kľúč (64 znakov v šestnástkovej sústave)"
           }
         }
       }
@@ -4771,6 +5017,12 @@
             "state": "translated",
             "value": "Fout"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chyba"
+          }
         }
       }
     },
@@ -4888,6 +5140,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nu afspelen uitvouwen"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozbaliť Prehráva sa"
           }
         }
       }
@@ -5007,6 +5265,12 @@
             "state": "translated",
             "value": "Bibliotheek"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Knižnica"
+          }
         }
       }
     },
@@ -5124,6 +5388,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bibliotheek vergrendeld"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Knižnica je zamknutá"
           }
         }
       }
@@ -5243,6 +5513,12 @@
             "state": "translated",
             "value": "Laden"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Načítava sa"
+          }
         }
       }
     },
@@ -5360,6 +5636,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alleen lokaal"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Len lokálne"
           }
         }
       }
@@ -5479,6 +5761,12 @@
             "state": "translated",
             "value": "Dempen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stlmiť"
+          }
         }
       }
     },
@@ -5596,6 +5884,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Volgend nummer"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ďalšia skladba"
           }
         }
       }
@@ -5715,6 +6009,12 @@
             "state": "translated",
             "value": "Nog geen albums. Synchroniseren vanuit de cloud…"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zatiaľ žiadne albumy. Synchronizuje sa z cloudu…"
+          }
         }
       }
     },
@@ -5809,6 +6109,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nenhum compositor"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žiadni skladatelia"
           }
         },
         "tr": {
@@ -5952,6 +6258,12 @@
             "state": "translated",
             "value": "Geen downloads"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žiadne sťahovania"
+          }
         }
       }
     },
@@ -6069,6 +6381,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen resultaten voor “%@”"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žiadne výsledky pre „%@“"
           }
         }
       }
@@ -6188,6 +6506,12 @@
             "state": "translated",
             "value": "Niets hierna"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nič nenasleduje"
+          }
         }
       }
     },
@@ -6305,6 +6629,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Speelt nu"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prehráva sa"
           }
         }
       }
@@ -6424,6 +6754,12 @@
             "state": "translated",
             "value": "Aan"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapnuté"
+          }
         }
       }
     },
@@ -6518,6 +6854,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Código de pareamento"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Párovací kód"
           }
         },
         "tr": {
@@ -6637,6 +6979,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cole o código de pareamento"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prilep párovací kód"
           }
         },
         "tr": {
@@ -6780,6 +7128,12 @@
             "state": "translated",
             "value": "Pauze"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozastaviť"
+          }
         }
       }
     },
@@ -6873,6 +7227,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pausa entre lados e discos"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pauza medzi stranami a diskami"
           }
         },
         "tr": {
@@ -7016,6 +7376,12 @@
             "state": "translated",
             "value": "Gepauzeerd"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozastavené"
+          }
         }
       }
     },
@@ -7133,6 +7499,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Afspelen"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prehrať"
           }
         }
       }
@@ -7252,6 +7624,12 @@
             "state": "translated",
             "value": "Hierna afspelen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prehrať ako ďalšie"
+          }
         }
       }
     },
@@ -7345,6 +7723,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reprodução"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prehrávanie"
           }
         },
         "tr": {
@@ -7489,6 +7873,12 @@
             "state": "translated",
             "value": "Afspelen vanuit"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prehráva sa z"
+          }
         }
       }
     },
@@ -7606,6 +7996,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vorig nummer"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Predchádzajúca skladba"
           }
         }
       }
@@ -7725,6 +8121,12 @@
             "state": "translated",
             "value": "Wachtrij"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poradie"
+          }
         }
       }
     },
@@ -7842,6 +8244,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wachtrij is leeg"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poradie je prázdne"
           }
         }
       }
@@ -7961,6 +8369,12 @@
             "state": "translated",
             "value": "Opnieuw verbinden"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Znova pripojiť"
+          }
         }
       }
     },
@@ -8055,6 +8469,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gravações"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nahrávky"
           }
         },
         "tr": {
@@ -8174,6 +8594,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lançamentos"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vydania"
           }
         },
         "tr": {
@@ -8317,6 +8743,12 @@
             "state": "translated",
             "value": "Verwijderen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odstrániť"
+          }
         }
       }
     },
@@ -8434,6 +8866,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Download verwijderen"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odstrániť stiahnuté"
           }
         }
       }
@@ -8553,6 +8991,12 @@
             "state": "translated",
             "value": "Verwijder deze bibliotheek van dit apparaat"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odstrániť túto knižnicu z tohto zariadenia"
+          }
         }
       }
     },
@@ -8670,6 +9114,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deze bibliotheek van dit apparaat verwijderen?"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odstrániť túto knižnicu z tohto zariadenia?"
           }
         }
       }
@@ -8789,6 +9239,12 @@
             "state": "translated",
             "value": "Verwijdert deze bibliotheek en de gedownloade bestanden van dit apparaat. Je bibliotheek in de cloud blijft ongewijzigd. Je kunt dit apparaat later opnieuw koppelen."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odstráni túto knižnicu a jej stiahnuté súbory z tohto zariadenia. Tvoja knižnica v cloude zostane nedotknutá. Toto zariadenie môžeš neskôr znova spárovať."
+          }
         }
       }
     },
@@ -8906,6 +9362,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Herhaalmodus"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Režim opakovania"
           }
         }
       }
@@ -9025,6 +9487,12 @@
             "state": "translated",
             "value": "Hervatten"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokračovať"
+          }
         }
       }
     },
@@ -9143,6 +9611,12 @@
             "state": "translated",
             "value": "Opnieuw proberen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skúsiť znova"
+          }
         }
       }
     },
@@ -9237,6 +9711,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escaneie este código no dispositivo que está entrando na sua biblioteca."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Naskenuj tento kód na zariadení, ktoré sa pripája ku tvojej knižnici."
           }
         },
         "tr": {
@@ -9381,6 +9861,12 @@
             "state": "translated",
             "value": "Zoeken"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hľadať"
+          }
         }
       }
     },
@@ -9499,6 +9985,12 @@
             "state": "translated",
             "value": "Instellingen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nastavenia"
+          }
         }
       }
     },
@@ -9616,6 +10108,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Shuffle"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Náhodne"
           }
         }
       }
@@ -9736,6 +10234,12 @@
             "state": "translated",
             "value": "Bibliotheek shufflen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Náhodne prehrať knižnicu"
+          }
         }
       }
     },
@@ -9830,6 +10334,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Iniciando pareamento…"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spúšťa sa párovanie..."
           }
         },
         "tr": {
@@ -9973,6 +10483,12 @@
             "state": "translated",
             "value": "Status"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stav"
+          }
         }
       }
     },
@@ -10090,6 +10606,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Synchronisatie"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizácia"
           }
         }
       }
@@ -10209,6 +10731,12 @@
             "state": "translated",
             "value": "Gesynchroniseerd"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizované"
+          }
         }
       }
     },
@@ -10326,6 +10854,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Synchroniseren…"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizuje sa…"
           }
         }
       }
@@ -10445,6 +10979,12 @@
             "state": "translated",
             "value": "De versleutelingssleutel voor deze bibliotheek staat niet in de sleutelhanger. Voer de hexadecimale sleutel van 64 tekens in om te ontgrendelen."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Šifrovací kľúč tejto knižnice nie je v kľúčenke. Na odomknutie zadaj 64-znakový šestnástkový kľúč."
+          }
         }
       }
     },
@@ -10562,6 +11102,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "De provider gaf een ongeldige autorisatie-URL terug."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poskytovateľ vrátil neplatnú autorizačnú URL."
           }
         }
       }
@@ -10681,6 +11227,12 @@
             "state": "translated",
             "value": "Deze bibliotheek heeft cloudaanmelding nodig, die niet is geconfigureerd in deze build."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Táto knižnica vyžaduje cloudové prihlásenie, ktoré v tomto zostavení nie je nastavené."
+          }
         }
       }
     },
@@ -10798,6 +11350,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nummers"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skladby"
           }
         }
       }
@@ -10918,6 +11476,12 @@
             "state": "translated",
             "value": "Shuffle uitschakelen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vypnúť náhodné prehrávanie"
+          }
         }
       }
     },
@@ -11035,6 +11599,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ontgrendelen"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odomknúť"
           }
         }
       }
@@ -11154,6 +11724,12 @@
             "state": "translated",
             "value": "Dempen uit"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zrušiť stlmenie"
+          }
         }
       }
     },
@@ -11271,6 +11847,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Volgende"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nasleduje"
           }
         }
       }
@@ -11390,6 +11972,12 @@
             "state": "translated",
             "value": "Volume"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hlasitosť"
+          }
         }
       }
     },
@@ -11484,6 +12072,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aguardando aprovação…"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Čaká sa na schválenie..."
           }
         },
         "tr": {
@@ -11603,6 +12197,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aguardando o dispositivo…"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Čaká sa na zariadenie..."
           }
         },
         "tr": {
@@ -11746,6 +12346,12 @@
             "state": "translated",
             "value": "Wacht op download"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Čaká na stiahnutie"
+          }
         }
       }
     },
@@ -11839,6 +12445,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detalhes da obra não encontrados"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podrobnosti o diele sa nenašli"
           }
         },
         "tr": {
@@ -11958,6 +12570,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Obras"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diela"
           }
         },
         "tr": {
@@ -12102,6 +12720,12 @@
             "state": "translated",
             "value": "Je bibliotheek"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tvoja knižnica"
+          }
         }
       }
     },
@@ -12220,6 +12844,12 @@
             "state": "translated",
             "value": "Je bibliotheek in de cloud blijft ongewijzigd."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tvoja knižnica v cloude zostane nedotknutá."
+          }
         }
       }
     },
@@ -12334,6 +12964,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae"
+          }
+        },
+        "sk": {
           "stringUnit": {
             "state": "translated",
             "value": "bae"
@@ -12456,6 +13092,12 @@
             "state": "translated",
             "value": "oauth-creds.json bevat geen providerreferenties."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oauth-creds.json neobsahuje žiadne poverenia poskytovateľov."
+          }
         }
       }
     },
@@ -12573,6 +13215,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "oauth-creds.json is ongeldig gevormd: %@"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oauth-creds.json má chybný formát: %@"
           }
         }
       }
@@ -12692,6 +13340,12 @@
             "state": "translated",
             "value": "oauth-creds.json mist client_id of redirect_uri voor %@."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "V oauth-creds.json chýba client_id alebo redirect_uri pre %@."
+          }
         }
       }
     },
@@ -12810,6 +13464,12 @@
             "state": "translated",
             "value": "synchroniseren…"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "synchronizuje sa…"
+          }
         }
       }
     },
@@ -12904,6 +13564,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verifique se isto corresponde à impressão digital mostrada no novo dispositivo antes de aprovar."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pred schválením over, či sa to zhoduje s odtlačkom zobrazeným na novom zariadení."
           }
         },
         "tr": {
@@ -13048,6 +13714,12 @@
             "state": "translated",
             "value": "Inloggen..."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prihlasuje sa..."
+          }
         }
       }
     },
@@ -13166,6 +13838,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verbinding verbreken"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpojiť"
           }
         }
       }
@@ -13286,6 +13964,12 @@
             "state": "translated",
             "value": "Synchronisatie ontkoppelen?"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpojiť synchronizáciu?"
+          }
         }
       }
     },
@@ -13404,6 +14088,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hiermee wordt de synchronisatie gestopt en de configuratie van de cloudprovider verwijderd."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Týmto sa zastaví synchronizácia a odstráni sa konfigurácia poskytovateľa cloudu."
           }
         }
       }
@@ -13524,6 +14214,12 @@
             "state": "translated",
             "value": "Kan niet controleren op releases die alleen in de cloud staan: %@"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nepodarilo sa overiť vydania uložené len v cloude: %@"
+          }
         }
       }
     },
@@ -13642,6 +14338,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verbinding verbreken mislukt: %@"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpojenie zlyhalo: %@"
           }
         }
       }
@@ -13762,6 +14464,12 @@
             "state": "translated",
             "value": "Provider"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poskytovateľ"
+          }
         }
       }
     },
@@ -13880,6 +14588,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Account"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Účet"
           }
         }
       }
@@ -14000,6 +14714,12 @@
             "state": "translated",
             "value": "Bucket"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontajner"
+          }
         }
       }
     },
@@ -14118,6 +14838,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Regio"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Región"
           }
         }
       }
@@ -14238,6 +14964,12 @@
             "state": "translated",
             "value": "Endpoint"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koncový bod"
+          }
         }
       }
     },
@@ -14356,6 +15088,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uploads pauzeren"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozastaviť odosielanie"
           }
         }
       }
@@ -14476,6 +15214,12 @@
             "state": "translated",
             "value": "Terwijl gepauzeerd wachten wijzigingen op dit apparaat en worden ze geüpload wanneer je hervat."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kým je pozastavené, zmeny čakajú na tomto zariadení a odošlú sa, keď budeš pokračovať."
+          }
         }
       }
     },
@@ -14595,6 +15339,12 @@
             "state": "translated",
             "value": "Om deze bibliotheek opnieuw te synchroniseren, koppel dit apparaat vanaf een ander apparaat."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ak chceš túto knižnicu znova synchronizovať, spáruj toto zariadenie z iného zariadenia."
+          }
         }
       }
     },
@@ -14689,6 +15439,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Artistas"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interpreti"
           }
         },
         "tr": {
@@ -14810,6 +15566,12 @@
             "value": "Nenhum artista"
           }
         },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žiadni interpreti"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -14926,6 +15688,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detalhes do artista não encontrados"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podrobnosti o interpretovi sa nenašli"
           }
         },
         "tr": {
@@ -15047,6 +15815,12 @@
             "value": "Nome"
           }
         },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Názov"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -15163,6 +15937,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Restaurar ao abrir"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnoviť pri spustení"
           }
         },
         "tr": {
@@ -15283,6 +16063,12 @@
             "value": "Restaura a faixa, a posição, a fila e o volume da última sessão ao abrir o app."
           }
         },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pri otvorení aplikácie obnoví skladbu, pozíciu, poradie a hlasitosť z poslednej relácie."
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -15401,6 +16187,12 @@
             "value": "Sobre"
           }
         },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O aplikácii"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -15517,6 +16309,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Versão"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verzia"
           }
         },
         "tr": {
@@ -15638,6 +16436,12 @@
             "value": "Transmitir"
           }
         },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prenášať"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -15755,6 +16559,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Transmissão"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prenášanie"
           }
         },
         "tr": {
@@ -15876,6 +16686,12 @@
             "value": "Transmitindo para %@"
           }
         },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prenáša sa do %@"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -15993,6 +16809,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nenhum dispositivo encontrado"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenašli sa žiadne zariadenia Cast"
           }
         },
         "tr": {
@@ -16114,6 +16936,12 @@
             "value": "Ativar a transmissão"
           }
         },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapnúť prenášanie"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -16231,6 +17059,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Desativar a transmissão?"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vypnúť prenášanie?"
           }
         },
         "tr": {
@@ -16352,6 +17186,12 @@
             "value": "Isso interromperá a transmissão para %@."
           }
         },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Týmto sa zastaví prenášanie do %@."
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -16469,6 +17309,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Desativar"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vypnúť"
           }
         },
         "tr": {
@@ -16613,6 +17459,12 @@
             "state": "translated",
             "value": "Speelt af op Cast- en AirPlay-ontvangers in je netwerk. Als dit uit staat, zoekt bae niet naar apparaten."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prehráva na prijímače Cast a AirPlay v tvojej sieti. Keď je vypnuté, bae zariadenia nevyhľadáva."
+          }
         }
       }
     },
@@ -16706,6 +17558,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Este dispositivo"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toto zariadenie"
           }
         },
         "tr": {
@@ -16850,6 +17708,12 @@
             "state": "translated",
             "value": "Kan geen herstelcode aanmaken"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nepodarilo sa vytvoriť kód na obnovenie"
+          }
         }
       }
     },
@@ -16968,6 +17832,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kan de herstelcode niet in je sleutelhanger bewaren"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kód na obnovenie sa nepodarilo uložiť do kľúčenky"
           }
         }
       }
@@ -17088,6 +17958,12 @@
             "state": "translated",
             "value": "Kan de status van de iCloud-account niet controleren."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nepodarilo sa zistiť stav účtu iCloud."
+          }
         }
       }
     },
@@ -17206,6 +18082,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kan de status van de iCloud-account niet controleren: %@"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nepodarilo sa zistiť stav účtu iCloud: %@"
           }
         }
       }
@@ -17326,6 +18208,12 @@
             "state": "translated",
             "value": "Er is op dit apparaat geen iCloud-account ingelogd. Open Systeeminstellingen → Apple ID om in te loggen en probeer het opnieuw."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Na tomto zariadení nie je prihlásený žiadny účet iCloud. Otvor Nastavenia systému → Apple ID, prihlás sa a skús to znova."
+          }
         }
       }
     },
@@ -17444,6 +18332,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud is beperkt op dit apparaat (ouderlijk toezicht of MDM). bae kan het niet gebruiken om te synchroniseren."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud je na tomto zariadení obmedzený (rodičovská kontrola alebo MDM). bae ho nemôže použiť na synchronizáciu."
           }
         }
       }
@@ -17564,6 +18458,12 @@
             "state": "translated",
             "value": "Kan de status van de iCloud-account niet bepalen. Controleer je netwerk en probeer het opnieuw."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nepodarilo sa určiť stav účtu iCloud. Skontroluj sieť a skús to znova."
+          }
         }
       }
     },
@@ -17682,6 +18582,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud is tijdelijk niet beschikbaar. Probeer het zo meteen opnieuw."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud je dočasne nedostupný. Skús to o chvíľu znova."
           }
         }
       }
@@ -17802,6 +18708,12 @@
             "state": "translated",
             "value": "Onverwachte status van de iCloud-account (%lld)."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neočakávaný stav účtu iCloud (%lld)."
+          }
         }
       }
     },
@@ -17920,6 +18832,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Je bent niet ingelogd bij iCloud. Open Systeeminstellingen → Apple ID om in te loggen en probeer het opnieuw."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie si prihlásený do iCloudu. Otvor Nastavenia systému → Apple ID, prihlás sa a skús to znova."
           }
         }
       }
@@ -18040,6 +18958,12 @@
             "state": "translated",
             "value": "Je iCloud-opslag is vol. Maak ruimte vrij in Systeeminstellingen → Apple ID → iCloud om te blijven synchroniseren."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tvoje úložisko iCloud je plné. Uvoľni miesto v Nastaveniach systému → Apple ID → iCloud, aby sa synchronizácia nezastavila."
+          }
         }
       }
     },
@@ -18159,6 +19083,12 @@
             "state": "translated",
             "value": "bae heeft geen toestemming om iCloud te gebruiken. Open Systeeminstellingen → Apple ID → iCloud → Apps die iCloud gebruiken en schakel bae in."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae nemá povolenie používať iCloud. Otvor Nastavenia systému → Apple ID → iCloud → Aplikácie používajúce iCloud a zapni bae."
+          }
         }
       }
     },
@@ -18277,6 +19207,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "De iCloud-synczone bestaat niet meer. Maak opnieuw verbinding in de sync-instellingen om hem opnieuw aan te maken."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizačná zóna iCloud zmizla. Znova sa pripoj v nastaveniach synchronizácie, aby sa vytvorila nanovo."
           }
         }
       }
@@ -18409,6 +19345,12 @@
             "state": "translated",
             "value": "%lld albums"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld albumov"
+          }
         }
       }
     },
@@ -18540,6 +19482,12 @@
             "state": "translated",
             "value": "%lld werken"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld diel"
+          }
         }
       }
     },
@@ -18657,6 +19605,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apparaat toevoegen"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pridať zariadenie"
           }
         }
       }
@@ -18777,6 +19731,12 @@
             "state": "translated",
             "value": "Apparaat toevoegen…"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pridať zariadenie…"
+          }
         }
       }
     },
@@ -18896,6 +19856,12 @@
             "state": "translated",
             "value": "Voeg dit apparaat toe aan een bibliotheek die je al op een ander apparaat hebt."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pridaj toto zariadenie ku knižnici, ktorú už máš na inom zariadení."
+          }
         }
       }
     },
@@ -19013,6 +19979,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Iedereen met deze code heeft volledige toegang tot je bibliotheek. Houd hem geheim. Gebruik hem alleen om te herstellen op een nieuw apparaat als je geen ander apparaat beschikbaar hebt."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ktokoľvek s týmto kódom má plný prístup k tvojej knižnici. Nechaj si ho pre seba. Použi ho len na obnovenie na novom zariadení, keď nemáš k dispozícii žiadne iné."
           }
         }
       }
@@ -19133,6 +20105,12 @@
             "state": "translated",
             "value": "Goedkeuren"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schváliť"
+          }
         }
       }
     },
@@ -19250,6 +20228,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dit apparaat goedkeuren?"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schváliť toto zariadenie?"
           }
         }
       }
@@ -19370,6 +20354,12 @@
             "state": "translated",
             "value": "Autorisatie is zonder state voltooid."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autorizácia sa skončila bez stavu."
+          }
         }
       }
     },
@@ -19488,6 +20478,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Terug"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Späť"
           }
         }
       }
@@ -19608,6 +20604,12 @@
             "state": "translated",
             "value": "Code kopiëren"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopírovať kód"
+          }
         }
       }
     },
@@ -19726,6 +20728,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Koppelingscode van apparaat"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Párovací kód zariadenia"
           }
         }
       }
@@ -19846,6 +20854,12 @@
             "state": "translated",
             "value": "Apparaten"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zariadenia"
+          }
         }
       }
     },
@@ -19964,6 +20978,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apparaten die deze bibliotheek delen. Keur een nieuw apparaat goed of verwijder er een."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zariadenia, ktoré zdieľajú túto knižnicu. Schváľ nové zariadenie alebo niektoré odstráň."
           }
         }
       }
@@ -20084,6 +21104,12 @@
             "state": "translated",
             "value": "Volger"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sledujúci"
+          }
         }
       }
     },
@@ -20201,6 +21227,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Het verliest de toegang en de bibliotheeksleutel wordt gewisseld. Apparaten die in de bibliotheek blijven, krijgen automatisch de nieuwe sleutel."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stratí prístup a kľúč knižnice sa vymení. Zariadenia, ktoré v knižnici zostanú, si kľúč vymenia automaticky."
           }
         }
       }
@@ -20321,6 +21353,12 @@
             "state": "translated",
             "value": "Deelnemen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pripojiť sa"
+          }
         }
       }
     },
@@ -20438,6 +21476,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deelnemen aan bibliotheek"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pripojiť sa ku knižnici"
           }
         }
       }
@@ -20558,6 +21602,12 @@
             "state": "translated",
             "value": "Lid"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Člen"
+          }
         }
       }
     },
@@ -20676,6 +21726,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Leden"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zariadenia"
           }
         }
       }
@@ -20796,6 +21852,12 @@
             "state": "translated",
             "value": "Eigenaar"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vlastník"
+          }
         }
       }
     },
@@ -20914,6 +21976,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Herstelcode plakken"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prilep obnovovací kód"
           }
         }
       }
@@ -21034,6 +22102,12 @@
             "state": "translated",
             "value": "Plak je herstelcode"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prilep svoj obnovovací kód"
+          }
         }
       }
     },
@@ -21153,6 +22227,12 @@
             "state": "translated",
             "value": "Plak je herstelcode. Gebruik dit alleen als je geen ander apparaat hebt om dit apparaat goed te keuren."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prilep svoj obnovovací kód. Použi to len vtedy, keď nemáš k dispozícii iné zariadenie, ktoré by toto schválilo."
+          }
         }
       }
     },
@@ -21270,6 +22350,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Herstelcode"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnovovací kód"
           }
         }
       }
@@ -21390,6 +22476,12 @@
             "state": "translated",
             "value": "Dit apparaat verwijderen?"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odstrániť toto zariadenie?"
+          }
         }
       }
     },
@@ -21508,6 +22600,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scannen"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skenovať"
           }
         }
       }
@@ -21628,6 +22726,12 @@
             "state": "translated",
             "value": "Herstelcode scannen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Naskenovať obnovovací kód"
+          }
         }
       }
     },
@@ -21746,6 +22850,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scan de code die wordt weergegeven op een apparaat dat al in je bibliotheek staat."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Naskenuj kód zobrazený na zariadení, ktoré už v knižnici máš."
           }
         }
       }
@@ -21866,6 +22976,12 @@
             "state": "translated",
             "value": "Herstelcode tonen…"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zobraziť obnovovací kód…"
+          }
         }
       }
     },
@@ -21984,6 +23100,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gelijktijdige downloads"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Súbežné sťahovania"
           }
         }
       }
@@ -22104,6 +23226,12 @@
             "state": "translated",
             "value": "Synchronisatiefout"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chyba synchronizácie"
+          }
         }
       }
     },
@@ -22221,6 +23349,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deze bibliotheek gebruikt een provider waarmee deze build geen verbinding kan maken."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Táto knižnica používa poskytovateľa, ku ktorému sa toto zostavenie nedokáže pripojiť."
           }
         }
       }
@@ -22341,6 +23475,12 @@
             "state": "translated",
             "value": "Opnieuw proberen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skúsiť znova"
+          }
         }
       }
     },
@@ -22458,6 +23598,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Je herstelcode herstelt deze bibliotheek op een nieuw apparaat als je geen ander apparaat hebt om het goed te keuren. Iedereen ermee heeft volledige toegang. Houd hem geheim."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnovovací kód obnoví túto knižnicu na novom zariadení, keď nemáš k dispozícii iné zariadenie, ktoré by ho schválilo. Ktokoľvek s ním má plný prístup. Nechaj si ho pre seba."
           }
         }
       }
@@ -22578,6 +23724,12 @@
             "state": "translated",
             "value": "bae stelt de bibliotheek op dit apparaat in."
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae nastavuje knižnicu na tomto zariadení."
+          }
         }
       }
     },
@@ -22696,6 +23848,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verbinding verbroken, maar kan de herstelcode niet verwijderen: %@"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpojené, ale kód na obnovenie sa nepodarilo odstrániť: %@"
           }
         }
       }
@@ -22816,6 +23974,12 @@
             "state": "translated",
             "value": "Synchronisatie wacht op jou"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizácia čaká na teba"
+          }
         }
       }
     },
@@ -22934,6 +24098,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bibliotheekwijziging"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmena knižnice"
           }
         }
       }
@@ -23054,6 +24224,12 @@
             "state": "translated",
             "value": "Wijziging in delen"
           }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmena zdieľania"
+          }
         }
       }
     },
@@ -23172,6 +24348,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cloudopruiming"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vyčistenie cloudu"
           }
         }
       }
