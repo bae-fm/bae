@@ -55,6 +55,38 @@ pub struct MetadataResult {
     pub source_tracks: Option<SourceTracks>,
 }
 
+impl MetadataResult {
+    /// The release a person chose, as a result. No lookup produced it — they
+    /// found it — so it carries the release document's own facts and nothing
+    /// about a signal. Its tracklist is listed because choosing a release is
+    /// what archives its documents.
+    pub(crate) fn of_pick(detail: &ImportSearchReleaseDetail) -> Self {
+        let total_duration_ms = detail
+            .tracks
+            .iter()
+            .map(|track| track.duration_ms)
+            .sum::<Option<u64>>();
+        Self {
+            source: detail.source,
+            release_id: detail.release_id.clone(),
+            title: detail.title.clone(),
+            artist: detail.artist.clone(),
+            year: detail.year,
+            format: detail.format.clone(),
+            label: detail.label.clone(),
+            catalog_number: detail.catalog_number.clone(),
+            country: detail.country.clone(),
+            barcode: detail.barcode.clone(),
+            cover_art: detail.default_cover().cloned(),
+            source_group_id: detail.source_group_id.clone(),
+            source_tracks: Some(SourceTracks::Listed {
+                count: detail.track_count,
+                total_duration_ms,
+            }),
+        }
+    }
+}
+
 #[cfg(any(test, feature = "test-utils"))]
 impl MetadataResult {
     /// A placeholder result: the source, the release it names, and the source

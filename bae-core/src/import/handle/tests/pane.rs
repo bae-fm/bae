@@ -91,6 +91,11 @@ async fn picked_candidate(
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
+    // These controls are about reading the folder's tags on demand — the
+    // preview, the stored snapshot, and what a person's pick does to the
+    // draft. A draft the pre-fill already wrote would answer those questions
+    // before the test asked them.
+    manager.set_prefill_with_tags(false).unwrap();
     rescan_into(manager, candidate.clone()).await;
 
     let key = folder.to_string_lossy().into_owned();
@@ -472,8 +477,11 @@ async fn changed_file_observations_replace_the_complete_tag_snapshot() {
     shut_down(handle).await;
 }
 
+/// A scan that finds the same files leaves the stored reading standing — it
+/// re-read the very files that reading was taken from — while a file decision
+/// makes the candidate a different shape and replaces it.
 #[tokio::test(flavor = "multi_thread")]
-async fn changed_candidate_stamps_replace_the_complete_tag_snapshot() {
+async fn a_file_decision_replaces_the_complete_tag_snapshot() {
     let StoredCandidate { handle, manager, candidate, key, tmp: _tmp } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     handle
@@ -488,14 +496,14 @@ async fn changed_candidate_stamps_replace_the_complete_tag_snapshot() {
         .await
         .unwrap()
         .1;
-    assert_eq!(reader.read_count(), 4);
+    assert_eq!(reader.read_count(), 2);
     assert_eq!(
         after_generation
             .files
             .iter()
             .map(|fact| fact.title.as_deref())
             .collect::<Vec<_>>(),
-        vec![Some("Track Title 3"), Some("Track Title 4")]
+        vec![Some("Track Title 1"), Some("Track Title 2")]
     );
     shut_down(handle).await;
 

@@ -133,7 +133,7 @@ struct SyncStatusStoreTests {
             maxConcurrentUploads: 1,
             maxConcurrentDownloads: 1,
             identifyAutomatically: true,
-            defaultImportMetadataSource: .findOnline,
+            prefillWithTags: true,
             metadataSources: [
                 BridgeMetadataSourceSetting(
                     source: .musicBrainz,

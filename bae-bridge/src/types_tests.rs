@@ -160,23 +160,11 @@ mod conversion_roundtrip {
     }
 
     #[test]
-    fn import_metadata_sources_cross_the_bridge_unchanged() {
-        for core in [
-            bae_core::config::DefaultImportMetadataSource::FindOnline,
-            bae_core::config::DefaultImportMetadataSource::FileTags,
-            bae_core::config::DefaultImportMetadataSource::None,
-        ] {
-            let bridge = BridgeDefaultImportMetadataSource::from_core(core);
-            assert_eq!(bridge.into_core(), core);
-        }
-    }
-
-    #[test]
-    fn config_exposes_independent_default_source_and_identify_automatically() {
-        use bae_core::config::{Config, DefaultImportMetadataSource as Source};
+    fn config_exposes_prefill_with_tags_and_identify_automatically_independently() {
+        use bae_core::config::Config;
 
         for identify_automatically in [true, false] {
-            for source in [Source::FindOnline, Source::FileTags, Source::None] {
+            for prefill_with_tags in [true, false] {
                 let mut config = Config::with_defaults(
                     "library".to_string(),
                     "device".to_string(),
@@ -184,14 +172,11 @@ mod conversion_roundtrip {
                     "Library".to_string(),
                 );
                 config.prefs.identify_automatically = identify_automatically;
-                config.prefs.default_import_metadata_source = source;
+                config.prefs.prefill_with_tags = prefill_with_tags;
 
                 let bridge = BridgeConfig::from_core(&config);
                 assert_eq!(bridge.identify_automatically, identify_automatically);
-                assert_eq!(
-                    bridge.default_import_metadata_source,
-                    BridgeDefaultImportMetadataSource::from_core(source),
-                );
+                assert_eq!(bridge.prefill_with_tags, prefill_with_tags);
             }
         }
     }

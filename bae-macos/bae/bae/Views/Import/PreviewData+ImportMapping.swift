@@ -483,7 +483,6 @@
         static func paneCandidate(
             folder: BridgeFolderCandidate,
             metadataProvenance: BridgeMetadataProvenance? = nil,
-            initialMetadataSource: BridgeDefaultImportMetadataSource = .none,
             release: BridgeReleaseDetail? = nil,
             edit: BridgeRawReleaseEdit = blankDraftValues,
             mapping: BridgeMappingTable,
@@ -511,7 +510,6 @@
                     metadataAuthor: metadataProvenance == nil
                         ? .nobody : .user,
                     metadataRevision: 1,
-                    initialMetadataSource: initialMetadataSource,
                     mapping: mapping,
                     cover: cover,
                     signals: nil,

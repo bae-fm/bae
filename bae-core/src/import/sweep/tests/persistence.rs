@@ -72,22 +72,6 @@ fn row_with_verdict(
     }
 }
 
-fn blank_metadata_for_dir(dir: &Path) -> crate::import::CandidateMetadataDraft {
-    let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
-        dir,
-        crate::import::ReleaseFileScope::Recursive,
-        &crate::import::folder_scanner::StoredCandidateEdits::none(),
-    )
-    .expect("the candidate folder is readable");
-    crate::import::CandidateMetadataDraft {
-        draft: crate::import::pane::blank_candidate_source(&files).draft,
-        source_discogs_artist_ids: Default::default(),
-        provenance: None,
-        cover: None,
-        assets: crate::import::CandidatePreparedAssets::default(),
-    }
-}
-
 // ── 10. Lookup reuses a stored verdict ──────────────────────────────────────
 
 /// A several-match verdict, as identification stores one: the pressing is the
@@ -148,7 +132,7 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
         folder_path: key.clone(),
         verdict: multi_match_verdict(&["mb-claimed-1"], "rg-claimed-1"),
         signals: settled_signals(fixture.probed_durations(&dir)),
-        metadata: blank_metadata_for_dir(&dir),
+        metadata: None,
     };
 
     assert!(
@@ -198,7 +182,7 @@ async fn explicit_lookup_for_an_answered_candidate_starts_nothing() {
                 folder_path: dir.to_string_lossy().into_owned(),
                 verdict,
                 signals: settled_signals(fixture.probed_durations(&dir)),
-                metadata: blank_metadata_for_dir(&dir),
+                metadata: None,
             },
         )
         .await

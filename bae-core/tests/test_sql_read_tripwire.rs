@@ -96,7 +96,7 @@ async fn pure_reads_use_the_read_connection() {
                 text_pool: Vec::new(),
                 durations: bae_core::import::probe::SourceDurations::default(),
             },
-            metadata: bae_core::import::CandidateMetadataDraft {
+            metadata: Some(bae_core::import::CandidateMetadataDraft {
                 draft: bae_core::import::CandidateDraft {
                     album_title: "Unwritten candidate".to_string(),
                     album_artist_assignments: Vec::new(),
@@ -115,7 +115,7 @@ async fn pure_reads_use_the_read_connection() {
                 provenance: None,
                 cover: None,
                 assets: bae_core::import::CandidatePreparedAssets::default(),
-            },
+            }),
         })
         .await
         .unwrap());

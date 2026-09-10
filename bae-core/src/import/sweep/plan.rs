@@ -39,7 +39,7 @@ pub(super) fn usable_stored_answer<'a>(
     stored
         .get(&candidate.files().content_hash())
         .filter(|row| row.file_edits.revision == candidate.file_edit_revision())
-        .filter(|row| row.metadata_provenance.is_some() || row.identify.is_some())
+        .filter(|row| row.identify.is_some())
 }
 
 pub(super) async fn usable_current_candidate(
@@ -52,8 +52,8 @@ pub(super) async fn usable_current_candidate(
         .is_some_and(|candidate| candidate_identity(&candidate) == *identity)
 }
 
-/// Whether this candidate, as it is on disk right now, already has metadata or
-/// an identification answer for that shape.
+/// Whether a run has already finished for the files this candidate has right
+/// now. What its draft holds is not an answer — only a stored result is.
 pub(super) async fn current_stored_answer(
     context: &SweepContext,
     candidate: &ReleaseCandidate,
@@ -69,5 +69,5 @@ pub(super) async fn current_stored_answer(
     if row.file_edits.revision != candidate.file_edit_revision() {
         return Ok(false);
     }
-    Ok(row.metadata_provenance.is_some() || row.identify.is_some())
+    Ok(row.identify.is_some())
 }

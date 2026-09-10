@@ -14,65 +14,45 @@ namespace Bae.Desktop.ViewTests;
 
 public sealed class SettingsImportTests
 {
+    /// Two settings, two switches, and neither write carries the other's
+    /// value: the draft a candidate starts from and whether identification
+    /// runs on its own are separate answers.
     [AvaloniaFact]
-    public void ImportSettingsKeepOnlineLookupIndependentOfDefaultSource()
+    public void ImportSettingsDrawTwoIndependentSwitches()
     {
-        var app = AppService.Stubbed(
-            new SessionStore(Dispatcher.UIThread),
-            Dispatcher.UIThread,
-            new LibraryService());
-        var settings = new SettingsWindow(
-            app,
-            new AppearanceStore(AppearancePreferences.Default, _ => { }),
-            new UpdateService(),
-            () => Task.CompletedTask,
-            _ => Task.CompletedTask,
-            () => Task.CompletedTask);
-        var content = new StackPanel();
-        var renderers = new List<Action<Settings>>();
+        var (content, renderers) = BuildImportSection();
 
-        settings.BuildImport(content, renderers);
-
-        var picker = Assert.Single(content.GetLogicalDescendants().OfType<ComboBox>());
-        Assert.Equal(
-            new[]
-            {
-                BridgeDefaultImportMetadataSource.FindOnline,
-                BridgeDefaultImportMetadataSource.FileTags,
-                BridgeDefaultImportMetadataSource.None,
-            },
-            picker.Items
-                .OfType<ComboBoxItem>()
-                .Select(item => Assert.IsType<BridgeDefaultImportMetadataSource>(item.Tag)));
-        Assert.Contains(
-            content.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text == Loc.Chrome("settings.import.default_source"));
-        var identifyAutomatically = Assert.Single(
-            content.GetLogicalDescendants().OfType<CheckBox>());
+        var boxes = content.GetLogicalDescendants().OfType<CheckBox>().ToList();
+        Assert.Equal(2, boxes.Count);
+        Assert.Equal(Loc.Chrome("settings.import.prefill_with_tags"), boxes[0].Content);
         Assert.Equal(
             Loc.Chrome("settings.import.identify_automatically"),
-            identifyAutomatically.Content);
-        Assert.Contains(
-            content.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text
-                == Loc.Chrome("settings.import.identify_automatically_help"));
-        Assert.Contains(
-            content.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text == Loc.Chrome("settings.import.online_lookup"));
-
-        foreach (var source in new[]
+            boxes[1].Content);
+        foreach (var help in new[]
         {
-            BridgeDefaultImportMetadataSource.FindOnline,
-            BridgeDefaultImportMetadataSource.FileTags,
-            BridgeDefaultImportMetadataSource.None,
+            "settings.import.prefill_with_tags_help",
+            "settings.import.identify_automatically_help",
+        })
+        {
+            Assert.Contains(
+                content.GetLogicalDescendants().OfType<TextBlock>(),
+                text => text.Text == Loc.Chrome(help));
+        }
+
+        foreach (var (prefill, identify) in new[]
+        {
+            (true, false),
+            (false, true),
+            (false, false),
         })
         {
             Assert.Single(renderers)(new Settings
             {
-                DefaultImportMetadataSource = source,
-                IdentifyAutomatically = false,
+                PrefillWithTags = prefill,
+                IdentifyAutomatically = identify,
             });
-            Assert.False(identifyAutomatically.IsChecked);
+            Assert.Equal(prefill, boxes[0].IsChecked);
+            Assert.Equal(identify, boxes[1].IsChecked);
         }
     }
 
@@ -94,9 +74,9 @@ public sealed class SettingsImportTests
         });
 
         var boxes = content.GetLogicalDescendants().OfType<CheckBox>().ToList();
-        Assert.Equal(3, boxes.Count);
-        var musicBrainz = boxes[1];
-        var discogs = boxes[2];
+        Assert.Equal(4, boxes.Count);
+        var musicBrainz = boxes[2];
+        var discogs = boxes[3];
         Assert.Equal(
             Loc.Chrome(
                 "settings.import.search_source",

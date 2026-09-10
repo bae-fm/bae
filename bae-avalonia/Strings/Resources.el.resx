@@ -503,14 +503,12 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Αναζήτηση στο διαδίκτυο…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Δοκιμάστε να διαβάσετε ξανά τον υποψήφιο.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Γενικά</value></data>
-  <data name="settings.import.default_source" xml:space="preserve"><value>Προεπιλεγμένη πηγή μεταδεδομένων</value></data>
-  <data name="settings.import.find_online" xml:space="preserve"><value>Αναζήτηση στο διαδίκτυο</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Αυτόματη ταυτοποίηση</value></data>
-  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Οι νέοι υποψήφιοι ταυτοποιούνται μόλις εντοπιστούν, καθώς και όταν ανοίγει η Αναζήτηση στο διαδίκτυο. Όταν είναι ανενεργή, ο σύνδεσμος Ταυτοποίηση ξεκινά μια εκτέλεση.</value></data>
+  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Προσυμπλήρωση από ετικέτες</value></data>
+  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Οι νέοι υποψήφιοι ξεκινούν με ένα προσχέδιο από τις ετικέτες των αρχείων τους.</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Οι νέοι υποψήφιοι ταυτοποιούνται μόλις προστεθούν.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Αναζήτηση στο {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Η Αναζήτηση στο διαδίκτυο ρωτά τις πηγές που είναι επιλεγμένες εδώ.</value></data>
-  <data name="settings.import.none" xml:space="preserve"><value>Καμία</value></data>
-  <data name="settings.import.online_lookup" xml:space="preserve"><value>Διαδικτυακή αναζήτηση</value></data>
   <data name="action.clear" xml:space="preserve"><value>εκκαθάριση</value></data>
   <data name="action.retry" xml:space="preserve"><value>δοκιμή ξανά</value></data>
   <data name="import.search.results_for" xml:space="preserve"><value>αποτελέσματα για {query}</value></data>

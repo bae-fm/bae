@@ -503,14 +503,12 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Slå opp på nettet…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Prøv å lese kandidaten på nytt.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Generelt</value></data>
-  <data name="settings.import.default_source" xml:space="preserve"><value>Standardkilde for metadata</value></data>
-  <data name="settings.import.find_online" xml:space="preserve"><value>Slå opp på nettet</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifiser automatisk</value></data>
-  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nye kandidater identifiseres etter hvert som de blir funnet, og når Slå opp på nettet åpnes. Når det er av, starter lenken Identifiser en kjøring.</value></data>
+  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Forhåndsutfyll fra merkelapper</value></data>
+  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Nye kandidater starter med et utkast lest fra merkelappene til filene deres.</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nye kandidater identifiseres etter hvert som de legges til.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Søk på {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Slå opp på nettet spør kildene som er avkrysset her.</value></data>
-  <data name="settings.import.none" xml:space="preserve"><value>Ingen</value></data>
-  <data name="settings.import.online_lookup" xml:space="preserve"><value>Nettoppslag</value></data>
   <data name="action.clear" xml:space="preserve"><value>tøm</value></data>
   <data name="action.retry" xml:space="preserve"><value>prøv på nytt</value></data>
   <data name="import.search.results_for" xml:space="preserve"><value>resultater for {query}</value></data>

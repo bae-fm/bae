@@ -137,6 +137,9 @@ pub struct ImportServiceHandle {
     preparations: crate::import::CandidatePreparations,
     clock: coven::ClockRef,
     ids: coven::IdRef,
+    /// What reads a folder's audio files for their embedded tags — the same
+    /// reader the scan's pre-fill uses, so both answer from one source.
+    file_tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     /// Unified event channel — all import service events go here.
     event_tx: broadcast::Sender<ImportEvent>,
     runtime: CandidateRuntime,
@@ -258,6 +261,7 @@ impl ImportServiceHandle {
             preparations,
             clock,
             ids,
+            file_tags,
             folder_state_commit,
         } = services;
         let identify = crate::identify::IdentifyServiceHandle::new(
@@ -276,6 +280,7 @@ impl ImportServiceHandle {
             preparations,
             clock,
             ids,
+            file_tags,
             event_tx,
             runtime,
             identify,
@@ -806,31 +811,6 @@ impl ImportServiceHandle {
             return Ok(false);
         }
         self.preparations.store_verdict(row).await
-    }
-
-    /// The candidate at `key` as the queue sweep is responsible for it: an
-    /// answerable candidate (below) whose initial metadata source is Find
-    /// online — the sweep looks up on its own only what the person asked it
-    /// to.
-    pub(crate) async fn sweepable_candidate(
-        &self,
-        key: &str,
-    ) -> Result<
-        Option<crate::import::release_candidate::ReleaseCandidate>,
-        crate::library::LibraryError,
-    > {
-        let Some(candidate) = self.answerable_candidate(key).await? else {
-            return Ok(None);
-        };
-        let initial_source = self
-            .library_manager
-            .load_import_candidate(key)
-            .await?
-            .map(|projection| projection.initial_metadata_source);
-        if initial_source != Some(crate::config::DefaultImportMetadataSource::FindOnline) {
-            return Ok(None);
-        }
-        Ok(Some(candidate))
     }
 
     /// The candidate at `key` as an identification can still answer it: a

@@ -44,12 +44,13 @@ pub struct NewImportCandidateVerdict {
     /// instead of extracting them again, and the `probed_total_duration_ms`
     /// column is summed from the durations by the write itself.
     pub signals: crate::signals::Signals,
-    /// The editable metadata state this verdict concludes. A single match
-    /// carries the projected release draft and its provenance; every other
-    /// verdict carries the blank candidate draft. It replaces an earlier
-    /// identification result as one unit, while a person's newer choice or
-    /// edit wins through `candidate`'s metadata revision.
-    pub metadata: crate::import::CandidateMetadataDraft,
+    /// The draft this verdict concludes, or `None` where it concludes no
+    /// draft at all. Only a run that settled on one release concludes one:
+    /// nothing found, several offered, and a failure say what the candidate
+    /// is not, which is no reason to touch what its draft holds. A concluded
+    /// draft replaces whatever stands — pre-filled, edited or picked — while
+    /// a person's newer edit wins through `candidate`'s metadata revision.
+    pub metadata: Option<crate::import::CandidateMetadataDraft>,
 }
 
 /// What identification concluded about one candidate. Present as a whole or

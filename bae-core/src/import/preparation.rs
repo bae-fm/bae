@@ -98,9 +98,9 @@ impl CandidateAsRead {
 
 /// Who last wrote the candidate's metadata.
 ///
-/// Identification's answer stands until a person's, and a person's is never
-/// overwritten by identification. A draft nobody chose — the blank one
-/// discovery creates, or one a person cleared — is anybody's to fill.
+/// Who last wrote the draft: the person, a finished identification run, or —
+/// for the blank draft discovery creates and the one "Clear metadata" leaves
+/// — nobody. A stored provenance always names one of the first two.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MetadataAuthor {
     Nobody,

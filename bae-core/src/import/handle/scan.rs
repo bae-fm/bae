@@ -367,21 +367,14 @@ impl ImportServiceHandle {
         match &provenance {
             crate::import::MetadataProvenance::FileTags => {
                 let (snapshot_candidate, snapshot) = self.file_tag_snapshot(&candidate_key).await?;
-                let pane = crate::import::pane::file_tags_pane(
+                let seed = crate::import::file_tags_seed::FileTagsSeed::project(
                     &snapshot_candidate,
-                    &snapshot,
+                    snapshot,
                     &durations,
-                    &crate::import::CandidateEditOverlay::default(),
-                    &[],
+                    &current.draft.tracks,
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?;
-                let mut draft = crate::import::pane::candidate_draft_from_source(pane).draft;
-                draft.tracks = crate::import::edits::preserve_track_decisions(
-                    draft.tracks,
-                    &current.draft.tracks,
-                );
-                let cover = crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot);
                 let _commit = self
                     .commit_lock_for_revision(
                         &candidate_key,
@@ -399,9 +392,9 @@ impl ImportServiceHandle {
                             file_edit_revision: current.file_edit_revision,
                             metadata_revision: expected_metadata_revision,
                         },
-                        &snapshot,
-                        &draft,
-                        cover.as_ref(),
+                        &seed.snapshot,
+                        &seed.draft,
+                        seed.cover.as_ref(),
                     )
                     .await?);
             }
@@ -439,6 +432,18 @@ impl ImportServiceHandle {
                     metadata.draft.tracks,
                     &current.draft.tracks,
                 );
+                // A release the person chose answers the candidate. Where a run
+                // has already answered it, that run's own result is the record
+                // of what it found and stands; where none has, the choice is
+                // the result, and it is stored as one so the queue sweep stops
+                // asking.
+                let audio_durations =
+                    crate::import::track_slots::audio_durations(candidate.files(), &durations)?;
+                let detail = payloads.detail_for_audio(&audio_durations)?;
+                let settled_by_choice = crate::identify::TerminalVerdict::of_pick(
+                    crate::import::search::MetadataResult::of_pick(&detail),
+                    audio_durations.len() as u32,
+                );
                 let _commit = self
                     .commit_lock_for_revision(
                         &candidate_key,
@@ -448,7 +453,7 @@ impl ImportServiceHandle {
                     .await?;
                 return Ok(self
                     .preparations
-                    .apply_source(
+                    .apply_source_as_result(
                         candidate.watched_folder_path(),
                         &crate::import::CandidateAsRead {
                             content_hash: content_hash.clone(),
@@ -457,6 +462,7 @@ impl ImportServiceHandle {
                         },
                         &candidate_key,
                         &metadata,
+                        settled_by_choice,
                     )
                     .await?);
             }

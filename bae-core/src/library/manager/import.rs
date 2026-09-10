@@ -241,22 +241,68 @@ impl LibraryManager {
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
         folder_date: Option<crate::import::folder_scanner::FolderDate>,
+        reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
-        let initial_metadata_source = self
-            .config_handle
-            .config()
-            .prefs
-            .default_import_metadata_source;
+        let prefill_with_tags = self.config_handle.config().prefs.prefill_with_tags;
+        let file_tags = match prefill_with_tags {
+            true => self.file_tags_seed(item, generation, reader).await?,
+            false => None,
+        };
         Ok(self
             .database
-            .save_folder_scan_item_with_initial_source(
+            .save_folder_scan_item_with_seed(
                 watched_folder_path,
                 generation,
                 item,
-                initial_metadata_source,
+                file_tags,
                 folder_date,
             )
             .await?)
+    }
+
+    /// The folder read as its own files describe it, for a candidate this scan
+    /// is about to store.
+    ///
+    /// A folder whose tags cannot be read gets the blank draft instead: the
+    /// pre-fill is a default, not a command, so a folder nobody can read tags
+    /// from still joins the queue and says so in the log.
+    async fn file_tags_seed(
+        &self,
+        item: &crate::import::folder_scanner::ScanItem,
+        generation: u64,
+        reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
+    ) -> Result<Option<crate::import::file_tags_seed::FileTagsSeed>, LibraryError> {
+        use crate::import::folder_scanner::ScanItem;
+        let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
+            return Ok(None);
+        };
+        // A candidate that already holds a draft is not re-seeded, so its tags
+        // are not read either: a rescan of a folder nobody touched reads no
+        // audio file at all.
+        if self
+            .database
+            .candidate_has_draft(&candidate.files.content_hash())
+            .await?
+        {
+            return Ok(None);
+        }
+        let folder = candidate.path.display().to_string();
+        let read = crate::import::file_tags_seed::FileTagsSeed::read(
+            candidate,
+            generation,
+            reader,
+            self.clock.as_ref(),
+            self.ids.as_ref(),
+        );
+        match read {
+            Ok(seed) => Ok(Some(seed)),
+            Err(error) => {
+                tracing::warn!(
+                    "{folder} starts on a blank draft: its file tags could not be read: {error}"
+                );
+                Ok(None)
+            }
+        }
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -266,8 +312,14 @@ impl LibraryManager {
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
-        self.save_folder_scan_item_with_date(watched_folder_path, generation, item, None)
-            .await
+        self.save_folder_scan_item_with_date(
+            watched_folder_path,
+            generation,
+            item,
+            None,
+            &crate::import::file_tag_snapshot::LoftyFileTagReader,
+        )
+        .await
     }
 
     pub async fn finish_folder_scan(

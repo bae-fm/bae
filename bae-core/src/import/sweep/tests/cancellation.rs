@@ -36,7 +36,8 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
     let other_key = other.to_string_lossy().into_owned();
     let context = fixture.context();
     let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass_token = token.clone();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &pass_token).await });
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     let mut events = fixture.import.subscribe_events();
 
@@ -53,11 +54,15 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
         !fixture.import.is_identifying(&picked_key),
         "the pick ends the picked candidate's run before it returns"
     );
-    tokio::time::timeout(Duration::from_secs(30), pass)
-        .await
-        .expect("the pass answers the candidate nobody picked")
-        .unwrap();
-    fixture.provider.release();
+    // The other candidate is carried to its verdict. The picked one is the
+    // sweep's again — a draft is not a result — so its next run is waiting at
+    // the held route rather than finishing, and the pass is ended here.
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        fixture.await_identified_row(&other),
+    )
+    .await
+    .expect("the pass answers the candidate nobody picked");
 
     let picked_row = fixture
         .stored_for(&picked)
@@ -89,6 +94,13 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
         !cancelled_other,
         "the pick must not tear down the run of a candidate it does not name"
     );
+
+    token.cancel();
+    fixture.provider.release();
+    tokio::time::timeout(Duration::from_secs(10), pass)
+        .await
+        .expect("the pass ends")
+        .unwrap();
 }
 
 /// Skipping is a decision about the candidate, so it ends its run. Unskipping

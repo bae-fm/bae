@@ -476,14 +476,12 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在线查找…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>请尝试重新读取候选项。</value></data>
   <data name="import.search.general" xml:space="preserve"><value>常规</value></data>
-  <data name="settings.import.default_source" xml:space="preserve"><value>默认元数据来源</value></data>
-  <data name="settings.import.find_online" xml:space="preserve"><value>在线查找</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>自动识别</value></data>
-  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>新候选项在被发现时以及打开“在线查找”时识别。关闭后，由“识别”链接手动开始。</value></data>
+  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>用标签预填充</value></data>
+  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>新候选项以从其文件标签读取的草稿开始。</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>新候选项在被添加时识别。</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>搜索 {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>“在线查找”会询问此处勾选的来源。</value></data>
-  <data name="settings.import.none" xml:space="preserve"><value>无</value></data>
-  <data name="settings.import.online_lookup" xml:space="preserve"><value>在线查找</value></data>
   <data name="action.clear" xml:space="preserve"><value>清除</value></data>
   <data name="action.retry" xml:space="preserve"><value>重试</value></data>
   <data name="import.search.results_for" xml:space="preserve"><value>{query} 的结果</value></data>

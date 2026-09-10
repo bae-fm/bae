@@ -33,6 +33,51 @@ use rows::{author_column, insert_provenance, load_candidate_file_edits_on, load_
 use std::collections::HashSet;
 use verdict_rows::{delete_verdict, insert_verdict};
 
+impl Database {
+    /// Whether a draft is already stored for `content_hash`. A candidate that
+    /// has one is never re-seeded — a rescan re-reads files, not decisions —
+    /// so this is what the pre-fill asks before reading any tags.
+    pub(crate) async fn candidate_has_draft(&self, content_hash: &str) -> Result<bool, DbError> {
+        let content_hash = content_hash.to_string();
+        self.read(move |sql| {
+            Ok(sql
+                .query_row(
+                    "SELECT 1 FROM import_candidate_edit WHERE content_hash = ?",
+                    [&content_hash],
+                    |_| Ok(()),
+                )
+                .optional()?
+                .is_some())
+        })
+        .await
+    }
+}
+
+/// Seed a candidate's stored draft from the folder's own file tags: the draft
+/// they project, the provenance naming them as its source, and the cover they
+/// embed. The author is the same one a person's "Reset to tags" writes —
+/// identification never concludes a folder's own files.
+pub(crate) fn insert_file_tags_draft(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    draft: &crate::import::CandidateDraft,
+    cover: Option<&crate::import::CoverSelection>,
+) -> Result<(), DbError> {
+    pane_rows::insert_draft(sql, content_hash, draft)?;
+    let author = author_column(crate::import::MetadataAuthor::User)
+        .ok_or_else(|| DbError::Message("a stored provenance names an author".to_string()))?;
+    insert_provenance(
+        sql,
+        content_hash,
+        &crate::import::MetadataProvenance::FileTags,
+        author,
+    )?;
+    if let Some(cover) = cover {
+        super::candidate_state_rows::save_cover(sql, content_hash, cover)?;
+    }
+    Ok(())
+}
+
 pub(super) fn require_current_candidate(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,

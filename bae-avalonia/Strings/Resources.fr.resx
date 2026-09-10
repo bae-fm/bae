@@ -476,14 +476,12 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Rechercher en ligne…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Essayez de relire le candidat.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Général</value></data>
-  <data name="settings.import.default_source" xml:space="preserve"><value>Source de métadonnées par défaut</value></data>
-  <data name="settings.import.find_online" xml:space="preserve"><value>Rechercher en ligne</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifier automatiquement</value></data>
-  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Les nouveaux candidats sont identifiés dès leur découverte et à l’ouverture de Rechercher en ligne. Si l’option est désactivée, le lien Identifier lance l’analyse.</value></data>
+  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Préremplir avec les tags</value></data>
+  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Les nouveaux candidats démarrent sur un brouillon lu dans les tags de leurs fichiers.</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Les nouveaux candidats sont identifiés dès leur ajout.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Rechercher dans {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Rechercher en ligne interroge les sources cochées ici.</value></data>
-  <data name="settings.import.none" xml:space="preserve"><value>Aucune</value></data>
-  <data name="settings.import.online_lookup" xml:space="preserve"><value>Recherche en ligne</value></data>
   <data name="action.clear" xml:space="preserve"><value>effacer</value></data>
   <data name="action.retry" xml:space="preserve"><value>réessayer</value></data>
   <data name="import.search.results_for" xml:space="preserve"><value>résultats pour {query}</value></data>

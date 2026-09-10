@@ -19,10 +19,10 @@ async fn candidate_dates_preserve_candidates_and_require_fresh_directory_observa
                  VALUES ('/music', '/music/release', 1234);
              INSERT INTO scan_candidate (
                  watched_folder_path, path, generation, kind, name, display_path,
-                 file_root, scope, content_hash, initial_metadata_source
+                 file_root, scope, content_hash
              ) VALUES (
                  '/music', '/music/release', 1, 'valid', 'release', 'release',
-                 '/music/release', 'direct', 'candidate-hash', 'none'
+                 '/music/release', 'direct', 'candidate-hash'
              );",
             )?;
             Ok(())

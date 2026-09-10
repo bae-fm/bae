@@ -503,14 +503,12 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Find online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Try reading the candidate again.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>General</value></data>
-  <data name="settings.import.default_source" xml:space="preserve"><value>Default metadata source</value></data>
-  <data name="settings.import.find_online" xml:space="preserve"><value>Find online</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identify automatically</value></data>
-  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>New candidates are identified as they are discovered, and when Find online opens. When off, the Identify link starts a run.</value></data>
+  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Pre-fill with tags</value></data>
+  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>New candidates start from a draft read from their files' tags.</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>New candidates are identified as they are added.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Search {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Find online asks the sources that are checked here.</value></data>
-  <data name="settings.import.none" xml:space="preserve"><value>None</value></data>
-  <data name="settings.import.online_lookup" xml:space="preserve"><value>Online lookup</value></data>
   <data name="action.clear" xml:space="preserve"><value>clear</value></data>
   <data name="action.retry" xml:space="preserve"><value>retry</value></data>
   <data name="import.search.results_for" xml:space="preserve"><value>results for {query}</value></data>

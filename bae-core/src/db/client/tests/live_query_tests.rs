@@ -698,7 +698,7 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
     );
 }
 
-/// A commit that touches a column the list does not read leaves the projection
+/// A commit that touches a table the list does not read leaves the projection
 /// equal, and coven withholds it: the tab does not re-render for a write it
 /// cannot show.
 #[tokio::test]
@@ -719,11 +719,13 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     let initial = live.next().await.into_result().unwrap();
     assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
 
-    let second = format!("{root}/second");
+    // What a walk records about the directories it read: the list projects
+    // candidates, and never reads this.
     exec(
         &db,
-        "UPDATE scan_candidate SET initial_metadata_source = 'none' WHERE path = ?1",
-        &[second.as_str()],
+        "INSERT INTO folder_scan_directory (watched_folder_path, path, modified_at) \
+         VALUES (?1, ?1, 1234)",
+        &[root.as_str()],
     )
     .await;
 

@@ -215,12 +215,18 @@ impl Database {
                     params![key, position as i64, part.candidate_key, candidate.watched_folder_path, part.folder_name, part.file_prefix, part.first_disc, part.disc_count, part.track_count])?;
             }
             sql.execute("INSERT INTO scan_candidate \
-                (watched_folder_path, path, generation, kind, name, display_path, content_hash, file_edit_revision, initial_metadata_source, source_kind, first_seen_at) \
-                VALUES (?, ?, ?, 'valid', ?, ?, ?, 0, 'none', 'combination', ?)",
+                (watched_folder_path, path, generation, kind, name, display_path, content_hash, file_edit_revision, source_kind, first_seen_at) \
+                VALUES (?, ?, ?, 'valid', ?, ?, ?, 0, 'combination', ?)",
                 params![root, key, generation, name, name, combination.files.content_hash(), created_at])?;
             let mut draft = crate::import::pane::blank_source_for_tracks(combination.tracks);
             draft.draft.album_title = name;
-            folder_scans::write::ensure_candidate_state(sql, &key, root, &combination.files, &draft)?;
+            folder_scans::write::ensure_candidate_state(
+                sql,
+                &key,
+                root,
+                &combination.files,
+                folder_scans::write::CandidateStateSeed::Blank(&draft),
+            )?;
             folder_scans::insert_candidate_files(sql, root, &key, &combination.files)?;
             Ok(())
         }).await

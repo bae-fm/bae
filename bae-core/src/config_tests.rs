@@ -111,34 +111,48 @@ fn transfer_concurrency_survives_yaml_roundtrip() {
 }
 
 #[test]
-fn import_metadata_settings_default_to_automatic_lookup() {
+fn a_new_library_pre_fills_with_tags_and_identifies_automatically() {
     let tmp = TempDir::new().unwrap();
     let config = make_test_config("lib", tmp.path().to_path_buf());
 
     assert!(config.prefs.identify_automatically);
-    assert_eq!(
-        config.prefs.default_import_metadata_source,
-        DefaultImportMetadataSource::FindOnline
-    );
+    assert!(config.prefs.prefill_with_tags);
 }
 
 #[test]
-fn import_metadata_source_and_identify_automatically_roundtrip_independently() {
-    let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
-    config.prefs.identify_automatically = false;
-    config.prefs.default_import_metadata_source = DefaultImportMetadataSource::None;
-    config.save_to_config_yaml().unwrap();
+fn prefill_with_tags_and_identify_automatically_roundtrip_independently() {
+    for (prefill, identify) in [(false, true), (true, false), (false, false)] {
+        let tmp = TempDir::new().unwrap();
+        let mut config = make_test_config("lib", tmp.path().to_path_buf());
+        config.prefs.identify_automatically = identify;
+        config.prefs.prefill_with_tags = prefill;
+        config.save_to_config_yaml().unwrap();
 
-    let yaml = parse_config_yaml(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
-        .unwrap();
-    let loaded = yaml.into_config("device".to_string(), tmp.path().to_path_buf());
+        let yaml =
+            parse_config_yaml(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
+                .unwrap();
+        let loaded = yaml.into_config("device".to_string(), tmp.path().to_path_buf());
 
-    assert!(!loaded.prefs.identify_automatically);
-    assert_eq!(
-        loaded.prefs.default_import_metadata_source,
-        DefaultImportMetadataSource::None
+        assert_eq!(loaded.prefs.identify_automatically, identify);
+        assert_eq!(loaded.prefs.prefill_with_tags, prefill);
+    }
+}
+
+/// A library written before the two settings replaced the single source
+/// picker still opens: serde reads the keys it knows and ignores the rest, so
+/// the retired key is neither read nor an obstacle.
+#[test]
+fn a_config_carrying_the_retired_source_key_loads() {
+    let mut value = full_config_yaml_value();
+    value.as_mapping_mut().unwrap().insert(
+        serde_yaml::Value::String("default_import_metadata_source".to_string()),
+        serde_yaml::Value::String("file_tags".to_string()),
     );
+
+    let loaded = ConfigYaml::from_value(&value).expect("the retired key is ignored");
+
+    assert!(loaded.prefs.prefill_with_tags);
+    assert!(loaded.prefs.identify_automatically);
 }
 
 /// A hand-edited `0` is refused at load rather than reaching coven — the
@@ -270,7 +284,7 @@ fn config_yaml_requires_every_bae_field() {
         "library_full_width",
         "verify_decode_on_import",
         "identify_automatically",
-        "default_import_metadata_source",
+        "prefill_with_tags",
         "metadata_sources",
         "cast_enabled",
     ] {
@@ -330,7 +344,7 @@ show_remaining_time: false
 library_full_width: false
 verify_decode_on_import: true
 identify_automatically: true
-default_import_metadata_source: find_online
+prefill_with_tags: true
 metadata_sources:
   musicbrainz: true
   discogs: true

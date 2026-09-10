@@ -241,12 +241,16 @@ impl Database {
     /// when `generation` is no longer the root's: the generation check and all
     /// changes share one transaction, so a cancelled scan cannot write over
     /// its successor.
-    pub async fn save_folder_scan_item_with_initial_source(
+    /// `file_tags` seeds a candidate this scan is storing for the first time:
+    /// the draft the folder's own tags project, the reading it came from, and
+    /// the cover those tags embed. A candidate that already has a draft keeps
+    /// it — a rescan re-reads files, not decisions.
+    pub(crate) async fn save_folder_scan_item_with_seed(
         &self,
         watched_folder_path: &str,
         generation: u64,
         item: &ScanItem,
-        initial_metadata_source: crate::config::DefaultImportMetadataSource,
+        file_tags: Option<crate::import::file_tags_seed::FileTagsSeed>,
         folder_date: Option<crate::import::folder_scanner::FolderDate>,
     ) -> Result<Option<ScanItemWrite>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
@@ -304,19 +308,13 @@ impl Database {
                 discovery.store(sql, &watched_folder_path, &entry_key)?;
                 return Ok(Some(ScanItemWrite::Unchanged));
             }
-            let stored_initial_metadata_source: Option<String> = sql
-                .query_row(
-                    "SELECT initial_metadata_source FROM scan_candidate \
-                     WHERE watched_folder_path = ? AND path = ?",
-                    params![watched_folder_path, entry_key],
-                    |row| row.get(0),
-                )
-                .optional()?
-                .flatten();
-            let initial_metadata_source = stored_initial_metadata_source
-                .map(|value| value.parse().map_err(DbError::Message))
-                .transpose()?
-                .unwrap_or(initial_metadata_source);
+            // Rewriting the row takes the file-tag reading hanging off it, and
+            // the draft that reading projected outlives the rewrite. So a write
+            // that brings no reading of its own carries the stored one across.
+            let carried = match file_tags.is_some() {
+                true => None,
+                false => read::load_file_tag_snapshot(sql, &watched_folder_path, &entry_key)?,
+            };
             let stored = stored_entries(sql, &watched_folder_path)?;
             let keys: Vec<StoredEntryKey> = stored
                 .iter()
@@ -343,13 +341,15 @@ impl Database {
                     delete_entry(sql, &watched_folder_path, entry)?;
                 }
             }
-            write::insert_item(
-                sql,
-                &watched_folder_path,
-                generation,
-                &item,
-                initial_metadata_source,
-            )?;
+            write::insert_item(sql, &watched_folder_path, generation, &item, file_tags.as_ref())?;
+            if let Some(snapshot) = carried {
+                write::replace_candidate_file_tag_snapshot(
+                    sql,
+                    &watched_folder_path,
+                    &entry_key,
+                    &snapshot,
+                )?;
+            }
             discovery.store(sql, &watched_folder_path, &entry_key)?;
             Ok(Some(ScanItemWrite::Stored {
                 superseded_keys: removed_keys,
@@ -365,14 +365,8 @@ impl Database {
         generation: u64,
         item: &ScanItem,
     ) -> Result<Option<ScanItemWrite>, DbError> {
-        self.save_folder_scan_item_with_initial_source(
-            watched_folder_path,
-            generation,
-            item,
-            crate::config::DefaultImportMetadataSource::FindOnline,
-            None,
-        )
-        .await
+        self.save_folder_scan_item_with_seed(watched_folder_path, generation, item, None, None)
+            .await
     }
 
     /// Record every directory a completed walk of `watched_folder_path` read,

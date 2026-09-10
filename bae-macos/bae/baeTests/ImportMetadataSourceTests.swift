@@ -81,29 +81,6 @@ private final class MetadataSourceRecorder {
 struct ImportMetadataSourceTests {}
 
 extension ImportMetadataSourceTests {
-    /// Which surface the pane opens on is core's answer, stored with the
-    /// candidate: what the detail says is what shows.
-    @Test("the pane opens where the candidate's stored session says")
-    func paneOpensWhereTheStoredSessionSays() throws {
-        for (stored, expected) in [
-            (
-                BridgeMetadataPresentation.findOnline,
-                CandidateMetadataPresentation.findOnline
-            ),
-            (.fileTags, .fileTags),
-            (.draft, .draft),
-        ] {
-            let detail = MappingFixtures.detail(
-                mapping: nil,
-                edit: MappingFixtures.blankEdit,
-                metadataProvenance: nil,
-                presentation: stored
-            )
-
-            #expect(Candidate(detail: detail).metadataPresentation == expected)
-        }
-    }
-
     /// Choosing a surface is written to core, not kept in the pane: the
     /// store records the write, and the next detail is what the pane shows.
     @Test("choosing a surface writes it through, and the detail shows it")
@@ -112,7 +89,6 @@ extension ImportMetadataSourceTests {
             mapping: nil,
             metadataProvenance: nil,
             edit: MappingFixtures.blankEdit,
-            initialMetadataSource: .none
         )
         let writes = PresentationWriteRecorder()
         store.sessionWriter = .recording { writes.record($0) }
@@ -143,36 +119,6 @@ extension ImportMetadataSourceTests {
             writes.presentations(forKey: MappingFixtures.candidateKey)
                 == [.fileTags]
         )
-    }
-
-    @Test("Find online identifies on open only when the setting is on")
-    func findOnlineHonorsIdentifyAutomatically() throws {
-        for identifyAutomatically in [false, true] {
-            let store = MappingFixtures.store(
-                mapping: nil,
-                metadataProvenance: nil,
-                edit: MappingFixtures.blankEdit
-            )
-            let recorder = MetadataSourceRecorder()
-            let candidate = try #require(
-                store.candidate(forKey: MappingFixtures.candidateKey)
-            )
-
-            ImportMappingFlow.presentMetadata(
-                .findOnline,
-                for: candidate,
-                services: recorder.services(
-                    store,
-                    identifyAutomatically: identifyAutomatically
-                )
-            )
-
-            #expect(
-                recorder.identifiedKeys
-                    == (identifyAutomatically
-                        ? [MappingFixtures.candidateKey] : [])
-            )
-        }
     }
 
     @Test("File tags are previewed without changing the draft")

@@ -644,7 +644,6 @@ public sealed class ImportMappingPaneTests
             Detail = detail,
         };
         candidate.Matches = matches?.ToList() ?? new List<ReleaseCandidateChoice>();
-        candidate.ResolveInitialMetadataPresentation();
         if (initialPresentation is { } presentation)
         {
             candidate.PresentMetadata(presentation);

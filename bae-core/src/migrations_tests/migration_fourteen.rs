@@ -20,10 +20,10 @@ async fn replaces_cached_cue_bindings_with_the_resolved_shape() {
                      VALUES ('/music', 1, 'complete');
                  INSERT INTO scan_candidate (
                      watched_folder_path, path, generation, kind, name, display_path,
-                     file_root, scope, content_hash, initial_metadata_source
+                     file_root, scope, content_hash
                  ) VALUES (
                      '/music', '/music/release', 1, 'valid', 'release', 'release',
-                     '/music/release', 'direct', 'candidate-hash', 'none'
+                     '/music/release', 'direct', 'candidate-hash'
                  );",
             )?;
             Ok(())
@@ -51,10 +51,10 @@ async fn replaces_cached_cue_bindings_with_the_resolved_shape() {
                      VALUES ('/music', 2, 'scanning');
                  INSERT INTO scan_candidate (
                      watched_folder_path, path, generation, kind, name, display_path,
-                     file_root, scope, content_hash, initial_metadata_source
+                     file_root, scope, content_hash
                  ) VALUES (
                      '/music', '/music/release', 2, 'valid', 'release', 'release',
-                     '/music/release', 'direct', 'candidate-hash', 'none'
+                     '/music/release', 'direct', 'candidate-hash'
                  );
                  INSERT INTO scan_candidate_file (
                      watched_folder_path, candidate_path, relative_path, position,

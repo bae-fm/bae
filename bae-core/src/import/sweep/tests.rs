@@ -835,7 +835,7 @@ impl Fixture {
     ) {
         let candidate = self
             .import
-            .sweepable_candidate(&dir.to_string_lossy())
+            .answerable_candidate(&dir.to_string_lossy())
             .await
             .expect("the candidate state is readable")
             .expect("the scanned candidate is sweepable");
@@ -907,7 +907,7 @@ impl Fixture {
                             probed_total_ms,
                         ))
                     },
-                    metadata: crate::import::CandidateMetadataDraft {
+                    metadata: Some(crate::import::CandidateMetadataDraft {
                         draft,
                         source_discogs_artist_ids: Default::default(),
                         provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
@@ -917,7 +917,7 @@ impl Fixture {
                         }),
                         cover: None,
                         assets: crate::import::CandidatePreparedAssets::default(),
-                    },
+                    }),
                 },
             )
             .await

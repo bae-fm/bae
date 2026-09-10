@@ -67,13 +67,7 @@ async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
         folder_path: pane_candidate_path(),
         verdict: sample_verdict(),
         signals,
-        metadata: crate::import::CandidateMetadataDraft {
-            draft: crate::import::pane::blank_candidate_draft(&pane_candidate()),
-            source_discogs_artist_ids: Default::default(),
-            provenance: None,
-            cover: None,
-            assets: crate::import::CandidatePreparedAssets::default(),
-        },
+        metadata: None,
     })
     .await
     .unwrap()
@@ -390,13 +384,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 folder_path: pane_candidate_path(),
                 verdict: sample_verdict(),
                 signals: scanning,
-                metadata: crate::import::CandidateMetadataDraft {
-                    draft: crate::import::pane::blank_candidate_draft(&pane_candidate()),
-                    source_discogs_artist_ids: Default::default(),
-                    provenance: None,
-                    cover: None,
-                    assets: crate::import::CandidatePreparedAssets::default(),
-                },
+                metadata: None,
             })
             .await
             .expect_err("a scanning signal is not storable");

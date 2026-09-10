@@ -181,8 +181,11 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
     assert_eq!(loaded.snapshot, Some(replacement));
 }
 
+/// A scan that finds the same files carries the stored reading forward with
+/// the row it hangs off — it re-read the very files that reading was taken
+/// from. A write still stamped with the generation before it is refused.
 #[tokio::test]
-async fn stale_generation_is_reported_and_cannot_replace_snapshot() {
+async fn a_rescan_carries_the_reading_forward_and_refuses_an_older_stamp() {
     let (db, _tmp, root) = watched_root().await;
     let (candidate, first_generation) = scanned_candidate(&db, &root).await;
     let key = candidate.path.to_string_lossy().into_owned();
@@ -206,11 +209,12 @@ async fn stale_generation_is_reported_and_cannot_replace_snapshot() {
         .unwrap();
     assert_eq!(loaded.scan_generation, current_generation);
     assert_eq!(loaded.candidate.file_edit_revision(), 0);
-    assert_eq!(loaded.snapshot, Some(stored.clone()));
-    assert_ne!(
-        loaded.scan_generation,
-        loaded.snapshot.as_ref().unwrap().scan_generation
-    );
+    let carried = loaded
+        .snapshot
+        .clone()
+        .expect("the reading is still stored");
+    assert_eq!(carried.scan_generation, current_generation);
+    assert_eq!(carried.files, stored.files);
 
     assert!(!db
         .replace_candidate_file_tag_snapshot(&root, &key, &stored)
@@ -222,7 +226,7 @@ async fn stale_generation_is_reported_and_cannot_replace_snapshot() {
             .unwrap()
             .unwrap()
             .snapshot,
-        Some(stored)
+        Some(carried)
     );
 }
 

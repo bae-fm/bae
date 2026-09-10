@@ -232,7 +232,7 @@ struct LibrarySessionOpenerTests {
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,
-            defaultImportMetadataSource: .findOnline,
+            prefillWithTags: true,
             metadataSources: [
                 BridgeMetadataSourceSetting(
                     source: .musicBrainz,

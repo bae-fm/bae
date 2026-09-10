@@ -503,14 +503,12 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Etsi verkosta…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Yritä lukea ehdokas uudelleen.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Yleiset</value></data>
-  <data name="settings.import.default_source" xml:space="preserve"><value>Metatietojen oletuslähde</value></data>
-  <data name="settings.import.find_online" xml:space="preserve"><value>Etsi verkosta</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Tunnista automaattisesti</value></data>
-  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Uudet ehdokkaat tunnistetaan sitä mukaa kun ne löytyvät, ja kun Etsi verkosta avataan. Kun tämä on pois päältä, Tunnista-linkki käynnistää ajon.</value></data>
+  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Esitäytä tunnisteista</value></data>
+  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Uudet ehdokkaat aloittavat luonnoksesta, joka on luettu niiden tiedostojen tunnisteista.</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Uudet ehdokkaat tunnistetaan sitä mukaa kun ne lisätään.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Hae palvelusta {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Etsi verkosta kysyy tässä valituista lähteistä.</value></data>
-  <data name="settings.import.none" xml:space="preserve"><value>Ei mitään</value></data>
-  <data name="settings.import.online_lookup" xml:space="preserve"><value>Verkkohaku</value></data>
   <data name="action.clear" xml:space="preserve"><value>tyhjennä</value></data>
   <data name="action.retry" xml:space="preserve"><value>yritä uudelleen</value></data>
   <data name="import.search.results_for" xml:space="preserve"><value>tulokset haulle {query}</value></data>

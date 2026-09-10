@@ -1,67 +1,6 @@
 use super::*;
 
 impl ImportService {
-    async fn apply_initial_file_tags(
-        candidate: &crate::import::folder_scanner::FolderCandidate,
-        generation: u64,
-        services: &crate::import::ImportServices,
-    ) -> Result<u64, crate::import::ImportError> {
-        let library_manager = &services.library_manager;
-        let clock = &services.clock;
-        let ids = &services.ids;
-        let candidate = candidate.clone();
-        let content_hash = candidate.files.content_hash();
-        let state = library_manager
-            .load_import_candidate_state(&content_hash)
-            .await?
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!("{} has no stored candidate state", candidate.path.display()),
-            })?;
-        if state.metadata_revision != 0 || state.metadata_provenance.is_some() {
-            return Ok(state.metadata_revision);
-        }
-        let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
-        let file_edit_revision = candidate.file_edit_revision;
-        let snapshot = tokio::task::spawn_blocking(move || {
-            crate::import::file_tag_snapshot::extract_file_tag_snapshot(
-                &audio_files,
-                generation,
-                file_edit_revision,
-                &crate::import::file_tag_snapshot::LoftyFileTagReader,
-            )
-        })
-        .await
-        .map_err(|error| crate::import::ImportError::Internal {
-            detail: format!("file-tag discovery task failed: {error}"),
-        })??;
-        let pane = crate::import::pane::file_tags_pane(
-            &candidate.clone().into(),
-            &snapshot,
-            &crate::import::probe::SourceDurations::default(),
-            &crate::import::CandidateEditOverlay::default(),
-            &[],
-            clock.as_ref(),
-            ids.as_ref(),
-        )?;
-        let source_draft = crate::import::pane::candidate_draft_from_source(pane);
-        let cover = crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot);
-        Ok(services
-            .preparations
-            .apply_file_tags(
-                &candidate.watched_folder_path,
-                &candidate.path.to_string_lossy(),
-                &crate::import::CandidateAsRead {
-                    content_hash,
-                    file_edit_revision,
-                    metadata_revision: state.metadata_revision,
-                },
-                &snapshot,
-                &source_draft.draft,
-                cover.as_ref(),
-            )
-            .await?)
-    }
-
     /// Mark `root`'s scan generation failed and say so. The stored status is
     /// what the import list's live query reads for the folder's mark; the
     /// event is the moment it happened, which the desktops raise as an alert.
@@ -150,25 +89,12 @@ impl ImportService {
                 generation,
                 &item,
                 folder_date,
+                services.file_tags.as_ref(),
             )
             .await?;
         let Some(write) = superseded else {
             return Ok(None);
         };
-        if write.changed() {
-            if let ScanItem::Valid(candidate) = &item {
-                let starts_from_file_tags = library_manager
-                    .load_import_candidate(&candidate.path.to_string_lossy())
-                    .await?
-                    .is_some_and(|detail| {
-                        detail.initial_metadata_source
-                            == crate::config::DefaultImportMetadataSource::FileTags
-                    });
-                if starts_from_file_tags {
-                    Self::apply_initial_file_tags(candidate, generation, services).await?;
-                }
-            }
-        }
         Ok(Some(PersistedScanItem {
             commit,
             item,

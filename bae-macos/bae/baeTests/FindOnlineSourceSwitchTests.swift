@@ -127,7 +127,6 @@ struct FindOnlineSourceSwitchTests {
         for key in [
             "Search %@",
             "No source to search",
-            "Find online asks the sources that are checked here. The same checkboxes are on the Find online header.",
             "Add a %@ token to look up its releases too.",
         ] {
             #expect(try locales(key) == reference, "\(key) is missing locales")

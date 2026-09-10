@@ -1,18 +1,11 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::types::BridgeOutputKind;
 use crate::types::{
-    BridgeConfig, BridgeDefaultImportMetadataSource, BridgeDiscogsTokenStatus, BridgeMcpConfig,
-    BridgeMetadataSource, BridgeMetadataSourceSetting, BridgeSaveBitDepth, BridgeSaveCodec,
-    BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset, BridgeSourceAvailability,
-    BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
+    BridgeConfig, BridgeDiscogsTokenStatus, BridgeMcpConfig, BridgeMetadataSource,
+    BridgeMetadataSourceSetting, BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken,
+    BridgeSavePregapPlacement, BridgeSavePreset, BridgeSourceAvailability, BridgeSubsonicConfig,
+    BridgeSyncConfig, BridgeSyncProvider,
 };
-
-mirror_enum! {
-    BridgeDefaultImportMetadataSource = bae_core::config::DefaultImportMetadataSource,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: { FindOnline, FileTags, None },
-}
 
 mirror_enum! {
     BridgeSourceAvailability = bae_core::import::SourceAvailability,
@@ -219,7 +212,7 @@ impl BridgeConfig {
             max_concurrent_uploads,
             max_concurrent_downloads,
             identify_automatically,
-            default_import_metadata_source,
+            prefill_with_tags,
             // Read through `Config::metadata_sources()` above, which folds this
             // raw preference together with each source's credentials into the
             // one answer a surface renders.
@@ -249,9 +242,7 @@ impl BridgeConfig {
             max_concurrent_uploads: max_concurrent_uploads.get(),
             max_concurrent_downloads: max_concurrent_downloads.get(),
             identify_automatically: *identify_automatically,
-            default_import_metadata_source: BridgeDefaultImportMetadataSource::from_core(
-                *default_import_metadata_source,
-            ),
+            prefill_with_tags: *prefill_with_tags,
             metadata_sources,
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,

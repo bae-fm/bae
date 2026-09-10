@@ -822,10 +822,10 @@ async fn migration_five_enforces_complete_codec_specific_audio_facts() {
                      VALUES ('/music', 1, 'complete');
                  INSERT INTO scan_candidate (
                      watched_folder_path, path, generation, kind, name, display_path,
-                     file_root, scope, content_hash, initial_metadata_source
+                     file_root, scope, content_hash
                  ) VALUES (
                      '/music', '/music/release', 1, 'valid', 'release', 'release',
-                     '/music/release', 'direct', 'candidate-hash', 'none'
+                     '/music/release', 'direct', 'candidate-hash'
                  );",
             )?;
 

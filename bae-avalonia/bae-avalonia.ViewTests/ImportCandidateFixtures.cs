@@ -82,7 +82,6 @@ internal static class ImportCandidateFixtures
                 ? BridgeMetadataAuthor.Nobody
                 : BridgeMetadataAuthor.User,
             MetadataRevision: metadataRevision,
-            InitialMetadataSource: BridgeDefaultImportMetadataSource.None,
             Mapping: new BridgeMappingTable(
                 Array.Empty<BridgeMappingImage>(),
                 new[]

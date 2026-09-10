@@ -85,8 +85,9 @@ impl LibraryManager {
     }
 
     pref_setter!(
-        set_default_import_metadata_source,
-        default_import_metadata_source: crate::config::DefaultImportMetadataSource
+        /// Whether a candidate's draft is created from the folder's file tags.
+        set_prefill_with_tags,
+        prefill_with_tags: bool
     );
 
     pref_setter!(

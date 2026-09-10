@@ -77,7 +77,7 @@
                         maxConcurrentUploads: 3,
                         maxConcurrentDownloads: 3,
                         identifyAutomatically: true,
-                        defaultImportMetadataSource: .findOnline,
+                        prefillWithTags: true,
                         metadataSources: metadataSources(
                             musicBrainz: musicBrainz,
                             discogs: discogs

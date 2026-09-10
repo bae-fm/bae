@@ -402,10 +402,6 @@ internal sealed partial class ImportStore : IDisposable
         {
             candidate.PreserveSessionState(existing);
         }
-        else
-        {
-            candidate.ResolveInitialMetadataPresentation();
-        }
         _candidates[key] = candidate;
         Changed?.Invoke();
     }

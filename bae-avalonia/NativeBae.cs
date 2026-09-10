@@ -586,9 +586,8 @@ internal static partial class NativeBae
     internal static string? SetIdentifyAutomatically(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetIdentifyAutomatically(enabled));
 
-    internal static string? SetDefaultImportMetadataSource(
-        AppHandle handle, BridgeDefaultImportMetadataSource source) =>
-        CaptureError(() => handle.SetDefaultImportMetadataSource(source));
+    internal static string? SetPrefillWithTags(AppHandle handle, bool enabled) =>
+        CaptureError(() => handle.SetPrefillWithTags(enabled));
 
     internal static string? SetMetadataSourceEnabled(
         AppHandle handle, BridgeMetadataSource source, bool enabled) =>

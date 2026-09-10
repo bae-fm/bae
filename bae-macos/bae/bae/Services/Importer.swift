@@ -99,8 +99,7 @@ private struct ImportOperations: Sendable {
     let mergeCandidateArtistIdentityConflict:
         @Sendable (String, String) async throws -> Void
     let setIdentifyAutomatically: @MainActor @Sendable (Bool) throws -> Void
-    let setDefaultMetadataSource:
-        @MainActor @Sendable (BridgeDefaultImportMetadataSource) throws -> Void
+    let setPrefillWithTags: @MainActor @Sendable (Bool) throws -> Void
     let setMetadataSourceEnabled:
         @MainActor @Sendable (BridgeMetadataSource, Bool) throws -> Void
 }
@@ -294,8 +293,8 @@ extension ImportOperations {
             setIdentifyAutomatically: {
                 try handle.setIdentifyAutomatically(enabled: $0)
             },
-            setDefaultMetadataSource: {
-                try handle.setDefaultImportMetadataSource(source: $0)
+            setPrefillWithTags: {
+                try handle.setPrefillWithTags(enabled: $0)
             },
             setMetadataSourceEnabled: {
                 try handle.setMetadataSourceEnabled(source: $0, enabled: $1)
@@ -449,12 +448,8 @@ final class Importer: Sendable, Observable {
             },
         setIdentifyAutomatically:
             @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
-        setDefaultMetadataSource:
-            @escaping @MainActor @Sendable (
-                BridgeDefaultImportMetadataSource
-            )
-            throws -> Void =
-            { _ in },
+        setPrefillWithTags:
+            @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
         setMetadataSourceEnabled:
             @escaping @MainActor @Sendable (
                 BridgeMetadataSource, Bool
@@ -501,7 +496,7 @@ final class Importer: Sendable, Observable {
                 throw StubError.notImplemented
             },
             setIdentifyAutomatically: setIdentifyAutomatically,
-            setDefaultMetadataSource: setDefaultMetadataSource,
+            setPrefillWithTags: setPrefillWithTags,
             setMetadataSourceEnabled: setMetadataSourceEnabled
         )
     }
@@ -783,10 +778,8 @@ extension Importer {
     }
 
     @MainActor
-    func setDefaultMetadataSource(
-        _ source: BridgeDefaultImportMetadataSource
-    ) throws {
-        try operations.setDefaultMetadataSource(source)
+    func setPrefillWithTags(_ enabled: Bool) throws {
+        try operations.setPrefillWithTags(enabled)
     }
 
     /// Ask, or stop asking, one metadata source — the same write behind the

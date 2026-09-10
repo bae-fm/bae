@@ -503,14 +503,12 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Keresés online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Próbáld újra beolvasni a jelöltet.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Általános</value></data>
-  <data name="settings.import.default_source" xml:space="preserve"><value>Alapértelmezett metaadatforrás</value></data>
-  <data name="settings.import.find_online" xml:space="preserve"><value>Keresés online</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Automatikus azonosítás</value></data>
-  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Az új jelöltek azonosítása felfedezésükkor, illetve a Keresés online megnyitásakor történik. Kikapcsolva az Azonosítás hivatkozás indít egy futtatást.</value></data>
+  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Előkitöltés a címkékből</value></data>
+  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Az új jelöltek a fájljaik címkéiből beolvasott piszkozattal indulnak.</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Az új jelöltek azonosítása a hozzáadásukkor történik.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Keresés itt: {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>A Keresés online az itt bejelölt forrásokat kérdezi le.</value></data>
-  <data name="settings.import.none" xml:space="preserve"><value>Nincs</value></data>
-  <data name="settings.import.online_lookup" xml:space="preserve"><value>Online keresés</value></data>
   <data name="action.clear" xml:space="preserve"><value>törlés</value></data>
   <data name="action.retry" xml:space="preserve"><value>újra</value></data>
   <data name="import.search.results_for" xml:space="preserve"><value>találatok erre: {query}</value></data>

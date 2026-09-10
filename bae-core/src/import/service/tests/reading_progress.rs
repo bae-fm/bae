@@ -7,6 +7,10 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
     } = setup_import_service().await;
     let (event_tx, _) = tokio::sync::broadcast::channel(1024);
     service.event_tx = event_tx;
+    // The import under test commits a draft it was handed, not one the folder's
+    // tags wrote: the pre-fill would give the candidate a File Tags draft whose
+    // stored reading this import is not carrying.
+    service.library_manager.set_prefill_with_tags(false).unwrap();
     let folder = tmp.path().join("reading-progress-candidate");
     std::fs::create_dir(&folder).unwrap();
     std::fs::write(folder.join("01-payload.bin"), vec![0x5a; 1024 * 1024]).unwrap();

@@ -311,6 +311,7 @@ impl CoordinatorHarness {
                 preparations: preparations.clone(),
                 clock: service.clock.clone(),
                 ids: service.ids.clone(),
+                file_tags: Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
                 folder_state_commit: folder_state_commit.clone(),
             },
             starter,
@@ -402,6 +403,7 @@ fn test_scan_services(
     preparations: &crate::import::CandidatePreparations,
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     folder_watcher: Arc<FolderWatcher>,
+    file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
 ) -> ScanServices {
     ScanServices::new(
         crate::import::ImportServices {
@@ -410,6 +412,7 @@ fn test_scan_services(
             preparations: preparations.clone(),
             clock: service.clock.clone(),
             ids: service.ids.clone(),
+            file_tags,
             folder_state_commit: Arc::new(tokio::sync::Mutex::new(())),
         },
         folder_watcher,
@@ -434,6 +437,20 @@ impl TestService {
         TestScan,
         broadcast::Receiver<crate::import::handle::ImportEvent>,
     ) {
+        self.scan_reading_tags_with(Arc::new(
+            crate::import::file_tag_snapshot::LoftyFileTagReader,
+        ))
+    }
+
+    /// The same scan, reading the folder's tags through `file_tags` — for the
+    /// tests that count what the pre-fill opens.
+    fn scan_reading_tags_with(
+        &self,
+        file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
+    ) -> (
+        TestScan,
+        broadcast::Receiver<crate::import::handle::ImportEvent>,
+    ) {
         let (event_tx, events) = broadcast::channel(256);
         let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
         let scan = TestScan {
@@ -442,6 +459,7 @@ impl TestService {
                 &self.preparations,
                 event_tx,
                 Arc::new(FolderWatcher::new(fs_tx)),
+                file_tags,
             ),
             cancellation: crate::import::folder_scanner::ScanCancellation::new(),
             _fs_rx: fs_rx,

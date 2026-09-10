@@ -634,10 +634,11 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
     );
 }
 
-/// A verdict never revises a person's pick, so it never takes their edits
-/// either — however different the release it would have picked.
+/// A verdict revises the draft it lands on whoever wrote it, so a person's
+/// pick and the fields they typed over it are replaced by the release the run
+/// settled on.
 #[tokio::test]
-async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
+async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     crate::import::CandidatePreparations::new(db.clone()).replace_metadata(
@@ -657,13 +658,13 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
-            metadata: crate::import::CandidateMetadataDraft {
+            metadata: Some(crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("Different album", "Different Artist"),
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("rel-1")),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
-            },
+            }),
         })
         .await
         .unwrap());
@@ -673,15 +674,14 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(state.metadata_provenance, Some(release_pick("rel-chosen")));
+    assert_eq!(state.metadata_provenance, Some(release_pick("rel-1")));
     assert_eq!(
         db.load_import_candidate_pane_rows(&hash)
             .await
             .unwrap()
             .draft
-            .pressing
-            .year,
-        "1991"
+            .album_title,
+        "Different album"
     );
 }
 
@@ -698,13 +698,13 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
-            metadata: crate::import::CandidateMetadataDraft {
+            metadata: Some(crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("First album", "Artist"),
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(first_pick.clone()),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
-            },
+            }),
         })
         .await
         .unwrap());
@@ -717,13 +717,13 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
-            metadata: crate::import::CandidateMetadataDraft {
+            metadata: Some(crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("Second album", "Different Artist"),
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("rel-second")),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
-            },
+            }),
         })
         .await
         .unwrap());

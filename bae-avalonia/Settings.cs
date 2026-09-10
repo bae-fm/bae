@@ -28,9 +28,9 @@ public sealed class Settings
     /// starts a run.</summary>
     internal bool IdentifyAutomatically { get; set; } = true;
 
-    /// <summary>The source applied to a newly discovered candidate.</summary>
-    internal BridgeDefaultImportMetadataSource DefaultImportMetadataSource { get; set; } =
-        BridgeDefaultImportMetadataSource.FindOnline;
+    /// <summary>Whether a newly added candidate's draft is created from the
+    /// folder's file tags, or starts blank.</summary>
+    internal bool PrefillWithTags { get; set; } = true;
 
     /// <summary>Which metadata sources Find online asks, one entry per source in
     /// core's order. Core folds the person's choice and the source's credentials

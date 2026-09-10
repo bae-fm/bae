@@ -347,15 +347,14 @@ pub(super) fn load_candidate_detail_on(
         .map(|state| state.lookup_choices.clone())
         .unwrap_or_default();
     let pane_rows = load_pane_rows_on(sql, &content_hash)?;
-    let (initial_metadata_source, metadata_revision) = sql.query_row(
-        "SELECT c.initial_metadata_source, s.metadata_revision \
+    let metadata_revision = sql.query_row(
+        "SELECT s.metadata_revision \
              FROM scan_candidate c JOIN import_candidate_state s \
                ON s.content_hash = c.content_hash \
              WHERE c.watched_folder_path = ? AND c.path = ?",
         params![candidate.watched_folder_path(), candidate.key()],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+        |row| row.get::<_, i64>(0),
     )?;
-    let initial_metadata_source = initial_metadata_source.parse().map_err(DbError::Message)?;
     let metadata_revision = u64::try_from(metadata_revision)
         .map_err(|_| DbError::Message("candidate metadata revision is negative".to_string()))?;
 
@@ -496,7 +495,6 @@ pub(super) fn load_candidate_detail_on(
             metadata_provenance: picked,
             metadata_author,
             metadata_revision,
-            initial_metadata_source,
             imported_release,
             release: pane.release,
             picked_library_status,

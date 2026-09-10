@@ -9,17 +9,15 @@ async fn a_verdict_that_picks_names_identification_as_the_author() {
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
-    let mut row = new_candidate_row(
-        &hash,
-        &host_root("/music/Some Album"),
-        &sample_verdict(),
-        2_700_000,
+    let row = concluding(
+        new_candidate_row(
+            &hash,
+            &host_root("/music/Some Album"),
+            &sample_verdict(),
+            2_700_000,
+        ),
+        "rel-1",
     );
-    row.metadata.provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
-        source: MetadataSource::MusicBrainz,
-        release_id: "rel-1".to_string(),
-        partners: Vec::new(),
-    });
     store_candidate_state(&db, &candidate, &row.folder_path).await;
 
     crate::import::CandidatePreparations::new(db.clone())
@@ -50,7 +48,7 @@ async fn a_verdict_that_picks_nothing_leaves_the_draft_unclaimed() {
         &sample_verdict(),
         2_700_000,
     );
-    assert!(row.metadata.provenance.is_none());
+    assert!(row.metadata.is_none(), "it settled on no release to write");
     store_candidate_state(&db, &candidate, &row.folder_path).await;
 
     crate::import::CandidatePreparations::new(db.clone())

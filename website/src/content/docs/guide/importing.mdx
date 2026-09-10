@@ -46,11 +46,11 @@ Three outcomes:
 
 The source browser shows the search form, identification progress, signals, and results together. Selecting a result keeps that row open with progress while bae fetches the full release, then applies it to the draft. The resulting card shows a MusicBrainz or Discogs source chip. You can reopen **Find online…** from the card menu and search again.
 
-Automatic identification uses this same path. The **Default metadata source** setting chooses what happens when a new candidate is discovered: **Find online**, **File tags**, or **None**. The **Default Find online mode** chooses **Automatic** or **Search manually**. Automatic starts evidence extraction, OCR, provider queries, and matching as soon as Find online opens; Search manually starts none of that work. File tags and None do not open Find online.
+Automatic identification uses this same path. Two import settings say what happens when a candidate is added, and neither one constrains the other. **Pre-fill with tags** creates the candidate's draft from its files' tags; with it off the draft starts blank. **Identify automatically** runs identification for every candidate that has no result for the files it has right now; with it off, you start each run yourself. A pre-filled draft is a starting point, not an answer, so it does not stop a run.
 
 ### File Tags
 
-File tags reads embedded audio tags and CUE metadata when the source is opened or configured as the default. Review the preview, then select **Apply** to replace the draft with that exact snapshot. Import fails before writing to the library if the candidate or observed audio files change after the preview.
+File tags reads embedded audio tags and CUE metadata when the source is opened, and when the pre-fill reads them as a candidate is added. Review the preview, then select **Apply** to replace the draft with that exact snapshot. Import fails before writing to the library if the candidate or observed audio files change after the preview.
 
 The editable card shows a quiet File tags chip after that snapshot is applied. A draft filled only by typing has no source chip.
 

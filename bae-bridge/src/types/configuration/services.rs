@@ -15,8 +15,9 @@ pub struct BridgeConfig {
     /// are identified as they are found, and opening Find online for a
     /// candidate starts its identification.
     pub identify_automatically: bool,
-    /// Which source is applied when an import candidate is first discovered.
-    pub default_import_metadata_source: BridgeDefaultImportMetadataSource,
+    /// Whether a newly discovered candidate's draft is created from the
+    /// folder's file tags, or starts blank.
+    pub prefill_with_tags: bool,
     /// Which metadata sources Find online asks, one entry per source in core's
     /// order — what the switches on the Find online header and in Settings
     /// render, those being two views of one setting. Core folds the person's
@@ -56,13 +57,6 @@ pub struct BridgeConfig {
     /// broken. Does not imply sync is working: runtime status lives in
     /// `BridgeSyncStatusSnapshot`, not config.
     pub sync: Option<BridgeSyncConfig>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeDefaultImportMetadataSource {
-    FindOnline,
-    FileTags,
-    None,
 }
 
 /// Whether Find online asks one source, and when it does not, why not. Mirrors

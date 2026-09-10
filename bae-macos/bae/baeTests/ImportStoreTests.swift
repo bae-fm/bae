@@ -244,7 +244,6 @@ private func detail(
         metadataProvenance: MappingFixtures.provenance,
         metadataAuthor: .user,
         metadataRevision: 1,
-        initialMetadataSource: .none,
         mapping: BridgeMappingTable(
             images: [],
             trackSections: [],

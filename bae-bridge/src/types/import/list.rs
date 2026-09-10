@@ -165,8 +165,6 @@ pub struct BridgeImportCandidateDetail {
     pub metadata_author: BridgeMetadataAuthor,
     /// Revision of the exact metadata draft and selected cover in this value.
     pub metadata_revision: u64,
-    /// Source policy captured when this candidate was first discovered.
-    pub initial_metadata_source: BridgeDefaultImportMetadataSource,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: BridgeMappingTable,

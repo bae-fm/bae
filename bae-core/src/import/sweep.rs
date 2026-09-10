@@ -24,10 +24,18 @@
 //! is written by the import handle, and writing it *clears* the verdict, which
 //! is what brings a re-bound candidate back to this sweep.
 //!
-//! **A candidate whose content hash already holds applied metadata provenance or a
-//! finished verdict is skipped.** A source-less draft and File Tags are complete metadata
-//! choices, not inputs to Lookup. A stored identify verdict is settled because the settle
-//! step and the verdict are written together.
+//! **A candidate with a finished result for the files it has right now is
+//! skipped, and nothing else is.** What the draft holds — a pre-fill from the
+//! folder's tags, a release a person chose, fields they typed — is not an
+//! answer to the question a run asks. A stored result is settled because the
+//! settle step and the result are written together, and files that change
+//! retire it.
+//!
+//! **A result changes the draft only when it found one release.** A run that
+//! settled on a release writes that release's draft over whatever stood. A run
+//! that settled on none — nothing found, several offered, a failure — stores
+//! its result and writes no draft: it says what the candidate is not, and a
+//! person's pre-fill, edits and pick are none of its business.
 //!
 //! **Provider failures are answers.** They are stored as failed verdicts and
 //! automatic passes leave them alone; only an explicit re-run replaces one.
@@ -724,7 +732,7 @@ async fn actionable_candidate(context: &SweepContext, key: &str) -> Option<Relea
 /// [`ImportServiceHandle::sweepable_candidate`]. A read that fails answers
 /// no candidate, and says so.
 async fn sweepable_candidate(context: &SweepContext, key: &str) -> Option<ReleaseCandidate> {
-    match context.import.sweepable_candidate(key).await {
+    match context.import.answerable_candidate(key).await {
         Ok(candidate) => candidate,
         Err(error) => {
             warn!("sweep: cannot read candidate {key} ({error}); treating it as not ours");

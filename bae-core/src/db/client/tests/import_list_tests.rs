@@ -21,33 +21,12 @@ mod dates;
 
 /// One scanned candidate under a fresh watched root.
 async fn scanned(db: &Database, root: &str, name: &str) -> FolderCandidate {
-    scanned_with_source(
-        db,
-        root,
-        name,
-        crate::config::DefaultImportMetadataSource::FindOnline,
-    )
-    .await
-}
-
-async fn scanned_with_source(
-    db: &Database,
-    root: &str,
-    name: &str,
-    source: crate::config::DefaultImportMetadataSource,
-) -> FolderCandidate {
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
     let candidate = candidate(root, name);
-    db.save_folder_scan_item_with_initial_source(
-        root,
-        generation,
-        &ScanItem::Valid(candidate.clone()),
-        source,
-        None,
-    )
-    .await
-    .unwrap();
+    db.save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone()))
+        .await
+        .unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
     candidate
 }
@@ -115,16 +94,7 @@ async fn save_verdict_with_ledger(
                 text_pool: Vec::new(),
                 durations: crate::import::probe::SourceDurations::totalling(1_000),
             },
-            metadata: {
-                let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
-                crate::import::CandidateMetadataDraft {
-                    draft: source_draft.draft,
-                    source_discogs_artist_ids: Default::default(),
-                    provenance: None,
-                    cover: None,
-                    assets: crate::import::CandidatePreparedAssets::default(),
-                }
-            },
+            metadata: None,
         })
         .await
         .unwrap());
@@ -171,40 +141,23 @@ fn rows(projection: &crate::import::ImportListProjection) -> Vec<crate::import::
         .collect()
 }
 
+/// The sweep is responsible for every valid candidate. What a candidate's
+/// draft holds is not a reason to leave it out: only a stored result for the
+/// files it has right now stops a run, and that is the plan's to read.
 #[tokio::test]
-async fn sweepable_candidates_are_valid_find_online_candidates() {
+async fn every_valid_candidate_is_sweepable() {
     let (db, tmp) = empty_db().await;
-    let online_root = tmp.path().join("online");
-    let tags_root = tmp.path().join("tags");
-    let none_root = tmp.path().join("none");
-    for root in [&online_root, &tags_root, &none_root] {
+    let first_root = tmp.path().join("first");
+    let second_root = tmp.path().join("second");
+    for root in [&first_root, &second_root] {
         std::fs::create_dir_all(root).unwrap();
     }
-    let online = scanned_with_source(
-        &db,
-        online_root.to_str().unwrap(),
-        "Online Candidate",
-        crate::config::DefaultImportMetadataSource::FindOnline,
-    )
-    .await;
-    scanned_with_source(
-        &db,
-        tags_root.to_str().unwrap(),
-        "Tags Candidate",
-        crate::config::DefaultImportMetadataSource::FileTags,
-    )
-    .await;
-    scanned_with_source(
-        &db,
-        none_root.to_str().unwrap(),
-        "Unseeded Candidate",
-        crate::config::DefaultImportMetadataSource::None,
-    )
-    .await;
+    let first = scanned(&db, first_root.to_str().unwrap(), "First Candidate").await;
+    let second = scanned(&db, second_root.to_str().unwrap(), "Second Candidate").await;
 
     let candidates = db.load_sweepable_candidates().await.unwrap();
 
-    assert_eq!(candidates, vec![online]);
+    assert_eq!(candidates, vec![first, second]);
 }
 
 /// A candidate the user picked a release for leads with that release as its
@@ -507,15 +460,9 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         ),
         role: FileRole::Artwork,
     });
-    db.save_folder_scan_item_with_initial_source(
-        &root,
-        generation,
-        &ScanItem::Valid(candidate.clone()),
-        crate::config::DefaultImportMetadataSource::FindOnline,
-        None,
-    )
-    .await
-    .unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
+        .await
+        .unwrap();
     db.finish_folder_scan(&root, generation, None)
         .await
         .unwrap();
@@ -571,15 +518,9 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .await
         .unwrap();
     let generation = db.begin_folder_scan(&root).await.unwrap();
-    db.save_folder_scan_item_with_initial_source(
-        &root,
-        generation,
-        &ScanItem::Valid(candidate.clone()),
-        crate::config::DefaultImportMetadataSource::None,
-        None,
-    )
-    .await
-    .unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
+        .await
+        .unwrap();
     db.finish_folder_scan(&root, generation, None)
         .await
         .unwrap();
@@ -606,15 +547,9 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .await
         .unwrap();
     let generation = db.begin_folder_scan(&root).await.unwrap();
-    db.save_folder_scan_item_with_initial_source(
-        &root,
-        generation,
-        &ScanItem::Valid(candidate),
-        crate::config::DefaultImportMetadataSource::None,
-        None,
-    )
-    .await
-    .unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate))
+        .await
+        .unwrap();
     db.finish_folder_scan(&root, generation, None)
         .await
         .unwrap();
@@ -648,15 +583,9 @@ async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
         ),
         role: FileRole::Artwork,
     });
-    db.save_folder_scan_item_with_initial_source(
-        &root,
-        generation,
-        &ScanItem::Valid(candidate.clone()),
-        crate::config::DefaultImportMetadataSource::None,
-        None,
-    )
-    .await
-    .unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
+        .await
+        .unwrap();
     db.finish_folder_scan(&root, generation, None)
         .await
         .unwrap();
@@ -721,13 +650,7 @@ async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
 #[tokio::test]
 async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
     let (db, _tmp, root) = watched_root().await;
-    let candidate = scanned_with_source(
-        &db,
-        &root,
-        "Album",
-        crate::config::DefaultImportMetadataSource::FileTags,
-    )
-    .await;
+    let candidate = scanned(&db, &root, "Album").await;
     let hash = candidate.files.content_hash();
     let draft = db
         .load_import_candidate_pane_rows(&hash)

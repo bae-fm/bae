@@ -105,6 +105,19 @@ fn sample_signals(probed_total_duration_ms: u64) -> crate::signals::Signals {
     }
 }
 
+/// The same row, concluding one release: what a run that settled writes, and
+/// the only shape that replaces the draft it lands on.
+fn concluding(mut row: NewImportCandidateVerdict, release_id: &str) -> NewImportCandidateVerdict {
+    row.metadata = Some(crate::import::CandidateMetadataDraft {
+        draft: candidate_draft("", ""),
+        source_discogs_artist_ids: Default::default(),
+        provenance: Some(release_pick(release_id)),
+        cover: None,
+        assets: crate::import::CandidatePreparedAssets::default(),
+    });
+    row
+}
+
 fn new_candidate_row(
     content_hash: &str,
     folder_path: &str,
@@ -116,13 +129,7 @@ fn new_candidate_row(
         folder_path: folder_path.to_string(),
         verdict: verdict.clone(),
         signals: sample_signals(probed_total_duration_ms),
-        metadata: crate::import::CandidateMetadataDraft {
-            draft: candidate_draft("", ""),
-            source_discogs_artist_ids: Default::default(),
-            provenance: None,
-            cover: None,
-            assets: crate::import::CandidatePreparedAssets::default(),
-        },
+        metadata: None,
     }
 }
 
@@ -432,24 +439,25 @@ fn found_nothing() -> TerminalVerdict {
     TerminalVerdict::NotFoundAnywhere { ledger: None }
 }
 
-/// A pick identification derived from its own single match belongs to that
-/// verdict. When a re-run settles on anything else, the pick goes with the
-/// verdict that made it — otherwise the candidate keeps naming a release it
-/// is no longer identified as, and an import would commit that release
-/// against a folder nothing now matches.
+/// A re-run that settles on no release replaces the result and nothing else.
+/// The draft it lands on stands whoever wrote it — an earlier run included —
+/// because "we looked again and found nothing" says what the candidate is not,
+/// and a release already named is not unmade by that.
 #[tokio::test]
-async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_made() {
+async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
     let (db, _tmp) = empty_db().await;
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
-    let mut settled = new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict(), 2_700_000);
-    settled.metadata.provenance = Some(release_pick("mb-rel-1"));
+    let settled = concluding(
+        new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict(), 2_700_000),
+        "mb-rel-1",
+    );
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&settled).await.unwrap();
 
     let mut re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing(), 2_700_000);
     re_run.candidate.metadata_revision = 1;
-    assert_eq!(re_run.metadata.provenance, None, "nothing was found to pick");
+    assert!(re_run.metadata.is_none(), "nothing was found to pick");
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&re_run).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
@@ -458,14 +466,14 @@ async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_
             .get(&hash)
             .expect("the row is still there")
             .metadata_provenance,
-        None,
-        "the pick the superseded verdict made must not outlive it"
+        Some(release_pick("mb-rel-1")),
+        "a run that concluded no release wrote no draft"
     );
 }
 
-/// A person's pick is not identification's to revise. A later run's signals
-/// turning up nothing says nothing about a release they chose by hand, so
-/// the choice stands and the pane reopens on it.
+/// A run that found nothing says what the candidate is not. That is no reason
+/// to unmake a release somebody chose, so the choice stands and the pane
+/// reopens on it.
 #[tokio::test]
 async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     let (db, _tmp) = empty_db().await;
@@ -494,7 +502,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
             .expect("the row is still there")
             .metadata_provenance,
         Some(release_pick("mb-rel-chosen")),
-        "a verdict must not unmake a choice a person made"
+        "a verdict that concluded no release must not unmake a choice a person made"
     );
 }
 
@@ -506,13 +514,17 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
-    let mut first = new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict(), 2_700_000);
-    first.metadata.provenance = Some(release_pick("mb-rel-first"));
+    let first = concluding(
+        new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict(), 2_700_000),
+        "mb-rel-first",
+    );
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&first).await.unwrap();
 
-    let mut second = new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict(), 2_700_000);
+    let mut second = concluding(
+        new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict(), 2_700_000),
+        "mb-rel-second",
+    );
     second.candidate.metadata_revision = 1;
-    second.metadata.provenance = Some(release_pick("mb-rel-second"));
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&second).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
@@ -538,8 +550,10 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
     let edits = crate::import::folder_scanner::CandidateFileEdits::default();
     store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
-    let mut settled = new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict(), 2_700_000);
-    settled.metadata.provenance = Some(release_pick("mb-rel-derived"));
+    let settled = concluding(
+        new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict(), 2_700_000),
+        "mb-rel-derived",
+    );
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&settled).await.unwrap();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(

@@ -90,24 +90,6 @@ public sealed class ImportCandidate
     internal string? FileTagsPreviewError { get; private set; }
     private object? _fileTagsPreviewSession;
 
-    internal void ResolveInitialMetadataPresentation() =>
-        MetadataPresentation = MetadataProvenance is not null
-            ? ImportMetadataPresentation.Draft
-            : Detail?.InitialMetadataSource switch
-            {
-                BridgeDefaultImportMetadataSource.FindOnline =>
-                    ImportMetadataPresentation.FindOnline,
-                BridgeDefaultImportMetadataSource.FileTags =>
-                    ImportMetadataPresentation.FileTags,
-                BridgeDefaultImportMetadataSource.None =>
-                    ImportMetadataPresentation.Draft,
-                null => ImportMetadataPresentation.Draft,
-                _ => throw new System.ArgumentOutOfRangeException(
-                    nameof(Detail.InitialMetadataSource),
-                    Detail.InitialMetadataSource,
-                    "Unknown default metadata source"),
-            };
-
     internal void PresentMetadata(ImportMetadataPresentation presentation) =>
         MetadataPresentation = presentation;
 

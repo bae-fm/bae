@@ -503,14 +503,12 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Nájsť online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Skúsiť kandidáta prečítať znova.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Všeobecné</value></data>
-  <data name="settings.import.default_source" xml:space="preserve"><value>Predvolený zdroj metadát</value></data>
-  <data name="settings.import.find_online" xml:space="preserve"><value>Nájsť online</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifikovať automaticky</value></data>
-  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Noví kandidáti sa identifikujú hneď po nájdení a pri otvorení funkcie Nájsť online. Keď je vypnutá, beh spustí odkaz Identifikovať.</value></data>
+  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Predvyplniť zo značiek</value></data>
+  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Noví kandidáti začínajú konceptom načítaným zo značiek ich súborov.</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Noví kandidáti sa identifikujú hneď po pridaní.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Hľadať v {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Nájsť online sa pýta zdrojov, ktoré sú zaškrtnuté tu.</value></data>
-  <data name="settings.import.none" xml:space="preserve"><value>Žiadny</value></data>
-  <data name="settings.import.online_lookup" xml:space="preserve"><value>Online vyhľadávanie</value></data>
   <data name="action.clear" xml:space="preserve"><value>vymazať</value></data>
   <data name="action.retry" xml:space="preserve"><value>skúsiť znova</value></data>
   <data name="import.search.results_for" xml:space="preserve"><value>výsledky pre {query}</value></data>

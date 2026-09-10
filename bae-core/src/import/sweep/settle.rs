@@ -25,19 +25,13 @@ async fn metadata_for_settled_lead(
     candidate: &ReleaseCandidate,
     durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
-) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
+) -> Result<Option<crate::import::CandidateMetadataDraft>, crate::import::ImportError> {
     match settled_lead {
-        SettledLead::NoExternalRelease => Ok(crate::import::CandidateMetadataDraft {
-            draft: candidate.blank_source().draft,
-            source_discogs_artist_ids: Default::default(),
-            provenance: None,
-            cover: None,
-            assets: crate::import::CandidatePreparedAssets::default(),
-        }),
+        SettledLead::NoExternalRelease => Ok(None),
         SettledLead::ExternalRelease {
             provenance,
             payloads,
-        } => {
+        } => Ok(Some(
             context
                 .import
                 .external_candidate_metadata(
@@ -47,8 +41,8 @@ async fn metadata_for_settled_lead(
                     provenance,
                     None,
                 )
-                .await
-        }
+                .await?,
+        )),
     }
 }
 
@@ -58,7 +52,7 @@ async fn metadata_or_failed_verdict(
     durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
     verdict: &mut TerminalVerdict,
-) -> crate::import::CandidateMetadataDraft {
+) -> Option<crate::import::CandidateMetadataDraft> {
     match metadata_for_settled_lead(context, candidate, durations, settled_lead).await {
         Ok(metadata) => metadata,
         Err(error) => {
@@ -96,13 +90,7 @@ async fn metadata_or_failed_verdict(
                 track_count,
                 ledger,
             };
-            crate::import::CandidateMetadataDraft {
-                draft: candidate.blank_source().draft,
-                source_discogs_artist_ids: Default::default(),
-                provenance: None,
-                cover: None,
-                assets: crate::import::CandidatePreparedAssets::default(),
-            }
+            None
         }
     }
 }
@@ -181,8 +169,11 @@ pub(super) async fn finish_candidate(
 async fn preserve_current_mapping_decisions(
     context: &SweepContext,
     candidate: &ReleaseCandidate,
-    metadata: &mut crate::import::CandidateMetadataDraft,
+    metadata: &mut Option<crate::import::CandidateMetadataDraft>,
 ) -> Result<(), crate::library::LibraryError> {
+    let Some(metadata) = metadata.as_mut() else {
+        return Ok(());
+    };
     let current = context
         .library_manager
         .load_import_candidate_preparation(&candidate.files().content_hash())
@@ -214,7 +205,7 @@ pub(super) async fn save(
     folder_path: &str,
     verdict: &TerminalVerdict,
     signals: crate::signals::Signals,
-    metadata: crate::import::CandidateMetadataDraft,
+    metadata: Option<crate::import::CandidateMetadataDraft>,
 ) -> FinishCandidateOutcome {
     if token.is_cancelled() {
         context.import.finish_identification_save(candidate_key, run);

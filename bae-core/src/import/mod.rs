@@ -19,6 +19,7 @@ desktop_only! {
     mod file_evidence;
     pub mod file_tag_mapper;
     pub(crate) mod file_tag_snapshot;
+    pub(crate) mod file_tags_seed;
     mod file_validation;
     pub mod folder_scanner;
     pub(crate) mod volume;
@@ -116,6 +117,10 @@ pub(crate) struct ImportServices {
     preparations: preparations::CandidatePreparations,
     clock: coven::ClockRef,
     ids: coven::IdRef,
+    /// What reads a folder's audio files for their embedded tags. Held here
+    /// rather than reached for, so a test can hand the scan a reader whose
+    /// answers — and whose count of calls — it decides.
+    file_tags: std::sync::Arc<dyn file_tag_snapshot::FileTagReader>,
     folder_state_commit: std::sync::Arc<tokio::sync::Mutex<()>>,
 }
 
@@ -134,6 +139,7 @@ impl ImportServices {
             preparations,
             clock,
             ids,
+            file_tags: std::sync::Arc::new(file_tag_snapshot::LoftyFileTagReader),
             folder_state_commit: std::sync::Arc::new(tokio::sync::Mutex::new(())),
         }
     }

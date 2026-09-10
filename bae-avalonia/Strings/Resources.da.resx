@@ -503,14 +503,12 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Slå op online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Prøv at læse kandidaten igen.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Generelt</value></data>
-  <data name="settings.import.default_source" xml:space="preserve"><value>Standardkilde til metadata</value></data>
-  <data name="settings.import.find_online" xml:space="preserve"><value>Slå op online</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identificer automatisk</value></data>
-  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nye kandidater identificeres, efterhånden som de findes, og når Slå op online åbnes. Når det er slået fra, starter linket Identificer en kørsel.</value></data>
+  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Udfyld på forhånd fra mærker</value></data>
+  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Nye kandidater starter med et udkast, der er læst fra deres filers mærker.</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nye kandidater identificeres, efterhånden som de tilføjes.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Søg på {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Slå op online spørger de kilder, der er markeret her.</value></data>
-  <data name="settings.import.none" xml:space="preserve"><value>Ingen</value></data>
-  <data name="settings.import.online_lookup" xml:space="preserve"><value>Onlineopslag</value></data>
   <data name="action.clear" xml:space="preserve"><value>ryd</value></data>
   <data name="action.retry" xml:space="preserve"><value>prøv igen</value></data>
   <data name="import.search.results_for" xml:space="preserve"><value>resultater for {query}</value></data>

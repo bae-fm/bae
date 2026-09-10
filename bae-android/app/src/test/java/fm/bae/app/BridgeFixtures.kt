@@ -7,7 +7,6 @@ import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
-import uniffi.bae_bridge.BridgeDefaultImportMetadataSource
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
@@ -272,7 +271,7 @@ object BridgeFixtures {
             maxConcurrentUploads = 3u,
             maxConcurrentDownloads = 3u,
             identifyAutomatically = true,
-            defaultImportMetadataSource = BridgeDefaultImportMetadataSource.FIND_ONLINE,
+            prefillWithTags = true,
             // Every source in core's order, matching this fixture's Discogs
             // state below: MusicBrainz is asked and, as the only source still
             // being asked, cannot be switched off; Discogs holds no key, so its

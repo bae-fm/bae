@@ -149,6 +149,22 @@ pub(crate) fn load_candidate_file_tag_snapshot(
         )));
     }
 
+    let snapshot = load_file_tag_snapshot(sql, watched_folder_path, candidate_path)?;
+
+    Ok(Some(DbCandidateFileTagSnapshot {
+        scan_generation: stored_candidate.generation,
+        candidate,
+        snapshot,
+    }))
+}
+
+/// The file-tag reading stored for one scanned candidate, whatever the scan
+/// row around it says. The candidate's own shape is the caller's to check.
+pub(crate) fn load_file_tag_snapshot(
+    sql: &(impl QueryOne + QueryRows),
+    watched_folder_path: &str,
+    candidate_path: &str,
+) -> Result<Option<FileTagSnapshot>, DbError> {
     let stored: Option<StoredFileTagSnapshotRow> = sql
         .query_row(
             "SELECT scan_generation, file_edit_revision, \
@@ -170,7 +186,7 @@ pub(crate) fn load_candidate_file_tag_snapshot(
             },
         )
         .optional()?;
-    let snapshot = stored
+    stored
         .map(|stored| {
                 let embedded_cover = match (
                     stored.embedded_cover.source_relative_path,
@@ -204,13 +220,7 @@ pub(crate) fn load_candidate_file_tag_snapshot(
                     embedded_cover,
                 })
             })
-        .transpose()?;
-
-    Ok(Some(DbCandidateFileTagSnapshot {
-        scan_generation: stored_candidate.generation,
-        candidate,
-        snapshot,
-    }))
+        .transpose()
 }
 
 fn load_file_tag_facts(

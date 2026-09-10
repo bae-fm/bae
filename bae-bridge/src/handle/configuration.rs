@@ -42,12 +42,8 @@ forward! { sync this => {
             .set_metadata_source_enabled(source.into_core(), enabled)?)
     }
 
-    fn set_default_import_metadata_source(
-        source: crate::types::BridgeDefaultImportMetadataSource,
-    ) -> Result<(), BridgeError> {
-        Ok(this
-            .services
-            .set_default_import_metadata_source(source.into_core())?)
+    fn set_prefill_with_tags(enabled: bool) -> Result<(), BridgeError> {
+        Ok(this.services.set_prefill_with_tags(enabled)?)
     }
 
     fn set_show_remaining_time(enabled: bool) -> Result<(), BridgeError> {

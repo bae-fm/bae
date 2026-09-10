@@ -603,10 +603,10 @@ fn load_sweepable_candidates_on(
     impl FnOnce() -> Result<Vec<crate::import::FolderCandidate>, DbError> + Send + 'static,
     DbError,
 > {
-    let online_candidates: HashSet<(String, String)> = sql
+    let sweepable: HashSet<(String, String)> = sql
         .query(
             "SELECT watched_folder_path, path FROM scan_candidate \
-             WHERE kind = 'valid' AND initial_metadata_source = 'find_online' \
+             WHERE kind = 'valid' \
                AND NOT EXISTS (SELECT 1 FROM candidate_combination_member WHERE candidate_key = path)",
             [],
             |row| Ok((row.get(0)?, row.get(1)?)),
@@ -646,9 +646,7 @@ fn load_sweepable_candidates_on(
                     continue;
                 };
                 let candidate_key = candidate.path.to_string_lossy().into_owned();
-                if !online_candidates
-                    .contains(&(candidate.watched_folder_path.clone(), candidate_key))
-                {
+                if !sweepable.contains(&(candidate.watched_folder_path.clone(), candidate_key)) {
                     continue;
                 }
                 let relative = crate::import::watched_folder::candidate_relative_path(

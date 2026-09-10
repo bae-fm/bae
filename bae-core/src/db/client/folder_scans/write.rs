@@ -131,6 +131,10 @@ pub(super) fn prune_other_generations(
 
 /// Stamp an existing candidate row with `generation`, leaving its content
 /// alone, so the completion prune counts it as seen by this scan.
+///
+/// The stored file-tag reading takes the same stamp: this scan read the very
+/// files that reading was taken from — that is what "leaving its content
+/// alone" means — so the reading is as current as the row is.
 pub(crate) fn touch_candidate(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -141,6 +145,11 @@ pub(crate) fn touch_candidate(
         "UPDATE scan_candidate SET generation = ? WHERE watched_folder_path = ? AND path = ?",
         params![generation, watched_folder_path, path],
     )?;
+    sql.execute(
+        "UPDATE scan_candidate_tag_snapshot SET scan_generation = ? \
+         WHERE watched_folder_path = ? AND candidate_path = ?",
+        params![generation, watched_folder_path, path],
+    )?;
     Ok(())
 }
 
@@ -149,7 +158,7 @@ pub(super) fn insert_item(
     watched_folder_path: &str,
     generation: i64,
     item: &ScanItem,
-    initial_metadata_source: crate::config::DefaultImportMetadataSource,
+    file_tags: Option<&crate::import::file_tags_seed::FileTagsSeed>,
 ) -> Result<(), DbError> {
     match item {
         ScanItem::Discovered(candidate) => insert_candidate(
@@ -158,7 +167,7 @@ pub(super) fn insert_item(
             generation,
             "tentative",
             candidate,
-            initial_metadata_source,
+            file_tags,
         ),
         ScanItem::Valid(candidate) => insert_candidate(
             sql,
@@ -166,7 +175,7 @@ pub(super) fn insert_item(
             generation,
             "valid",
             candidate,
-            initial_metadata_source,
+            file_tags,
         ),
         ScanItem::Invalid(candidate) => {
             insert_invalid(sql, watched_folder_path, generation, candidate)
@@ -183,15 +192,15 @@ fn insert_candidate(
     generation: i64,
     kind: &str,
     candidate: &FolderCandidate,
-    initial_metadata_source: crate::config::DefaultImportMetadataSource,
+    file_tags: Option<&crate::import::file_tags_seed::FileTagsSeed>,
 ) -> Result<(), DbError> {
     let path = candidate.path.to_string_lossy().into_owned();
     sql.execute(
         "INSERT INTO scan_candidate \
              (watched_folder_path, path, generation, kind, name, display_path, file_root, \
-              scope, content_hash, file_edit_revision, initial_metadata_source, \
+              scope, content_hash, file_edit_revision, \
               combine_ancestor_relative_path, invalid_reason, invalid_reason_path) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)",
         params![
             watched_folder_path,
             path,
@@ -206,21 +215,31 @@ fn insert_candidate(
                 candidate.file_edit_revision,
                 "a candidate's file edit revision"
             )?,
-            initial_metadata_source.as_str(),
             candidate
                 .combine_ancestor_key
                 .as_ref()
                 .map(|key| key.relative_folder_path.as_str()),
         ],
     )?;
-    ensure_candidate_state(
-        sql,
-        &path,
-        watched_folder_path,
-        &candidate.files,
-        &crate::import::pane::blank_candidate_source(&candidate.files),
-    )?;
+    let blank;
+    let seed = match file_tags {
+        Some(seed) => CandidateStateSeed::FileTags(seed),
+        None => {
+            blank = crate::import::pane::blank_candidate_source(&candidate.files);
+            CandidateStateSeed::Blank(&blank)
+        }
+    };
+    // The candidate's file rows first: a stored file-tag reading names the
+    // file every fact came from, and those rows are what it names.
     insert_candidate_files(sql, watched_folder_path, &path, &candidate.files)?;
+    ensure_candidate_state(sql, &path, watched_folder_path, &candidate.files, seed)?;
+    // The reading belongs to the scan row, not to the draft: rewriting the row
+    // takes the stored reading with it, and the draft it once seeded — a
+    // person's or the pre-fill's — still commits from one. So a seed always
+    // stores its reading, while the draft is seeded only where there is none.
+    if let Some(seed) = file_tags {
+        replace_candidate_file_tag_snapshot(sql, watched_folder_path, &path, &seed.snapshot)?;
+    }
     insert_resolved_boundaries(
         sql,
         watched_folder_path,
@@ -229,12 +248,23 @@ fn insert_candidate(
     )
 }
 
+/// What a candidate's draft is created from the first time its state row is
+/// written: nothing, or the folder's own file tags.
+pub(crate) enum CandidateStateSeed<'a> {
+    /// The source-less draft: as many track slots as the folder has audio
+    /// units, and no metadata on any of them.
+    Blank(&'a crate::import::pane::CandidateSourceDraft),
+    /// The folder read as its own files describe it, with the reading it was
+    /// projected from and the cover those tags embed.
+    FileTags(&'a crate::import::file_tags_seed::FileTagsSeed),
+}
+
 pub(crate) fn ensure_candidate_state(
     sql: &SqlContext<'_, '_>,
     path: &str,
     watched_folder_path: &str,
     files: &crate::import::folder_scanner::CategorizedFiles,
-    source_draft: &crate::import::pane::CandidateSourceDraft,
+    seed: CandidateStateSeed<'_>,
 ) -> Result<(), DbError> {
     let content_hash = files.content_hash();
     let created = sql.execute(
@@ -262,7 +292,19 @@ pub(crate) fn ensure_candidate_state(
         .optional()?
         .is_some();
     if !has_draft {
-        super::super::import_state::insert_draft(sql, &content_hash, &source_draft.draft)?;
+        match seed {
+            CandidateStateSeed::Blank(source) => {
+                super::super::import_state::insert_draft(sql, &content_hash, &source.draft)?;
+            }
+            CandidateStateSeed::FileTags(seed) => {
+                super::super::import_state::insert_file_tags_draft(
+                    sql,
+                    &content_hash,
+                    &seed.draft,
+                    seed.cover.as_ref(),
+                )?;
+            }
+        }
     }
     if created {
         sql.execute(
@@ -284,9 +326,9 @@ fn insert_invalid(
     sql.execute(
         "INSERT INTO scan_candidate \
              (watched_folder_path, path, generation, kind, name, display_path, file_root, \
-              scope, content_hash, file_edit_revision, initial_metadata_source, \
+              scope, content_hash, file_edit_revision, \
               combine_ancestor_relative_path, invalid_reason, invalid_reason_path) \
-         VALUES (?, ?, ?, 'invalid', ?, ?, NULL, NULL, NULL, 0, NULL, NULL, ?, ?)",
+         VALUES (?, ?, ?, 'invalid', ?, ?, NULL, NULL, NULL, 0, NULL, ?, ?)",
         params![
             watched_folder_path,
             path,

@@ -329,8 +329,6 @@ pub struct ImportCandidateDetailProjection {
     /// Who decided that identity: the person, identification, or nobody yet.
     pub metadata_author: crate::import::MetadataAuthor,
     pub metadata_revision: u64,
-    /// Source policy captured when this candidate was first discovered.
-    pub initial_metadata_source: crate::config::DefaultImportMetadataSource,
     /// The library release this candidate's bytes were imported as.
     pub imported_release: Option<ImportedRelease>,
     /// The picked release as its archived documents describe it. `None` with
@@ -364,11 +362,7 @@ impl ImportCandidateDetailProjection {
     /// a candidate nobody has touched.
     pub fn session_or_initial(&self) -> CandidateSession {
         self.session.clone().unwrap_or_else(|| {
-            CandidateSession::initial(
-                self.metadata_provenance.as_ref(),
-                self.answer.is_some(),
-                self.initial_metadata_source,
-            )
+            CandidateSession::initial(self.metadata_provenance.as_ref(), self.answer.is_some())
         })
     }
 
@@ -387,7 +381,6 @@ impl ImportCandidateDetailProjection {
             metadata_provenance,
             metadata_author,
             metadata_revision,
-            initial_metadata_source,
             imported_release,
             release,
             picked_library_status,
@@ -499,7 +492,6 @@ impl ImportCandidateDetailProjection {
             metadata_provenance,
             metadata_author,
             metadata_revision,
-            initial_metadata_source,
             mapping,
             cover,
             remote_covers,
@@ -536,7 +528,6 @@ pub struct ImportCandidateDetail {
     pub metadata_author: crate::import::MetadataAuthor,
     /// Revision of the exact metadata draft and selected cover in this value.
     pub metadata_revision: u64,
-    pub initial_metadata_source: crate::config::DefaultImportMetadataSource,
     pub mapping: MappingTable,
     pub cover: Option<CoverChoice>,
     pub remote_covers: Vec<RemoteCover>,

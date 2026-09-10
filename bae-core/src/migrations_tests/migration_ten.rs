@@ -23,12 +23,12 @@ async fn records_live_roots_and_removes_unowned_candidate_state() {
                             ('pruned-hash', 'release');
                  INSERT INTO scan_candidate (
                      watched_folder_path, path, generation, kind, name, display_path,
-                     file_root, scope, content_hash, initial_metadata_source
+                     file_root, scope, content_hash
                  ) VALUES
                      ('/first', '/first/release', 1, 'valid', 'release', 'release',
-                      '/first/release', 'direct', 'shared-hash', 'none'),
+                      '/first/release', 'direct', 'shared-hash'),
                      ('/second', '/second/release', 2, 'valid', 'release', 'release',
-                      '/second/release', 'direct', 'shared-hash', 'none');",
+                      '/second/release', 'direct', 'shared-hash');",
             )?;
             Ok(())
         })

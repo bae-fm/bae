@@ -108,39 +108,6 @@ pub enum ReplayGainMode {
     Album,
 }
 
-/// Which source a newly discovered import candidate starts from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum DefaultImportMetadataSource {
-    FindOnline,
-    FileTags,
-    None,
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl DefaultImportMetadataSource {
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::FindOnline => "find_online",
-            Self::FileTags => "file_tags",
-            Self::None => "none",
-        }
-    }
-}
-
-impl std::str::FromStr for DefaultImportMetadataSource {
-    type Err = String;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value {
-            "find_online" => Ok(Self::FindOnline),
-            "file_tags" => Ok(Self::FileTags),
-            "none" => Ok(Self::None),
-            other => Err(format!("unknown import metadata source: {other}")),
-        }
-    }
-}
-
 /// Which metadata sources this library asks. One flag per
 /// [`MetadataSource`](crate::import::MetadataSource), all on by default.
 ///
@@ -376,13 +343,13 @@ pub struct Preferences {
     /// and failing at play time. Rides the loudness decode, so it adds no work.
     /// Defaults to `true`.
     pub verify_decode_on_import: bool,
-    /// Whether identification starts on its own: the queue-wide sweep identifies
-    /// newly discovered Find online candidates, and opening Find online for a
-    /// candidate starts its identification. Defaults to `true`; off means a
-    /// person starts each run from the Find online page.
+    /// Whether identification starts on its own: the queue-wide sweep runs
+    /// every candidate that has no result for its current files. Defaults to
+    /// `true`; off means a person starts each run themselves.
     pub identify_automatically: bool,
-    /// Which source is applied when a candidate is first discovered.
-    pub default_import_metadata_source: DefaultImportMetadataSource,
+    /// Whether a candidate's draft is created from the folder's file tags.
+    /// Defaults to `true`; off means the draft starts blank.
+    pub prefill_with_tags: bool,
     /// Which metadata sources Find online asks — the automatic run, the typed
     /// search, and every retry. All on by default.
     pub metadata_sources: MetadataSourcePreferences,
@@ -414,7 +381,7 @@ impl Default for Preferences {
             library_full_width: false,
             verify_decode_on_import: true,
             identify_automatically: true,
-            default_import_metadata_source: DefaultImportMetadataSource::FindOnline,
+            prefill_with_tags: true,
             metadata_sources: MetadataSourcePreferences::default(),
             cast_enabled: false,
             mcp: McpConfig::disabled_default(),

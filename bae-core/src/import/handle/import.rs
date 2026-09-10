@@ -85,11 +85,8 @@ impl ImportServiceHandle {
         ),
         crate::import::ImportError,
     > {
-        self.file_tag_snapshot_with_reader(
-            candidate_key,
-            std::sync::Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
-        )
-        .await
+        self.file_tag_snapshot_with_reader(candidate_key, self.file_tags.clone())
+            .await
     }
 
     pub(super) async fn file_tag_snapshot_with_reader(

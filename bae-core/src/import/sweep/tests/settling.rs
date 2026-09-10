@@ -698,7 +698,11 @@ async fn two_distinct_pressings_do_not_settle() {
         matches.iter().all(|result| result.source_tracks.is_none()),
         "nothing was settled: {matches:?}"
     );
-    assert_eq!(row.metadata_provenance, None, "and no pick was stored");
+    assert_ne!(
+        row.metadata_author,
+        crate::import::MetadataAuthor::Identification,
+        "a run that settled on no release wrote no draft, so the candidate's own stands"
+    );
     assert_eq!(
         fixture.count_release_lookups("mb-two-1") + fixture.count_release_lookups("mb-two-2"),
         0,

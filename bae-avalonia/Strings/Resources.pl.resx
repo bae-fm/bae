@@ -476,14 +476,12 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Znajdź online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Spróbuj ponownie odczytać kandydata.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Ogólne</value></data>
-  <data name="settings.import.default_source" xml:space="preserve"><value>Domyślne źródło metadanych</value></data>
-  <data name="settings.import.find_online" xml:space="preserve"><value>Znajdź online</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identyfikuj automatycznie</value></data>
-  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nowi kandydaci są identyfikowani zaraz po wykryciu oraz przy otwarciu Znajdź online. Gdy opcja jest wyłączona, identyfikację uruchamia odnośnik Zidentyfikuj.</value></data>
+  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Wypełniaj wstępnie tagami</value></data>
+  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Nowi kandydaci zaczynają od szkicu odczytanego z tagów ich plików.</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nowi kandydaci są identyfikowani zaraz po dodaniu.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Szukaj w {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Znajdź online odpytuje źródła zaznaczone tutaj.</value></data>
-  <data name="settings.import.none" xml:space="preserve"><value>Brak</value></data>
-  <data name="settings.import.online_lookup" xml:space="preserve"><value>Wyszukiwanie online</value></data>
   <data name="action.clear" xml:space="preserve"><value>wyczyść</value></data>
   <data name="action.retry" xml:space="preserve"><value>ponów</value></data>
   <data name="import.search.results_for" xml:space="preserve"><value>wyniki dla {query}</value></data>

@@ -442,7 +442,6 @@ extension MappingFixtures {
         metadataProvenance: BridgeMetadataProvenance? = provenance,
         metadataAuthor: BridgeMetadataAuthor? = nil,
         metadataRevision: UInt64 = 1,
-        initialMetadataSource: BridgeDefaultImportMetadataSource = .none,
         failure: BridgeImportFailure? = nil,
         presentation: BridgeMetadataPresentation = .draft,
         candidateKey key: String = MappingFixtures.candidateKey,
@@ -494,7 +493,6 @@ extension MappingFixtures {
             metadataAuthor: metadataAuthor
                 ?? (metadataProvenance == nil ? .nobody : .user),
             metadataRevision: metadataRevision,
-            initialMetadataSource: initialMetadataSource,
             mapping: mapping
                 ?? BridgeMappingTable(
                     images: [],
@@ -566,7 +564,6 @@ extension MappingFixtures {
         mapping: BridgeMappingTable?,
         metadataProvenance: BridgeMetadataProvenance? = provenance,
         edit: BridgeRawReleaseEdit = albumEdit,
-        initialMetadataSource: BridgeDefaultImportMetadataSource = .none,
         presentation: BridgeMetadataPresentation = .draft
     ) -> ImportStore {
         let store = ImportStore()
@@ -576,7 +573,6 @@ extension MappingFixtures {
                 mapping: mapping,
                 edit: edit,
                 metadataProvenance: metadataProvenance,
-                initialMetadataSource: initialMetadataSource,
                 presentation: presentation
             )
         )

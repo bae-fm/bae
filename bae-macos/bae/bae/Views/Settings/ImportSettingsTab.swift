@@ -19,38 +19,33 @@ struct ImportSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Picker(
-                    "Default metadata source",
-                    selection: defaultMetadataSource
-                ) {
-                    Text("Find online")
-                        .tag(BridgeDefaultImportMetadataSource.findOnline)
-                    Text(coreString("ui.import.metadata.file_tags"))
-                        .tag(BridgeDefaultImportMetadataSource.fileTags)
-                    Text("None")
-                        .tag(BridgeDefaultImportMetadataSource.none)
-                }
+                Toggle("Pre-fill with tags", isOn: prefillWithTags)
+                Toggle("Identify automatically", isOn: identifyAutomatically)
             } header: {
                 Text("Metadata")
+            } footer: {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(
+                        "New candidates start from a draft read from their files' tags."
+                    )
+                    Text("New candidates are identified as they are added.")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Section {
-                Toggle("Identify automatically", isOn: identifyAutomatically)
                 ForEach(configStore.config.metadataSources, id: \.source) {
                     setting in
                     sourceToggle(setting)
                 }
             } header: {
-                Text("Online lookup")
+                Text("Sources")
             } footer: {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(
-                        "New candidates are identified as they are discovered, and when Find online opens. When off, the Identify link starts a run."
-                    )
-                    Text(
-                        "Find online asks the sources that are checked here. The same checkboxes are on the Find online header."
-                    )
-                }
+                Text(
+                    "Find online asks the sources that are checked here. The same checkboxes are on the Find online header."
+                )
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -124,14 +119,12 @@ struct ImportSettingsTab: View {
         )
     }
 
-    private var defaultMetadataSource:
-        Binding<BridgeDefaultImportMetadataSource>
-    {
+    private var prefillWithTags: Binding<Bool> {
         Binding(
-            get: { configStore.config.defaultImportMetadataSource },
-            set: { source in
+            get: { configStore.config.prefillWithTags },
+            set: { enabled in
                 do {
-                    try importer.setDefaultMetadataSource(source)
+                    try importer.setPrefillWithTags(enabled)
                 }
                 catch {
                     uiStore.showError(error)

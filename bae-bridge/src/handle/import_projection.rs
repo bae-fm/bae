@@ -512,7 +512,6 @@ impl crate::types::BridgeImportCandidateDetail {
             metadata_provenance,
             metadata_author,
             metadata_revision,
-            initial_metadata_source,
             mapping,
             cover,
             // Every cover the picker offers is already inside `release`, whose
@@ -548,9 +547,6 @@ impl crate::types::BridgeImportCandidateDetail {
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             metadata_author: crate::types::BridgeMetadataAuthor::from_core(metadata_author),
             metadata_revision,
-            initial_metadata_source: crate::types::BridgeDefaultImportMetadataSource::from_core(
-                initial_metadata_source,
-            ),
             mapping: crate::types::BridgeMappingTable::from_core(mapping),
             cover: cover.map(crate::types::BridgeCoverChoice::from_core),
             signals: signals.map(crate::types::BridgeSignals::from_core),

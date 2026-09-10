@@ -43,7 +43,7 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
                 folder_path: late.to_string_lossy().into_owned(),
                 verdict: TerminalVerdict::NotFoundAnywhere { ledger: None },
                 signals: settled_signals(Default::default()),
-                metadata: blank_metadata_for_dir(&late),
+                metadata: None,
             })
             .await
             .unwrap()

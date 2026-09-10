@@ -41,11 +41,11 @@ impl CandidatePreparations {
     /// the candidate row; a verdict lands on that row, so it cannot recreate
     /// a candidate removed while identification ran.
     ///
-    /// A pick identification made belongs to the verdict that made it, so
-    /// this write replaces it — with the new verdict's own conclusion, or
-    /// with nothing when it concluded none. A pick a person made is theirs
-    /// and is left exactly as it is: a run whose signals turn up nothing says
-    /// nothing about a release they chose.
+    /// A run that settled on one release replaces the draft this write lands
+    /// on, whatever it held and whoever wrote it. A run that settled on no
+    /// release — nothing found, several offered, a failure — stores its
+    /// result and leaves the draft exactly as it is: it says what the
+    /// candidate is not, which is no reason to unmake anyone's work.
     ///
     /// `false` when the row has moved past the file decisions or the draft
     /// this verdict was derived from, or when it names a candidate no row
@@ -76,12 +76,9 @@ impl CandidatePreparations {
             identified_at: self.database.now(),
         });
         prep.signals = Some(verdict.signals.clone());
-        if prep.author != crate::import::MetadataAuthor::User {
-            prep.author = match verdict.metadata.provenance {
-                Some(_) => crate::import::MetadataAuthor::Identification,
-                None => crate::import::MetadataAuthor::Nobody,
-            };
-            prep.metadata = verdict.metadata.clone();
+        if let Some(metadata) = &verdict.metadata {
+            prep.author = crate::import::MetadataAuthor::Identification;
+            prep.metadata = metadata.clone();
             prep.assets_prepared = true;
             prep.metadata_revision += 1;
         }
@@ -246,6 +243,44 @@ impl CandidatePreparations {
             watched_folder_path: watched_folder_path.to_string(),
             candidate_path: folder_path.to_string(),
         };
+        self.apply_metadata(prep, Some(scanned), folder_path, metadata.clone(), None)
+            .await
+    }
+
+    /// A source projection becomes the candidate's metadata, and — where the
+    /// candidate has no result yet — `settled_by_choice` becomes its result,
+    /// in the same write.
+    ///
+    /// A release a person chose is an answer about the candidate exactly as a
+    /// run's is, so it is stored where a run's is. That is what keeps the queue
+    /// sweep from asking a question the person has already answered: the sweep
+    /// reads results and knows nothing about who reached them. A run that has
+    /// already answered keeps its own result — that is the record of what it
+    /// found, and the choice does not unmake it. The read and the write share
+    /// this load, so nothing can land a result in between.
+    pub(crate) async fn apply_source_as_result(
+        &self,
+        watched_folder_path: &str,
+        read: &CandidateAsRead,
+        folder_path: &str,
+        metadata: &crate::import::CandidateMetadataDraft,
+        settled_by_choice: crate::identify::TerminalVerdict,
+    ) -> Result<u64, LibraryError> {
+        let mut prep = self.loaded_at(read).await?;
+        let scanned = ScannedCandidateKey {
+            watched_folder_path: watched_folder_path.to_string(),
+            candidate_path: folder_path.to_string(),
+        };
+        if prep.identification.is_none() {
+            prep.identification = Some(DbCandidateIdentifyResult {
+                probed_total_duration_ms: prep
+                    .signals
+                    .as_ref()
+                    .map_or(0, |signals| signals.probed_total_duration_ms()),
+                verdict: settled_by_choice,
+                identified_at: self.database.now(),
+            });
+        }
         self.apply_metadata(prep, Some(scanned), folder_path, metadata.clone(), None)
             .await
     }

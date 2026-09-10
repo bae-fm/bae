@@ -24,11 +24,12 @@ public struct Config: Equatable {
     /// reads them here and writes through the bridge setters.
     public let maxConcurrentUploads: UInt32
     public let maxConcurrentDownloads: UInt32
-    /// Whether identification starts on its own: newly discovered candidates are
-    /// identified as they are found, and opening Find online starts a run.
+    /// Whether identification starts on its own: a newly added candidate is
+    /// identified as it arrives.
     public let identifyAutomatically: Bool
-    /// Which source a newly discovered candidate starts with.
-    public let defaultImportMetadataSource: BridgeDefaultImportMetadataSource
+    /// Whether a newly added candidate's draft is created from the folder's
+    /// file tags, or starts blank.
+    public let prefillWithTags: Bool
     /// Which metadata sources Find online asks, one entry per source in core's
     /// order. Core folds the person's choice and the source's credentials into
     /// one availability, so the switches on the Find online header and in
@@ -69,7 +70,7 @@ public struct Config: Equatable {
         maxConcurrentUploads = bridge.maxConcurrentUploads
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         identifyAutomatically = bridge.identifyAutomatically
-        defaultImportMetadataSource = bridge.defaultImportMetadataSource
+        prefillWithTags = bridge.prefillWithTags
         metadataSources = bridge.metadataSources
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth

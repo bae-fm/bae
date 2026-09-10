@@ -7,7 +7,6 @@
 //! with the rest of the detail. Only what has no meaning past the moment stays
 //! in the view: which field has the keyboard, which popover is open.
 
-use crate::config::DefaultImportMetadataSource;
 use crate::import::MetadataProvenance;
 
 /// Which surface the pane's metadata slot shows: the draft, or one of the
@@ -51,23 +50,14 @@ pub struct CandidateSession {
 }
 
 impl CandidateSession {
-    /// The pane a candidate opens on before anyone has touched it: the draft
-    /// once metadata has been chosen; Find online while identification has an
-    /// answer nobody has acted on, since that is where the answer is; else the
-    /// browser the default source names, with an empty form.
-    pub fn initial(
-        provenance: Option<&MetadataProvenance>,
-        has_verdict: bool,
-        initial_source: DefaultImportMetadataSource,
-    ) -> Self {
-        let presentation = match (provenance, has_verdict, initial_source) {
-            (Some(_), _, _) => MetadataPresentation::Draft,
-            (None, true, _) => MetadataPresentation::FindOnline,
-            (None, false, DefaultImportMetadataSource::None) => MetadataPresentation::Draft,
-            (None, false, DefaultImportMetadataSource::FindOnline) => {
-                MetadataPresentation::FindOnline
-            }
-            (None, false, DefaultImportMetadataSource::FileTags) => MetadataPresentation::FileTags,
+    /// The pane a candidate opens on before anyone has touched it: the draft,
+    /// which is where the candidate's metadata is; Find online while
+    /// identification has an answer nobody has acted on, since that is where
+    /// the answer is.
+    pub fn initial(provenance: Option<&MetadataProvenance>, has_verdict: bool) -> Self {
+        let presentation = match (provenance, has_verdict) {
+            (None, true) => MetadataPresentation::FindOnline,
+            (Some(_), _) | (None, false) => MetadataPresentation::Draft,
         };
         Self {
             presentation,
@@ -82,23 +72,16 @@ mod tests {
     use super::*;
     use crate::import::MetadataSource;
 
-    /// A candidate nobody has touched opens on the browser its default source
-    /// names, and on the draft once metadata has been chosen — whatever the
-    /// default.
+    /// A candidate nobody has touched opens on its draft — pre-filled from the
+    /// folder's tags or blank, that is where its metadata is.
     #[test]
-    fn a_fresh_pane_opens_where_the_default_source_points() {
+    fn a_fresh_pane_opens_on_the_draft() {
         assert_eq!(
-            CandidateSession::initial(None, false, DefaultImportMetadataSource::FindOnline)
-                .presentation,
-            MetadataPresentation::FindOnline
+            CandidateSession::initial(None, false).presentation,
+            MetadataPresentation::Draft
         );
         assert_eq!(
-            CandidateSession::initial(None, false, DefaultImportMetadataSource::FileTags)
-                .presentation,
-            MetadataPresentation::FileTags
-        );
-        assert_eq!(
-            CandidateSession::initial(None, false, DefaultImportMetadataSource::None).presentation,
+            CandidateSession::initial(Some(&MetadataProvenance::FileTags), false).presentation,
             MetadataPresentation::Draft
         );
         let picked = MetadataProvenance::ExternalRelease {
@@ -107,35 +90,18 @@ mod tests {
             partners: Vec::new(),
         };
         assert_eq!(
-            CandidateSession::initial(Some(&picked), true, DefaultImportMetadataSource::FindOnline)
-                .presentation,
-            MetadataPresentation::Draft
-        );
-        assert_eq!(
-            CandidateSession::initial(
-                Some(&MetadataProvenance::FileTags),
-                false,
-                DefaultImportMetadataSource::FindOnline
-            )
-            .presentation,
+            CandidateSession::initial(Some(&picked), true).presentation,
             MetadataPresentation::Draft
         );
     }
 
-    /// A verdict nobody has acted on — several matches, none, a failed lookup —
-    /// opens on Find online whatever the default source: the answer, and the
-    /// way to act on it, are there.
+    /// A verdict nobody has acted on — several matches, none, a failed run —
+    /// opens on Find online: the answer, and the way to act on it, are there.
     #[test]
     fn an_unanswered_verdict_opens_on_find_online() {
-        for source in [
-            DefaultImportMetadataSource::None,
-            DefaultImportMetadataSource::FindOnline,
-            DefaultImportMetadataSource::FileTags,
-        ] {
-            assert_eq!(
-                CandidateSession::initial(None, true, source).presentation,
-                MetadataPresentation::FindOnline
-            );
-        }
+        assert_eq!(
+            CandidateSession::initial(None, true).presentation,
+            MetadataPresentation::FindOnline
+        );
     }
 }

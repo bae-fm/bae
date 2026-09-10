@@ -19,11 +19,11 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
         ("B", Some(FolderDate::AddedToDirectory(200))),
         ("C", None),
     ] {
-        db.save_folder_scan_item_with_initial_source(
+        db.save_folder_scan_item_with_seed(
             &root,
             generation,
             &ScanItem::Valid(candidate(&root, name)),
-            crate::config::DefaultImportMetadataSource::FindOnline,
+            None,
             date,
         )
         .await
@@ -117,11 +117,11 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
     .await
     .unwrap();
     let generation = db.begin_folder_scan(&root).await.unwrap();
-    db.save_folder_scan_item_with_initial_source(
+    db.save_folder_scan_item_with_seed(
         &root,
         generation,
         &ScanItem::Valid(item),
-        crate::config::DefaultImportMetadataSource::FindOnline,
+        None,
         Some(FolderDate::Created(123)),
     )
     .await

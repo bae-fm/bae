@@ -104,6 +104,27 @@ pub enum TerminalVerdict {
     },
 }
 
+impl TerminalVerdict {
+    /// What a release a person chose settles: that release, matched by no
+    /// signal, with no run behind it. A pick is an answer about the candidate
+    /// like a run's is, so it is stored where a run's is — which is what keeps
+    /// the queue sweep from asking a question the person has already answered.
+    pub(crate) fn of_pick(result: MetadataResult, track_count: u32) -> Self {
+        Self::Found {
+            matches: vec![result],
+            track_count,
+            provenance: vec![LookupProvenance {
+                by_disc_id: false,
+                by_barcode: false,
+                by_catalog: false,
+            }],
+            narrowed_out: Vec::new(),
+            narrowed_out_provenance: Vec::new(),
+            ledger: None,
+        }
+    }
+}
+
 impl TryFrom<IdentifyState> for TerminalVerdict {
     /// The state handed back unchanged when it isn't terminal yet (`Idle` or
     /// `Triangulating`).
