@@ -54,8 +54,16 @@ strip = true
 split-debuginfo = "packed"
 debug = "line-tables-only"
 
+# Line tables are enough debuginfo for a debug build: backtraces and panics
+# keep their file:line, and every workspace rlib and test binary shrinks
+# several-fold. Full DWARF put a 0.6 GB bae-core rlib plus a test binary of
+# the same size into the shared target dir for every source revision every
+# agent built. Local-variable inspection under lldb is what this gives up.
+[profile.dev]
+debug = "line-tables-only"
+
 # Keep dependency implementations optimized in Debug builds while bae's
-# workspace crates retain debug assertions and full debuggability. Several
+# workspace crates retain debug assertions. Several
 # dependencies perform CPU-heavy work whose unoptimized implementations distort
 # app behavior: audio true-peak interpolation, retained replay parsing and
 # decompression, SQLite traversal, hashing, and signature verification.
