@@ -170,8 +170,16 @@ struct AlbumTrackListLayoutTests {
             )
         }
 
-        /// The x of the rightmost pixel drawn over the background across the
-        /// row's vertical middle, from the row's own leading edge to `toX`.
+        /// A pixel counts as ink when it differs from the background by more
+        /// than this. Glyphs stand far above it; a row's hover fill does not:
+        /// that fill is `Color.primary` at 5% opacity, bleeding 10pt past the
+        /// column edge, and on a CI runner whose cursor rests over the window
+        /// one row is always hovered. Measuring it as ink put that row's end
+        /// 10pt right of its neighbours'.
+        private static let inkThreshold: CGFloat = 0.2
+
+        /// The x of the rightmost glyph pixel across the row's vertical
+        /// middle, from the row's own leading edge to `toX`.
         private func rightmostInk(band: RowBand, toX: CGFloat) throws
             -> CGFloat
         {
@@ -189,7 +197,7 @@ struct AlbumTrackListLayoutTests {
                     guard let pixel = image.colorAt(x: x, y: y) else {
                         continue
                     }
-                    if distance(pixel, background) > 0.03 {
+                    if distance(pixel, background) > Self.inkThreshold {
                         rightmost = x
                         break
                     }
