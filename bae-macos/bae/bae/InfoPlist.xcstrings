@@ -23,6 +23,12 @@
             "value" : "bae"
           }
         },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae"
+          }
+        },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
@@ -78,6 +84,12 @@
           }
         },
         "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae"
+          }
+        },
+        "fi" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae"
@@ -170,6 +182,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae usa la cámara para escanear códigos al vincular o restaurar una biblioteca."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae käyttää kameraa koodien skannaamiseen, kun kirjastoon muodostetaan pariliitos tai se palautetaan."
           }
         },
         "fr" : {
@@ -337,6 +355,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae vincula dispositivos y busca altavoces y televisores en tu red local."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae muodostaa pariliitoksia ja löytää kaiuttimet ja televisiot paikallisverkostasi."
           }
         },
         "fr" : {

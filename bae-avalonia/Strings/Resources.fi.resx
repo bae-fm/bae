@@ -1,0 +1,544 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Hae</value></data>
+  <data name="toolbar.libraries" xml:space="preserve"><value>kirjastot</value></data>
+  <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>sekoita kirjasto</value></data>
+  <data name="toolbar.storage" xml:space="preserve"><value>tallennustila</value></data>
+  <data name="toolbar.settings" xml:space="preserve"><value>asetukset</value></data>
+  <data name="action.cancel" xml:space="preserve"><value>Kumoa</value></data>
+  <data name="action.close" xml:space="preserve"><value>Sulje</value></data>
+  <data name="action.delete" xml:space="preserve"><value>Poista</value></data>
+  <data name="action.import" xml:space="preserve"><value>Tuo</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
+  <data name="action.play" xml:space="preserve"><value>Toista</value></data>
+  <data name="action.save" xml:space="preserve"><value>Tallenna</value></data>
+  <data name="action.search" xml:space="preserve"><value>hae</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>Tämä poistaa julkaisun kirjastosta.</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>poistaminen ei onnistunut</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>poistetaanko julkaisu?</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>muokkaa</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>metatietojen muokkainta ei voitu ladata</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>Palauta lähteeseen</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>lähteeseen palauttaminen ei onnistunut</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>muokkaa metatietoja</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>tätä albumia ei voitu avata</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>tunnista uudelleen</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>Tunnista uudelleen</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>tunnista uudelleen</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>Julkaisu</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>sekoita</value></data>
+  <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
+  <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
+  <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
+  <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>pilvikirjautuminen epäonnistui</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>kirjaudutaan palveluun {provider}…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>pilvikirjautumista ei ole määritetty tässä versiossa (ei oauth-creds.json-tiedostoa)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>tämä versio ei tue synkronointia palvelun {provider} kanssa</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>vaihda kansi</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>etäkansia ei voitu hakea</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>haetaan kansia…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>tämän julkaisun kuvia ei voitu ladata</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Kansikuvaa ei ole saatavilla. Tuonti käyttää oletuskantta.</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>Etäkansia ei löytynyt</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>Valitse kansi tai jätä valitsematta, jolloin käytetään oletusta.</value></data>
+  <data name="cover.refresh" xml:space="preserve"><value>Päivitä</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>Julkaisun tiedostot</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>Etälähteet</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>Kansi</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>etäkansia ei voitu näyttää: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>takaisin</value></data>
+  <data name="action.copy" xml:space="preserve"><value>kopioi</value></data>
+  <data name="action.done" xml:space="preserve"><value>valmis</value></data>
+  <data name="action.scan" xml:space="preserve"><value>skannaa…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>toistovirhe</value></data>
+  <data name="error.title" xml:space="preserve"><value>virhe</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>galleriaa ei voitu ladata</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {löytyi (#)} other {löytyi (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>tunnistetaan…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>vain käsinhaku</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>ei löytynyt</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>tämä julkaisu on jo kirjastossasi</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>valitse kansio ja käy läpi</value></data>
+  <data name="import.complete" xml:space="preserve"><value>tuotu</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# raita} other {# raitaa}}</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>käy läpi ja tuo</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>pudota kansio tuotavaksi</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>pudotettua kohdetta ei voitu lukea</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>tuontivirhe</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>tuotavaa julkaisua ei voitu ladata</value></data>
+  <data name="import.failed" xml:space="preserve"><value>tuonti epäonnistui</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>esittäjä (käsinhaku)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>julkaisuja ei löytynyt</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>Tiedoston kesto ei vastaa julkaisun kestoa.</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Valitse kansio luettelosta, niin voit kytkeä sen julkaisuun.</value></data>
+  <data name="import.pane.details" xml:space="preserve"><value>Tiedot</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>tuodaan {percent} %</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>Aja uudelleen</value></data>
+  <data name="import.storage.pinned" xml:space="preserve"><value>Kiinnitetty</value></data>
+  <data name="import.storage.cloud" xml:space="preserve"><value>Pilvi</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>näytä kirjastossa</value></data>
+  <data name="join.title" xml:space="preserve"><value>liity kirjastoon</value></data>
+  <data name="join.pairing_intro" xml:space="preserve"><value>Skannaa pariliitoskoodi, joka näkyy laitteessa, joka on jo kirjastossasi.</value></data>
+  <data name="join.pairing_placeholder" xml:space="preserve"><value>Liitä pariliitoskoodi</value></data>
+  <data name="join.invalid_pairing" xml:space="preserve"><value>Tämä pariliitoskoodi ei kelpaa.</value></data>
+  <data name="join.pairing_for" xml:space="preserve"><value>{name} · {provider}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>liity</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>liitytään kirjastoon {name}…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>kirjastoon ei voitu liittyä</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  aktiivinen</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>uusi kirjasto</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>nimeä uudelleen</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>kirjastot</value></data>
+  <data name="library.empty" xml:space="preserve"><value>Ei albumeita</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>kirjastoa ei voitu ladata</value></data>
+  <data name="library.retry" xml:space="preserve"><value>Yritä uudelleen</value></data>
+  <data name="library.locked" xml:space="preserve"><value>kirjasto on lukittu</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>kirjastoa ei voitu avata</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>Tämä kirjasto on salattu, eikä sen avainta ole tällä laitteella. Avaa lukitus antamalla 64 merkin heksadesimaaliavain.</value></data>
+  <data name="library.unlock.confirm" xml:space="preserve"><value>Avaa lukitus</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64 merkin heksadesimaaliavain</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>avaa kirjaston lukitus</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>Lisää jonoon</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>Vaihda kansi…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>Poista…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>Vie…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Tallenna nimellä…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Tallenna nimellä</value></data>
+  <data name="menu.play" xml:space="preserve"><value>Toista</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>Toista seuraavaksi</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>Aseta ensisijaiseksi julkaisuksi</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>asetettu ensisijaiseksi julkaisuksi</value></data>
+  <data name="members.title" xml:space="preserve"><value>laitteet</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>tämä laite</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>omistaja</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>jäsen</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>seuraaja</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>laitteita ei voitu ladata</value></data>
+  <data name="members.add" xml:space="preserve"><value>lisää laite…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>poista</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>tämä laite menettää käyttöoikeuden, ja kirjaston avain vaihdetaan. vahvista napsauttamalla poista uudelleen.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>lisää laite</value></data>
+  <data name="members.pairing.scan_hint" xml:space="preserve"><value>Skannaa tämä koodi laitteella, joka liittyy kirjastoosi.</value></data>
+  <data name="members.pairing.confirm_title" xml:space="preserve"><value>hyväksytäänkö tämä laite?</value></data>
+  <data name="members.pairing.confirm_hint" xml:space="preserve"><value>se lisätään kirjastoosi ja voi synkronoida.</value></data>
+  <data name="members.pairing.add" xml:space="preserve"><value>hyväksy</value></data>
+  <data name="members.pairing.adding" xml:space="preserve"><value>hyväksytään laitetta…</value></data>
+  <data name="members.pairing.failed" xml:space="preserve"><value>tätä laitetta ei voitu hyväksyä</value></data>
+  <data name="members.pairing.waiting" xml:space="preserve"><value>Odotetaan laitetta…</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>siirry albumiin</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>poista</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>lähtevien kohteita ei voitu ladata</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>tauko</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>lähtevien kohteita ei voitu lukea</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>jatka</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>yritä nyt uudelleen</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>tyhjennä</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>tyhjennä toistetaan lähteestä</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>tyhjennä seuraavaksi</value></data>
+  <data name="queue.remove_item" xml:space="preserve"><value>Poista jonosta</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>Toistetaan lähteestä</value></data>
+  <data name="queue.section.your_library" xml:space="preserve"><value>Kirjastosi</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>Seuraavaksi</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>ota sekoitus pois käytöstä</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>sekoita</value></data>
+  <data name="queue.title" xml:space="preserve"><value>jono</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>palautuskoodi</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>liitä palautuskoodi</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>palauta</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>palautus epäonnistui</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>Palauta pilvestä</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>palauta pilvestä</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>virheellinen palautuskoodi</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>palautetaan…</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>käyttöavain</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>S3-säilö</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>päätepiste (valinnainen)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>avaimen etuliite (valinnainen)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>alue</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>salainen avain</value></data>
+  <data name="search.failed" xml:space="preserve"><value>Haku epäonnistui</value></data>
+  <data name="search.field.album" xml:space="preserve"><value>albumi</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>esittäjä</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>ei osumia</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs-valtuutus</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>tarkista uudelleen</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs hylkäsi tämän avaimen. Tarkista se ja tallenna uudelleen.</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>poista valtuutus</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>tallenna valtuutus</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>avainta ei voitu tallentaa. Jokin meni pieleen.</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs-API-valtuutus</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>Vahvistetaan…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Tauko puolten ja levyjen välissä</value></data>
+  <data name="settings.casting.label" xml:space="preserve"><value>Suoratoisto</value></data>
+  <data name="settings.casting.enable" xml:space="preserve"><value>Ota suoratoisto käyttöön</value></data>
+  <data name="settings.casting.footer" xml:space="preserve"><value>Toistaa verkkosi Cast-, AirPlay- ja UPnP-vastaanottimiin. Kun tämä on pois päältä, bae ei etsi laitteita.</value></data>
+  <data name="settings.casting.confirm_title" xml:space="preserve"><value>Otetaanko suoratoisto pois käytöstä?</value></data>
+  <data name="settings.casting.confirm_body" xml:space="preserve"><value>Tämä lopettaa suoratoiston kohteeseen {device}.</value></data>
+  <data name="settings.casting.confirm_turn_off" xml:space="preserve"><value>Ota pois käytöstä</value></data>
+  <data name="settings.library_label" xml:space="preserve"><value>Kirjasto: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>päivitykset</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>versio {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Tarkista päivitykset</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>tarkistetaan…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>ajan tasalla</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>ladataan… {percent} %</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>versio {version} on valmis. Päivitä käynnistämällä uudelleen</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>Käynnistä uudelleen nyt</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>päivityksiä ei voitu tarkistaa</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>lukitse kirjasto</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>palautus</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>palautuskoodisi palauttaa tämän kirjaston uudelle laitteelle, kun sinulla ei ole muuta laitetta hyväksymään sitä. kuka tahansa, jolla se on, pääsee kirjastoon täysin. Pidä se salassa.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>palautuskoodi</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>näytä palautuskoodi…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ei käytettävissä: onko synkronointi yhdistetty?)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>yhdistä S3</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>yhdistetään S3:een…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>selattava: tallennettu salaamattomana</value></data>
+  <data name="settings.storage.mode" xml:space="preserve"><value>tallennustila</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>läpinäkymätön: päästä päähän salattu</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>katkaise yhteys</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} vahvista napsauttamalla katkaise yhteys uudelleen.</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>synkronoi nyt</value></data>
+  <data name="settings.title" xml:space="preserve"><value>asetukset</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>jätä signaali pois</value></data>
+  <data name="signal.include" xml:space="preserve"><value>ota signaali mukaan</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>Viivakoodi</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>Luettelo</value></data>
+  <data name="signal.pick_catalog" xml:space="preserve"><value>Valitse haettava luettelonumero</value></data>
+  <data name="signal.catalog_stop_counting" xml:space="preserve"><value>Lakkaa laskemasta tätä luettelonumeroa</value></data>
+  <data name="signal.catalog_count_again" xml:space="preserve"><value>Laske tämä luettelonumero uudelleen</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>Levyn tunnus</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>esittäjä</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>lisää lajittelu</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>vaihda lajittelukenttä</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>poista lajittelu</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>lisäyspäivä</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>lajittele nousevasti</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>lajittele laskevasti</value></data>
+  <data name="sort.name" xml:space="preserve"><value>nimi</value></data>
+  <data name="sort.title" xml:space="preserve"><value>nimi</value></data>
+  <data name="sort.year" xml:space="preserve"><value>vuosi</value></data>
+  <data name="storage.action.move_to_cloud" xml:space="preserve"><value>Siirrä pilveen</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Kiinnitä</value></data>
+  <data name="storage.action.make_local" xml:space="preserve"><value>Tee paikalliseksi…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Irrota</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# tiedosto} other {# tiedostoa}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>tallennustilaa ei voitu ladata</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>tallennustilaa ei voitu lukea</value></data>
+  <data name="storage.state.cloud" xml:space="preserve"><value>Pilvi</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Kiinnitetty</value></data>
+  <data name="storage.state.local" xml:space="preserve"><value>Paikallinen</value></data>
+  <data name="storage.title" xml:space="preserve"><value>tallennustila</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>synkronointivirhe</value></data>
+  <data name="sync.reconnect" xml:space="preserve"><value>Yhdistä uudelleen</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Yritä uudelleen</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>synkronointi odottaa sinua</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>kirjaston muutos</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>jakamisen muutos</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>pilven siivous</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>synkronoitu {time}</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>synkronoidaan…</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>Vientiä ei voitu valmistella.</value></data>
+  <data name="welcome.subtitle" xml:space="preserve"><value>Aloita musiikkikirjastostasi.</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>Kirjastoa ei voitu luoda.</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>valitse kirjasto</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>Liity kirjastoon</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>Luo uusi kirjasto</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>kirjastosi</value></data>
+  <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>yhdistetty</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>tallennettu. Ei voitu vielä vahvistaa (ei verkkoyhteyttä). yritetään uudelleen.</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>alustetaan</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>Synkronointi: ei yhdistetty</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>valmis</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Synkronointi: {provider}{account}, {state}</value></data>
+  <data name="download.title" xml:space="preserve"><value>lataukset</value></data>
+  <data name="download.paused" xml:space="preserve"><value>tauolla</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>jonossa</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>ladataan</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>epäonnistui</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>Automaatio</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>Ota MCP-palvelin käyttöön</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>Portti</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>päivitä tila</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>kopioi valtuutus</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>vaihda valtuutus</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCP-palvelin: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP-palvelin pois käytöstä</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>Virheellinen MCP-palvelinmääritys</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP-valtuutus ei ole käytettävissä</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP-palvelinta ei voitu käynnistää</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP-palvelin pysähtyi</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>anna portti väliltä 1–65535</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP-tila ei ole käytettävissä</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP-valtuutus ei ole käytettävissä</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>valtuutus kopioitu</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>valtuutus vaihdettu ja kopioitu</value></data>
+  <data name="settings.subsonic.label" xml:space="preserve"><value>Subsonic</value></data>
+  <data name="settings.subsonic.enable" xml:space="preserve"><value>Ota Subsonic-palvelin käyttöön</value></data>
+  <data name="settings.subsonic.port" xml:space="preserve"><value>Portti</value></data>
+  <data name="settings.subsonic.username" xml:space="preserve"><value>Käyttäjätunnus</value></data>
+  <data name="settings.subsonic.allow_network" xml:space="preserve"><value>Salli yhteydet verkon muista laitteista</value></data>
+  <data name="settings.subsonic.password" xml:space="preserve"><value>Salasana</value></data>
+  <data name="settings.subsonic.save_password" xml:space="preserve"><value>tallenna salasana</value></data>
+  <data name="settings.subsonic.password_help" xml:space="preserve"><value>Salasana tallennetaan avainnippuun, ei asetustiedostoon. Asiakkaat tunnistautuvat käyttäjätunnuksella ja salasanalla.</value></data>
+  <data name="settings.subsonic.password_saved" xml:space="preserve"><value>salasana tallennettu</value></data>
+  <data name="settings.subsonic.refresh" xml:space="preserve"><value>päivitä tila</value></data>
+  <data name="settings.subsonic.invalid_port" xml:space="preserve"><value>anna portti väliltä 1–65535</value></data>
+  <data name="settings.subsonic.status.running" xml:space="preserve"><value>Subsonic-palvelin: {url}</value></data>
+  <data name="settings.subsonic.status.disabled" xml:space="preserve"><value>Subsonic-palvelin pois käytöstä</value></data>
+  <data name="settings.subsonic.status.invalid_config" xml:space="preserve"><value>Virheellinen Subsonic-palvelinmääritys</value></data>
+  <data name="settings.subsonic.status.credential_unavailable" xml:space="preserve"><value>Subsonic-tunnistetiedot eivät ole käytettävissä</value></data>
+  <data name="settings.subsonic.status.bind_failed" xml:space="preserve"><value>Subsonic-palvelinta ei voitu käynnistää</value></data>
+  <data name="settings.subsonic.status.server_failed" xml:space="preserve"><value>Subsonic-palvelin pysähtyi</value></data>
+  <data name="settings.subsonic.status_unavailable" xml:space="preserve"><value>Subsonic-tila ei ole käytettävissä</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>Albumit</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>Säveltäjät</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>Esittäjät</value></data>
+  <data name="library.empty_guidance" xml:space="preserve"><value>Tuo musiikkia päästäksesi alkuun</value></data>
+  <data name="section.library" xml:space="preserve"><value>Kirjasto</value></data>
+  <data name="section.import" xml:space="preserve"><value>Tuo</value></data>
+  <data name="toolbar.close_library" xml:space="preserve"><value>sulje kirjasto</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>Ei säveltäjiä</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>Ei esittäjiä</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>Albumit</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>Esittäjät</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>Raidat</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>Säveltäjät</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>Teokset</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>Julkaisut</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>Tekijät</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>Äänitteet</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>Säveltäjän tietoja ei voitu avata</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>Esittäjän tietoja ei voitu avata</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>Teoksen tietoja ei voitu avata</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} teosta</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} albumia</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>Raidat</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>Julkaisu</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>Muodot</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>Oletukset</value></data>
+  <data name="settings.formats.defaults_footer" xml:space="preserve"><value>Muoto, josta Tallenna nimellä… alkaa.</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>Lisäasetukset</value></data>
+  <data name="settings.formats.preset_name" xml:space="preserve"><value>Nimi</value></data>
+  <data name="settings.formats.preset_track" xml:space="preserve"><value>Raita</value></data>
+  <data name="settings.formats.preset_release" xml:space="preserve"><value>Julkaisu</value></data>
+  <data name="settings.formats.preset_pregap" xml:space="preserve"><value>Alkuhiljaisuus</value></data>
+  <data name="settings.formats.pregap.append_except_htoa" xml:space="preserve"><value>Liitä perään ilman HTOA:ta</value></data>
+  <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>Liitä perään HTOA mukaan lukien</value></data>
+  <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>Jätä pois</value></data>
+  <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>Yksi tiedosto + CUE</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>Tiedostojen nimeäminen</value></data>
+  <data name="settings.formats.add_token" xml:space="preserve"><value>Lisää:</value></data>
+  <data name="settings.formats.remove_token" xml:space="preserve"><value>Poista {token}</value></data>
+  <data name="settings.formats.token.title" xml:space="preserve"><value>Nimi</value></data>
+  <data name="settings.formats.token.artist" xml:space="preserve"><value>Esittäjä</value></data>
+  <data name="settings.formats.token.album" xml:space="preserve"><value>Albumi</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>Julkaisuvuosi</value></data>
+  <data name="settings.formats.token.track_number" xml:space="preserve"><value>Raita nro</value></data>
+  <data name="settings.formats.token.disc_number" xml:space="preserve"><value>Levy nro</value></data>
+  <data name="settings.formats.token.track_total" xml:space="preserve"><value>Raitoja yhteensä</value></data>
+  <data name="settings.formats.sample.title" xml:space="preserve"><value>Raidan nimi</value></data>
+  <data name="settings.formats.sample.artist" xml:space="preserve"><value>Esittäjän nimi</value></data>
+  <data name="settings.formats.sample.album" xml:space="preserve"><value>Albumin nimi</value></data>
+  <data name="settings.formats.preview" xml:space="preserve"><value>Esikatselu: {filename}</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Muodot näkyvät raitojen ja julkaisujen Tallenna nimellä… -valikossa.</value></data>
+  <data name="settings.formats.preset_format" xml:space="preserve"><value>Muoto</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>Lisää muoto</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>Poista muoto</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>Poistetaanko muoto ”{name}”?</value></data>
+  <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_aac" xml:space="preserve"><value>AAC {kbps} kbps</value></data>
+  <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>Näytä Tallenna nimellä… -valikossa kohteille</value></data>
+  <data name="settings.formats.embed_cover" xml:space="preserve"><value>Upota kansikuva</value></data>
+  <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>Bittisyvyys</value></data>
+  <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>Lähde</value></data>
+  <data name="settings.formats.bit_depth.bits16" xml:space="preserve"><value>16-bittinen</value></data>
+  <data name="settings.formats.bit_depth.bits24" xml:space="preserve"><value>24-bittinen</value></data>
+  <data name="settings.formats.bit_depth.bits32" xml:space="preserve"><value>32-bittinen</value></data>
+  <data name="settings.formats.bitrate" xml:space="preserve"><value>Bittinopeus</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>Lähetetään</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>Jonossa</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>Yritetään uudelleen</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>Valmis</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>Lähetetään ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>Jonossa ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>Yritetään uudelleen ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>albumin nimi</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>albumin esittäjät (pilkuin eroteltuina)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>vuosi</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>muoto</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>levy-yhtiö</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>luettelonumero</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>maa</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>viivakoodi</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>raidat</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>nimi</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>esittäjä</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>puoli</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>nro</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>albumin esittäjä</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>Ohita tunnistus</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>lisää kohtaan {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>jono on tyhjä</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>vedä albumeita tähän tai toista albumi</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Identiteetti päivitetty.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Haetaanko albumin, raitojen ja painoksen kentät juuri tunnistetusta lähteestä? Omat muutoksesi korvataan.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Päivitä uudesta lähteestä</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Säilytä nykyiset metatiedot</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Ohitettu</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Ohita</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Palauta tuotuihin</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Poista kansio</value></data>
+  <data name="import.list_menu" xml:space="preserve"><value>Lajittelu ja tarkkaillut kansiot</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Uusimmat ensin</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Vanhimmat ensin</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Kansion nimi (A–Ö)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Kansion nimi (Ö–A)</value></data>
+  <data name="import.tab.pending" xml:space="preserve"><value>Odottaa</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Valmis</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Tunnistetaan</value></data>
+  <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Siirry ehdokkaaseen, jota vielä tunnistetaan</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} valittu</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Valitse kaikki</value></data>
+  <data name="import.footbar.select_none" xml:space="preserve"><value>Poista valinnat</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>Tuo {count}</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Tuo silti</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Yritä uudelleen</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>Hae käsin</value></data>
+  <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Automaattisia osumia ei löytynyt</value></data>
+  <data name="import.search.signals" xml:space="preserve"><value>Signaalit</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Epäonnistui</value></data>
+  <data name="import.row.ready" xml:space="preserve"><value>Valmis</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Odottaa tunnistusta</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Tunnistetaan…</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Suodatin…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Lisää kansio…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Täällä ei ole vielä mitään</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Ei osumia</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# tuonti ei voinut käynnistyä} other {# tuontia ei voinut käynnistyä}}</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>näytä jäljellä oleva aika</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>näytä kulunut aika</value></data>
+  <data name="output.title" xml:space="preserve"><value>vie ja tallenna</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>viedään {percent} %</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>tallennetaan {percent} %</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>Kohdetta {name} ei voitu lukea: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>näytä Resurssienhallinnassa</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>kopioi tunnus</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>kirjaston tunnus kopioitu</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>kirjaston kansiota ei voitu avata</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Palauta käynnistyksessä</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Tallentaa nykyisen raidan, kohdan, jonon ja äänenvoimakkuuden lopetettaessa ja palauttaa ne seuraavalla käynnistyskerralla.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} / {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>kuvaa ei voitu ladata</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>edellinen kuva</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>seuraava kuva</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>Kaikki</value></data>
+  <data name="storage.tab.local" xml:space="preserve"><value>Paikallinen</value></data>
+  <data name="storage.tab.cloud" xml:space="preserve"><value>Pilvi</value></data>
+  <data name="storage.tab.sync_queue" xml:space="preserve"><value>Synkronointijono</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>Albumi</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>Esittäjä</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>Muoto</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>Tallennustila</value></data>
+  <data name="storage.concurrency.downloads" xml:space="preserve"><value>Samanaikaiset lataukset</value></data>
+  <data name="storage.concurrency.uploads" xml:space="preserve"><value>Samanaikaiset lähetykset</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>Tiedostot</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>Koko</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# julkaisu} other {# julkaisua}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Yhteensä: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Poista</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Poistaa tämän kirjaston ja sen ladatut tiedostot tältä tietokoneelta. Kirjastosi pilvessä säilyy koskemattomana. Voit palauttaa sen tänne myöhemmin.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Tätä kirjastoa ei ole synkronoitu. Sen poistaminen poistaa luettelon pysyvästi. Albumit, metatietomuutokset ja toistohistorian. Kansioissasi olevia äänitiedostoja ei poisteta.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>poista tämä kirjasto tältä tietokoneelta</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Kirjastosi pilvessä säilyy koskemattomana. Voit palauttaa sen myöhemmin tervetuloa-näkymästä.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Tätä kirjastoa ei ole koskaan synkronoitu. Sen luettelo poistetaan pysyvästi; kansioissasi olevia äänitiedostoja ei poisteta.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Osa muutoksista ei ehtinyt lähteä, ja ne menetetään.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Vahvista napsauttamalla painiketta uudelleen.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Kirjastoa ei voitu poistaa: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Kiinnitä</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Toista # albumi} other {Toista # albumia}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Toista # albumi seuraavaksi} other {Toista # albumia seuraavaksi}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Lisää # albumi jonoon} other {Lisää # albumia jonoon}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Kiinnitä # albumi} other {Kiinnitä # albumia}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>avaa ohjelmalla {name}</value></data>
+  <data name="nowplaying.pause" xml:space="preserve"><value>Tauko</value></data>
+  <data name="nowplaying.mute" xml:space="preserve"><value>Mykistä</value></data>
+  <data name="nowplaying.unmute" xml:space="preserve"><value>Poista mykistys</value></data>
+  <data name="nowplaying.previous" xml:space="preserve"><value>Edellinen raita</value></data>
+  <data name="nowplaying.next" xml:space="preserve"><value>Seuraava raita</value></data>
+  <data name="nowplaying.repeat_off" xml:space="preserve"><value>Uudelleentoisto: pois</value></data>
+  <data name="nowplaying.repeat_context" xml:space="preserve"><value>Uudelleentoisto: konteksti</value></data>
+  <data name="nowplaying.repeat_track" xml:space="preserve"><value>Uudelleentoisto: raita</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>Nyt toistetaan</value></data>
+  <data name="nowplaying.cast" xml:space="preserve"><value>Suoratoista</value></data>
+  <data name="nowplaying.casting_to" xml:space="preserve"><value>Suoratoistetaan kohteeseen {device}</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>Katkaise yhteys</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>Cast-laitteita ei löytynyt</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>komponenttigalleria</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>komponenttigalleria</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>Päivitä</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>Päivitetään…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>Yhdistä yhdeksi julkaisuksi</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>Säilytä erillisinä julkaisuina</value></data>
+  <data name="join.starting_pairing" xml:space="preserve"><value>Käynnistetään pariliitosta…</value></data>
+  <data name="join.waiting_approval" xml:space="preserve"><value>Odotetaan hyväksyntää…</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>Sormenjälki: {fingerprint}</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Anna käsin</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Albumin esittäjä</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>Kirjasto</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>Uusi</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Lisää</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Poista</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Albumin nimi</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Käytä</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Tyhjennä metatiedot</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>Ehdokkaan tiedostot ja kytkennät säilyvät ennallaan.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Tyhjennetäänkö metatiedot?</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Etsi verkosta</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Etsi verkosta…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Yritä lukea ehdokas uudelleen.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Yleiset</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Metatietojen oletuslähde</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Etsi verkosta</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>Tunnista automaattisesti</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Uudet ehdokkaat tunnistetaan sitä mukaa kun ne löytyvät, ja kun Etsi verkosta avataan. Kun tämä on pois päältä, Tunnista-linkki käynnistää ajon.</value></data>
+  <data name="settings.import.search_source" xml:space="preserve"><value>Hae palvelusta {source}</value></data>
+  <data name="settings.import.sources_help" xml:space="preserve"><value>Etsi verkosta kysyy tässä valituista lähteistä.</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Ei mitään</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>Verkkohaku</value></data>
+  <data name="action.clear" xml:space="preserve"><value>tyhjennä</value></data>
+  <data name="action.retry" xml:space="preserve"><value>yritä uudelleen</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>tulokset haulle {query}</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>haetaan palvelusta {source}…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} ei vastannut: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} ei ole määritetty</value></data>
+  <data name="appearance.title" xml:space="preserve"><value>Ulkoasu</value></data>
+  <data name="appearance.mode" xml:space="preserve"><value>Tila</value></data>
+  <data name="appearance.system" xml:space="preserve"><value>Järjestelmä</value></data>
+  <data name="appearance.light" xml:space="preserve"><value>Vaalea</value></data>
+  <data name="appearance.dark" xml:space="preserve"><value>Tumma</value></data>
+  <data name="appearance.accent" xml:space="preserve"><value>Korostusväri</value></data>
+  <data name="appearance.tone" xml:space="preserve"><value>Taustan sävy</value></data>
+  <data name="appearance.neutral" xml:space="preserve"><value>Neutraali</value></data>
+  <data name="appearance.slate" xml:space="preserve"><value>Liuskekivi</value></data>
+  <data name="appearance.plum" xml:space="preserve"><value>Luumu</value></data>
+  <data name="appearance.blue" xml:space="preserve"><value>Sininen</value></data>
+  <data name="appearance.indigo" xml:space="preserve"><value>Indigo</value></data>
+  <data name="appearance.purple" xml:space="preserve"><value>Violetti</value></data>
+  <data name="appearance.pink" xml:space="preserve"><value>Pinkki</value></data>
+  <data name="appearance.red" xml:space="preserve"><value>Punainen</value></data>
+  <data name="appearance.amber" xml:space="preserve"><value>Meripihka</value></data>
+  <data name="appearance.green" xml:space="preserve"><value>Vihreä</value></data>
+  <data name="appearance.teal" xml:space="preserve"><value>Turkoosi</value></data>
+  <data name="appearance.save_failed" xml:space="preserve"><value>Ulkoasua ei voitu tallentaa: {error}</value></data>
+  <data name="appearance.midnight" xml:space="preserve"><value>Keskiyö</value></data>
+  <data name="appearance.forest" xml:space="preserve"><value>Metsä</value></data>
+  <data name="appearance.sand" xml:space="preserve"><value>Hiekka</value></data>
+  <data name="cover.unlinked" xml:space="preserve"><value>Linkitä Discogs- tai MusicBrainz-julkaisu, niin voit selata sen kuvia.</value></data>
+  <data name="import.search.identification_results" xml:space="preserve"><value>Tunnistuksen tulokset</value></data>
+</root>

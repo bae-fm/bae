@@ -51,6 +51,12 @@
             "value": "Modo"
           }
         },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tila"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -215,6 +221,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sistema"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Järjestelmä"
           }
         },
         "fr": {
@@ -383,6 +395,12 @@
             "value": "Claro"
           }
         },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vaalea"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -547,6 +565,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Oscuro"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tumma"
           }
         },
         "fr": {
@@ -715,6 +739,12 @@
             "value": "Color de acento"
           }
         },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korostusväri"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -879,6 +909,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tono del fondo"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taustan sävy"
           }
         },
         "fr": {
@@ -1047,6 +1083,12 @@
             "value": "Neutro"
           }
         },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neutraali"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -1211,6 +1253,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pizarra"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liuskekivi"
           }
         },
         "fr": {
@@ -1379,6 +1427,12 @@
             "value": "Ciruela"
           }
         },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Luumu"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -1543,6 +1597,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Azul"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sininen"
           }
         },
         "fr": {
@@ -1711,6 +1771,12 @@
             "value": "Índigo"
           }
         },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indigo"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -1875,6 +1941,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Morado"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Violetti"
           }
         },
         "fr": {
@@ -2043,6 +2115,12 @@
             "value": "Rosa"
           }
         },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pinkki"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -2207,6 +2285,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rojo"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punainen"
           }
         },
         "fr": {
@@ -2375,6 +2459,12 @@
             "value": "Ámbar"
           }
         },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meripihka"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -2539,6 +2629,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verde"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vihreä"
           }
         },
         "fr": {
@@ -2707,6 +2803,12 @@
             "value": "Verde azulado"
           }
         },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turkoosi"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -2871,6 +2973,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Medianoche"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keskiyö"
           }
         },
         "fr": {
@@ -3039,6 +3147,12 @@
             "value": "Bosque"
           }
         },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metsä"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -3203,6 +3317,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Arena"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiekka"
           }
         },
         "fr": {

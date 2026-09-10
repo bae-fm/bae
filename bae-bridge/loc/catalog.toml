@@ -35,6 +35,7 @@ pt-PT = "Esta importação já está a decorrer e não pode continuar a ser edit
 sv = "Den här importen körs redan och kan inte längre redigeras."
 da = "Denne import kører allerede og kan ikke længere redigeres."
 nb = "Denne importen kjører allerede og kan ikke redigeres lenger."
+fi = "Tämä tuonti on jo käynnissä, eikä sitä voi enää muokata."
 
 [messages."core.import.error.candidate_already_imported"]
 comment = "Import edit rejected because this candidate has already completed importing."
@@ -67,6 +68,7 @@ pt-PT = "Esta importação já terminou e não pode continuar a ser editada."
 sv = "Den här importen är redan klar och kan inte längre redigeras."
 da = "Denne import er allerede afsluttet og kan ikke længere redigeres."
 nb = "Denne importen er allerede fullført og kan ikke redigeres lenger."
+fi = "Tämä tuonti on jo valmis, eikä sitä voi enää muokata."
 
 [messages."core.import.validation.empty_album_title"]
 comment = "Import edit: the album title field is blank."
@@ -99,6 +101,7 @@ pt-PT = "O título do álbum é obrigatório"
 sv = "Albumtitel krävs"
 da = "Albumtitel er påkrævet"
 nb = "Albumtittel er påkrevd"
+fi = "Albumin nimi vaaditaan"
 [messages."core.import.validation.no_album_artist"]
 comment = "Import edit: no album artist was entered."
 value = "Album must have at least one artist"
@@ -130,6 +133,7 @@ pt-PT = "O álbum tem de ter pelo menos um artista"
 sv = "Albumet måste ha minst en artist"
 da = "Albummet skal have mindst én kunstner"
 nb = "Albumet må ha minst én artist"
+fi = "Albumilla on oltava vähintään yksi esittäjä"
 [messages."core.import.validation.empty_artist_name"]
 comment = "Import edit: a new artist entry has a blank name."
 value = "Artist name is required"
@@ -161,6 +165,7 @@ pt-PT = "O nome do artista é obrigatório"
 sv = "Artistnamn krävs"
 da = "Kunstnernavn er påkrævet"
 nb = "Artistnavn er påkrevd"
+fi = "Esittäjän nimi vaaditaan"
 [messages."core.import.validation.invalid_year"]
 comment = "Import edit: the year field is not a number."
 value = "Year must be a number"
@@ -192,6 +197,7 @@ pt-PT = "O ano tem de ser um número"
 sv = "Året måste vara ett tal"
 da = "År skal være et tal"
 nb = "Året må være et tall"
+fi = "Vuoden on oltava numero"
 [messages."core.import.sheet.refused_codec"]
 comment = "Import file pane: a track sheet names an audio file bae can't carve tracks out of, because the codec can't back single-file CUE playback ({codec} is the codec name, e.g. MP3). The audio still imports, as one track."
 args = { codec = "Str" }
@@ -224,6 +230,7 @@ pt-PT = "O áudio {codec} não pode ser dividido por uma folha"
 sv = "{codec}-ljud kan inte delas upp med ett ark"
 da = "{codec}-lyd kan ikke deles op efter et ark"
 nb = "{codec}-lyd kan ikke deles opp etter et ark"
+fi = "Ääntä {codec} ei voi jakaa arkin perusteella"
 
 [messages."core.import.sheet.refused_unreadable"]
 comment = "Import file pane: an audio file cannot back a track sheet's binding because bae cannot read the file at all — a truncated download, or otherwise broken audio. Shown on the file in the sheet's audio picker."
@@ -256,6 +263,7 @@ pt-PT = "Não é possível ler este áudio"
 sv = "Det här ljudet kan inte läsas"
 da = "Denne lyd kan ikke læses"
 nb = "Denne lyden kan ikke leses"
+fi = "Tätä ääntä ei voi lukea"
 
 [messages."core.import.sheet.refused_timing"]
 comment = "Import file pane: an audio file cannot back a track sheet because the sheet names track boundaries beyond the measured end of the file. Shown on the file in the sheet's audio picker."
@@ -288,6 +296,7 @@ pt-PT = "Os tempos das faixas da folha estão fora deste áudio"
 sv = "Arkets spårtider ligger utanför det här ljudet"
 da = "Arkets sportider ligger uden for denne lyd"
 nb = "Sportidene i arket ligger utenfor denne lyden"
+fi = "Arkin raita-ajat ovat tämän äänen ulkopuolella"
 
 [messages."core.import.invalid.corrupt_audio"]
 comment = "Import scan: a folder's audio file is corrupt or zero-byte ({path} is the file path)."
@@ -321,6 +330,7 @@ pt-PT = "ficheiro de áudio danificado ou com zero bytes: {path}"
 sv = "skadad eller tom ljudfil: {path}"
 da = "beskadiget eller tom lydfil: {path}"
 nb = "skadet eller tom lydfil: {path}"
+fi = "vioittunut tai tyhjä äänitiedosto: {path}"
 [messages."core.import.invalid.corrupt_image"]
 comment = "Import scan: a folder's image is corrupt or zero-byte ({path} is the file path)."
 args = { path = "Str" }
@@ -353,6 +363,7 @@ pt-PT = "imagem danificada ou com zero bytes: {path}"
 sv = "skadad eller tom bild: {path}"
 da = "beskadiget eller tomt billede: {path}"
 nb = "skadet eller tomt bilde: {path}"
+fi = "vioittunut tai tyhjä kuva: {path}"
 [messages."core.import.invalid.no_valid_audio"]
 comment = "Import scan: the folder has no usable audio files."
 value = "no valid audio files"
@@ -388,6 +399,7 @@ pt-PT = "não há ficheiros de áudio válidos"
 sv = "inga giltiga ljudfiler"
 da = "ingen gyldige lydfiler"
 nb = "ingen gyldige lydfiler"
+fi = "ei kelvollisia äänitiedostoja"
 [messages."core.error.category.database"]
 comment = "Generic error line: a database operation failed."
 value = "Something went wrong reading your library."
@@ -419,6 +431,7 @@ pt-PT = "Algo correu mal ao ler a sua biblioteca."
 sv = "Något gick fel när ditt bibliotek lästes."
 da = "Noget gik galt, da dit bibliotek blev læst."
 nb = "Noe gikk galt da biblioteket ditt ble lest."
+fi = "Jokin meni pieleen kirjastoasi luettaessa."
 [messages."core.error.category.config"]
 comment = "Generic error line: a configuration or settings operation failed."
 value = "Something went wrong with your settings."
@@ -450,6 +463,7 @@ pt-PT = "Algo correu mal com as suas definições."
 sv = "Något gick fel med dina inställningar."
 da = "Noget gik galt med dine indstillinger."
 nb = "Noe gikk galt med innstillingene dine."
+fi = "Jokin meni pieleen asetuksissasi."
 [messages."core.error.sync_update_required"]
 comment = "Sync stopped because another device wrote a newer library schema."
 value = "Update the app to continue syncing."
@@ -481,6 +495,7 @@ pt-PT = "Atualize a app para continuar a sincronizar."
 sv = "Uppdatera appen för att fortsätta synkronisera."
 da = "Opdater appen for at fortsætte synkroniseringen."
 nb = "Oppdater appen for å fortsette synkroniseringen."
+fi = "Päivitä ohjelma jatkaaksesi synkronointia."
 
 [messages."core.error.category.internal"]
 comment = "Generic error line: an unexpected internal failure."
@@ -513,6 +528,7 @@ pt-PT = "Algo correu mal."
 sv = "Något gick fel."
 da = "Noget gik galt."
 nb = "Noe gikk galt."
+fi = "Jokin meni pieleen."
 [messages."core.error.category.import"]
 comment = "Generic error line: importing a release failed."
 value = "The import couldn't be completed."
@@ -544,6 +560,7 @@ pt-PT = "Não foi possível concluir a importação."
 sv = "Importen kunde inte slutföras."
 da = "Importen kunne ikke gennemføres."
 nb = "Importen kunne ikke fullføres."
+fi = "Tuontia ei voitu viedä loppuun."
 [messages."core.error.category.export"]
 comment = "Generic error line: exporting failed."
 value = "The export couldn't be completed."
@@ -577,6 +594,7 @@ pt-PT = "Não foi possível concluir a exportação."
 sv = "Exporten kunde inte slutföras."
 da = "Eksporten kunne ikke gennemføres."
 nb = "Eksporten kunne ikke fullføres."
+fi = "Vientiä ei voitu viedä loppuun."
 [messages."core.error.category.save"]
 comment = "Generic error line: a save (rendered output) failed."
 value = "The save couldn't be completed."
@@ -608,6 +626,7 @@ pt-PT = "Não foi possível concluir a gravação."
 sv = "Sparandet kunde inte slutföras."
 da = "Lagringen kunne ikke gennemføres."
 nb = "Lagringen kunne ikke fullføres."
+fi = "Tallennusta ei voitu viedä loppuun."
 
 [messages."core.error.cloud_setup.permission_denied"]
 comment = "Cloud setup failed because the credentials lack at least one required object permission."
@@ -640,6 +659,7 @@ pt-PT = "Permita que estas credenciais leiam, escrevam, listem e eliminem objeto
 sv = "Ge de här uppgifterna rätt att läsa, skriva, lista och radera objekt i den här bucketen."
 da = "Giv disse loginoplysninger ret til at læse, skrive, vise og slette objekter i denne bucket."
 nb = "Gi denne legitimasjonen rett til å lese, skrive, liste og slette objekter i denne bøtten."
+fi = "Salli näiden tunnistetietojen lukea, kirjoittaa, luetella ja poistaa objekteja tässä säilössä."
 
 [messages."core.error.cloud_setup.container_not_found"]
 comment = "Cloud setup failed because the named bucket was not visible to the provider request."
@@ -672,6 +692,7 @@ pt-PT = "Este contentor não foi encontrado. Verifique o nome e o acesso das cre
 sv = "Den här bucketen hittades inte. Kontrollera namnet och att uppgifterna har åtkomst till den."
 da = "Denne bucket blev ikke fundet. Kontroller navnet og loginoplysningernes adgang til den."
 nb = "Fant ikke denne bøtten. Kontroller navnet og legitimasjonens tilgang til den."
+fi = "Tätä säilöä ei löytynyt. Tarkista sen nimi ja tunnistetietojen käyttöoikeus siihen."
 
 [messages."core.error.cloud_setup.region_mismatch"]
 comment = "Cloud setup failed because the configured region or endpoint does not identify the bucket's location."
@@ -704,6 +725,7 @@ pt-PT = "A região ou o ponto final não correspondem a este contentor."
 sv = "Regionen eller slutpunkten stämmer inte med den här bucketen."
 da = "Regionen eller slutpunktet passer ikke til denne bucket."
 nb = "Regionen eller endepunktet passer ikke til denne bøtten."
+fi = "Alue tai päätepiste ei vastaa tätä säilöä."
 
 [messages."core.error.cloud_setup.quota_exceeded"]
 comment = "Cloud setup failed because the provider reports no available storage quota."
@@ -736,6 +758,7 @@ pt-PT = "Este armazenamento na nuvem não tem espaço disponível."
 sv = "Den här molnlagringen har inget ledigt utrymme."
 da = "Denne skylagring har ingen ledig plads."
 nb = "Denne skylagringen har ingen ledig plass."
+fi = "Tässä pilvitallennustilassa ei ole vapaata tilaa."
 
 [messages."core.error.cloud_setup.invalid_configuration"]
 comment = "Cloud setup failed because the provider settings do not form a valid location."
@@ -768,6 +791,7 @@ pt-PT = "Verifique o contentor, a região, o ponto final e o prefixo de chave."
 sv = "Kontrollera bucket, region, slutpunkt och nyckelprefix."
 da = "Kontroller bucket, region, slutpunkt og nøglepræfiks."
 nb = "Kontroller bøtte, region, endepunkt og nøkkelprefiks."
+fi = "Tarkista säilö, alue, päätepiste ja avaimen etuliite."
 
 [messages."core.error.cloud_setup.location_occupied"]
 comment = "Creating a library was refused because the bucket and key prefix already belong to another library."
@@ -800,6 +824,7 @@ pt-PT = "Este contentor e prefixo de chave já contêm outra biblioteca. Use um 
 sv = "Den här bucketen och nyckelprefixet innehåller redan ett annat bibliotek. Använd ett tomt nyckelprefix, eller anslut dig till eller återställ det biblioteket."
 da = "Denne bucket og dette nøglepræfiks indeholder allerede et andet bibliotek. Brug et tomt nøglepræfiks, eller deltag i eller gendan det bibliotek."
 nb = "Denne bøtten og dette nøkkelprefikset inneholder allerede et annet bibliotek. Bruk et tomt nøkkelprefiks, eller bli med i eller gjenopprett det biblioteket."
+fi = "Tämä säilö ja avaimen etuliite sisältävät jo toisen kirjaston. Käytä tyhjää avaimen etuliitettä tai liity kyseiseen kirjastoon tai palauta se."
 
 [messages."core.error.identity_missing"]
 comment = "The local library has no established device identity and cannot participate in sync."
@@ -832,6 +857,7 @@ pt-PT = "Esta biblioteca não tem identidade de dispositivo. Crie, adira ou rest
 sv = "Det här biblioteket har ingen enhetsidentitet. Skapa, anslut dig till eller återställ biblioteket igen."
 da = "Dette bibliotek har ingen enhedsidentitet. Opret, deltag i eller gendan biblioteket igen."
 nb = "Dette biblioteket har ingen enhetsidentitet. Opprett, bli med i eller gjenopprett biblioteket på nytt."
+fi = "Tällä kirjastolla ei ole laiteidentiteettiä. Luo kirjasto, liity siihen tai palauta se uudelleen."
 
 [messages."core.error.category.credentials"]
 comment = "Generic error line: the cloud provider rejected the credentials or the setup is misconfigured."
@@ -864,6 +890,7 @@ pt-PT = "Verifique as suas credenciais de nuvem e tente novamente."
 sv = "Kontrollera dina molnuppgifter och försök igen."
 da = "Kontroller dine skyloginoplysninger, og prøv igen."
 nb = "Kontroller skylegitimasjonen din, og prøv på nytt."
+fi = "Tarkista pilvitunnistetietosi ja yritä uudelleen."
 
 [messages."core.error.category.network"]
 comment = "Generic error line: the cloud backend or the network to it was unreachable."
@@ -896,6 +923,7 @@ pt-PT = "Não foi possível contactar a nuvem. Verifique a ligação e tente nov
 sv = "Kunde inte nå molnet. Kontrollera din anslutning och försök igen."
 da = "Skyen kunne ikke nås. Kontroller din forbindelse, og prøv igen."
 nb = "Kunne ikke nå skyen. Kontroller tilkoblingen din, og prøv på nytt."
+fi = "Pilveen ei saatu yhteyttä. Tarkista yhteytesi ja yritä uudelleen."
 
 [messages."core.error.category.keyring"]
 comment = "Generic error line: the OS keyring (secure credential store) couldn't be read or written."
@@ -928,6 +956,7 @@ pt-PT = "Não foi possível aceder ao armazenamento seguro do seu dispositivo."
 sv = "Kunde inte komma åt enhetens säkra lagring."
 da = "Der kunne ikke opnås adgang til enhedens sikre lagring."
 nb = "Fikk ikke tilgang til den sikre lagringen på enheten din."
+fi = "Laitteesi suojattuun tallennustilaan ei saatu yhteyttä."
 
 [messages."core.error.category.airplay_unsupported"]
 comment = "Error line shown in the device picker when an AirPlay receiver can't be driven — it demands a PIN, or offers only audio encryption the sender doesn't implement."
@@ -960,6 +989,7 @@ pt-PT = "Este recetor AirPlay não é suportado."
 sv = "Den här AirPlay-mottagaren stöds inte."
 da = "Denne AirPlay-modtager understøttes ikke."
 nb = "Denne AirPlay-mottakeren støttes ikke."
+fi = "Tätä AirPlay-vastaanotinta ei tueta."
 
 [messages."core.error.join.expired"]
 comment = "The device-pairing join ended because the pairing code passed its deadline; a retry needs a fresh code."
@@ -992,6 +1022,7 @@ pt-PT = "Este código de emparelhamento expirou. Mostre um código novo no outro
 sv = "Den här parkopplingskoden har gått ut. Visa en ny kod på den andra enheten och försök igen."
 da = "Denne parringskode er udløbet. Vis en ny kode på den anden enhed, og prøv igen."
 nb = "Denne paringskoden er utløpt. Vis en ny kode på den andre enheten, og prøv på nytt."
+fi = "Tämä pariliitoskoodi on vanhentunut. Näytä uusi koodi toisella laitteella ja yritä uudelleen."
 
 [messages."core.error.join.owner_offline"]
 comment = "The device-pairing join ended because the inviting device never took its next step; both devices must run the join at once."
@@ -1024,6 +1055,7 @@ pt-PT = "O outro dispositivo não está a executar esta adesão. Abra o bae ness
 sv = "Den andra enheten kör inte den här anslutningen. Öppna bae där, visa en parkopplingskod och försök igen."
 da = "Den anden enhed kører ikke denne tilslutning. Åbn bae på den, vis en parringskode, og prøv igen."
 nb = "Den andre enheten kjører ikke denne tilknytningen. Åpne bae på den, vis en paringskode, og prøv på nytt."
+fi = "Toinen laite ei suorita tätä liittymistä. Avaa bae siinä, näytä pariliitoskoodi ja yritä uudelleen."
 
 [messages."core.error.join.owner_ended"]
 comment = "The device-pairing join ended because the inviting device withdrew the attempt."
@@ -1056,6 +1088,7 @@ pt-PT = "O outro dispositivo terminou este emparelhamento. Se ainda quiser aderi
 sv = "Den andra enheten avslutade den här parkopplingen. Om du fortfarande vill ansluta dig, starta den därifrån igen."
 da = "Den anden enhed afsluttede denne parring. Hvis du stadig vil deltage, skal du starte den derfra igen."
 nb = "Den andre enheten avsluttet denne paringen. Vil du fortsatt bli med, må du starte den derfra på nytt."
+fi = "Toinen laite päätti tämän pariliitoksen. Jos haluat yhä liittyä, käynnistä se sieltä uudelleen."
 
 [messages."core.error.keyring.locked"]
 comment = "The OS keychain refused the read because the session is locked or the display is asleep; the key is present and the read succeeds again after unlock."
@@ -1088,6 +1121,7 @@ pt-PT = "O porta-chaves deste dispositivo está bloqueado. Desbloqueie o disposi
 sv = "Den här enhetens nyckelring är låst. Lås upp enheten så fortsätter bae där den slutade."
 da = "Denne enheds nøglering er låst. Lås enheden op, så fortsætter bae, hvor den slap."
 nb = "Nøkkelringen på denne enheten er låst. Lås opp enheten, så fortsetter bae der den slapp."
+fi = "Tämän laitteen avainnippu on lukittu. Avaa laitteen lukitus, niin bae jatkaa siitä, mihin se jäi."
 
 [messages."core.error.category.membership"]
 comment = "Generic error line: a library-sharing membership operation failed."
@@ -1120,6 +1154,7 @@ pt-PT = "Algo correu mal ao atualizar a partilha da biblioteca."
 sv = "Något gick fel när bibliotekets delning uppdaterades."
 da = "Noget gik galt, da bibliotekets deling blev opdateret."
 nb = "Noe gikk galt da delingen av biblioteket ble oppdatert."
+fi = "Jokin meni pieleen kirjaston jakamista päivitettäessä."
 [messages."core.error.not_found.library"]
 comment = "Error line: the requested library no longer exists."
 value = "That library could not be found."
@@ -1151,6 +1186,7 @@ pt-PT = "Não foi possível encontrar essa biblioteca."
 sv = "Det biblioteket kunde inte hittas."
 da = "Det bibliotek kunne ikke findes."
 nb = "Fant ikke det biblioteket."
+fi = "Kyseistä kirjastoa ei löytynyt."
 
 # Actionable playback failures: the user can do something to fix these.
 
@@ -1185,6 +1221,7 @@ pt-PT = "Volte a ligar-se para reproduzir esta edição. Ainda não está transf
 sv = "Anslut igen för att spela den här utgåvan. Den är inte hämtad till den här enheten än."
 da = "Forbind igen for at afspille denne udgivelse. Den er ikke hentet til denne enhed endnu."
 nb = "Koble til på nytt for å spille av denne utgivelsen. Den er ikke lastet ned til denne enheten ennå."
+fi = "Yhdistä uudelleen, jotta voit toistaa tämän julkaisun. Sitä ei ole vielä ladattu tälle laitteelle."
 [messages."core.playback.error.upload_pending"]
 comment = "Playback error: a track's cloud upload is still queued."
 value = "This release is still uploading. Try again when it finishes."
@@ -1216,6 +1253,7 @@ pt-PT = "Esta edição ainda está a ser enviada. Tente novamente quando termina
 sv = "Den här utgåvan laddas fortfarande upp. Försök igen när det är klart."
 da = "Denne udgivelse uploades stadig. Prøv igen, når det er færdigt."
 nb = "Denne utgivelsen lastes fortsatt opp. Prøv på nytt når den er ferdig."
+fi = "Tätä julkaisua lähetetään vielä. Yritä uudelleen, kun lähetys on valmis."
 [messages."core.playback.pause.side_ended.title"]
 comment = "Alert title shown when playback pauses after a physical side ends ({label} is the side letter A/B/C… computed by core)."
 args = { label = "Str" }
@@ -1248,6 +1286,7 @@ pt-PT = "O lado {label} terminou"
 sv = "Sida {label} är slut"
 da = "Side {label} er slut"
 nb = "Side {label} er slutt"
+fi = "Puoli {label} päättyi"
 [messages."core.playback.pause.side_ended.message.vinyl"]
 comment = "Alert body shown when playback pauses between vinyl sides."
 value = "Playback paused between sides. Turn the vinyl, then press Play."
@@ -1279,6 +1318,7 @@ pt-PT = "A reprodução está em pausa entre lados. Vire o vinil e prima Reprodu
 sv = "Uppspelningen pausades mellan sidorna. Vänd på vinylskivan och tryck på Spela."
 da = "Afspilningen er sat på pause mellem siderne. Vend vinylpladen, og tryk på Afspil."
 nb = "Avspillingen er satt på pause mellom sidene. Snu vinylplaten, og trykk på Spill av."
+fi = "Toisto on tauolla puolten välissä. Käännä vinyylilevy ja paina Toista."
 [messages."core.playback.pause.side_ended.message.cassette"]
 comment = "Alert body shown when playback pauses between cassette sides."
 value = "Playback paused between sides. Turn the cassette, then press Play."
@@ -1310,6 +1350,7 @@ pt-PT = "A reprodução está em pausa entre lados. Vire a cassete e prima Repro
 sv = "Uppspelningen pausades mellan sidorna. Vänd på kassetten och tryck på Spela."
 da = "Afspilningen er sat på pause mellem siderne. Vend kassettebåndet, og tryk på Afspil."
 nb = "Avspillingen er satt på pause mellom sidene. Snu kassetten, og trykk på Spill av."
+fi = "Toisto on tauolla puolten välissä. Käännä kasetti ja paina Toista."
 [messages."core.import.prepare.queued"]
 comment = "Import progress: waiting for the import worker."
 value = "Queued..."
@@ -1341,6 +1382,7 @@ pt-PT = "Em fila..."
 sv = "I kö..."
 da = "I kø..."
 nb = "I kø..."
+fi = "Jonossa..."
 
 [messages."core.import.prepare.validating_source_files"]
 comment = "Import progress: validating that source files still match the scan."
@@ -1373,6 +1415,7 @@ pt-PT = "A validar os ficheiros de origem..."
 sv = "Validerar källfilerna..."
 da = "Validerer kildefilerne..."
 nb = "Validerer kildefilene..."
+fi = "Tarkistetaan lähdetiedostoja..."
 [messages."core.import.phase.reading_files"]
 comment = "Import progress: reading and hashing each source file."
 value = "Reading files..."
@@ -1404,6 +1447,7 @@ pt-PT = "A ler os ficheiros..."
 sv = "Läser filer..."
 da = "Læser filer..."
 nb = "Leser filer..."
+fi = "Luetaan tiedostoja..."
 
 [messages."core.import.phase.measuring_loudness"]
 comment = "Import progress: decoding each track to measure its loudness."
@@ -1436,6 +1480,7 @@ pt-PT = "A medir a intensidade sonora..."
 sv = "Mäter ljudstyrkan..."
 da = "Måler lydstyrken..."
 nb = "Måler lydstyrken..."
+fi = "Mitataan äänenvoimakkuutta..."
 [messages."core.import.phase.finalizing"]
 comment = "Import progress: writing the library rows and committing the import."
 value = "Finalizing..."
@@ -1467,6 +1512,7 @@ pt-PT = "A finalizar..."
 sv = "Slutför..."
 da = "Afslutter..."
 nb = "Fullfører..."
+fi = "Viimeistellään..."
 [messages."core.audio.label"]
 comment = "Column label for the codec and technical properties of source audio files."
 value = "Audio"
@@ -1498,6 +1544,7 @@ pt-PT = "Áudio"
 sv = "Ljud"
 da = "Lyd"
 nb = "Lyd"
+fi = "Ääni"
 
 [messages."core.audio.layout.cue"]
 comment = "Source-audio layout: tracks are defined by a CUE sheet. CUE is a technical acronym."
@@ -1530,6 +1577,7 @@ pt-PT = "CUE"
 sv = "CUE"
 da = "CUE"
 nb = "CUE"
+fi = "CUE"
 
 [messages."core.release.media"]
 comment = "Field and column label for a release's physical or published media, such as CD, vinyl, or cassette."
@@ -1562,6 +1610,7 @@ pt-PT = "Suporte"
 sv = "Media"
 da = "Medie"
 nb = "Medium"
+fi = "Tallenne"
 
 [messages."core.audio.channels.mono"]
 comment = "Audio format: single-channel audio."
@@ -1594,6 +1643,7 @@ pt-PT = "mono"
 sv = "mono"
 da = "mono"
 nb = "mono"
+fi = "mono"
 [messages."core.audio.channels.stereo"]
 comment = "Audio format: two-channel audio."
 value = "stereo"
@@ -1625,6 +1675,7 @@ pt-PT = "estéreo"
 sv = "stereo"
 da = "stereo"
 nb = "stereo"
+fi = "stereo"
 [messages."core.audio.list_separator"]
 comment = "Separator between compact source-audio facts."
 value = " · "
@@ -1656,6 +1707,7 @@ pt-PT = " · "
 sv = " · "
 da = " · "
 nb = " · "
+fi = " · "
 [messages."core.audio.mixed"]
 comment = "Source-audio summary label for more than one distinct descriptor."
 value = "Various"
@@ -1687,6 +1739,7 @@ pt-PT = "Vários"
 sv = "Blandat"
 da = "Diverse"
 nb = "Diverse"
+fi = "Vaihtelee"
 [messages."core.audio.sample_rate_khz"]
 comment = "Audio sample rate in kilohertz; value is already locale-formatted."
 args = { value = "Str" }
@@ -1719,6 +1772,7 @@ pt-PT = "{value} kHz"
 sv = "{value} kHz"
 da = "{value} kHz"
 nb = "{value} kHz"
+fi = "{value} kHz"
 [messages."core.audio.bitrate_kbps"]
 comment = "Average audio bitrate in kilobits per second."
 args = { value = "Int" }
@@ -1751,6 +1805,7 @@ pt-PT = "{value} kbps"
 sv = "{value} kbps"
 da = "{value} kbps"
 nb = "{value} kbps"
+fi = "{value} kbps"
 [messages."core.audio.bit_depth"]
 comment = "Audio bit depth."
 args = { value = "Int" }
@@ -1783,6 +1838,7 @@ pt-PT = "{value} bits"
 sv = "{value} bitar"
 da = "{value} bit"
 nb = "{value} bit"
+fi = "{value}-bittinen"
 [messages."core.audio.channels.count"]
 comment = "Audio channel count when no named mono/stereo word applies."
 args = { value = "Int" }
@@ -1815,6 +1871,7 @@ pt-PT = "{value} can."
 sv = "{value} kan."
 da = "{value} kan."
 nb = "{value} kan."
+fi = "{value} kan."
 [messages."core.track.side"]
 comment = "Track grouping: header for a physical side, e.g. 'Side A' ({letter} is the side letter A/B/C… computed by core)."
 args = { letter = "Str" }
@@ -1847,6 +1904,7 @@ pt-PT = "Lado {letter}"
 sv = "Sida {letter}"
 da = "Side {letter}"
 nb = "Side {letter}"
+fi = "Puoli {letter}"
 [messages."core.track.disc"]
 comment = "Track grouping: header for a disc in a multi-disc release, e.g. 'Disc 2' ({disc} is the disc number computed by core)."
 args = { disc = "Int" }
@@ -1879,6 +1937,7 @@ pt-PT = "Disco {disc}"
 sv = "Skiva {disc}"
 da = "Disk {disc}"
 nb = "Plate {disc}"
+fi = "Levy {disc}"
 [messages."core.duration.hours"]
 comment = "Album total playing time, whole hours (e.g. \"3 hr\"). Shown when the total has no leftover minutes."
 args = { hours = "Int" }
@@ -1911,6 +1970,7 @@ pt-PT = "{hours} h"
 sv = "{hours} tim"
 da = "{hours} t"
 nb = "{hours} t"
+fi = "{hours} t"
 [messages."core.duration.hours_minutes"]
 comment = "Album total playing time joining its hours and minutes parts (e.g. \"3 hr, 42 min\"). Both are pre-formatted by the core.duration.hours / core.duration.minutes messages."
 args = { hours = "Str", minutes = "Str" }
@@ -1943,6 +2003,7 @@ pt-PT = "{hours}, {minutes}"
 sv = "{hours}, {minutes}"
 da = "{hours}, {minutes}"
 nb = "{hours}, {minutes}"
+fi = "{hours}, {minutes}"
 [messages."core.duration.minutes"]
 comment = "Album total playing time, whole minutes (e.g. \"39 min\")."
 args = { minutes = "Int" }
@@ -1975,6 +2036,7 @@ pt-PT = "{minutes} min"
 sv = "{minutes} min"
 da = "{minutes} min"
 nb = "{minutes} min"
+fi = "{minutes} min"
 [messages."core.cloud.s3_compatible"]
 comment = "Cloud provider: any S3-compatible storage."
 value = "S3-compatible"
@@ -2006,6 +2068,7 @@ pt-PT = "Compatível com S3"
 sv = "S3-kompatibel"
 da = "S3-kompatibel"
 nb = "S3-kompatibel"
+fi = "S3-yhteensopiva"
 [messages."core.cloud.local_only"]
 comment = "Cloud provider: the library syncs nowhere (local only)."
 value = "Local only"
@@ -2037,6 +2100,7 @@ pt-PT = "Apenas local"
 sv = "Endast lokalt"
 da = "Kun lokalt"
 nb = "Bare lokalt"
+fi = "Vain paikallisesti"
 [messages."core.transfer.action.pin"]
 comment = "Storage transfer: present-continuous verb while pinning a release for offline."
 value = "Pinning for offline"
@@ -2068,6 +2132,7 @@ pt-PT = "A fixar para offline"
 sv = "Fäster för offline"
 da = "Fastgør til offline"
 nb = "Fester for frakoblet bruk"
+fi = "Kiinnitetään offline-käyttöön"
 [messages."core.transfer.action.unpin"]
 comment = "Storage transfer: present-continuous verb while removing a release's local copy."
 value = "Removing local copy"
@@ -2099,6 +2164,7 @@ pt-PT = "A remover a cópia local"
 sv = "Tar bort den lokala kopian"
 da = "Fjerner den lokale kopi"
 nb = "Fjerner den lokale kopien"
+fi = "Poistetaan paikallista kopiota"
 [messages."core.transfer.action.make_remote"]
 comment = "Storage transfer: validating a Local release and adding its upload to the Cloud queue."
 value = "Queueing for Cloud…"
@@ -2130,6 +2196,7 @@ pt-PT = "A pôr em fila para a nuvem…"
 sv = "Ställer i kö för molnet…"
 da = "Sætter i kø til skyen…"
 nb = "Legger i kø for skyen…"
+fi = "Asetetaan jonoon pilveä varten…"
 [messages."core.transfer.action.make_local"]
 comment = "Storage transfer: materializing a Cloud release on this device before committing it as Local."
 value = "Making Local…"
@@ -2161,6 +2228,7 @@ pt-PT = "A tornar local…"
 sv = "Gör lokal…"
 da = "Gør lokal…"
 nb = "Gjør lokal…"
+fi = "Tehdään paikalliseksi…"
 [messages."core.lookup.failure.network"]
 comment = "Metadata lookup failed: couldn't reach the provider (no network response)."
 value = "Couldn't reach the metadata provider"
@@ -2192,6 +2260,7 @@ pt-PT = "Não foi possível contactar o fornecedor de metadados"
 sv = "Kunde inte nå metadataleverantören"
 da = "Metadataudbyderen kunne ikke nås"
 nb = "Kunne ikke nå metadataleverandøren"
+fi = "Metatietolähteeseen ei saatu yhteyttä"
 [messages."core.lookup.failure.provider"]
 comment = "Metadata lookup failed: the provider returned an HTTP error response ({status} is the HTTP status code)."
 args = { status = "Int" }
@@ -2224,6 +2293,7 @@ pt-PT = "O fornecedor de metadados devolveu um erro ({status})"
 sv = "Metadataleverantören svarade med ett fel ({status})"
 da = "Metadataudbyderen svarede med en fejl ({status})"
 nb = "Metadataleverandøren svarte med en feil ({status})"
+fi = "Metatietolähde palautti virheen ({status})"
 [messages."core.lookup.failure.provider_unknown"]
 comment = "Metadata lookup failed: the provider returned an error with no status code to show. No-status fallback for core.lookup.failure.provider."
 value = "The metadata provider returned an error"
@@ -2255,6 +2325,7 @@ pt-PT = "O fornecedor de metadados devolveu um erro"
 sv = "Metadataleverantören svarade med ett fel"
 da = "Metadataudbyderen svarede med en fejl"
 nb = "Metadataleverandøren svarte med en feil"
+fi = "Metatietolähde palautti virheen"
 [messages."core.lookup.failure.timeout"]
 comment = "Metadata lookup failed: the request to the provider timed out."
 value = "The metadata provider timed out"
@@ -2286,6 +2357,7 @@ pt-PT = "O fornecedor de metadados excedeu o tempo limite"
 sv = "Metadataleverantören svarade inte i tid"
 da = "Metadataudbyderen svarede ikke i tide"
 nb = "Metadataleverandøren svarte ikke i tide"
+fi = "Metatietolähde ei vastannut ajoissa"
 [messages."core.lookup.failure.artwork_analysis"]
 comment = "Signal extraction failed: artwork analysis stopped before barcode/text extraction finished."
 value = "Artwork analysis failed"
@@ -2317,6 +2389,7 @@ pt-PT = "A análise da imagem falhou"
 sv = "Analysen av grafiken misslyckades"
 da = "Analysen af grafikken mislykkedes"
 nb = "Analysen av grafikken mislyktes"
+fi = "Kuvituksen analyysi epäonnistui"
 [messages."core.lookup.failure.diagnostic"]
 comment = "Metadata lookup failed for a local reason (the typed variant carries no translated copy). Generic line shown alongside the opaque, log-only detail."
 value = "Couldn't look this up"
@@ -2348,6 +2421,7 @@ pt-PT = "Não foi possível procurar isto"
 sv = "Kunde inte slå upp detta"
 da = "Dette kunne ikke slås op"
 nb = "Kunne ikke slå opp dette"
+fi = "Tätä ei voitu hakea"
 [messages."core.lookup.failure.brief.network"]
 comment = "Metadata lookup failed: brief reason ending a line that already names the source and the step (e.g. 'MusicBrainz barcode search: couldn't connect'). No network response."
 value = "couldn't connect"
@@ -2379,6 +2453,7 @@ pt-PT = "não foi possível ligar"
 sv = "kunde inte ansluta"
 da = "kunne ikke forbinde"
 nb = "kunne ikke koble til"
+fi = "yhteyttä ei saatu"
 
 [messages."core.lookup.failure.brief.timeout"]
 comment = "Metadata lookup failed: brief reason ending a line that already names the source and the step. The request timed out."
@@ -2411,6 +2486,7 @@ pt-PT = "tempo esgotado"
 sv = "tiden gick ut"
 da = "tiden udløb"
 nb = "tiden gikk ut"
+fi = "aikakatkaisu"
 
 [messages."core.lookup.failure.brief.busy"]
 comment = "Metadata lookup failed: brief reason ending a line that already names the source and the step. The provider refused for now with HTTP 429 or 503 ({status} is the code)."
@@ -2444,6 +2520,7 @@ pt-PT = "ocupado ({status})"
 sv = "upptagen ({status})"
 da = "optaget ({status})"
 nb = "opptatt ({status})"
+fi = "varattu ({status})"
 
 [messages."core.lookup.failure.brief.provider"]
 comment = "Metadata lookup failed: brief reason ending a line that already names the source and the step. The provider returned an HTTP error ({status} is the code)."
@@ -2477,6 +2554,7 @@ pt-PT = "erro {status}"
 sv = "fel {status}"
 da = "fejl {status}"
 nb = "feil {status}"
+fi = "virhe {status}"
 
 [messages."core.lookup.failure.brief.provider_unknown"]
 comment = "Metadata lookup failed: brief reason ending a line that already names the source and the step. The provider returned an error with no status code. No-status fallback for core.lookup.failure.brief.provider."
@@ -2509,6 +2587,7 @@ pt-PT = "erro"
 sv = "fel"
 da = "fejl"
 nb = "feil"
+fi = "virhe"
 
 [messages."core.lookup.failure.brief.artwork_analysis"]
 comment = "Signal extraction failed: brief reason ending a line that already names the step. Artwork analysis stopped before barcode/text extraction finished."
@@ -2541,6 +2620,7 @@ pt-PT = "a análise da imagem falhou"
 sv = "analysen av grafiken misslyckades"
 da = "analysen af grafikken mislykkedes"
 nb = "analysen av grafikken mislyktes"
+fi = "kuvituksen analyysi epäonnistui"
 
 [messages."core.lookup.failure.brief.diagnostic"]
 comment = "Metadata lookup failed for a local reason: brief reason ending a line that already names the source and the step. The opaque detail is log-only."
@@ -2573,6 +2653,7 @@ pt-PT = "falhou"
 sv = "misslyckades"
 da = "mislykkedes"
 nb = "mislyktes"
+fi = "epäonnistui"
 
 [messages."core.queue.uploading"]
 comment = "Storage queue: count currently uploading."
@@ -2606,6 +2687,7 @@ pt-PT = "{count} a enviar"
 sv = "{count} laddas upp"
 da = "{count} uploades"
 nb = "{count} lastes opp"
+fi = "{count} lähetetään"
 
 [messages."core.outbox.preparing"]
 comment = "Cloud upload queue: count whose source files are being verified and sealed into upload spools."
@@ -2639,6 +2721,7 @@ pt-PT = "{count} a preparar"
 sv = "{count} förbereds"
 da = "{count} forberedes"
 nb = "{count} forberedes"
+fi = "{count} valmistellaan"
 
 [messages."core.outbox.prepared"]
 comment = "Cloud upload queue: count whose durable upload spools are prepared and waiting for a provider."
@@ -2672,6 +2755,7 @@ pt-PT = "{count} preparados"
 sv = "{count} förberedda"
 da = "{count} forberedt"
 nb = "{count} forberedt"
+fi = "{count} valmisteltu"
 
 [messages."core.outbox.uploaded"]
 comment = "Cloud upload queue: count whose cloud objects exist but whose release is not published yet."
@@ -2705,6 +2789,7 @@ pt-PT = "{count} enviados"
 sv = "{count} uppladdade"
 da = "{count} uploadet"
 nb = "{count} lastet opp"
+fi = "{count} lähetetty"
 
 [messages."core.outbox.publishing"]
 comment = "Cloud upload queue: count of releases whose uploaded objects are being published."
@@ -2738,6 +2823,7 @@ pt-PT = "{count} a publicar"
 sv = "{count} publiceras"
 da = "{count} publiceres"
 nb = "{count} publiseres"
+fi = "{count} julkaistaan"
 
 [messages."core.outbox.cancelling"]
 comment = "Cloud upload queue: count of release transitions currently being cancelled."
@@ -2771,6 +2857,7 @@ pt-PT = "{count} a cancelar"
 sv = "{count} avbryts"
 da = "{count} annulleres"
 nb = "{count} avbrytes"
+fi = "{count} peruutetaan"
 
 [messages."core.outbox.retrying"]
 comment = "Cloud upload queue: count whose failed attempt is waiting to retry."
@@ -2804,6 +2891,7 @@ pt-PT = "A repetir ({count})"
 sv = "Försöker igen ({count})"
 da = "Prøver igen ({count})"
 nb = "Prøver på nytt ({count})"
+fi = "Yritetään uudelleen ({count})"
 
 [messages."core.outbox.source_unavailable"]
 comment = "Storage upload queue: the local source file or volume needed for an upload is not available."
@@ -2836,6 +2924,7 @@ pt-PT = "Fonte indisponível"
 sv = "Källan är inte tillgänglig"
 da = "Kilden er ikke tilgængelig"
 nb = "Kilden er ikke tilgjengelig"
+fi = "Lähde ei ole käytettävissä"
 
 [messages."core.pairing.cancelling"]
 comment = "Existing-device pairing sheet: shown while the pairing attempt is being cancelled."
@@ -2868,6 +2957,7 @@ pt-PT = "A cancelar o emparelhamento…"
 sv = "Avbryter parkopplingen…"
 da = "Annullerer parringen…"
 nb = "Avbryter paringen…"
+fi = "Peruutetaan pariliitosta…"
 [messages."core.queue.downloading"]
 comment = "Storage queue: count currently downloading."
 args = { count = "Int" }
@@ -2900,6 +2990,7 @@ pt-PT = "{count} a transferir"
 sv = "{count} hämtas"
 da = "{count} hentes"
 nb = "{count} lastes ned"
+fi = "{count} ladataan"
 [messages."core.queue.output"]
 comment = "Storage queue: count currently being written (export or save); rows are kind-labeled."
 args = { count = "Int" }
@@ -2932,6 +3023,7 @@ pt-PT = "{count} em curso"
 sv = "{count} pågår"
 da = "{count} i gang"
 nb = "{count} pågår"
+fi = "{count} käynnissä"
 
 [messages."core.queue.failed"]
 comment = "Storage queue: count that failed."
@@ -2965,6 +3057,7 @@ pt-PT = "{count} falhados"
 sv = "{count} misslyckades"
 da = "{count} mislykkedes"
 nb = "{count} mislyktes"
+fi = "{count} epäonnistui"
 [messages."core.queue.queued"]
 comment = "Storage queue: count waiting to transfer."
 args = { count = "Int" }
@@ -2997,6 +3090,7 @@ pt-PT = "{count} em fila"
 sv = "{count} i kö"
 da = "{count} i kø"
 nb = "{count} i kø"
+fi = "{count} jonossa"
 [messages."core.outbox.bytes.preparing"]
 comment = "Cloud upload queue: label beside a progress bar that is filling with source bytes read while preparing ({done}/{total} are pre-formatted byte counts)."
 args = { done = "Str", total = "Str" }
@@ -3029,6 +3123,7 @@ pt-PT = "A preparar {done} de {total}"
 sv = "Förbereder {done} av {total}"
 da = "Forbereder {done} af {total}"
 nb = "Forbereder {done} av {total}"
+fi = "Valmistellaan {done} / {total}"
 
 
 [messages."core.outbox.bytes.uploading"]
@@ -3063,6 +3158,7 @@ pt-PT = "A enviar {done} de {total}"
 sv = "Laddar upp {done} av {total}"
 da = "Uploader {done} af {total}"
 nb = "Laster opp {done} av {total}"
+fi = "Lähetetään {done} / {total}"
 
 
 [messages."core.download.bytes_progress"]
@@ -3097,6 +3193,7 @@ pt-PT = "{done} de {total}"
 sv = "{done} av {total}"
 da = "{done} af {total}"
 nb = "{done} av {total}"
+fi = "{done} / {total}"
 
 [messages."core.artwork_cache.scanning"]
 comment = "Post-open library status: finding artwork whose cache policy requires a local copy."
@@ -3128,6 +3225,7 @@ pt-PT = "A procurar imagens…"
 sv = "Söker grafik…"
 da = "Finder grafik…"
 nb = "Finner grafikk…"
+fi = "Etsitään kuvitusta…"
 
 [messages."core.artwork_cache.downloading"]
 comment = "Post-open library status: downloading artwork required by the cache policy."
@@ -3159,6 +3257,7 @@ pt-PT = "A transferir imagens…"
 sv = "Hämtar grafik…"
 da = "Henter grafik…"
 nb = "Laster ned grafikk…"
+fi = "Ladataan kuvitusta…"
 
 [messages."core.artwork_cache.cancelled"]
 comment = "Post-open library status: the user stopped artwork downloads."
@@ -3190,6 +3289,7 @@ pt-PT = "A transferência de imagens parou."
 sv = "Hämtningen av grafik stoppades."
 da = "Hentningen af grafik stoppede."
 nb = "Nedlastingen av grafikk stoppet."
+fi = "Kuvituksen lataus pysäytettiin."
 
 [messages."core.artwork_cache.failed"]
 comment = "Post-open library status: artwork required by the cache policy could not be downloaded."
@@ -3221,6 +3321,7 @@ pt-PT = "Não foi possível transferir algumas imagens."
 sv = "En del grafik kunde inte hämtas."
 da = "Noget grafik kunne ikke hentes."
 nb = "Noe grafikk kunne ikke lastes ned."
+fi = "Osaa kuvituksesta ei voitu ladata."
 [messages."core.outbox.throughput"]
 comment = "Storage queue: upload speed ({rate} is a pre-formatted byte count, e.g. '5.2 MB')."
 args = { rate = "Str" }
@@ -3253,6 +3354,7 @@ pt-PT = "{rate}/s"
 sv = "{rate}/s"
 da = "{rate}/s"
 nb = "{rate}/s"
+fi = "{rate}/s"
 [messages."core.outbox.eta"]
 comment = "Storage queue: estimated time remaining ({duration} is a pre-formatted duration)."
 args = { duration = "Str" }
@@ -3285,6 +3387,7 @@ pt-PT = "falta {duration}"
 sv = "{duration} kvar"
 da = "{duration} tilbage"
 nb = "{duration} igjen"
+fi = "{duration} jäljellä"
 [messages."core.outbox.pending_deletes"]
 comment = "Storage queue: number of cloud deletes still pending."
 args = { count = "Int" }
@@ -3317,6 +3420,7 @@ pt-PT = "{count, plural, one {# eliminação pendente} other {# eliminações pe
 sv = "{count, plural, one {# väntande radering} other {# väntande raderingar}}"
 da = "{count, plural, one {# ventende sletning} other {# ventende sletninger}}"
 nb = "{count, plural, one {# ventende sletting} other {# ventende slettinger}}"
+fi = "{count, plural, one {# odottava poisto} other {# odottavaa poistoa}}"
 [messages."core.outbox.file.artist_image"]
 comment = "Storage upload queue: an image representing an artist."
 value = "Artist image"
@@ -3348,6 +3452,7 @@ pt-PT = "Imagem do artista"
 sv = "Artistbild"
 da = "Kunstnerbillede"
 nb = "Artistbilde"
+fi = "Esittäjän kuva"
 [messages."core.outbox.file.unwinding"]
 comment = "Storage upload queue: a queued file whose release was deleted, so the upload is being taken back out of the cloud."
 value = "Removing from cloud"
@@ -3379,6 +3484,7 @@ pt-PT = "A remover da nuvem"
 sv = "Tas bort från molnet"
 da = "Fjernes fra skyen"
 nb = "Fjernes fra skyen"
+fi = "Poistetaan pilvestä"
 
 [messages."core.sync.cloud_only_releases"]
 comment = "Disconnect-sync confirmation: how many releases are stored only in the cloud and will become unplayable. The UI appends this to its own base 'this will stop syncing' sentence."
@@ -3412,6 +3518,7 @@ pt-PT = "{count, plural, one {# edição está guardada apenas na nuvem. Ficará
 sv = "{count, plural, one {# utgåva finns bara i molnet. Den går inte att spela förrän du ansluter igen.} other {# utgåvor finns bara i molnet. De går inte att spela förrän du ansluter igen.}}"
 da = "{count, plural, one {# udgivelse findes kun i skyen. Den kan ikke afspilles, før du forbinder igen.} other {# udgivelser findes kun i skyen. De kan ikke afspilles, før du forbinder igen.}}"
 nb = "{count, plural, one {# utgivelse finnes bare i skyen. Den kan ikke spilles av før du kobler til igjen.} other {# utgivelser finnes bare i skyen. De kan ikke spilles av før du kobler til igjen.}}"
+fi = "{count, plural, one {# julkaisu on tallennettu vain pilveen. Sitä ei voi toistaa, ennen kuin yhdistät uudelleen.} other {# julkaisua on tallennettu vain pilveen. Niitä ei voi toistaa, ennen kuin yhdistät uudelleen.}}"
 [messages."core.import.triage.already_in_library"]
 comment = "Import triage row: the matched release (or its album) is already in the library."
 value = "Already in your library"
@@ -3443,6 +3550,7 @@ pt-PT = "Já está na sua biblioteca"
 sv = "Finns redan i ditt bibliotek"
 da = "Allerede i dit bibliotek"
 nb = "Allerede i biblioteket ditt"
+fi = "Jo kirjastossasi"
 [messages."core.import.triage.several_matches"]
 comment = "Import triage row: how many pressings matched, so the user picks one."
 args = { count = "Int" }
@@ -3475,6 +3583,7 @@ pt-PT = "{count, plural, one {# correspondência} other {# correspondências}}"
 sv = "{count, plural, one {# träff} other {# träffar}}"
 da = "{count, plural, one {# match} other {# match}}"
 nb = "{count, plural, one {# treff} other {# treff}}"
+fi = "{count, plural, one {# osuma} other {# osumaa}}"
 [messages."core.import.triage.no_match"]
 comment = "Import triage row: both signals ran and matched nothing anywhere."
 value = "Nothing matched this folder"
@@ -3506,6 +3615,7 @@ pt-PT = "Nada correspondeu a esta pasta"
 sv = "Ingenting matchade den här mappen"
 da = "Intet passede til denne mappe"
 nb = "Ingenting passet til denne mappen"
+fi = "Mikään ei vastannut tätä kansiota"
 [messages."core.import.triage.lookup_failed"]
 comment = "Import triage: an automatic metadata-provider lookup failed and awaits an explicit retry."
 value = "Online lookup failed"
@@ -3537,6 +3647,7 @@ pt-PT = "A pesquisa online falhou"
 sv = "Sökningen på nätet misslyckades"
 da = "Onlineopslaget mislykkedes"
 nb = "Nettoppslaget mislyktes"
+fi = "Verkkohaku epäonnistui"
 [messages."core.import.triage.nothing_to_look_up"]
 comment = "Import triage row: no disc-ID artifact and no barcode source, so no lookup ran."
 value = "No disc ID and no barcode to look up"
@@ -3568,6 +3679,7 @@ pt-PT = "Não há ID de disco nem código de barras para procurar"
 sv = "Inget skiv-ID och ingen streckkod att slå upp"
 da = "Der er intet disk-id og ingen stregkode at slå op"
 nb = "Ingen plate-ID og ingen strekkode å slå opp"
+fi = "Ei levyn tunnusta eikä viivakoodia haettavaksi"
 [messages."core.import.triage.track_count_disagrees"]
 comment = "Import triage row: the folder and the release disagree on how many tracks there are."
 args = { local = "Int", source = "Int" }
@@ -3600,6 +3712,7 @@ pt-PT = "Faixas: {local} na pasta, {source} na edição"
 sv = "Spår: {local} i mappen, {source} på utgåvan"
 da = "Spor: {local} i mappen, {source} på udgivelsen"
 nb = "Spor: {local} i mappen, {source} på utgivelsen"
+fi = "Raidat: {local} kansiossa, {source} julkaisussa"
 [messages."core.import.triage.durations_disagree"]
 comment = "Import triage row: the folder and the release disagree on total length. Both values are durations the UI formatted for its own locale first."
 args = { probed = "Str", source = "Str" }
@@ -3632,6 +3745,7 @@ pt-PT = "Duração: {probed} na pasta, {source} na edição"
 sv = "Längd: {probed} i mappen, {source} på utgåvan"
 da = "Længde: {probed} i mappen, {source} på udgivelsen"
 nb = "Lengde: {probed} i mappen, {source} på utgivelsen"
+fi = "Kesto: {probed} kansiossa, {source} julkaisussa"
 [messages."core.import.triage.source_lengths_unknown"]
 comment = "Import triage row: the release lists no track lengths, so the total cannot be checked."
 value = "The release states no track lengths"
@@ -3663,6 +3777,7 @@ pt-PT = "A edição não indica durações das faixas"
 sv = "Utgåvan anger inga spårlängder"
 da = "Udgivelsen angiver ingen sporlængder"
 nb = "Utgivelsen oppgir ingen sporlengder"
+fi = "Julkaisu ei ilmoita raitojen kestoja"
 [messages."core.import.triage.local_duration_unknown"]
 comment = "Import triage row: the folder audio would not probe, so there is no local total to compare."
 value = "Could not read the track lengths in the folder"
@@ -3694,6 +3809,7 @@ pt-PT = "Não foi possível ler as durações das faixas na pasta"
 sv = "Kunde inte läsa spårlängderna i mappen"
 da = "Sporlængderne i mappen kunne ikke læses"
 nb = "Kunne ikke lese sporlengdene i mappen"
+fi = "Kansion raitojen kestoja ei voitu lukea"
 
 [messages."ui.import.sheet.choose_audio"]
 comment = "Import file pane: label of the control that binds a track sheet to one of the folder's audio files, shown when the sheet describes nothing yet."
@@ -3726,6 +3842,7 @@ pt-PT = "Escolher áudio…"
 sv = "Välj ljud…"
 da = "Vælg lyd…"
 nb = "Velg lyd…"
+fi = "Valitse ääni…"
 
 [messages."ui.import.sheet.describes_nothing"]
 comment = "Import file pane: the choice that clears a track sheet's binding, leaving it describing nothing. Listed alongside the folder's audio files in the sheet's picker."
@@ -3758,6 +3875,7 @@ pt-PT = "Não descreve nada"
 sv = "Beskriver ingenting"
 da = "Beskriver intet"
 nb = "Beskriver ingenting"
+fi = "Ei kuvaa mitään"
 
 [messages."ui.import.sheet.asked_for"]
 comment = "Import file pane: what an unbound track sheet's FILE directive named, shown next to \u201cDescribes nothing yet\u201d so the user can see what the sheet was looking for. {names} is a comma-joined list of filenames."
@@ -3791,6 +3909,7 @@ pt-PT = "Pediu {names}"
 sv = "Efterfrågade {names}"
 da = "Bad om {names}"
 nb = "Ba om {names}"
+fi = "Pyydettiin {names}"
 
 # ── The mapping pane ─────────────────────────────────────────────────────────
 # One surface where a folder becomes a release: the release header, the file
@@ -3829,6 +3948,7 @@ pt-PT = "Pasta de rede. As alterações feitas noutros computadores são verific
 sv = "Nätverksmapp. Ändringar som görs på andra datorer kontrolleras var {minutes}:e minut."
 da = "Netværksmappe. Ændringer foretaget på andre computere kontrolleres hvert {minutes}. minut."
 nb = "Nettverksmappe. Endringer gjort på andre datamaskiner sjekkes hvert {minutes}. minutt."
+fi = "Verkkokansio. Muilla tietokoneilla tehdyt muutokset tarkistetaan {minutes} minuutin välein."
 
 [messages."ui.import.scan.activity"]
 comment = "Import filter bar, short hover label for the indeterminate activity control shown while watched folders are being scanned."
@@ -3861,6 +3981,7 @@ pt-PT = "A analisar pastas"
 sv = "Genomsöker mappar"
 da = "Scanner mapper"
 nb = "Søker gjennom mapper"
+fi = "Käydään kansioita läpi"
 
 [messages."ui.import.scan.found"]
 comment = "Import folder-scan activity: live number of candidates found in the active scan generation."
@@ -3894,6 +4015,7 @@ pt-PT = "{count} encontrados"
 sv = "{count} hittade"
 da = "{count} fundet"
 nb = "{count} funnet"
+fi = "{count} löytyi"
 
 [messages."core.import.evidence.barcode_in_image"]
 comment = "Import pane, hover over an artwork thumbnail: identification matched the release on a barcode read off this image ({value} is the barcode digits)."
@@ -3927,6 +4049,7 @@ pt-PT = "A edição foi identificada automaticamente a partir do código de barr
 sv = "Utgåvan identifierades automatiskt från streckkoden {value} i den här bilden"
 da = "Udgivelsen blev automatisk identificeret ud fra stregkoden {value} på dette billede"
 nb = "Utgivelsen ble automatisk identifisert fra strekkoden {value} på dette bildet"
+fi = "Julkaisu tunnistettiin automaattisesti tämän kuvan viivakoodista {value}"
 
 [messages."core.import.evidence.disc_id_from_file"]
 comment = "Import pane, hover over a rip log or cue sheet row: identification matched the release on a disc ID computed from this file ({value} is the disc ID)."
@@ -3960,6 +4083,7 @@ pt-PT = "A edição foi identificada automaticamente a partir do ID de disco {va
 sv = "Utgåvan identifierades automatiskt från skiv-ID:t {value} från den här filen"
 da = "Udgivelsen blev automatisk identificeret ud fra disk-id'et {value} fra denne fil"
 nb = "Utgivelsen ble automatisk identifisert fra plate-ID-en {value} fra denne filen"
+fi = "Julkaisu tunnistettiin automaattisesti tämän tiedoston levytunnuksesta {value}"
 
 [messages."core.import.role.audio"]
 comment = "Import roles table, Role column: the file is playable audio. Also the label of the option that puts a file back among the release's tracks after it was taken out."
@@ -3992,6 +4116,7 @@ pt-PT = "Áudio"
 sv = "Ljud"
 da = "Lyd"
 nb = "Lyd"
+fi = "Ääni"
 
 [messages."core.import.role.track_sheet"]
 comment = "Import roles table, Role column: a parsed CUE sheet, which carves the release's tracks out of the audio it names."
@@ -4024,6 +4149,7 @@ pt-PT = "Folha de faixas"
 sv = "Spårark"
 da = "Sporark"
 nb = "Sporark"
+fi = "Raita-arkki"
 
 [messages."core.import.role.cover"]
 comment = "Import roles table, Role column: the image that leads the release."
@@ -4056,6 +4182,7 @@ pt-PT = "Capa"
 sv = "Omslag"
 da = "Omslag"
 nb = "Omslag"
+fi = "Kansi"
 
 [messages."core.import.role.artwork"]
 comment = "Import roles table, Role column: any image in the folder other than the one that leads the release."
@@ -4088,6 +4215,7 @@ pt-PT = "Imagem"
 sv = "Grafik"
 da = "Grafik"
 nb = "Grafikk"
+fi = "Kuvitus"
 
 [messages."core.import.role.document"]
 comment = "Import roles table, Role column: readable evidence carried with the release — a rip log, a tracklist, a playlist."
@@ -4120,6 +4248,7 @@ pt-PT = "Documento"
 sv = "Dokument"
 da = "Dokument"
 nb = "Dokument"
+fi = "Asiakirja"
 
 [messages."core.import.role.other"]
 comment = "Import roles table, Role column: a file in the folder bae does not recognize — a scene sidecar, a stray video, a file with no extension. It is still carried with the release."
@@ -4152,6 +4281,7 @@ pt-PT = "Outro"
 sv = "Övrigt"
 da = "Andet"
 nb = "Annet"
+fi = "Muu"
 
 [messages."core.import.role.not_a_track"]
 comment = "Import roles table: the option that takes an audio file out of the release's tracklist. The file is still imported and stored with the release — it just stops being one of the tracks."
@@ -4184,6 +4314,7 @@ pt-PT = "Não é faixa"
 sv = "Inte ett spår"
 da = "Ikke et spor"
 nb = "Ikke et spor"
+fi = "Ei raita"
 
 [messages."core.import.becomes.slot"]
 comment = "Import roles table, Becomes column: this file backs exactly one of the release's track slots. {slot} counts the release's slots from one."
@@ -4217,6 +4348,7 @@ pt-PT = "posição {slot}"
 sv = "plats {slot}"
 da = "plads {slot}"
 nb = "plass {slot}"
+fi = "kohta {slot}"
 
 [messages."core.import.becomes.slots"]
 comment = "Import roles table, Becomes column: this file backs a run of the release's track slots — a bound track sheet carving several tracks out of one container. {first} and {last} count the release's slots from one and are inclusive."
@@ -4250,6 +4382,7 @@ pt-PT = "posições {first}–{last}"
 sv = "platserna {first}–{last}"
 da = "pladserne {first}–{last}"
 nb = "plassene {first}–{last}"
+fi = "kohdat {first}–{last}"
 
 [messages."core.import.becomes.not_a_track"]
 comment = "Import roles table, Becomes column: this file backs none of the release's track slots. It is still carried with the release — an image, a document, an unbound track sheet, the container a bound sheet carves its slots out of, or a file somebody took out of the tracklist."
@@ -4282,6 +4415,7 @@ pt-PT = "não é faixa"
 sv = "inte ett spår"
 da = "ikke et spor"
 nb = "ikke et spor"
+fi = "ei raita"
 
 [messages."core.import.reconciliation.more_files"]
 comment = "Import slot table, the line above it: the folder holds more audio than the release's tracklist names, so some rows have no track behind them. Stated, never blocking."
@@ -4315,6 +4449,7 @@ pt-PT = "{files} ficheiros, {tracks} faixas: áudio que a edição não nomeia"
 sv = "{files} filer, {tracks} spår: ljud som utgåvan inte namnger"
 da = "{files} filer, {tracks} spor: lyd, som udgivelsen ikke nævner"
 nb = "{files} filer, {tracks} spor: lyd som utgivelsen ikke navngir"
+fi = "{files} tiedostoa, {tracks} raitaa: ääntä, jota julkaisu ei nimeä"
 
 [messages."core.import.reconciliation.more_tracks"]
 comment = "Import slot table, the line above it: the release's tracklist names more tracks than the folder holds audio for, so some rows have no file behind them. Stated, never blocking."
@@ -4348,6 +4483,7 @@ pt-PT = "{files} ficheiros, {tracks} faixas: faixas sem áudio"
 sv = "{files} filer, {tracks} spår: spår utan ljud"
 da = "{files} filer, {tracks} spor: spor uden lyd"
 nb = "{files} filer, {tracks} spor: spor uten lyd"
+fi = "{files} tiedostoa, {tracks} raitaa: raitoja ilman ääntä"
 
 [messages."ui.import.roles.column.role"]
 comment = "Import roles table: column header over the job each file does."
@@ -4380,6 +4516,7 @@ pt-PT = "Papel"
 sv = "Roll"
 da = "Rolle"
 nb = "Rolle"
+fi = "Rooli"
 
 [messages."ui.import.slots.column.length"]
 comment = "Import slot table: column header over the two lengths on each row — the file's own, probed from disk, over the one the release states."
@@ -4412,6 +4549,7 @@ pt-PT = "Duração"
 sv = "Längd"
 da = "Længde"
 nb = "Lengde"
+fi = "Kesto"
 
 [messages."ui.import.slots.choose_file"]
 comment = "Import slot table: the leading action on a row the release names but no audio backs — pick one of the folder's files for it."
@@ -4444,6 +4582,7 @@ pt-PT = "Escolher ficheiro…"
 sv = "Välj fil…"
 da = "Vælg fil…"
 nb = "Velg fil…"
+fi = "Valitse tiedosto…"
 
 [messages."ui.import.slots.drop"]
 comment = "Import slot table: the second action on a row the release names but no audio backs — leave the row out of the import entirely."
@@ -4476,6 +4615,7 @@ pt-PT = "Deixar de fora"
 sv = "Utelämna"
 da = "Udelad"
 nb = "Utelat"
+fi = "Jätä pois"
 
 [messages."ui.import.slots.exclude"]
 comment = "Import slot table: the action on a row backed by audio the release does not name — take the file out of the tracklist. It is still stored with the release."
@@ -4508,6 +4648,7 @@ pt-PT = "Excluir"
 sv = "Uteslut"
 da = "Udelad"
 nb = "Utelat"
+fi = "Jätä pois"
 
 [messages."ui.import.slots.exclude_help"]
 comment = "Import mapping table: tooltip on the X of a row backed by audio the release does not name — what excluding the file does."
@@ -4540,6 +4681,7 @@ pt-PT = "Retire este ficheiro da lista de faixas; continua em Ficheiros."
 sv = "Ta ut den här filen ur spårlistan; den ligger kvar under Filer."
 da = "Tag denne fil ud af sporlisten; den bliver under Filer."
 nb = "Ta denne filen ut av sporlisten; den blir liggende under Filer."
+fi = "Ota tämä tiedosto pois raitaluettelosta; se säilyy Tiedostoissa."
 
 [messages."ui.import.slots.drop_help"]
 comment = "Import mapping table: tooltip on the X of a row the release names but no audio backs — what dropping the track does."
@@ -4572,6 +4714,7 @@ pt-PT = "Deixe esta faixa de fora — esta pasta não tem áudio para ela."
 sv = "Utelämna det här spåret — den här mappen har inget ljud för det."
 da = "Udelad dette spor — denne mappe har ingen lyd til det."
 nb = "La dette sporet stå tomt — denne mappen har ingen lyd til det."
+fi = "Jätä tämä raita pois — tässä kansiossa ei ole sille ääntä."
 
 [messages."ui.import.slots.put_back"]
 comment = "Import roles table: the action that puts a file the user took out back among the release's tracks."
@@ -4604,6 +4747,7 @@ pt-PT = "Repor"
 sv = "Lägg tillbaka"
 da = "Sæt tilbage"
 nb = "Sett tilbake"
+fi = "Palauta"
 
 [messages."ui.import.slots.play"]
 comment = "Import slot table: play the audio behind this row."
@@ -4636,6 +4780,7 @@ pt-PT = "Reproduzir"
 sv = "Spela"
 da = "Afspil"
 nb = "Spill av"
+fi = "Toista"
 
 [messages."ui.import.slots.stop"]
 comment = "Import slot table: stop the audio playing from this row."
@@ -4668,6 +4813,7 @@ pt-PT = "Parar"
 sv = "Stoppa"
 da = "Stop"
 nb = "Stopp"
+fi = "Pysäytä"
 
 [messages."ui.import.slots.untitled"]
 comment = "Import slot table: placeholder in the title field of a row nobody has named yet. Committing without a name titles the track after its file."
@@ -4700,6 +4846,7 @@ pt-PT = "Sem título"
 sv = "Namnlös"
 da = "Uden titel"
 nb = "Uten tittel"
+fi = "Nimetön"
 
 [messages."ui.import.slots.no_file"]
 comment = "Import slot table: shown in the file column of a row the release names but no audio backs."
@@ -4732,6 +4879,7 @@ pt-PT = "Sem ficheiro"
 sv = "Ingen fil"
 da = "Ingen fil"
 nb = "Ingen fil"
+fi = "Ei tiedostoa"
 
 [messages."ui.import.commit.unanswered"]
 comment = "Import commit bar: how many rows nobody has named yet. Stated, never blocking — committing anyway titles each of them after its file."
@@ -4765,6 +4913,7 @@ pt-PT = "{count, plural, one {# linha continua sem nome} other {# linhas continu
 sv = "{count, plural, one {# rad saknar fortfarande namn} other {# rader saknar fortfarande namn}}"
 da = "{count, plural, one {# række mangler stadig et navn} other {# rækker mangler stadig et navn}}"
 nb = "{count, plural, one {# rad mangler fortsatt navn} other {# rader mangler fortsatt navn}}"
+fi = "{count, plural, one {# rivillä ei vieläkään ole nimeä} other {# rivillä ei vieläkään ole nimeä}}"
 
 [messages."ui.import.metadata.title"]
 comment = "Import mapping pane: heading of the section holding the release the folder is being read as and where that reading comes from."
@@ -4797,6 +4946,7 @@ pt-PT = "Metadados"
 sv = "Metadata"
 da = "Metadata"
 nb = "Metadata"
+fi = "Metatiedot"
 
 [messages."ui.import.artist_identity_conflict.explanation"]
 comment = "Import artist identity conflict: explanation above the two survivor choices."
@@ -4829,6 +4979,7 @@ pt-PT = "Esta identidade de origem está associada a dois artistas na sua biblio
 sv = "Den här källidentiteten är länkad till två artister i ditt bibliotek. Välj posten som ska behållas; dess album, spår, medverkanden och källänkar slås ihop med den andra posten."
 da = "Denne kildeidentitet er knyttet til to kunstnere i dit bibliotek. Vælg den post, der skal beholdes; dens album, spor, medvirkende og kildelinks lægges sammen med den anden post."
 nb = "Denne kildeidentiteten er knyttet til to artister i biblioteket ditt. Velg posten som skal beholdes; albumene, sporene, bidragene og kildekoblingene dens slås sammen med den andre posten."
+fi = "Tämä lähdeidentiteetti on kytketty kahteen esittäjään kirjastossasi. Valitse säilytettävä tietue; sen albumit, raidat, tekijätiedot ja lähdelinkit yhdistetään toiseen tietueeseen."
 
 [messages."ui.import.artist_identity_conflict.keep_discogs"]
 comment = "Import artist identity conflict: button choosing the existing Discogs-linked artist record as the survivor."
@@ -4861,6 +5012,7 @@ pt-PT = "Manter o artista do Discogs"
 sv = "Behåll Discogs-artisten"
 da = "Behold Discogs-kunstneren"
 nb = "Behold Discogs-artisten"
+fi = "Säilytä Discogs-esittäjä"
 
 [messages."ui.import.artist_identity_conflict.keep_musicbrainz"]
 comment = "Import artist identity conflict: button choosing the existing MusicBrainz-linked artist record as the survivor."
@@ -4893,6 +5045,7 @@ pt-PT = "Manter o artista do MusicBrainz"
 sv = "Behåll MusicBrainz-artisten"
 da = "Behold MusicBrainz-kunstneren"
 nb = "Behold MusicBrainz-artisten"
+fi = "Säilytä MusicBrainz-esittäjä"
 
 [messages."ui.import.metadata.file_tags"]
 comment = "Import metadata control: take the metadata from the folder's own audio files — their embedded tags, or the track sheets they come with. One of three presentation modes."
@@ -4925,6 +5078,7 @@ pt-PT = "Etiquetas do ficheiro"
 sv = "Filtaggar"
 da = "Filmærker"
 nb = "Filmerkelapper"
+fi = "Tiedoston tunnisteet"
 
 [messages."ui.import.metadata.from_file_tags"]
 comment = "Import metadata card: where the selected metadata came from when it was read from the folder's embedded audio-file tags."
@@ -4957,6 +5111,7 @@ pt-PT = "A partir das etiquetas do ficheiro"
 sv = "Från filtaggar"
 da = "Fra filmærker"
 nb = "Fra filmerkelapper"
+fi = "Tiedoston tunnisteista"
 
 [messages."ui.import.mapping.tracks_title"]
 comment = "Import mapping, section heading over the release's tracks."
@@ -4989,6 +5144,7 @@ pt-PT = "Faixas"
 sv = "Spår"
 da = "Spor"
 nb = "Spor"
+fi = "Raidat"
 
 [messages."ui.import.mapping.files_title"]
 comment = "Import mapping, section heading over the folder's other files: documents, logs, anything carried with the release but not one of its tracks."
@@ -5021,6 +5177,7 @@ pt-PT = "Ficheiros"
 sv = "Filer"
 da = "Filer"
 nb = "Filer"
+fi = "Tiedostot"
 
 [messages."ui.import.mapping.column.title"]
 comment = "Import mapping, Tracks section column header: the track's title."
@@ -5053,6 +5210,7 @@ pt-PT = "Título"
 sv = "Titel"
 da = "Titel"
 nb = "Tittel"
+fi = "Nimi"
 
 [messages."ui.import.mapping.column.artist"]
 comment = "Import mapping, Tracks section column header: the track's artist."
@@ -5085,6 +5243,7 @@ pt-PT = "Artista"
 sv = "Artist"
 da = "Kunstner"
 nb = "Artist"
+fi = "Esittäjä"
 
 [messages."ui.import.mapping.column.name"]
 comment = "Import mapping, Files section column header: the file's own name on disk."
@@ -5117,6 +5276,7 @@ pt-PT = "Nome"
 sv = "Namn"
 da = "Navn"
 nb = "Navn"
+fi = "Nimi"
 
 [messages."ui.import.mapping.column.source"]
 comment = "Import mapping table: column header over what the folder offers for each row — a file, or one entry of a track sheet."
@@ -5149,6 +5309,7 @@ pt-PT = "Fonte"
 sv = "Källa"
 da = "Kilde"
 nb = "Kilde"
+fi = "Lähde"
 
 [messages."ui.import.sheet.disc"]
 comment = "Import mapping table: which disc of the release a track sheet's entries are. Cue filenames are arbitrary, so this is a decision rather than something read off a name."
@@ -5182,6 +5343,7 @@ pt-PT = "Disco {number}"
 sv = "Skiva {number}"
 da = "Disk {number}"
 nb = "Plate {number}"
+fi = "Levy {number}"
 
 [messages."ui.import.sheet.ignored"]
 comment = "Import mapping table: the disc assignment that takes a track sheet's entries out of the tracklist entirely. Its container becomes loose audio again."
@@ -5214,6 +5376,7 @@ pt-PT = "Ignorado"
 sv = "Ignorerad"
 da = "Ignoreret"
 nb = "Ignorert"
+fi = "Ohitettu"
 
 [messages."ui.import.sheet.disc_help"]
 comment = "Import mapping table: tooltip on the disc-assignment control of a track sheet."
@@ -5246,6 +5409,7 @@ pt-PT = "A que disco da edição pertencem as entradas desta folha"
 sv = "Vilken skiva i utgåvan det här arkets poster tillhör"
 da = "Hvilken disk i udgivelsen dette arks poster hører til"
 nb = "Hvilken plate i utgivelsen oppføringene i dette arket hører til"
+fi = "Mille julkaisun levylle tämän arkin merkinnät kuuluvat"
 
 [messages."ui.import.becomes.awaiting_pick"]
 comment = "Import mapping table, Becomes column: no release has been picked yet, so what this row's audio becomes is still the open question."
@@ -5278,6 +5442,7 @@ pt-PT = "À espera de uma edição"
 sv = "Väntar på en utgåva"
 da = "Venter på en udgivelse"
 nb = "Venter på en utgivelse"
+fi = "Odottaa julkaisua"
 
 [messages."core.pairing.join.waiting_for_approval"]
 comment = "Joining device: waiting for the existing device to approve it."
@@ -5309,6 +5474,7 @@ pt-PT = "À espera de aprovação…"
 sv = "Väntar på godkännande…"
 da = "Venter på godkendelse…"
 nb = "Venter på godkjenning…"
+fi = "Odotetaan hyväksyntää…"
 
 [messages."core.pairing.join.requesting_provider_access"]
 comment = "Joining device: requesting access to the library's cloud provider."
@@ -5340,6 +5506,7 @@ pt-PT = "A pedir acesso à nuvem…"
 sv = "Begär molnåtkomst…"
 da = "Anmoder om skyadgang…"
 nb = "Ber om skytilgang…"
+fi = "Pyydetään pilviyhteyttä…"
 
 [messages."core.pairing.join.waiting_for_provider_access"]
 comment = "Joining device: waiting for the existing device to grant cloud-provider access."
@@ -5371,6 +5538,7 @@ pt-PT = "À espera de acesso à nuvem…"
 sv = "Väntar på molnåtkomst…"
 da = "Venter på skyadgang…"
 nb = "Venter på skytilgang…"
+fi = "Odotetaan pilviyhteyttä…"
 
 [messages."core.pairing.registering_device"]
 comment = "Device pairing: registering the joining device in the library membership."
@@ -5402,6 +5570,7 @@ pt-PT = "A registar o dispositivo…"
 sv = "Registrerar enheten…"
 da = "Registrerer enheden…"
 nb = "Registrerer enheten…"
+fi = "Rekisteröidään laitetta…"
 
 [messages."core.pairing.join.waiting_for_library"]
 comment = "Joining device: waiting for the existing device to prepare the library."
@@ -5433,6 +5602,7 @@ pt-PT = "À espera da biblioteca…"
 sv = "Väntar på biblioteket…"
 da = "Venter på biblioteket…"
 nb = "Venter på biblioteket…"
+fi = "Odotetaan kirjastoa…"
 
 [messages."core.pairing.join.downloading_snapshot"]
 comment = "Joining device: downloading the library database snapshot."
@@ -5464,6 +5634,7 @@ pt-PT = "A transferir a cópia da biblioteca…"
 sv = "Hämtar bibliotekets ögonblicksbild…"
 da = "Henter bibliotekets øjebliksbillede…"
 nb = "Laster ned øyeblikksbildet av biblioteket…"
+fi = "Ladataan kirjaston tilannevedosta…"
 
 [messages."core.pairing.join.installing_snapshot"]
 comment = "Joining device: installing the downloaded library database snapshot."
@@ -5495,6 +5666,7 @@ pt-PT = "A instalar a cópia da biblioteca…"
 sv = "Installerar bibliotekets ögonblicksbild…"
 da = "Installerer bibliotekets øjebliksbillede…"
 nb = "Installerer øyeblikksbildet av biblioteket…"
+fi = "Asennetaan kirjaston tilannevedosta…"
 
 [messages."core.pairing.join.waiting_for_activation"]
 comment = "Joining device: waiting for the existing device to activate it."
@@ -5526,6 +5698,7 @@ pt-PT = "À espera da ativação…"
 sv = "Väntar på aktivering…"
 da = "Venter på aktivering…"
 nb = "Venter på aktivering…"
+fi = "Odotetaan aktivointia…"
 
 [messages."core.pairing.join.catching_up"]
 comment = "Joining device: applying library changes made after the snapshot."
@@ -5557,6 +5730,7 @@ pt-PT = "A pôr em dia as alterações da biblioteca…"
 sv = "Hämtar ikapp bibliotekets ändringar…"
 da = "Indhenter bibliotekets ændringer…"
 nb = "Henter inn endringene i biblioteket…"
+fi = "Otetaan kirjaston muutoksia kiinni…"
 
 [messages."core.pairing.join.saving_library"]
 comment = "Joining device: saving the joined library on this device."
@@ -5588,6 +5762,7 @@ pt-PT = "A guardar a biblioteca…"
 sv = "Sparar biblioteket…"
 da = "Gemmer biblioteket…"
 nb = "Lagrer biblioteket…"
+fi = "Tallennetaan kirjastoa…"
 
 [messages."core.pairing.admit.preparing_invitation"]
 comment = "Existing device: preparing the sealed invitation for the joining device."
@@ -5619,6 +5794,7 @@ pt-PT = "A preparar o convite…"
 sv = "Förbereder inbjudan…"
 da = "Forbereder invitationen…"
 nb = "Forbereder invitasjonen…"
+fi = "Valmistellaan kutsua…"
 
 [messages."core.pairing.admit.waiting_for_provider_access_request"]
 comment = "Existing device: waiting for the joining device's cloud-access request."
@@ -5650,6 +5826,7 @@ pt-PT = "À espera do pedido de acesso à nuvem…"
 sv = "Väntar på begäran om molnåtkomst…"
 da = "Venter på anmodning om skyadgang…"
 nb = "Venter på forespørsel om skytilgang…"
+fi = "Odotetaan pilviyhteyspyyntöä…"
 
 [messages."core.pairing.admit.granting_provider_access"]
 comment = "Existing device: granting the joining device access to the cloud provider."
@@ -5681,6 +5858,7 @@ pt-PT = "A conceder acesso à nuvem…"
 sv = "Ger molnåtkomst…"
 da = "Giver skyadgang…"
 nb = "Gir skytilgang…"
+fi = "Myönnetään pilviyhteyttä…"
 
 [messages."core.pairing.admit.waiting_for_registration_request"]
 comment = "Existing device: waiting for the joining device's signed registration request."
@@ -5712,6 +5890,7 @@ pt-PT = "À espera do pedido de registo do dispositivo…"
 sv = "Väntar på begäran om enhetsregistrering…"
 da = "Venter på anmodning om enhedsregistrering…"
 nb = "Venter på forespørsel om enhetsregistrering…"
+fi = "Odotetaan laitteen rekisteröintipyyntöä…"
 
 [messages."core.pairing.admit.preparing_library"]
 comment = "Existing device: preparing the library snapshot and pinned-file manifest for the joining device."
@@ -5743,6 +5922,7 @@ pt-PT = "A preparar a biblioteca…"
 sv = "Förbereder biblioteket…"
 da = "Forbereder biblioteket…"
 nb = "Forbereder biblioteket…"
+fi = "Valmistellaan kirjastoa…"
 
 [messages."core.pairing.admit.waiting_for_joining_device"]
 comment = "Existing device: waiting while the joining device downloads and installs the library."
@@ -5774,6 +5954,7 @@ pt-PT = "À espera do dispositivo que está a aderir…"
 sv = "Väntar på enheten som ansluter sig…"
 da = "Venter på den enhed, der deltager…"
 nb = "Venter på enheten som blir med…"
+fi = "Odotetaan liittyvää laitetta…"
 
 [messages."core.pairing.admit.activating_device"]
 comment = "Existing device: activating the joining device after it reports readiness."
@@ -5805,6 +5986,7 @@ pt-PT = "A ativar o dispositivo…"
 sv = "Aktiverar enheten…"
 da = "Aktiverer enheden…"
 nb = "Aktiverer enheten…"
+fi = "Aktivoidaan laitetta…"
 
 [messages."ui.import.folder.scan_failed"]
 comment = "Alert headline when reading a watched folder fails; {folder} is the folder's path. The failure's own untranslated text is shown beneath it."
@@ -5838,6 +6020,7 @@ pt-PT = "Não foi possível analisar {folder}"
 sv = "Kunde inte genomsöka {folder}"
 da = "Kunne ikke scanne {folder}"
 nb = "Kunne ikke søke gjennom {folder}"
+fi = "Kohdetta {folder} ei voitu käydä läpi"
 
 [messages."core.playback.pause.disc_ended.title"]
 comment = "Alert title shown when playback pauses after a CD ends ({label} is the disc number)."
@@ -5871,6 +6054,7 @@ pt-PT = "O disco {label} terminou"
 sv = "Skiva {label} är slut"
 da = "Disk {label} er slut"
 nb = "Plate {label} er slutt"
+fi = "Levy {label} päättyi"
 
 [messages."core.playback.pause.disc_ended.message.cd"]
 comment = "Alert body shown when playback pauses between CDs."
@@ -5903,3 +6087,4 @@ pt-PT = "A reprodução está em pausa entre discos. Troque o CD e prima Reprodu
 sv = "Uppspelningen pausades mellan skivorna. Byt CD och tryck på Spela."
 da = "Afspilningen er sat på pause mellem diskene. Skift cd, og tryk på Afspil."
 nb = "Avspillingen er satt på pause mellom platene. Bytt CD, og trykk på Spill av."
+fi = "Toisto on tauolla levyjen välissä. Vaihda CD ja paina Toista."
