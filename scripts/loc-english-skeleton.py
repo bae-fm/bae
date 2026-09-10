@@ -399,6 +399,7 @@ _LOCALE_EXCLUDE = {
     "tr": {"a", "in", "e", "or", "and"},
     "nl": {"is", "was", "been", "of", "in", "a", "on", "met", "aan", "via", "account"},
     "da": {"for", "session", "start"},
+    "nb": {"for", "start"},
 }
 
 # Loanwords the good entries already use — legitimate, never English-skeleton

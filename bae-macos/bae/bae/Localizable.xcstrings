@@ -93,6 +93,12 @@
             "value" : "모든 이미지 둘러보기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bla gjennom alle bilder"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -251,6 +257,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "현재 커버"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nåværende omslag"
           }
         },
         "nl" : {
@@ -414,6 +426,12 @@
             "value" : "이미지 뷰어에서 보기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis i lysbord"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -572,6 +590,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "화면 모양"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utseende"
           }
         },
         "nl" : {
@@ -735,6 +759,12 @@
             "value" : "이전 이미지"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forrige bilde"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -894,6 +924,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "다음 이미지"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste bilde"
           }
         },
         "nl" : {
@@ -1057,6 +1093,12 @@
             "value" : "이 릴리스는 더 이상 라이브러리에 없습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne utgivelsen er ikke lenger i biblioteket."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1216,6 +1258,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "적용"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk"
           }
         },
         "nl" : {
@@ -1379,6 +1427,12 @@
             "value" : "모두 접기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå sammen alle"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1538,6 +1592,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "모두 펼치기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utvid alle"
           }
         },
         "nl" : {
@@ -1701,6 +1761,12 @@
             "value" : "그룹"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grupper"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1860,6 +1926,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "온라인 검색"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nettoppslag"
           }
         },
         "nl" : {
@@ -2023,6 +2095,12 @@
             "value" : "메타데이터 지우기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tøm metadata"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2182,6 +2260,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "메타데이터를 지울까요?"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tømme metadata?"
           }
         },
         "nl" : {
@@ -2345,6 +2429,12 @@
             "value" : "기본 메타데이터 소스"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standardkilde for metadata"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2504,6 +2594,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "파일 태그를 읽을 수 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filmerkelappene kunne ikke leses"
           }
         },
         "nl" : {
@@ -2667,6 +2763,12 @@
             "value" : "온라인에서 찾기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå opp på nettet"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2826,6 +2928,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "릴리스 찾기…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finn utgivelse…"
           }
         },
         "nl" : {
@@ -2989,6 +3097,12 @@
             "value" : "자동으로 식별"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiser automatisk"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3148,6 +3262,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "새 후보는 발견되는 즉시, 그리고 온라인에서 찾기를 열 때 식별됩니다. 꺼져 있으면 식별 링크로 시작합니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nye kandidater identifiseres etter hvert som de blir funnet, og når Slå opp på nettet åpnes. Når det er av, starter lenken Identifiser en kjøring."
           }
         },
         "nl" : {
@@ -3311,6 +3431,12 @@
             "value" : "없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3470,6 +3596,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "파일 태그 읽는 중…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leser filmerkelapper…"
           }
         },
         "nl" : {
@@ -3633,6 +3765,12 @@
             "value" : "후보 파일과 매핑 선택은 변경되지 않습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kandidatens filer og koblinger forblir uendret."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3792,6 +3930,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "후보를 다시 읽어 보세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prøv å lese kandidaten på nytt."
           }
         },
         "nl" : {
@@ -3955,6 +4099,12 @@
             "value" : "[Discogs](https://www.discogs.com)는 레이블, 카탈로그 번호, 프레싱 변형 등 자세한 릴리스 정보를 가진 음악 데이터베이스입니다. bae는 앨범을 가져올 때 이를 메타데이터 소스로 사용할 수 있습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[Discogs](https://www.discogs.com) er en musikkdatabase med detaljert informasjon om utgivelser: selskaper, katalognumre, pressevarianter og mye mer. bae kan bruke den som metadatakilde når album importeres."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4111,6 +4261,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ - %2$@"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ - %2$@"
@@ -4277,6 +4433,12 @@
             "value" : "%@ - bae"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ - bae"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4436,6 +4598,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@의 암호화 키가 키체인에서 제거됩니다. 이 세션은 계속 작동하지만 다음 실행 때 키를 다시 입력해야 합니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Krypteringsnøkkelen for %@ fjernes fra nøkkelringen. Denne økten fortsetter å virke; ved neste oppstart må du oppgi nøkkelen på nytt."
           }
         },
         "nl" : {
@@ -4820,6 +4988,24 @@
             }
           }
         },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld fil"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld filer"
+                }
+              }
+            }
+          }
+        },
         "nl" : {
           "variations" : {
             "plural" : {
@@ -5155,6 +5341,12 @@
             "value" : "%lld개 파일 · %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld filer · %2$@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5314,6 +5506,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "파일 %lld개 · %@ · %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld filer · %@ · %@"
           }
         },
         "nl" : {
@@ -5489,6 +5687,12 @@
             "value" : "릴리스 %lld개 더"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld utgivelser til"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5660,6 +5864,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld개 릴리스"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld utgivelser"
           }
         },
         "nl" : {
@@ -5991,6 +6201,12 @@
             }
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld valgt"
+          }
+        },
         "nl" : {
           "variations" : {
             "plural" : {
@@ -6254,6 +6470,12 @@
             "value" : "%lld개 트랙"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld spor"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6412,6 +6634,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "16비트"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "16 bit"
           }
         },
         "nl" : {
@@ -6574,6 +6802,12 @@
             "value" : "24비트"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "24 bit"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6734,6 +6968,12 @@
             "value" : "32비트"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "32 bit"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6890,6 +7130,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AAC %lld kbps"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "AAC %lld kbps"
@@ -7056,6 +7302,12 @@
             "value" : "정보"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7215,6 +7467,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "액세스 키"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilgangsnøkkel"
           }
         },
         "nl" : {
@@ -7379,6 +7637,12 @@
             "value" : "계정"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konto"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7538,6 +7802,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "추가"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til"
           }
         },
         "nl" : {
@@ -7917,6 +8187,24 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "앨범 %lld개 다음에 추가"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Spill av %lld album som neste"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Spill av %lld album som neste"
                 }
               }
             }
@@ -8466,6 +8754,24 @@
             }
           }
         },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Legg %lld album i køen"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Legg %lld album i køen"
+                }
+              }
+            }
+          }
+        },
         "nl" : {
           "variations" : {
             "plural" : {
@@ -8788,6 +9094,12 @@
             "value" : "기기 추가"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til en enhet"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8947,6 +9259,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기기 추가..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til en enhet..."
           }
         },
         "nl" : {
@@ -9110,6 +9428,12 @@
             "value" : "음악을 가져올 폴더 추가"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til en mappe å importere musikk fra"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9271,6 +9595,12 @@
             "value" : "폴더 추가…"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til en mappe…"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9429,6 +9759,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "형식 추가"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til format"
           }
         },
         "nl" : {
@@ -9592,6 +9928,12 @@
             "value" : "다음에 추가"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til som neste"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9751,6 +10093,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "정렬 기준 추가"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til sorteringskriterium"
           }
         },
         "nl" : {
@@ -9914,6 +10262,12 @@
             "value" : "대기열에 추가"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg i kø"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -10073,6 +10427,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "추가:"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til:"
           }
         },
         "nl" : {
@@ -10236,6 +10596,12 @@
             "value" : "고급"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avansert"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -10395,6 +10761,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "앨범"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album"
           }
         },
         "nl" : {
@@ -10558,6 +10930,12 @@
             "value" : "앨범 아트"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albumomslag"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -10717,6 +11095,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "앨범 아티스트"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albumartist"
           }
         },
         "nl" : {
@@ -10880,6 +11264,12 @@
             "value" : "앨범 제목"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albumtittel"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -11039,6 +11429,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "앨범 제목"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albumtittel"
           }
         },
         "nl" : {
@@ -11202,6 +11598,12 @@
             "value" : "앨범"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -11361,6 +11763,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "전체"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle"
           }
         },
         "nl" : {
@@ -11524,6 +11932,12 @@
             "value" : "네트워크의 다른 기기에서 연결 허용"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tillat tilkoblinger fra andre enheter på nettverket"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -11683,6 +12097,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 앨범의 다른 릴리스가 라이브러리에 있습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En annen utgivelse av dette albumet finnes allerede i biblioteket"
           }
         },
         "nl" : {
@@ -11846,6 +12266,12 @@
             "value" : "S3 호환 저장소(AWS, Backblaze, Minio 등)"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvilken som helst S3-kompatibel lagring (AWS, Backblaze, Minio, ...)"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -12004,6 +12430,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 코드를 가진 사람은 누구나 보관함에 완전히 접근할 수 있습니다. 비밀로 유지하세요. 다른 기기를 사용할 수 없을 때 새 기기에서 복원하는 용도로만 사용하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle som har denne koden, får full tilgang til biblioteket ditt. Hold den hemmelig. Bruk den bare til å gjenopprette på en ny enhet når du ikke har noen annen enhet tilgjengelig."
           }
         },
         "nl" : {
@@ -12167,6 +12599,12 @@
             "value" : "API 키"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API-nøkkel"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -12327,6 +12765,12 @@
             "value" : "HTOA 제외하고 추가"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til bakerst, unntatt HTOA"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -12485,6 +12929,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "HTOA 포함하여 추가"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til bakerst, inkludert HTOA"
           }
         },
         "nl" : {
@@ -12648,6 +13098,12 @@
             "value" : "승인"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Godkjenn"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -12806,6 +13262,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 기기를 승인하시겠습니까?"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Godkjenne denne enheten?"
           }
         },
         "nl" : {
@@ -12969,6 +13431,12 @@
             "value" : "이 릴리스를 삭제할까요? 되돌릴 수 없습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Er du sikker på at du vil slette denne utgivelsen? Dette kan ikke angres."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -13128,6 +13596,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "아티스트"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artist"
           }
         },
         "nl" : {
@@ -13291,6 +13765,12 @@
             "value" : "아티스트 이름"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artistnavn"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -13450,6 +13930,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "아티스트"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artister"
           }
         },
         "nl" : {
@@ -13613,6 +14099,12 @@
             "value" : "인증 중..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriserer..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -13772,6 +14264,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "자동화"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisering"
           }
         },
         "nl" : {
@@ -13935,6 +14433,12 @@
             "value" : "뒤로"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilbake"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -14090,6 +14594,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae"
@@ -14256,6 +14766,12 @@
             "value" : "bae에 iCloud 사용 권한이 없습니다. 시스템 설정 → Apple ID → iCloud → iCloud를 사용하는 App에서 bae를 켜십시오."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae har ikke tillatelse til å bruke iCloud. Åpne Systeminnstillinger → Apple-ID → iCloud → Apper som bruker iCloud, og slå på bae."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -14415,6 +14931,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "바코드"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strekkode"
           }
         },
         "nl" : {
@@ -14577,6 +15099,12 @@
             "value" : "비트 깊이"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bitdybde"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -14735,6 +15263,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "비트레이트"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bitrate"
           }
         },
         "nl" : {
@@ -14898,6 +15432,12 @@
             "value" : "탐색 가능: 암호화하지 않고 저장"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan blas gjennom: lagret ukryptert"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -15057,6 +15597,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "버킷"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bøtte"
           }
         },
         "nl" : {
@@ -15220,6 +15766,12 @@
             "value" : "카메라 접근이 꺼져 있습니다. 시스템 설정에서 켜거나 아래에 코드를 붙여넣으세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kameratilgangen er av. Slå den på i Systeminnstillinger, eller lim inn koden nedenfor."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -15379,6 +15931,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "열 수 없음: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan ikke åpnes: %@"
           }
         },
         "nl" : {
@@ -15542,6 +16100,12 @@
             "value" : "취소"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -15701,6 +16265,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 다운로드 취소"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt denne nedlastingen"
           }
         },
         "nl" : {
@@ -15864,6 +16434,12 @@
             "value" : "이 내보내기 취소"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt denne eksporten"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -16023,6 +16599,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "캐스트"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cast"
           }
         },
         "nl" : {
@@ -16186,6 +16768,12 @@
             "value" : "캐스트"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caster"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -16345,6 +16933,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@(으)로 캐스트 중"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caster til %@"
           }
         },
         "nl" : {
@@ -16508,6 +17102,12 @@
             "value" : "카탈로그"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katalog"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -16667,6 +17267,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "카탈로그 #"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katalognr."
           }
         },
         "nl" : {
@@ -16830,6 +17436,12 @@
             "value" : "카탈로그 번호"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katalognummer"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -16989,6 +17601,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "커버 변경"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytt omslag"
           }
         },
         "nl" : {
@@ -17152,6 +17770,12 @@
             "value" : "커버 변경..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytt omslag..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -17311,6 +17935,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "업데이트 확인..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se etter oppdateringer..."
           }
         },
         "nl" : {
@@ -17474,6 +18104,12 @@
             "value" : "승인하기 전에 새 기기에 표시된 지문과 일치하는지 확인하세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroller at det stemmer med fingeravtrykket som vises på den nye enheten, før du godkjenner."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -17633,6 +18269,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "메타데이터를 검색할 스캔된 폴더를 선택하세요"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velg en gjennomsøkt mappe å lete etter metadata i"
           }
         },
         "nl" : {
@@ -17796,6 +18438,12 @@
             "value" : "다른 라이브러리를 선택하거나 클라우드에서 복원하세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velg et annet bibliotek, eller gjenopprett fra skyen."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -17955,6 +18603,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "지우기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tøm"
           }
         },
         "nl" : {
@@ -18118,6 +18772,12 @@
             "value" : "‘재생 위치’ 지우기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tøm Spilles fra"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -18277,6 +18937,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "‘다음 재생’ 지우기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tøm Neste"
           }
         },
         "nl" : {
@@ -18440,6 +19106,12 @@
             "value" : "닫기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lukk"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -18599,6 +19271,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리 닫기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lukk biblioteket"
           }
         },
         "nl" : {
@@ -18762,6 +19440,12 @@
             "value" : "클라우드"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sky"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -18920,6 +19604,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "하나의 릴리스로 결합"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå sammen til én utgivelse"
           }
         },
         "nl" : {
@@ -19083,6 +19773,12 @@
             "value" : "신원 저장 중..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bekrefter identitet..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -19242,6 +19938,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "작곡가"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Komponister"
           }
         },
         "nl" : {
@@ -19405,6 +20107,12 @@
             "value" : "연결"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koble til"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -19564,6 +20272,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 연결"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koble til %@"
           }
         },
         "nl" : {
@@ -19727,6 +20441,12 @@
             "value" : "연결됨"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilkoblet"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -19886,6 +20606,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "연결 중..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kobler til..."
           }
         },
         "nl" : {
@@ -20049,6 +20775,12 @@
             "value" : "코드 복사"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopier koden"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20208,6 +20940,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "세부 정보 복사"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopier detaljer"
           }
         },
         "nl" : {
@@ -20371,6 +21109,12 @@
             "value" : "세부 정보 복사"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopier detaljer"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20530,6 +21274,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리 ID 복사"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopier bibliotekets ID"
           }
         },
         "nl" : {
@@ -20693,6 +21443,12 @@
             "value" : "토큰 복사"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopier token"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20852,6 +21608,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@을(를) 읽을 수 없음: %2$@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke lese %1$@: %2$@"
           }
         },
         "nl" : {
@@ -21015,6 +21777,12 @@
             "value" : "놓은 항목을 읽을 수 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elementet som ble sluppet, kunne ikke leses"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -21174,6 +21942,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "폴더를 추가할 수 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mappen kunne ikke legges til"
           }
         },
         "nl" : {
@@ -21337,6 +22111,12 @@
             "value" : "해당 트랙을 변경할 수 없습니다: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette sporet kunne ikke endres: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -21496,6 +22276,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "커버를 변경할 수 없습니다: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omslaget kunne ikke byttes: %@"
           }
         },
         "nl" : {
@@ -21659,6 +22445,12 @@
             "value" : "%1$@이(가) 설명하는 대상을 바꿀 수 없음: %2$@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke endre hva %1$@ beskriver: %2$@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -21818,6 +22610,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@의 역할을 바꿀 수 없음: %2$@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke endre hva %1$@ er: %2$@"
           }
         },
         "nl" : {
@@ -21981,6 +22779,12 @@
             "value" : "식별이 검색하는 대상을 변경할 수 없습니다: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke endre hva identifiseringen slår opp: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -22140,6 +22944,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@의 디스크를 바꿀 수 없음: %2$@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke endre hvilken plate %1$@ hører til: %2$@"
           }
         },
         "nl" : {
@@ -22303,6 +23113,12 @@
             "value" : "클라우드 전용 릴리스를 확인할 수 없음: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke sjekke utgivelser som bare finnes i skyen: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -22462,6 +23278,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "iCloud 계정 상태를 확인할 수 없음: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke sjekke statusen til iCloud-kontoen: %@"
           }
         },
         "nl" : {
@@ -22625,6 +23447,12 @@
             "value" : "iCloud 계정 상태를 확인할 수 없습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke sjekke statusen til iCloud-kontoen."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -22784,6 +23612,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MCP 토큰을 복사할 수 없음: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke kopiere MCP-token: %@"
           }
         },
         "nl" : {
@@ -22948,6 +23782,12 @@
             "value" : "복원 코드를 생성할 수 없습니다"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke opprette en gjenopprettingskode"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -23107,6 +23947,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "iCloud 계정 상태를 확인할 수 없습니다. 네트워크를 확인한 다음 다시 시도하십시오."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke fastslå statusen til iCloud-kontoen. Sjekk nettverket, og prøv på nytt."
           }
         },
         "nl" : {
@@ -23270,6 +24116,12 @@
             "value" : "해당 트랙을 제외할 수 없습니다: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette sporet kunne ikke hoppes over: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -23429,6 +24281,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 Mac의 라이브러리를 나열할 수 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke liste bibliotekene på denne Macen"
           }
         },
         "nl" : {
@@ -23592,6 +24450,12 @@
             "value" : "이미지를 불러올 수 없습니다"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildet kunne ikke lastes inn"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -23751,6 +24615,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Discogs 키를 다시 확인할 수 없음: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke sjekke Discogs-nøkkelen på nytt: %@"
           }
         },
         "nl" : {
@@ -23914,6 +24784,12 @@
             "value" : "파일 태그를 읽을 수 없음: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke lese filmerkelappene: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -24073,6 +24949,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "키체인에서 복원 코드를 읽을 수 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke lese gjenopprettingskodene fra nøkkelringen din"
           }
         },
         "nl" : {
@@ -24236,6 +25118,12 @@
             "value" : "저장된 Discogs 키를 읽을 수 없음: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke lese den lagrede Discogs-nøkkelen: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -24395,6 +25283,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@이(가) 설명할 수 있는 대상을 읽을 수 없음: %2$@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke lese hva %1$@ kan beskrive: %2$@"
           }
         },
         "nl" : {
@@ -24558,6 +25452,12 @@
             "value" : "폴더를 제거할 수 없음: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mappen kunne ikke fjernes: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -24717,6 +25617,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리를 제거할 수 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteket kunne ikke fjernes"
           }
         },
         "nl" : {
@@ -24880,6 +25786,12 @@
             "value" : "Discogs 키를 제거할 수 없음: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs-nøkkelen kunne ikke fjernes: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -25039,6 +25951,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MCP 토큰을 교체할 수 없음: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP-token kunne ikke byttes: %@"
           }
         },
         "nl" : {
@@ -25202,6 +26120,12 @@
             "value" : "Subsonic 암호를 저장할 수 없습니다: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subsonic-passordet kunne ikke lagres: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -25363,6 +26287,12 @@
             "value" : "해당 변경 사항을 저장할 수 없습니다: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne endringen kunne ikke lagres: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -25522,6 +26452,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Discogs 키를 저장할 수 없음: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs-nøkkelen kunne ikke lagres: %@"
           }
         },
         "nl" : {
@@ -25686,6 +26622,12 @@
             "value" : "복원 코드를 키체인에 저장할 수 없습니다"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprettingskoden kunne ikke lagres i nøkkelringen din"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -25845,6 +26787,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MCP 설정을 업데이트할 수 없음: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP-innstillingene kunne ikke oppdateres: %@"
           }
         },
         "nl" : {
@@ -26008,6 +26956,12 @@
             "value" : "건너뛰기 상태를 업데이트할 수 없음: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hopp over-statusen kunne ikke oppdateres: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -26167,6 +27121,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Subsonic 설정을 업데이트할 수 없습니다: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subsonic-innstillingene kunne ikke oppdateres: %@"
           }
         },
         "nl" : {
@@ -26330,6 +27290,12 @@
             "value" : "국가"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Land"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -26489,6 +27455,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "커버 OCR"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OCR av omslag"
           }
         },
         "nl" : {
@@ -26652,6 +27624,12 @@
             "value" : "새 라이브러리 만들기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opprett nytt bibliotek"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -26811,6 +27789,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "크레딧"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medvirkende"
           }
         },
         "nl" : {
@@ -26974,6 +27958,12 @@
             "value" : "CUE 시트"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CUE-fil"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -27133,6 +28123,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "반복 모드 전환"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytt gjentakelsesmodus"
           }
         },
         "nl" : {
@@ -27295,6 +28291,12 @@
             "value" : "기본 형식"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standardformat"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -27453,6 +28455,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기본값"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standardverdier"
           }
         },
         "nl" : {
@@ -27616,6 +28624,12 @@
             "value" : "삭제"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slett"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -27775,6 +28789,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "삭제 실패"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slettingen mislyktes"
           }
         },
         "nl" : {
@@ -27938,6 +28958,12 @@
             "value" : "형식 삭제"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slett format"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -28097,6 +29123,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "릴리스 삭제"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slett utgivelse"
           }
         },
         "nl" : {
@@ -28260,6 +29292,12 @@
             "value" : "“%@” 형식을 삭제하겠습니까?"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slette formatet «%@»?"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -28419,6 +29457,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "세부 정보"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detaljer"
           }
         },
         "nl" : {
@@ -28582,6 +29626,12 @@
             "value" : "기기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enheter"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -28741,6 +29791,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "비활성화됨"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Av"
           }
         },
         "nl" : {
@@ -28904,6 +29960,12 @@
             "value" : "디스크 ID"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plate-ID"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -29063,6 +30125,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "디스크 번호"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plate nr."
           }
         },
         "nl" : {
@@ -29226,6 +30294,12 @@
             "value" : "디스크 TOC"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Platens TOC"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -29382,6 +30456,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Discogs"
@@ -29548,6 +30628,12 @@
             "value" : "Discogs가 이 키를 거부했습니다. 확인한 뒤 다시 저장하세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs avviste denne nøkkelen. Kontroller den, og lagre på nytt."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -29707,6 +30793,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "연결 해제"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koble fra"
           }
         },
         "nl" : {
@@ -29870,6 +30962,12 @@
             "value" : "동기화를 연결 해제할까요?"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koble fra synkroniseringen?"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -30029,6 +31127,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "연결을 해제했지만 복원 코드를 제거할 수 없음: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frakoblet, men gjenopprettingskoden kunne ikke fjernes: %@"
           }
         },
         "nl" : {
@@ -30192,6 +31296,12 @@
             "value" : "완료"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ferdig"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -30351,6 +31461,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "다운로드 중"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster ned"
           }
         },
         "nl" : {
@@ -30514,6 +31630,12 @@
             "value" : "다운로드"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nedlastinger"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -30673,6 +31795,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "여기에 트랙을 끌어 놓거나 앨범을 재생하세요"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dra spor hit, eller spill av et album"
           }
         },
         "nl" : {
@@ -30836,6 +31964,12 @@
             "value" : "파일이 아니라 가져올 폴더를 놓으세요"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slipp en mappe for å importere, ikke en fil"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -30992,6 +32126,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dropbox"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dropbox"
@@ -31158,6 +32298,12 @@
             "value" : "예: 4943674251780"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "f.eks. 4943674251780"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -31317,6 +32463,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "예: WPCR-80001"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "f.eks. WPCR-80001"
           }
         },
         "nl" : {
@@ -31480,6 +32632,12 @@
             "value" : "메타데이터 편집"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rediger metadata"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -31641,6 +32799,12 @@
             "value" : "메타데이터 편집..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rediger metadata..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -31799,6 +32963,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "커버 아트 포함"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bygg inn omslaget"
           }
         },
         "nl" : {
@@ -31962,6 +33132,12 @@
             "value" : "캐스트 사용"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på casting"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -32123,6 +33299,12 @@
             "value" : "MCP 서버 활성화"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på MCP-serveren"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -32282,6 +33464,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Subsonic 서버 켜기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på Subsonic-serveren"
           }
         },
         "nl" : {
@@ -32446,6 +33634,12 @@
             "value" : "암호화 키(64자 16진수)"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Krypteringsnøkkel (64 heksadesimale tegn)"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -32605,6 +33799,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "엔드포인트"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endepunkt"
           }
         },
         "nl" : {
@@ -32768,6 +33968,12 @@
             "value" : "1부터 65535까지의 포트를 입력하세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppgi en port fra 1 til 65535."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -32927,6 +34133,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "오류"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feil"
           }
         },
         "nl" : {
@@ -33090,6 +34302,12 @@
             "value" : "모든 객체는 업로드 전에 암호화됩니다. 저장소에 접근할 수 있는 사람도 불투명한 키 아래 암호문만 봅니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvert objekt krypteres før opplasting. Alle med tilgang til lagringen ser bare kryptert tekst under ugjennomsiktige nøkler."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -33250,6 +34468,12 @@
             "value" : "제외"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utelat"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -33408,6 +34632,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "내보내기 및 저장"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eksporter og lagre"
           }
         },
         "nl" : {
@@ -33571,6 +34801,12 @@
             "value" : "내보내기 실패"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eksporten mislyktes"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -33730,6 +34966,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "여기로 내보내기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eksporter hit"
           }
         },
         "nl" : {
@@ -33893,6 +35135,12 @@
             "value" : "내보내기…"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eksporter…"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -34052,6 +35300,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "내보내는 중 %lld%%"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eksporterer %lld%%"
           }
         },
         "nl" : {
@@ -34215,6 +35469,12 @@
             "value" : "실패"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mislyktes"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -34374,6 +35634,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "연결을 해제할 수 없음: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frakoblingen mislyktes: %@"
           }
         },
         "nl" : {
@@ -34537,6 +35803,12 @@
             "value" : "커버를 불러올 수 없음: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omslagene kunne ikke lastes inn: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -34696,6 +35968,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "릴리스 세부 정보를 불러올 수 없음: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detaljene for utgivelsen kunne ikke lastes inn: %@"
           }
         },
         "nl" : {
@@ -34859,6 +36137,12 @@
             "value" : "기본 릴리스로 설정할 수 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den primære utgivelsen kunne ikke angis"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -35018,6 +36302,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "커버 가져오는 중..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Henter omslag..."
           }
         },
         "nl" : {
@@ -35181,6 +36471,12 @@
             "value" : "파일명"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "filnavn"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -35339,6 +36635,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "파일 이름 지정"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filnavngiving"
           }
         },
         "nl" : {
@@ -35502,6 +36804,12 @@
             "value" : "파일"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filer"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -35661,6 +36969,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "필터"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter"
           }
         },
         "nl" : {
@@ -35824,6 +37138,12 @@
             "value" : "필터..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -35983,6 +37303,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "폴더 이름"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mappenavn"
           }
         },
         "nl" : {
@@ -36146,6 +37472,12 @@
             "value" : "폴더"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mapper"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -36305,6 +37637,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "팔로워"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Følger"
           }
         },
         "nl" : {
@@ -36468,6 +37806,12 @@
             "value" : "형식"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Format"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -36627,6 +37971,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "형식:"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Format:"
           }
         },
         "nl" : {
@@ -36789,6 +38139,12 @@
             "value" : "형식"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formater"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -36947,6 +38303,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "형식은 트랙과 릴리스의 \"다른 이름으로 저장…\"에 표시됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formatene vises i Lagre som… for spor og utgivelser."
           }
         },
         "nl" : {
@@ -37110,6 +38472,12 @@
             "value" : "이 Mac의 이전 설정에서 찾았습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funnet fra et tidligere oppsett på denne Macen."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -37269,6 +38637,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "전체 너비 라이브러리"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliotek i full bredde"
           }
         },
         "nl" : {
@@ -37432,6 +38806,12 @@
             "value" : "일반"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generelt"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -37591,6 +38971,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "음악 라이브러리를 시작하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kom i gang med musikkbiblioteket ditt."
           }
         },
         "nl" : {
@@ -37754,6 +39140,12 @@
             "value" : "아직 식별 중인 항목으로 이동"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gå til en kandidat som fortsatt identifiseres"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -37915,6 +39307,12 @@
             "value" : "지금 재생 중으로 이동"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gå til Spilles nå"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -38071,6 +39469,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Drive"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Google Drive"
@@ -38236,6 +39640,12 @@
             "value" : "가져오기 후 한 번에 클라우드 저장소로 업로드할 파일 수와, 릴리스를 고정할 때 한 번에 다운로드할 파일 수입니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvor mange filer som lastes opp til skylagringen samtidig etter en import, og hvor mange som lastes ned samtidig når en utgivelse festes."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -38392,6 +39802,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "iCloud"
@@ -38558,6 +39974,12 @@
             "value" : "이 기기에서 iCloud가 제한되어 있습니다(자녀 보호 기능 또는 MDM). bae는 동기화에 사용할 수 없습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud er begrenset på denne enheten (foreldrekontroll eller MDM). bae kan ikke bruke den til synkronisering."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -38717,6 +40139,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "iCloud를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도하십시오."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud er midlertidig utilgjengelig. Prøv på nytt om litt."
           }
         },
         "nl" : {
@@ -38880,6 +40308,12 @@
             "value" : "식별 중"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiserer"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -39039,6 +40473,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "식별 중…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiserer…"
           }
         },
         "nl" : {
@@ -39202,6 +40642,12 @@
             "value" : "신원이 업데이트되었습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identiteten er oppdatert."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -39361,6 +40807,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "가져오기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer"
           }
         },
         "nl" : {
@@ -39524,6 +40976,12 @@
             "value" : "폴더 가져오기..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer mappe..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -39683,6 +41141,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "시작하려면 음악을 가져오세요"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer litt musikk for å komme i gang"
           }
         },
         "nl" : {
@@ -39846,6 +41310,12 @@
             "value" : "가져옴"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importert"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -40005,6 +41475,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "가져오는 중…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importerer…"
           }
         },
         "nl" : {
@@ -40168,6 +41644,12 @@
             "value" : "라이브러리에 있음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I biblioteket"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -40327,6 +41809,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "검사"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspiser"
           }
         },
         "nl" : {
@@ -40490,6 +41978,12 @@
             "value" : "인스펙터"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspektør"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -40649,6 +42143,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "잘못된 MCP 서버 구성"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig MCP-serveroppsett"
           }
         },
         "nl" : {
@@ -40812,6 +42312,12 @@
             "value" : "잘못된 Subsonic 서버 구성"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig Subsonic-serveroppsett"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -40970,6 +42476,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기기의 접근 권한이 사라지고 보관함 키가 교체됩니다. 보관함에 남아 있는 기기는 자동으로 새 키를 받습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den mister tilgangen, og bibliotekets nøkkel byttes ut. Enheter som blir værende i biblioteket, får ny nøkkel automatisk."
           }
         },
         "nl" : {
@@ -41133,6 +42645,12 @@
             "value" : "참여"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bli med"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -41291,6 +42809,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "보관함 참여"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bli med i et bibliotek"
           }
         },
         "nl" : {
@@ -41454,6 +42978,12 @@
             "value" : "보관함 참여..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bli med i et bibliotek..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -41612,6 +43142,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "별도 릴리스로 유지"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Behold som separate utgivelser"
           }
         },
         "nl" : {
@@ -41775,6 +43311,12 @@
             "value" : "현재 메타데이터 유지"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Behold gjeldende metadata"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -41934,6 +43476,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "키 접두사"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkelprefiks"
           }
         },
         "nl" : {
@@ -42097,6 +43645,12 @@
             "value" : "종류"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -42256,6 +43810,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "레이블"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selskap"
           }
         },
         "nl" : {
@@ -42419,6 +43979,12 @@
             "value" : "더 알아보기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finn ut mer"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -42578,6 +44144,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "길이가 다릅니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lengdene er ulike"
           }
         },
         "nl" : {
@@ -42742,6 +44314,12 @@
             "value" : "복원 코드가 키체인에 저장된 보관함입니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliotek der gjenopprettingskodene er lagret i nøkkelringen din."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -42901,6 +44479,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliotek"
           }
         },
         "nl" : {
@@ -43064,6 +44648,12 @@
             "value" : "라이브러리를 열지 못했습니다"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteket kunne ikke åpnes"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -43223,6 +44813,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리 잠김"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteket er låst"
           }
         },
         "nl" : {
@@ -43387,6 +44983,12 @@
             "value" : "불러오는 중"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster inn"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -43546,6 +45148,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "불러오는 중..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster inn..."
           }
         },
         "nl" : {
@@ -43709,6 +45317,12 @@
             "value" : "로컬"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokalt"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -43868,6 +45482,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "잠금"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lås"
           }
         },
         "nl" : {
@@ -44031,6 +45651,12 @@
             "value" : "라이브러리를 잠글까요?"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Låse biblioteket?"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -44190,6 +45816,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리 잠금..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lås biblioteket..."
           }
         },
         "nl" : {
@@ -44353,6 +45985,12 @@
             "value" : "로컬로 전환…"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjør lokal…"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -44512,6 +46150,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MCP 서버를 시작할 수 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP-serveren kunne ikke starte"
           }
         },
         "nl" : {
@@ -44675,6 +46319,12 @@
             "value" : "MCP 서버가 중지됨"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP-serveren stoppet"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -44834,6 +46484,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MCP 토큰을 사용할 수 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP-token er ikke tilgjengelig"
           }
         },
         "nl" : {
@@ -44997,6 +46653,12 @@
             "value" : "구성원"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medlem"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -45156,6 +46818,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "여기로 이동"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flytt hit"
           }
         },
         "nl" : {
@@ -45319,6 +46987,12 @@
             "value" : "클라우드로 이동"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flytt til skyen"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -45475,6 +47149,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MP3 %lld kbps"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "MP3 %lld kbps"
@@ -45641,6 +47321,12 @@
             "value" : "음소거"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av lyden"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -45800,6 +47486,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이름"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navn"
           }
         },
         "nl" : {
@@ -45963,6 +47655,12 @@
             "value" : "신규"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ny"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -46122,6 +47820,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "새 라이브러리..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nytt bibliotek..."
           }
         },
         "nl" : {
@@ -46285,6 +47989,12 @@
             "value" : "새 이름"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nytt navn"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -46444,6 +48154,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "다음 라이브러리"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste bibliotek"
           }
         },
         "nl" : {
@@ -46607,6 +48323,12 @@
             "value" : "다음 트랙"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste spor"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -46766,6 +48488,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "다음 트랙"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste spor"
           }
         },
         "nl" : {
@@ -46929,6 +48657,12 @@
             "value" : "앨범 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen album"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47088,6 +48822,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "아티스트 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen artister"
           }
         },
         "nl" : {
@@ -47251,6 +48991,12 @@
             "value" : "사용 가능한 카메라가 없습니다. 대신 아래에 코드를 붙여넣으세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen kamera tilgjengelig. Lim inn koden nedenfor i stedet."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47410,6 +49156,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "캐스트 기기를 찾을 수 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ingen Cast-enheter"
           }
         },
         "nl" : {
@@ -47573,6 +49325,12 @@
             "value" : "작곡가 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen komponister"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47732,6 +49490,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "사용 가능한 커버 아트 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen omslag tilgjengelig"
           }
         },
         "nl" : {
@@ -47895,6 +49659,12 @@
             "value" : "파일 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen filer"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -48054,6 +49824,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 기기에 로그인된 iCloud 계정이 없습니다. 시스템 설정 → Apple ID에서 로그인한 다음 다시 시도하십시오."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen iCloud-konto er logget på denne enheten. Åpne Systeminnstillinger → Apple-ID for å logge på, og prøv på nytt."
           }
         },
         "nl" : {
@@ -48217,6 +49993,12 @@
             "value" : "라이브러리 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen bibliotek"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -48376,6 +50158,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "불러온 라이브러리 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen bibliotek er lastet inn"
           }
         },
         "nl" : {
@@ -48539,6 +50327,12 @@
             "value" : "일치 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen treff"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -48698,6 +50492,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "연결된 릴리스 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tilknyttet utgivelse"
           }
         },
         "nl" : {
@@ -48861,6 +50661,12 @@
             "value" : "Discogs 또는 MusicBrainz 릴리스를 연결하면 아트워크를 볼 수 있습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Knytt til en utgivelse fra Discogs eller MusicBrainz for å bla gjennom bildene."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -49020,6 +50826,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "원격 커버 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ingen eksterne omslag"
           }
         },
         "nl" : {
@@ -49183,6 +50995,12 @@
             "value" : "트랙 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen spor"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -49342,6 +51160,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "아직 아무것도 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingenting her ennå"
           }
         },
         "nl" : {
@@ -49505,6 +51329,12 @@
             "value" : "지금 재생 중"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spilles nå"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -49664,6 +51494,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "객체는 읽을 수 있는 경로에 평문으로 저장되므로 저장소 접근 권한이 있는 사람은 파일명을 통해 파일을 읽을 수 있습니다. 탐색 가능 라이브러리에서는 공유를 사용할 수 없습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Objektene lagres ukryptert på lesbare stier, så alle med tilgang til lagringen kan lese filene dine etter navn. Deling er ikke tilgjengelig for et bibliotek som kan blas gjennom."
           }
         },
         "nl" : {
@@ -49827,6 +51663,12 @@
             "value" : "끔"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Av"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -49983,6 +51825,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "OK"
@@ -50150,6 +51998,12 @@
             "value" : "이 기기에서"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "På denne enheten"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -50311,6 +52165,12 @@
             "value" : "한 곡"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Én"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -50467,6 +52327,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OneDrive"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "OneDrive"
@@ -50633,6 +52499,12 @@
             "value" : "불투명: 종단 간 암호화"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugjennomsiktig: ende-til-ende-kryptert"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -50792,6 +52664,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "열기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne"
           }
         },
         "nl" : {
@@ -50955,6 +52833,12 @@
             "value" : "먼저 라이브러리를 여세요"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne et bibliotek først"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -51114,6 +52998,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "설정에 접근하려면 먼저 라이브러리를 여세요"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne et bibliotek for å komme til innstillingene"
           }
         },
         "nl" : {
@@ -51277,6 +53167,12 @@
             "value" : "라이브러리 열기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne biblioteket"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -51436,6 +53332,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "설정 열기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne innstillingene"
           }
         },
         "nl" : {
@@ -51599,6 +53501,12 @@
             "value" : "%@에서 이 앨범 열기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne dette albumet på %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -51760,6 +53668,12 @@
             "value" : "%@에서 bae를 인증하도록 브라우저를 엽니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpner nettleseren din for å autorisere bae hos %@."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -51916,6 +53830,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opus %lld kbps"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Opus %lld kbps"
@@ -52082,6 +54002,12 @@
             "value" : "소유자"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eier"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -52241,6 +54167,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "페어링 코드"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paringskode"
           }
         },
         "nl" : {
@@ -52404,6 +54336,12 @@
             "value" : "암호"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passord"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -52563,6 +54501,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "암호 저장됨"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passordet er lagret"
           }
         },
         "nl" : {
@@ -52726,6 +54670,12 @@
             "value" : "페어링 코드 붙여넣기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lim inn paringskoden"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -52885,6 +54835,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "복원 코드 붙여넣기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lim inn gjenopprettingskoden"
           }
         },
         "nl" : {
@@ -53048,6 +55004,12 @@
             "value" : "여기에 키 붙여넣기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lim inn nøkkelen din her"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -53207,6 +55169,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "복원 코드를 붙여넣으세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lim inn gjenopprettingskoden din."
           }
         },
         "nl" : {
@@ -53370,6 +55338,12 @@
             "value" : "경로"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sti"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -53529,6 +55503,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "일시 정지"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
           }
         },
         "nl" : {
@@ -53692,6 +55672,12 @@
             "value" : "면과 디스크 사이에 일시정지"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause mellom sider og plater"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -53851,6 +55837,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "대기 중"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter"
           }
         },
         "nl" : {
@@ -54014,6 +56006,12 @@
             "value" : "고정"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fest"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -54173,6 +56171,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "고정됨"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Festet"
           }
         },
         "nl" : {
@@ -54336,6 +56340,12 @@
             "value" : "재생"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spill av"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -54495,6 +56505,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "재생 / 일시 정지"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spill av / Pause"
           }
         },
         "nl" : {
@@ -54879,6 +56895,24 @@
             }
           }
         },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Spill av %lld album"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Spill av %lld album"
+                }
+              }
+            }
+          }
+        },
         "nl" : {
           "variations" : {
             "plural" : {
@@ -55202,6 +57236,12 @@
             "value" : "다음에 재생"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spill av som neste"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -55361,6 +57401,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "재생"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avspilling"
           }
         },
         "nl" : {
@@ -55524,6 +57570,12 @@
             "value" : "재생 위치"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avspillingsposisjon"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -55683,6 +57735,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "재생 위치"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spilles fra"
           }
         },
         "nl" : {
@@ -55846,6 +57904,12 @@
             "value" : "네트워크의 Cast, AirPlay, UPnP 수신기로 재생합니다. 꺼져 있는 동안 bae는 기기를 찾지 않습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spiller av til Cast-, AirPlay- og UPnP-mottakere på nettverket ditt. Når det er av, leter ikke bae etter enheter."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -56005,6 +58069,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "포트"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Port"
           }
         },
         "nl" : {
@@ -56168,6 +58238,12 @@
             "value" : "프리갭"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pregap"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -56327,6 +58403,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "미리보기: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forhåndsvisning: %@"
           }
         },
         "nl" : {
@@ -56490,6 +58572,12 @@
             "value" : "이전 라이브러리"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forrige bibliotek"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -56649,6 +58737,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이전 트랙"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forrige spor"
           }
         },
         "nl" : {
@@ -56812,6 +58906,12 @@
             "value" : "이전 트랙"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forrige spor"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -56971,6 +59071,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "제공자"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leverandør"
           }
         },
         "nl" : {
@@ -57134,6 +59240,12 @@
             "value" : "새로 식별한 소스에서 앨범, 트랙, 프레싱 필드를 가져올까요? 수정한 내용은 덮어씁니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vil du hente album-, spor- og pressefeltene fra den nylig identifiserte kilden? Endringene du har gjort, overskrives."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -57293,6 +59405,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "대기열"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kø"
           }
         },
         "nl" : {
@@ -57456,6 +59574,12 @@
             "value" : "대기열이 비어 있습니다"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Køen er tom"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -57615,6 +59739,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "대기 중"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I kø"
           }
         },
         "nl" : {
@@ -57778,6 +59908,12 @@
             "value" : "다시 확인"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sjekk på nytt"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -57937,6 +60073,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "다시 식별"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiser på nytt"
           }
         },
         "nl" : {
@@ -58100,6 +60242,12 @@
             "value" : "다시 식별 실패."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ny identifisering mislyktes."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -58259,6 +60407,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "다시 식별..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiser på nytt..."
           }
         },
         "nl" : {
@@ -58422,6 +60576,12 @@
             "value" : "다시 연결"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koble til på nytt"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -58581,6 +60741,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "녹음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innspillinger"
           }
         },
         "nl" : {
@@ -58744,6 +60910,12 @@
             "value" : "복구"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenoppretting"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -58902,6 +61074,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "복구 코드"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprettingskode"
           }
         },
         "nl" : {
@@ -59065,6 +61243,12 @@
             "value" : "새로 고침"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdater"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -59224,6 +61408,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "새 소스에서 새로 고침"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdater fra den nye kilden"
           }
         },
         "nl" : {
@@ -59387,6 +61577,12 @@
             "value" : "새 소스에서 메타데이터 새로 고치는 중..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdaterer metadata fra den nye kilden..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -59546,6 +61742,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "새로 고치는 중…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdaterer…"
           }
         },
         "nl" : {
@@ -59709,6 +61911,12 @@
             "value" : "지역"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Region"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -59868,6 +62076,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "릴리스"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utgivelse"
           }
         },
         "nl" : {
@@ -60031,6 +62245,12 @@
             "value" : "릴리스 %lld"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utgivelse %lld"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -60190,6 +62410,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "릴리스 파일"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filene i utgivelsen"
           }
         },
         "nl" : {
@@ -60353,6 +62579,12 @@
             "value" : "발매 연도"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utgivelsesår"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -60512,6 +62744,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "릴리스"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utgivelser"
           }
         },
         "nl" : {
@@ -60675,6 +62913,12 @@
             "value" : "원격 소스"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eksterne kilder"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -60834,6 +63078,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "제거"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern"
           }
         },
         "nl" : {
@@ -60997,6 +63247,12 @@
             "value" : "%@ 제거"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -61156,6 +63412,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "폴더 제거"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern mappen"
           }
         },
         "nl" : {
@@ -61319,6 +63581,12 @@
             "value" : "대기열에서 제거"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern fra køen"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -61478,6 +63746,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "대기열에서 제거"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern fra køen"
           }
         },
         "nl" : {
@@ -61641,6 +63915,12 @@
             "value" : "정렬 기준 제거"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern sorteringskriterium"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -61800,6 +64080,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "정렬 필드 변경"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytt sorteringsfelt"
           }
         },
         "nl" : {
@@ -61963,6 +64249,12 @@
             "value" : "이 기기를 제거하시겠습니까?"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjerne denne enheten?"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -62122,6 +64414,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 Mac에서 이 라이브러리를 제거할까요?"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjerne dette biblioteket fra denne Macen?"
           }
         },
         "nl" : {
@@ -62285,6 +64583,12 @@
             "value" : "이 Mac에서 이 라이브러리 제거…"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern dette biblioteket fra denne Macen..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -62444,6 +64748,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "키체인에서 이 라이브러리를 제거할까요?"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjerne dette biblioteket fra nøkkelringen din?"
           }
         },
         "nl" : {
@@ -62607,6 +64917,12 @@
             "value" : "이 라이브러리와 다운로드된 파일을 이 Mac에서 제거합니다. 클라우드의 라이브러리는 그대로 유지되며 나중에 여기서 복원할 수 있습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjerner dette biblioteket og de nedlastede filene fra denne Macen. Biblioteket ditt i skyen er urørt. Du kan gjenopprette det her senere."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -62766,6 +65082,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이름 변경"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gi nytt navn"
           }
         },
         "nl" : {
@@ -62929,6 +65251,12 @@
             "value" : "라이브러리 이름 변경"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gi biblioteket nytt navn"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -63088,6 +65416,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리 이름 변경..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gi biblioteket nytt navn..."
           }
         },
         "nl" : {
@@ -63251,6 +65585,12 @@
             "value" : "반복"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenta"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -63410,6 +65750,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "반복: 컨텍스트"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenta: kontekst"
           }
         },
         "nl" : {
@@ -63573,6 +65919,12 @@
             "value" : "반복: 끔"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenta: av"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -63732,6 +66084,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "반복: 트랙"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenta: spor"
           }
         },
         "nl" : {
@@ -63895,6 +66253,12 @@
             "value" : "재설정 실패: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilbakestillingen mislyktes: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -64054,6 +66418,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "소스로 재설정"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilbakestill til kilden"
           }
         },
         "nl" : {
@@ -64217,6 +66587,12 @@
             "value" : "재설정 중..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilbakestiller..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -64376,6 +66752,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "복원"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprett"
           }
         },
         "nl" : {
@@ -64539,6 +66921,12 @@
             "value" : "복원 코드"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprettingskode"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -64700,6 +67088,12 @@
             "value" : "클라우드에서 복원"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprett fra skyen"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -64859,6 +67253,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "코드에서 복원..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprett fra kode..."
           }
         },
         "nl" : {
@@ -65023,6 +67423,12 @@
             "value" : "iCloud 키체인에서 복원"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprett fra iCloud-nøkkelringen"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -65182,6 +67588,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 Mac의 키체인에서 복원"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprett fra nøkkelringen på denne Macen"
           }
         },
         "nl" : {
@@ -65344,6 +67756,12 @@
             "value" : "시작 시 복원"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprett ved oppstart"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -65502,6 +67920,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "앱을 열 때 마지막 세션의 트랙, 위치, 대기열, 음량을 복원합니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenoppretter sporet, posisjonen, køen og volumet fra forrige økt når appen åpnes."
           }
         },
         "nl" : {
@@ -65665,6 +68089,12 @@
             "value" : "라이브러리 복원 중..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenoppretter biblioteket..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -65826,6 +68256,12 @@
             "value" : "재개"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortsett"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -65984,6 +68420,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "다시 시도"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prøv på nytt"
           }
         },
         "nl" : {
@@ -66147,6 +68589,12 @@
             "value" : "가져오기 다시 시도"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prøv importen på nytt"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -66306,6 +68754,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Finder에서 보기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis i Finder"
           }
         },
         "nl" : {
@@ -66469,6 +68923,12 @@
             "value" : "Finder에서 라이브러리 보기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis biblioteket i Finder"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -66628,6 +69088,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "토큰 교체"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytt token"
           }
         },
         "nl" : {
@@ -66791,6 +69257,12 @@
             "value" : "S3-compatible"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3-kompatibel"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -66952,6 +69424,12 @@
             "value" : "저장"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagre"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -67110,6 +69588,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "다른 이름으로 저장…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagre som…"
           }
         },
         "nl" : {
@@ -67273,6 +69757,12 @@
             "value" : "저장 실패: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagringen mislyktes: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -67434,6 +69924,12 @@
             "value" : "저장됨. 아직 검증할 수 없습니다(오프라인). 다시 시도합니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret. Kunne ikke valideres ennå (frakoblet). Vi prøver på nytt."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -67592,6 +70088,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "저장 중 %lld%%"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagrer %lld%%"
           }
         },
         "nl" : {
@@ -67755,6 +70257,12 @@
             "value" : "저장 중..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagrer..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -67914,6 +70422,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "스캔"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skann"
           }
         },
         "nl" : {
@@ -68077,6 +70591,12 @@
             "value" : "이미 라이브러리에 있는 기기에 표시된 페어링 코드를 스캔하세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skann paringskoden som vises på en enhet som allerede er i biblioteket ditt."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -68236,6 +70756,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리에 참여할 기기에서 이 코드를 스캔하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skann denne koden på enheten som blir med i biblioteket ditt."
           }
         },
         "nl" : {
@@ -68399,6 +70925,12 @@
             "value" : "검색"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -68558,6 +71090,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "검색 기준"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk etter"
           }
         },
         "nl" : {
@@ -68721,6 +71259,12 @@
             "value" : "검색 실패: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søket mislyktes: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -68880,6 +71424,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "비밀 키"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hemmelig nøkkel"
           }
         },
         "nl" : {
@@ -69043,6 +71593,12 @@
             "value" : "폴더 선택"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velg en mappe"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -69202,6 +71758,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "가져올 음악을 감시할 폴더 선택"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velg en mappe å overvåke for musikk som skal importeres"
           }
         },
         "nl" : {
@@ -69365,6 +71927,12 @@
             "value" : "릴리스 선택"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velg en utgivelse"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -69526,6 +72094,12 @@
             "value" : "전체 선택"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velg alle"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -69684,6 +72258,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "선택 해제"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velg ingen"
           }
         },
         "nl" : {
@@ -69847,6 +72427,12 @@
             "value" : "기본 릴리스로 설정"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angi som primær utgivelse"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -70006,6 +72592,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "신원 설정"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angi identitet"
           }
         },
         "nl" : {
@@ -70169,6 +72761,12 @@
             "value" : "동기화 설정"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sett opp synkronisering"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -70328,6 +72926,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "동기화 설정..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sett opp synkronisering..."
           }
         },
         "nl" : {
@@ -70491,6 +73095,12 @@
             "value" : "설정"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innstillinger"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -70650,6 +73260,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Finder에서 보기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis i Finder"
           }
         },
         "nl" : {
@@ -70813,6 +73429,12 @@
             "value" : "\"다른 이름으로 저장…\"에 표시:"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis i Lagre som… for"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -70972,6 +73594,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "복구 코드 표시..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis gjenopprettingskode..."
           }
         },
         "nl" : {
@@ -71135,6 +73763,12 @@
             "value" : "셔플"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilfeldig"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -71294,6 +73928,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리 셔플"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spill biblioteket i tilfeldig rekkefølge"
           }
         },
         "nl" : {
@@ -71457,6 +74097,12 @@
             "value" : "로그인 중..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logger på..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -71616,6 +74262,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "동시 다운로드"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Samtidige nedlastinger"
           }
         },
         "nl" : {
@@ -71779,6 +74431,12 @@
             "value" : "동시 업로드"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Samtidige opplastinger"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -71937,6 +74595,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "단일 파일 + CUE"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Én fil + CUE"
           }
         },
         "nl" : {
@@ -72100,6 +74764,12 @@
             "value" : "크기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Størrelse"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -72259,6 +74929,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "건너뛰기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hopp over"
           }
         },
         "nl" : {
@@ -72422,6 +75098,12 @@
             "value" : "준비된 항목 가져오기 (%lld)"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klare til import (%lld)"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -72581,6 +75263,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "선택 항목 식별 (%lld)"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiser valgte (%lld)"
           }
         },
         "nl" : {
@@ -72744,6 +75432,12 @@
             "value" : "실패한 식별 재시도 (%lld)"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prøv mislykket identifisering på nytt (%lld)"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -72903,6 +75597,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "선택 항목 건너뛰기 (%lld)"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hopp over valgte (%lld)"
           }
         },
         "nl" : {
@@ -73066,6 +75766,12 @@
             "value" : "대기 중으로 복원 (%lld)"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sett tilbake som ventende (%lld)"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -73225,6 +75931,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "파일 메타데이터 사용 (%lld)"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk metadata fra filen (%lld)"
           }
         },
         "nl" : {
@@ -73388,6 +76100,12 @@
             "value" : "메타데이터 지우기 (%lld)"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tøm metadata (%lld)"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -73546,6 +76264,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "각 작업은 선택한 폴더 중 해당 작업이 가능한 폴더에만 적용됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hver handling gjelder bare de valgte mappene som kan brukes."
           }
         },
         "nl" : {
@@ -73708,6 +76432,12 @@
             "value" : "선택 항목의 메타데이터를 바꿀까요?"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erstatte de valgte metadataene?"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -73866,6 +76596,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "선택한 폴더의 메타데이터와 커버 선택을 바꿉니다. 원본 파일과 트랙 구성은 변경되지 않습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette erstatter metadata og omslagsvalg for de valgte mappene. Kildefiler og sporoppsett er uendret."
           }
         },
         "nl" : {
@@ -74029,6 +76765,12 @@
             "value" : "건너뜀"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoppet over"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -74188,6 +76930,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "일부 변경 사항이 업로드를 완료하지 못해 손실됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noen endringer er ikke ferdig opplastet og går tapt."
           }
         },
         "nl" : {
@@ -74351,6 +77099,12 @@
             "value" : "Newest First"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nyeste først"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -74510,6 +77264,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Oldest First"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eldste først"
           }
         },
         "nl" : {
@@ -74673,6 +77433,12 @@
             "value" : "Folder Name (A–Z)"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mappenavn (A–Å)"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -74832,6 +77598,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Folder Name (Z–A)"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mappenavn (Å–A)"
           }
         },
         "nl" : {
@@ -74995,6 +77767,12 @@
             "value" : "Sort"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorter"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -75154,6 +77932,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sorting and watched folders"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sortering og overvåkede mapper"
           }
         },
         "nl" : {
@@ -75317,6 +78101,12 @@
             "value" : "오름차순 정렬"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorter stigende"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -75478,6 +78268,12 @@
             "value" : "내림차순 정렬"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorter synkende"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -75636,6 +78432,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "소스"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kilde"
           }
         },
         "nl" : {
@@ -75799,6 +78601,12 @@
             "value" : "카메라 시작 중..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starter kameraet..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -75958,6 +78766,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "페어링 시작 중…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starter paringen..."
           }
         },
         "nl" : {
@@ -76121,6 +78935,12 @@
             "value" : "다시 식별 시작 중..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starter ny identifisering..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -76280,6 +79100,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "상태"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
           }
         },
         "nl" : {
@@ -76443,6 +79269,12 @@
             "value" : "저장소"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagring"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -76602,6 +79434,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "저장소 관리자"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagringsbehandling"
           }
         },
         "nl" : {
@@ -76765,6 +79603,12 @@
             "value" : "저장소..."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagring..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -76921,6 +79765,12 @@
           }
         },
         "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subsonic"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Subsonic"
@@ -77087,6 +79937,12 @@
             "value" : "Subsonic 자격 증명을 사용할 수 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subsonic-legitimasjonen er ikke tilgjengelig"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -77246,6 +80102,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Subsonic 서버를 시작할 수 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subsonic-serveren kunne ikke starte"
           }
         },
         "nl" : {
@@ -77409,6 +80271,12 @@
             "value" : "Subsonic 서버 중지됨"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subsonic-serveren stoppet"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -77568,6 +80436,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리 전환 중..."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytter bibliotek..."
           }
         },
         "nl" : {
@@ -77731,6 +80605,12 @@
             "value" : "동기화"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkronisering"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -77890,6 +80770,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "동기화 실패 중"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniseringen feiler"
           }
         },
         "nl" : {
@@ -78053,6 +80939,12 @@
             "value" : "지금 동기화"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniser nå"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -78212,6 +81104,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "동기화 대기열"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniseringskø"
           }
         },
         "nl" : {
@@ -78375,6 +81273,12 @@
             "value" : "Dropbox로 동기화"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniser via Dropbox"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -78534,6 +81438,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Google Drive로 동기화"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniser via Google Drive"
           }
         },
         "nl" : {
@@ -78697,6 +81607,12 @@
             "value" : "Microsoft OneDrive로 동기화"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniser via Microsoft OneDrive"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -78858,6 +81774,12 @@
             "value" : "iCloud 계정으로 동기화"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniser via iCloud-kontoen din"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -79017,6 +81939,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "텍스트 파일"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tekstfil"
           }
         },
         "nl" : {
@@ -79181,6 +82109,12 @@
             "value" : "이 라이브러리의 암호화 키가 키링에 없습니다. 잠금을 해제하려면 64자 16진수 키를 입력하세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Krypteringsnøkkelen for dette biblioteket er ikke i nøkkelringen. Oppgi den 64 tegn lange heksadesimale nøkkelen for å låse opp."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -79340,6 +82274,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "\"다른 이름으로 저장…\"이 처음 사용하는 형식."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formatet Lagre som… starter med."
           }
         },
         "nl" : {
@@ -79503,6 +82443,12 @@
             "value" : "iCloud 동기화 영역이 사라졌습니다. 동기화 설정에서 다시 연결하면 새로 만들어집니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-synkroniseringssonen er borte. Koble til på nytt i synkroniseringsinnstillingene for å opprette den igjen."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -79662,6 +82608,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "가져오기 목록을 읽을 수 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importlisten kunne ikke leses"
           }
         },
         "nl" : {
@@ -79825,6 +82777,12 @@
             "value" : "암호는 구성 파일이 아닌 키링에 저장됩니다. 클라이언트는 사용자 이름과 암호로 인증합니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passordet lagres i nøkkelringen, ikke i oppsettfilen. Klientene autentiseres med brukernavnet og passordet."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -79985,6 +82943,12 @@
             "value" : "이 기기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne enheten"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -80143,6 +83107,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 기기: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne enheten: %@"
           }
         },
         "nl" : {
@@ -80306,6 +83276,12 @@
             "value" : "이 라이브러리"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette biblioteket"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -80465,6 +83441,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 라이브러리는 한 번도 동기화된 적이 없습니다. 카탈로그가 영구적으로 삭제됩니다. 폴더의 오디오 파일은 삭제되지 않습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette biblioteket har aldri blitt synkronisert. Katalogen slettes for godt; lydfilene i mappene dine slettes ikke."
           }
         },
         "nl" : {
@@ -80628,6 +83610,12 @@
             "value" : "이 라이브러리는 동기화되지 않았습니다. 제거하면 카탈로그(앨범, 메타데이터 편집, 재생 기록)가 영구적으로 삭제됩니다. 폴더의 오디오 파일은 삭제되지 않습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette biblioteket er ikke synkronisert. Fjerner du det, slettes katalogen for godt: album, metadataendringer og avspillingshistorikk. Lydfilene i mappene dine slettes ikke."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -80786,6 +83774,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 보관함은 이 빌드가 연결할 수 없는 제공자를 사용합니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette biblioteket bruker en leverandør denne versjonen ikke kan koble til."
           }
         },
         "nl" : {
@@ -80949,6 +83943,12 @@
             "value" : "이 릴리스는 이미 라이브러리에 있습니다"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne utgivelsen finnes allerede i biblioteket ditt"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -81108,6 +84108,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@(으)로의 캐스트가 중지됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette stopper castingen til %@."
           }
         },
         "nl" : {
@@ -81271,6 +84277,12 @@
             "value" : "동기화를 중지하고 클라우드 제공자 설정을 제거합니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette stopper synkroniseringen og fjerner oppsettet for skyleverandøren."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -81430,6 +84442,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "제목"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tittel"
           }
         },
         "nl" : {
@@ -81593,6 +84611,12 @@
             "value" : "연결하려면 [무료 API 키를 받기](https://www.discogs.com/settings/developers) 후 위에 붙여 넣으세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For å koble til må du [hente den gratis API-nøkkelen din](https://www.discogs.com/settings/developers) og lime den inn ovenfor."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -81752,6 +84776,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "대기열 전환"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis eller skjul køen"
           }
         },
         "nl" : {
@@ -81915,6 +84945,12 @@
             "value" : "토큰 복사됨"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token er kopiert"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -82074,6 +85110,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "토큰이 교체되고 복사됨"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token er byttet og kopiert"
           }
         },
         "nl" : {
@@ -82237,6 +85279,12 @@
             "value" : "합계: %@"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Totalt: %@"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -82396,6 +85444,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "트랙"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spor"
           }
         },
         "nl" : {
@@ -82559,6 +85613,12 @@
             "value" : "트랙 번호"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spor nr."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -82718,6 +85778,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "트랙 번호"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spornummer"
           }
         },
         "nl" : {
@@ -82881,6 +85947,12 @@
             "value" : "트랙 제목"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sportittel"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -83040,6 +86112,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "총 트랙 수"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antall spor"
           }
         },
         "nl" : {
@@ -83203,6 +86281,12 @@
             "value" : "트랙"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spor"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -83364,6 +86448,12 @@
             "value" : "전송 실패"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overføringen mislyktes"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -83522,6 +86612,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "전송"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overføringer"
           }
         },
         "nl" : {
@@ -83685,6 +86781,12 @@
             "value" : "다시 시도"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prøv på nytt"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -83844,6 +86946,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "끄기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av"
           }
         },
         "nl" : {
@@ -84007,6 +87115,12 @@
             "value" : "캐스트를 끌까요?"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av castingen?"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -84168,6 +87282,12 @@
             "value" : "셔플 끄기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av tilfeldig rekkefølge"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -84327,6 +87447,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "예기치 않은 iCloud 계정 상태(%lld)입니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uventet status for iCloud-kontoen (%lld)."
           }
         },
         "nl" : {
@@ -84491,6 +87617,12 @@
             "value" : "잠금 해제"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lås opp"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -84650,6 +87782,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "음소거 해제"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på lyden"
           }
         },
         "nl" : {
@@ -84813,6 +87951,12 @@
             "value" : "고정 해제"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Løsne"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -84972,6 +88116,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "건너뛰기 취소"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sett tilbake som importert"
           }
         },
         "nl" : {
@@ -85135,6 +88285,12 @@
             "value" : "다음 재생"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -85294,6 +88450,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "iCloud 사용"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk iCloud"
           }
         },
         "nl" : {
@@ -85457,6 +88619,12 @@
             "value" : "이 커버 사용"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk dette omslaget"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -85616,6 +88784,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "사용자 이름"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brukernavn"
           }
         },
         "nl" : {
@@ -85779,6 +88953,12 @@
             "value" : "동기화에 iCloud를 사용합니다. 시스템 설정에서 iCloud가 켜져 있어야 합니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruker iCloud til synkronisering. Krever at iCloud er slått på i Systeminnstillinger."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -85938,6 +89118,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "버전 %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versjon %@"
           }
         },
         "nl" : {
@@ -86101,6 +89287,12 @@
             "value" : "라이브러리에서 보기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis i biblioteket"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -86260,6 +89452,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "음량"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volum"
           }
         },
         "nl" : {
@@ -86423,6 +89621,12 @@
             "value" : "기기를 기다리는 중…"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter på enheten..."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -86582,6 +89786,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "식별 대기 중"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter på identifisering"
           }
         },
         "nl" : {
@@ -86745,6 +89955,12 @@
             "value" : "작품"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verk"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -86904,6 +90120,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "연도"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "År"
           }
         },
         "nl" : {
@@ -87067,6 +90289,12 @@
             "value" : "연도 알 수 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent år"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -87226,6 +90454,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "복원 코드 없이는 이 라이브러리를 복구할 수 없습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uten en gjenopprettingskode får du ikke tilbake dette biblioteket."
           }
         },
         "nl" : {
@@ -87389,6 +90623,12 @@
             "value" : "iCloud에 로그인되어 있지 않습니다. 시스템 설정 → Apple ID에서 로그인한 다음 다시 시도하십시오."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du er ikke logget på iCloud. Åpne Systeminnstillinger → Apple-ID for å logge på, og prøv på nytt."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -87548,6 +90788,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "iCloud 저장 공간이 가득 찼습니다. 동기화를 계속하려면 시스템 설정 → Apple ID → iCloud에서 공간을 확보하십시오."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-lagringen din er full. Frigjør plass i Systeminnstillinger → Apple-ID → iCloud for å fortsette synkroniseringen."
           }
         },
         "nl" : {
@@ -87711,6 +90957,12 @@
             "value" : "내 라이브러리"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliotekene dine"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -87870,6 +91122,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "보관함"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteket ditt"
           }
         },
         "nl" : {
@@ -88033,6 +91291,12 @@
             "value" : "클라우드의 라이브러리는 그대로 유지되며 나중에 시작 화면에서 복원할 수 있습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteket ditt i skyen er urørt. Du kan gjenopprette det senere fra velkomstskjermen."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -88191,6 +91455,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "복구 코드는 승인할 다른 기기가 없을 때 새 기기에서 이 보관함을 복원합니다. 코드를 가진 사람은 누구나 완전히 접근할 수 있으니 비밀로 유지하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprettingskoden din gjenoppretter dette biblioteket på en ny enhet når du ikke har noen annen enhet som kan godkjenne den. Alle som har den, får full tilgang. Hold den hemmelig."
           }
         },
         "nl" : {
@@ -88354,6 +91624,12 @@
             "value" : "메타데이터"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadata"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -88513,6 +91789,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "파일 메타데이터 사용"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk metadata fra filen"
           }
         },
         "nl" : {
@@ -88676,6 +91958,12 @@
             "value" : "아트워크 추가"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til grafikk"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -88835,6 +92123,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이미지를 여기로 드래그하거나 클릭하여 선택"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dra et bilde hit, eller klikk for å velge"
           }
         },
         "nl" : {
@@ -88998,6 +92292,12 @@
             "value" : "아트워크 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen grafikk"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -89157,6 +92457,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이미지"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilder"
           }
         },
         "nl" : {
@@ -89320,6 +92626,12 @@
             "value" : "동기화가 사용자를 기다리고 있습니다"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniseringen venter på deg"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -89479,6 +92791,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "라이브러리 변경"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biblioteksendring"
           }
         },
         "nl" : {
@@ -89642,6 +92960,12 @@
             "value" : "공유 변경"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delingsendring"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -89801,6 +93125,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "클라우드 정리"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skyopprydding"
           }
         },
         "nl" : {
@@ -89964,6 +93294,12 @@
             "value" : "식별"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifiser"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -90123,6 +93459,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "바코드"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "strekkode"
           }
         },
         "nl" : {
@@ -90286,6 +93628,12 @@
             "value" : "카탈로그 번호"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "katalognummer"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -90445,6 +93793,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "자동"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisk"
           }
         },
         "nl" : {
@@ -90608,6 +93962,12 @@
             "value" : "일치 없음 — 다른 검색어로 시도하세요"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen treff — prøv andre søkeord"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -90767,6 +94127,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 설정되지 않음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ er ikke satt opp"
           }
         },
         "nl" : {
@@ -90995,6 +94361,12 @@
             "state" : "translated",
             "value" : "Resultaterne efter %2$@ fra %1$@ mangler på denne liste."
           }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resultatene etter %2$@ fra %1$@ mangler i denne listen."
+          }
         }
       }
     },
@@ -91089,6 +94461,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "폴더에 LOG나 CUE가 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen LOG- eller CUE-fil i mappen"
           }
         },
         "nl" : {
@@ -91252,6 +94630,12 @@
             "value" : "읽는 중…"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leser…"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -91411,6 +94795,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "디스크 레이아웃을 읽을 수 없습니다: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppbygningen av platen kunne ikke leses: %@"
           }
         },
         "nl" : {
@@ -91574,6 +94964,12 @@
             "value" : "%2$lld개 중 %1$lld"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld av %2$lld"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -91733,6 +95129,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "바코드 출처가 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen strekkodekilde"
           }
         },
         "nl" : {
@@ -91896,6 +95298,12 @@
             "value" : "아트워크에 바코드가 없습니다"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen strekkode på grafikken"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -92055,6 +95463,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "바코드를 읽을 수 없습니다: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strekkodene kunne ikke leses: %@"
           }
         },
         "nl" : {
@@ -92218,6 +95632,12 @@
             "value" : "찾지 못함"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ingenting"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -92376,6 +95796,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "릴리스 이름"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navn på utgivelsen"
           }
         },
         "nl" : {
@@ -92538,6 +95964,12 @@
             "value" : "트랙 번호 지정"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spornummerering"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -92696,6 +96128,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "별도 디스크"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Separate plater"
           }
         },
         "nl" : {
@@ -92858,6 +96296,12 @@
             "value" : "연속 번호"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortløpende nummerering"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -93016,6 +96460,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "결합된 폴더"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sammenslåtte mapper"
           }
         },
         "nl" : {
@@ -93178,6 +96628,12 @@
             "value" : "원본 폴더"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kildemapper"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -93336,6 +96792,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "폴더 분리"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Separate mapper"
           }
         },
         "nl" : {
@@ -93498,6 +96960,12 @@
             "value" : "폴더를 분리할까요?"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Separate mapper?"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -93656,6 +97124,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "위로 이동"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flytt opp"
           }
         },
         "nl" : {
@@ -93818,6 +97292,12 @@
             "value" : "아래로 이동"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flytt ned"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -93976,6 +97456,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "선택한 폴더를 재생 순서대로 정렬하세요. 원본 파일은 그대로 유지됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordne de valgte mappene i avspillingsrekkefølge. Kildefilene blir liggende der de er."
           }
         },
         "nl" : {
@@ -94138,6 +97624,12 @@
             "value" : "파일 역할이나 CUE 연결을 변경하려면 폴더를 분리하세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Del opp mappene for å endre filroller eller CUE-koblinger."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -94298,6 +97790,12 @@
             "value" : "결합된 초안이 삭제됩니다. 원래 폴더와 메타데이터 초안이 복원되며 원본 파일은 변경되지 않습니다."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det sammenslåtte utkastet forkastes. De opprinnelige mappene og metadatautkastene deres kommer tilbake; kildefilene er uendret."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -94456,6 +97954,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "하나의 릴리스로 결합…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå sammen til én utgivelse…"
           }
         },
         "nl" : {
@@ -94619,6 +98123,12 @@
             "value" : "파일"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fil"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -94778,6 +98288,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "폴더"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mappe"
           }
         },
         "nl" : {
@@ -94941,6 +98457,12 @@
             "value" : "이 카탈로그 번호 검색"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå opp dette katalognummeret"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -95100,6 +98622,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "디스크 ID, 바코드, 카탈로그 번호를 찾을 수 없음"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ingen plate-ID, strekkode eller katalognummer"
           }
         },
         "nl" : {
@@ -95263,6 +98791,12 @@
             "value" : "결과 없음"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen resultater"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -95422,6 +98956,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "직접 검색"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk manuelt"
           }
         },
         "nl" : {
@@ -95585,6 +99125,12 @@
             "value" : "이 카탈로그 번호를 검색에서 제외"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta dette katalognummeret ut av kjøringen"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -95744,6 +99290,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "닫기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avvis"
           }
         },
         "nl" : {
@@ -95907,6 +99459,12 @@
             "value" : "%@의 릴리스도 검색하려면 토큰을 추가하세요."
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til et %@-token for å slå opp utgivelsene der også."
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -96066,6 +99624,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 검색"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk på %@"
           }
         },
         "nl" : {
@@ -96229,6 +99793,12 @@
             "value" : "검색할 소스가 없습니다"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen kilde å søke i"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -96388,6 +99958,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "온라인에서 찾기는 여기에서 선택한 소스에 질의합니다. 같은 체크박스가 온라인에서 찾기 헤더에도 있습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå opp på nettet spør kildene som er avkrysset her. De samme avkrysningsboksene finnes i overskriften til Slå opp på nettet."
           }
         },
         "nl" : {
@@ -96551,6 +100127,12 @@
             "value" : "이 카탈로그 번호를 세지 않기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slutt å telle dette katalognummeret"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -96712,6 +100294,12 @@
             "value" : "이 카탈로그 번호를 다시 세기"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tell dette katalognummeret igjen"
+          }
+        },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -96871,6 +100459,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "무엇을 일치로 셀지 변경하지 못했습니다: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke endre hva som teller som enighet: %@"
           }
         },
         "nl" : {

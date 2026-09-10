@@ -29,6 +29,12 @@
             "value" : "bae"
           }
         },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae"
+          }
+        },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
@@ -78,6 +84,12 @@
           }
         },
         "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae"
+          }
+        },
+        "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae"
@@ -200,6 +212,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae는 보관함을 페어링하거나 복원할 때 코드를 스캔하기 위해 카메라를 사용합니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae bruker kameraet til å skanne koder ved paring eller gjenoppretting av et bibliotek."
           }
         },
         "nl" : {
@@ -361,6 +379,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae는 기기를 페어링하고 로컬 네트워크에서 스피커와 TV를 찾습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae parer enheter og finner høyttalere og TV-er på det lokale nettverket ditt."
           }
         },
         "nl" : {

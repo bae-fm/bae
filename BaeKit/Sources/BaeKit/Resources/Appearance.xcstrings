@@ -93,6 +93,12 @@
             "value": "모드"
           }
         },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modus"
+          }
+        },
         "nl": {
           "stringUnit": {
             "state": "translated",
@@ -251,6 +257,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "시스템"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
           }
         },
         "nl": {
@@ -413,6 +425,12 @@
             "value": "라이트"
           }
         },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lys"
+          }
+        },
         "nl": {
           "stringUnit": {
             "state": "translated",
@@ -571,6 +589,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "다크"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mørk"
           }
         },
         "nl": {
@@ -733,6 +757,12 @@
             "value": "강조 색상"
           }
         },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aksentfarge"
+          }
+        },
         "nl": {
           "stringUnit": {
             "state": "translated",
@@ -891,6 +921,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "배경 색조"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bakgrunnstone"
           }
         },
         "nl": {
@@ -1053,6 +1089,12 @@
             "value": "중립"
           }
         },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nøytral"
+          }
+        },
         "nl": {
           "stringUnit": {
             "state": "translated",
@@ -1211,6 +1253,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "슬레이트"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skifer"
           }
         },
         "nl": {
@@ -1373,6 +1421,12 @@
             "value": "자두색"
           }
         },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plomme"
+          }
+        },
         "nl": {
           "stringUnit": {
             "state": "translated",
@@ -1531,6 +1585,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "파랑"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blå"
           }
         },
         "nl": {
@@ -1693,6 +1753,12 @@
             "value": "남색"
           }
         },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indigo"
+          }
+        },
         "nl": {
           "stringUnit": {
             "state": "translated",
@@ -1851,6 +1917,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "보라"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lilla"
           }
         },
         "nl": {
@@ -2013,6 +2085,12 @@
             "value": "분홍"
           }
         },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rosa"
+          }
+        },
         "nl": {
           "stringUnit": {
             "state": "translated",
@@ -2171,6 +2249,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "빨강"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rød"
           }
         },
         "nl": {
@@ -2333,6 +2417,12 @@
             "value": "호박색"
           }
         },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rav"
+          }
+        },
         "nl": {
           "stringUnit": {
             "state": "translated",
@@ -2491,6 +2581,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "초록"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grønn"
           }
         },
         "nl": {
@@ -2653,6 +2749,12 @@
             "value": "청록"
           }
         },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turkis"
+          }
+        },
         "nl": {
           "stringUnit": {
             "state": "translated",
@@ -2811,6 +2913,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "미드나이트"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Midnatt"
           }
         },
         "nl": {
@@ -2973,6 +3081,12 @@
             "value": "숲"
           }
         },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skog"
+          }
+        },
         "nl": {
           "stringUnit": {
             "state": "translated",
@@ -3131,6 +3245,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "모래"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sand"
           }
         },
         "nl": {

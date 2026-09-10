@@ -102,8 +102,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork download stopped."
+            "state": "translated",
+            "value": "Nedlastingen av grafikk stoppet."
           }
         },
         "nl": {
@@ -275,8 +275,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading artwork…"
+            "state": "translated",
+            "value": "Laster ned grafikk…"
           }
         },
         "nl": {
@@ -448,8 +448,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Some artwork couldn’t be downloaded."
+            "state": "translated",
+            "value": "Noe grafikk kunne ikke lastes ned."
           }
         },
         "nl": {
@@ -621,8 +621,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finding artwork…"
+            "state": "translated",
+            "value": "Finner grafikk…"
           }
         },
         "nl": {
@@ -794,8 +794,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld-bit"
+            "state": "translated",
+            "value": "%lld bit"
           }
         },
         "nl": {
@@ -967,7 +967,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%lld kbps"
           }
         },
@@ -1140,8 +1140,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld ch"
+            "state": "translated",
+            "value": "%lld kan."
           }
         },
         "nl": {
@@ -1313,7 +1313,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "mono"
           }
         },
@@ -1486,7 +1486,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "stereo"
           }
         },
@@ -1659,8 +1659,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Audio"
+            "state": "translated",
+            "value": "Lyd"
           }
         },
         "nl": {
@@ -1832,7 +1832,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "CUE"
           }
         },
@@ -2005,7 +2005,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": " · "
           }
         },
@@ -2178,8 +2178,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Various"
+            "state": "translated",
+            "value": "Diverse"
           }
         },
         "nl": {
@@ -2351,7 +2351,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@ kHz"
           }
         },
@@ -2524,8 +2524,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Local only"
+            "state": "translated",
+            "value": "Bare lokalt"
           }
         },
         "nl": {
@@ -2697,8 +2697,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "S3-compatible"
+            "state": "translated",
+            "value": "S3-kompatibel"
           }
         },
         "nl": {
@@ -2870,8 +2870,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$@ of %2$@"
+            "state": "translated",
+            "value": "%1$@ av %2$@"
           }
         },
         "nl": {
@@ -3061,8 +3061,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld hr"
+            "state": "translated",
+            "value": "%lld t"
           }
         },
         "nl": {
@@ -3234,7 +3234,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%1$@, %2$@"
           }
         },
@@ -3407,7 +3407,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%lld min"
           }
         },
@@ -3580,8 +3580,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This AirPlay receiver isn't supported."
+            "state": "translated",
+            "value": "Denne AirPlay-mottakeren støttes ikke."
           }
         },
         "nl": {
@@ -3753,8 +3753,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong with your settings."
+            "state": "translated",
+            "value": "Noe gikk galt med innstillingene dine."
           }
         },
         "nl": {
@@ -3926,8 +3926,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check your cloud credentials and try again."
+            "state": "translated",
+            "value": "Kontroller skylegitimasjonen din, og prøv på nytt."
           }
         },
         "nl": {
@@ -4099,8 +4099,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong reading your library."
+            "state": "translated",
+            "value": "Noe gikk galt da biblioteket ditt ble lest."
           }
         },
         "nl": {
@@ -4272,8 +4272,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The export couldn't be completed."
+            "state": "translated",
+            "value": "Eksporten kunne ikke fullføres."
           }
         },
         "nl": {
@@ -4445,8 +4445,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The import couldn't be completed."
+            "state": "translated",
+            "value": "Importen kunne ikke fullføres."
           }
         },
         "nl": {
@@ -4618,8 +4618,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong."
+            "state": "translated",
+            "value": "Noe gikk galt."
           }
         },
         "nl": {
@@ -4791,8 +4791,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't access your device's secure storage."
+            "state": "translated",
+            "value": "Fikk ikke tilgang til den sikre lagringen på enheten din."
           }
         },
         "nl": {
@@ -4964,8 +4964,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Something went wrong updating library sharing."
+            "state": "translated",
+            "value": "Noe gikk galt da delingen av biblioteket ble oppdatert."
           }
         },
         "nl": {
@@ -5137,8 +5137,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the cloud. Check your connection and try again."
+            "state": "translated",
+            "value": "Kunne ikke nå skyen. Kontroller tilkoblingen din, og prøv på nytt."
           }
         },
         "nl": {
@@ -5310,8 +5310,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The save couldn't be completed."
+            "state": "translated",
+            "value": "Lagringen kunne ikke fullføres."
           }
         },
         "nl": {
@@ -5483,8 +5483,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket wasn't found. Check its name and the credentials' access to it."
+            "state": "translated",
+            "value": "Fant ikke denne bøtten. Kontroller navnet og legitimasjonens tilgang til den."
           }
         },
         "nl": {
@@ -5656,8 +5656,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Check the bucket, region, endpoint, and key prefix."
+            "state": "translated",
+            "value": "Kontroller bøtte, region, endepunkt og nøkkelprefiks."
           }
         },
         "nl": {
@@ -5829,8 +5829,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This bucket and key prefix already contain a different library. Use an empty key prefix, or join or restore that library."
+            "state": "translated",
+            "value": "Denne bøtten og dette nøkkelprefikset inneholder allerede et annet bibliotek. Bruk et tomt nøkkelprefiks, eller bli med i eller gjenopprett det biblioteket."
           }
         },
         "nl": {
@@ -6002,8 +6002,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Allow these credentials to read, write, list, and delete objects in this bucket."
+            "state": "translated",
+            "value": "Gi denne legitimasjonen rett til å lese, skrive, liste og slette objekter i denne bøtten."
           }
         },
         "nl": {
@@ -6175,8 +6175,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This cloud storage has no available space."
+            "state": "translated",
+            "value": "Denne skylagringen har ingen ledig plass."
           }
         },
         "nl": {
@@ -6348,8 +6348,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The region or endpoint doesn't match this bucket."
+            "state": "translated",
+            "value": "Regionen eller endepunktet passer ikke til denne bøtten."
           }
         },
         "nl": {
@@ -6521,8 +6521,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This library has no device identity. Create, join, or restore the library again."
+            "state": "translated",
+            "value": "Dette biblioteket har ingen enhetsidentitet. Opprett, bli med i eller gjenopprett biblioteket på nytt."
           }
         },
         "nl": {
@@ -6694,8 +6694,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This pairing code expired. Show a new code on the other device and try again."
+            "state": "translated",
+            "value": "Denne paringskoden er utløpt. Vis en ny kode på den andre enheten, og prøv på nytt."
           }
         },
         "nl": {
@@ -6867,8 +6867,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device ended this pairing. Start it again from there if you still want to join."
+            "state": "translated",
+            "value": "Den andre enheten avsluttet denne paringen. Vil du fortsatt bli med, må du starte den derfra på nytt."
           }
         },
         "nl": {
@@ -7040,8 +7040,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The other device isn't running this join. Open bae on it, show a pairing code, and try again."
+            "state": "translated",
+            "value": "Den andre enheten kjører ikke denne tilknytningen. Åpne bae på den, vis en paringskode, og prøv på nytt."
           }
         },
         "nl": {
@@ -7213,8 +7213,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This device's keychain is locked. Unlock the device and bae will pick up where it left off."
+            "state": "translated",
+            "value": "Nøkkelringen på denne enheten er låst. Lås opp enheten, så fortsetter bae der den slapp."
           }
         },
         "nl": {
@@ -7386,8 +7386,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "That library could not be found."
+            "state": "translated",
+            "value": "Fant ikke det biblioteket."
           }
         },
         "nl": {
@@ -7559,8 +7559,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Update the app to continue syncing."
+            "state": "translated",
+            "value": "Oppdater appen for å fortsette synkroniseringen."
           }
         },
         "nl": {
@@ -7732,8 +7732,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "not a track"
+            "state": "translated",
+            "value": "ikke et spor"
           }
         },
         "nl": {
@@ -7905,8 +7905,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "slot %lld"
+            "state": "translated",
+            "value": "plass %lld"
           }
         },
         "nl": {
@@ -8078,8 +8078,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "slots %1$lld–%2$lld"
+            "state": "translated",
+            "value": "plassene %1$lld–%2$lld"
           }
         },
         "nl": {
@@ -8251,8 +8251,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import has already completed and can no longer be edited."
+            "state": "translated",
+            "value": "Denne importen er allerede fullført og kan ikke redigeres lenger."
           }
         },
         "nl": {
@@ -8424,8 +8424,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This import is already running and can no longer be edited."
+            "state": "translated",
+            "value": "Denne importen kjører allerede og kan ikke redigeres lenger."
           }
         },
         "nl": {
@@ -8597,8 +8597,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from barcode %@ in this image"
+            "state": "translated",
+            "value": "Utgivelsen ble automatisk identifisert fra strekkoden %@ på dette bildet"
           }
         },
         "nl": {
@@ -8770,8 +8770,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Release was auto-identified from disc ID %@ from this file"
+            "state": "translated",
+            "value": "Utgivelsen ble automatisk identifisert fra plate-ID-en %@ fra denne filen"
           }
         },
         "nl": {
@@ -8943,8 +8943,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Network folder. Changes made on other computers are checked every %lld minutes."
+            "state": "translated",
+            "value": "Nettverksmappe. Endringer gjort på andre datamaskiner sjekkes hvert %lld. minutt."
           }
         },
         "nl": {
@@ -9116,8 +9116,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte audio file: %@"
+            "state": "translated",
+            "value": "skadet eller tom lydfil: %@"
           }
         },
         "nl": {
@@ -9289,8 +9289,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "corrupt or zero-byte image: %@"
+            "state": "translated",
+            "value": "skadet eller tomt bilde: %@"
           }
         },
         "nl": {
@@ -9462,8 +9462,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "no valid audio files"
+            "state": "translated",
+            "value": "ingen gyldige lydfiler"
           }
         },
         "nl": {
@@ -9635,8 +9635,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Finalizing..."
+            "state": "translated",
+            "value": "Fullfører..."
           }
         },
         "nl": {
@@ -9808,8 +9808,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Measuring loudness..."
+            "state": "translated",
+            "value": "Måler lydstyrken..."
           }
         },
         "nl": {
@@ -9981,8 +9981,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reading files..."
+            "state": "translated",
+            "value": "Leser filer..."
           }
         },
         "nl": {
@@ -10154,8 +10154,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queued..."
+            "state": "translated",
+            "value": "I kø..."
           }
         },
         "nl": {
@@ -10327,8 +10327,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Validating source files..."
+            "state": "translated",
+            "value": "Validerer kildefilene..."
           }
         },
         "nl": {
@@ -10500,8 +10500,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: audio the release doesn’t name"
+            "state": "translated",
+            "value": "%1$lld filer, %2$lld spor: lyd som utgivelsen ikke navngir"
           }
         },
         "nl": {
@@ -10673,8 +10673,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%1$lld files, %2$lld tracks: tracks with no audio"
+            "state": "translated",
+            "value": "%1$lld filer, %2$lld spor: spor uten lyd"
           }
         },
         "nl": {
@@ -10846,8 +10846,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork"
+            "state": "translated",
+            "value": "Grafikk"
           }
         },
         "nl": {
@@ -11019,8 +11019,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Audio"
+            "state": "translated",
+            "value": "Lyd"
           }
         },
         "nl": {
@@ -11192,8 +11192,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cover"
+            "state": "translated",
+            "value": "Omslag"
           }
         },
         "nl": {
@@ -11365,8 +11365,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Document"
+            "state": "translated",
+            "value": "Dokument"
           }
         },
         "nl": {
@@ -11538,8 +11538,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Not a track"
+            "state": "translated",
+            "value": "Ikke et spor"
           }
         },
         "nl": {
@@ -11711,8 +11711,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Other"
+            "state": "translated",
+            "value": "Annet"
           }
         },
         "nl": {
@@ -11884,8 +11884,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Track sheet"
+            "state": "translated",
+            "value": "Sporark"
           }
         },
         "nl": {
@@ -12057,8 +12057,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ audio can't be split by a sheet"
+            "state": "translated",
+            "value": "%@-lyd kan ikke deles opp etter et ark"
           }
         },
         "nl": {
@@ -12230,8 +12230,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The sheet’s track times fall outside this audio"
+            "state": "translated",
+            "value": "Sportidene i arket ligger utenfor denne lyden"
           }
         },
         "nl": {
@@ -12403,8 +12403,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This audio can’t be read"
+            "state": "translated",
+            "value": "Denne lyden kan ikke leses"
           }
         },
         "nl": {
@@ -12576,8 +12576,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Already in your library"
+            "state": "translated",
+            "value": "Allerede i biblioteket ditt"
           }
         },
         "nl": {
@@ -12749,8 +12749,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length: %1$@ in the folder, %2$@ on the release"
+            "state": "translated",
+            "value": "Lengde: %1$@ i mappen, %2$@ på utgivelsen"
           }
         },
         "nl": {
@@ -12922,8 +12922,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Could not read the track lengths in the folder"
+            "state": "translated",
+            "value": "Kunne ikke lese sporlengdene i mappen"
           }
         },
         "nl": {
@@ -13095,8 +13095,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Online lookup failed"
+            "state": "translated",
+            "value": "Nettoppslaget mislyktes"
           }
         },
         "nl": {
@@ -13268,8 +13268,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Nothing matched this folder"
+            "state": "translated",
+            "value": "Ingenting passet til denne mappen"
           }
         },
         "nl": {
@@ -13441,8 +13441,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "No disc ID and no barcode to look up"
+            "state": "translated",
+            "value": "Ingen plate-ID og ingen strekkode å slå opp"
           }
         },
         "nl": {
@@ -13851,14 +13851,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld match"
+                  "state": "translated",
+                  "value": "%lld treff"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld matches"
+                  "state": "translated",
+                  "value": "%lld treff"
                 }
               }
             }
@@ -14201,8 +14201,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The release states no track lengths"
+            "state": "translated",
+            "value": "Utgivelsen oppgir ingen sporlengder"
           }
         },
         "nl": {
@@ -14374,8 +14374,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks: %1$lld in the folder, %2$lld on the release"
+            "state": "translated",
+            "value": "Spor: %1$lld i mappen, %2$lld på utgivelsen"
           }
         },
         "nl": {
@@ -14547,8 +14547,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album title is required"
+            "state": "translated",
+            "value": "Albumtittel er påkrevd"
           }
         },
         "nl": {
@@ -14720,8 +14720,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist name is required"
+            "state": "translated",
+            "value": "Artistnavn er påkrevd"
           }
         },
         "nl": {
@@ -14893,8 +14893,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Year must be a number"
+            "state": "translated",
+            "value": "Året må være et tall"
           }
         },
         "nl": {
@@ -15066,8 +15066,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Album must have at least one artist"
+            "state": "translated",
+            "value": "Albumet må ha minst én artist"
           }
         },
         "nl": {
@@ -15239,8 +15239,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artwork analysis failed"
+            "state": "translated",
+            "value": "Analysen av grafikken mislyktes"
           }
         },
         "nl": {
@@ -15412,8 +15412,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "artwork analysis failed"
+            "state": "translated",
+            "value": "analysen av grafikken mislyktes"
           }
         },
         "nl": {
@@ -15585,8 +15585,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "busy (%lld)"
+            "state": "translated",
+            "value": "opptatt (%lld)"
           }
         },
         "nl": {
@@ -15758,8 +15758,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "failed"
+            "state": "translated",
+            "value": "mislyktes"
           }
         },
         "nl": {
@@ -15931,8 +15931,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "couldn't connect"
+            "state": "translated",
+            "value": "kunne ikke koble til"
           }
         },
         "nl": {
@@ -16104,8 +16104,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "error %lld"
+            "state": "translated",
+            "value": "feil %lld"
           }
         },
         "nl": {
@@ -16277,8 +16277,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "error"
+            "state": "translated",
+            "value": "feil"
           }
         },
         "nl": {
@@ -16450,8 +16450,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "timed out"
+            "state": "translated",
+            "value": "tiden gikk ut"
           }
         },
         "nl": {
@@ -16623,8 +16623,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't look this up"
+            "state": "translated",
+            "value": "Kunne ikke slå opp dette"
           }
         },
         "nl": {
@@ -16796,8 +16796,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't reach the metadata provider"
+            "state": "translated",
+            "value": "Kunne ikke nå metadataleverandøren"
           }
         },
         "nl": {
@@ -16969,8 +16969,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error (%lld)"
+            "state": "translated",
+            "value": "Metadataleverandøren svarte med en feil (%lld)"
           }
         },
         "nl": {
@@ -17142,8 +17142,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider returned an error"
+            "state": "translated",
+            "value": "Metadataleverandøren svarte med en feil"
           }
         },
         "nl": {
@@ -17315,8 +17315,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "The metadata provider timed out"
+            "state": "translated",
+            "value": "Metadataleverandøren svarte ikke i tide"
           }
         },
         "nl": {
@@ -17488,8 +17488,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing %1$@ of %2$@"
+            "state": "translated",
+            "value": "Forbereder %1$@ av %2$@"
           }
         },
         "nl": {
@@ -17661,8 +17661,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Uploading %1$@ of %2$@"
+            "state": "translated",
+            "value": "Laster opp %1$@ av %2$@"
           }
         },
         "nl": {
@@ -17834,8 +17834,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld cancelling"
+            "state": "translated",
+            "value": "%lld avbrytes"
           }
         },
         "nl": {
@@ -18007,8 +18007,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%@ remaining"
+            "state": "translated",
+            "value": "%@ igjen"
           }
         },
         "nl": {
@@ -18180,8 +18180,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Artist image"
+            "state": "translated",
+            "value": "Artistbilde"
           }
         },
         "nl": {
@@ -18353,8 +18353,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing from cloud"
+            "state": "translated",
+            "value": "Fjernes fra skyen"
           }
         },
         "nl": {
@@ -18763,14 +18763,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending delete"
+                  "state": "translated",
+                  "value": "%lld ventende sletting"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld pending deletes"
+                  "state": "translated",
+                  "value": "%lld ventende slettinger"
                 }
               }
             }
@@ -19113,8 +19113,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld prepared"
+            "state": "translated",
+            "value": "%lld forberedt"
           }
         },
         "nl": {
@@ -19286,8 +19286,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld preparing"
+            "state": "translated",
+            "value": "%lld forberedes"
           }
         },
         "nl": {
@@ -19459,8 +19459,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld publishing"
+            "state": "translated",
+            "value": "%lld publiseres"
           }
         },
         "nl": {
@@ -19632,8 +19632,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Retrying (%lld)"
+            "state": "translated",
+            "value": "Prøver på nytt (%lld)"
           }
         },
         "nl": {
@@ -19805,8 +19805,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source unavailable"
+            "state": "translated",
+            "value": "Kilden er ikke tilgjengelig"
           }
         },
         "nl": {
@@ -19978,7 +19978,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%@/s"
           }
         },
@@ -20151,8 +20151,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploaded"
+            "state": "translated",
+            "value": "%lld lastet opp"
           }
         },
         "nl": {
@@ -20324,8 +20324,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Activating device…"
+            "state": "translated",
+            "value": "Aktiverer enheten…"
           }
         },
         "nl": {
@@ -20497,8 +20497,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Granting cloud access…"
+            "state": "translated",
+            "value": "Gir skytilgang…"
           }
         },
         "nl": {
@@ -20670,8 +20670,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing invitation…"
+            "state": "translated",
+            "value": "Forbereder invitasjonen…"
           }
         },
         "nl": {
@@ -20843,8 +20843,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Preparing library…"
+            "state": "translated",
+            "value": "Forbereder biblioteket…"
           }
         },
         "nl": {
@@ -21016,8 +21016,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the joining device…"
+            "state": "translated",
+            "value": "Venter på enheten som blir med…"
           }
         },
         "nl": {
@@ -21189,8 +21189,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access request…"
+            "state": "translated",
+            "value": "Venter på forespørsel om skytilgang…"
           }
         },
         "nl": {
@@ -21362,8 +21362,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for device registration request…"
+            "state": "translated",
+            "value": "Venter på forespørsel om enhetsregistrering…"
           }
         },
         "nl": {
@@ -21535,8 +21535,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Cancelling pairing…"
+            "state": "translated",
+            "value": "Avbryter paringen…"
           }
         },
         "nl": {
@@ -21708,8 +21708,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Catching up with library changes…"
+            "state": "translated",
+            "value": "Henter inn endringene i biblioteket…"
           }
         },
         "nl": {
@@ -21881,8 +21881,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Downloading library snapshot…"
+            "state": "translated",
+            "value": "Laster ned øyeblikksbildet av biblioteket…"
           }
         },
         "nl": {
@@ -22054,8 +22054,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Installing library snapshot…"
+            "state": "translated",
+            "value": "Installerer øyeblikksbildet av biblioteket…"
           }
         },
         "nl": {
@@ -22227,8 +22227,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Requesting cloud access…"
+            "state": "translated",
+            "value": "Ber om skytilgang…"
           }
         },
         "nl": {
@@ -22400,8 +22400,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Saving library…"
+            "state": "translated",
+            "value": "Lagrer biblioteket…"
           }
         },
         "nl": {
@@ -22573,8 +22573,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for activation…"
+            "state": "translated",
+            "value": "Venter på aktivering…"
           }
         },
         "nl": {
@@ -22746,8 +22746,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for approval…"
+            "state": "translated",
+            "value": "Venter på godkjenning…"
           }
         },
         "nl": {
@@ -22919,8 +22919,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for the library…"
+            "state": "translated",
+            "value": "Venter på biblioteket…"
           }
         },
         "nl": {
@@ -23092,8 +23092,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Waiting for cloud access…"
+            "state": "translated",
+            "value": "Venter på skytilgang…"
           }
         },
         "nl": {
@@ -23265,8 +23265,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Registering device…"
+            "state": "translated",
+            "value": "Registrerer enheten…"
           }
         },
         "nl": {
@@ -23438,8 +23438,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Reconnect to play this release. It isn't downloaded to this device yet."
+            "state": "translated",
+            "value": "Koble til på nytt for å spille av denne utgivelsen. Den er ikke lastet ned til denne enheten ennå."
           }
         },
         "nl": {
@@ -23611,8 +23611,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This release is still uploading. Try again when it finishes."
+            "state": "translated",
+            "value": "Denne utgivelsen lastes fortsatt opp. Prøv på nytt når den er ferdig."
           }
         },
         "nl": {
@@ -23784,8 +23784,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between discs. Change the CD, then press Play."
+            "state": "translated",
+            "value": "Avspillingen er satt på pause mellom platene. Bytt CD, og trykk på Spill av."
           }
         },
         "nl": {
@@ -23957,8 +23957,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %@ ended"
+            "state": "translated",
+            "value": "Plate %@ er slutt"
           }
         },
         "nl": {
@@ -24130,8 +24130,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the cassette, then press Play."
+            "state": "translated",
+            "value": "Avspillingen er satt på pause mellom sidene. Snu kassetten, og trykk på Spill av."
           }
         },
         "nl": {
@@ -24303,8 +24303,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Playback paused between sides. Turn the vinyl, then press Play."
+            "state": "translated",
+            "value": "Avspillingen er satt på pause mellom sidene. Snu vinylplaten, og trykk på Spill av."
           }
         },
         "nl": {
@@ -24476,8 +24476,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Side %@ ended"
+            "state": "translated",
+            "value": "Side %@ er slutt"
           }
         },
         "nl": {
@@ -24649,8 +24649,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld downloading"
+            "state": "translated",
+            "value": "%lld lastes ned"
           }
         },
         "nl": {
@@ -24822,8 +24822,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld failed"
+            "state": "translated",
+            "value": "%lld mislyktes"
           }
         },
         "nl": {
@@ -24995,8 +24995,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld in progress"
+            "state": "translated",
+            "value": "%lld pågår"
           }
         },
         "nl": {
@@ -25168,8 +25168,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld queued"
+            "state": "translated",
+            "value": "%lld i kø"
           }
         },
         "nl": {
@@ -25341,8 +25341,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld uploading"
+            "state": "translated",
+            "value": "%lld lastes opp"
           }
         },
         "nl": {
@@ -25514,8 +25514,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Media"
+            "state": "translated",
+            "value": "Medium"
           }
         },
         "nl": {
@@ -25924,14 +25924,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld release is only stored in the cloud. It will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld utgivelse finnes bare i skyen. Den kan ikke spilles av før du kobler til igjen."
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld releases are only stored in the cloud. They will become unplayable until you reconnect."
+                  "state": "translated",
+                  "value": "%lld utgivelser finnes bare i skyen. De kan ikke spilles av før du kobler til igjen."
                 }
               }
             }
@@ -26268,8 +26268,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "Plate %lld"
           }
         },
         "nl": {
@@ -26441,7 +26441,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Side %@"
           }
         },
@@ -26614,8 +26614,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Making Local…"
+            "state": "translated",
+            "value": "Gjør lokal…"
           }
         },
         "nl": {
@@ -26787,8 +26787,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Queueing for Cloud…"
+            "state": "translated",
+            "value": "Legger i kø for skyen…"
           }
         },
         "nl": {
@@ -26960,8 +26960,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Pinning for offline"
+            "state": "translated",
+            "value": "Fester for frakoblet bruk"
           }
         },
         "nl": {
@@ -27133,8 +27133,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Removing local copy"
+            "state": "translated",
+            "value": "Fjerner den lokale kopien"
           }
         },
         "nl": {
@@ -27306,8 +27306,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "This source identity is linked to two artists in your library. Choose the record to keep; its albums, tracks, credits, and source links will be combined with the other record."
+            "state": "translated",
+            "value": "Denne kildeidentiteten er knyttet til to artister i biblioteket ditt. Velg posten som skal beholdes; albumene, sporene, bidragene og kildekoblingene dens slås sammen med den andre posten."
           }
         },
         "nl": {
@@ -27479,8 +27479,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep Discogs Artist"
+            "state": "translated",
+            "value": "Behold Discogs-artisten"
           }
         },
         "nl": {
@@ -27652,8 +27652,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Keep MusicBrainz Artist"
+            "state": "translated",
+            "value": "Behold MusicBrainz-artisten"
           }
         },
         "nl": {
@@ -27825,8 +27825,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Awaiting a release"
+            "state": "translated",
+            "value": "Venter på en utgivelse"
           }
         },
         "nl": {
@@ -28235,14 +28235,14 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld row still has no name"
+                  "state": "translated",
+                  "value": "%lld rad mangler fortsatt navn"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "new",
-                  "value": "%lld rows still have no name"
+                  "state": "translated",
+                  "value": "%lld rader mangler fortsatt navn"
                 }
               }
             }
@@ -28579,8 +28579,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Couldn't scan %@"
+            "state": "translated",
+            "value": "Kunne ikke søke gjennom %@"
           }
         },
         "nl": {
@@ -28752,7 +28752,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Artist"
           }
         },
@@ -28925,8 +28925,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Name"
+            "state": "translated",
+            "value": "Navn"
           }
         },
         "nl": {
@@ -29098,8 +29098,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Source"
+            "state": "translated",
+            "value": "Kilde"
           }
         },
         "nl": {
@@ -29271,8 +29271,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Title"
+            "state": "translated",
+            "value": "Tittel"
           }
         },
         "nl": {
@@ -29444,8 +29444,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Files"
+            "state": "translated",
+            "value": "Filer"
           }
         },
         "nl": {
@@ -29617,8 +29617,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Tracks"
+            "state": "translated",
+            "value": "Spor"
           }
         },
         "nl": {
@@ -29790,8 +29790,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "File tags"
+            "state": "translated",
+            "value": "Filmerkelapper"
           }
         },
         "nl": {
@@ -29963,8 +29963,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "From file tags"
+            "state": "translated",
+            "value": "Fra filmerkelapper"
           }
         },
         "nl": {
@@ -30136,7 +30136,7 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Metadata"
           }
         },
@@ -30309,8 +30309,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Role"
+            "state": "translated",
+            "value": "Rolle"
           }
         },
         "nl": {
@@ -30482,8 +30482,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Scanning folders"
+            "state": "translated",
+            "value": "Søker gjennom mapper"
           }
         },
         "nl": {
@@ -30655,8 +30655,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "%lld found"
+            "state": "translated",
+            "value": "%lld funnet"
           }
         },
         "nl": {
@@ -30828,8 +30828,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Asked for %@"
+            "state": "translated",
+            "value": "Ba om %@"
           }
         },
         "nl": {
@@ -31001,8 +31001,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose audio…"
+            "state": "translated",
+            "value": "Velg lyd…"
           }
         },
         "nl": {
@@ -31174,8 +31174,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Describes nothing"
+            "state": "translated",
+            "value": "Beskriver ingenting"
           }
         },
         "nl": {
@@ -31347,8 +31347,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Disc %lld"
+            "state": "translated",
+            "value": "Plate %lld"
           }
         },
         "nl": {
@@ -31520,8 +31520,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Which disc of the release this sheet's entries are"
+            "state": "translated",
+            "value": "Hvilken plate i utgivelsen oppføringene i dette arket hører til"
           }
         },
         "nl": {
@@ -31693,8 +31693,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Ignored"
+            "state": "translated",
+            "value": "Ignorert"
           }
         },
         "nl": {
@@ -31866,8 +31866,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Choose file…"
+            "state": "translated",
+            "value": "Velg fil…"
           }
         },
         "nl": {
@@ -32039,8 +32039,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Length"
+            "state": "translated",
+            "value": "Lengde"
           }
         },
         "nl": {
@@ -32212,8 +32212,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Drop"
+            "state": "translated",
+            "value": "Utelat"
           }
         },
         "nl": {
@@ -32385,8 +32385,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Leave this track out — this folder has no audio for it."
+            "state": "translated",
+            "value": "La dette sporet stå tomt — denne mappen har ingen lyd til det."
           }
         },
         "nl": {
@@ -32558,8 +32558,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Exclude"
+            "state": "translated",
+            "value": "Utelat"
           }
         },
         "nl": {
@@ -32731,8 +32731,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Take this file out of the tracklist; it stays under Files."
+            "state": "translated",
+            "value": "Ta denne filen ut av sporlisten; den blir liggende under Filer."
           }
         },
         "nl": {
@@ -32904,8 +32904,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "No file"
+            "state": "translated",
+            "value": "Ingen fil"
           }
         },
         "nl": {
@@ -33077,8 +33077,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Play"
+            "state": "translated",
+            "value": "Spill av"
           }
         },
         "nl": {
@@ -33250,8 +33250,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Put back"
+            "state": "translated",
+            "value": "Sett tilbake"
           }
         },
         "nl": {
@@ -33423,8 +33423,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Stop"
+            "state": "translated",
+            "value": "Stopp"
           }
         },
         "nl": {
@@ -33596,8 +33596,8 @@
         },
         "nb": {
           "stringUnit": {
-            "state": "new",
-            "value": "Untitled"
+            "state": "translated",
+            "value": "Uten tittel"
           }
         },
         "nl": {
