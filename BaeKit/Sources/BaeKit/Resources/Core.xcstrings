@@ -26119,6 +26119,388 @@
         }
       }
     },
+    "core.playback.pause.disc_ended.message.cd": {
+      "comment": "Alert body shown when playback pauses between CDs.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم إيقاف التشغيل مؤقتًا بين الأقراص. بدّل القرص المضغوط ثم اضغط تشغيل."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Възпроизвеждането е на пауза между дисковете. Сменете компактдиска и натиснете Възпроизвеждане."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডিস্কের মাঝে প্লেব্যাক বিরত হয়েছে। সিডি বদলান, তারপর প্লে চাপুন।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přehrávání je pozastaveno mezi disky. Vyměňte CD a stiskněte Přehrát."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Wiedergabe pausiert zwischen den Discs. Wechsle die CD und drücke Wiedergabe."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playback paused between discs. Change the CD, then press Play."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reproducción se pausó entre discos. Cambia el CD y pulsa Reproducir."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture est en pause entre les disques. Changez le CD, puis appuyez sur Lecture."
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ડિસ્ક વચ્ચે પ્લેબેક રોકાયું છે. સીડી બદલો, પછી પ્લે દબાવો."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ההשמעה הושהתה בין הדיסקים. החלף את התקליטור ואז לחץ על הפעלה."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डिस्कों के बीच प्लेबैक रोक दिया गया है। सीडी बदलें, फिर प्ले दबाएँ।"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reprodukcija je pauzirana između diskova. Promijenite CD i pritisnite Reproduciraj."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La riproduzione è in pausa tra i dischi. Cambia il CD, poi premi Riproduci."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディスクの間で再生を一時停止しました。CDを交換してから再生を押してください。"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಡಿಸ್ಕ್‌ಗಳ ನಡುವೆ ಪ್ಲೇಬ್ಯಾಕ್ ವಿರಾಮಗೊಂಡಿದೆ. ಸಿಡಿ ಬದಲಿಸಿ, ನಂತರ ಪ್ಲೇ ಒತ್ತಿರಿ."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "디스크 사이에서 재생이 일시 정지되었습니다. CD를 교체한 다음 재생을 누르세요."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഡിസ്കുകൾക്കിടയിൽ പ്ലേബാക്ക് നിർത്തി. സിഡി മാറ്റി, തുടർന്ന് പ്ലേ അമർത്തുക."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डिस्कांदरम्यान प्लेबॅक थांबवला आहे. सीडी बदला, मग प्ले दाबा."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het afspelen is gepauzeerd tussen schijven. Verwissel de cd en druk op Afspelen."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਡਿਸਕਾਂ ਵਿਚਕਾਰ ਪਲੇਬੈਕ ਰੁਕ ਗਿਆ ਹੈ। ਸੀਡੀ ਬਦਲੋ, ਫਿਰ ਪਲੇ ਦਬਾਓ।"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odtwarzanie wstrzymano między płytami. Zmień płytę CD i naciśnij Odtwórz."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A reprodução pausou entre os discos. Troque o CD e toque em Reproduzir."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "வட்டுகளுக்கு இடையில் இயக்கம் இடைநிறுத்தப்பட்டது. சிடியை மாற்றி, பிறகு இயக்கு என்பதை அழுத்தவும்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "డిస్క్‌ల మధ్య ప్లేబ్యాక్ నిలిపివేయబడింది. సీడీని మార్చి, ఆపై ప్లే నొక్కండి."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเล่นหยุดพักระหว่างแผ่น เปลี่ยนแผ่นซีดี แล้วกดเล่น"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalma diskler arasında duraklatıldı. CD’yi değiştirin, sonra Oynat’a basın."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відтворення призупинено між дисками. Змініть компакт-диск і натисніть Відтворити."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈسکس کے درمیان پلے بیک روک دیا گیا ہے۔ سی ڈی بدلیں، پھر پلے دبائیں۔"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phát lại đã tạm dừng giữa các đĩa. Đổi CD rồi nhấn Phát."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放已在碟片之间暂停。请更换CD，然后按播放。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放已在碟片之間暫停。請更換CD，然後按播放。"
+          }
+        }
+      }
+    },
+    "core.playback.pause.disc_ended.title": {
+      "comment": "Alert title shown when playback pauses after a CD ends ({label} is the disc number).",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انتهى القرص %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Диск %@ приключи"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডিস্ক %@ শেষ হয়েছে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disk %@ skončil"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disc %@ beendet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disc %@ ended"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disco %@ terminado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disque %@ terminé"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ડિસ્ક %@ પૂરી થઈ"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דיסק %@ הסתיים"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डिस्क %@ समाप्त हो गई"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disk %@ je završio"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disco %@ terminato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディスク%@が終了しました"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಡಿಸ್ಕ್ %@ ಮುಗಿದಿದೆ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "디스크 %@ 재생이 끝났습니다"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഡിസ്ക് %@ അവസാനിച്ചു"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डिस्क %@ संपली"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schijf %@ is afgelopen"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਡਿਸਕ %@ ਮੁੱਕ ਗਈ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Płyta %@ zakończona"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disco %@ terminou"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "வட்டு %@ முடிந்தது"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "డిస్క్ %@ ముగిసింది"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แผ่น %@ จบแล้ว"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disk %@ bitti"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Диск %@ завершився"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈسک %@ ختم ہو گئی"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đĩa %@ đã kết thúc"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第%@碟已结束"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第%@碟已結束"
+          }
+        }
+      }
+    },
     "core.playback.pause.side_ended.message.cassette": {
       "comment": "Alert body shown when playback pauses between cassette sides.",
       "localizations": {
@@ -26502,7 +26884,7 @@
       }
     },
     "core.playback.pause.side_ended.title": {
-      "comment": "Alert title shown when playback pauses after a physical side ends ({letter} is the side letter A/B/C… computed by core).",
+      "comment": "Alert title shown when playback pauses after a physical side ends ({label} is the side letter A/B/C… computed by core).",
       "localizations": {
         "ar": {
           "stringUnit": {
