@@ -317,3 +317,4 @@ zh-Hans	S3-compatible
 zh-Hans	cloud_provider_s3
 zh-Hant	S3-compatible
 zh-Hant	cloud_provider_s3
+sv	s3.field.bucket

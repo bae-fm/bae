@@ -40,6 +40,12 @@
             "state" : "translated",
             "value" : "bae"
           }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae"
+          }
         }
       }
     },
@@ -78,6 +84,12 @@
           }
         },
         "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae"
+          }
+        },
+        "sv" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae"
@@ -206,6 +218,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae používa kameru na skenovanie kódov pri párovaní alebo obnove knižnice."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae använder kameran för att skanna koder vid parkoppling eller återställning av ett bibliotek."
           }
         },
         "tr" : {
@@ -355,6 +373,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae páruje zariadenia a nachádza reproduktory a televízory v tvojej lokálnej sieti."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae parkopplar enheter och hittar högtalare och tv-apparater i ditt lokala nätverk."
           }
         },
         "tr" : {

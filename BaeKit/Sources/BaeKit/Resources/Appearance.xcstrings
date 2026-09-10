@@ -123,6 +123,12 @@
             "value": "Režim"
           }
         },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läge"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -269,6 +275,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Systém"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
           }
         },
         "tr": {
@@ -419,6 +431,12 @@
             "value": "Svetlý"
           }
         },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ljust"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -565,6 +583,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tmavý"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mörkt"
           }
         },
         "tr": {
@@ -715,6 +739,12 @@
             "value": "Zvýrazňovacia farba"
           }
         },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accentfärg"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -861,6 +891,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odtieň pozadia"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bakgrundston"
           }
         },
         "tr": {
@@ -1011,6 +1047,12 @@
             "value": "Neutrálny"
           }
         },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neutral"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -1157,6 +1199,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bridlicový"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skiffer"
           }
         },
         "tr": {
@@ -1307,6 +1355,12 @@
             "value": "Slivkový"
           }
         },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plommon"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -1453,6 +1507,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Modrý"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blå"
           }
         },
         "tr": {
@@ -1603,6 +1663,12 @@
             "value": "Indigový"
           }
         },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indigo"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -1749,6 +1815,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fialový"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lila"
           }
         },
         "tr": {
@@ -1899,6 +1971,12 @@
             "value": "Ružový"
           }
         },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rosa"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -2045,6 +2123,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Červený"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Röd"
           }
         },
         "tr": {
@@ -2195,6 +2279,12 @@
             "value": "Jantárový"
           }
         },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bärnsten"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -2341,6 +2431,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zelený"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grön"
           }
         },
         "tr": {
@@ -2491,6 +2587,12 @@
             "value": "Modrozelený"
           }
         },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turkos"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -2637,6 +2739,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Polnočný"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Midnatt"
           }
         },
         "tr": {
@@ -2787,6 +2895,12 @@
             "value": "Lesný"
           }
         },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skog"
+          }
+        },
         "tr": {
           "stringUnit": {
             "state": "translated",
@@ -2933,6 +3047,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Piesočný"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sand"
           }
         },
         "tr": {
