@@ -60,6 +60,12 @@ struct ShotScene {
         ShotScene(id: "album-detail", size: CGSize(width: 1100, height: 800)) {
             AnyView(PreviewScenes.albumDetail())
         },
+        ShotScene(
+            id: "album-detail-mixed-columns",
+            size: CGSize(width: 1100, height: 800)
+        ) {
+            AnyView(PreviewScenes.albumDetailMixedColumns())
+        },
         ShotScene(id: "story-3-empty-library", size: MainWindow.defaultSize) {
             AnyView(PreviewScenes.libraryEmpty())
         },

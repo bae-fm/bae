@@ -234,6 +234,12 @@ struct AlbumExpansionContent: View {
         PreviewData.albumExpansionScene(albumId: "a-22")
     }
 
+    #Preview("CD — A Split Disc Over a Whole One") {
+        // The album-detail-mixed-columns gallery scene renders this exact
+        // composition.
+        PreviewScenes.albumDetailMixedColumns()
+    }
+
     private struct MultiReleasePreview: View {
         @State
         private var selectedReleaseId: String = "rel-a-04-0"

@@ -96,6 +96,13 @@
             )
         }
 
+        /// The expanded album detail for a two-disc CD fixture whose first
+        /// disc splits into two columns and whose second is short enough to
+        /// stay one — both column shapes in a single track list.
+        static func albumDetailMixedColumns() -> some View {
+            PreviewData.albumExpansionScene(albumId: "a-23")
+        }
+
         static func importReleaseQueue(
             scene: ImportPreviewFixture,
             tab: BridgeTriageTab,

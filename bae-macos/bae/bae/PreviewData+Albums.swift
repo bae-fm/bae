@@ -241,7 +241,7 @@
             )
         }
 
-        /// The ordered album payloads (a-01..a-22). The single source of truth:
+        /// The ordered album payloads (a-01..a-23). The single source of truth:
         /// `albums` is `albumDetailList.map(\.album)` and `albumDetails` is keyed by
         /// `album.id`, so the grid summaries and the seeded `releaseDetails` always
         /// agree on release ids.
@@ -575,6 +575,25 @@
                     "Appendix A", "Appendix B", "Index", "Errata", "Colophon",
                     "Addendum",
                     "Corrigenda", "Afterword", "About the Author",
+                ],
+                format: "CD"
+            ),
+            // Nine tracks over eight: the first disc splits into two columns,
+            // the second is short enough to stay one.
+            makeDetailTwoPart(
+                album: .init(
+                    id: "a-23",
+                    title: "Field Notes",
+                    artist: "Survey Party",
+                    year: 2022,
+                ),
+                first: [
+                    "Transect", "Quadrat", "Baseline", "Waypoint", "Contour",
+                    "Datum", "Traverse", "Benchmark", "Cairn",
+                ],
+                second: [
+                    "Levelling", "Plumb Line", "Sight Line", "Chainage",
+                    "Offset", "Bearing", "Elevation", "Closure",
                 ],
                 format: "CD"
             ),

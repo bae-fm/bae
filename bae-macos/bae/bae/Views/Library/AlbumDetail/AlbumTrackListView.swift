@@ -1,9 +1,12 @@
 import BaeKit
 import SwiftUI
 
-/// The track list under an album's detail card. Lays each side/disc group out
-/// as one or two columns (splitting long sides in half), with side headers and,
-/// on a multi-side release, each side's play time. Delegates each row to
+/// The track list under an album's detail card. Every side/disc group is laid
+/// out as two column slots — a side longer than eight tracks is split in half
+/// across them, a shorter one fills the first and leaves the second empty — so
+/// that every row in the list, whatever the shape of its side, is proposed one
+/// column's width and ends its duration at the same x. Carries side headers
+/// and, on a multi-side release, each side's play time. Delegates each row to
 /// `TrackRowView`.
 struct AlbumTrackListView: View {
     let release: ReleaseDetail
@@ -45,23 +48,25 @@ struct AlbumTrackListView: View {
                         .padding(.top, groupIndex == 0 ? 0 : 18)
                         .padding(.bottom, 6)
                 }
-                if group.tracks.count > 8 {
-                    let mid = (group.tracks.count + 1) / 2
-                    let left = Array(group.tracks.prefix(mid))
-                    let right = Array(group.tracks.dropFirst(mid))
-                    HStack(alignment: .top, spacing: 40) {
-                        trackColumn(tracks: left, globalOffset: globalOffset)
+                let mid =
+                    group.tracks.count > 8
+                    ? (group.tracks.count + 1) / 2 : group.tracks.count
+                let left = Array(group.tracks.prefix(mid))
+                let right = Array(group.tracks.dropFirst(mid))
+                HStack(alignment: .top, spacing: 40) {
+                    trackColumn(tracks: left, globalOffset: globalOffset)
+                    if right.isEmpty {
+                        // Not a `Spacer`: its default minimum length would
+                        // claim its own width rather than take the share a
+                        // sibling column takes.
+                        Color.clear.frame(maxWidth: .infinity)
+                    }
+                    else {
                         trackColumn(
                             tracks: right,
                             globalOffset: globalOffset + mid
                         )
                     }
-                }
-                else {
-                    trackColumn(
-                        tracks: group.tracks,
-                        globalOffset: globalOffset
-                    )
                 }
                 // The album's play time sits in the header; only a multi-side
                 // release needs each side's named here.
