@@ -47,23 +47,6 @@ struct ImportReleaseSummary {
         sourceAudio = candidate.files.sourceAudio
     }
 
-    init(candidate: Candidate, fileTags values: BridgeReleaseUserEdit) {
-        title =
-            values.albumTitle.isEmpty
-            ? candidate.displayName : values.albumTitle
-        titleIsPlaceholder = false
-        let artistNames = values.albumArtistAssignments.map(\.displayName)
-        artist =
-            artistNames.isEmpty
-            ? nil : ListFormatter.localizedString(byJoining: artistNames)
-        factsLine = Self.factsLine([
-            coreString("ui.import.metadata.from_file_tags"),
-            String(localized: "\(values.tracks.count) tracks"),
-        ])
-        provenance = .fileTags
-        sourceAudio = candidate.files.sourceAudio
-    }
-
     init?(row: BridgeTriageRow) {
         if let summary = row.metadataSummary {
             titleIsPlaceholder = summary.albumTitle.isEmpty
