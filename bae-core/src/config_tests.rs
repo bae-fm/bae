@@ -20,6 +20,12 @@ fn full_config_yaml_value() -> serde_yaml::Value {
     serde_yaml::to_value(ConfigYaml::from(&config)).unwrap()
 }
 
+/// The config a `config.yaml` text parses to, for tests that are about the
+/// settings rather than the shape the file arrived in.
+fn parse_config(content: &str) -> Result<ConfigYaml, ConfigError> {
+    parse_config_yaml(content).map(|parsed| parsed.config)
+}
+
 /// Parse a full config with one top-level key removed.
 fn parse_yaml_without(key: &str) -> Result<ConfigYaml, serde_yaml::Error> {
     let mut value = full_config_yaml_value();
@@ -38,8 +44,8 @@ fn export_settings_survive_yaml_roundtrip() {
         vec![SaveFilenameToken::Artist, SaveFilenameToken::Title];
     config.save_to_config_yaml().unwrap();
 
-    let yaml = parse_config_yaml(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
-        .unwrap();
+    let yaml =
+        parse_config(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap()).unwrap();
     assert_eq!(
         yaml.prefs.save_presets[0].filename_tokens,
         vec![SaveFilenameToken::Artist, SaveFilenameToken::Title]
@@ -104,8 +110,8 @@ fn transfer_concurrency_survives_yaml_roundtrip() {
     config.prefs.max_concurrent_downloads = NonZeroU32::new(4).unwrap();
     config.save_to_config_yaml().unwrap();
 
-    let yaml = parse_config_yaml(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
-        .unwrap();
+    let yaml =
+        parse_config(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap()).unwrap();
     assert_eq!(yaml.prefs.max_concurrent_uploads.get(), 7);
     assert_eq!(yaml.prefs.max_concurrent_downloads.get(), 4);
 }
@@ -128,9 +134,8 @@ fn prefill_with_tags_and_identify_automatically_roundtrip_independently() {
         config.prefs.prefill_with_tags = prefill;
         config.save_to_config_yaml().unwrap();
 
-        let yaml =
-            parse_config_yaml(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
-                .unwrap();
+        let yaml = parse_config(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
+            .unwrap();
         let loaded = yaml.into_config("device".to_string(), tmp.path().to_path_buf());
 
         assert_eq!(loaded.prefs.identify_automatically, identify);
@@ -138,18 +143,19 @@ fn prefill_with_tags_and_identify_automatically_roundtrip_independently() {
     }
 }
 
-/// A library written before the two settings replaced the single source
-/// picker still opens: serde reads the keys it knows and ignores the rest, so
-/// the retired key is neither read nor an obstacle.
+/// The typed read is strict about the keys it needs, not about the keys it
+/// finds: a file at the current version carrying something extra — a key edited
+/// in by hand — still loads. Carrying a retired key forward is a ladder step's
+/// job, not the read's.
 #[test]
-fn a_config_carrying_the_retired_source_key_loads() {
+fn a_config_carrying_an_unrecognized_key_loads() {
     let mut value = full_config_yaml_value();
     value.as_mapping_mut().unwrap().insert(
         serde_yaml::Value::String("default_import_metadata_source".to_string()),
         serde_yaml::Value::String("file_tags".to_string()),
     );
 
-    let loaded = ConfigYaml::from_value(&value).expect("the retired key is ignored");
+    let loaded = ConfigYaml::from_value(&value).expect("an unknown key is ignored");
 
     assert!(loaded.prefs.prefill_with_tags);
     assert!(loaded.prefs.identify_automatically);
@@ -166,7 +172,7 @@ fn a_zero_concurrency_fails_to_load() {
     );
     let yaml = serde_yaml::to_string(&value).unwrap();
     assert!(
-        parse_config_yaml(&yaml).is_err(),
+        parse_config(&yaml).is_err(),
         "a zero concurrency must not load"
     );
 }
@@ -267,11 +273,12 @@ fn subsonic_config_allows_disabled_without_username() {
     );
 }
 
-/// Every bae-local field except `device_id` is serialized unconditionally, so
-/// a missing key fails rather than taking an implicit default.
+/// Every key the file writes except `device_id` is serialized unconditionally,
+/// so a missing key fails rather than taking an implicit default.
 #[test]
 fn config_yaml_requires_every_bae_field() {
     for key in [
+        "config_version",
         "discogs",
         "replay_gain_mode",
         "save_presets",
@@ -306,7 +313,8 @@ fn config_yaml_pins_the_on_disk_file() {
 
     assert_eq!(
         written,
-        r#"library_id: abc-123
+        r#"config_version: 1
+library_id: abc-123
 library_name: Test Library
 device_id: test-device-id
 snapshot_commit_threshold: 100
@@ -373,7 +381,7 @@ storage: opaque
 "#
     );
     // And it reads back: the flattened parts each claim their own keys.
-    let read_back = parse_config_yaml(&written).unwrap();
+    let read_back = parse_config(&written).unwrap();
     assert_eq!(read_back.identity.library_id, "abc-123");
     assert_eq!(read_back.prefs.save_presets, config.prefs.save_presets);
     assert_eq!(read_back.cloud_home, config.cloud_home);
@@ -390,8 +398,8 @@ fn cast_is_off_by_default_and_survives_yaml_roundtrip() {
     config.prefs.cast_enabled = true;
     config.save_to_config_yaml().unwrap();
 
-    let yaml = parse_config_yaml(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
-        .unwrap();
+    let yaml =
+        parse_config(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap()).unwrap();
     assert!(yaml.prefs.cast_enabled);
 }
 
@@ -593,8 +601,7 @@ fn save_and_load_config_yaml_roundtrip() {
     config.save_to_config_yaml().unwrap();
 
     let yaml =
-        parse_config_yaml(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
-            .unwrap();
+        parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
     assert_eq!(yaml.identity.library_id, "my-library-id");
     assert_eq!(yaml.prefs.mcp, McpConfig::disabled_default());
 }
@@ -692,8 +699,7 @@ fn library_name_roundtrip() {
     config.save_to_config_yaml().unwrap();
 
     let yaml =
-        parse_config_yaml(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
-            .unwrap();
+        parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
     assert_eq!(yaml.identity.library_name, "My Music");
 }
 
@@ -776,8 +782,7 @@ fn rename_library_updates_config_yaml() {
     assert_eq!(handle.config().store_name, "New Name");
 
     let yaml =
-        parse_config_yaml(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
-            .unwrap();
+        parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
     assert_eq!(yaml.identity.library_name, "New Name");
     assert_eq!(yaml.identity.library_id, "lib-1"); // unchanged
 }
@@ -844,8 +849,7 @@ fn update_serializes_concurrent_edits() {
     assert!(final_config.prefs.pause_between_sides);
 
     let yaml =
-        parse_config_yaml(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
-            .unwrap();
+        parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
     assert_eq!(yaml.identity.library_name, "Renamed Library");
     assert!(yaml.prefs.pause_between_sides);
 }
@@ -883,8 +887,7 @@ fn from_coven_preserves_library_id_and_persists_bae_yaml() {
     config.save_to_config_yaml().unwrap();
 
     let yaml =
-        parse_config_yaml(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap())
-            .unwrap();
+        parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
     assert_eq!(yaml.identity.library_id, library_id);
     assert_eq!(yaml.prefs.mcp, McpConfig::disabled_default());
     assert_eq!(

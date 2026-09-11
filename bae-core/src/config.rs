@@ -5,6 +5,7 @@ use tracing::{debug, info, warn};
 
 mod handle;
 mod keyring;
+mod migrations;
 mod save;
 mod server;
 
@@ -274,6 +275,13 @@ pub enum ConfigError {
     Serialization(String),
     #[error("configuration file: {0}")]
     Io(#[from] std::io::Error),
+    /// `config.yaml` could not be carried to the shape this build reads: it
+    /// records a version that is not one, or one above this build's, or a
+    /// ladder step refused what it found. Its own variant because the library
+    /// is present and its file readable — [`Self::Config`] is what the host
+    /// reports as a missing library.
+    #[error("config.yaml: {0}")]
+    Upgrade(String),
 }
 
 /// bae's application directory (`~/.bae`). The base coven's restore/join build
@@ -303,7 +311,10 @@ where
 ///
 /// No field carries a `serde` default — serialization always emits every key,
 /// so a missing key fails the load rather than silently taking an implicit
-/// value. A new library starts from [`Preferences::default`].
+/// value. A new library starts from [`Preferences::default`]; a library whose
+/// file predates a field is carried to the current shape by a step in the
+/// [`migrations`] ladder, so adding, renaming, or removing a field here lands
+/// with the step that covers it.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Preferences {
     /// The stored Discogs key's validation state, or `None` when no key is
@@ -413,6 +424,11 @@ pub struct LibraryIdentity {
 /// each part from the same parsed [`serde_yaml::Value`], which keeps them.
 #[derive(Debug, Clone, Serialize)]
 pub struct ConfigYaml {
+    /// Which shape of this file the rest of the mapping is in. Describes the
+    /// file rather than the running config, so it lives here and on neither
+    /// [`Config`] nor [`Preferences`]: every write stamps the version this
+    /// build reads.
+    pub config_version: u32,
     #[serde(flatten)]
     pub identity: LibraryIdentity,
     /// Accepted library commits before an owner attempts a snapshot.
@@ -428,6 +444,13 @@ impl ConfigYaml {
     /// Read the config from one parsed mapping, preserving YAML tags in presets.
     fn from_value(value: &serde_yaml::Value) -> Result<Self, serde_yaml::Error> {
         Ok(Self {
+            config_version: u32::deserialize(
+                value.get(migrations::CONFIG_VERSION_KEY).ok_or_else(|| {
+                    <serde_yaml::Error as serde::de::Error>::missing_field(
+                        migrations::CONFIG_VERSION_KEY,
+                    )
+                })?,
+            )?,
             identity: LibraryIdentity::deserialize(value)?,
             snapshot_commit_threshold: NonZeroU64::deserialize(
                 value.get("snapshot_commit_threshold").ok_or_else(|| {
@@ -461,6 +484,7 @@ impl ConfigYaml {
 impl From<&Config> for ConfigYaml {
     fn from(config: &Config) -> Self {
         Self {
+            config_version: migrations::current_version(),
             identity: LibraryIdentity {
                 library_id: config.store_id.clone(),
                 library_name: config.store_name.clone(),
@@ -551,34 +575,48 @@ impl Config {
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
         let config_path = library_dir.join("config.yaml");
-        let yaml_config = load_registered_config_yaml(&library_dir, expected_library_id)?;
-        Self::config_from_yaml(yaml_config, library_dir, &config_path, ids)
+        let parsed = load_registered_config_yaml(&library_dir, expected_library_id)?;
+        Self::config_from_yaml(parsed, library_dir, &config_path, ids)
     }
 
     /// Read config.yaml into the fields this build uses.
-    fn load_config_yaml(config_path: &std::path::Path) -> Result<ConfigYaml, ConfigError> {
+    fn load_config_yaml(config_path: &std::path::Path) -> Result<ParsedConfigYaml, ConfigError> {
         let content = std::fs::read_to_string(config_path)?;
         parse_config_yaml(&content)
     }
 
+    /// Turn a parsed `config.yaml` into the running config, minting a
+    /// `device_id` when the file carries none.
+    ///
+    /// Opening is where the file is written back: once, after the typed read
+    /// succeeded, when what this build read differs from what is on disk — a
+    /// minted `device_id`, a shape the ladder carried up, or both. A failed
+    /// write fails the open rather than leaving the next run to read the old
+    /// file and mint a second `device_id`.
     fn config_from_yaml(
-        mut yaml_config: ConfigYaml,
+        parsed: ParsedConfigYaml,
         library_dir: PathBuf,
         config_path: &std::path::Path,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
-        let device_id = match yaml_config.identity.device_id.clone() {
-            Some(id) => id,
+        let ParsedConfigYaml {
+            config: mut yaml_config,
+            upgraded_from,
+        } = parsed;
+        let (device_id, minted_device_id) = match yaml_config.identity.device_id.clone() {
+            Some(id) => (id, false),
             None => {
                 let id = ids.new_id();
                 info!("No device_id in config.yaml, generated: {}", id);
                 yaml_config.identity.device_id = Some(id.clone());
-                let serialized = serde_yaml::to_string(&yaml_config)
-                    .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-                write_atomic(config_path, serialized.as_bytes()).map_err(WriteError::into_inner)?;
-                id
+                (id, true)
             }
         };
+        if minted_device_id || upgraded_from.is_some() {
+            let serialized = serde_yaml::to_string(&yaml_config)
+                .map_err(|e| ConfigError::Serialization(e.to_string()))?;
+            write_atomic(config_path, serialized.as_bytes()).map_err(WriteError::into_inner)?;
+        }
         Ok(yaml_config.into_config(device_id, library_dir))
     }
 
@@ -697,7 +735,7 @@ pub fn rename_inactive_library(
     let library_dir = find_library_by_id(bae_dir, library_id)
         .ok_or_else(|| ConfigError::Config(format!("library not found: {library_id}")))?;
     let config_path = library_dir.join("config.yaml");
-    let mut yaml = parse_config_yaml(&std::fs::read_to_string(&config_path)?)?;
+    let mut yaml = parse_config_yaml(&std::fs::read_to_string(&config_path)?)?.config;
     yaml.identity.library_name = new_name.as_str().to_string();
     let serialized =
         serde_yaml::to_string(&yaml).map_err(|e| ConfigError::Serialization(e.to_string()))?;
@@ -712,16 +750,16 @@ pub(crate) fn registered_library_path(bae_dir: &std::path::Path, library_id: &st
 fn load_registered_config_yaml(
     library_dir: &std::path::Path,
     expected_library_id: &str,
-) -> Result<ConfigYaml, ConfigError> {
-    let yaml_config = Config::load_config_yaml(&library_dir.join("config.yaml"))?;
-    if yaml_config.identity.library_id != expected_library_id {
+) -> Result<ParsedConfigYaml, ConfigError> {
+    let parsed = Config::load_config_yaml(&library_dir.join("config.yaml"))?;
+    if parsed.config.identity.library_id != expected_library_id {
         return Err(ConfigError::Config(format!(
             "registered library directory {} contains library_id {}",
             library_dir.display(),
-            yaml_config.identity.library_id
+            parsed.config.identity.library_id
         )));
     }
-    Ok(yaml_config)
+    Ok(parsed)
 }
 
 /// Read the active library UUID from `~/.bae/active-library`, if it exists.
@@ -829,14 +867,38 @@ fn read_config_yaml(path: &std::path::Path) -> Result<Option<ConfigYaml>, Config
     let Some(content) = read_optional_file(&config_path)? else {
         return Ok(None);
     };
-    parse_config_yaml(&content).map(Some)
+    parse_config_yaml(&content).map(|parsed| Some(parsed.config))
 }
 
-/// Parse config.yaml into the fields this build uses.
-fn parse_config_yaml(content: &str) -> Result<ConfigYaml, ConfigError> {
+/// A parsed `config.yaml` and where it came from.
+#[derive(Debug)]
+pub(crate) struct ParsedConfigYaml {
+    pub(crate) config: ConfigYaml,
+    /// The version the file was at when read, when the ladder had to run.
+    pub(crate) upgraded_from: Option<u32>,
+}
+
+/// Parse config.yaml into the fields this build uses, running every ladder step
+/// the file is behind first.
+///
+/// The typed read is unchanged in its strictness: it reads `config_version` as
+/// strictly as every other key, so a ladder that forgot to stamp it fails here
+/// rather than writing a file that claims a shape it is not in.
+fn parse_config_yaml(content: &str) -> Result<ParsedConfigYaml, ConfigError> {
     let value: serde_yaml::Value =
         serde_yaml::from_str(content).map_err(|e| ConfigError::Serialization(e.to_string()))?;
-    ConfigYaml::from_value(&value).map_err(|e| ConfigError::Serialization(e.to_string()))
+    let serde_yaml::Value::Mapping(mut mapping) = value else {
+        return Err(ConfigError::Serialization(
+            "config.yaml is not a mapping".to_string(),
+        ));
+    };
+    let upgraded_from = migrations::upgrade(&mut mapping)?;
+    let config = ConfigYaml::from_value(&serde_yaml::Value::Mapping(mapping))
+        .map_err(|e| ConfigError::Serialization(e.to_string()))?;
+    Ok(ParsedConfigYaml {
+        config,
+        upgraded_from,
+    })
 }
 
 fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, ConfigError> {
