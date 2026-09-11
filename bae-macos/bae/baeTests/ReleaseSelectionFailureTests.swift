@@ -115,53 +115,42 @@ struct ReleaseSelectionFailureTests {
             window.orderOut(nil)
         }
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let observations = try recognizeText(png)
+        let observations = try await SnapshotTestSupport.recognizedText(in: png)
         try verifyFailure(observations, message: message, pressing: pressing)
         try clickRetry(observations, window: window, host: host, size: size)
         #expect(selected?.provenance == pressing.provenance)
     }
 
-    private func recognizeText(_ png: Data) throws
-        -> [VNRecognizedTextObservation]
-    {
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        try VNImageRequestHandler(data: png, options: [:]).perform([request])
-        return try #require(request.results)
-    }
-
     private func verifyFailure(
-        _ observations: [VNRecognizedTextObservation],
+        _ observations: [SnapshotTestSupport.RecognizedLine],
         message: String,
         pressing: Pressing
     ) throws {
         // Matched by containment: the line draws a warning symbol beside its
         // words, and recognition returns the two glued together.
-        func carriesMessage(_ observation: VNRecognizedTextObservation) -> Bool
+        func carriesMessage(_ observation: SnapshotTestSupport.RecognizedLine)
+            -> Bool
         {
-            observation.topCandidates(1).first?.string.contains(message) == true
+            observation.text.contains(message)
         }
         #expect(observations.filter(carriesMessage).count == 1)
         let errorLine = try #require(observations.first(where: carriesMessage))
         let catalog = try #require(pressing.lead.catalogNumber)
         let facts = try #require(
-            observations.first {
-                $0.topCandidates(1).first?.string.contains(catalog) == true
-            }
+            observations.first { $0.text.contains(catalog) }
         )
         #expect(errorLine.boundingBox.midY < facts.boundingBox.midY)
     }
 
     private func clickRetry(
-        _ observations: [VNRecognizedTextObservation],
+        _ observations: [SnapshotTestSupport.RecognizedLine],
         window: NSWindow,
         host: NSView,
         size: NSSize
     ) throws {
         let retry = try #require(
             observations.first {
-                $0.topCandidates(1).first?.string
-                    .contains(String(localized: "Retry")) == true
+                $0.text.contains(String(localized: "Retry"))
             }
         )
         let point = NSPoint(

@@ -709,13 +709,7 @@ enum FindOnlineRendering {
         defer { withExtendedLifetime(window) {} }
         await SnapshotTestSupport.settle(host)
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        try VNImageRequestHandler(data: png, options: [:]).perform([request])
-        return (request.results ?? [])
-            .compactMap {
-                $0.topCandidates(1).first?.string
-            }
+        return try await SnapshotTestSupport.recognizedText(in: png).map(\.text)
     }
 
     static func pixels(

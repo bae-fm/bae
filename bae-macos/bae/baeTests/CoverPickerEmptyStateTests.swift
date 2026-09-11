@@ -36,9 +36,7 @@ struct CoverPickerEmptyStateTests {
             window.orderOut(nil)
         }
         let observations = try await text(in: host, size: size)
-        let labels = observations.compactMap {
-            $0.topCandidates(1).first?.string
-        }
+        let labels = observations.map(\.text)
         #expect(
             labels.carrying(String(localized: "No remote covers found"))
                 == (remoteItems == .linked([]))
@@ -81,18 +79,16 @@ struct CoverPickerEmptyStateTests {
             window.orderOut(nil)
         }
         let observations = try await text(in: host, size: size)
-        let labels = observations.compactMap {
-            $0.topCandidates(1).first?.string
-        }
+        let labels = observations.map(\.text)
         #expect(labels.carrying(String(localized: "Release Files")))
         #expect(!labels.carrying(String(localized: "Refresh")))
         let buttonLabel = String(localized: "Find release…")
             .replacingOccurrences(of: "…", with: "...")
         let button = try #require(
             observations.first {
-                $0.topCandidates(1).first?.string
+                $0.text
                     .replacingOccurrences(of: "…", with: "...")
-                    .contains(buttonLabel) == true
+                    .contains(buttonLabel)
             }
         )
         let point = NSPoint(
@@ -122,13 +118,10 @@ struct CoverPickerEmptyStateTests {
     }
 
     private func text(in host: NSView, size: NSSize) async throws
-        -> [VNRecognizedTextObservation]
+        -> [SnapshotTestSupport.RecognizedLine]
     {
         await SnapshotTestSupport.settle(host)
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        try VNImageRequestHandler(data: png, options: [:]).perform([request])
-        return try #require(request.results)
+        return try await SnapshotTestSupport.recognizedText(in: png)
     }
 }

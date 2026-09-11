@@ -165,11 +165,8 @@ struct CoverPickerTests {
         }
         await SnapshotTestSupport.settle(host)
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        try VNImageRequestHandler(data: png, options: [:]).perform([request])
-        let results = try #require(request.results)
-        let labels = results.compactMap { $0.topCandidates(1).first?.string }
+        let labels = try await SnapshotTestSupport.recognizedText(in: png)
+            .map(\.text)
         #expect(labels.carrying(String(localized: "Remote Sources")))
         #expect(labels.carrying(String(localized: "Release Files")))
         #expect(labels.carrying(bridgeMetadataSourceName(source: .musicBrainz)))

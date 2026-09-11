@@ -371,24 +371,21 @@ extension LibraryArtworkBrowserTests {
         func cancel() {}
     }
 
-    private func labels(_ observations: [VNRecognizedTextObservation])
+    private func labels(_ observations: [SnapshotTestSupport.RecognizedLine])
         -> [String]
     {
-        observations.compactMap { $0.topCandidates(1).first?.string }
+        observations.map(\.text)
     }
 
     private func text(in host: NSView, size: NSSize) async throws
-        -> [VNRecognizedTextObservation]
+        -> [SnapshotTestSupport.RecognizedLine]
     {
         let png = try await SnapshotTestSupport.capturePNG(
             host,
             size: size,
             waitNanoseconds: 200_000_000
         )
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        try VNImageRequestHandler(data: png, options: [:]).perform([request])
-        return try #require(request.results)
+        return try await SnapshotTestSupport.recognizedText(in: png)
     }
 
     /// Click where `label` was drawn.
@@ -400,7 +397,7 @@ extension LibraryArtworkBrowserTests {
     /// glued together.
     private func click(
         _ label: String,
-        observations: [VNRecognizedTextObservation],
+        observations: [SnapshotTestSupport.RecognizedLine],
         window: NSWindow,
         size: NSSize
     ) throws {
@@ -408,9 +405,9 @@ extension LibraryArtworkBrowserTests {
             .replacingOccurrences(of: "…", with: "...")
         let observation = try #require(
             observations.first {
-                $0.topCandidates(1).first?.string
+                $0.text
                     .replacingOccurrences(of: "…", with: "...")
-                    .contains(localized) == true
+                    .contains(localized)
             },
             "\(localized) is not among \(labels(observations))"
         )

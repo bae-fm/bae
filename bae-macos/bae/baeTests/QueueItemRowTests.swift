@@ -46,16 +46,12 @@ struct QueueItemRowTests {
             hosted.host,
             size: size
         )
-        let bitmap = try #require(NSBitmapImageRep(data: png))
-        let cgImage = try #require(bitmap.cgImage)
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        request.recognitionLanguages = ["en-US"]
-        try VNImageRequestHandler(cgImage: cgImage).perform([request])
-        let observations = try #require(request.results)
-        let lines = observations.compactMap {
-            $0.topCandidates(1).first?.string
-        }
+        let lines =
+            try await SnapshotTestSupport.recognizedText(
+                in: png,
+                languages: ["en-US"]
+            )
+            .map(\.text)
         #expect(lines.contains("Track Title"))
         #expect(lines.contains("Track Artist"))
         #expect(lines.contains("Compilation Album"))
