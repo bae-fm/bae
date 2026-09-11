@@ -313,8 +313,8 @@ where
 /// so a missing key fails the load rather than silently taking an implicit
 /// value. A new library starts from [`Preferences::default`]; a library whose
 /// file predates a field is carried to the current shape by a step in the
-/// [`migrations`] ladder, so adding, renaming, or removing a field here lands
-/// with the step that covers it.
+/// migration ladder in `config/migrations.rs`, so adding, renaming, or
+/// removing a field here lands with the step that covers it.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Preferences {
     /// The stored Discogs key's validation state, or `None` when no key is
