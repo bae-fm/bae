@@ -165,6 +165,7 @@ struct ReIdentifySheet: View {
                     key: key,
                     selectedReleaseId: selectedPressing?.lead.releaseId,
                     runtime: runtime,
+                    initialSection: .automatic,
                     liveSignals: signals
                 ),
                 openSettings: {

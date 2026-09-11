@@ -474,8 +474,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Vrati na oznake</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Vratiti na oznake?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Nacrt se zamjenjuje oznakama datoteka. Datoteke kandidata i odabiri mapiranja ostat će nepromijenjeni.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Pronađi na internetu</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Pronađi na internetu…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Traži izdanje</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Općenito</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Automatski identificiraj</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Unaprijed popuni iz oznaka</value></data>

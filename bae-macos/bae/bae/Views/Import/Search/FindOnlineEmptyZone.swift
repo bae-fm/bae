@@ -33,7 +33,7 @@ struct FindOnlineEmptyZone<Content: View>: View {
 
     #Preview("Not looked up") {
         FindOnlineEmptyZone {
-            IdentifyButton(action: {})
+            SearchManuallyButton(action: {})
         }
         .frame(width: 620)
         .windowBackground()

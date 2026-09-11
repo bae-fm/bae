@@ -491,7 +491,6 @@ public sealed class ImportSectionViewTests
             // The pane's candidate is seeded below; its own query stays open
             // and silent, so the seeded value is what the pane reads.
             SubscribeImportCandidate = (_, _, _) => new TestSubscription(),
-            IdentifyFolderForLookup = _ => Task.FromResult(true),
         };
         var playback = new PlaybackService
         {

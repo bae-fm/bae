@@ -62,7 +62,12 @@ public sealed class ImportMappingPaneTests
             pane.GetLogicalDescendants().OfType<Button>(),
             button => Equals(
                 button.Content,
-                Loc.Chrome("import.metadata.find_online_ellipsis")));
+                Loc.Chrome("settings.import.identify_automatically")));
+        Assert.Contains(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(
+                button.Content,
+                Loc.Chrome("import.metadata.search_for_release")));
         Assert.DoesNotContain(
             pane.GetLogicalDescendants().OfType<Button>(),
             button => Equals(button.Content, Loc.Chrome("action.import")));
@@ -102,40 +107,36 @@ public sealed class ImportMappingPaneTests
         Assert.Empty(identified);
     }
 
+    // Identifying asks for a run whatever the candidate already holds, so
+    // pressing it twice is asking twice: the answer a person is unhappy with
+    // is exactly the one they press it over.
     [AvaloniaFact]
-    public void OpeningFindOnlineStartsIdentificationWhenEnabled()
+    public void IdentifyingStartsARunEveryTime()
     {
         var identified = new List<string>();
         var detail = Detail(
             metadataProvenance: null,
             edit: BlankEdit());
-        var (pane, _) = Show(
-            detail,
-            identified: identified,
-            identifyAutomatically: true);
+        var (pane, _) = Show(detail, identified: identified);
 
-        pane.GetLogicalDescendants().OfType<Button>()
-            .First(button => Equals(
-                button.Content,
-                Loc.Chrome("import.metadata.find_online_ellipsis")))
-            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Click(pane, Loc.Chrome("settings.import.identify_automatically"));
+        Click(pane, Loc.Chrome("settings.import.identify_automatically"));
 
-        Assert.Equal(new[] { CandidateKey }, identified);
+        Assert.Equal(new[] { CandidateKey, CandidateKey }, identified);
         Assert.Null(detail.MetadataProvenance);
     }
 
-    // Find online is one page. The setting says only whether identification
-    // starts on its own; the typed form is there either way.
+    // Find online is one page, and the second way in asks for nothing: it
+    // opens the page on the typed form with no run behind it.
     [AvaloniaFact]
-    public void OpeningFindOnlineShowsTheFormWithoutStartingIdentification()
+    public void SearchingForAReleaseOpensTheFormAndStartsNoRun()
     {
         var identified = new List<string>();
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
-            identified: identified,
-            identifyAutomatically: false);
+            identified: identified);
 
-        Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        Click(pane, Loc.Chrome("import.metadata.search_for_release"));
 
         Assert.Empty(identified);
         Assert.Contains(
@@ -259,10 +260,9 @@ public sealed class ImportMappingPaneTests
     public void TheSearchFormStartsBlankAndKeepsWhatIsTypedAcrossQueryTypes()
     {
         var (pane, _) = Show(
-            Detail(metadataProvenance: null, edit: BlankEdit()),
-            identifyAutomatically: false);
+            Detail(metadataProvenance: null, edit: BlankEdit()));
 
-        Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        Click(pane, Loc.Chrome("import.metadata.search_for_release"));
         Assert.DoesNotContain("Album", Fields(pane));
 
         var artist = FieldByLabel(
@@ -291,10 +291,9 @@ public sealed class ImportMappingPaneTests
     public void TheSearchFormOffersNoSourceSelection()
     {
         var (pane, _) = Show(
-            Detail(metadataProvenance: null, edit: BlankEdit()),
-            identifyAutomatically: false);
+            Detail(metadataProvenance: null, edit: BlankEdit()));
 
-        Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        Click(pane, Loc.Chrome("import.metadata.search_for_release"));
 
         Assert.DoesNotContain(
             pane.GetLogicalDescendants().OfType<CheckBox>(),
@@ -312,10 +311,9 @@ public sealed class ImportMappingPaneTests
         var searches = new List<(string Key, BridgeSearchQuery Query)>();
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
-            identifyAutomatically: false,
             searches: searches);
 
-        Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        Click(pane, Loc.Chrome("import.metadata.search_for_release"));
         FieldByLabel(pane, Loc.Chrome("import.field.artist_manual")).Text = "Typed artist";
         FieldByLabel(pane, Loc.Chrome("search.field.album")).Text = "Typed album";
         Dispatcher.UIThread.RunJobs();
@@ -512,7 +510,7 @@ public sealed class ImportMappingPaneTests
             pane.GetLogicalDescendants().OfType<Button>(),
             button => Equals(
                 button.Content,
-                Loc.Chrome("import.metadata.find_online_ellipsis")));
+                Loc.Chrome("settings.import.identify_automatically")));
     }
 
     [AvaloniaFact]
@@ -538,7 +536,6 @@ public sealed class ImportMappingPaneTests
         Action<string, BridgeCandidateEditField, string>? onEditField = null,
         BridgeCandidateRuntimeSnapshot? running = null,
         List<string>? identified = null,
-        bool identifyAutomatically = true,
         List<BridgeMetadataProvenance>? appliedProvenances = null,
         IReadOnlyList<ReleaseCandidateChoice>? matches = null,
         ImportMetadataPresentation? initialPresentation = null,
@@ -571,7 +568,7 @@ public sealed class ImportMappingPaneTests
                 onEditField?.Invoke(key, field, value);
                 return Task.FromResult((true, (string?)null));
             },
-            IdentifyFolderForLookup = key =>
+            RerunIdentifyForCandidate = key =>
             {
                 identified?.Add(key);
                 return Task.FromResult(true);
@@ -627,7 +624,6 @@ public sealed class ImportMappingPaneTests
             {
                 GetSettings = () => (true, new Settings
                 {
-                    IdentifyAutomatically = identifyAutomatically,
                     DiscogsUsable = true,
                 }),
             });

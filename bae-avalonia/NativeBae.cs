@@ -812,9 +812,6 @@ internal static partial class NativeBae
     internal static (string? Text, string? Error) ReadTextFile(string path) =>
         CaptureBridgeValue(() => BaeBridgeMethods.ReadTextFile(path));
 
-    internal static void IdentifyFolderForLookup(AppHandle handle, string candidateKey) =>
-        handle.IdentifyFolderForLookup(candidateKey);
-
     /// <summary>Re-identify a library release. It is not a scanned candidate,
     /// so nothing stores what its run asks about: the dialog holds
     /// <paramref name="choices"/> and hands them back with every run it

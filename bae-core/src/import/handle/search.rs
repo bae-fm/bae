@@ -369,27 +369,4 @@ impl ImportServiceHandle {
         })
         .await
     }
-
-    /// The stored verdict describing `candidate_key`'s current file shape —
-    /// or `None` when nothing is stored, the stored row describes an earlier
-    /// file-edit revision, or the key is not a scanned folder candidate.
-    pub(crate) async fn stored_verdict(
-        &self,
-        candidate_key: &str,
-    ) -> Result<Option<crate::identify::TerminalVerdict>, crate::import::ImportError> {
-        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
-            return Ok(None);
-        };
-        let Some(row) = self
-            .library_manager
-            .load_import_candidate_state(&candidate.files().content_hash())
-            .await?
-        else {
-            return Ok(None);
-        };
-        if row.file_edits.revision != candidate.file_edit_revision() {
-            return Ok(None);
-        }
-        Ok(row.identify.map(|identify| identify.verdict))
-    }
 }

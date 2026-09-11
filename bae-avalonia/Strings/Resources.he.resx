@@ -474,8 +474,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>איפוס לתגיות</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>לאפס לתגיות?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>הטיוטה תוחלף בתגיות הקבצים. קובצי המועמד ובחירות המיפוי יישארו ללא שינוי.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>חיפוש באינטרנט</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>חיפוש באינטרנט…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>חיפוש גרסה</value></data>
   <data name="import.search.general" xml:space="preserve"><value>כללי</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>זיהוי אוטומטי</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>מילוי מראש מהתגיות</value></data>

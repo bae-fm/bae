@@ -501,8 +501,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Resetează la etichete</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Resetezi la etichete?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Schița este înlocuită de etichetele fișierelor. Fișierele candidatului și alegerile de asociere rămân neschimbate.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Caută online</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Caută online…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Caută ediția</value></data>
   <data name="import.search.general" xml:space="preserve"><value>General</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifică automat</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Precompletează din etichete</value></data>

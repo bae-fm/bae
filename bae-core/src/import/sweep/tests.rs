@@ -685,10 +685,11 @@ impl Fixture {
         .expect("the completed scan surfaces every fixture candidate");
     }
 
-    /// Enter Lookup for `dir` through the one explicit entry point core exposes.
+    /// Ask to identify `dir`, through the one entry point a person's request
+    /// reaches.
     fn start_explicit_lookup(&self, dir: &Path) {
         self.sweep
-            .identify_for_explicit_lookup(dir.to_string_lossy().into_owned());
+            .rerun_for_explicit_lookup(dir.to_string_lossy().into_owned());
     }
 
     /// Open `dir` and wait until identify has registered the driver for it.

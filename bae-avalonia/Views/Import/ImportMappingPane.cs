@@ -356,32 +356,16 @@ internal sealed partial class ImportMappingPane : UserControl
         }
     }
 
-    /// <summary>Present one source without selecting it. Only this explicit
-    /// segment action writes mode history or starts source-specific work.</summary>
+    /// <summary>Put the draft or the Find online page in the metadata slot.
+    /// Opening a page starts nothing: whether a run happens is asked for by
+    /// the entry that opened it.</summary>
     private void PresentMetadata(ImportMetadataPresentation presentation)
     {
-        if (_key is not { } key || _candidate is not { } candidate)
+        if (_key is not { } key)
         {
             return;
         }
         _import.PresentMetadata(key, presentation);
-        switch (presentation)
-        {
-            case ImportMetadataPresentation.Draft:
-                break;
-            case ImportMetadataPresentation.FindOnline:
-                var settings = _app.SettingsStore.Current
-                    ?? throw new InvalidOperationException(
-                        "Find online cannot open before import settings load.");
-                if (settings.IdentifyAutomatically)
-                {
-                    _ = _import.StartInteractiveLookup(key);
-                }
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(presentation), presentation, "Unknown metadata presentation");
-        }
         Render();
     }
 
@@ -566,6 +550,9 @@ internal sealed partial class ImportMappingPane : UserControl
             || (_candidate?.Release?.CoverArt.Length ?? 0) > 0,
         Library = _app.Library,
         OnPresent = PresentMetadata,
+        OnIdentify = Identify,
+        OnSearchForRelease = () =>
+            PresentMetadata(ImportMetadataPresentation.FindOnline),
         OnResetToTags = () => _ = ResetToTags(),
         OnClearMetadata = () => _ = ClearMetadata(),
         OnEditCover = () => _ = ChooseCover(),
@@ -573,6 +560,19 @@ internal sealed partial class ImportMappingPane : UserControl
         OnEditField = (field, value) => _ = SetEditField(field, value),
         OnEditArtists = assignments => _ = SetAlbumArtists(assignments),
     };
+
+    /// Identify this candidate now: open the page its run reports on, and ask
+    /// core for a fresh run. Core cancels whatever it had going and starts, so
+    /// pressing again is pressing again.
+    private void Identify()
+    {
+        if (_key is not { } key)
+        {
+            return;
+        }
+        PresentMetadata(ImportMetadataPresentation.FindOnline);
+        _ = _app.Import.RerunIdentifyForCandidate(key);
+    }
 
     /// Replace the draft with what the candidate's own files say. Destructive
     /// like clearing is — it replaces what the draft holds — so it asks first.

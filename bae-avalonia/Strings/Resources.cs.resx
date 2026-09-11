@@ -474,8 +474,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Obnovit ze značek</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Obnovit ze značek?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Koncept nahradí značky souborů. Soubory kandidáta a volby mapování zůstanou beze změny.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Najít online</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Najít online…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Vyhledat vydání</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Obecné</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifikovat automaticky</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Předvyplnit ze značek</value></data>

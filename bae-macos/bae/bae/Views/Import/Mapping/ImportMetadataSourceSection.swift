@@ -6,6 +6,8 @@ import SwiftUI
 struct ImportMetadataSourceSection: View {
     let candidate: Candidate
     let runtime: BridgeCandidateRuntimeSnapshot?
+    /// Which section the pane opens on, as the entry that opened it said.
+    let initialSection: FindOnlineSection
     let isReading: Bool
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
@@ -14,6 +16,10 @@ struct ImportMetadataSourceSection: View {
     let endEditing: @MainActor () async -> Void
     let commit: ImportCommitControls?
     let onPresent: (CandidateMetadataPresentation) -> Void
+    /// Open the pane and start a fresh run for this candidate.
+    let onIdentify: () -> Void
+    /// Open the pane on its typed search, starting nothing.
+    let onSearchForRelease: () -> Void
     let onResetToTags: () -> Void
     let onClearMetadata: () -> Void
     let onEditCover: () -> Void
@@ -28,6 +34,7 @@ struct ImportMetadataSourceSection: View {
                 ImportOnlineMetadataBrowser(
                     candidateKey: candidate.key,
                     runtime: runtime,
+                    initialSection: initialSection,
                     endEditing: endEditing,
                     onBack: { onPresent(.draft) }
                 )
@@ -51,7 +58,8 @@ struct ImportMetadataSourceSection: View {
                 editingCommands: editingCommands,
                 commit: commit,
                 sourceActions: ImportReleaseSourceActions(
-                    findOnline: { onPresent(.findOnline) },
+                    identifyAutomatically: onIdentify,
+                    searchForRelease: onSearchForRelease,
                     resetToTags: onResetToTags,
                     clearMetadata: onClearMetadata
                 ),
@@ -73,6 +81,7 @@ struct ImportMetadataSourceSection: View {
 private struct ImportOnlineMetadataBrowser: View {
     let candidateKey: String
     let runtime: BridgeCandidateRuntimeSnapshot?
+    let initialSection: FindOnlineSection
     let endEditing: @MainActor () async -> Void
     let onBack: () -> Void
 
@@ -98,6 +107,7 @@ private struct ImportOnlineMetadataBrowser: View {
                         key: candidateKey,
                         selectedReleaseId: candidate.pickedRelease?.releaseId,
                         runtime: runtime,
+                        initialSection: initialSection,
                         liveSignals: signals
                     ),
                     openSettings: {

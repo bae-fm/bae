@@ -153,17 +153,6 @@ forward! {
             Ok(this.services.get_discogs_token()?)
         }
 
-        /// Start identification after the person explicitly opens Find online.
-        /// Identify subscribes first, then extraction streams
-        /// the candidate's `Signals` (disc ID, barcodes, classified text) that
-        /// identify looks up and the UI surfaces. Events flow through the unified
-        /// import event channel → bus → reducer → store, and the verdict this
-        /// reaches is persisted like the background sweep's — core decides all of
-        /// that, so this stays one call.
-        fn identify_folder_for_lookup(candidate_key: String) {
-            this.services.identify_folder_for_lookup(candidate_key);
-        }
-
         /// Start re-identifying an existing library release. Extraction resolves
         /// the release's disc ID and artwork from the library. Events stream
         /// through the same identify channel — the UI consumes them by candidate
@@ -187,7 +176,7 @@ forward! {
 
         /// Stop a candidate's identify pipeline: cancels the identify driver and
         /// the in-flight signal extraction (artwork OCR) for `candidate_key`. The
-        /// inverse of `identify_folder_for_lookup` / `auto_identify_release`; a no-op for
+        /// inverse of `rerun_identify_for_candidate` / `auto_identify_release`; a no-op for
         /// a key with nothing running. Called when the UI tears the candidate down
         /// (the re-identify sheet closing).
         fn cancel_auto_identify(candidate_key: String) {

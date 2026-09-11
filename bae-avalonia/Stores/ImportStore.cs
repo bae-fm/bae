@@ -792,12 +792,6 @@ internal sealed partial class ImportStore : IDisposable
     public System.Threading.Tasks.Task<(bool Current, string? Result)> ScanFolder(string path) =>
         _import.ScanFolder(path);
 
-    // Explicitly enter Lookup for an idle candidate. The bridge operation is
-    // shared with the configured background sweep, but this call is owned by
-    // the person's Lookup action.
-    public System.Threading.Tasks.Task<bool> StartInteractiveLookup(string candidateKey) =>
-        _import.IdentifyFolderForLookup(candidateKey);
-
     // A candidate's typed search. Every configured provider is asked at once
     // and each answer lands on the candidate's runtime, so these return
     // nothing: whoever draws the key sees the run advance.

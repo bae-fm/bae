@@ -39,59 +39,24 @@ impl QueueSweepHandle {
         }
     }
 
-    /// Identify a candidate after a person explicitly enters Lookup,
-    /// regardless of the automatic-lookup setting.
+    /// Run this candidate now, whatever is stored and whatever is running.
+    ///
+    /// The one way a person starts identification. A run takes its inputs
+    /// once, at its start, so asking for one is asking for a fresh run: the
+    /// candidate's run and the signal extraction feeding it are torn down
+    /// before this one starts. Starting supersedes the run on its own; what
+    /// the cancel adds is the extraction, which nothing else ends — without
+    /// it the previous run's artwork OCR would keep going beside the new
+    /// run's.
     ///
     /// The key is marked as queued for the whole time this is deciding, so a
-    /// person who clicked sees their candidate waiting rather than nothing —
+    /// person who pressed sees their candidate waiting rather than nothing —
     /// and the mark goes whether or not a run comes of it.
-    pub fn identify_for_explicit_lookup(&self, candidate_key: String) {
+    pub fn rerun_for_explicit_lookup(&self, candidate_key: String) {
         if self.token.is_cancelled() {
             return;
         }
-        let this = self.clone();
-        self.tasks.spawn_on(
-            async move {
-                this.context
-                    .import
-                    .queue_explicit_identification(&candidate_key);
-                this.enter_explicit_lookup(&candidate_key).await;
-                this.context
-                    .import
-                    .clear_explicit_identification(&candidate_key);
-            },
-            &self.runtime_handle,
-        );
-    }
-
-    /// Start a run for a candidate a person just opened, unless its answer is
-    /// already stored or something is already answering it.
-    async fn enter_explicit_lookup(&self, candidate_key: &str) {
-        let Some(candidate) = actionable_candidate(&self.context, candidate_key).await else {
-            warn!(
-                "cannot start Lookup for {candidate_key}: \
-                 it is not a folder candidate"
-            );
-            return;
-        };
-        let has_stored_verdict = match has_stored_verdict(&self.context, candidate_key).await {
-            Ok(stored) => stored,
-            Err(error) => {
-                warn!("cannot read the stored verdict for {candidate_key}: {error}");
-                return;
-            }
-        };
-        if has_stored_verdict || self.context.identification_in_flight(candidate_key) {
-            return;
-        }
-        let Some(start) = run_start(&self.context, &candidate).await else {
-            return;
-        };
-        self.start_explicit_lookup_run(candidate_key.to_string(), candidate, start);
-    }
-
-    /// Re-run an explicit Lookup without consulting its stored verdict.
-    pub fn rerun_for_explicit_lookup(&self, candidate_key: String) {
+        self.context.import.cancel_identification(&candidate_key);
         let this = self.clone();
         self.tasks.spawn_on(
             async move {

@@ -34,6 +34,11 @@ internal sealed class ImportMetadataSourceSection
     internal required Control? CommitRow { get; init; }
     internal required LibraryService Library { get; init; }
     internal required Action<ImportMetadataPresentation> OnPresent { get; init; }
+    /// <summary>Identify the candidate now: open the page its run reports on
+    /// and ask core for a fresh run.</summary>
+    internal required Action OnIdentify { get; init; }
+    /// <summary>Open the same page on its typed search, starting nothing.</summary>
+    internal required Action OnSearchForRelease { get; init; }
     internal required Action OnResetToTags { get; init; }
     internal required Action OnClearMetadata { get; init; }
     internal required Action OnEditCover { get; init; }
@@ -113,8 +118,11 @@ internal sealed class ImportMetadataSourceSection
     {
         var actions = new WrapPanel { Orientation = Orientation.Horizontal };
         actions.Children.Add(ActionButton(
-            Loc.Chrome("import.metadata.find_online_ellipsis"),
-            () => OnPresent(ImportMetadataPresentation.FindOnline)));
+            Loc.Chrome("settings.import.identify_automatically"),
+            OnIdentify));
+        actions.Children.Add(ActionButton(
+            Loc.Chrome("import.metadata.search_for_release"),
+            OnSearchForRelease));
         foreach (var action in actions.Children)
         {
             action.Margin = new Thickness(0, 0, 6, 6);

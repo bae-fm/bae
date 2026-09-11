@@ -65,17 +65,6 @@ impl AppServices {
         self.inner.import.subscribe_events()
     }
 
-    /// Identify a folder candidate after the person explicitly enters Lookup:
-    /// the run goes out at `Interactive`, and its verdict is persisted like
-    /// the sweep's own.
-    ///
-    /// Re-identifying a library release is deliberately *not* routed through
-    /// here: it has no candidate folder, so there is nothing to key a stored
-    /// verdict by.
-    pub fn identify_folder_for_lookup(&self, candidate_key: String) {
-        self.inner.sweep.identify_for_explicit_lookup(candidate_key);
-    }
-
     /// Record what a candidate's identification asks about, and run it again
     /// when what it looks up has changed: a run takes its choices at its
     /// start, so a person changing one is asking for a run that reads it. Any
@@ -104,7 +93,7 @@ impl AppServices {
     /// Identify an existing library release after the person opens the
     /// re-identify sheet. Extraction resolves the disc ID and artwork from the
     /// library rather than from a scanned folder, so — unlike
-    /// [`Self::identify_folder_for_lookup`] — this does not go through the
+    /// [`Self::rerun_identify`] — this does not go through the
     /// sweep: there is no candidate folder to key a stored verdict by, and so
     /// nowhere to store what the run asks about. The sheet holds `choices`
     /// itself and hands them back with each run it starts.
@@ -126,7 +115,7 @@ impl AppServices {
 
     /// Stop a candidate's identification: both the identify driver and the
     /// in-flight signal extraction behind it. The inverse of
-    /// [`Self::identify_folder_for_lookup`] and
+    /// [`Self::rerun_identify`] and
     /// [`Self::identify_release_for_lookup`]; a no-op for a key with nothing
     /// running.
     pub fn cancel_identify(&self, candidate_key: &str) {

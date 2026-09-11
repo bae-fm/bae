@@ -474,8 +474,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Ripristina dai tag</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Ripristinare dai tag?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>La bozza viene sostituita dai tag dei file. I file del candidato e le scelte di associazione rimarranno invariati.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Trova online</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Trova online…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Cerca l’edizione</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Generale</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifica automaticamente</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Precompila dai tag</value></data>

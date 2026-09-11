@@ -394,6 +394,8 @@ internal static class ShotCapture
             CommitRow = null,
             Library = PreviewArtistLibrary(),
             OnPresent = _ => { },
+            OnIdentify = () => { },
+            OnSearchForRelease = () => { },
             OnResetToTags = () => { },
             OnClearMetadata = () => { },
             OnEditCover = () => { },

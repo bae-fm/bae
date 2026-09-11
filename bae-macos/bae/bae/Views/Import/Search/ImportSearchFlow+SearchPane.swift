@@ -22,6 +22,9 @@ extension ImportSearchFlow {
         /// What is in flight for this key: the run whose verdict and ledger
         /// the pane shows. `nil` when nothing is running for it.
         let runtime: BridgeCandidateRuntimeSnapshot?
+        /// Which section the pane opens on: the entry that asked for a run
+        /// opens on the run, the one that did not opens on the typed search.
+        let initialSection: FindOnlineSection
         /// What extraction has found for this key so far, feeding the form's
         /// suggestion pools and its scanning indicator. `nil` before
         /// extraction has reported any, and for a candidate whose run settled
@@ -74,9 +77,7 @@ extension ImportSearchFlow {
             onToggleCatalogAgreement: { value in
                 toggleCatalogAgreement(value, services: services, input: input)
             },
-            onIdentify: {
-                services.importer.identifyForExplicitLookup(key)
-            },
+            initialSection: input.initialSection,
             // Re-asking what failed is asking for the run again: it reads
             // its inputs afresh, and the response cache answers the lookups
             // that had already succeeded. Where those inputs live is what

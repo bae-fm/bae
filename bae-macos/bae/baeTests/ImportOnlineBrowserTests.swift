@@ -26,6 +26,7 @@ struct ImportOnlineBrowserTests {
         let view = ImportMetadataSourceSection(
             candidate: candidate,
             runtime: nil,
+            initialSection: .automatic,
             isReading: false,
             coverContent: nil,
             hasCoverOptions: false,
@@ -34,6 +35,8 @@ struct ImportOnlineBrowserTests {
             endEditing: {},
             commit: nil,
             onPresent: { presentations.append($0) },
+            onIdentify: {},
+            onSearchForRelease: {},
             onResetToTags: {},
             onClearMetadata: {},
             onEditCover: {},

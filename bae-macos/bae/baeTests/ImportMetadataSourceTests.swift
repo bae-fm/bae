@@ -42,19 +42,18 @@ private final class MetadataSourceRecorder {
                 await MainActor.run { clearedKeys.append(key) }
                 return 1
             },
-            identifyForExplicitLookup: { [self] key in
-                identifiedKeys.append(key)
+            // Core's re-run is fire-and-forget from any isolation; every
+            // press in these tests comes from the main actor, where this
+            // recorder lives.
+            rerunIdentifyForCandidate: { [self] key in
+                MainActor.assumeIsolated { identifiedKeys.append(key) }
             }
         )
     }
 
-    func services(
-        _ store: ImportStore,
-        identifyAutomatically: Bool = true
-    ) -> ImportMappingServices {
+    func services(_ store: ImportStore) -> ImportMappingServices {
         ImportMappingServices(
             importer: importer,
-            identifyAutomatically: identifyAutomatically,
             importStore: store,
             endEditing: {},
             previewAudio: PreviewAudio.stub(),
@@ -179,6 +178,75 @@ extension ImportMetadataSourceTests {
         )
     }
 
+    /// Identifying opens the page the run reports on and asks core for a run.
+    /// Core decides nothing about whether the press counts, and neither does
+    /// this: every press is a run.
+    @Test("identifying opens the page and starts a run every time")
+    func identifyingStartsARunEveryTime() async throws {
+        let writes = PresentationWriteRecorder()
+        let store = MappingFixtures.store(
+            mapping: nil,
+            metadataProvenance: nil,
+            edit: MappingFixtures.blankEdit
+        )
+        store.sessionWriter = .recording { writes.record($0) }
+        let recorder = MetadataSourceRecorder()
+        let services = recorder.services(store)
+        let candidate = try #require(
+            store.candidate(forKey: MappingFixtures.candidateKey)
+        )
+
+        ImportMappingFlow.identify(candidate, services: services)
+        ImportMappingFlow.identify(candidate, services: services)
+        // The presentation write goes to core and comes back; the run request
+        // is fire-and-forget and is already recorded.
+        await waitUntil {
+            writes.presentations(forKey: MappingFixtures.candidateKey).count
+                == 2
+        }
+
+        #expect(
+            recorder.identifiedKeys
+                == [MappingFixtures.candidateKey, MappingFixtures.candidateKey]
+        )
+        #expect(
+            writes.presentations(forKey: MappingFixtures.candidateKey)
+                == [.findOnline, .findOnline]
+        )
+    }
+
+    /// Searching for a release opens the same page and asks for nothing: what
+    /// it offers is the typed form, and a run is the other entry's to start.
+    @Test("searching for a release opens the page and starts no run")
+    func searchingForAReleaseStartsNoRun() async throws {
+        let writes = PresentationWriteRecorder()
+        let store = MappingFixtures.store(
+            mapping: nil,
+            metadataProvenance: nil,
+            edit: MappingFixtures.blankEdit
+        )
+        store.sessionWriter = .recording { writes.record($0) }
+        let recorder = MetadataSourceRecorder()
+        let candidate = try #require(
+            store.candidate(forKey: MappingFixtures.candidateKey)
+        )
+
+        ImportMappingFlow.presentMetadata(
+            .findOnline,
+            for: candidate,
+            services: recorder.services(store)
+        )
+        await waitUntil {
+            !writes.presentations(forKey: MappingFixtures.candidateKey).isEmpty
+        }
+
+        #expect(recorder.identifiedKeys.isEmpty)
+        #expect(
+            writes.presentations(forKey: MappingFixtures.candidateKey)
+                == [.findOnline]
+        )
+    }
+
     @Test("clearing metadata dispatches the candidate command")
     func clearMetadataDispatchesCommand() async {
         let store = MappingFixtures.store(mapping: nil)
@@ -199,6 +267,55 @@ extension ImportMetadataSourceTests {
             await Task.yield()
         }
         #expect(predicate())
+    }
+}
+
+/// What the draft card offers as ways to a release.
+@MainActor
+@Suite("The draft card's release entries")
+struct ImportReleaseEntryTests {
+    /// Two entries, named for what each one does rather than where it goes:
+    /// both open the same page, and only the first asks for a run.
+    @Test("the card names both ways to a release")
+    func theCardNamesBothWaysToARelease() async throws {
+        let lines = try await FindOnlineRendering.text(
+            ImportReleaseHeader(
+                releaseSummary: ImportReleaseSummary(
+                    candidate: PreviewData.mappingCandidate,
+                    editValues: PreviewData.confirmEditValues
+                ),
+                isReading: false,
+                coverContent: nil,
+                hasCoverOptions: true,
+                editValues: PreviewData.confirmEditValues,
+                editActions: ReleaseFieldWriter { _, _ in },
+                editingCommands: EditingCommitCommands(),
+                commit: nil,
+                sourceActions: ImportReleaseSourceActions(
+                    identifyAutomatically: {},
+                    searchForRelease: {},
+                    resetToTags: {},
+                    clearMetadata: {}
+                ),
+                localCoverSelections: [:],
+                onEditCover: {},
+                onSelectCover: { _ in }
+            )
+            .importPreviewEnvironment()
+            .environment(Library.stub())
+            .candidateReaderPreviewEnvironment(),
+            size: NSSize(width: 900, height: 420)
+        )
+
+        for label in [
+            String(localized: "Identify automatically"),
+            String(localized: "Search for release"),
+        ] {
+            #expect(
+                lines.contains { $0.localizedCaseInsensitiveContains(label) },
+                "the card reads: \(lines)"
+            )
+        }
     }
 }
 
@@ -340,22 +457,28 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         host.layoutSubtreeIfNeeded()
         await Task.yield()
         host.layoutSubtreeIfNeeded()
-        let findOnline = try findOnlineFrame(in: host)
+        let (identify, search) = try releaseEntryFrames(in: host)
         let menu = try menuFrame(in: host)
         let cover = try coverFrame(in: host)
 
-        // The card's actions have its first row to themselves: neither shares
-        // a band with the cover, and they read left to right — the one that
-        // identifies the candidate first, the menu of what rewrites its draft
-        // after it.
-        XCTAssertFalse(findOnline.intersects(cover))
+        // The card's actions have its first row to themselves: none shares a
+        // band with the cover, and they read left to right — the entry that
+        // asks for a run, the entry that asks for nothing, then the menu of
+        // what rewrites the draft.
+        XCTAssertFalse(identify.intersects(cover))
+        XCTAssertFalse(search.intersects(cover))
         XCTAssertFalse(menu.intersects(cover))
         XCTAssertTrue(
-            findOnline.maxY <= cover.minY || findOnline.minY >= cover.maxY
+            identify.maxY <= cover.minY || identify.minY >= cover.maxY
         )
-        XCTAssertLessThan(findOnline.maxX, menu.minX)
-        try click(at: findOnline.center, in: host, window: window)
-        XCTAssertEqual(recorder.findOnlineCount, 1)
+        XCTAssertLessThan(identify.maxX, search.minX)
+        XCTAssertLessThan(search.maxX, menu.minX)
+        try click(at: identify.center, in: host, window: window)
+        XCTAssertEqual(recorder.identifyCount, 1)
+        XCTAssertEqual(recorder.searchCount, 0)
+        try click(at: search.center, in: host, window: window)
+        XCTAssertEqual(recorder.identifyCount, 1)
+        XCTAssertEqual(recorder.searchCount, 1)
 
         window.contentView = nil
         window.orderOut(nil)
@@ -389,7 +512,8 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             editingCommands: EditingCommitCommands(),
             commit: nil,
             sourceActions: ImportReleaseSourceActions(
-                findOnline: { recorder.findOnlineCount += 1 },
+                identifyAutomatically: { recorder.identifyCount += 1 },
+                searchForRelease: { recorder.searchCount += 1 },
                 resetToTags: { recorder.resetCount += 1 },
                 clearMetadata: { recorder.clearCount += 1 }
             ),
@@ -402,12 +526,17 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         .environment(Library.stub())
     }
 
-    /// The one button the card puts in the key-view loop: identifying the
-    /// candidate. Everything that rewrites the draft is in the menu beside it.
-    private func findOnlineFrame(in host: NSView) throws -> NSRect {
-        let controls = focusFrames(in: host).filter { $0.height >= 20 }
-        XCTAssertEqual(controls.count, 1)
-        return try XCTUnwrap(controls.first)
+    /// The two buttons the card puts in the key-view loop, in reading order:
+    /// the two ways to a release. Everything that rewrites the draft is in the
+    /// menu beside them.
+    private func releaseEntryFrames(
+        in host: NSView
+    ) throws -> (identify: NSRect, search: NSRect) {
+        let controls = focusFrames(in: host)
+            .filter { $0.height >= 20 }
+            .sorted { $0.minX < $1.minX }
+        XCTAssertEqual(controls.count, 2)
+        return (try XCTUnwrap(controls.first), try XCTUnwrap(controls.last))
     }
 
     /// The menu the two draft commands live behind.
@@ -531,6 +660,9 @@ extension ImportMetadataCardLayoutTests {
         window.orderOut(nil)
     }
 
+    /// A draft already read from a release keeps both ways back to Find
+    /// online: identifying again is how a person disagrees with the match,
+    /// and searching by name is how they go looking for a different one.
     func testMatchedReleaseKeepsTheCardActions() async {
         let recorder = MetadataCardActionRecorder()
         let (window, host) = SnapshotTestSupport.hostInWindow(
@@ -549,7 +681,7 @@ extension ImportMetadataCardLayoutTests {
 
         XCTAssertEqual(
             focusFrames(in: host).filter { $0.height >= 20 }.count,
-            1
+            2
         )
         XCTAssertNoThrow(try menuFrame(in: host))
         window.contentView = nil
@@ -657,7 +789,8 @@ extension ImportMetadataCardLayoutTests {
 
 @MainActor
 private final class MetadataCardActionRecorder {
-    var findOnlineCount = 0
+    var identifyCount = 0
+    var searchCount = 0
     var resetCount = 0
     var clearCount = 0
 }

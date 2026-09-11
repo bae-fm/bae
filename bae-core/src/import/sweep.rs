@@ -16,8 +16,8 @@
 //! Opening a view triggers nothing.
 //!
 //! **It is the one writer of a candidate's verdict**, including for runs it
-//! did not start: [`QueueSweepHandle::identify_for_explicit_lookup`] hangs a
-//! recorder off a candidate after a person enters Lookup, so their answer
+//! did not start: [`QueueSweepHandle::rerun_for_explicit_lookup`] hangs a
+//! recorder off a candidate a person asked to identify, so their answer
 //! persists too.
 //! Everything that decides what to store lives here rather than being spread
 //! across the two producers. The row's other half — the user's sheet bindings —

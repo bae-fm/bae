@@ -134,9 +134,9 @@ struct FindOnlineSourceSwitchTests {
     }
 
     /// With every source switched off or unreachable there is nothing to look
-    /// up, so the pane says so instead of offering an Identify button that
-    /// would start a run core refuses to start.
-    @Test("a pane with no source to ask says so instead of offering Identify")
+    /// up, so the pane says so instead of offering the typed search, which
+    /// would ask providers core will not ask.
+    @Test("a pane with no source to ask says so instead of offering a search")
     func aPaneWithNoSourceSaysSo() async throws {
         let nothingToAsk = try await paneText(
             configStore: PreviewData.makeConfigStore(
@@ -150,15 +150,19 @@ struct FindOnlineSourceSwitchTests {
         )
 
         let noSource = String(localized: "No source to search")
-        let identify = String(localized: "Identify")
+        let searchManually = String(localized: "Search manually")
         #expect(
             nothingToAsk.contains {
                 $0.localizedCaseInsensitiveContains(noSource)
             },
             "a pane with nothing to ask reads: \(nothingToAsk)"
         )
+        // With a source to ask, the section offers the other way to a release
+        // rather than saying there is nothing to search.
         #expect(
-            ordinary.contains { $0.localizedCaseInsensitiveContains(identify) },
+            ordinary.contains {
+                $0.localizedCaseInsensitiveContains(searchManually)
+            },
             "an ordinary pane reads: \(ordinary)"
         )
     }

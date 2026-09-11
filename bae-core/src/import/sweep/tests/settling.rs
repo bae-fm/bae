@@ -150,7 +150,7 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
     );
     fixture.scan(1).await;
 
-    // Exactly what the explicit Lookup action does.
+    // Exactly what a person asking to identify the candidate does.
     fixture.start_explicit_lookup(&dir);
     let row = tokio::time::timeout(
         Duration::from_secs(20),

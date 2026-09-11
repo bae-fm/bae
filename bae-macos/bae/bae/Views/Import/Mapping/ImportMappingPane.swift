@@ -37,6 +37,11 @@ struct ImportMappingPane: View {
     let mappingActions: ImportMappingActions
     let commitActions: ImportCommitActions
     let onPresentMetadata: (CandidateMetadataPresentation) -> Void
+    /// Which section the Find online page opens on, as the entry that opened
+    /// it said.
+    let initialSection: FindOnlineSection
+    let onIdentify: () -> Void
+    let onSearchForRelease: () -> Void
     let onResetToTags: () -> Void
     let onClearMetadata: () -> Void
     let onEditCover: () -> Void
@@ -115,6 +120,7 @@ struct ImportMappingPane: View {
         ImportMetadataSourceSection(
             candidate: candidate,
             runtime: runtime,
+            initialSection: initialSection,
             isReading: isApplyingMetadata,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
@@ -123,6 +129,8 @@ struct ImportMappingPane: View {
             endEditing: endEditing,
             commit: commitControls,
             onPresent: onPresentMetadata,
+            onIdentify: onIdentify,
+            onSearchForRelease: onSearchForRelease,
             onResetToTags: onResetToTags,
             onClearMetadata: onClearMetadata,
             onEditCover: onEditCover,

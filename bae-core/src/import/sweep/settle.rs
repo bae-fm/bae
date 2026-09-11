@@ -392,21 +392,6 @@ async fn settle_lead(
     }
 }
 
-/// Whether `candidate_key` holds a stored verdict for its current file shape
-/// — see [`ImportServiceHandle::stored_verdict`], which owns the read. A
-/// read failure is returned to the caller; it must not be converted into
-/// permission to overwrite state that could not be inspected.
-pub(super) async fn has_stored_verdict(
-    context: &SweepContext,
-    candidate_key: &str,
-) -> Result<bool, crate::import::ImportError> {
-    Ok(context
-        .import
-        .stored_verdict(candidate_key)
-        .await?
-        .is_some())
-}
-
 /// Watch one run a person started and store the verdict it reaches.
 ///
 /// **This run's verdict, and then the watch ends.** A person changing what

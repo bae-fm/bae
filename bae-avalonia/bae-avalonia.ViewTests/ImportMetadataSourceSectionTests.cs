@@ -31,7 +31,8 @@ public sealed class ImportMetadataSourceSectionTests
                 var cover = Assert.Single(section.GetLogicalDescendants().OfType<Image>());
                 var coverTop = cover.TranslatePoint(default, section)!.Value.Y;
                 foreach (var label in new[] {
-                    Loc.Chrome("import.metadata.find_online_ellipsis") })
+                    Loc.Chrome("settings.import.identify_automatically"),
+                    Loc.Chrome("import.metadata.search_for_release") })
                 {
                     var button = ButtonNamed(section, label);
                     var origin = button.TranslatePoint(default, section)!.Value;
@@ -43,20 +44,40 @@ public sealed class ImportMetadataSourceSectionTests
         }
     }
 
+    // The two ways to a release dispatch their own command each: what the
+    // card does with them is the pane's answer, not the section's.
     [AvaloniaFact]
-    public void BlankDraftOffersFindOnlineAndEditableFields()
+    public void BlankDraftOffersBothReleaseEntriesAndEditableFields()
     {
-        var presentations = new List<ImportMetadataPresentation>();
+        var identifies = 0;
+        var searches = 0;
         var section = Build(
             draftIsBlank: true,
-            onPresent: presentations.Add);
+            onIdentify: () => identifies++,
+            onSearchForRelease: () => searches++);
 
-        Click(section, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        Click(section, Loc.Chrome("settings.import.identify_automatically"));
+        Click(section, Loc.Chrome("import.metadata.search_for_release"));
 
-        Assert.Equal(new[] { ImportMetadataPresentation.FindOnline }, presentations);
+        Assert.Equal(1, identifies);
+        Assert.Equal(1, searches);
         Assert.Contains(
             section.GetLogicalDescendants().OfType<TextBox>(),
             field => field.Text == "Album Title");
+    }
+
+    // The Find online page's one way out: back to the draft the card edits.
+    [AvaloniaFact]
+    public void TheFindOnlinePageGoesBackToTheDraft()
+    {
+        var presentations = new List<ImportMetadataPresentation>();
+        var section = Build(
+            presentation: ImportMetadataPresentation.FindOnline,
+            onPresent: presentations.Add);
+
+        Click(section, Loc.Chrome("action.back"));
+
+        Assert.Equal(new[] { ImportMetadataPresentation.Draft }, presentations);
     }
 
     [AvaloniaFact]
@@ -86,17 +107,17 @@ public sealed class ImportMetadataSourceSectionTests
     [AvaloniaFact]
     public void AppliedDraftKeepsEveryMetadataActionVisible()
     {
-        var presentations = new List<ImportMetadataPresentation>();
+        var identifies = 0;
         var clears = 0;
         var section = Build(
             draftIsBlank: false,
-            onPresent: presentations.Add,
+            onIdentify: () => identifies++,
             onClearMetadata: () => clears++);
 
-        Click(section, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        Click(section, Loc.Chrome("settings.import.identify_automatically"));
         Click(section, Loc.Chrome("import.metadata.clear"));
 
-        Assert.Equal(new[] { ImportMetadataPresentation.FindOnline }, presentations);
+        Assert.Equal(1, identifies);
         Assert.Equal(1, clears);
     }
 
@@ -113,7 +134,7 @@ public sealed class ImportMetadataSourceSectionTests
 
         var findOnline = ButtonNamed(
             section,
-            Loc.Chrome("import.metadata.find_online_ellipsis"));
+            Loc.Chrome("settings.import.identify_automatically"));
         var reset = ButtonNamed(section, Loc.Chrome("import.metadata.reset_to_tags"));
         var clear = ButtonNamed(section, Loc.Chrome("import.metadata.clear"));
 
@@ -213,6 +234,8 @@ public sealed class ImportMetadataSourceSectionTests
         bool draftIsBlank = false,
         bool isReading = false,
         Action<ImportMetadataPresentation>? onPresent = null,
+        Action? onIdentify = null,
+        Action? onSearchForRelease = null,
         Action? onResetToTags = null,
         Action? onClearMetadata = null,
         Action<BridgeCandidateEditField, string>? onEditField = null,
@@ -235,6 +258,8 @@ public sealed class ImportMetadataSourceSectionTests
             CommitRow = null,
             Library = new LibraryService(),
             OnPresent = onPresent ?? (_ => { }),
+            OnIdentify = onIdentify ?? (() => { }),
+            OnSearchForRelease = onSearchForRelease ?? (() => { }),
             OnResetToTags = onResetToTags ?? (() => { }),
             OnClearMetadata = onClearMetadata ?? (() => { }),
             OnEditCover = () => { },

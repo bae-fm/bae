@@ -9,7 +9,6 @@ extension ImportView {
     var mappingServices: ImportMappingServices {
         ImportMappingServices(
             importer: importer,
-            identifyAutomatically: configStore.config.identifyAutomatically,
             importStore: importStore,
             endEditing: commitAndEndEditing,
             previewAudio: previewAudio,
@@ -28,7 +27,20 @@ extension ImportView {
         )
     }
 
-    /// Put the draft or one source browser in the metadata slot.
+    /// Identify this candidate now: open the Find online page on the run it
+    /// is about to start, and ask core for a fresh one.
+    func identify(_ candidate: Candidate) {
+        initialFindOnlineSection[candidate.key] = .automatic
+        ImportMappingFlow.identify(candidate, services: mappingServices)
+    }
+
+    /// Open the same page on its typed search, starting nothing.
+    func searchForRelease(_ candidate: Candidate) {
+        initialFindOnlineSection[candidate.key] = .search
+        presentMetadata(.findOnline, for: candidate)
+    }
+
+    /// Put the draft or the Find online page in the metadata slot.
     func presentMetadata(
         _ presentation: CandidateMetadataPresentation,
         for candidate: Candidate

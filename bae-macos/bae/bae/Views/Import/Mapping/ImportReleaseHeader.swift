@@ -17,7 +17,10 @@ struct ImportCommitControls {
 }
 
 struct ImportReleaseSourceActions {
-    let findOnline: () -> Void
+    /// Identify the candidate now: open the pane and start a fresh run.
+    let identifyAutomatically: () -> Void
+    /// Open the same pane on its typed search, starting nothing.
+    let searchForRelease: () -> Void
     /// Replace the draft with what the candidate's own files say. Not a
     /// surface to browse: the tags are read and applied, and the card redraws
     /// on the draft they wrote.
@@ -124,18 +127,24 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// The card's one row of actions: where the draft's metadata comes from
-    /// on the left and, once there is something to commit, the commit on the
-    /// right — storage, the unanswered tally, and the Import action.
+    /// The card's one row of actions: the two ways into identification on the
+    /// left and, once there is something to commit, the commit on the right —
+    /// storage, the unanswered tally, and the Import action.
     ///
-    /// Identifying the candidate leads; the two commands that rewrite the
-    /// draft from something already at hand — the files' own tags, or nothing
-    /// — sit together behind the ellipsis, each behind its own confirmation.
+    /// The two entries differ in what they start, not in where they go: both
+    /// open the same pane, and only the first asks for a run. The two commands
+    /// that rewrite the draft from something already at hand — the files' own
+    /// tags, or nothing — sit behind the ellipsis, each behind its own
+    /// confirmation.
     private var actionRow: some View {
         HStack(alignment: .center, spacing: 16) {
             HStack(spacing: 8) {
-                Button("Find release…") {
-                    sourceActions.findOnline()
+                Button("Identify automatically") {
+                    sourceActions.identifyAutomatically()
+                }
+                .buttonStyle(.bordered)
+                Button("Search for release") {
+                    sourceActions.searchForRelease()
                 }
                 .buttonStyle(.bordered)
                 candidateMenu
@@ -307,7 +316,8 @@ struct ImportReleaseHeader: View {
             editingCommands: EditingCommitCommands(),
             commit: nil,
             sourceActions: ImportReleaseSourceActions(
-                findOnline: {},
+                identifyAutomatically: {},
+                searchForRelease: {},
                 resetToTags: {},
                 clearMetadata: {}
             ),

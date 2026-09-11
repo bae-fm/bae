@@ -92,6 +92,7 @@ struct FindOnlineAutoAdvanceTests {
                 key: candidate.key,
                 selectedReleaseId: nil,
                 runtime: nil,
+                initialSection: .automatic,
                 liveSignals: nil
             ),
             openSettings: {},

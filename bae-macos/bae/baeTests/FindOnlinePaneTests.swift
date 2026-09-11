@@ -60,6 +60,60 @@ final class FindOnlinePaneTests: XCTestCase {
         )
     }
 
+    /// Nothing has run for this candidate, and starting one is the card's
+    /// action, not the pane's: the not-started area offers the other way to a
+    /// release — asking for it by name — and no way to start a run.
+    func testANotStartedPaneOffersOnlyTheTypedSearch() async throws {
+        let lines = try await renderedText(of: PreviewData.searchStateIdle)
+
+        XCTAssertTrue(
+            lines.contains {
+                $0.localizedCaseInsensitiveContains(
+                    String(localized: "Search manually")
+                )
+            },
+            "a not-started pane reads: \(lines)"
+        )
+        XCTAssertFalse(
+            lines.contains {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .caseInsensitiveCompare("Identify") == .orderedSame
+            },
+            "a not-started pane reads: \(lines)"
+        )
+    }
+
+    /// Which section the pane opens on is the entry's to say, not the pane's:
+    /// the entry that asked for a run opens on the run, the one that asked to
+    /// search by name opens on the form.
+    func testThePaneOpensOnTheSectionItWasGiven() async throws {
+        let onSearch = try await FindOnlineRendering.text(
+            ImportSearchPane.preview(
+                state: PreviewData.searchStateIdle,
+                initialSection: .search
+            )
+            .importPreviewEnvironment(),
+            size: NSSize(width: 900, height: 600)
+        )
+        let onAutomatic = try await renderedText(
+            of: PreviewData.searchStateIdle
+        )
+
+        let formField = String(localized: "Catalog #")
+        XCTAssertTrue(
+            onSearch.contains {
+                $0.localizedCaseInsensitiveContains(formField)
+            },
+            "a pane opened on the search reads: \(onSearch)"
+        )
+        XCTAssertFalse(
+            onAutomatic.contains {
+                $0.localizedCaseInsensitiveContains(formField)
+            },
+            "a pane opened on the run reads: \(onAutomatic)"
+        )
+    }
+
     /// Every line of text the pane draws for `state`.
     private func renderedText(
         of state: ImportSearchState

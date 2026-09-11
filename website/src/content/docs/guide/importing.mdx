@@ -26,7 +26,7 @@ bae imports the formats it plays: FLAC, MP3, APE, ALAC and AAC in `.m4a`, WAV, A
 
 Every candidate owns one editable metadata draft. It can begin blank, be filled from an online release, or be filled from the files' tags. Typing into the blank draft is direct entry, not a separate metadata source.
 
-Opening **Find release…** replaces the top card with the Find online page without changing the draft; applying a result replaces the draft and returns to the editable card. The card's menu holds the two commands that rewrite the draft where it stands: **Reset to tags**, which replaces it with what the candidate's own files say, and **Clear metadata**, which empties it. Each asks first, and neither touches the candidate's files or track layout.
+The card offers two ways into the Find online page, differing in what they start. **Identify automatically** opens it and asks for a fresh identification run every time, whatever the candidate already holds — a run already going is dropped for the new one. **Search for release** opens the same page on its typed search and starts nothing. Neither changes the draft; applying a result replaces the draft and returns to the editable card. The card's menu holds the two commands that rewrite the draft where it stands: **Reset to tags**, which replaces it with what the candidate's own files say, and **Clear metadata**, which empties it. Each asks first, and neither touches the candidate's files or track layout.
 
 ### Find online
 
@@ -44,7 +44,7 @@ Three outcomes:
 - **Conflict.** Two signals point at different releases, say the disc ID and the barcode disagree. bae shows both sides and you choose which to trust, or ignore a signal.
 - **Nothing found.** Search by hand: artist and album, catalog number, or barcode, against either database. Text recognized from the artwork is offered as autocomplete.
 
-The source browser shows the search form, identification progress, signals, and results together. Selecting a result keeps that row open with progress while bae fetches the full release, then applies it to the draft. The resulting card shows a MusicBrainz or Discogs source chip. You can reopen **Find online…** from the card menu and search again.
+The source browser shows the search form, identification progress, signals, and results together. Selecting a result keeps that row open with progress while bae fetches the full release, then applies it to the draft. The resulting card shows a MusicBrainz or Discogs source chip. **Identify automatically** on the card runs it again from scratch; **Search for release** goes back to the typed search with what was already found still there.
 
 Automatic identification uses this same path. Two import settings say what happens when a candidate is added, and neither one constrains the other. **Pre-fill with tags** creates the candidate's draft from its files' tags; with it off the draft starts blank. **Identify automatically** runs identification for every candidate that has no result for the files it has right now; with it off, you start each run yourself. A pre-filled draft is a starting point, not an answer, so it does not stop a run.
 

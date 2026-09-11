@@ -501,8 +501,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Επαναφορά στις ετικέτες</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Επαναφορά στις ετικέτες;</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Το προσχέδιο αντικαθίσταται από τις ετικέτες των αρχείων. Τα αρχεία του υποψηφίου και οι αντιστοιχίσεις παραμένουν αμετάβλητα.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Αναζήτηση στο διαδίκτυο</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Αναζήτηση στο διαδίκτυο…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Αναζήτηση κυκλοφορίας</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Γενικά</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Αυτόματη ταυτοποίηση</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Προσυμπλήρωση από ετικέτες</value></data>

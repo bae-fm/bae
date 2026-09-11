@@ -474,8 +474,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>重設為標籤</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>重設為標籤？</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>草稿將被檔案標籤取代。 候選項目的檔案和對應選擇將維持不變。</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>在線上尋找</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在線上尋找…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>搜尋版本</value></data>
   <data name="import.search.general" xml:space="preserve"><value>一般</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>自動識別</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>以標籤預先填入</value></data>

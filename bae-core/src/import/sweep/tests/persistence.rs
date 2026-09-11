@@ -156,17 +156,27 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
     );
 }
 
-/// Entering Lookup for an answered candidate starts nothing: no run, no
-/// request, no event. Its stored verdict already supplies its identify state.
+/// Asking to identify an answered candidate runs it again: the person asked
+/// for a run, and a stored result is what they are asking to replace. The
+/// sweep is the only reader that treats a result as a reason not to run.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn explicit_lookup_for_an_answered_candidate_starts_nothing() {
+async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
     let fixture = Fixture::new("resume-answered").await;
     let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-asked-again", "rg-asked-again", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-asked-again?",
+        200,
+        release_json("mb-asked-again", "rg-asked-again", &[probed, 0]),
+    );
     fixture.scan(1).await;
 
-    // Nothing is routed and nothing is seeded: any lookup would 404 its way
-    // to a different state than the stored one.
     let verdict = multi_match_verdict(&["mb-resume-1", "mb-resume-2"], "rg-resume-1");
     let wrote = fixture
         .import
@@ -188,41 +198,36 @@ async fn explicit_lookup_for_an_answered_candidate_starts_nothing() {
         .await
         .unwrap();
     assert!(wrote, "the seeded verdict lands");
-    let mut events = fixture.import.subscribe_events();
 
     fixture.start_explicit_lookup(&dir);
 
-    // The Lookup verdict check is a detached task; a run it wrongly
-    // started would broadcast `IdentifyStateChanged` within this window.
-    let started = tokio::time::timeout(Duration::from_secs(2), async {
-        loop {
-            if let ImportEvent::IdentifyStateChanged { .. } =
-                events.recv().await.expect("bus stays open")
-            {
-                return;
-            }
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while !fixture
+            .identified_for(&dir)
+            .await
+            .is_some_and(|result| {
+                matches!(
+                    &result.verdict,
+                    TerminalVerdict::Found { matches, .. }
+                        if matches.iter().any(|m| m.release_id == "mb-asked-again")
+                )
+            })
+        {
+            tokio::time::sleep(Duration::from_millis(20)).await;
         }
     })
-    .await;
-    assert!(
-        started.is_err(),
-        "explicit Lookup for an answered candidate started a run"
-    );
-    assert!(
-        fixture.provider.requests().is_empty(),
-        "explicit Lookup for an answered candidate reached the wire: {:?}",
-        fixture.provider.requests()
-    );
+    .await
+    .expect("the run the person asked for replaces the stored result");
+    assert!(fixture.provider.count_containing("/discid/") > 0);
 }
 
-/// A stale pane can still render Lookup as idle after the command has already
-/// started its run. Repeating the entry command must leave that run registered:
-/// `identify.start` supersedes, so starting again would cancel the work already
-/// in flight and replace its run id.
+/// Asking again while a run is going supersedes it: the person asked for a
+/// run that reads the candidate as it is now, so the one in flight is
+/// cancelled before the new one starts and its result can never land.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn explicit_lookup_during_an_active_run_keeps_the_existing_run() {
-    let fixture = Fixture::new("explicit-keeps-active-run").await;
+async fn explicit_lookup_during_an_active_run_supersedes_it() {
+    let fixture = Fixture::new("explicit-supersedes-active-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
     let key = dir.to_string_lossy().into_owned();
     fixture.provider.route("/discid/", 200, "{}");
@@ -247,10 +252,10 @@ async fn explicit_lookup_during_an_active_run_keeps_the_existing_run() {
         }
     };
 
-    // The caller still sees Idle and repeats the ordinary entry command.
+    // The person presses again while the first run is still at the provider.
     fixture.start_explicit_lookup(&dir);
 
-    let replacement = tokio::time::timeout(Duration::from_secs(2), async {
+    let replacement = tokio::time::timeout(Duration::from_secs(10), async {
         loop {
             if let ImportEvent::IdentifyStateChanged {
                 candidate_key, run, ..
@@ -268,19 +273,18 @@ async fn explicit_lookup_during_an_active_run_keeps_the_existing_run() {
     .await;
     fixture.provider.release();
 
-    assert!(
-        replacement.is_err(),
-        "the repeated entry command replaced the active identify run"
-    );
-    assert_eq!(
-        fixture.provider.count_containing("/discid/"),
-        1,
-        "the repeated entry command started another provider lookup"
+    let replacement = replacement.expect("pressing again starts a run of its own");
+    assert_ne!(
+        replacement, first_run,
+        "the run in flight was superseded rather than joined"
     );
     assert!(
         fixture.import.is_identifying(&key),
-        "the original identify run remains registered"
+        "and the candidate is identifying under the new run"
     );
+    // The superseded run reached the provider and was cancelled there; nothing
+    // it would have concluded is stored.
+    assert!(fixture.identified_for(&dir).await.is_none());
 }
 
 /// An ending ends the run it names and nothing else. A run's own terminal

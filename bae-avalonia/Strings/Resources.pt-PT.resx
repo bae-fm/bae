@@ -501,8 +501,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Repor para as etiquetas</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Repor para as etiquetas?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>O rascunho é substituído pelas etiquetas dos ficheiros. Os ficheiros do candidato e as opções de correspondência mantêm-se inalterados.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Procurar online</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Procurar online…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Procurar edição</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Geral</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identificar automaticamente</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Pré-preencher com as etiquetas</value></data>

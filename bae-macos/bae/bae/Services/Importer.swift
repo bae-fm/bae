@@ -60,7 +60,6 @@ private struct ImportOperations: Sendable {
         @Sendable (String, String, BridgeSheetDisc) async throws -> Void
     let setFileRole:
         @Sendable (String, String, BridgeFileRoleChoice) async throws -> Void
-    let identifyForExplicitLookup: @MainActor @Sendable (String) -> Void
     let autoIdentifyRelease:
         @Sendable (String, String, BridgeLookupChoices) -> Void
     let cancelAutoIdentify: @Sendable (String) -> Void
@@ -175,9 +174,6 @@ extension ImportOperations {
                     fileId: $1,
                     choice: $2
                 )
-            },
-            identifyForExplicitLookup: {
-                handle.identifyFolderForLookup(candidateKey: $0)
             },
             autoIdentifyRelease: {
                 handle.autoIdentifyRelease(
@@ -366,8 +362,6 @@ final class Importer: Sendable, Observable {
         setFileRole:
             @escaping @Sendable (String, String, BridgeFileRoleChoice)
             async throws -> Void = { _, _, _ in },
-        identifyForExplicitLookup:
-            @escaping @MainActor @Sendable (String) -> Void = { _ in },
         autoIdentifyRelease:
             @escaping @Sendable (String, String, BridgeLookupChoices) -> Void =
             {
@@ -463,7 +457,6 @@ final class Importer: Sendable, Observable {
             clearCandidateMetadata: clearCandidateMetadata,
             setSheetDisc: setSheetDisc,
             setFileRole: setFileRole,
-            identifyForExplicitLookup: identifyForExplicitLookup,
             autoIdentifyRelease: autoIdentifyRelease,
             cancelAutoIdentify: cancelAutoIdentify,
             startCandidateSearch: startCandidateSearch,
@@ -587,11 +580,6 @@ extension Importer {
         _ choice: BridgeFileRoleChoice
     ) async throws {
         try await operations.setFileRole(candidateKey, fileId, choice)
-    }
-
-    @MainActor
-    func identifyForExplicitLookup(_ candidateKey: String) {
-        operations.identifyForExplicitLookup(candidateKey)
     }
 
     /// Re-identify a library release. It is not a scanned candidate, so

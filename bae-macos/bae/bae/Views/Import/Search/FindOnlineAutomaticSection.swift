@@ -20,9 +20,6 @@ struct FindOnlineAutomaticSection: View {
     /// is looked up: the answers in hand are ranked by the new value the next
     /// time the candidate is read.
     let onToggleCatalogAgreement: (String) -> Void
-    /// Start identification for a folder whose run never began. Core owns
-    /// whether this starts, resumes, or does nothing.
-    let onIdentify: () -> Void
     /// Re-ask only the lookups that failed, keeping what the others found.
     let onRetryFailed: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
@@ -58,7 +55,10 @@ struct FindOnlineAutomaticSection: View {
         case .notStarted:
             FindOnlineEmptyZone {
                 if hasSourceToSearch {
-                    IdentifyButton(action: onIdentify)
+                    // Nothing has run for this candidate. Starting one is the
+                    // card's own action, so what is left here is the other way
+                    // to a release: asking for it by name.
+                    SearchManuallyButton(action: onSearchManually)
                 }
                 else {
                     Text("No source to search")

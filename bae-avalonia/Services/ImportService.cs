@@ -121,11 +121,6 @@ internal sealed class ImportService
     public Func<string, string, BridgeFileRoleChoice, Task<(bool Current, string? Error)>> SetFileRole { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetFileRole not wired");
 
-    /// <summary>Identify an idle candidate after the person enters Lookup.</summary>
-    public Func<string, Task<bool>> IdentifyFolderForLookup { get; init; }
-        = _ => throw new InvalidOperationException(
-            "ImportService stub: IdentifyFolderForLookup not wired");
-
     /// <summary>Re-dispatch a candidate's lookups, keeping the user's signal
     /// exclusions.</summary>
     public Func<string, Task<bool>> RerunIdentifyForCandidate { get; init; }
@@ -287,9 +282,6 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle => NativeBae.SetSheetDisc(handle, candidateKey, sheetFileId, disc)),
         SetFileRole = (candidateKey, fileId, choice) =>
             session.RunForCurrentHandle(handle => NativeBae.SetFileRole(handle, candidateKey, fileId, choice)),
-        IdentifyFolderForLookup = candidateKey =>
-            session.RunForCurrentHandle(handle =>
-                NativeBae.IdentifyFolderForLookup(handle, candidateKey)),
         RerunIdentifyForCandidate = candidateKey =>
             session.RunForCurrentHandle(handle => NativeBae.RerunIdentifyForCandidate(handle, candidateKey)),
         SetCandidateLookupChoices = (candidateKey, choices) =>

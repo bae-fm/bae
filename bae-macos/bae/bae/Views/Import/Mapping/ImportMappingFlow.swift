@@ -4,8 +4,6 @@ import Foundation
 /// The services the mapping pane's actions drive.
 struct ImportMappingServices {
     let importer: Importer
-    /// Whether identification starts on its own when Find online opens.
-    let identifyAutomatically: Bool
     /// Where a failed command's line lands, on the candidate whose pane ran
     /// it. Nothing about the table is held here — every edit is a row core
     /// stores, and the per-candidate read redraws from it.
@@ -29,7 +27,9 @@ struct ImportMappingServices {
 /// leaves behind, what naming a row changes, what assigning a cue to a disc
 /// re-reads — is exercised without a view hierarchy.
 enum ImportMappingFlow {
-    /// Put the draft, or the Find online page, in the metadata slot.
+    /// Put the draft, or the Find online page, in the metadata slot. Opening
+    /// a page starts nothing: whether a run happens is asked for by the entry
+    /// that opened it, never derived here.
     @MainActor
     static func presentMetadata(
         _ presentation: CandidateMetadataPresentation,
@@ -40,15 +40,19 @@ enum ImportMappingFlow {
             presentation,
             forKey: candidate.key
         )
+    }
 
-        switch presentation {
-        case .draft:
-            break
-        case .findOnline:
-            if services.identifyAutomatically {
-                services.importer.identifyForExplicitLookup(candidate.key)
-            }
-        }
+    /// Identify this candidate now: open the page its run reports on, and ask
+    /// core for a fresh run. Core cancels whatever it had going and starts, so
+    /// pressing again is pressing again — there is no state here that decides
+    /// whether a press counts.
+    @MainActor
+    static func identify(
+        _ candidate: Candidate,
+        services: ImportMappingServices
+    ) {
+        presentMetadata(.findOnline, for: candidate, services: services)
+        services.importer.rerunIdentifyForCandidate(candidate.key)
     }
 
     /// Replace the draft with what the candidate's own files say. The tags are

@@ -31,9 +31,6 @@ struct ImportSearchPane: View {
     /// Count a catalog number the folder states, or stop counting it: the
     /// same answers, ranked by what the folder is taken to state about them.
     let onToggleCatalogAgreement: (String) -> Void
-    /// Start identification for a folder whose run never began. Core owns
-    /// whether this starts, resumes, or does nothing.
-    let onIdentify: () -> Void
     /// Re-ask only the lookups that failed, keeping what the others found.
     let onRetryFailed: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
@@ -47,10 +44,43 @@ struct ImportSearchPane: View {
     @Environment(UiStore.self)
     private var uiStore
 
-    /// Which section is open. AUTOMATIC to begin with — a candidate that
-    /// already has a search submitted opens on SEARCH, where its results are.
+    /// Which section is open. Seeded from the section the entry that opened
+    /// the pane asked for — a candidate that already has a search submitted
+    /// opens on SEARCH, where its results are. The pane is built afresh every
+    /// time it is opened, so the seed lands every time.
     @State
-    private var openSection: FindOnlineSection = .automatic
+    private var openSection: FindOnlineSection
+
+    /// `initialSection` seeds `openSection` and is not kept: which section is
+    /// open afterwards is the person's, not the caller's.
+    init(
+        state: ImportSearchState,
+        onBack: (() -> Void)?,
+        form: CandidateSearchState,
+        onCommitForm: @escaping (CandidateSearchState) -> Void,
+        onSearch: @escaping (CandidateSearchState) -> Void,
+        onRetrySearch: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void,
+        onToggleCatalog: @escaping (String) -> Void,
+        onToggleCatalogAgreement: @escaping (String) -> Void,
+        initialSection: FindOnlineSection,
+        onRetryFailed: @escaping () -> Void,
+        onSelect: @escaping (Pressing) -> Void
+    ) {
+        self.state = state
+        self.onBack = onBack
+        self.form = form
+        self.onCommitForm = onCommitForm
+        self.onSearch = onSearch
+        self.onRetrySearch = onRetrySearch
+        self.onOpenSettings = onOpenSettings
+        self.onToggleCatalog = onToggleCatalog
+        self.onToggleCatalogAgreement = onToggleCatalogAgreement
+        self.onRetryFailed = onRetryFailed
+        self.onSelect = onSelect
+        _openSection = State(initialValue: initialSection)
+    }
+
     /// The form's first field takes the keyboard on every new value: Search
     /// manually hands the cursor over, and does so again after it has been
     /// elsewhere.
@@ -81,7 +111,6 @@ struct ImportSearchPane: View {
                     onOpenSettings: onOpenSettings,
                     onToggleCatalog: onToggleCatalog,
                     onToggleCatalogAgreement: onToggleCatalogAgreement,
-                    onIdentify: onIdentify,
                     onRetryFailed: onRetryFailed,
                     onSelect: onSelect,
                     onSearchManually: searchManually,
@@ -203,6 +232,7 @@ struct ImportSearchPane: View {
             state: ImportSearchState,
             searchArtist: String = "",
             searchAlbum: String = "",
+            initialSection: FindOnlineSection = .automatic,
             onRetryFailed: @escaping () -> Void = {},
         ) -> ImportSearchPane {
             ImportSearchPane(
@@ -218,7 +248,7 @@ struct ImportSearchPane: View {
                 onOpenSettings: {},
                 onToggleCatalog: { _ in },
                 onToggleCatalogAgreement: { _ in },
-                onIdentify: {},
+                initialSection: initialSection,
                 onRetryFailed: onRetryFailed,
                 onSelect: { _ in },
             )

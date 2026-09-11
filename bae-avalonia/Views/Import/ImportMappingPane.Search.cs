@@ -84,18 +84,6 @@ internal sealed partial class ImportMappingPane
         {
             column.Children.Add(new Spinner { Width = 16, Height = 16 });
         }
-        else if (signals.Count == 0)
-        {
-            var rerun = ImportPaneUi.RowButton(Loc.Chrome("import.rerun_identify"));
-            rerun.Click += (_, _) =>
-            {
-                if (_key is { } key)
-                {
-                    _ = _app.Import.RerunIdentifyForCandidate(key);
-                }
-            };
-            column.Children.Add(rerun);
-        }
         return column;
     }
 

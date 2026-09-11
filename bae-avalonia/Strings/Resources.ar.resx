@@ -474,8 +474,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>إعادة التعيين إلى الوسوم</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>إعادة التعيين إلى الوسوم؟</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>ستحل وسوم الملفات محل المسودة. ستبقى ملفات العنصر المرشّح وخيارات المطابقة دون تغيير.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>البحث عبر الإنترنت…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>البحث عن إصدار</value></data>
   <data name="import.search.general" xml:space="preserve"><value>عام</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>تحديد الهوية تلقائيًا</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>التعبئة المسبقة من الوسوم</value></data>

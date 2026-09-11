@@ -474,8 +474,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Връщане към етикетите</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Връщане към етикетите?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Черновата се заменя с етикетите на файловете. Файловете на кандидата и изборите за съпоставяне ще останат непроменени.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Търсене онлайн</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Търсене онлайн…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Търсене на издание</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Общи</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Автоматично идентифициране</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Предварително попълване от етикетите</value></data>

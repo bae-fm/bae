@@ -499,7 +499,10 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     .await
     .expect("the write ends the save it ran for");
     assert!(
-        fixture.import.stored_verdict(&key).await.unwrap().is_some(),
+        fixture
+            .stored_for(&dir)
+            .await
+            .is_some_and(|row| row.identify.is_some()),
         "the verdict landed"
     );
 }

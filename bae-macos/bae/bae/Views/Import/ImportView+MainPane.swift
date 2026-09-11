@@ -134,6 +134,10 @@ extension ImportView {
             onPresentMetadata: {
                 presentMetadata($0, for: candidate)
             },
+            initialSection: initialFindOnlineSection[candidate.key]
+                ?? .automatic,
+            onIdentify: { identify(candidate) },
+            onSearchForRelease: { searchForRelease(candidate) },
             onResetToTags: {
                 ImportMappingFlow.resetToTags(
                     key: candidate.key,

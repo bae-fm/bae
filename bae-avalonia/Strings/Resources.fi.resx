@@ -501,8 +501,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Palauta tunnisteisiin</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Palautetaanko tunnisteisiin?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Luonnos korvataan tiedostojen tunnisteilla. Ehdokkaan tiedostot ja kytkennät säilyvät ennallaan.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Etsi verkosta</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Etsi verkosta…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Hae julkaisua</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Yleiset</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Tunnista automaattisesti</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Esitäytä tunnisteista</value></data>

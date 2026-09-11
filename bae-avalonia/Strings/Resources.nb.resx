@@ -501,8 +501,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Tilbakestill til merkelapper</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Tilbakestille til merkelapper?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Utkastet erstattes av merkelappene til filene. Kandidatens filer og koblinger forblir uendret.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Slå opp på nettet</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Slå opp på nettet…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Søk etter utgivelse</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Generelt</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifiser automatisk</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Forhåndsutfyll fra merkelapper</value></data>

@@ -501,8 +501,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Reset to tags</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Reset to tags?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>The draft is replaced by the files' tags. The candidate files and mapping choices will remain unchanged.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Find online</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Find online…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Search for release</value></data>
   <data name="import.search.general" xml:space="preserve"><value>General</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identify automatically</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Pre-fill with tags</value></data>

@@ -474,8 +474,7 @@
   <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Скинути до тегів</value></data>
   <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Скинути до тегів?</value></data>
   <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Чернетку буде замінено тегами файлів. Файли кандидата й вибрані зіставлення залишаться без змін.</value></data>
-  <data name="import.metadata.find_online" xml:space="preserve"><value>Знайти онлайн</value></data>
-  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Знайти онлайн…</value></data>
+  <data name="import.metadata.search_for_release" xml:space="preserve"><value>Шукати видання</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Загальний</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Ідентифікувати автоматично</value></data>
   <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Попередньо заповнювати з тегів</value></data>

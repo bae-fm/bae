@@ -31,6 +31,8 @@ Disc ID and barcode are looked up concurrently, the disc ID against MusicBrainz,
 
 Two library settings govern what happens when a candidate is added, and neither constrains the other. **Pre-fill with tags** creates the draft from the folder's own file tags, inside the same write that stores the candidate; with it off the draft is blank. **Identify automatically** makes the queue-wide sweep run every candidate that has no stored result for the files it has right now — a pre-filled draft, a release a person chose, and fields they typed exempt none of them. A run starts when a candidate is added, when its files change and retire the result read from them, or when a person asks for one; nothing else starts one.
 
+A person asks for one through **Identify automatically** on the candidate's card, which is the only entry that starts a run. It cancels whatever run that candidate has going before starting the new one, so a superseded run can never land its result, and it asks unconditionally — a stored result is what a person pressing it is unhappy with. The card's other entry, **Search for release**, opens the same page on its typed search and asks for nothing.
+
 ### File Tags
 
 File tags are read at two moments and nowhere else: the pre-fill reads them as a candidate is added, and "Reset to tags" reads them again on demand. Each read stores a snapshot stamped with the candidate's scan generation, file-edit revision, and observed audio files, and replaces the draft from that exact snapshot in the same transaction. Commit consumes the stored snapshot and fails before library writes if its stamp or observations changed; it does not read a different answer.

@@ -47,6 +47,11 @@ struct ImportView: View {
     /// a candidate can carry through the list.
     @State
     var sheetBindingOptions: [String: [BridgeSheetBindingOption]] = [:]
+    /// Which section the Find online page opens on for each candidate: the
+    /// entry that opened it says, and the page keeps that until it is opened
+    /// again. Session state of this view, not of the candidate.
+    @State
+    var initialFindOnlineSection: [String: FindOnlineSection] = [:]
     @Environment(\.openSettings)
     var openSettings
     @Environment(UiStore.self)
