@@ -99,19 +99,26 @@ final class FindOnlinePaneTests: XCTestCase {
             of: PreviewData.searchStateIdle
         )
 
-        let formField = String(localized: "Catalog #")
-        XCTAssertTrue(
-            onSearch.contains {
-                $0.localizedCaseInsensitiveContains(formField)
-            },
-            "a pane opened on the search reads: \(onSearch)"
-        )
-        XCTAssertFalse(
-            onAutomatic.contains {
-                $0.localizedCaseInsensitiveContains(formField)
-            },
-            "a pane opened on the run reads: \(onAutomatic)"
-        )
+        // The form's field placeholders, not its tab labels: recognition on
+        // a slow runner has read "Catalog #" as "Cataloon", while a plain
+        // word survives.
+        let formFields = [
+            String(localized: "Artist"), String(localized: "Album"),
+        ]
+        for formField in formFields {
+            XCTAssertTrue(
+                onSearch.contains {
+                    $0.localizedCaseInsensitiveContains(formField)
+                },
+                "a pane opened on the search reads: \(onSearch)"
+            )
+            XCTAssertFalse(
+                onAutomatic.contains {
+                    $0.localizedCaseInsensitiveContains(formField)
+                },
+                "a pane opened on the run reads: \(onAutomatic)"
+            )
+        }
     }
 
     /// Every line of text the pane draws for `state`.
