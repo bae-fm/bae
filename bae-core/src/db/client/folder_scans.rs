@@ -96,6 +96,21 @@ fn ensure_generation(
     Ok(())
 }
 
+/// Whether `snapshot` is a reading of `item` — the audio it was taken from is
+/// the audio `item` holds. An invalid candidate carries no files, so no
+/// reading is ever a reading of one.
+fn item_was_read_for(
+    item: &ScanItem,
+    snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
+) -> bool {
+    match item {
+        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
+            snapshot.was_read_from(candidate.files.audio())
+        }
+        ScanItem::Invalid(_) | ScanItem::Decided { .. } => false,
+    }
+}
+
 fn generation_column(generation: u64) -> Result<i64, DbError> {
     i64::try_from(generation).map_err(|_| {
         DbError::Message("folder scan generation exceeds SQLite's integer range".to_string())
@@ -310,10 +325,16 @@ impl Database {
             }
             // Rewriting the row takes the file-tag reading hanging off it, and
             // the draft that reading projected outlives the rewrite. So a write
-            // that brings no reading of its own carries the stored one across.
+            // that brings no reading of its own carries the stored one across —
+            // onto a row that still holds the files it was read from, and only
+            // there. A folder that now fails validation holds no files at all,
+            // and one whose audio changed holds other files; either way the
+            // reading describes what the row no longer is, and it goes with the
+            // row it belonged to.
             let carried = match file_tags.is_some() {
                 true => None,
-                false => read::load_file_tag_snapshot(sql, &watched_folder_path, &entry_key)?,
+                false => read::load_file_tag_snapshot(sql, &watched_folder_path, &entry_key)?
+                    .filter(|snapshot| item_was_read_for(&item, snapshot)),
             };
             let stored = stored_entries(sql, &watched_folder_path)?;
             let keys: Vec<StoredEntryKey> = stored

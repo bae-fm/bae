@@ -49,6 +49,30 @@ pub(crate) struct FileTagSnapshot {
     pub embedded_cover: Option<EmbeddedCoverFact>,
 }
 
+impl FileTagSnapshot {
+    /// Whether this reading was taken from exactly `audio_files`: the same
+    /// files in the same order, each the size it was read at. A reading is a
+    /// reading of the files it names and of nothing else, so a candidate
+    /// holding any other audio — or none at all — holds no reading.
+    pub(crate) fn was_read_from<'a>(
+        &self,
+        audio_files: impl Iterator<Item = &'a ScannedFile>,
+    ) -> bool {
+        let mut facts = self.files.iter();
+        for file in audio_files {
+            let Some(fact) = facts.next() else {
+                return false;
+            };
+            if fact.observation.relative_path != file.relative_path
+                || fact.observation.size != file.size
+            {
+                return false;
+            }
+        }
+        facts.next().is_none()
+    }
+}
+
 pub(crate) struct FileTagRead {
     pub title: Option<String>,
     pub track_artist: Option<String>,

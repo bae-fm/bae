@@ -4,8 +4,8 @@ use crate::import::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot,
 };
 use crate::import::folder_scanner::{
-    CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
-    ScannedFile,
+    CandidateFile, CategorizedFiles, FileRole, FolderCandidate, InvalidCandidate, InvalidReason,
+    ReleaseFileScope, ScanItem, ScannedFile,
 };
 use crate::util::content_type::ContentType;
 use std::path::PathBuf;
@@ -291,4 +291,93 @@ async fn failed_whole_replacement_preserves_the_previous_snapshot() {
             .snapshot,
         Some(stored)
     );
+}
+
+/// How many file-tag rows the candidate at `key` holds: the reading's own row
+/// and one row per file it was read from.
+async fn stored_reading_rows(db: &Database, root: &str, key: &str) -> (i64, i64) {
+    let root = root.to_string();
+    let key = key.to_string();
+    db.read(move |sql| {
+        let readings = sql.query_row(
+            "SELECT count(*) FROM scan_candidate_tag_snapshot \
+             WHERE watched_folder_path = ? AND candidate_path = ?",
+            params![root, key],
+            |row| row.get::<_, i64>(0),
+        )?;
+        let facts = sql.query_row(
+            "SELECT count(*) FROM scan_candidate_file_tag \
+             WHERE watched_folder_path = ? AND candidate_path = ?",
+            params![root, key],
+            |row| row.get::<_, i64>(0),
+        )?;
+        Ok((readings, facts))
+    })
+    .await
+    .unwrap()
+}
+
+/// A folder that fails validation on a later pass — a corrupt image beside its
+/// audio — is stored as an invalid candidate, which carries no files at all.
+/// The reading stored for the release it used to be was taken from files that
+/// row does not have, so it goes with the row it belonged to.
+#[tokio::test]
+async fn a_candidate_that_turns_invalid_drops_the_reading_it_carried() {
+    let (db, _tmp, root) = watched_root().await;
+    let (candidate, generation) = scanned_candidate(&db, &root).await;
+    let key = candidate.path.to_string_lossy().into_owned();
+    db.replace_candidate_file_tag_snapshot(&root, &key, &snapshot(generation, 0))
+        .await
+        .unwrap();
+    assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
+
+    let generation = db.begin_folder_scan(&root).await.unwrap();
+    db.save_folder_scan_item(
+        &root,
+        generation,
+        &ScanItem::Invalid(InvalidCandidate {
+            path: candidate.path.clone(),
+            name: candidate.name.clone(),
+            watched_folder_path: root.clone(),
+            display_path: candidate.display_path.clone(),
+            resolved_boundaries: Vec::new(),
+            reason: InvalidReason::CorruptImage {
+                path: "front.jpg".to_string(),
+            },
+        }),
+    )
+    .await
+    .unwrap();
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
+
+    assert_eq!(stored_reading_rows(&db, &root, &key).await, (0, 0));
+}
+
+/// The same rule where the folder stays a release: a pass that finds different
+/// audio than the reading was taken from stores the files it found, and the
+/// reading, which describes files that are no longer the candidate's, does not
+/// come across with it.
+#[tokio::test]
+async fn a_rescan_that_finds_other_audio_drops_the_reading_it_carried() {
+    let (db, _tmp, root) = watched_root().await;
+    let (candidate, generation) = scanned_candidate(&db, &root).await;
+    let key = candidate.path.to_string_lossy().into_owned();
+    db.replace_candidate_file_tag_snapshot(&root, &key, &snapshot(generation, 0))
+        .await
+        .unwrap();
+    assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
+
+    let mut without_second_file = candidate.clone();
+    without_second_file.files.files.pop();
+    let generation = db.begin_folder_scan(&root).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(without_second_file))
+        .await
+        .unwrap();
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
+
+    assert_eq!(stored_reading_rows(&db, &root, &key).await, (0, 0));
 }
