@@ -119,7 +119,10 @@ public sealed class ImportMappingPaneTests
             edit: BlankEdit());
         var (pane, _) = Show(detail, identified: identified);
 
+        // Identifying opens the Find online page, where the draft's actions
+        // are not; a person comes back to the draft to press it again.
         Click(pane, Loc.Chrome("settings.import.identify_automatically"));
+        Click(pane, Loc.Chrome("action.back"));
         Click(pane, Loc.Chrome("settings.import.identify_automatically"));
 
         Assert.Equal(new[] { CandidateKey, CandidateKey }, identified);
