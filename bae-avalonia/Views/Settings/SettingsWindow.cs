@@ -11,15 +11,15 @@ using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-// The settings window: library label, playback preferences, export formats, MCP
-// automation, the Subsonic server, the Discogs key, cloud sync (disconnect / S3 /
-// OAuth), devices (membership + approve), the recovery code, and updates. A real
-// window, like macOS's Settings scene; its own modal host presents the sub-dialogs
-// (the preset editor, delete confirm, the approve flow) directly over it. Every read
-// and write goes through the app services, never NativeBae. Reads the settings
-// through the settings mirror and re-renders when a config value — or an
-// in-window connect/disconnect — reloads them; those registrations live only
-// while the window is open.
+// The settings window: library label, cloud sync (disconnect / S3 / OAuth), devices
+// (membership + approve), the recovery code, playback preferences, import defaults and
+// the Discogs key, export formats, casting, the Subsonic server, MCP automation, and
+// updates. A real window, like macOS's Settings scene; its own modal host presents the
+// sub-dialogs (the preset editor, delete confirm, the approve flow) directly over it.
+// Every read and write goes through the app services, never NativeBae. Reads the
+// settings through the settings mirror and re-renders when a config value — or an
+// in-window connect/disconnect — reloads them; those registrations live only while the
+// window is open.
 internal sealed partial class SettingsWindow
 {
     private readonly AppService _app;
@@ -102,22 +102,24 @@ internal sealed partial class SettingsWindow
         content.Children.Add(libraryLabel);
         renderers.Add(fresh => libraryLabel.Text = Loc.Chrome("settings.library_label", "name", fresh.LibraryName));
 
+        // One scrolling page in the order macOS lists its panes: appearance,
+        // the library, playing from it, getting releases in and out, the
+        // servers around it, then the app itself.
         content.Children.Add(new AppearanceSection(_appearance, ShowSettingsError));
-        BuildPlayback(content, renderers);
-        BuildImport(content, renderers);
-        BuildCast(content, renderers);
-        BuildFormats(content, renderers);
-        BuildAutomation(content, renderers);
-        BuildSubsonic(content, renderers);
-        BuildDiscogs(content, renderers);
-        // The shared error line sits after the config sections, as it does on
-        // macOS; the cloud section surfaces its own errors inline.
-        content.Children.Add(_settingsError);
         BuildCloud(content, renderers);
         BuildMembers(content);
         BuildRecovery(content);
-        var unsubscribeUpdates = BuildUpdates(content);
         BuildLibraryLifecycle(content, renderers);
+        BuildPlayback(content, renderers);
+        BuildImport(content, renderers);
+        BuildFormats(content, renderers);
+        BuildCast(content, renderers);
+        BuildSubsonic(content, renderers);
+        BuildAutomation(content, renderers);
+        // The shared error line sits after the config sections, as it does on
+        // macOS; the cloud section surfaces its own errors inline.
+        content.Children.Add(_settingsError);
+        var unsubscribeUpdates = BuildUpdates(content);
 
         foreach (var render in renderers)
         {

@@ -64,6 +64,10 @@ internal sealed partial class SettingsWindow
             RenderSourceSwitches(sources, fresh, renderers);
             _refreshingSettings = false;
         });
+
+        // The Discogs key belongs to the Discogs source switch above it: the
+        // switch cannot be moved until a key is stored.
+        BuildDiscogs(content, renderers);
     }
 
     /// <summary>Draw one checkbox per metadata source over the availability core

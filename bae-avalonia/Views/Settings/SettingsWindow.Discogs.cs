@@ -6,13 +6,13 @@ using Avalonia.Markup.Xaml.MarkupExtensions;
 
 namespace Bae.Desktop;
 
-// The settings window's Discogs section: a key state machine. The token input is
-// the only local draft; the configured/valid state comes from the settings
-// re-read. not_configured/rejected → editable input + Save; valid → "connected" +
-// Remove; unvalidated → that label + Re-check + Remove. Save and Re-check validate
-// over the network, so they run off the UI thread and show "Validating…" while in
-// flight. The persisted status line is separate from the shared action-error line
-// so a config re-render can't wipe a rejection note.
+// The Discogs key, drawn under the Import section's source switches: a key state
+// machine. The token input is the only local draft; the configured/valid state comes
+// from the settings re-read. not_configured/rejected → editable input + Save; valid →
+// "connected" + Remove; unvalidated → that label + Re-check + Remove. Save and Re-check
+// validate over the network, so they run off the UI thread and show "Validating…" while
+// in flight. The persisted status line is separate from the shared action-error line so
+// a config re-render can't wipe a rejection note.
 internal sealed partial class SettingsWindow
 {
     private void BuildDiscogs(StackPanel content, List<Action<Settings>> renderers)
