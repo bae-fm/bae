@@ -170,7 +170,7 @@ struct ReIdentifySheet: View {
                 ),
                 openSettings: {
                     settingsNavigation.open(
-                        .discogs,
+                        .importing,
                         present: { openSettings() }
                     )
                 },

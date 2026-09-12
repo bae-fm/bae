@@ -1,36 +1,39 @@
 import SwiftUI
 
+/// The panes, in the order the sidebar lists them (`allCases`): what the app
+/// looks like, then the library it holds, then playing from it, then getting
+/// releases in and out, then the servers and automation around it, then the
+/// app itself.
 enum SettingsTab: Hashable, CaseIterable {
-    case library, appearance, playback, importing, casting, formats, automation,
-        subsonic,
-        discogs, about
+    case appearance, library, playback, importing, formats, transfers, casting,
+        subsonic, automation, about
 
     var title: LocalizedStringKey {
         switch self {
-        case .library: "Library"
         case .appearance: "Appearance"
+        case .library: "Library"
         case .playback: "Playback"
         case .importing: "Import"
-        case .casting: "Casting"
         case .formats: "Formats"
-        case .automation: "Automation"
+        case .transfers: "Transfers"
+        case .casting: "Casting"
         case .subsonic: "Subsonic"
-        case .discogs: "Discogs"
+        case .automation: "Automation"
         case .about: "About"
         }
     }
 
     var symbol: String {
         switch self {
-        case .library: "books.vertical"
         case .appearance: "paintpalette"
+        case .library: "books.vertical"
         case .playback: "play.circle"
         case .importing: "square.and.arrow.down"
-        case .casting: "hifispeaker"
         case .formats: "square.and.arrow.up"
-        case .automation: "terminal"
+        case .transfers: "arrow.up.arrow.down"
+        case .casting: "hifispeaker"
         case .subsonic: "dot.radiowaves.left.and.right"
-        case .discogs: "network"
+        case .automation: "terminal"
         case .about: "info.circle"
         }
     }
@@ -50,9 +53,9 @@ final class SettingsNavigation {
 /// The settings window: the panes down the side, the chosen one beside them.
 ///
 /// A sidebar and not the toolbar strip a settings window usually has, because
-/// nine panes do not fit in one: the strip put whatever ran past the window's
+/// ten panes do not fit in one: the strip put whatever ran past the window's
 /// edge into an overflow menu that renders its entries disabled, so the last
-/// panes could be seen and not reached. Widening the window until nine fit is
+/// panes could be seen and not reached. Widening the window until ten fit is
 /// no answer either — the titles are translated, and "Automation" is
 /// "การทำงานอัตโนมัติ" in Thai — so the width that fits English hides a pane
 /// somewhere else. A list has no edge to run past: it scrolls, and every pane
@@ -90,24 +93,24 @@ struct SettingsView: View {
     @ViewBuilder
     private func pane(for selectedTab: SettingsTab) -> some View {
         switch selectedTab {
-        case .library:
-            LibrarySettingsTab(onForgetLibrary: onForgetLibrary)
         case .appearance:
             AppearanceSettingsTab()
+        case .library:
+            LibrarySettingsTab(onForgetLibrary: onForgetLibrary)
         case .playback:
             PlaybackSettingsTab()
         case .importing:
             ImportSettingsTab()
-        case .casting:
-            CastingSettingsTab()
         case .formats:
             FormatsSettingsTab()
-        case .automation:
-            AutomationSettingsTab()
+        case .transfers:
+            TransfersSettingsTab()
+        case .casting:
+            CastingSettingsTab()
         case .subsonic:
             SubsonicSettingsTab()
-        case .discogs:
-            DiscogsSettingsTab()
+        case .automation:
+            AutomationSettingsTab()
         case .about:
             AboutSettingsTab(
                 canCheckForUpdates: checkForUpdatesViewModel.canCheckForUpdates,

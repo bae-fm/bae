@@ -1,16 +1,13 @@
 import BaeKit
 import SwiftUI
 
-/// Import metadata defaults and device-local transfer concurrency. Every
-/// control writes through core; the config value stream redraws the stored
-/// value.
+/// Import metadata defaults and the sources Find online asks. Every control
+/// writes through core; the config value stream redraws the stored value. The
+/// Discogs key sits under the Discogs switch, because the switch cannot be
+/// moved without one.
 struct ImportSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
-    @Environment(Downloads.self)
-    private var downloads
-    @Environment(Sync.self)
-    private var sync
     @Environment(Importer.self)
     private var importer
     @Environment(UiStore.self)
@@ -36,9 +33,14 @@ struct ImportSettingsTab: View {
             }
 
             Section {
-                ForEach(configStore.config.metadataSources, id: \.source) {
-                    setting in
+                ForEach(sourceSwitches.beforeKey, id: \.source) { setting in
                     sourceToggle(setting)
+                }
+                if let afterKey = sourceSwitches.afterKey {
+                    DiscogsKeySection()
+                    ForEach(afterKey, id: \.source) { setting in
+                        sourceToggle(setting)
+                    }
                 }
             } header: {
                 Text("Sources")
@@ -50,30 +52,31 @@ struct ImportSettingsTab: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            Section {
-                control(
-                    label: "Simultaneous uploads",
-                    value: configStore.config.maxConcurrentUploads,
-                    setValue: sync.setMaxConcurrentUploads
-                )
-                control(
-                    label: "Simultaneous downloads",
-                    value: configStore.config.maxConcurrentDownloads,
-                    setValue: downloads.setMaxConcurrentDownloads
-                )
-            } header: {
-                Text("Transfers")
-            } footer: {
-                Text(
-                    "How many files upload to cloud storage at once after an import, and how many download at once when a release is pinned."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
         .formStyle(.grouped)
+    }
+
+    /// The source switches split where the Discogs key belongs: the switches
+    /// the key follows, then the switches after it. Core owns which sources
+    /// exist and in what order, so the key follows the Discogs switch wherever
+    /// that lands; `afterKey` is nil when the library has no Discogs source,
+    /// which is when there is no key to draw at all.
+    private var sourceSwitches:
+        (
+            beforeKey: [BridgeMetadataSourceSetting],
+            afterKey: [BridgeMetadataSourceSetting]?
+        )
+    {
+        let settings = configStore.config.metadataSources
+        guard
+            let discogs = settings.firstIndex(where: { $0.source == .discogs })
+        else {
+            return (settings, nil)
+        }
+        return (
+            Array(settings[...discogs]),
+            Array(settings[settings.index(after: discogs)...])
+        )
     }
 
     /// One source's checkbox. Whether it can be moved is core's answer, not
@@ -132,31 +135,27 @@ struct ImportSettingsTab: View {
             }
         )
     }
-
-    private func control(
-        label: LocalizedStringKey,
-        value: UInt32,
-        setValue: @escaping @Sendable (UInt32) throws -> Void
-    ) -> some View {
-        LabeledContent(label) {
-            TransferConcurrencyPicker(
-                title: label,
-                value: value,
-                setValue: setValue,
-                showError: { uiStore.showError($0) }
-            )
-            .labelsHidden()
-            .fixedSize()
-        }
-    }
 }
 
 #if DEBUG
     #Preview("Import Settings") {
         ImportSettingsTab()
             .environment(PreviewData.configStore())
-            .environment(Downloads.stub())
-            .environment(Sync.stub())
+            .environment(Discogs.stub())
+            .environment(PreviewData.importTabImporter())
+            .environment(UiStore())
+            .frame(width: 500, height: 500)
+    }
+
+    #Preview("Import Settings, no Discogs key") {
+        ImportSettingsTab()
+            .environment(
+                PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    discogsUsable: false
+                )
+            )
+            .environment(Discogs.stub())
             .environment(PreviewData.importTabImporter())
             .environment(UiStore())
             .frame(width: 500, height: 500)

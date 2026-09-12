@@ -270,11 +270,38 @@ struct RepeatModeMenuItems: View {
     }
 }
 
+/// A Playback menu item for a preference that is on or off: it carries a
+/// leading checkmark while the preference is on, and a click writes the
+/// opposite of what the item shows rather than flipping whatever the store
+/// holds by then.
+struct PlaybackPreferenceMenuItem: View {
+    let title: LocalizedStringKey
+    let isOn: Bool
+    let setEnabled: (Bool) -> Void
+
+    var body: some View {
+        Button {
+            setEnabled(!isOn)
+        } label: {
+            if isOn {
+                Label(title, systemImage: "checkmark")
+            }
+            else {
+                Text(title)
+            }
+        }
+    }
+}
+
 struct MainAppMenuCommands: Commands {
     @FocusedValue(\.mainAppMenuTarget)
     private var target
     @FocusedValue(\.focusSearch)
     var focusSearch
+    /// The "Restore on launch" preference, read from the same device-local
+    /// default the Playback settings pane writes.
+    @AppStorage("persistPlayback")
+    private var persistPlayback = false
 
     var body: some Commands {
         CommandGroup(after: .pasteboard) {
@@ -398,6 +425,29 @@ struct MainAppMenuCommands: Commands {
                 }
             }
             .disabled(target == nil)
+
+            Divider()
+
+            // The Playback settings pane's two toggles, reachable without
+            // opening settings. Both write the same places the pane does.
+            PlaybackPreferenceMenuItem(
+                title: "Pause between sides and discs",
+                isOn: target?.configStore.config.pauseBetweenSides == true
+            ) { enabled in
+                let target = requireTarget()
+                do {
+                    try target.playback.setPauseBetweenSides(enabled)
+                }
+                catch {
+                    target.uiStore.showError(error)
+                }
+            }
+            .disabled(target == nil)
+
+            PlaybackPreferenceMenuItem(
+                title: "Restore on launch",
+                isOn: persistPlayback
+            ) { persistPlayback = $0 }
 
             Divider()
 

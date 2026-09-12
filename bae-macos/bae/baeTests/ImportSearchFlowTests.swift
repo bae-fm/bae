@@ -9,30 +9,37 @@ import XCTest
 
 @MainActor
 final class SettingsNavigationTests: XCTestCase {
-    func testOpeningDiscogsSelectsItsPaneBeforePresentation() {
+    /// The Discogs key lives under the source switch it unlocks, so the "open
+    /// settings" affordance on the Find online bar lands on the Import pane.
+    func testOpeningTheDiscogsKeySelectsTheImportPaneBeforePresentation() {
         let navigation = SettingsNavigation()
         var selectionAtPresentation: SettingsTab?
 
-        navigation.open(.discogs) {
+        navigation.open(.importing) {
             selectionAtPresentation = navigation.selectedTab
         }
 
-        #expect(selectionAtPresentation == .discogs)
+        #expect(selectionAtPresentation == .importing)
     }
 
     func testDiscogsKeyFieldTakesFocusWhenItAppears() async {
         let size = NSSize(width: 500, height: 320)
         let (window, host) = SnapshotTestSupport.hostInWindow(
-            DiscogsSettingsContent(
-                draft: .constant(""),
-                status: .notConfigured,
-                isValidating: false,
-                saveError: nil,
-                readError: nil,
-                onSave: {},
-                onRecheck: {},
-                onRemove: {}
-            )
+            Form {
+                Section {
+                    DiscogsSettingsContent(
+                        draft: .constant(""),
+                        status: .notConfigured,
+                        isValidating: false,
+                        saveError: nil,
+                        readError: nil,
+                        onSave: {},
+                        onRecheck: {},
+                        onRemove: {}
+                    )
+                }
+            }
+            .formStyle(.grouped)
             .frame(width: size.width, height: size.height),
             size: size
         )

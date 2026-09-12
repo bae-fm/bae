@@ -6,15 +6,16 @@ import Testing
 
 @testable import bae
 
-/// The two import settings, and that each one writes the setting it names.
+/// The two import settings, the sources, and the Discogs key that one of those
+/// sources needs.
 ///
-/// They are independent: the draft a candidate starts from and whether
+/// The settings are independent: the draft a candidate starts from and whether
 /// identification runs on its own are separate answers, so the tab draws one
 /// switch each and neither write carries the other's value.
 @MainActor
 @Suite("The import settings")
 struct ImportSettingsTabTests {
-    private static let size = NSSize(width: 520, height: 420)
+    private static let size = NSSize(width: 520, height: 560)
 
     @Test("the tab draws one switch per setting and one per source")
     func theTabDrawsOneSwitchPerSetting() async throws {
@@ -91,11 +92,101 @@ struct ImportSettingsTabTests {
         }
     }
 
-    private func tab(recorder: ImportSettingRecorder) -> some View {
+    /// Discogs cannot be asked without a key, so the key is offered where the
+    /// switch it unlocks is, and core reports the switch as immovable until one
+    /// is stored.
+    @Test("with no key stored the Sources section offers the key input")
+    func theSourcesSectionOffersTheKeyInput() async throws {
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            tab(
+                recorder: ImportSettingRecorder(),
+                configStore: PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    discogsUsable: false
+                )
+            ),
+            size: Self.size
+        )
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        await SnapshotTestSupport.settle(host)
+
+        #expect(keyField(in: host) != nil)
+        // Core lists the sources in its own order and Discogs is the last of
+        // them, so the last switch on the pane is the one the key unlocks.
+        #expect(switches(in: host).last?.isEnabled == false)
+
+        let lines = try await FindOnlineRendering.text(
+            tab(
+                recorder: ImportSettingRecorder(),
+                configStore: PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    discogsUsable: false
+                )
+            ),
+            size: Self.size
+        )
+        #expect(reads(lines, String(localized: "Save")), "\(lines)")
+    }
+
+    @Test("a stored key replaces the input with what the key is doing")
+    func aStoredKeyReplacesTheInput() async throws {
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            tab(recorder: ImportSettingRecorder()),
+            size: Self.size
+        )
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        await SnapshotTestSupport.settle(host)
+
+        #expect(keyField(in: host) == nil)
+        #expect(switches(in: host).last?.isEnabled == true)
+
+        let lines = try await FindOnlineRendering.text(
+            tab(recorder: ImportSettingRecorder()),
+            size: Self.size
+        )
+        for label in [
+            String(localized: "Connected"),
+            String(localized: "Remove"),
+        ] {
+            #expect(reads(lines, label), "\(lines)")
+        }
+    }
+
+    /// How many files move at once is its own pane: it is not a metadata
+    /// answer, and unlike everything here it stays on this device.
+    @Test("the tab carries no transfer controls")
+    func theTabCarriesNoTransferControls() async throws {
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            tab(recorder: ImportSettingRecorder()),
+            size: Self.size
+        )
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        await SnapshotTestSupport.settle(host)
+
+        #expect(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSSegmentedControl }
+                .isEmpty
+        )
+    }
+
+    @MainActor
+    private func tab(
+        recorder: ImportSettingRecorder,
+        configStore: ConfigStore? = nil
+    ) -> some View {
         ImportSettingsTab()
-            .environment(PreviewData.configStore())
-            .environment(Downloads.stub())
-            .environment(Sync.stub())
+            .environment(configStore ?? PreviewData.configStore())
+            .environment(Discogs(getDiscogsToken: { "stored-key" }))
             .environment(recorder.importer)
             .environment(UiStore())
     }
@@ -104,6 +195,18 @@ struct ImportSettingsTabTests {
         SnapshotTestSupport.descendants(of: host).compactMap { $0 as? NSSwitch }
     }
 
+    private func reads(_ lines: [String], _ label: String) -> Bool {
+        lines.contains { $0.localizedCaseInsensitiveContains(label) }
+    }
+
+    private func keyField(in host: NSView) -> NSTextField? {
+        SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSTextField }
+            .first {
+                $0.placeholderString
+                    == String(localized: "Paste your key here")
+            }
+    }
 }
 
 @MainActor

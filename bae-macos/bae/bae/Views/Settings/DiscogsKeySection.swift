@@ -2,9 +2,12 @@ import BaeKit
 import SwiftUI
 import os.log
 
-private let logger = Logger.bae("DiscogsSettings")
+private let logger = Logger.bae("DiscogsKey")
 
-struct DiscogsSettingsTab: View {
+/// The Discogs key, drawn under the Discogs source switch in the Import
+/// settings: the stored key's state and the actions that change it. One Form
+/// row, so the lifecycle below runs once however many controls the state draws.
+struct DiscogsKeySection: View {
     @Environment(Discogs.self)
     var discogs
     @Environment(ConfigStore.self)
@@ -144,6 +147,8 @@ struct DiscogsSettingsTab: View {
 
 // MARK: - DiscogsSettingsContent (pure leaf)
 
+/// One Form row: the state of the stored key with the buttons that state
+/// offers, any error from the last action, and what the key is for.
 struct DiscogsSettingsContent: View {
     @Binding
     var draft: String
@@ -158,35 +163,30 @@ struct DiscogsSettingsContent: View {
     private var keyFieldIsFocused: Bool
 
     var body: some View {
-        Form {
-            Section {
-                statusRow
-                if let saveError {
-                    Text(saveError)
-                        .foregroundStyle(.red)
-                        .font(.callout)
-                }
-                if let readError {
-                    Text(readError)
-                        .foregroundStyle(.red)
-                        .font(.callout)
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            statusRow
+            if let saveError {
+                Text(saveError)
+                    .foregroundStyle(.red)
+                    .font(.callout)
             }
-
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(
-                        "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums."
-                    )
-                    Text(
-                        "To connect, [get your free API key](https://www.discogs.com/settings/developers) and paste it above."
-                    )
-                }
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            if let readError {
+                Text(readError)
+                    .foregroundStyle(.red)
+                    .font(.callout)
             }
+            VStack(alignment: .leading, spacing: 8) {
+                Text(
+                    "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums."
+                )
+                Text(
+                    "To connect, [get your free API key](https://www.discogs.com/settings/developers) and paste it above."
+                )
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
         }
-        .formStyle(.grouped)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -195,11 +195,7 @@ struct DiscogsSettingsContent: View {
         case .notConfigured, .rejected:
             keyInput
         case .valid:
-            connectedRow(
-                label: "Connected",
-                systemImage: "checkmark.circle.fill",
-                tint: .green
-            )
+            connectedRow
         case .unvalidated:
             unvalidatedRow
         }
@@ -207,7 +203,6 @@ struct DiscogsSettingsContent: View {
 
     /// Editable field + Save, for the not-configured and rejected states. In
     /// `rejected` the draft is kept so the user corrects a typo.
-    @ViewBuilder
     private var keyInput: some View {
         HStack(spacing: 6) {
             TextField(
@@ -215,6 +210,7 @@ struct DiscogsSettingsContent: View {
                 text: $draft,
                 prompt: Text("Paste your key here")
             )
+            .labelsHidden()
             .focused($keyFieldIsFocused)
             .task {
                 await Task.yield()
@@ -223,48 +219,33 @@ struct DiscogsSettingsContent: View {
             if isValidating {
                 ProgressView().controlSize(.small)
             }
-        }
-        HStack {
-            Spacer()
             Button("Save", action: onSave)
                 .disabled(draft.isEmpty || isValidating)
         }
     }
 
-    @ViewBuilder
-    private func connectedRow(
-        label: LocalizedStringKey,
-        systemImage: String,
-        tint: Color
-    ) -> some View {
-        LabeledContent("Discogs") {
-            HStack(spacing: 6) {
-                Image(systemName: systemImage).foregroundStyle(tint)
-                Text(label).foregroundStyle(.secondary)
-            }
-        }
-        HStack {
+    private var connectedRow: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            Text("Connected")
+                .foregroundStyle(.secondary)
             Spacer()
             Button("Remove", action: onRemove)
         }
     }
 
-    @ViewBuilder
     private var unvalidatedRow: some View {
-        LabeledContent("Discogs") {
-            HStack(spacing: 6) {
-                if isValidating {
-                    ProgressView().controlSize(.small)
-                }
-                else {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundStyle(.orange)
-                }
-                Text("Saved. Couldn't validate yet (offline). Will retry.")
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 6) {
+            if isValidating {
+                ProgressView().controlSize(.small)
             }
-        }
-        HStack {
+            else {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundStyle(.orange)
+            }
+            Text("Saved. Couldn't validate yet (offline). Will retry.")
+                .foregroundStyle(.secondary)
             Spacer()
             Button("Re-check", action: onRecheck)
                 .disabled(isValidating)
@@ -276,59 +257,49 @@ struct DiscogsSettingsContent: View {
 #if DEBUG
     // MARK: - Previews
 
+    /// The key as the Sources section draws it: one row of a grouped Form.
+    private struct DiscogsKeyPreview: View {
+        let status: BridgeDiscogsTokenStatus
+        var draft: String = ""
+        var saveError: String?
+
+        var body: some View {
+            Form {
+                Section {
+                    DiscogsSettingsContent(
+                        draft: .constant(draft),
+                        status: status,
+                        isValidating: false,
+                        saveError: saveError,
+                        readError: nil,
+                        onSave: {},
+                        onRecheck: {},
+                        onRemove: {},
+                    )
+                }
+            }
+            .formStyle(.grouped)
+            .frame(width: 500, height: 320)
+        }
+    }
+
     #Preview("No key") {
-        DiscogsSettingsContent(
-            draft: .constant(""),
-            status: .notConfigured,
-            isValidating: false,
-            saveError: nil,
-            readError: nil,
-            onSave: {},
-            onRecheck: {},
-            onRemove: {},
-        )
-        .frame(width: 500, height: 320)
+        DiscogsKeyPreview(status: .notConfigured)
     }
 
     #Preview("Valid") {
-        DiscogsSettingsContent(
-            draft: .constant("abcdef123456"),
-            status: .valid,
-            isValidating: false,
-            saveError: nil,
-            readError: nil,
-            onSave: {},
-            onRecheck: {},
-            onRemove: {},
-        )
-        .frame(width: 500, height: 320)
+        DiscogsKeyPreview(status: .valid, draft: "abcdef123456")
     }
 
     #Preview("Unvalidated") {
-        DiscogsSettingsContent(
-            draft: .constant("abcdef123456"),
-            status: .unvalidated,
-            isValidating: false,
-            saveError: nil,
-            readError: nil,
-            onSave: {},
-            onRecheck: {},
-            onRemove: {},
-        )
-        .frame(width: 500, height: 320)
+        DiscogsKeyPreview(status: .unvalidated, draft: "abcdef123456")
     }
 
     #Preview("Rejected") {
-        DiscogsSettingsContent(
-            draft: .constant("bad-key"),
+        DiscogsKeyPreview(
             status: .rejected,
-            isValidating: false,
-            saveError: "Discogs rejected this key. Check it and save again.",
-            readError: nil,
-            onSave: {},
-            onRecheck: {},
-            onRemove: {},
+            draft: "bad-key",
+            saveError: "Discogs rejected this key. Check it and save again."
         )
-        .frame(width: 500, height: 320)
     }
 #endif

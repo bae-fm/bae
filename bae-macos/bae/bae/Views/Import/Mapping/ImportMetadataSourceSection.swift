@@ -112,7 +112,7 @@ private struct ImportOnlineMetadataBrowser: View {
                     ),
                     openSettings: {
                         settingsNavigation.open(
-                            .discogs,
+                            .importing,
                             present: { openSettings() }
                         )
                     },
