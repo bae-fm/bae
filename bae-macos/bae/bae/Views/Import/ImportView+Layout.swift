@@ -17,7 +17,7 @@ extension ImportView {
                     storageCloud: $storageCloud,
                     storagePinned: $storagePinned,
                     onPerform: performCandidateAction,
-                    onCombine: reviewSelectedCombination
+                    onCombine: combineSelectedCandidates
                 )
                 .frame(
                     minWidth: 620,

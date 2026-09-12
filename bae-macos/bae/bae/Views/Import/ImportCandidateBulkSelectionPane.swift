@@ -26,7 +26,7 @@ struct ImportCandidateBulkSelectionPane: View {
                     .foregroundStyle(.secondary)
                 Button(action: onCombine) {
                     Label(
-                        "Combine as One Release…",
+                        "Combine as One Release",
                         systemImage: "square.stack.3d.up"
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)

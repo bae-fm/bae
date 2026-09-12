@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 struct ImportCombinedSourceView: View {
-    let combination: BridgeCombinationPreview
+    let combination: BridgeCombination
     let canSeparate: Bool
     let onSeparate: () -> Void
     @State

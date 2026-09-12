@@ -283,7 +283,7 @@ struct Candidate: Equatable, Identifiable {
         key
     }
 
-    var combination: BridgeCombinationPreview? { detail?.candidate.combination }
+    var combination: BridgeCombination? { detail?.candidate.combination }
     var sourceFileEditsAllowed: Bool {
         detail?.candidate.sourceFileEditsAllowed ?? false
     }

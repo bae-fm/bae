@@ -17,32 +17,18 @@ extension ImportView {
         }
     }
 
-    func reviewSelectedCombination() {
-        let keys = uiStore.selectedFolderCandidates.sorted()
-        candidateMutationTasks["combination-review"]?.cancel()
-        candidateMutationTasks["combination-review"] = Task {
-            defer { candidateMutationTasks["combination-review"] = nil }
+    func combineSelectedCandidates() {
+        let taskKey = "combine-selected"
+        let action = ImportCandidateCombineAction(
+            importer: importer,
+            uiStore: uiStore,
+            listSlot: listSlot
+        )
+        candidateMutationTasks[taskKey]?.cancel()
+        candidateMutationTasks[taskKey] = Task {
+            defer { candidateMutationTasks[taskKey] = nil }
             await commitAndEndEditing()
-            do {
-                let review = try await importer.reviewCombination(keys)
-                try Task.checkCancellation()
-                let state = try ImportCombinationReview(review: review)
-                uiStore.presentModal {
-                    ImportCombinationReviewView(
-                        review: state,
-                        onCancel: { uiStore.dismissModal() },
-                        onCombined: { key in
-                            uiStore.dismissModal()
-                            uiStore.setFolderCandidateSelection([key])
-                            listSlot.requestCandidateReveal(key)
-                        }
-                    )
-                }
-            }
-            catch is CancellationError {}
-            catch {
-                uiStore.showError(error)
-            }
+            await action.run()
         }
     }
 

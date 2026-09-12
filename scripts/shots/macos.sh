@@ -55,7 +55,6 @@ xcodebuild -project bae.xcodeproj -scheme baeShots -configuration Debug \
 cd "$ROOT"
 missing=0
 for scene in \
-    import-combine-folders \
     artwork-lightbox \
     cover-picker-unlinked \
     cover-picker-wide \

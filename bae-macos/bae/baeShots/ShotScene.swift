@@ -21,12 +21,6 @@ struct ShotScene {
     static let all: [ShotScene] = [
         importMetadataDraft,
         importSearchResults,
-        ShotScene(
-            id: "import-combine-folders",
-            size: CGSize(width: 936, height: 696)
-        ) {
-            AnyView(ImportCombinationPreviewScene())
-        },
         ShotScene(id: "appearance", size: CGSize(width: 650, height: 400)) {
             AnyView(AppearanceSettingsTab())
         },

@@ -36,9 +36,7 @@ private final class ReleaseLibraryStatusSink: ReleaseLibraryStatusCallback,
 
 private struct ImportOperations: Sendable {
     let candidateSourceFolders: @Sendable (String) async throws -> [String]
-    let reviewCombination:
-        @Sendable ([String]) async throws ->
-            any CandidateCombinationReviewProtocol
+    let combineCandidates: @Sendable ([String]) async throws -> String
     let separateCombination: @Sendable (String) async throws -> Void
     let addWatchedFolder: @Sendable (String) async throws -> Void
     let removeWatchedFolder: @Sendable (String) async throws -> Void
@@ -109,8 +107,8 @@ extension ImportOperations {
             candidateSourceFolders: {
                 try await handle.candidateSourceFolders(key: $0)
             },
-            reviewCombination: {
-                try await handle.reviewCandidateCombination(keys: $0)
+            combineCandidates: {
+                try await handle.combineCandidates(keys: $0)
             },
             separateCombination: {
                 try await handle.separateCombinedCandidate(key: $0)
@@ -314,9 +312,8 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String) async throws -> [String] = { _ in
                 throw StubError.notImplemented
             },
-        reviewCombination:
-            @escaping @Sendable ([String]) async throws ->
-            any CandidateCombinationReviewProtocol = { _ in
+        combineCandidates:
+            @escaping @Sendable ([String]) async throws -> String = { _ in
                 throw StubError.notImplemented
             },
         separateCombination: @escaping @Sendable (String) async throws -> Void =
@@ -443,7 +440,7 @@ final class Importer: Sendable, Observable {
     ) {
         operations = ImportOperations(
             candidateSourceFolders: candidateSourceFolders,
-            reviewCombination: reviewCombination,
+            combineCandidates: combineCandidates,
             separateCombination: separateCombination,
             addWatchedFolder: addWatchedFolder,
             removeWatchedFolder: removeWatchedFolder,
@@ -491,10 +488,8 @@ final class Importer: Sendable, Observable {
 }
 
 extension Importer {
-    func reviewCombination(_ keys: [String]) async throws
-        -> any CandidateCombinationReviewProtocol
-    {
-        try await operations.reviewCombination(keys)
+    func combineCandidates(_ keys: [String]) async throws -> String {
+        try await operations.combineCandidates(keys)
     }
 
     func candidateSourceFolders(_ key: String) async throws -> [String] {
