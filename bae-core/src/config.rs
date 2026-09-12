@@ -333,6 +333,8 @@ pub struct Preferences {
     /// that applies to release saves (config validation keeps it non-dangling).
     pub default_release_save_preset: String,
     /// Whether playback pauses between vinyl/cassette sides and CD discs.
+    /// Defaults to `true`: a side break is part of how the release was made,
+    /// so bae plays it unless the person turns it off.
     pub pause_between_sides: bool,
     /// How many blob uploads coven's upload drain runs at once. Device-local: a
     /// concurrency limit reflects one machine's link and CPU, so unlike most
@@ -385,7 +387,7 @@ impl Default for Preferences {
             save_presets: default_save_presets(),
             default_track_save_preset: "flac".to_string(),
             default_release_save_preset: "flac".to_string(),
-            pause_between_sides: false,
+            pause_between_sides: true,
             max_concurrent_uploads: default_transfer_concurrency(),
             max_concurrent_downloads: default_transfer_concurrency(),
             show_remaining_time: false,

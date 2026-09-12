@@ -198,7 +198,7 @@ fn the_ladder_stamps_the_version_the_strict_read_requires() {
 fn an_unversioned_library_keeps_every_setting_it_recorded() {
     let mut config = make_config("lib-v0");
     config.store_name = "Shelf".to_string();
-    config.prefs.pause_between_sides = true;
+    config.prefs.pause_between_sides = false;
     config.prefs.max_concurrent_uploads = NonZeroU32::new(6).unwrap();
     config.prefs.identify_automatically = false;
     config.prefs.save_presets[0].name = "Archive".to_string();
@@ -210,7 +210,7 @@ fn an_unversioned_library_keeps_every_setting_it_recorded() {
     assert_eq!(parsed.config.snapshot_commit_threshold.get(), 100);
     assert!(!parsed.config.prefs.prefill_with_tags);
     assert_eq!(parsed.config.identity.library_name, "Shelf");
-    assert!(parsed.config.prefs.pause_between_sides);
+    assert!(!parsed.config.prefs.pause_between_sides);
     assert_eq!(parsed.config.prefs.max_concurrent_uploads.get(), 6);
     assert!(!parsed.config.prefs.identify_automatically);
     assert_eq!(parsed.config.prefs.save_presets, config.prefs.save_presets);

@@ -345,7 +345,7 @@ save_presets:
   embed_cover: true
 default_track_save_preset: flac
 default_release_save_preset: flac
-pause_between_sides: false
+pause_between_sides: true
 max_concurrent_uploads: 3
 max_concurrent_downloads: 3
 show_remaining_time: false
@@ -837,7 +837,7 @@ fn update_serializes_concurrent_edits() {
         config.store_name = "Renamed Library".to_string();
     });
     let playback = spawn_update(Arc::clone(&handle), Arc::clone(&start), |config| {
-        config.prefs.pause_between_sides = true;
+        config.prefs.pause_between_sides = false;
     });
 
     start.wait();
@@ -846,12 +846,12 @@ fn update_serializes_concurrent_edits() {
 
     let final_config = handle.config().clone();
     assert_eq!(final_config.store_name, "Renamed Library");
-    assert!(final_config.prefs.pause_between_sides);
+    assert!(!final_config.prefs.pause_between_sides);
 
     let yaml =
         parse_config(&std::fs::read_to_string(library_path.join("config.yaml")).unwrap()).unwrap();
     assert_eq!(yaml.identity.library_name, "Renamed Library");
-    assert!(yaml.prefs.pause_between_sides);
+    assert!(!yaml.prefs.pause_between_sides);
 }
 
 #[test]
