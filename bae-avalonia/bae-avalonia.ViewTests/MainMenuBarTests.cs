@@ -254,6 +254,7 @@ public sealed class MainMenuBarTests
 
         var commands = new PlaybackCommands(
             playback,
+            new QueueService(),
             fakes.Store,
             settings,
             () => fakes.AlbumCount,

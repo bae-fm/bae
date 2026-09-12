@@ -442,6 +442,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>إيقاف مؤقت</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>كتم</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>إلغاء الكتم</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>مستوى الصوت</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>موضع التشغيل</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>المقطوعة السابقة</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>المقطوعة التالية</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>التكرار: متوقف</value></data>

@@ -442,6 +442,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>השהה</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>השתק</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>בטל השתקה</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>עוצמה</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>מיקום הניגון</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>הרצועה הקודמת</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>הרצועה הבאה</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>חזרה: כבויה</value></data>

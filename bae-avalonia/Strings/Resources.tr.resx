@@ -442,6 +442,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>Duraklat</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Sessiz</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>Sesi aç</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>Ses düzeyi</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>Çalma konumu</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>Önceki parça</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>Sonraki parça</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Tekrar: kapalı</value></data>

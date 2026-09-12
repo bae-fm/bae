@@ -1,6 +1,5 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
@@ -13,8 +12,7 @@ namespace Bae.Desktop;
 // mode dropdown with sort controls opposite, over the grid) or the import
 // section, swapped by the switcher; a docked queue sidebar; and a now-playing
 // bar along the bottom. Every color reads a theme brush, so the shell
-// renders in either OS appearance. The live now-playing transport arrives with a
-// later step; this is the shell the story checks.
+// renders in either OS appearance.
 internal sealed class MainShellView : UserControl, System.IDisposable
 {
     private readonly AppService _app;
@@ -22,7 +20,7 @@ internal sealed class MainShellView : UserControl, System.IDisposable
     private readonly ImportSectionView _importSection;
     private readonly QueuePane _queuePane;
     private readonly ArtworkLoadingBanner _artworkLoadingBanner;
-    private Button? _queueButton;
+    private readonly Button _queueButton;
 
     // The two switcher segments, restyled as the active section changes.
     private Button _librarySegment = null!;
@@ -32,10 +30,14 @@ internal sealed class MainShellView : UserControl, System.IDisposable
 
     public MainShellView(
         AppService app,
+        PlaybackCommands playback,
         ReleaseActionDialogs dialogs,
         ImportDialogs importDialogs)
     {
         _app = app;
+        _queueButton = Icons.IconButton(Icons.Queue, 17, "BaeTextSecondaryBrush", 32);
+        Avalonia.Automation.AutomationProperties.SetName(_queueButton, Loc.Chrome("queue.title"));
+        ToolTip.SetTip(_queueButton, Loc.Chrome("queue.title"));
 
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
         SetBg(root, "BaeBackgroundBrush");
@@ -71,18 +73,21 @@ internal sealed class MainShellView : UserControl, System.IDisposable
         // life. Seeded before the bar is built so its controls start correct.
         _app.SettingsStore.Reload();
 
-        var bar = BuildNowPlayingBar();
+        var bar = new NowPlayingBar(
+            _app.PlaybackStore,
+            _app.SettingsStore,
+            playback,
+            _app.Images,
+            albumId => _ = OpenAlbum(albumId),
+            new CastButton(_app.CastStore, _app.SettingsStore),
+            _queueButton);
         Grid.SetRow(bar, 3);
         root.Children.Add(bar);
 
         Content = root;
 
         _queuePane = new QueuePane(_app, queueHost);
-        if (_queueButton is not null)
-        {
-            _queuePane.AttachToggle(_queueButton);
-        }
-
+        _queuePane.AttachToggle(_queueButton);
     }
 
     public void Dispose()
@@ -235,120 +240,6 @@ internal sealed class MainShellView : UserControl, System.IDisposable
         row.Children.Add(placeholder);
         field.Child = row;
         return field;
-    }
-
-    // ── Idle now-playing bar ─────────────────────────────────────────────────
-    private Control BuildNowPlayingBar()
-    {
-        var bar = new Border { BorderThickness = new Thickness(0, 1, 0, 0) };
-        SetBg(bar, "BaeSurfaceBrush");
-        SetBorder(bar, "BaeHairlineBrush");
-
-        var grid = new Grid
-        {
-            Margin = new Thickness(20, 12),
-            VerticalAlignment = VerticalAlignment.Center,
-            ColumnDefinitions = new ColumnDefinitions("*,Auto,*"),
-        };
-
-        // Left: cover placeholder and the (empty, idle) title/artist.
-        var left = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 12,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        var cover = new Border { Width = 54, Height = 54, CornerRadius = new CornerRadius(10) };
-        SetBg(cover, "BaeElevatedBrush");
-        left.Children.Add(cover);
-        Grid.SetColumn(left, 0);
-        grid.Children.Add(left);
-
-        // Center: transport row above the scrubber row, fixed width.
-        var center = new StackPanel { Width = 460, VerticalAlignment = VerticalAlignment.Center, Spacing = 6 };
-        var transport = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 22,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        transport.Children.Add(Icons.IconButton(Icons.Shuffle, 16, "BaeTextSecondaryBrush", 30));
-        transport.Children.Add(Icons.IconButton(Icons.SkipPrevious, 20, "BaeTextPrimaryBrush", 34));
-        transport.Children.Add(BuildPlayButton());
-        transport.Children.Add(Icons.IconButton(Icons.SkipNext, 20, "BaeTextPrimaryBrush", 34));
-        transport.Children.Add(Icons.IconButton(Icons.Repeat, 16, "BaeTextSecondaryBrush", 30));
-        center.Children.Add(transport);
-        center.Children.Add(BuildScrubber());
-        Grid.SetColumn(center, 1);
-        grid.Children.Add(center);
-
-        // Right: cast, queue, mute stand-in, volume — trailing-aligned.
-        var right = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        right.Children.Add(new CastButton(_app.CastStore, _app.SettingsStore));
-        _queueButton = Icons.IconButton(Icons.Queue, 17, "BaeTextSecondaryBrush", 32);
-        right.Children.Add(_queueButton);
-        right.Children.Add(Icons.IconButton(Icons.VolumeUp, 16, "BaeTextSecondaryBrush", 30));
-        var volume = new Slider { Minimum = 0, Maximum = 1, Value = 0.7, Width = 96, VerticalAlignment = VerticalAlignment.Center };
-        right.Children.Add(volume);
-        Grid.SetColumn(right, 2);
-        grid.Children.Add(right);
-
-        bar.Child = grid;
-        return bar;
-    }
-
-    private static Control BuildPlayButton()
-    {
-        var circle = new Border
-        {
-            Width = 48,
-            Height = 48,
-            CornerRadius = new CornerRadius(24),
-        };
-        SetBg(circle, "BaeTileBrush");
-        var glyph = Icons.Glyph(Icons.Play, 20, "BaeTextPrimaryBrush");
-        glyph.HorizontalAlignment = HorizontalAlignment.Center;
-        glyph.VerticalAlignment = VerticalAlignment.Center;
-        circle.Child = glyph;
-        return circle;
-    }
-
-    private static Control BuildScrubber()
-    {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), ColumnSpacing = 11 };
-        var elapsed = TimeLabel("0:00");
-        elapsed.TextAlignment = TextAlignment.Right;
-        Grid.SetColumn(elapsed, 0);
-        grid.Children.Add(elapsed);
-
-        var progress = new Slider { Minimum = 0, Maximum = 1, Value = 0, VerticalAlignment = VerticalAlignment.Center };
-        Grid.SetColumn(progress, 1);
-        grid.Children.Add(progress);
-
-        var duration = TimeLabel("0:00");
-        Grid.SetColumn(duration, 2);
-        grid.Children.Add(duration);
-        return grid;
-    }
-
-    private static TextBlock TimeLabel(string text)
-    {
-        var label = new TextBlock
-        {
-            Text = text,
-            MinWidth = 34,
-            VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 11.5,
-            FontWeight = FontWeight.SemiBold,
-        };
-        label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        return label;
     }
 
     private static void SetBg(Border border, string key) =>

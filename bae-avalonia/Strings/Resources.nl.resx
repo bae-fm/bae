@@ -442,6 +442,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>Pauze</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Dempen</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>Dempen uit</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>Volume</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>Afspeelpositie</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>Vorig nummer</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>Volgend nummer</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Herhalen: uit</value></data>

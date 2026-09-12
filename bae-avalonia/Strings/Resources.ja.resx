@@ -442,6 +442,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>一時停止</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>ミュート</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>ミュート解除</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>音量</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>再生位置</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>前のトラック</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>次のトラック</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>リピート: オフ</value></data>

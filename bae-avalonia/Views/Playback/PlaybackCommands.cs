@@ -19,6 +19,7 @@ namespace Bae.Desktop;
 internal sealed class PlaybackCommands
 {
     private readonly PlaybackService _playback;
+    private readonly QueueService _queue;
     private readonly PlaybackStore _store;
     private readonly SettingsStore _settings;
     private readonly Func<int> _albumCount;
@@ -28,6 +29,7 @@ internal sealed class PlaybackCommands
 
     public PlaybackCommands(
         PlaybackService playback,
+        QueueService queue,
         PlaybackStore store,
         SettingsStore settings,
         Func<int> albumCount,
@@ -36,6 +38,7 @@ internal sealed class PlaybackCommands
         Action<string> showError)
     {
         _playback = playback;
+        _queue = queue;
         _store = store;
         _settings = settings;
         _albumCount = albumCount;
@@ -43,6 +46,20 @@ internal sealed class PlaybackCommands
         _writeRestoreOnLaunch = writeRestoreOnLaunch;
         _showError = showError;
     }
+
+    /// <summary>Compose the set around one open library: the transport and queue
+    /// it sends to, the stores it reads, and the device-local restore-on-launch
+    /// preference on disk. The composition reaches for those; the commands
+    /// themselves only ask what they were handed.</summary>
+    public static PlaybackCommands ForApp(AppService app) => new(
+        app.Playback,
+        app.Queue,
+        app.PlaybackStore,
+        app.SettingsStore,
+        () => app.LibraryBrowserStore.Albums.TotalCount,
+        PersistPlaybackStore.Load,
+        PersistPlaybackStore.Save,
+        line => app.ShowError(Loc.Chrome("error.playback_title"), line));
 
     /// <summary>Pause what is playing, or resume what is paused. Stopped means
     /// the now-playing slot is empty, so there is nothing to resume and the
@@ -64,10 +81,23 @@ internal sealed class PlaybackCommands
 
     public void NextTrack() => Dispatch("next track", _playback.NextTrack);
 
+    /// <summary>Move the playhead to a fraction of the track's length; the seek
+    /// bar hands over where it was dropped.</summary>
+    public void SeekByRatio(double ratio) => Dispatch("seek", () => _playback.SeekByRatio(ratio));
+
     public void PreviousTrack() => Dispatch("previous track", _playback.PreviousTrack);
 
     /// <summary>Mute what is audible, or unmute what is muted.</summary>
     public void ToggleMute() => Dispatch("mute", () => _playback.SetMuted(!_store.IsMuted));
+
+    /// <summary>Set the output level in [0, 1]. The slider hands over where it
+    /// stands, so this takes the level rather than a step.</summary>
+    public void SetVolume(float volume) => Dispatch("set volume", () => _playback.SetVolume(volume));
+
+    /// <summary>Play the current context in shuffled or sequential order. With
+    /// no context playing there is no order to set, and the control that offers
+    /// it is unavailable.</summary>
+    public void SetShuffle(bool shuffled) => Dispatch("set shuffle", () => _queue.SetShuffle(shuffled));
 
     public BridgeRepeatMode RepeatMode => _store.RepeatMode;
 
@@ -88,6 +118,21 @@ internal sealed class PlaybackCommands
         if (CanShuffleLibrary)
         {
             Dispatch("shuffle library", _playback.PlayLibraryShuffled);
+        }
+    }
+
+    /// <summary>Whether the seek bar's leading label counts down the time
+    /// remaining instead of counting up the time elapsed. A synced preference
+    /// read from the settings mirror, which is null until the first snapshot
+    /// arrives.</summary>
+    public bool ShowRemainingTime => _settings.Current?.ShowRemainingTime == true;
+
+    public void ToggleShowRemainingTime()
+    {
+        var (current, error) = _playback.SetShowRemainingTime(!ShowRemainingTime);
+        if (current && error is not null)
+        {
+            _showError(error);
         }
     }
 

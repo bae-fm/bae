@@ -469,6 +469,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>Pauză</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Fără sunet</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>Activează sunetul</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>Volum</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>Poziția redării</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>Piesa anterioară</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>Piesa următoare</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Repetare: oprită</value></data>

@@ -469,6 +469,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>Παύση</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Σίγαση</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>Κατάργηση σίγασης</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>Ένταση</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>Θέση αναπαραγωγής</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>Προηγούμενο κομμάτι</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>Επόμενο κομμάτι</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Επανάληψη: ανενεργή</value></data>

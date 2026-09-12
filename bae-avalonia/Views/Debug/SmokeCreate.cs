@@ -70,6 +70,7 @@ internal static class SmokeCreate
             var lightbox = new LightboxOverlay();
             var shell = new MainShellView(
                 app,
+                PlaybackCommands.ForApp(app),
                 new ReleaseActionDialogs(app, modalHost, lightbox),
                 new ImportDialogs(modalHost, lightbox, app.Images, _ => System.Threading.Tasks.Task.CompletedTask));
             var root = new Border { Width = 1350, Height = 850, Child = shell };

@@ -469,6 +469,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>Pausa</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Silenciar</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>Repor som</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>Volume</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>Posição de reprodução</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>Faixa anterior</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>Faixa seguinte</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Repetir: desligado</value></data>

@@ -299,6 +299,7 @@ internal static class ShotCapture
         var lightbox = new LightboxOverlay();
         return new MainShellView(
             app,
+            PlaybackCommands.ForApp(app),
             new ReleaseActionDialogs(app, modalHost, lightbox),
             new ImportDialogs(modalHost, lightbox, app.Images, _ => Task.CompletedTask));
     }

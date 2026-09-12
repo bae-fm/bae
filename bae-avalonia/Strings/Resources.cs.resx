@@ -442,6 +442,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>Pozastavit</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Ztlumit</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>Zrušit ztlumení</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>Hlasitost</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>Pozice přehrávání</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>Předchozí skladba</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>Další skladba</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Opakování: vypnuto</value></data>

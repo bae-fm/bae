@@ -254,11 +254,13 @@ public sealed class PlaybackCommandsTests
         PlaybackStore store,
         SettingsStore? settings = null,
         int albumCount = 1,
+        QueueService? queue = null,
         Func<bool>? readRestoreOnLaunch = null,
         Action<bool>? writeRestoreOnLaunch = null,
         Action<string>? showError = null) =>
         new(
             playback,
+            queue ?? new QueueService(),
             store,
             settings ?? SettingsMirror(pauseBetweenSides: false),
             () => albumCount,

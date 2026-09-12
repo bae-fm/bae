@@ -442,6 +442,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>暂停</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>静音</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>取消静音</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>音量</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>播放位置</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>上一曲</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>下一曲</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>重复：关闭</value></data>

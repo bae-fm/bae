@@ -469,6 +469,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>Paus</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Ljud av</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>Ljud på</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>Volym</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>Uppspelningsposition</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>Föregående spår</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>Nästa spår</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Upprepa: av</value></data>

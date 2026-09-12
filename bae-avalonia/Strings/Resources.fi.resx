@@ -469,6 +469,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>Tauko</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Mykistä</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>Poista mykistys</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>Äänenvoimakkuus</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>Toistokohta</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>Edellinen raita</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>Seuraava raita</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Uudelleentoisto: pois</value></data>

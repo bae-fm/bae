@@ -442,6 +442,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>일시 정지</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>음소거</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>음소거 해제</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>음량</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>재생 위치</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>이전 트랙</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>다음 트랙</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>반복: 끔</value></data>

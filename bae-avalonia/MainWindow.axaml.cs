@@ -12,9 +12,8 @@ namespace Bae.Desktop;
 // The library window: the shell over one open library. Built only when a library
 // actually opens (App.OpenLibrary), it composes an AppService around the already-
 // open session, routes core's UI events into it, and hosts the shell. Native
-// window chrome, sized to the story-3 shell. The library grid, queue, and live
-// transport arrive with the parity port; this is the empty-library shell.
-// Placement persistence lives in MainWindow.WindowBounds.cs.
+// window chrome, sized to the story-3 shell. Placement persistence lives in
+// MainWindow.WindowBounds.cs.
 internal sealed partial class MainWindow : Window
 {
     private readonly SessionStore _session;
@@ -55,6 +54,9 @@ internal sealed partial class MainWindow : Window
         // the shell is built just below, so the callback reads the field at call time.
         var importDialogs = new ImportDialogs(modalHost, lightbox, _app.Images, albumId => _shell.OpenAlbum(albumId));
         var storageDialog = new StorageDialog(_app, modalHost);
+        // One command set behind every playback control: the menu bar's items and
+        // their shortcuts, and the now-playing bar's transport.
+        var playback = PlaybackCommands.ForApp(_app);
         // The library manager (switch / rename / add) and the settings window's
         // Lock + Remove sections both drive the coordinator's window swap, so the
         // switch and close callbacks are threaded to each.
@@ -65,21 +67,14 @@ internal sealed partial class MainWindow : Window
         // so the coordinator owns that path too.
         var settingsWindow = new SettingsWindow(
             _app, appearance, updates, closeLibrary, switchLibrary, applyUpdateAndRestart);
-        _shell = new MainShellView(_app, dialogs, importDialogs);
+        _shell = new MainShellView(_app, playback, dialogs, importDialogs);
 
         // The menu bar over the shell, carrying the library commands and the
         // playback transport. Its shortcuts, and the library-switch digits, are
         // the window's key bindings, so every shortcut in the app is declared the
         // same way.
         var menuBar = new MainMenuBar(
-            new PlaybackCommands(
-                _app.Playback,
-                _app.PlaybackStore,
-                _app.SettingsStore,
-                () => _app.LibraryBrowserStore.Albums.TotalCount,
-                PersistPlaybackStore.Load,
-                PersistPlaybackStore.Save,
-                line => _app.ShowError(Loc.Chrome("error.playback_title"), line)),
+            playback,
             openLibraries: () => _ = librariesDialog.Show(),
             openStorage: () => _ = storageDialog.Show(),
             openSettings: settingsWindow.Show,

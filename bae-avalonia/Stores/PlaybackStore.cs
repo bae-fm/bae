@@ -6,14 +6,20 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 // The now-playing bar's display fields for a playing or paused track. PauseReason
-// is null while playing and carries the pause reason while paused (which may
-// prompt the side-ended dialog).
+// is null while playing and carries the pause reason while paused.
 internal sealed record NowPlayingBarTrack(
     string Title,
     string Artist,
     BridgeImageRef? CoverImage,
     bool IsPlaying,
-    BridgePlaybackPauseReason? PauseReason);
+    BridgePlaybackPauseReason? PauseReason)
+{
+    // The side-break prompt core composed for this pause, or null when playback
+    // is not waiting at a side boundary. The bar shows its line where the artist
+    // names go and offers the continue that resumes past the break.
+    public BridgeSidePausePrompt? SidePausePrompt =>
+        PauseReason is BridgePlaybackPauseReason.SideEnded sideEnded ? sideEnded.Prompt : null;
+}
 
 // The effective position to render on the seek bar (already resolved between a
 // live progress update and a pending seek projection).
@@ -86,6 +92,14 @@ internal sealed class PlaybackStore
     // mode as an absolute command target. Written by ApplyRepeat from the retained
     // playback value.
     public BridgeRepeatMode RepeatMode { get; private set; } = BridgeRepeatMode.Off;
+
+    // Whether core is still preparing the track the bar shows. True from the
+    // loading transition until core reports the track playing or paused; the
+    // seek bar has no position to drop a seek on until then. A snapshot rather
+    // than an event payload: LoadingStarted, NowPlayingChanged, and
+    // PlaybackStopped already fire at every moment it changes, and a control
+    // attaching between them reads it here.
+    public bool IsLoading { get; private set; }
 
     public event Action<NowPlayingBarTrack>? NowPlayingChanged;
     public event Action? PlaybackStopped;
@@ -243,6 +257,7 @@ internal sealed class PlaybackStore
     {
         _nowPlaying = new NowPlayingState(albumId, trackId, KeptPositionFor(trackId));
         PlayState = TransportPlayState.Playing;
+        IsLoading = false;
         NowPlayingChanged?.Invoke(new NowPlayingBarTrack(trackTitle, artistNames, coverImage, true, null));
     }
 
@@ -250,6 +265,7 @@ internal sealed class PlaybackStore
     {
         _nowPlaying = new NowPlayingState(albumId, trackId, KeptPositionFor(trackId));
         PlayState = TransportPlayState.Paused;
+        IsLoading = false;
         NowPlayingChanged?.Invoke(new NowPlayingBarTrack(trackTitle, artistNames, coverImage, false, reason));
     }
 
@@ -258,6 +274,7 @@ internal sealed class PlaybackStore
         _nowPlaying = null;
         _lastSeekRevision = 0;
         PlayState = TransportPlayState.Stopped;
+        IsLoading = false;
         PlaybackStopped?.Invoke();
     }
 
@@ -299,6 +316,8 @@ internal sealed class PlaybackStore
     // renders it.
     public void ApplyLoading(string trackId, BridgeLoadingTrackInfo? track)
     {
+        PlayState = TransportPlayState.Playing;
+        IsLoading = true;
         if (track is { } target)
         {
             _nowPlaying = new NowPlayingState(target.AlbumId, trackId, KeptPositionFor(trackId));
@@ -309,7 +328,6 @@ internal sealed class PlaybackStore
         {
             _nowPlaying = PlaybackPositionModel.BeginLoading(_nowPlaying, trackId);
         }
-        PlayState = TransportPlayState.Playing;
         LoadingStarted?.Invoke();
     }
 
@@ -399,6 +417,7 @@ internal sealed class PlaybackStore
         Volume = 1.0f;
         RepeatMode = BridgeRepeatMode.Off;
         PlayState = TransportPlayState.Stopped;
+        IsLoading = false;
     }
 
     private void CancelContextPages()

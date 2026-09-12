@@ -442,6 +442,8 @@
   <data name="nowplaying.pause" xml:space="preserve"><value>Пауза</value></data>
   <data name="nowplaying.mute" xml:space="preserve"><value>Вимкнути звук</value></data>
   <data name="nowplaying.unmute" xml:space="preserve"><value>Увімкнути звук</value></data>
+  <data name="nowplaying.volume" xml:space="preserve"><value>Гучність</value></data>
+  <data name="nowplaying.position" xml:space="preserve"><value>Позиція відтворення</value></data>
   <data name="nowplaying.previous" xml:space="preserve"><value>Попередній трек</value></data>
   <data name="nowplaying.next" xml:space="preserve"><value>Наступний трек</value></data>
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Повтор: вимкнено</value></data>
