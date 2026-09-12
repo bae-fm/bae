@@ -116,7 +116,6 @@ struct ReleaseAlbumIdentityEditor<Context: View, SourceAudio: View>: View {
                 )
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
-                .fixedSize(horizontal: true, vertical: false)
                 .modifier(FieldChrome(focused: false, style: .inline))
                 Text(verbatim: "\u{00b7}")
                     .font(.system(size: 14))
@@ -249,6 +248,56 @@ extension BridgeArtistAssignment {
         case .new: String(localized: "New")
         }
     }
+
+    var isNew: Bool {
+        if case .new = self { return true }
+        return false
+    }
+}
+
+/// What a closed artist field says about a whole set of assignments: the names
+/// as one localized list, and one badge for how the set stands to the library
+/// — every name already in it, every name new to it, or how many of them are
+/// new. One assignment summarizes to that assignment's own name and badge.
+struct ArtistAssignmentsSummary: Equatable {
+    let names: String
+    let identityLabel: String
+
+    /// `nil` when nothing is assigned: the field shows its placeholder, which
+    /// is not a summary of anything.
+    init?(assignments: [BridgeArtistAssignment]) {
+        guard !assignments.isEmpty else { return nil }
+        names = ListFormatter.localizedString(
+            byJoining: assignments.map(\.displayName)
+        )
+        let newCount = assignments.filter(\.isNew).count
+        identityLabel =
+            if newCount == 0 {
+                String(localized: "Library")
+            }
+            else if newCount == assignments.count {
+                String(localized: "New")
+            }
+            else {
+                String(localized: "\(newCount) new")
+            }
+    }
+}
+
+/// The capsule naming how a name — or a whole field's worth of them — stands
+/// to the library.
+struct ArtistIdentityBadge: View {
+    let label: String
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: 9.5, weight: .medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(.quaternary, in: Capsule())
+            .fixedSize()
+    }
 }
 
 struct ArtistAssignmentLabel: View {
@@ -259,13 +308,7 @@ struct ArtistAssignmentLabel: View {
             Text(assignment.displayName)
                 .lineLimit(1)
                 .truncationMode(.middle)
-            Text(assignment.identityLabel)
-                .font(.system(size: 9.5, weight: .medium))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(.quaternary, in: Capsule())
-                .fixedSize()
+            ArtistIdentityBadge(label: assignment.identityLabel)
         }
     }
 }
@@ -280,8 +323,17 @@ struct ArtistSearchResultLabel: View {
 }
 
 struct ArtistAssignmentsField: View {
+    /// How wide the closed field draws. On a header line it is as wide as the
+    /// value it shows, so the fields after it stay beside it; in a table it
+    /// spans its column, so the chevrons line up down the rows.
+    enum Width {
+        case value
+        case column
+    }
+
     let assignments: [BridgeArtistAssignment]
     let placeholder: String
+    var width: Width = .value
     var inheritsAlbumArtists = false
     var onUseAlbumArtists: (() -> Void)?
     let onChange: ([BridgeArtistAssignment]) -> Void
@@ -307,7 +359,9 @@ struct ArtistAssignmentsField: View {
         } label: {
             HStack(spacing: 6) {
                 fieldValue
-                Spacer(minLength: 0)
+                if width == .column {
+                    Spacer(minLength: 0)
+                }
                 Image(systemName: "chevron.down")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.tertiary)
@@ -329,18 +383,17 @@ struct ArtistAssignmentsField: View {
         if inheritsAlbumArtists {
             Text("Album artist").foregroundStyle(.tertiary)
         }
-        else if assignments.isEmpty {
-            Text(placeholder).foregroundStyle(.tertiary)
+        else if let summary = ArtistAssignmentsSummary(assignments: assignments)
+        {
+            HStack(spacing: 5) {
+                Text(summary.names)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                ArtistIdentityBadge(label: summary.identityLabel)
+            }
         }
         else {
-            HStack(spacing: 8) {
-                ForEach(Array(assignments.enumerated()), id: \.offset) {
-                    _,
-                    assignment in
-                    ArtistAssignmentLabel(assignment: assignment)
-                }
-            }
-            .lineLimit(1)
+            Text(placeholder).foregroundStyle(.tertiary)
         }
     }
 
@@ -455,6 +508,29 @@ struct ArtistAssignmentsField: View {
         @Previewable
         @State
         var form = PreviewData.editMetadataDraft(trackCount: 3)
+        ReleaseMetadataHeader(
+            values: form,
+            writer: .binding($form),
+            editingCommands: EditingCommitCommands(),
+            cover: {
+                ImageView(imageRef: nil, pointSize: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            },
+            context: { EmptyView() },
+            sourceAudio: { EmptyView() }
+        )
+        .padding(24)
+        .frame(width: 900, height: 360)
+        .background(Theme.background)
+        .environment(PreviewData.artistAssignmentsLibrary())
+        .environment(ImageStore.stub())
+        .environment(UiStore())
+    }
+
+    #Preview("Release metadata header, a compilation's artists") {
+        @Previewable
+        @State
+        var form = PreviewData.manyAlbumArtistsDraft()
         ReleaseMetadataHeader(
             values: form,
             writer: .binding($form),

@@ -54,6 +54,7 @@ struct ReleaseMetadataTrackRow: View {
         ArtistAssignmentsField(
             assignments: explicitArtists,
             placeholder: coreString("ui.import.mapping.column.artist"),
+            width: .column,
             inheritsAlbumArtists: inheritsAlbumArtists,
             onUseAlbumArtists: {
                 updateArtists(.albumArtists)

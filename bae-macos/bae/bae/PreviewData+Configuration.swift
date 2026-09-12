@@ -147,6 +147,19 @@
             )
         }
 
+        /// A draft credited to a compilation's worth of album artists, most
+        /// of them already in the library and two of them new, so the header
+        /// has to summarize rather than list.
+        static func manyAlbumArtistsDraft() -> BridgeRawReleaseEdit {
+            var draft = editMetadataDraft(trackCount: 3)
+            draft.albumArtistAssignments =
+                (1...10)
+                .map { n in
+                    existingArtist("Artist Name \(n)", artistId: "artist-\(n)")
+                } + [newArtist("New Artist One"), newArtist("New Artist Two")]
+            return draft
+        }
+
         static func releaseEditSeed(trackCount: Int) -> BridgeReleaseEditSeed {
             let edit = editMetadataDraft(trackCount: trackCount)
             let format = BridgeAudioFormat(
