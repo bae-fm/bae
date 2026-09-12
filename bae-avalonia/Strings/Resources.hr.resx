@@ -561,4 +561,15 @@
   <data name="import.search.identification_results" xml:space="preserve">
     <value>Rezultati prepoznavanja</value>
   </data>
+  <data name="menu.library.title" xml:space="preserve"><value>Fonoteka</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Reprodukcija</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Reproduciraj / pauziraj</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Sljedeća skladba</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Prethodna skladba</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Utišaj</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Promijeni način ponavljanja</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Ponavljanje</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Isključeno</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Sve</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Jedna</value></data>
 </root>

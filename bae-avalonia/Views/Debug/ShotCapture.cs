@@ -297,16 +297,10 @@ internal static class ShotCapture
             settings: settings);
         var modalHost = new ModalHost();
         var lightbox = new LightboxOverlay();
-        Func<Task> closeLibrary = () => Task.CompletedTask;
-        Func<string, Task> switchLibrary = _ => Task.CompletedTask;
         return new MainShellView(
             app,
             new ReleaseActionDialogs(app, modalHost, lightbox),
-            new ImportDialogs(modalHost, lightbox, app.Images, _ => Task.CompletedTask),
-            new StorageDialog(app, modalHost),
-            new SettingsWindow(app, new AppearanceStore(preferences, _ => { }), new UpdateService(), closeLibrary, switchLibrary, () => Task.CompletedTask),
-            new LibrariesDialog(app, modalHost, switchLibrary),
-            closeLibrary);
+            new ImportDialogs(modalHost, lightbox, app.Images, _ => Task.CompletedTask));
     }
 
     private static Control BuildImportQueue(

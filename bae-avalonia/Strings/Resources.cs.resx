@@ -561,4 +561,15 @@
   <data name="import.search.identification_results" xml:space="preserve">
     <value>Výsledky rozpoznání</value>
   </data>
+  <data name="menu.library.title" xml:space="preserve"><value>Knihovna</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Přehrávání</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Přehrát / pozastavit</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Další skladba</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Předchozí skladba</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Ztlumit</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Přepnout režim opakování</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Opakování</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Vypnuto</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Vše</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Jedna</value></data>
 </root>

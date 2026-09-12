@@ -8,20 +8,16 @@ using Avalonia.Media;
 namespace Bae.Desktop;
 
 // The library shell (desktop story 3 in its empty state): the chrome around an
-// open library. Across the top a Library/Import switcher, a search field, and a
-// settings gear; below, either the library browser (a large bold mode heading
-// that is itself a mode dropdown with sort controls opposite, over the grid) or
-// the import section, swapped by the switcher; a docked queue sidebar; and a
-// now-playing bar along the bottom. Every color reads a theme brush, so the shell
+// open library. Across the top a Library/Import switcher and a search field;
+// below, either the library browser (a large bold mode heading that is itself a
+// mode dropdown with sort controls opposite, over the grid) or the import
+// section, swapped by the switcher; a docked queue sidebar; and a now-playing
+// bar along the bottom. Every color reads a theme brush, so the shell
 // renders in either OS appearance. The live now-playing transport arrives with a
 // later step; this is the shell the story checks.
 internal sealed class MainShellView : UserControl, System.IDisposable
 {
     private readonly AppService _app;
-    private readonly StorageDialog _storageDialog;
-    private readonly SettingsWindow _settingsWindow;
-    private readonly LibrariesDialog _librariesDialog;
-    private readonly System.Func<System.Threading.Tasks.Task> _closeLibrary;
     private readonly LibraryBrowserView _browser;
     private readonly ImportSectionView _importSection;
     private readonly QueuePane _queuePane;
@@ -37,17 +33,9 @@ internal sealed class MainShellView : UserControl, System.IDisposable
     public MainShellView(
         AppService app,
         ReleaseActionDialogs dialogs,
-        ImportDialogs importDialogs,
-        StorageDialog storageDialog,
-        SettingsWindow settingsWindow,
-        LibrariesDialog librariesDialog,
-        System.Func<System.Threading.Tasks.Task> closeLibrary)
+        ImportDialogs importDialogs)
     {
         _app = app;
-        _storageDialog = storageDialog;
-        _settingsWindow = settingsWindow;
-        _librariesDialog = librariesDialog;
-        _closeLibrary = closeLibrary;
 
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
         SetBg(root, "BaeBackgroundBrush");
@@ -163,7 +151,8 @@ internal sealed class MainShellView : UserControl, System.IDisposable
         grid.Children.Add(pill);
         SetActiveSection(import: false);
 
-        // Right cluster: the search field and the settings gear.
+        // Right cluster: the search field. The library and playback commands
+        // live in the window's menu bar.
         var right = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -172,38 +161,10 @@ internal sealed class MainShellView : UserControl, System.IDisposable
             VerticalAlignment = VerticalAlignment.Center,
         };
         right.Children.Add(BuildSearchField());
-        // The gear opens Settings on click; its right-click flyout carries the
-        // commands macOS keeps in its menu bar — Storage today, the rest as their
-        // flows migrate.
-        var gear = Icons.IconButton(Icons.Gear, 18, "BaeTextSecondaryBrush", 34);
-        gear.Click += (_, _) => _settingsWindow.Show();
-        gear.ContextFlyout = BuildGearMenu();
-        right.Children.Add(gear);
         grid.Children.Add(right);
 
         strip.Child = grid;
         return strip;
-    }
-
-    private MenuFlyout BuildGearMenu()
-    {
-        var menu = new MenuFlyout();
-
-        var libraries = new MenuItem { Header = Loc.Chrome("toolbar.libraries") };
-        libraries.Click += (_, _) => _ = _librariesDialog.Show();
-        menu.Items.Add(libraries);
-
-        var storage = new MenuItem { Header = Loc.Chrome("toolbar.storage") };
-        storage.Click += (_, _) => _ = _storageDialog.Show();
-        menu.Items.Add(storage);
-
-        menu.Items.Add(new Separator());
-
-        var close = new MenuItem { Header = Loc.Chrome("toolbar.close_library") };
-        close.Click += (_, _) => _ = _closeLibrary();
-        menu.Items.Add(close);
-
-        return menu;
     }
 
     private static (Button Segment, TextBlock Label) BuildSegment(string text)

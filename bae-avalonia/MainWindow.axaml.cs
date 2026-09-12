@@ -20,7 +20,6 @@ internal sealed partial class MainWindow : Window
     private readonly SessionStore _session;
     private readonly AppService _app;
     private readonly MainShellView _shell;
-    private readonly Func<Task> _closeLibrary;
     private readonly Func<string, Task> _switchLibrary;
 
     public MainWindow(
@@ -32,7 +31,6 @@ internal sealed partial class MainWindow : Window
         Func<string, Task> switchLibrary,
         Func<Task> applyUpdateAndRestart)
     {
-        _closeLibrary = closeLibrary;
         _switchLibrary = switchLibrary;
         _session = session;
         _app = new AppService(session, Dispatcher.UIThread, mediaControl);
@@ -62,15 +60,49 @@ internal sealed partial class MainWindow : Window
         // switch and close callbacks are threaded to each.
         var librariesDialog = new LibrariesDialog(_app, modalHost, switchLibrary);
         // The settings window is a real window (like macOS's Settings scene) with
-        // its own modal host for its sub-dialogs; the gear opens it. Its updates
-        // section drives the process-wide update service, and applying a staged
-        // update exits the app, so the coordinator owns that path too.
+        // its own modal host for its sub-dialogs. Its updates section drives the
+        // process-wide update service, and applying a staged update exits the app,
+        // so the coordinator owns that path too.
         var settingsWindow = new SettingsWindow(
             _app, appearance, updates, closeLibrary, switchLibrary, applyUpdateAndRestart);
-        _shell = new MainShellView(
-            _app, dialogs, importDialogs, storageDialog, settingsWindow, librariesDialog, closeLibrary);
+        _shell = new MainShellView(_app, dialogs, importDialogs);
+
+        // The menu bar over the shell, carrying the library commands and the
+        // playback transport. Its shortcuts, and the library-switch digits, are
+        // the window's key bindings, so every shortcut in the app is declared the
+        // same way.
+        var menuBar = new MainMenuBar(
+            new PlaybackCommands(
+                _app.Playback,
+                _app.PlaybackStore,
+                _app.SettingsStore,
+                () => _app.LibraryBrowserStore.Albums.TotalCount,
+                PersistPlaybackStore.Load,
+                PersistPlaybackStore.Save,
+                line => _app.ShowError(Loc.Chrome("error.playback_title"), line)),
+            openLibraries: () => _ = librariesDialog.Show(),
+            openStorage: () => _ = storageDialog.Show(),
+            openSettings: settingsWindow.Show,
+            closeLibrary: () => _ = closeLibrary());
+        foreach (var binding in menuBar.WindowKeyBindings)
+        {
+            KeyBindings.Add(binding);
+        }
+        // Ctrl+1..9 switches to the nth library on this device, from the number
+        // row or the numpad.
+        for (var digit = 1; digit <= 9; digit++)
+        {
+            KeyBindings.Add(SwitchLibraryBinding(Key.D1 + (digit - 1), digit));
+            KeyBindings.Add(SwitchLibraryBinding(Key.NumPad1 + (digit - 1), digit));
+        }
+
+        var shellWithMenu = new DockPanel();
+        DockPanel.SetDock(menuBar.View, Dock.Top);
+        shellWithMenu.Children.Add(menuBar.View);
+        shellWithMenu.Children.Add(_shell);
+
         var root = new Panel();
-        root.Children.Add(_shell);
+        root.Children.Add(shellWithMenu);
         root.Children.Add(modalHost);
         root.Children.Add(lightbox);
         Content = root;
@@ -96,49 +128,27 @@ internal sealed partial class MainWindow : Window
             _shell.Dispose();
             _app.Dispose();
         };
-
-        // Ctrl+1..9 switches to the nth library on this device; Ctrl+Shift+W closes
-        // the library back to the welcome chooser.
-        KeyDown += OnKeyDown;
     }
 
-    private async void OnKeyDown(object? sender, KeyEventArgs e)
+    private KeyBinding SwitchLibraryBinding(Key key, int digit) => new()
     {
-        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
-        {
-            return;
-        }
+        Gesture = new KeyGesture(key, KeyModifiers.Control),
+        Command = new MenuCommand(() => _ = SwitchToLibrary(digit)),
+    };
 
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Shift) && e.Key == Key.W)
-        {
-            e.Handled = true;
-            await _closeLibrary();
-            return;
-        }
-
-        if (SwitchDigit(e.Key) is not { } digit)
-        {
-            return;
-        }
+    // Switch to the nth library this device holds, skipping the ones that failed
+    // to load. A digit past the end names no library and does nothing.
+    private async Task SwitchToLibrary(int digit)
+    {
         var libraries = LibraryDiscovery.Load(_ => { })
             .Where(library => library.Error is null)
             .Select(library => (library.Id, library.IsActive))
             .ToList();
         if (LibrarySwitchModel.TargetLibraryId(libraries, digit) is { } target)
         {
-            e.Handled = true;
             await _switchLibrary(target);
         }
     }
-
-    // Map the number-row and numpad digit keys 1..9 onto a switch digit; other keys
-    // are not switch shortcuts.
-    private static int? SwitchDigit(Key key) => key switch
-    {
-        >= Key.D1 and <= Key.D9 => key - Key.D1 + 1,
-        >= Key.NumPad1 and <= Key.NumPad9 => key - Key.NumPad1 + 1,
-        _ => null,
-    };
 
     // Run what an activation asks for. ImportFolder is the whole intent set, so an
     // intent arriving here unhandled is a defect in the parse, not something a

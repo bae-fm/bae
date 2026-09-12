@@ -540,4 +540,15 @@
   <data name="appearance.sand" xml:space="preserve"><value>Sand</value></data>
   <data name="cover.unlinked" xml:space="preserve"><value>Länka en utgåva från Discogs eller MusicBrainz för att bläddra bland dess bilder.</value></data>
   <data name="import.search.identification_results" xml:space="preserve"><value>Identifieringsresultat</value></data>
+  <data name="menu.library.title" xml:space="preserve"><value>Bibliotek</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Uppspelning</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Spela / Paus</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Nästa spår</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Föregående spår</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Ljud av</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Växla upprepningsläge</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Upprepa</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Av</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Alla</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>En</value></data>
 </root>

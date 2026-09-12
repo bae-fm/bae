@@ -540,4 +540,15 @@
   <data name="appearance.sand" xml:space="preserve"><value>Areia</value></data>
   <data name="cover.unlinked" xml:space="preserve"><value>Associe uma edição do Discogs ou do MusicBrainz para percorrer as suas imagens.</value></data>
   <data name="import.search.identification_results" xml:space="preserve"><value>Resultados da identificação</value></data>
+  <data name="menu.library.title" xml:space="preserve"><value>Biblioteca</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Reprodução</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Reproduzir / Pausa</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Faixa seguinte</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Faixa anterior</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Silenciar</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Alternar modo de repetição</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Repetir</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Desligado</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Tudo</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Um</value></data>
 </root>

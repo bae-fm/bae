@@ -540,4 +540,15 @@
   <data name="appearance.sand" xml:space="preserve"><value>Nisip</value></data>
   <data name="cover.unlinked" xml:space="preserve"><value>Asociază o ediție Discogs sau MusicBrainz pentru a-i răsfoi imaginile.</value></data>
   <data name="import.search.identification_results" xml:space="preserve"><value>Rezultatele identificării</value></data>
+  <data name="menu.library.title" xml:space="preserve"><value>Bibliotecă</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Redare</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Redă / Pauză</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Piesa următoare</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Piesa anterioară</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Fără sunet</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Schimbă modul de repetare</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Repetare</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Oprit</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Toate</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Unu</value></data>
 </root>

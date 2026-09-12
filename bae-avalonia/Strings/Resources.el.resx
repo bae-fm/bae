@@ -540,4 +540,15 @@
   <data name="appearance.sand" xml:space="preserve"><value>Άμμος</value></data>
   <data name="cover.unlinked" xml:space="preserve"><value>Συνδέστε μια κυκλοφορία Discogs ή MusicBrainz για να περιηγηθείτε στις εικόνες της.</value></data>
   <data name="import.search.identification_results" xml:space="preserve"><value>Αποτελέσματα ταυτοποίησης</value></data>
+  <data name="menu.library.title" xml:space="preserve"><value>Βιβλιοθήκη</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Αναπαραγωγή</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Αναπαραγωγή / Παύση</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Επόμενο κομμάτι</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Προηγούμενο κομμάτι</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Σίγαση</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Εναλλαγή λειτουργίας επανάληψης</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Επανάληψη</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Ανενεργό</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Όλα</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Ένα</value></data>
 </root>

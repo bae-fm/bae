@@ -588,4 +588,15 @@
   <data name="import.search.identification_results" xml:space="preserve">
     <value>Identification results</value>
   </data>
+  <data name="menu.library.title" xml:space="preserve"><value>Library</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Playback</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Play / Pause</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Next Track</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Previous Track</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Mute</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Cycle Repeat Mode</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Repeat</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Off</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>All</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>One</value></data>
 </root>

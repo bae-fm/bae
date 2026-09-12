@@ -540,4 +540,15 @@
   <data name="appearance.sand" xml:space="preserve"><value>Sand</value></data>
   <data name="cover.unlinked" xml:space="preserve"><value>Tilknyt en Discogs- eller MusicBrainz-udgivelse for at gennemse dens billeder.</value></data>
   <data name="import.search.identification_results" xml:space="preserve"><value>Identifikationsresultater</value></data>
+  <data name="menu.library.title" xml:space="preserve"><value>Bibliotek</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Afspilning</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Afspil / Pause</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Næste spor</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Forrige spor</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Slå lyden fra</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Skift gentagelsestilstand</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Gentag</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Fra</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Alle</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Én</value></data>
 </root>

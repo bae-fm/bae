@@ -561,4 +561,15 @@
   <data name="import.search.identification_results" xml:space="preserve">
     <value>תוצאות הזיהוי</value>
   </data>
+  <data name="menu.library.title" xml:space="preserve"><value>ספרייה</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>השמעה</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>נגן / השהה</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>הרצועה הבאה</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>הרצועה הקודמת</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>השתק</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>החלף מצב חזרה</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>חזרה</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>כבוי</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>הכול</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>אחד</value></data>
 </root>

@@ -540,4 +540,15 @@
   <data name="appearance.sand" xml:space="preserve"><value>Piesočný</value></data>
   <data name="cover.unlinked" xml:space="preserve"><value>Prepoj vydanie z Discogs alebo MusicBrainz, aby si mohol prehliadať jeho obrázky.</value></data>
   <data name="import.search.identification_results" xml:space="preserve"><value>Výsledky identifikácie</value></data>
+  <data name="menu.library.title" xml:space="preserve"><value>Knižnica</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Prehrávanie</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Prehrať / Pozastaviť</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Ďalšia skladba</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Predchádzajúca skladba</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Stlmiť</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Prepínať režim opakovania</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Opakovanie</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Vypnuté</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Všetko</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Jedna</value></data>
 </root>

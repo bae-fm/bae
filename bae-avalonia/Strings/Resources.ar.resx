@@ -561,4 +561,15 @@
   <data name="import.search.identification_results" xml:space="preserve">
     <value>نتائج التعرّف</value>
   </data>
+  <data name="menu.library.title" xml:space="preserve"><value>المكتبة</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>التشغيل</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>تشغيل / إيقاف مؤقت</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>المقطوعة التالية</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>المقطوعة السابقة</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>كتم</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>تبديل وضع التكرار</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>تكرار</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>إيقاف</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>الكل</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>واحدة</value></data>
 </root>

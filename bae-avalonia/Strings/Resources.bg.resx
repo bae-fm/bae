@@ -561,4 +561,15 @@
   <data name="import.search.identification_results" xml:space="preserve">
     <value>Резултати от разпознаването</value>
   </data>
+  <data name="menu.library.title" xml:space="preserve"><value>Библиотека</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Възпроизвеждане</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Възпроизвеждане / Пауза</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Следваща песен</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Предишна песен</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Заглушаване</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Превключване на режима на повторение</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Повтаряне</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Изкл.</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Всички</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Един</value></data>
 </root>

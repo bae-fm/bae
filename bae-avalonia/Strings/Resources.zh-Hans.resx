@@ -561,4 +561,15 @@
   <data name="import.search.identification_results" xml:space="preserve">
     <value>识别结果</value>
   </data>
+  <data name="menu.library.title" xml:space="preserve"><value>库</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>播放</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>播放/暂停</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>下一曲</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>上一曲</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>静音</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>切换重复模式</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>重复</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>关闭</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>全部</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>单曲</value></data>
 </root>

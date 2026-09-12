@@ -561,4 +561,15 @@
   <data name="import.search.identification_results" xml:space="preserve">
     <value>識別結果</value>
   </data>
+  <data name="menu.library.title" xml:space="preserve"><value>ライブラリ</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>再生</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>再生 / 一時停止</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>次のトラック</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>前のトラック</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>ミュート</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>リピートモードを切り替え</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>リピート</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>オフ</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>すべて</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>1曲</value></data>
 </root>

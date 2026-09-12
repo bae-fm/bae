@@ -561,4 +561,15 @@
   <data name="import.search.identification_results" xml:space="preserve">
     <value>Результати розпізнавання</value>
   </data>
+  <data name="menu.library.title" xml:space="preserve"><value>Бібліотека</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Відтворення</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Відтворити / Пауза</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Наступний трек</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Попередній трек</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Вимкнути звук</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Перемкнути режим повтору</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Повтор</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Вимкнено</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Усі</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Один</value></data>
 </root>

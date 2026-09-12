@@ -561,4 +561,15 @@
   <data name="import.search.identification_results" xml:space="preserve">
     <value>Résultats de l’identification</value>
   </data>
+  <data name="menu.library.title" xml:space="preserve"><value>Bibliothèque</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Lecture</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Lecture / Pause</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Piste suivante</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Piste précédente</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Couper le son</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Changer de mode de répétition</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Répéter</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Désactivé</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Tous</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Un</value></data>
 </root>

@@ -540,4 +540,15 @@
   <data name="appearance.sand" xml:space="preserve"><value>Homok</value></data>
   <data name="cover.unlinked" xml:space="preserve"><value>Társíts egy Discogs- vagy MusicBrainz-kiadást, hogy böngészhesd a képeit.</value></data>
   <data name="import.search.identification_results" xml:space="preserve"><value>Azonosítási találatok</value></data>
+  <data name="menu.library.title" xml:space="preserve"><value>Könyvtár</value></data>
+  <data name="menu.playback.title" xml:space="preserve"><value>Lejátszás</value></data>
+  <data name="menu.playback.play_pause" xml:space="preserve"><value>Lejátszás / Szünet</value></data>
+  <data name="menu.playback.next_track" xml:space="preserve"><value>Következő szám</value></data>
+  <data name="menu.playback.previous_track" xml:space="preserve"><value>Előző szám</value></data>
+  <data name="menu.playback.mute" xml:space="preserve"><value>Némítás</value></data>
+  <data name="menu.playback.cycle_repeat" xml:space="preserve"><value>Ismétlési mód váltása</value></data>
+  <data name="menu.playback.repeat" xml:space="preserve"><value>Ismétlés</value></data>
+  <data name="menu.playback.repeat_off" xml:space="preserve"><value>Ki</value></data>
+  <data name="menu.playback.repeat_all" xml:space="preserve"><value>Mind</value></data>
+  <data name="menu.playback.repeat_one" xml:space="preserve"><value>Egy</value></data>
 </root>
