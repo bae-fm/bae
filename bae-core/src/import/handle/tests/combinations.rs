@@ -1,13 +1,14 @@
 use super::*;
-use crate::import::combination::CombinationTrackOrder;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn selected_folders_from_different_roots_import_as_one_release() {
     let (manager, _library) = setup_test_manager().await;
     let first_root = TempDir::new().unwrap();
     let second_root = TempDir::new().unwrap();
-    let (first, first_key, _) = picked_candidate(&manager, &first_root).await;
-    let (second, second_key, _) = picked_candidate(&manager, &second_root).await;
+    let (first, first_key, _) = picked_candidate(&manager, &first_root, "Volume B").await;
+    let (second, second_key, _) = picked_candidate(&manager, &second_root, "Volume A").await;
+    let spare_root = TempDir::new().unwrap();
+    let (_spare, spare_key, _) = picked_candidate(&manager, &spare_root, "Volume C").await;
     let original_paths = first
         .files
         .release_files()
@@ -18,21 +19,25 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .start_import_service(tokio::runtime::Handle::current())
         .await
         .unwrap();
-    let keys = vec![second_key.clone(), first_key.clone()];
-    let review = handle
-        .review_candidate_combination(keys.clone())
-        .await
-        .unwrap();
+    // Combining takes the selection, not an order: core plays the folders in
+    // key order and names the release after the first of them.
+    let mut ordered = vec![first_key.clone(), second_key.clone()];
+    ordered.sort();
+    let leading = if ordered[0] == first_key {
+        &first
+    }
+    else {
+        &second
+    };
     let key = handle
-        .combine_reviewed_candidates(
-            &review,
-            keys.clone(),
-            CombinationTrackOrder::SeparateDiscs,
-            "Collected Volumes".into(),
-        )
+        .combine_candidates(vec![second_key.clone(), first_key.clone()])
         .await
         .unwrap();
-    assert_eq!(handle.candidate_source_folders(&key).await.unwrap(), keys);
+    assert_eq!(handle.candidate_source_folders(&key).await.unwrap(), ordered);
+    assert!(matches!(
+        handle.get_release_candidate(&key).await.unwrap(),
+        Some(crate::import::release_candidate::ReleaseCandidate::Combined(_))
+    ));
     assert!(handle
         .get_release_candidate(&first_key)
         .await
@@ -43,6 +48,20 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .await
         .unwrap()
         .is_none());
+    assert_eq!(
+        pane(&handle, &key).await.metadata_draft.album_title,
+        leading.name
+    );
+    // A combined key is not a folder to combine again; separating it first is.
+    // Every folder key sorts ahead of the combination key, so the folder in
+    // this selection is the one loaded first and the combination is what the
+    // call stops on.
+    assert!(handle
+        .combine_candidates(vec![key.clone(), spare_key.clone()])
+        .await
+        .unwrap_err()
+        .to_string()
+        .contains("separate an existing combination before combining its folders again"));
     handle
         .set_candidate_metadata_provenance(key.clone(), crate::import::MetadataProvenance::FileTags)
         .await

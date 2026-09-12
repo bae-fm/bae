@@ -56,11 +56,9 @@ impl crate::types::BridgeFolderCandidate {
             source_file_edits_allowed: candidate.source_file_edits_allowed(),
             combination: match &candidate {
                 bae_core::import::release_candidate::ReleaseCandidate::Folder(_) => None,
-                bae_core::import::release_candidate::ReleaseCandidate::Combined(candidate) => {
-                    Some(crate::types::BridgeCombinationPreview::from_core(
-                        candidate.combination.clone(),
-                    ))
-                }
+                bae_core::import::release_candidate::ReleaseCandidate::Combined(candidate) => Some(
+                    crate::types::BridgeCombination::from_core(candidate.combination.clone()),
+                ),
             },
             folder_path: candidate.key().into_owned(),
             source_folder_name: candidate.name().to_string(),

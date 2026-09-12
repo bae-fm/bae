@@ -3,7 +3,7 @@ use super::super::*;
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderCandidate {
     pub composition_action: Option<BridgeCombinationAction>,
-    pub combination: Option<BridgeCombinationPreview>,
+    pub combination: Option<BridgeCombination>,
     pub source_file_edits_allowed: bool,
     pub folder_path: String,
     pub source_folder_name: String,

@@ -1,7 +1,7 @@
-//! Explicit folder selections and their immutable, reviewed source snapshots.
+//! Explicit folder selections and their immutable source snapshots.
 
 use super::*;
-use crate::import::combination::{CandidateCombination, CombinationPart, CombinationTrackOrder};
+use crate::import::combination::{CandidateCombination, CombinationPart};
 use crate::import::folder_scanner::{CategorizedFiles, FolderCandidate, ScanItem};
 use crate::import::release_candidate::{CombinedCandidate, ReleaseCandidate};
 
@@ -50,13 +50,12 @@ pub(super) fn load_candidate_on(
             }))
         }
         Some("combination") => {
-            let (root, name, order, revision, generation, error): (String, String, String, i64, i64, Option<String>) = sql.query_row(
-                "SELECT g.watched_folder_path, g.name, g.track_order, c.file_edit_revision, c.generation, g.error \
+            let (root, name, revision, generation, error): (String, String, i64, i64, Option<String>) = sql.query_row(
+                "SELECT g.watched_folder_path, g.name, c.file_edit_revision, c.generation, g.error \
                  FROM candidate_combination g JOIN scan_candidate c ON c.path = g.candidate_key \
                  WHERE g.candidate_key = ?", [key],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?)),
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
             )?;
-            let order = order_of(&order)?;
             let parts = sql.query(
                 "SELECT candidate_key, folder_name, file_prefix, first_disc, disc_count, track_count \
                  FROM candidate_combination_member WHERE combination_key = ? ORDER BY position", [key],
@@ -67,15 +66,13 @@ pub(super) fn load_candidate_on(
                 .ok_or_else(|| {
                     DbError::Message(format!("combined candidate {key} has no stored files"))
                 })?;
-            let combination =
-                CandidateCombination::from_stored(parts, CategorizedFiles { files }, order)
-                    .map_err(|error| DbError::Message(error.to_string()))?;
+            let combination = CandidateCombination::from_stored(parts, CategorizedFiles { files })
+                .map_err(|error| DbError::Message(error.to_string()))?;
             Ok(Some(StoredReleaseCandidate {
                 candidate: ReleaseCandidate::Combined(CombinedCandidate {
                     key: key.into(),
                     name,
                     watched_folder_path: root,
-                    order,
                     combination,
                     file_edit_revision: folder_scans::columns::to_u64(
                         revision,
@@ -89,16 +86,6 @@ pub(super) fn load_candidate_on(
         }
         Some(other) => Err(DbError::Message(format!(
             "unknown candidate source {other}"
-        ))),
-    }
-}
-
-fn order_of(value: &str) -> Result<CombinationTrackOrder, DbError> {
-    match value {
-        "separate_discs" => Ok(CombinationTrackOrder::SeparateDiscs),
-        "continuous" => Ok(CombinationTrackOrder::Continuous),
-        _ => Err(DbError::Message(format!(
-            "unknown combination track order {value}"
         ))),
     }
 }
@@ -166,20 +153,19 @@ impl Database {
         .await
     }
 
-    /// The reviewed files must still be the current files of every selected
-    /// candidate. Membership, the source snapshot, and its draft commit together.
+    /// The selected folders' files must still be their current files.
+    /// Membership, the source snapshot, and its draft commit together.
     pub(crate) async fn combine_candidates(
         &self,
         key: String,
         name: String,
         candidates: Vec<FolderCandidate>,
-        order: CombinationTrackOrder,
     ) -> Result<(), DbError> {
         let name = name.trim().to_string();
         if name.is_empty() {
             return Err(DbError::Message("a combined release needs a name".into()));
         }
-        let combination = CandidateCombination::prepare(&candidates, order)
+        let combination = CandidateCombination::prepare(&candidates)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let created_at = self.inner.clock.now().timestamp_millis();
         self.call(move |sql| {
@@ -189,13 +175,13 @@ impl Database {
                 [&content_hash], |row| row.get(0),
             )?;
             if in_use { return Err(DbError::Message("this combined release is already present in the queue or library".into())); }
-            // A newly reviewed selection starts with its reviewed layout, not
-            // an abandoned combination's draft under the same file hash.
+            // A new selection starts with the layout it was just given, not an
+            // abandoned combination's draft under the same file hash.
             sql.execute("DELETE FROM import_candidate_state WHERE content_hash = ?", [&content_hash])?;
             for candidate in &candidates {
                 let source_key = candidate.path.to_string_lossy();
                 if folder_scans::load_scan_item_on(sql, &source_key)? != Some(ScanItem::Valid(candidate.clone())) {
-                    return Err(DbError::Message(format!("{} changed while the combination was being reviewed", candidate.name)));
+                    return Err(DbError::Message(format!("{} changed while the folders were being combined", candidate.name)));
                 }
                 let unavailable = sql.query_row(
                     "SELECT EXISTS(SELECT 1 FROM candidate_combination_member WHERE candidate_key = ?1) \
@@ -206,8 +192,7 @@ impl Database {
             }
             let root = &candidates[0].watched_folder_path;
             let generation: i64 = sql.query_row("SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?", [root], |row| row.get(0))?;
-            let order_text = match order { CombinationTrackOrder::SeparateDiscs => "separate_discs", CombinationTrackOrder::Continuous => "continuous" };
-            sql.execute("INSERT INTO candidate_combination (candidate_key, watched_folder_path, name, track_order, created_at) VALUES (?, ?, ?, ?, ?)", params![key, root, name, order_text, created_at])?;
+            sql.execute("INSERT INTO candidate_combination (candidate_key, watched_folder_path, name, created_at) VALUES (?, ?, ?, ?)", params![key, root, name, created_at])?;
             for (position, (part, candidate)) in combination.parts.iter().zip(&candidates).enumerate() {
                 sql.execute("INSERT INTO candidate_combination_member \
                     (combination_key, position, candidate_key, watched_folder_path, folder_name, file_prefix, first_disc, disc_count, track_count) \

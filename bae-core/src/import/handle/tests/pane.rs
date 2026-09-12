@@ -20,21 +20,22 @@ fn cover_jpeg() -> Vec<u8> {
     bytes.into_inner()
 }
 
-/// A watched root holding one folder of real audio and one image, scanned into
-/// the tables and picked as its own tags.
+/// A watched root holding one folder named `folder_name`, of real audio and one
+/// image, scanned into the tables and picked as its own tags.
 ///
 /// The folder is stored rather than scanned for: the pane's writes are what is
 /// under test, and a real scan would only make when they run less certain.
 async fn picked_candidate(
     manager: &LibraryManager,
     tmp: &TempDir,
+    folder_name: &str,
 ) -> (FolderCandidate, String, String) {
     use crate::import::folder_scanner::{
         CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScannedFile,
     };
 
     let root = tmp.path().join("watched");
-    let folder = root.join("Album");
+    let folder = root.join(folder_name);
     std::fs::create_dir_all(&folder).unwrap();
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac");
     let mut files = Vec::new();
@@ -75,14 +76,14 @@ async fn picked_candidate(
     let candidate = FolderCandidate {
         path: folder.clone(),
         file_root: folder.clone(),
-        name: "Album".to_string(),
+        name: folder_name.to_string(),
         files: CategorizedFiles {
             files,
         },
         watched_folder_path: root.to_string_lossy().into_owned(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: "Album".to_string(),
+        display_path: folder_name.to_string(),
         resolved_boundaries: Vec::new(),
         combine_ancestor_key: None,
     };
@@ -139,7 +140,7 @@ struct StoredCandidate {
 
 async fn stored_candidate() -> StoredCandidate {
     let (manager, tmp) = setup_test_manager().await;
-    let (candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
+    let (candidate, key, _hash) = picked_candidate(&manager, &tmp, "Album").await;
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
         .await

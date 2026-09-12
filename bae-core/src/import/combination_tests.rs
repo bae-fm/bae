@@ -32,8 +32,7 @@ fn folder(name: &str) -> FolderCandidate {
 #[test]
 fn combines_only_selected_files_without_changing_their_physical_paths() {
     let selected = [folder("Volume B"), folder("Volume A")];
-    let combined =
-        CandidateCombination::prepare(&selected, CombinationTrackOrder::SeparateDiscs).unwrap();
+    let combined = CandidateCombination::prepare(&selected).unwrap();
     assert_eq!(combined.parts[0].folder_name, "Volume B");
     assert_eq!(combined.parts[1].folder_name, "Volume A");
     assert_eq!(combined.parts[0].first_disc, 1);
@@ -82,79 +81,38 @@ fn combines_only_selected_files_without_changing_their_physical_paths() {
 }
 
 #[test]
-fn continuous_order_numbers_every_selected_track_in_one_sequence() {
-    let combined = CandidateCombination::prepare(
-        &[folder("Volume B"), folder("Volume A")],
-        CombinationTrackOrder::Continuous,
-    )
-    .unwrap();
-    assert!(combined.tracks.iter().all(|track| track.side == 1));
+fn every_folder_becomes_its_own_disc_and_tracks_restart_on_each() {
+    let combined =
+        CandidateCombination::prepare(&[folder("Volume B"), folder("Volume A")]).unwrap();
+    assert_eq!(
+        combined
+            .parts
+            .iter()
+            .map(|part| (part.first_disc, part.disc_count, part.track_count))
+            .collect::<Vec<_>>(),
+        [(1, 1, 2), (2, 1, 2)]
+    );
     assert_eq!(
         combined
             .tracks
             .iter()
-            .map(|track| track.track_number)
+            .map(|track| (track.side, track.track_number))
             .collect::<Vec<_>>(),
-        [Some(1), Some(2), Some(3), Some(4)]
+        [(1, Some(1)), (1, Some(2)), (2, Some(1)), (2, Some(2))]
     );
-}
-
-#[test]
-fn review_reorders_the_exact_selection_and_rejects_missing_or_duplicate_sources() {
-    let review = CombinationReview::new(vec![folder("Volume A"), folder("Volume B")]).unwrap();
-    let original = review.candidate_keys();
-    let reversed = original.iter().rev().cloned().collect::<Vec<_>>();
-    let preview = review
-        .preview(&reversed, CombinationTrackOrder::SeparateDiscs)
-        .unwrap();
-    assert_eq!(
-        preview
-            .parts
-            .iter()
-            .map(|part| &part.candidate_key)
-            .collect::<Vec<_>>(),
-        reversed.iter().collect::<Vec<_>>()
-    );
-    assert_eq!(
-        preview.tracks[0].file.as_ref().unwrap().file_id(),
-        "01 - Volume B/01.flac"
-    );
-    assert_eq!(review.candidate_keys(), original);
-    assert!(review
-        .preview(&original[..1], CombinationTrackOrder::Continuous)
-        .is_err());
-    assert!(review
-        .preview(
-            &[original[0].clone(), original[0].clone()],
-            CombinationTrackOrder::Continuous
-        )
-        .is_err());
-    assert!(review
-        .preview(
-            &[original[0].clone(), host_root("/music/Unselected")],
-            CombinationTrackOrder::Continuous
-        )
-        .is_err());
 }
 
 #[test]
 fn rejects_duplicate_candidates_and_overlapping_files() {
     let first = folder("Volume A");
-    assert!(CandidateCombination::prepare(
-        &[first.clone(), first.clone()],
-        CombinationTrackOrder::SeparateDiscs
-    )
-    .is_err());
+    assert!(CandidateCombination::prepare(&[first.clone(), first.clone()]).is_err());
     let mut second = folder("Volume B");
     second.files.files[0] = first.files.files[0].clone();
-    assert!(
-        CandidateCombination::prepare(&[first, second], CombinationTrackOrder::SeparateDiscs)
-            .is_err()
-    );
+    assert!(CandidateCombination::prepare(&[first, second]).is_err());
 }
 
 #[test]
-fn file_metadata_preserves_reviewed_numbering_instead_of_original_disc_tags() {
+fn file_metadata_preserves_the_combinations_numbering_instead_of_original_disc_tags() {
     use crate::import::file_tag_snapshot::{FileObservation, FileTagFact, FileTagSnapshot};
     use crate::import::release_candidate::{CombinedCandidate, ReleaseCandidate};
     let clock = coven::FixedClock(
@@ -162,66 +120,59 @@ fn file_metadata_preserves_reviewed_numbering_instead_of_original_disc_tags() {
             .unwrap()
             .with_timezone(&chrono::Utc),
     );
-    for order in [
-        CombinationTrackOrder::SeparateDiscs,
-        CombinationTrackOrder::Continuous,
-    ] {
-        let combination =
-            CandidateCombination::prepare(&[folder("Volume B"), folder("Volume A")], order)
-                .unwrap();
-        let expected = combination
-            .tracks
+    let combination =
+        CandidateCombination::prepare(&[folder("Volume B"), folder("Volume A")]).unwrap();
+    let expected = combination
+        .tracks
+        .iter()
+        .map(|track| (track.side, track.track_number))
+        .collect::<Vec<_>>();
+    let snapshot = FileTagSnapshot {
+        scan_generation: 1,
+        file_edit_revision: 0,
+        embedded_cover: None,
+        files: combination
+            .files
+            .audio()
+            .enumerate()
+            .map(|(index, file)| FileTagFact {
+                observation: FileObservation {
+                    relative_path: file.relative_path.clone(),
+                    size: file.size,
+                    modified_at_ns: file.modified_at_ns,
+                },
+                title: Some(format!("Tagged Track {index}")),
+                track_artist: Some("Test Artist".into()),
+                album_title: Some("Original Album".into()),
+                album_artist: Some("Test Artist".into()),
+                year: None,
+                track_number: Some(1),
+                disc_number: Some(7),
+            })
+            .collect(),
+    };
+    let candidate = ReleaseCandidate::Combined(CombinedCandidate {
+        key: "combination:test".into(),
+        name: "Collected Volumes".into(),
+        watched_folder_path: host_root("/music"),
+        combination,
+        file_edit_revision: 0,
+    });
+    let edit = candidate
+        .file_tag_edit(&snapshot, &clock, &coven::UuidProvider)
+        .unwrap();
+    assert_eq!(
+        edit.tracks
             .iter()
             .map(|track| (track.side, track.track_number))
-            .collect::<Vec<_>>();
-        let snapshot = FileTagSnapshot {
-            scan_generation: 1,
-            file_edit_revision: 0,
-            embedded_cover: None,
-            files: combination
-                .files
-                .audio()
-                .enumerate()
-                .map(|(index, file)| FileTagFact {
-                    observation: FileObservation {
-                        relative_path: file.relative_path.clone(),
-                        size: file.size,
-                        modified_at_ns: file.modified_at_ns,
-                    },
-                    title: Some(format!("Tagged Track {index}")),
-                    track_artist: Some("Test Artist".into()),
-                    album_title: Some("Original Album".into()),
-                    album_artist: Some("Test Artist".into()),
-                    year: None,
-                    track_number: Some(1),
-                    disc_number: Some(7),
-                })
-                .collect(),
-        };
-        let candidate = ReleaseCandidate::Combined(CombinedCandidate {
-            key: "combination:test".into(),
-            name: "Collected Volumes".into(),
-            watched_folder_path: host_root("/music"),
-            order,
-            combination,
-            file_edit_revision: 0,
-        });
-        let edit = candidate
-            .file_tag_edit(&snapshot, &clock, &coven::UuidProvider)
-            .unwrap();
-        assert_eq!(
-            edit.tracks
-                .iter()
-                .map(|track| (track.side, track.track_number))
-                .collect::<Vec<_>>(),
-            expected
-        );
-        assert_eq!(edit.tracks[2].title, "Tagged Track 2");
-    }
+            .collect::<Vec<_>>(),
+        expected
+    );
+    assert_eq!(edit.tracks[2].title, "Tagged Track 2");
 }
 
 #[test]
-fn continuous_metadata_keeps_the_sources_corrected_cue_order() {
+fn metadata_keeps_the_sources_corrected_cue_order() {
     use crate::cue_flac::{CuePregap, CueSheet, CueTrack, CueTrackMode};
     use crate::import::folder_scanner::SheetAudioFile;
 
@@ -259,11 +210,7 @@ fn continuous_metadata_keeps_the_sources_corrected_cue_order() {
             proposed_audio: false,
         });
     }
-    let combined = CandidateCombination::prepare(
-        &[first, folder("Volume B")],
-        CombinationTrackOrder::Continuous,
-    )
-    .unwrap();
+    let combined = CandidateCombination::prepare(&[first, folder("Volume B")]).unwrap();
     assert_eq!(
         combined.tracks[0].file.as_ref().unwrap().file_id(),
         "01 - Volume A/02.flac"
@@ -322,7 +269,6 @@ async fn stored_combination_is_one_release_and_separating_restores_sources() {
         "combination:test".into(),
         "Collected Volumes".into(),
         candidates.clone(),
-        CombinationTrackOrder::SeparateDiscs,
     )
     .await
     .unwrap();
@@ -394,7 +340,6 @@ async fn unchanged_rescan_keeps_combination_and_missing_source_blocks_it() {
         "combination:test".into(),
         "Collected Volumes".into(),
         candidates.clone(),
-        CombinationTrackOrder::Continuous,
     )
     .await
     .unwrap();
@@ -470,14 +415,9 @@ async fn blocked_combination_keeps_embedded_artwork_readable_for_separation() {
     let (db, _temp, candidates) = stored_selection().await;
     let root = host_root("/music");
     let key = "combination:embedded";
-    db.combine_candidates(
-        key.into(),
-        "Collected Volumes".into(),
-        candidates.clone(),
-        CombinationTrackOrder::SeparateDiscs,
-    )
-    .await
-    .unwrap();
+    db.combine_candidates(key.into(), "Collected Volumes".into(), candidates.clone())
+        .await
+        .unwrap();
     let stored = db
         .load_candidate_file_tag_snapshot(&root, key)
         .await
@@ -551,15 +491,14 @@ async fn blocked_combination_keeps_embedded_artwork_readable_for_separation() {
 }
 
 #[tokio::test]
-async fn changed_review_is_rejected_without_hiding_any_sources() {
+async fn a_changed_source_is_rejected_without_hiding_any_sources() {
     let (db, _temp, mut candidates) = stored_selection().await;
     candidates[0].files.files[0].file.size += 1;
     assert!(db
         .combine_candidates(
             "combination:test".into(),
             "Collected Volumes".into(),
-            candidates,
-            CombinationTrackOrder::SeparateDiscs
+            candidates
         )
         .await
         .is_err());

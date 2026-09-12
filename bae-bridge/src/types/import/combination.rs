@@ -1,5 +1,3 @@
-use super::super::*;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeCombinationAction {
     Combine,
@@ -11,19 +9,6 @@ mirror_enum! {
     BridgeCombinationAction = bae_core::import::combination::CombinationAction,
     from_core: pub(crate) fn,
     variants: { Combine, Separate },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeCombinationTrackOrder {
-    SeparateDiscs,
-    Continuous,
-}
-
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    BridgeCombinationTrackOrder = bae_core::import::combination::CombinationTrackOrder,
-    into_core: pub(crate) fn,
-    variants: { SeparateDiscs, Continuous },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -50,16 +35,18 @@ mirror_struct! {
     },
 }
 
+/// Which source folders a combined candidate is made of. Its files and track
+/// rows reach the receiver as the candidate's own files and draft rows, so they
+/// are not repeated here.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeCombinationPreview {
+pub struct BridgeCombination {
     pub parts: Vec<BridgeCombinationPart>,
-    pub tracks: Vec<BridgeTrackUserEdit>,
 }
 
 /// Not a `mirror_struct`: `CandidateCombination` keeps fields of its own that
 /// are nobody else's to read, so it cannot be destructured here.
 #[cfg(feature = "desktop")]
-impl BridgeCombinationPreview {
+impl BridgeCombination {
     pub(crate) fn from_core(
         combination: bae_core::import::combination::CandidateCombination,
     ) -> Self {
@@ -68,11 +55,6 @@ impl BridgeCombinationPreview {
                 .parts
                 .into_iter()
                 .map(BridgeCombinationPart::from_core)
-                .collect(),
-            tracks: combination
-                .tracks
-                .into_iter()
-                .map(BridgeTrackUserEdit::from_core)
                 .collect(),
         }
     }

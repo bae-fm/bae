@@ -1,13 +1,4 @@
 use super::*;
-use crate::types::{BridgeCombinationPreview, BridgeCombinationTrackOrder};
-use std::sync::Arc;
-
-/// Retains the exact source revisions reviewed by the person combining them.
-#[derive(uniffi::Object)]
-pub struct CandidateCombinationReview {
-    inner: bae_core::import::combination::CombinationReview,
-    app: Arc<AppHandle>,
-}
 
 forward! { async this => {
     fn candidate_source_folders(key: String) -> Vec<String> {
@@ -17,13 +8,14 @@ forward! { async this => {
             .map_err(BridgeError::import)
     }
 
-    fn review_candidate_combination(keys: Vec<String>) -> Arc<CandidateCombinationReview> {
-        let inner = this
-            .services
-            .import_review_combination(keys)
+    /// Make the selected folders one release and answer with its candidate key.
+    /// The order, the disc layout and the name are core's; the combined
+    /// candidate's draft is where they are edited afterwards.
+    fn combine_candidates(keys: Vec<String>) -> String {
+        this.services
+            .import_combine_candidates(keys)
             .await
-            .map_err(BridgeError::import)?;
-        Ok(Arc::new(CandidateCombinationReview { inner, app: this }))
+            .map_err(BridgeError::import)
     }
 
     fn separate_combined_candidate(key: String) -> () {
@@ -33,37 +25,3 @@ forward! { async this => {
             .map_err(BridgeError::import)
     }
 } }
-
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl CandidateCombinationReview {
-    pub fn candidate_keys(&self) -> Vec<String> {
-        self.inner.candidate_keys()
-    }
-
-    pub fn preview(
-        &self,
-        keys: Vec<String>,
-        order: BridgeCombinationTrackOrder,
-    ) -> Result<BridgeCombinationPreview, BridgeError> {
-        self.inner
-            .preview(&keys, order.into_core())
-            .map(BridgeCombinationPreview::from_core)
-            .map_err(BridgeError::import)
-    }
-
-    pub async fn combine(
-        self: Arc<Self>,
-        keys: Vec<String>,
-        order: BridgeCombinationTrackOrder,
-        name: String,
-    ) -> Result<String, BridgeError> {
-        let app = self.app.clone();
-        app.run_exported(move |this| async move {
-            this.services
-                .import_combine_reviewed_candidates(&self.inner, keys, order.into_core(), name)
-                .await
-                .map_err(BridgeError::import)
-        })
-        .await
-    }
-}

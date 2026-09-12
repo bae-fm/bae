@@ -1,6 +1,6 @@
 //! A release may come from one scanned folder or an explicit folder selection.
 
-use super::combination::{CandidateCombination, CombinationTrackOrder};
+use super::combination::CandidateCombination;
 use super::folder_scanner::{
     CategorizedFiles, FolderCandidate, FolderReleaseDecisionKey, ResolvedFolderReleaseBoundary,
 };
@@ -23,7 +23,6 @@ pub struct CombinedCandidate {
     /// The watched-root section containing the combined row. Each part retains
     /// its own source key; this does not claim that its files share one root.
     pub watched_folder_path: String,
-    pub order: CombinationTrackOrder,
     pub combination: CandidateCombination,
     pub file_edit_revision: u64,
 }
@@ -58,13 +57,12 @@ impl ReleaseCandidate {
         if let Self::Combined(candidate) = self {
             if edit.tracks.len() != candidate.combination.tracks.len() {
                 return Err(super::ImportError::Internal {
-                    detail: "file metadata does not match the reviewed combination track count"
-                        .into(),
+                    detail: "file metadata does not match the combination's track count".into(),
                 });
             }
-            for (track, reviewed) in edit.tracks.iter_mut().zip(&candidate.combination.tracks) {
-                track.side = reviewed.side;
-                track.track_number = reviewed.track_number;
+            for (track, combined) in edit.tracks.iter_mut().zip(&candidate.combination.tracks) {
+                track.side = combined.side;
+                track.track_number = combined.track_number;
             }
         }
         Ok(edit)

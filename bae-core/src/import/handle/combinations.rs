@@ -1,5 +1,4 @@
 use super::*;
-use crate::import::combination::{CombinationReview, CombinationTrackOrder};
 use crate::import::ImportError;
 
 impl ImportServiceHandle {
@@ -19,16 +18,28 @@ impl ImportServiceHandle {
             .collect())
     }
 
-    pub async fn review_candidate_combination(
+    /// Make the folders at `keys` one release. They play in key order — for
+    /// siblings, the order their names sort in — each folder a disc run of its
+    /// own, and the release takes the first folder's name. All three are the
+    /// combined candidate's own draft afterwards, which the pane edits and
+    /// "Separate Folders" undoes.
+    pub async fn combine_candidates(&self, keys: Vec<String>) -> Result<String, ImportError> {
+        let this = self.clone();
+        self.committed(async move { this.combine_candidates_write(keys).await })
+            .await
+    }
+
+    async fn combine_candidates_write(
         &self,
-        keys: Vec<String>,
-    ) -> Result<CombinationReview, ImportError> {
+        mut keys: Vec<String>,
+    ) -> Result<String, ImportError> {
+        keys.sort();
         let _commit = self.folder_state_commit.lock().await;
         let mut candidates = Vec::with_capacity(keys.len());
-        for key in keys {
-            self.ensure_combination_idle(&key)?;
+        for key in &keys {
+            self.ensure_combination_idle(key)?;
             let crate::import::release_candidate::ReleaseCandidate::Folder(candidate) =
-                self.editable_candidate_for_commit(&key).await?
+                self.editable_candidate_for_commit(key).await?
             else {
                 return Err(ImportError::Internal {
                     detail: "separate an existing combination before combining its folders again"
@@ -37,40 +48,16 @@ impl ImportServiceHandle {
             };
             candidates.push(candidate);
         }
-        CombinationReview::new(candidates)
-    }
-
-    pub async fn combine_reviewed_candidates(
-        &self,
-        review: &CombinationReview,
-        keys: Vec<String>,
-        order: CombinationTrackOrder,
-        name: String,
-    ) -> Result<String, ImportError> {
-        let this = self.clone();
-        let review = review.clone();
-        self.committed(async move {
-            this.combine_reviewed_candidates_write(&review, keys, order, name)
-                .await
-        })
-        .await
-    }
-
-    async fn combine_reviewed_candidates_write(
-        &self,
-        review: &CombinationReview,
-        keys: Vec<String>,
-        order: CombinationTrackOrder,
-        name: String,
-    ) -> Result<String, ImportError> {
-        let candidates = review.ordered_candidates(&keys)?;
-        let _commit = self.folder_state_commit.lock().await;
-        for key in &keys {
-            self.ensure_combination_idle(key)?;
-        }
+        let name = candidates
+            .first()
+            .ok_or_else(|| ImportError::Internal {
+                detail: "combining a release requires at least two folders".into(),
+            })?
+            .name
+            .clone();
         let key = format!("combination:{}", self.library_manager.new_id());
         self.library_manager
-            .combine_candidates(key.clone(), name, candidates, order)
+            .combine_candidates(key.clone(), name, candidates)
             .await?;
         for candidate_key in keys {
             send_event(

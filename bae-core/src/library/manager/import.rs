@@ -26,11 +26,10 @@ impl LibraryManager {
         key: String,
         name: String,
         candidates: Vec<crate::import::FolderCandidate>,
-        order: crate::import::combination::CombinationTrackOrder,
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
-            .combine_candidates(key, name, candidates, order)
+            .combine_candidates(key, name, candidates)
             .await?)
     }
 

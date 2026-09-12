@@ -114,8 +114,6 @@ mod editing_projection;
 #[cfg(feature = "desktop")]
 mod import_list;
 #[cfg(feature = "desktop")]
-pub use candidate_combination::CandidateCombinationReview;
-#[cfg(feature = "desktop")]
 pub use import_list::ImportListSubscription;
 #[cfg(feature = "desktop")]
 mod import_projection;

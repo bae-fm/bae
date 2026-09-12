@@ -532,3 +532,66 @@ fn a_non_database_coven_error_keeps_its_own_text() {
         "an unwrapped variant keeps its own rendering, got {detail:?}"
     );
 }
+
+/// A combined candidate crosses as the source folders it is made of. Its files
+/// and track rows reach the receiver as the candidate's own, so the combination
+/// itself carries neither.
+#[cfg(all(test, feature = "desktop"))]
+#[test]
+fn a_combination_crosses_as_its_source_folders() {
+    use bae_core::import::combination::{CandidateCombination, CombinationPart};
+
+    let core = CandidateCombination {
+        parts: vec![
+            CombinationPart {
+                candidate_key: "/music/Volume A".into(),
+                folder_name: "Volume A".into(),
+                file_prefix: "01 - Volume A/".into(),
+                first_disc: 1,
+                disc_count: 1,
+                track_count: 2,
+            },
+            CombinationPart {
+                candidate_key: "/music/Volume B".into(),
+                folder_name: "Volume B".into(),
+                file_prefix: "02 - Volume B/".into(),
+                first_disc: 2,
+                disc_count: 2,
+                track_count: 5,
+            },
+        ],
+        files: bae_core::import::folder_scanner::CategorizedFiles { files: Vec::new() },
+        tracks: Vec::new(),
+    };
+
+    let crossed = BridgeCombination::from_core(core.clone());
+    assert_eq!(
+        crossed
+            .parts
+            .iter()
+            .map(|part| {
+                (
+                    part.candidate_key.as_str(),
+                    part.folder_name.as_str(),
+                    part.file_prefix.as_str(),
+                    part.first_disc,
+                    part.disc_count,
+                    part.track_count,
+                )
+            })
+            .collect::<Vec<_>>(),
+        core.parts
+            .iter()
+            .map(|part| {
+                (
+                    part.candidate_key.as_str(),
+                    part.folder_name.as_str(),
+                    part.file_prefix.as_str(),
+                    part.first_disc,
+                    part.disc_count,
+                    part.track_count,
+                )
+            })
+            .collect::<Vec<_>>()
+    );
+}
