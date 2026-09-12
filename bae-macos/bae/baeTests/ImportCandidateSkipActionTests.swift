@@ -98,8 +98,14 @@ struct ImportCandidateSkipActionTests {
         #expect(await recorder.keys.isEmpty)
     }
 
-    @Test("Skip selected (%lld) is translated in every shipping locale")
-    func skipSelectedHasEveryLocalization() throws {
+    /// The bulk-skip menu item's title is built from two strings — the
+    /// action's name and the shape that carries its count — and a locale
+    /// missing either leaves the menu half-English.
+    @Test(
+        "the bulk-skip menu title is translated in every shipping locale",
+        arguments: ["Skip selected", "%@ (%lld)"]
+    )
+    func skipSelectedHasEveryLocalization(key: String) throws {
         let catalogURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -114,17 +120,15 @@ struct ImportCandidateSkipActionTests {
         let referenceLocales = try #require(
             reference["localizations"] as? [String: Any]
         )
-        let skipAll = try #require(
-            strings["Skip selected (%lld)"] as? [String: Any]
-        )
-        let skipAllLocales = try #require(
-            skipAll["localizations"] as? [String: Any]
+        let title = try #require(strings[key] as? [String: Any])
+        let titleLocales = try #require(
+            title["localizations"] as? [String: Any]
         )
 
-        #expect(Set(skipAllLocales.keys) == Set(referenceLocales.keys))
+        #expect(Set(titleLocales.keys) == Set(referenceLocales.keys))
         for locale in referenceLocales.keys {
             let localization = try #require(
-                skipAllLocales[locale] as? [String: Any]
+                titleLocales[locale] as? [String: Any]
             )
             let unit = try #require(
                 localization["stringUnit"] as? [String: Any]

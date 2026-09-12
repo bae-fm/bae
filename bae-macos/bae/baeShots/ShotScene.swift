@@ -130,6 +130,12 @@ struct ShotScene {
             )
         },
         ShotScene(
+            id: "import-bulk-selection",
+            size: CGSize(width: 936, height: 696)
+        ) {
+            AnyView(PreviewScenes.importBulkSelection())
+        },
+        ShotScene(
             id: "import-mapping-cue-wide",
             size: CGSize(width: 1212, height: 900)
         ) {

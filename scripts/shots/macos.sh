@@ -66,6 +66,7 @@ for scene in \
     import-release-queue-collapsed \
     import-release-scanning-refresh \
     import-release-resolved-reversal \
+    import-bulk-selection \
     import-mapping-cue-wide \
     import-mapping-cue-narrow \
     queue-pane-standard \

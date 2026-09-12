@@ -76687,1040 +76687,1040 @@
         }
       }
     },
-    "Import ready (%lld)" : {
-      "comment" : "Import candidate bulk action; count of eligible selected folders",
+    "Import ready" : {
+      "comment" : "Import candidate bulk action",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "استيراد الجاهز (%lld)"
+            "value" : "استيراد الجاهز"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Импортиране на готовите (%lld)"
+            "value" : "Импортиране на готовите"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importovat připravené (%lld)"
+            "value" : "Importovat připravené"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klar til import (%lld)"
+            "value" : "Klar til import"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Import ready (%lld)"
+            "value" : "Import ready"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bereite importieren (%lld)"
+            "value" : "Bereite importieren"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Έτοιμα για εισαγωγή (%lld)"
+            "value" : "Έτοιμα για εισαγωγή"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importar listos (%lld)"
+            "value" : "Importar listos"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Valmiina tuotavaksi (%lld)"
+            "value" : "Valmiina tuotavaksi"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importer les éléments prêts (%lld)"
+            "value" : "Importer les éléments prêts"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ייבוא המוכנים (%lld)"
+            "value" : "ייבוא המוכנים"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uvezi spremne (%lld)"
+            "value" : "Uvezi spremne"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importálásra kész (%lld)"
+            "value" : "Importálásra kész"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importa pronti (%lld)"
+            "value" : "Importa pronti"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "準備完了を読み込む (%lld)"
+            "value" : "準備完了を読み込む"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "준비된 항목 가져오기 (%lld)"
+            "value" : "준비된 항목 가져오기"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klare til import (%lld)"
+            "value" : "Klare til import"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gereedstaande importeren (%lld)"
+            "value" : "Gereedstaande importeren"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importuj gotowe (%lld)"
+            "value" : "Importuj gotowe"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importar prontos (%lld)"
+            "value" : "Importar prontos"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prontos para importar (%lld)"
+            "value" : "Prontos para importar"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gata de import (%lld)"
+            "value" : "Gata de import"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pripravené na import (%lld)"
+            "value" : "Pripravené na import"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klara att importera (%lld)"
+            "value" : "Klara att importera"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hazır olanları içe aktar (%lld)"
+            "value" : "Hazır olanları içe aktar"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Імпортувати готові (%lld)"
+            "value" : "Імпортувати готові"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "导入已就绪项 (%lld)"
+            "value" : "导入已就绪项"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "匯入已就緒項 (%lld)"
+            "value" : "匯入已就緒項"
           }
         }
       }
     },
-    "Identify selected (%lld)" : {
-      "comment" : "Import candidate bulk action; count of eligible selected folders",
+    "Identify selected" : {
+      "comment" : "Import candidate bulk action",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تحديد هوية المحدد (%lld)"
+            "value" : "تحديد هوية المحدد"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Идентифициране на избраните (%lld)"
+            "value" : "Идентифициране на избраните"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identifikovat vybrané (%lld)"
+            "value" : "Identifikovat vybrané"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identificer valgte (%lld)"
+            "value" : "Identificer valgte"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identify selected (%lld)"
+            "value" : "Identify selected"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ausgewählte identifizieren (%lld)"
+            "value" : "Ausgewählte identifizieren"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ταυτοποίηση επιλεγμένων (%lld)"
+            "value" : "Ταυτοποίηση επιλεγμένων"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identificar seleccionados (%lld)"
+            "value" : "Identificar seleccionados"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tunnista valitut (%lld)"
+            "value" : "Tunnista valitut"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identifier la sélection (%lld)"
+            "value" : "Identifier la sélection"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "זיהוי הנבחרים (%lld)"
+            "value" : "זיהוי הנבחרים"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identificiraj odabrane (%lld)"
+            "value" : "Identificiraj odabrane"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kijelöltek azonosítása (%lld)"
+            "value" : "Kijelöltek azonosítása"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identifica selezionati (%lld)"
+            "value" : "Identifica selezionati"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "選択項目を識別 (%lld)"
+            "value" : "選択項目を識別"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "선택 항목 식별 (%lld)"
+            "value" : "선택 항목 식별"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identifiser valgte (%lld)"
+            "value" : "Identifiser valgte"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Selectie identificeren (%lld)"
+            "value" : "Selectie identificeren"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zidentyfikuj wybrane (%lld)"
+            "value" : "Zidentyfikuj wybrane"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identificar selecionados (%lld)"
+            "value" : "Identificar selecionados"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identificar selecionados (%lld)"
+            "value" : "Identificar selecionados"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identifică selecția (%lld)"
+            "value" : "Identifică selecția"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identifikovať vybrané (%lld)"
+            "value" : "Identifikovať vybrané"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identifiera markerade (%lld)"
+            "value" : "Identifiera markerade"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seçilenleri tanımla (%lld)"
+            "value" : "Seçilenleri tanımla"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ідентифікувати вибрані (%lld)"
+            "value" : "Ідентифікувати вибрані"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "识别所选项 (%lld)"
+            "value" : "识别所选项"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "識別所選項 (%lld)"
+            "value" : "識別所選項"
           }
         }
       }
     },
-    "Retry failed identification (%lld)" : {
-      "comment" : "Import candidate bulk action; count of eligible selected folders",
+    "Retry failed identification" : {
+      "comment" : "Import candidate bulk action",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إعادة محاولة تحديد الهوية الفاشلة (%lld)"
+            "value" : "إعادة محاولة تحديد الهوية الفاشلة"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Повторен опит за неуспешните идентификации (%lld)"
+            "value" : "Повторен опит за неуспешните идентификации"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opakovat neúspěšnou identifikaci (%lld)"
+            "value" : "Opakovat neúspěšnou identifikaci"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prøv mislykket identifikation igen (%lld)"
+            "value" : "Prøv mislykket identifikation igen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retry failed identification (%lld)"
+            "value" : "Retry failed identification"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fehlgeschlagene Identifizierung wiederholen (%lld)"
+            "value" : "Fehlgeschlagene Identifizierung wiederholen"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Επανάληψη αποτυχημένης ταυτοποίησης (%lld)"
+            "value" : "Επανάληψη αποτυχημένης ταυτοποίησης"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reintentar identificación fallida (%lld)"
+            "value" : "Reintentar identificación fallida"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yritä epäonnistunutta tunnistusta uudelleen (%lld)"
+            "value" : "Yritä epäonnistunutta tunnistusta uudelleen"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réessayer les identifications échouées (%lld)"
+            "value" : "Réessayer les identifications échouées"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ניסיון חוזר לזיהוי שנכשל (%lld)"
+            "value" : "ניסיון חוזר לזיהוי שנכשל"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ponovi neuspjelu identifikaciju (%lld)"
+            "value" : "Ponovi neuspjelu identifikaciju"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sikertelen azonosítás újra (%lld)"
+            "value" : "Sikertelen azonosítás újra"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Riprova identificazioni non riuscite (%lld)"
+            "value" : "Riprova identificazioni non riuscite"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "失敗した識別を再試行 (%lld)"
+            "value" : "失敗した識別を再試行"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "실패한 식별 재시도 (%lld)"
+            "value" : "실패한 식별 재시도"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prøv mislykket identifisering på nytt (%lld)"
+            "value" : "Prøv mislykket identifisering på nytt"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mislukte identificatie opnieuw proberen (%lld)"
+            "value" : "Mislukte identificatie opnieuw proberen"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ponów nieudaną identyfikację (%lld)"
+            "value" : "Ponów nieudaną identyfikację"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tentar novamente identificação com falha (%lld)"
+            "value" : "Tentar novamente identificação com falha"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Repetir identificação falhada (%lld)"
+            "value" : "Repetir identificação falhada"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reîncearcă identificarea eșuată (%lld)"
+            "value" : "Reîncearcă identificarea eșuată"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zopakovať neúspešnú identifikáciu (%lld)"
+            "value" : "Zopakovať neúspešnú identifikáciu"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Försök misslyckad identifiering igen (%lld)"
+            "value" : "Försök misslyckad identifiering igen"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Başarısız tanımlamayı yeniden dene (%lld)"
+            "value" : "Başarısız tanımlamayı yeniden dene"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Повторити невдалу ідентифікацію (%lld)"
+            "value" : "Повторити невдалу ідентифікацію"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重试失败的识别 (%lld)"
+            "value" : "重试失败的识别"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重試失敗的識別 (%lld)"
+            "value" : "重試失敗的識別"
           }
         }
       }
     },
-    "Skip selected (%lld)" : {
-      "comment" : "Import candidate bulk action; count of eligible selected folders",
+    "Skip selected" : {
+      "comment" : "Import candidate bulk action",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تخطّي المحدد (%lld)"
+            "value" : "تخطّي المحدد"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пропускане на избраните (%lld)"
+            "value" : "Пропускане на избраните"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Přeskočit vybrané (%lld)"
+            "value" : "Přeskočit vybrané"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spring valgte over (%lld)"
+            "value" : "Spring valgte over"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skip selected (%lld)"
+            "value" : "Skip selected"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ausgewählte überspringen (%lld)"
+            "value" : "Ausgewählte überspringen"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Παράλειψη επιλεγμένων (%lld)"
+            "value" : "Παράλειψη επιλεγμένων"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Omitir seleccionados (%lld)"
+            "value" : "Omitir seleccionados"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ohita valitut (%lld)"
+            "value" : "Ohita valitut"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ignorer la sélection (%lld)"
+            "value" : "Ignorer la sélection"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "דילוג על הנבחרים (%lld)"
+            "value" : "דילוג על הנבחרים"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preskoči odabrane (%lld)"
+            "value" : "Preskoči odabrane"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kijelöltek kihagyása (%lld)"
+            "value" : "Kijelöltek kihagyása"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salta selezionati (%lld)"
+            "value" : "Salta selezionati"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "選択項目をスキップ (%lld)"
+            "value" : "選択項目をスキップ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "선택 항목 건너뛰기 (%lld)"
+            "value" : "선택 항목 건너뛰기"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hopp over valgte (%lld)"
+            "value" : "Hopp over valgte"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Selectie overslaan (%lld)"
+            "value" : "Selectie overslaan"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pomiń wybrane (%lld)"
+            "value" : "Pomiń wybrane"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ignorar selecionados (%lld)"
+            "value" : "Ignorar selecionados"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ignorar selecionados (%lld)"
+            "value" : "Ignorar selecionados"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Omite selecția (%lld)"
+            "value" : "Omite selecția"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preskočiť vybrané (%lld)"
+            "value" : "Preskočiť vybrané"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hoppa över markerade (%lld)"
+            "value" : "Hoppa över markerade"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seçilenleri atla (%lld)"
+            "value" : "Seçilenleri atla"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пропустити вибрані (%lld)"
+            "value" : "Пропустити вибрані"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "跳过所选项 (%lld)"
+            "value" : "跳过所选项"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "略過所選項 (%lld)"
+            "value" : "略過所選項"
           }
         }
       }
     },
-    "Restore to Pending (%lld)" : {
-      "comment" : "Import candidate bulk action; count of eligible selected folders",
+    "Restore to Pending" : {
+      "comment" : "Import candidate bulk action",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إعادة إلى قيد الانتظار (%lld)"
+            "value" : "إعادة إلى قيد الانتظار"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Връщане в чакащи (%lld)"
+            "value" : "Връщане в чакащи"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vrátit do čekajících (%lld)"
+            "value" : "Vrátit do čekajících"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sæt tilbage som afventende (%lld)"
+            "value" : "Sæt tilbage som afventende"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restore to Pending (%lld)"
+            "value" : "Restore to Pending"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zurück zu Ausstehend (%lld)"
+            "value" : "Zurück zu Ausstehend"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Επαναφορά σε εκκρεμότητα (%lld)"
+            "value" : "Επαναφορά σε εκκρεμότητα"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar a Pendientes (%lld)"
+            "value" : "Restaurar a Pendientes"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Palauta odottaviin (%lld)"
+            "value" : "Palauta odottaviin"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remettre en attente (%lld)"
+            "value" : "Remettre en attente"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "החזרה לממתינים (%lld)"
+            "value" : "החזרה לממתינים"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vrati na čekanje (%lld)"
+            "value" : "Vrati na čekanje"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visszahelyezés a függőbe (%lld)"
+            "value" : "Visszahelyezés a függőbe"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina in attesa (%lld)"
+            "value" : "Ripristina in attesa"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保留中に戻す (%lld)"
+            "value" : "保留中に戻す"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "대기 중으로 복원 (%lld)"
+            "value" : "대기 중으로 복원"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sett tilbake som ventende (%lld)"
+            "value" : "Sett tilbake som ventende"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terugzetten naar In behandeling (%lld)"
+            "value" : "Terugzetten naar In behandeling"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przywróć do oczekujących (%lld)"
+            "value" : "Przywróć do oczekujących"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar para Pendentes (%lld)"
+            "value" : "Restaurar para Pendentes"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Repor como pendentes (%lld)"
+            "value" : "Repor como pendentes"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Readu în așteptare (%lld)"
+            "value" : "Readu în așteptare"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vrátiť medzi čakajúce (%lld)"
+            "value" : "Vrátiť medzi čakajúce"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Återställ till väntande (%lld)"
+            "value" : "Återställ till väntande"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bekleyenlere geri yükle (%lld)"
+            "value" : "Bekleyenlere geri yükle"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Повернути до очікування (%lld)"
+            "value" : "Повернути до очікування"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "恢复到待处理 (%lld)"
+            "value" : "恢复到待处理"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "還原至待處理 (%lld)"
+            "value" : "還原至待處理"
           }
         }
       }
     },
-    "Clear metadata (%lld)" : {
-      "comment" : "Import candidate bulk action; count of eligible selected folders",
+    "%@ (%lld)" : {
+      "comment" : "A bulk action's name and how many selected folders it applies to, where the number has no place of its own: a menu item, a progress title",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مسح البيانات الوصفية (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Изчистване на метаданните (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vymazat metadata (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ryd metadata (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clear metadata (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Metadaten löschen (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Εκκαθάριση μεταδεδομένων (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Borrar metadatos (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tyhjennä metatiedot (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Effacer les métadonnées (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ניקוי המטא־נתונים (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izbriši metapodatke (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Metaadatok törlése (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cancella metadati (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "メタデータを消去 (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "메타데이터 지우기 (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tøm metadata (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Metagegevens wissen (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wyczyść metadane (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Limpar metadados (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Limpar metadados (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Șterge metadatele (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vymazať metadáta (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rensa metadata (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Meta verileri temizle (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Очистити метадані (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "清除元数据 (%lld)"
+            "value" : "%@ (%lld)"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "清除中繼資料 (%lld)"
+            "value" : "%@ (%lld)"
           }
         }
       }
@@ -102447,179 +102447,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "草稿將被檔案標籤取代。 候選項目的檔案和對應選擇將維持不變。"
-          }
-        }
-      }
-    },
-    "Reset to tags (%lld)" : {
-      "comment" : "Import candidate bulk action; count of eligible selected folders",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "إعادة التعيين إلى الوسوم (%lld)"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Връщане към етикетите (%lld)"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Obnovit ze značek (%lld)"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nulstil til mærker (%lld)"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf Tags zurücksetzen (%lld)"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Επαναφορά στις ετικέτες (%lld)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reset to tags (%lld)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restablecer a las etiquetas (%lld)"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Palauta tunnisteisiin (%lld)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réinitialiser aux tags (%lld)"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "איפוס לתגיות (%lld)"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vrati na oznake (%lld)"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visszaállítás a címkékre (%lld)"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ripristina dai tag (%lld)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タグにリセット (%lld)"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "태그로 재설정 (%lld)"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tilbakestill til merkelapper (%lld)"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Terugzetten naar tags (%lld)"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przywróć z tagów (%lld)"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Redefinir para as tags (%lld)"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Repor para as etiquetas (%lld)"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resetează la etichete (%lld)"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Obnoviť zo značiek (%lld)"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Återställ till taggar (%lld)"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Etiketlere sıfırla (%lld)"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Скинути до тегів (%lld)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重置为标签 (%lld)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重設為標籤 (%lld)"
           }
         }
       }

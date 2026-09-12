@@ -142,6 +142,27 @@
             .environment(uiStore)
             .windowBackground()
         }
+
+        /// The bulk-selection pane over two selected folders, one of them ready
+        /// to import: every action the two offer, with how many folders each
+        /// applies to.
+        static func importBulkSelection() -> some View {
+            let uiStore = UiStore()
+            uiStore.setFolderCandidateSelection([
+                PreviewData.importTabCandidate.key,
+                PreviewData.importTabDisagreementCandidate.key,
+            ])
+            return ImportCandidateBulkSelectionPane(
+                storageCloud: .constant(true),
+                storagePinned: .constant(true),
+                onPerform: { _ in },
+                onCombine: {}
+            )
+            .environment(PreviewData.importTabScene().store)
+            .environment(uiStore)
+            .environment(PreviewData.configStore())
+            .windowBackground()
+        }
     }
 
     #Preview("Import Release Queue") {
@@ -161,6 +182,10 @@
             refreshingWatchedFolderPath:
                 PreviewData.releaseQueueWatchedFolder.path
         )
+    }
+
+    #Preview("Import Bulk Selection") {
+        PreviewScenes.importBulkSelection()
     }
 
     #Preview("Import Release Queue Resolved") {
