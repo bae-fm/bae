@@ -465,6 +465,7 @@
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Izvođač albuma</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Knjižnica</value></data>
   <data name="artist.assignments.new" xml:space="preserve"><value>Novi</value></data>
+  <data name="artist.assignments.new_count" xml:space="preserve"><value>{count, plural, one {# novi} few {# nova} other {# novih}}</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Dodaj</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Ukloni</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Naziv albuma</value></data>

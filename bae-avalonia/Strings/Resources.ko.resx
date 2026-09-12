@@ -465,6 +465,7 @@
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>앨범 아티스트</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>라이브러리</value></data>
   <data name="artist.assignments.new" xml:space="preserve"><value>신규</value></data>
+  <data name="artist.assignments.new_count" xml:space="preserve"><value>{count, plural, other {신규 #개}}</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>추가</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>제거</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>앨범 제목</value></data>

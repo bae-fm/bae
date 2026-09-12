@@ -465,6 +465,7 @@
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Albüm sanatçısı</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Arşiv</value></data>
   <data name="artist.assignments.new" xml:space="preserve"><value>Yeni</value></data>
+  <data name="artist.assignments.new_count" xml:space="preserve"><value>{count, plural, other {# yeni}}</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Ekle</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Kaldır</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Albüm adı</value></data>

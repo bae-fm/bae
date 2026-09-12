@@ -465,6 +465,7 @@
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>فنان الألبوم</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>المكتبة</value></data>
   <data name="artist.assignments.new" xml:space="preserve"><value>جديد</value></data>
+  <data name="artist.assignments.new_count" xml:space="preserve"><value>{count, plural, zero {# جديد} one {واحد جديد} two {اثنان جديدان} few {# جدد} many {# جديدًا} other {# جديد}}</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>إضافة</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>إزالة</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>عنوان الألبوم</value></data>

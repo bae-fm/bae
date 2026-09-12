@@ -492,6 +492,7 @@
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Album artist</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Library</value></data>
   <data name="artist.assignments.new" xml:space="preserve"><value>New</value></data>
+  <data name="artist.assignments.new_count" xml:space="preserve"><value>{count, plural, one {# new} other {# new}}</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Add</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Remove</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Album title</value></data>

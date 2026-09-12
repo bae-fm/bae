@@ -465,6 +465,7 @@
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Изпълнител на албума</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Библиотека</value></data>
   <data name="artist.assignments.new" xml:space="preserve"><value>Ново</value></data>
+  <data name="artist.assignments.new_count" xml:space="preserve"><value>{count, plural, one {# нов} other {# нови}}</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Добавяне</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Премахване</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Заглавие на албума</value></data>

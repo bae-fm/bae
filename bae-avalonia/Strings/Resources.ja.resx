@@ -465,6 +465,7 @@
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>アルバムアーティスト</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>ライブラリ</value></data>
   <data name="artist.assignments.new" xml:space="preserve"><value>新規</value></data>
+  <data name="artist.assignments.new_count" xml:space="preserve"><value>{count, plural, other {新規#件}}</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>追加</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>削除</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>アルバムタイトル</value></data>

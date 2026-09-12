@@ -65,8 +65,15 @@ internal sealed class ArtistAssignmentsField : UserControl
 
     private void RenderField()
     {
+        ArtistAssignmentsSummary? summary = _inheritsAlbumArtists
+            ? null
+            : ArtistAssignmentDisplay.Summarize(_assignments);
         Control value;
-        if (_inheritsAlbumArtists || _assignments.Count == 0)
+        if (summary is { } assigned)
+        {
+            value = ArtistAssignmentDisplay.Summary(assigned);
+        }
+        else
         {
             var text = new TextBlock
             {
@@ -80,20 +87,6 @@ internal sealed class ArtistAssignmentsField : UserControl
             text[!TextBlock.ForegroundProperty] =
                 new DynamicResourceExtension("BaeTextSecondaryBrush");
             value = text;
-        }
-        else
-        {
-            value = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 8,
-                ClipToBounds = true,
-            };
-            var row = (StackPanel)value;
-            foreach (var assignment in _assignments)
-            {
-                row.Children.Add(ArtistAssignmentDisplay.Label(assignment));
-            }
         }
         var arrow = new TextBlock
         {
@@ -294,6 +287,11 @@ internal sealed class ArtistAssignmentsField : UserControl
     }
 }
 
+/// <summary>What a closed artist field says about a whole set of assignments:
+/// the names as one list, and one badge for how the set stands to the library.
+/// </summary>
+internal readonly record struct ArtistAssignmentsSummary(string Names, string Identity);
+
 internal static class ArtistAssignmentDisplay
 {
     internal static string Name(BridgeArtistAssignment assignment) => assignment switch
@@ -309,36 +307,72 @@ internal static class ArtistAssignmentDisplay
             $"{CultureInfo.CurrentCulture.TextInfo.ListSeparator} ",
             assignments.Select(Name));
 
-    internal static Control Label(BridgeArtistAssignment assignment)
+    /// <summary>The names as one list, and one badge: every name already in the
+    /// library, every name new to it, or how many of them are new. <c>null</c>
+    /// when nothing is assigned — the field shows its placeholder, which is not
+    /// a summary of anything.</summary>
+    internal static ArtistAssignmentsSummary? Summarize(
+        IReadOnlyList<BridgeArtistAssignment> assignments)
     {
-        var name = new TextBlock
+        if (assignments.Count == 0)
         {
-            Text = Name(assignment),
+            return null;
+        }
+        var created = assignments.Count(IsNew);
+        var identity = created == 0
+            ? Loc.Chrome("artist.assignments.library")
+            : created == assignments.Count
+                ? Loc.Chrome("artist.assignments.new")
+                : Loc.Chrome("artist.assignments.new_count", "count", created);
+        return new ArtistAssignmentsSummary(Join(assignments), identity);
+    }
+
+    internal static Control Summary(ArtistAssignmentsSummary summary) =>
+        NameWithBadge(summary.Names, summary.Identity);
+
+    internal static Control Label(BridgeArtistAssignment assignment) =>
+        NameWithBadge(Name(assignment), Identity(assignment));
+
+    private static bool IsNew(BridgeArtistAssignment assignment) => assignment switch
+    {
+        BridgeArtistAssignment.Existing _ => false,
+        BridgeArtistAssignment.New _ => true,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(assignment), assignment, "Unknown artist assignment"),
+    };
+
+    private static string Identity(BridgeArtistAssignment assignment) => assignment switch
+    {
+        BridgeArtistAssignment.Existing _ =>
+            Loc.Chrome("artist.assignments.library"),
+        BridgeArtistAssignment.New _ =>
+            Loc.Chrome("artist.assignments.new"),
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(assignment), assignment, "Unknown artist assignment"),
+    };
+
+    private static Control NameWithBadge(string name, string identity)
+    {
+        var text = new TextBlock
+        {
+            Text = name,
             TextTrimming = TextTrimming.CharacterEllipsis,
             MaxLines = 1,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var identity = new TextBlock
+        var label = new TextBlock
         {
-            Text = assignment switch
-            {
-                BridgeArtistAssignment.Existing _ =>
-                    Loc.Chrome("artist.assignments.library"),
-                BridgeArtistAssignment.New _ =>
-                    Loc.Chrome("artist.assignments.new"),
-                _ => throw new ArgumentOutOfRangeException(
-                    nameof(assignment), assignment, "Unknown artist assignment"),
-            },
+            Text = identity,
             FontSize = 10,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        identity[!TextBlock.ForegroundProperty] =
+        label[!TextBlock.ForegroundProperty] =
             new DynamicResourceExtension("BaeTextSecondaryBrush");
         var badge = new Border
         {
             Padding = new Avalonia.Thickness(5, 2),
             CornerRadius = new Avalonia.CornerRadius(4),
-            Child = identity,
+            Child = label,
         };
         badge[!Border.BackgroundProperty] =
             new DynamicResourceExtension("BaeElevatedBrush");
@@ -346,7 +380,7 @@ internal static class ArtistAssignmentDisplay
         {
             ColumnDefinitions = new ColumnDefinitions("*,Auto"),
             ColumnSpacing = 5,
-            Children = { name, badge.WithGridColumn(1) },
+            Children = { text, badge.WithGridColumn(1) },
         };
     }
 }

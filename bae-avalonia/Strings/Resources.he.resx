@@ -465,6 +465,7 @@
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>אמן האלבום</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>ספרייה</value></data>
   <data name="artist.assignments.new" xml:space="preserve"><value>חדש</value></data>
+  <data name="artist.assignments.new_count" xml:space="preserve"><value>{count, plural, one {חדש אחד} two {שניים חדשים} many {# חדשים} other {# חדשים}}</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>הוסף</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>הסר</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>שם האלבום</value></data>

@@ -465,6 +465,7 @@
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>专辑艺术家</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>资料库</value></data>
   <data name="artist.assignments.new" xml:space="preserve"><value>新建</value></data>
+  <data name="artist.assignments.new_count" xml:space="preserve"><value>{count, plural, other {新建#个}}</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>添加</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>移除</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>专辑标题</value></data>

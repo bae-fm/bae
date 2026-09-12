@@ -492,6 +492,7 @@
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Artistul albumului</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Bibliotecă</value></data>
   <data name="artist.assignments.new" xml:space="preserve"><value>Nou</value></data>
+  <data name="artist.assignments.new_count" xml:space="preserve"><value>{count, plural, one {# nou} few {# noi} other {# de noi}}</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Adaugă</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Elimină</value></data>
   <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Titlul albumului</value></data>
