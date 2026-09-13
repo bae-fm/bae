@@ -30,33 +30,33 @@ final class FindOnlinePaneTests: XCTestCase {
         withExtendedLifetime(window) {}
     }
 
-    /// A failure with no ledger to hang a cell's Retry off — a folder that
+    /// A failure with no band to hang a capsule's Retry off — a folder that
     /// carried nothing to lay out, or a verdict stored before its signals
     /// were — is a dead end without this: the reasons, and one way to ask
-    /// again beneath them. A failure that does have a ledger says it in the
-    /// cell that failed instead, so the word appears in the one case and not
-    /// the other.
+    /// again beneath them. A failure that does have a band says it in the
+    /// capsule that failed instead, so the word appears in the one case and
+    /// not the other.
     ///
     /// Read off the rendered pane: the pane draws its own controls rather than
     /// hanging AppKit ones in the view tree, so what it says is in its pixels.
-    func testAFailureWithNoLedgerOffersItsRetry() async throws {
+    func testAFailureWithNoBandOffersItsRetry() async throws {
         let retry = String(localized: "Retry")
-        let withoutLedger = try await renderedText(
+        let withoutBand = try await renderedText(
             of: PreviewData.searchStateFailedWithoutRun
         )
-        let withLedger = try await renderedText(
+        let withBand = try await renderedText(
             of: PreviewData.searchStateAllSourcesFailed
         )
 
         XCTAssertTrue(
-            withoutLedger.contains {
+            withoutBand.contains {
                 $0.localizedCaseInsensitiveContains(retry)
             },
-            "a failure with no ledger reads: \(withoutLedger)"
+            "a failure with no band reads: \(withoutBand)"
         )
         XCTAssertFalse(
-            withLedger.contains { $0.localizedCaseInsensitiveContains(retry) },
-            "a failure with a ledger reads: \(withLedger)"
+            withBand.contains { $0.localizedCaseInsensitiveContains(retry) },
+            "a failure with a band reads: \(withBand)"
         )
     }
 
@@ -511,7 +511,7 @@ struct FindOnlineResultAreaTests {
     }
 
     /// A folder with nothing to look up on its own but catalog numbers to
-    /// offer shows the ledger's tiles rather than the no-signals line.
+    /// offer shows the band's chips rather than the no-signals line.
     @Test("catalog numbers to activate are an area of their own")
     func catalogNumbersToActivate() {
         #expect(
@@ -557,42 +557,29 @@ struct FindOnlineFinalizingTests {
 }
 
 @MainActor
-@Suite("The ledger a run shows")
-struct IdentifyLedgerViewTests {
-    /// The rows draw themselves — chips, values, cells — rather than handing
-    /// anything to an AppKit control. Assert each shape of run puts something
-    /// on screen, and that different runs draw differently.
+@Suite("The band a run shows")
+struct IdentifierBandTests {
+    /// The chips draw themselves — labels, values, provider capsules — rather
+    /// than handing anything to an AppKit control. Assert each shape of run
+    /// puts something on screen, and that different runs draw differently.
     @Test("every shape of run draws")
     func everyShapeOfRunDraws() async throws {
-        let size = NSSize(width: 660, height: 260)
-        func pixels(_ run: BridgeIdentifyRun) async throws -> Data {
-            try await FindOnlineRendering.pixels(
-                IdentifyLedgerView(
-                    run: run,
-                    catalogAgreements: [],
-                    filePaths: [:],
-                    onToggleCatalog: { _ in },
-                    onToggleCatalogAgreement: { _ in },
-                    onRetryFailed: {},
-                )
-                .importPreviewEnvironment(),
-                size: size
-            )
-        }
-        let starting = try await pixels(PreviewData.identifyRunStarting)
-        let inFlight = try await pixels(PreviewData.identifyRunInFlight)
-        let failed = try await pixels(PreviewData.identifyRunProviderFailed)
-        let empty = try await pixels(PreviewData.identifyRunNothingFound)
+        let starting = try await Self.pixels(PreviewData.identifyRunStarting)
+        let inFlight = try await Self.pixels(PreviewData.identifyRunInFlight)
+        let failed = try await Self.pixels(
+            PreviewData.identifyRunProviderFailed
+        )
+        let empty = try await Self.pixels(PreviewData.identifyRunNothingFound)
 
         #expect(starting != inFlight)
         #expect(inFlight != failed)
         #expect(failed != empty)
     }
 
-    /// A run in flight lists what has landed under its ledger, so the area
+    /// A run in flight lists what has landed under its band, so the area
     /// scrolls.
-    @Test("the matches landed so far list under the ledger")
-    func landedMatchesListUnderTheLedger() async {
+    @Test("the matches landed so far list under the band")
+    func landedMatchesListUnderTheBand() async {
         let size = NSSize(width: 900, height: 600)
         let (window, host) = FindOnlineRendering.host(
             ImportSearchPane.preview(
@@ -610,30 +597,34 @@ struct IdentifyLedgerViewTests {
         withExtendedLifetime(window) {}
     }
 
-    /// A catalog number is drawn where it stands: as a row of the table once
-    /// activated, as a tile below it while not. The same number in the two
-    /// places draws differently.
-    @Test("an activated catalog number moves from the tiles to the table")
-    func anActivatedNumberMovesToTheTable() async throws {
-        let size = NSSize(width: 660, height: 260)
-        func pixels(_ run: BridgeIdentifyRun) async throws -> Data {
-            try await FindOnlineRendering.pixels(
-                IdentifyLedgerView(
-                    run: run,
-                    catalogAgreements: [],
-                    filePaths: [:],
-                    onToggleCatalog: { _ in },
-                    onToggleCatalogAgreement: { _ in },
-                    onRetryFailed: {},
-                )
-                .importPreviewEnvironment(),
-                size: size
-            )
-        }
-        let active = try await pixels(PreviewData.identifyRunProviderFailed)
-        let waiting = try await pixels(PreviewData.identifyRunCatalogWaiting)
+    /// A catalog number is drawn where it stands: filled, with a capsule per
+    /// provider, once it is in the run; outlined and dimmed while it waits.
+    /// The same number in the two states draws differently.
+    @Test("a catalog number in the run draws differently from one waiting")
+    func aNumberInTheRunDrawsDifferently() async throws {
+        let active = try await Self.pixels(
+            PreviewData.identifyRunProviderFailed
+        )
+        let waiting = try await Self.pixels(
+            PreviewData.identifyRunCatalogWaiting
+        )
 
         #expect(active != waiting)
+    }
+
+    /// The band on its own, at the width the pane's previews give it.
+    private static func pixels(_ run: BridgeIdentifyRun) async throws -> Data {
+        try await FindOnlineRendering.pixels(
+            IdentifierBand(
+                run: run,
+                catalogAgreements: [],
+                onToggleCatalog: { _ in },
+                onToggleCatalogAgreement: { _ in },
+                onRetryFailed: {},
+            )
+            .importPreviewEnvironment(),
+            size: NSSize(width: 660, height: 260)
+        )
     }
 }
 

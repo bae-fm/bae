@@ -284,10 +284,6 @@ extension ImportSearchFlow {
             // and for a re-identify key — which has no row at all — it is the
             // only answer.
             signals: input.liveSignals ?? candidate.settledSignals,
-            filePaths: Dictionary(
-                candidate.files.files.map { ($0.file.name, $0.file.localPath) },
-                uniquingKeysWith: { first, _ in first }
-            ),
         )
     }
 

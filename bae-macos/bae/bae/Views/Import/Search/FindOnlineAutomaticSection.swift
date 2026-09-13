@@ -1,9 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// The AUTOMATIC section's content: the identify ledger with what it matched
-/// beneath, scrolling together — or, with nothing to lay out, one line saying
-/// so and the one thing to do.
+/// The AUTOMATIC section's content: the run's band of identifiers with what it
+/// matched beneath, scrolling together — or, with nothing to lay out, one line
+/// saying so and the one thing to do.
 ///
 /// Which of those it is, is `FindOnlineResultArea`'s answer, read off the
 /// identify state. Everything the section shows hangs off that one reading,
@@ -79,10 +79,9 @@ struct FindOnlineAutomaticSection: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if let run = state.run {
-                        IdentifyLedgerView(
+                        IdentifierBand(
                             run: run,
                             catalogAgreements: state.catalogAgreements,
-                            filePaths: state.filePaths,
                             onToggleCatalog: onToggleCatalog,
                             onToggleCatalogAgreement:
                                 onToggleCatalogAgreement,
@@ -91,7 +90,7 @@ struct FindOnlineAutomaticSection: View {
                         Divider()
                             .padding(.horizontal, 14)
                     }
-                    belowLedger
+                    belowBand
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -99,7 +98,7 @@ struct FindOnlineAutomaticSection: View {
     }
 
     @ViewBuilder
-    private var belowLedger: some View {
+    private var belowBand: some View {
         switch area {
         case .identifying:
             if !state.identifiedGroups.isEmpty {
@@ -160,7 +159,7 @@ struct FindOnlineAutomaticSection: View {
         )
     }
 
-    /// The reasons, with the retry they carry when no ledger does.
+    /// The reasons, with the retry they carry when no band does.
     private var failureLines: some View {
         FindOnlineFailureLines(
             failures: state.identifyFailures,

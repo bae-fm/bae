@@ -24,11 +24,6 @@ struct ImportSearchState {
     let isFinalizing: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     let signals: Signals?
-    /// Where each of the candidate's files is on disk, by the
-    /// candidate-relative path a signal names it by — what a source chip
-    /// crops its thumbnail out of. Empty for a re-identify session, whose
-    /// images are stored blobs rather than files.
-    let filePaths: [String: String]
 
     /// The run as its ledger, while there is one to lay out.
     var run: BridgeIdentifyRun? {
@@ -65,8 +60,7 @@ struct ImportSearchState {
     }
 
     /// The catalog numbers the folder states about the offered releases — the
-    /// chips in the ledger's Catalog # row, each counting until it is struck
-    /// out.
+    /// chips in the run's band, each counting until it is struck out.
     var catalogAgreements: [BridgeCatalogAgreement] {
         identifyState.catalogAgreements
     }

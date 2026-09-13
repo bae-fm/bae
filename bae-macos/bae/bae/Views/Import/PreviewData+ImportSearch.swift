@@ -984,7 +984,6 @@
                 isFinalizing: isFinalizing,
                 libraryStatuses: libraryStatuses,
                 signals: signals,
-                filePaths: [:]
             )
         }
     }

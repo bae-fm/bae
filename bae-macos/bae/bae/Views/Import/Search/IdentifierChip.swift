@@ -1,52 +1,150 @@
 import BaeKit
 import SwiftUI
 
-// The pieces a ledger is built from: a signal's group label, a value's row
-// with its source chips and provider cells, and the cell itself.
+// The pieces the band is built from: one identifier's chip, a provider's
+// answer inside it, and the marks a chip carries when there is no answer to
+// show.
 
-/// A signal's name at the top of its group. A spinner beside it means the
-/// producing scan may still add rows to the group; a signal with nothing
-/// found never disappears — its label dims and carries a short dash.
-struct LedgerGroupLabel: View {
-    let text: String
-    var working = false
-    /// Nothing to run for this signal.
-    var nothing = false
-    /// Reading this signal's input failed before any provider was asked.
-    var failure: BridgeLookupFailure?
+/// Where a chip's value was read, as tags between its label and the value.
+enum IdentifierTags {
+    /// Every place a barcode or catalog number was read, in the order it was
+    /// read there. Empty for a chip with no value yet.
+    case sources([BridgeValueSource])
+    /// The LOG or CUE a disc ID was read off. `nil` for a release
+    /// re-identified from its stored tracks, which has no file to name.
+    case discIdFile(BridgeDiscIdFile?)
+}
+
+/// How a chip reads: filled for an identifier the run has an answer about,
+/// outlined and dimmed for a number waiting to be looked up.
+enum IdentifierChipStyle {
+    case filled
+    case outlined
+}
+
+/// The widest a chip's value is drawn before it truncates in the middle: a
+/// disc ID is far longer than a barcode, and the band reads as chips rather
+/// than as one long line.
+private let identifierValueWidth: CGFloat = 92
+
+/// One identifier in the band: what kind it is, where it was read, the value,
+/// and what the providers say about it.
+struct IdentifierChip<Trailing: View>: View {
+    let label: String
+    var tags: IdentifierTags = .sources([])
+    var value: String?
+    var style: IdentifierChipStyle = .filled
+    @ViewBuilder
+    let trailing: Trailing
+
+    @State
+    private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 7) {
-            Text(text)
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(
-                    nothing ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary)
-                )
+        HStack(spacing: 6) {
+            Text(label)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.tertiary)
                 .fixedSize()
-            if working {
-                ProgressView()
-                    .controlSize(.small)
-                    .scaleEffect(0.55)
-                    .frame(width: 10, height: 10)
+            tagChips
+            if let value {
+                Text(value)
+                    .font(.system(size: 10.5, design: .monospaced))
+                    .foregroundStyle(valueStyle)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: identifierValueWidth, alignment: .leading)
             }
-            if nothing {
-                LedgerDash()
-                    .padding(.leading, 1)
-            }
-            if failure != nil {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.orange)
-            }
-            Spacer(minLength: 0)
+            trailing
         }
-        .padding(.horizontal, LedgerMetrics.sideInset)
-        .frame(height: working ? 30 : 26)
+        .padding(.leading, 7)
+        .padding(.trailing, 6)
+        .padding(.vertical, 3)
+        .background(fill, in: RoundedRectangle(cornerRadius: 6))
+        .overlay {
+            if style == .outlined {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(border, lineWidth: 1)
+            }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 6))
+        .onHover { isHovered = $0 }
+    }
+
+    @ViewBuilder
+    private var tagChips: some View {
+        switch tags {
+        case .sources(let sources):
+            ForEach(Array(sources.enumerated()), id: \.offset) { _, source in
+                SignalSourceChip(source: source)
+                    .opacity(style == .outlined ? 0.5 : 1)
+            }
+        case .discIdFile(let file):
+            if let file {
+                DiscIdFileChip(source: file)
+            }
+        }
+    }
+
+    private var valueStyle: AnyShapeStyle {
+        style == .outlined
+            ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.secondary)
+    }
+
+    private var fill: Color {
+        switch style {
+        case .filled: Color.primary.opacity(isHovered ? 0.06 : 0.035)
+        case .outlined: Color.primary.opacity(isHovered ? 0.04 : 0)
+        }
+    }
+
+    private var border: Color {
+        Color.primary.opacity(isHovered ? 0.18 : 0.09)
+    }
+}
+
+extension IdentifierChip where Trailing == EmptyView {
+    /// A chip with nothing after its value: a number nobody has asked about
+    /// yet.
+    init(
+        label: String,
+        tags: IdentifierTags = .sources([]),
+        value: String? = nil,
+        style: IdentifierChipStyle = .filled
+    ) {
+        self.init(label: label, tags: tags, value: value, style: style) {
+            EmptyView()
+        }
+    }
+}
+
+/// One provider's answer about one value, inside that value's chip: the
+/// provider's name and its lookup's glyph, on one ground so they read as one
+/// unit.
+struct ProviderCapsule: View {
+    let source: BridgeMetadataSource
+    let lookup: BridgeLookupState
+    let onRetry: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(bridgeMetadataSourceName(source: source))
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .fixedSize()
+            LookupCellView(lookup: lookup, onRetry: onRetry)
+        }
+        .padding(.horizontal, 5)
+        .padding(.vertical, 1)
+        .background(
+            Color.primary.opacity(0.05),
+            in: RoundedRectangle(cornerRadius: 4)
+        )
     }
 }
 
 /// The short dash that says nothing ran here.
-struct LedgerDash: View {
+struct IdentifierDash: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 1)
             .fill(Color.primary.opacity(0.28))
@@ -54,59 +152,37 @@ struct LedgerDash: View {
     }
 }
 
-/// A full-width band connecting a value to its status cells.
-struct LedgerRowBand<Content: View>: View {
-    @ViewBuilder
-    let content: Content
-
+/// The mark a signal carries when reading its own input failed, before any
+/// provider was asked. What went wrong is the chip's hover.
+struct IdentifierWarning: View {
     var body: some View {
-        HStack(spacing: 0) {
-            content
-        }
-        .padding(.leading, LedgerMetrics.rowInset)
-        .padding(.trailing, LedgerMetrics.sideInset)
-        .frame(height: 28)
-        .background(Color.primary.opacity(0.022))
-        .padding(.bottom, 2)
+        Image(systemName: "exclamationmark.triangle")
+            .font(.system(size: 11))
+            .foregroundStyle(.orange)
     }
 }
 
-/// The value itself, in monospace.
-struct LedgerValueText: View {
-    let value: String
-
+/// The spinner a chip carries while what feeds it is still being read.
+struct ChipSpinner: View {
     var body: some View {
-        Text(value)
-            .font(.system(size: 10.5, design: .monospaced))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .truncationMode(.middle)
+        ProgressView()
+            .controlSize(.small)
+            .scaleEffect(0.55)
+            .frame(width: 10, height: 10)
     }
 }
 
-/// One value's row under the provider table: where it was found, the value,
-/// and one cell per provider.
-struct LedgerValueRow: View {
-    let row: BridgeSignalValueRow
-    let filePaths: [String: String]
-    let onRetry: () -> Void
-
+/// A chip of nothing but a spinner, closing the band: the artwork is still
+/// being read, so more chips may still join it.
+struct ScanningChip: View {
     var body: some View {
-        LedgerRowBand {
-            HStack(spacing: 7) {
-                ForEach(Array(row.sources.enumerated()), id: \.offset) {
-                    _,
-                    source in
-                    SignalSourceChip(source: source, filePaths: filePaths)
-                }
-                LedgerValueText(value: row.value)
-            }
-            Spacer(minLength: 8)
-            ForEach(row.cells, id: \.source) { cell in
-                LookupCellView(lookup: cell.lookup, onRetry: onRetry)
-                    .frame(width: LedgerMetrics.cellWidth)
-            }
-        }
+        ChipSpinner()
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(
+                Color.primary.opacity(0.035),
+                in: RoundedRectangle(cornerRadius: 6)
+            )
     }
 }
 
@@ -124,7 +200,7 @@ struct LookupCellView: View {
                 .fill(Color.primary.opacity(0.18))
                 .frame(width: 5, height: 5)
         case .notAsked:
-            LedgerDash()
+            IdentifierDash()
         case .lookingUp:
             ProgressView()
                 .controlSize(.small)
@@ -136,9 +212,7 @@ struct LookupCellView: View {
             CountCapsule(count: 0)
         case .failed(let failure):
             HStack(spacing: 6) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.orange)
+                IdentifierWarning()
                     .help(failure.badgeLine)
                 Button(action: onRetry) {
                     Image(systemName: "arrow.clockwise")

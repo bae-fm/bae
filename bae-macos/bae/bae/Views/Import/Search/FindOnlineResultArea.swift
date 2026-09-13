@@ -1,12 +1,12 @@
 import BaeKit
 
-/// What the AUTOMATIC section shows under its ledger — or instead of one,
-/// when there is nothing to lay out.
+/// What the AUTOMATIC section shows under its band of identifiers — or
+/// instead of one, when there is nothing to lay out.
 ///
 /// Choosing between them is a switch over one pre-shaped value, so it is
 /// stated once here and rendered from.
 enum FindOnlineResultArea: Equatable {
-    /// A lookup is under way: the ledger, with the matches landed so far
+    /// A lookup is under way: the band, with the matches landed so far
     /// beneath it.
     case identifying
     /// Identification has matches to offer.
@@ -16,7 +16,8 @@ enum FindOnlineResultArea: Equatable {
     /// The folder carries nothing to look up and nothing to offer.
     case noSignals
     /// The folder carries nothing to look up on its own, but catalog numbers
-    /// a person can activate: the ledger's tiles, and nothing beneath them.
+    /// a person can activate: the band's waiting chips, and nothing beneath
+    /// them.
     case awaitingCatalog
     /// Every lookup that ran failed, so there is nothing but the reasons.
     case failureLines

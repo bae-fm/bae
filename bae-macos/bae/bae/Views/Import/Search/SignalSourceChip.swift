@@ -2,14 +2,10 @@ import BaeKit
 import SwiftUI
 
 /// Where a value came from, as a chip beside it: `LOG`, `CUE`, `TXT`, the
-/// folder or file name, or — for a value read off the artwork — the crop of
-/// the image it was read from. Hovering a text chip names its file; hovering
-/// a crop enlarges it with its filename.
+/// folder or the file name, naming its file on hover. A value read off the
+/// cover artwork gets no chip at all.
 struct SignalSourceChip: View {
     let source: BridgeValueSource
-    /// Where each of the candidate's files is on disk, by the path the source
-    /// names it by.
-    let filePaths: [String: String]
 
     private var fileName: String? {
         source.file.map(lastPathComponent)
@@ -17,8 +13,10 @@ struct SignalSourceChip: View {
 
     var body: some View {
         switch source.origin {
+        // The cover scan the value was read off is not shown, so there is
+        // nothing for a chip to name.
         case .artwork:
-            artwork
+            EmptyView()
         case .cueSheet:
             SignalTextChip(text: "CUE")
                 .help(fileName ?? SignalBadgeStyle.originLabel(for: .cueSheet))
@@ -34,48 +32,6 @@ struct SignalSourceChip: View {
         case .discToc:
             SignalTextChip(text: "LOG")
                 .help(fileName ?? SignalBadgeStyle.originLabel(for: .discToc))
-        }
-    }
-
-    /// The crop of the image the value was read off, where the image is one
-    /// of the candidate's files. A library release's stored cover is no file
-    /// of a folder, so it gets the artwork origin's name instead.
-    @ViewBuilder
-    private var artwork: some View {
-        if let file = source.file, let path = filePaths[file] {
-            let content = ImageContent.localFile(path: path)
-            ArtworkCropView(
-                content: content,
-                region: source.region,
-                width: 16,
-                height: 12
-            )
-            .hoverPopover(arrowEdge: .bottom) {
-                VStack(alignment: .leading, spacing: 5) {
-                    ArtworkCropView(
-                        content: content,
-                        region: source.region,
-                        width: 132,
-                        height: nil
-                    )
-                    Text(lastPathComponent(file))
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .frame(maxWidth: 132, alignment: .leading)
-                }
-                .padding(6)
-                .popoverEntrance(anchor: .top)
-                .background { PopoverBehavior() }
-            }
-        }
-        else {
-            Image(systemName: "photo")
-                .font(.system(size: 9))
-                .foregroundStyle(.secondary)
-                .frame(width: 16, height: 12)
-                .help(SignalBadgeStyle.originLabel(for: .artwork))
         }
     }
 }
@@ -132,36 +88,24 @@ func lastPathComponent(_ path: String) -> String {
                     origin: .cueSheet,
                     file: "Album.cue",
                     region: nil
-                ),
-                filePaths: [:]
-            )
-            SignalSourceChip(
-                source: BridgeValueSource(
-                    origin: .artwork,
-                    file: nil,
-                    region: nil
-                ),
-                filePaths: [:]
+                )
             )
             SignalSourceChip(
                 source: BridgeValueSource(
                     origin: .folderName,
                     file: nil,
                     region: nil
-                ),
-                filePaths: [:]
+                )
             )
             SignalSourceChip(
                 source: BridgeValueSource(
                     origin: .textFile,
                     file: "info.txt",
                     region: nil
-                ),
-                filePaths: [:]
+                )
             )
         }
         .padding()
-        .environment(PreviewData.artImageStore())
         .windowBackground()
     }
 #endif
