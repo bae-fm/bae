@@ -800,12 +800,12 @@ public sealed class ImportMappingPaneTests
 
     /// <summary>The codes behind the barcode badge, in the order it lists
     /// them.</summary>
+    /// <summary>The barcode badge's list: one item per code the folder
+    /// carries. Found by the badge's tooltip, so the file rows' own menus
+    /// stay out of it.</summary>
     private static IReadOnlyList<MenuItem> BarcodeMenu(Control pane) =>
-        pane.GetLogicalDescendants()
-            .OfType<Button>()
-            .Select(button => button.Flyout)
-            .OfType<MenuFlyout>()
-            .SelectMany(flyout => flyout.ItemsSource!.OfType<MenuItem>())
+        Assert.IsType<MenuFlyout>(Chip(pane, Loc.Chrome("signal.pick_barcode")).Flyout)
+            .ItemsSource!.OfType<MenuItem>()
             .ToList();
 
     /// <summary>The one chip whose tooltip is `tip`.</summary>

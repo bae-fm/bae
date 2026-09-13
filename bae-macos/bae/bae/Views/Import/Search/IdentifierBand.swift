@@ -332,11 +332,19 @@ struct IdentifierBand: View {
     }
 
     /// The off chips: a disc ID the person took out of the run, and one of two
-    /// barcodes left out beside the one still being looked up.
+    /// barcodes left out beside the one still being looked up — over the same
+    /// two barcodes both asked about, for the difference.
     #Preview("Identifiers left out of the run") {
         VStack(alignment: .leading, spacing: 0) {
             IdentifierBand(
                 run: PreviewData.identifyRunDiscIdLeftOut,
+                catalogAgreements: [],
+                onToggleLookup: { _ in },
+                onToggleCatalogAgreement: { _ in },
+                onRetryFailed: {},
+            )
+            IdentifierBand(
+                run: PreviewData.identifyRunBothBarcodesAsked,
                 catalogAgreements: [],
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
