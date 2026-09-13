@@ -426,9 +426,9 @@ fn live_matches(
     NarrowedOut,
 ) {
     let outcome = combine_results(
-        context.disc.active(discid.results()),
+        discid.results(),
         barcode.results(),
-        context.catalog.active(catalog.results()),
+        catalog.results(),
         &context.text,
     );
     match outcome {

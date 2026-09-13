@@ -675,7 +675,7 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
     // matches would leave a person looking at an empty pane while one source
     // had the answer.
     let outcome = combine_results(
-        context.disc.active_results(),
+        context.disc.results.clone(),
         context.barcode.results.clone(),
         context.catalog.active_results(),
         &context.text,

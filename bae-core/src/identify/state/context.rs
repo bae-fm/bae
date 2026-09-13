@@ -84,29 +84,11 @@ impl DiscIdEvidence {
         };
     }
 
-    /// `results` as the current selection sees them: nothing when the user
-    /// unchecked the disc ID. Takes the results rather than reading `self.results`
-    /// so a lookup still in flight can be combined under the same rule.
-    pub(crate) fn active<T>(&self, results: Vec<T>) -> Vec<T> {
-        if self.excluded {
-            Vec::new()
-        } else {
-            results
-        }
-    }
-
-    /// The results combine sees — empty when the signal is unchecked.
-    pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
-        self.active(self.results.clone())
-    }
-
-    /// A failure belonging to evidence the current selection still uses. A
-    /// lookup already in flight is allowed to finish after exclusion, but its
-    /// answer no longer participates in the derived state.
+    /// The disc ID's failure, where it has one. A disc ID the run was told to
+    /// leave out is never looked up — a run reads what it asks about once, at
+    /// its start, and changing that starts another run — so a failure in hand
+    /// is always one the selection asked for.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
-        if self.excluded {
-            return;
-        }
         if let Some(failure) = &self.failure {
             into.push(IdentifyFailure::DiscId(failure.clone()));
         }
@@ -290,18 +272,6 @@ impl CatalogEvidence {
     /// a number's sightings fold into one tile.
     pub fn number_values(&self) -> Vec<String> {
         unique_values(&self.numbers)
-    }
-
-    /// `results` as the current selection sees them. Nothing chosen means
-    /// nothing ran, so the catalog takes no part. Takes the results rather than
-    /// reading the recorded ones so a lookup still in flight can be combined
-    /// under the same rule.
-    pub(crate) fn active<T>(&self, results: Vec<T>) -> Vec<T> {
-        if self.chosen.is_empty() {
-            Vec::new()
-        } else {
-            results
-        }
     }
 
     /// The results combine sees: every chosen number's, in chosen order.

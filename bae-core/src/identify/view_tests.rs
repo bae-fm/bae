@@ -103,25 +103,6 @@ fn a_landed_provider_s_matches_show_before_the_other_answers() {
     assert!(agreements[0].1.barcode);
 }
 
-/// A disc ID the run was told to leave out contributes nothing: an answer in
-/// hand for it is not offered, and with nothing else answering the run reads as
-/// having found nothing.
-#[test]
-fn a_left_out_disc_id_s_matches_do_not_show() {
-    let mut context = context();
-    context.disc.signal = DiscIdSignal::Computed {
-        disc_id: "d".to_string(),
-        track_count: 9,
-        source_file: None,
-    };
-    context.disc.excluded = true;
-    context.disc.results = vec![result(MB, "mb-1")];
-    assert!(matches!(
-        IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context)),
-        IdentifyStateView::NotFoundAnywhere { .. }
-    ));
-}
-
 /// Every code the candidate carries is a row, whether the run asks about it or
 /// not: a code left out is a row saying so, with nothing run against it, beside
 /// the code the walks did ask about.
