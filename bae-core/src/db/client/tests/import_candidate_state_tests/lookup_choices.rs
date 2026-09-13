@@ -1,5 +1,5 @@
 // The lookup choices stored on a candidate: which signals its runs leave out,
-// and which of the extracted catalog numbers they ask about.
+// and which of its barcodes and extracted catalog numbers they ask about.
 
 /// The whole value goes down and comes back, catalog order included: the
 /// chosen numbers are asked in the order the person chose them, so their
@@ -12,7 +12,7 @@ async fn lookup_choices_round_trip_with_their_catalog_order() {
 
     let choices = crate::import::LookupChoices {
         disc_id_excluded: true,
-        barcode_excluded: false,
+        excluded_barcodes: Vec::new(),
         chosen_catalogs: vec!["LBL 002".to_string(), "LBL 001".to_string()],
         discounted_catalogs: Vec::new(),
     };
@@ -42,7 +42,7 @@ async fn writing_lookup_choices_replaces_what_stood_before() {
         &hash,
         &crate::import::LookupChoices {
             disc_id_excluded: true,
-            barcode_excluded: true,
+            excluded_barcodes: vec!["0123456789012".to_string()],
             chosen_catalogs: vec!["LBL 001".to_string(), "LBL 002".to_string()],
             discounted_catalogs: Vec::new(),
         },
@@ -51,7 +51,7 @@ async fn writing_lookup_choices_replaces_what_stood_before() {
     .unwrap();
     let replacement = crate::import::LookupChoices {
         disc_id_excluded: false,
-        barcode_excluded: true,
+        excluded_barcodes: vec!["0123456789012".to_string()],
         chosen_catalogs: vec!["LBL 003".to_string()],
         discounted_catalogs: Vec::new(),
     };
@@ -97,7 +97,7 @@ async fn choices_for_an_unknown_candidate_are_refused() {
             "0000000000000000000000000000000000000000000000000000000000000000",
             &crate::import::LookupChoices {
                 disc_id_excluded: true,
-                barcode_excluded: false,
+                excluded_barcodes: Vec::new(),
                 chosen_catalogs: Vec::new(),
                 discounted_catalogs: Vec::new(),
             },
@@ -122,7 +122,7 @@ async fn struck_out_catalog_numbers_round_trip_beside_the_chosen_ones() {
 
     let choices = crate::import::LookupChoices {
         disc_id_excluded: false,
-        barcode_excluded: false,
+        excluded_barcodes: Vec::new(),
         chosen_catalogs: vec!["LBL 002".to_string()],
         discounted_catalogs: vec!["LBL 002".to_string(), "LBL 100".to_string()],
     };
@@ -159,6 +159,70 @@ async fn writing_the_choices_replaces_what_was_struck_out() {
     .unwrap();
     let replacement = crate::import::LookupChoices {
         discounted_catalogs: vec!["LBL 002".to_string()],
+        ..Default::default()
+    };
+    db.save_import_candidate_lookup_choices(&hash, &replacement)
+        .await
+        .unwrap();
+
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    assert_eq!(
+        loaded
+            .get(&hash)
+            .expect("the candidate reads back")
+            .lookup_choices,
+        replacement
+    );
+}
+
+/// The barcodes a run leaves out go down and come back as the set they are:
+/// a double sleeve's two codes, one asked about and one not, are two separate
+/// decisions rather than one flag over the pair.
+#[tokio::test]
+async fn left_out_barcodes_round_trip_as_a_set() {
+    let (db, _tmp) = empty_db().await;
+    let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
+    let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
+
+    let choices = crate::import::LookupChoices {
+        disc_id_excluded: false,
+        excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
+        chosen_catalogs: Vec::new(),
+        discounted_catalogs: Vec::new(),
+    };
+    db.save_import_candidate_lookup_choices(&hash, &choices)
+        .await
+        .unwrap();
+
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    assert_eq!(
+        loaded
+            .get(&hash)
+            .expect("the candidate reads back")
+            .lookup_choices,
+        choices
+    );
+}
+
+/// The left-out barcodes are replaced whole like the rest of the value: a code
+/// the new value does not name is asked about again.
+#[tokio::test]
+async fn writing_the_choices_replaces_the_left_out_barcodes() {
+    let (db, _tmp) = empty_db().await;
+    let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
+    let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
+
+    db.save_import_candidate_lookup_choices(
+        &hash,
+        &crate::import::LookupChoices {
+            excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    let replacement = crate::import::LookupChoices {
+        excluded_barcodes: vec!["9999999999999".to_string()],
         ..Default::default()
     };
     db.save_import_candidate_lookup_choices(&hash, &replacement)

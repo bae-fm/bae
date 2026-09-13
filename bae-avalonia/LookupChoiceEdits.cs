@@ -15,7 +15,8 @@ internal static class LookupChoiceEdits
 {
     /// <summary>What the candidate's identification asks about after the
     /// person acts on one badge: the whole value, with that one part turned
-    /// over. A signal flips between left out and asked about; a catalog number
+    /// over. The disc ID flips between left out and asked about; a barcode
+    /// joins the codes the run leaves out or leaves them; a catalog number
     /// joins the numbers the run looks up or leaves them. What the folder's
     /// text is taken to state about the answers is carried through untouched —
     /// no badge acts on it.</summary>
@@ -27,7 +28,13 @@ internal static class LookupChoiceEdits
             case "disc_id":
                 return current with { DiscIdExcluded = !current.DiscIdExcluded };
             case "barcode":
-                return current with { BarcodeExcluded = !current.BarcodeExcluded };
+                // A set, so it goes back sorted and each code once.
+                var leftOut = new SortedSet<string>(current.ExcludedBarcodes);
+                if (!leftOut.Remove(value))
+                {
+                    leftOut.Add(value);
+                }
+                return current with { ExcludedBarcodes = [.. leftOut] };
             default:
                 var chosen = new List<string>(current.ChosenCatalogs);
                 if (!chosen.Remove(value))
@@ -62,7 +69,7 @@ internal static class LookupChoiceEdits
     internal static BridgeLookupChoices Untouched() =>
         new(
             DiscIdExcluded: false,
-            BarcodeExcluded: false,
+            ExcludedBarcodes: [],
             ChosenCatalogs: [],
             DiscountedCatalogs: []);
 }

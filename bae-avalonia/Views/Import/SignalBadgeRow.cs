@@ -10,13 +10,13 @@ namespace Bae.Desktop;
 
 // The signals-toolbar badge row: one badge per signal (kind label, truncated
 // value, lookup-state visual), then the catalog numbers the answers carry as
-// chips, then a trailing re-run control. Clicking a badge takes its signal in
-// or out of the run; a signal that offers a choice — the catalog, over every
-// number extracted from the candidate — opens its list instead, one number
-// checked at a time. Clicking a chip strikes its number out of what the
-// folder is taken to state, or counts it again; nothing is looked up either
-// way. The re-derived state arrives through the candidate stream. Every color
-// reads a theme brush.
+// chips, then a trailing re-run control. A signal that offers several values —
+// the catalog over every number extracted from the candidate, the barcode over
+// every code read off it — opens its list, each value checked when the run asks
+// about it; a signal with one value is the switch for that value. Clicking a
+// chip strikes its number out of what the folder is taken to state, or counts
+// it again; nothing is looked up either way. The re-derived state arrives
+// through the candidate stream. Every color reads a theme brush.
 internal static class SignalBadgeRow
 {
     public static Control Build(
@@ -29,9 +29,7 @@ internal static class SignalBadgeRow
         var badges = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         foreach (var signal in signals)
         {
-            badges.Children.Add(signal.Options.Count > 0
-                ? BuildChoiceBadge(signal, onToggleSignal)
-                : BuildBadge(signal, onToggleSignal));
+            badges.Children.Add(Badge(signal, onToggleSignal));
         }
         foreach (var agreement in agreements)
         {
@@ -112,12 +110,27 @@ internal static class SignalBadgeRow
         return button;
     }
 
-    // A signal that offers a choice: the chip opens the list of values, each
-    // with a check. Checking one replaces whatever was checked before, so at
-    // most one number is ever looked up.
+    // What one signal's badge is: the list of its values where it offers
+    // several, the switch for its one value where it names one, and neither
+    // where the candidate turned up nothing for it to act on.
+    private static Control Badge(SignalBadge signal, Action<string, string> onToggleSignal)
+    {
+        if (signal.Options.Count > 0)
+        {
+            return BuildChoiceBadge(signal, onToggleSignal);
+        }
+        return BuildBadge(
+            signal,
+            string.IsNullOrEmpty(signal.Value) ? null : onToggleSignal);
+    }
+
+    // A signal that offers several values: the chip opens the list, each entry
+    // checked when the run asks about that value. Checking one leaves the rest
+    // as they are — several codes and several numbers can be asked about at
+    // once.
     private static Control BuildChoiceBadge(SignalBadge signal, Action<string, string> onToggleSignal)
     {
-        var badge = BuildBadge(signal, (_, _) => { });
+        var badge = BuildBadge(signal, null);
         var items = new List<Control>();
         foreach (var option in signal.Options)
         {
@@ -130,11 +143,19 @@ internal static class SignalBadgeRow
             items.Add(item);
         }
         badge.Flyout = new MenuFlyout { ItemsSource = items };
-        ToolTip.SetTip(badge, Loc.Chrome("signal.pick_catalog"));
+        ToolTip.SetTip(badge, Loc.Chrome(PickTipKey(signal.Kind)));
         return badge;
     }
 
-    private static Button BuildBadge(SignalBadge signal, Action<string, string> onToggleSignal)
+    private static string PickTipKey(string kind) => kind switch
+    {
+        "barcode" => "signal.pick_barcode",
+        _ => "signal.pick_catalog",
+    };
+
+    // `onToggleSignal` is null for a badge with nothing to switch: one that
+    // opens a list instead, and one the candidate turned up no value for.
+    private static Button BuildBadge(SignalBadge signal, Action<string, string>? onToggleSignal)
     {
         var inner = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
 
@@ -180,8 +201,11 @@ internal static class SignalBadgeRow
             Opacity = signal.Excluded ? 0.45 : 1.0,
         };
         badge[!Button.BorderBrushProperty] = new DynamicResourceExtension("BaeHairlineBrush");
-        ToolTip.SetTip(badge, signal.Excluded ? Loc.Chrome("signal.include") : Loc.Chrome("signal.exclude"));
-        badge.Click += (_, _) => onToggleSignal(signal.Kind, signal.Value ?? string.Empty);
+        if (onToggleSignal is { } toggle)
+        {
+            ToolTip.SetTip(badge, signal.Excluded ? Loc.Chrome("signal.include") : Loc.Chrome("signal.exclude"));
+            badge.Click += (_, _) => toggle(signal.Kind, signal.Value ?? string.Empty);
+        }
         return badge;
     }
 

@@ -20,18 +20,19 @@ public sealed class SignalBadge
     /// <summary>The live lookup/match state — the badge's trailing visual.</summary>
     public SignalBadgeState State { get; set; } = new();
 
-    /// <summary>Whether the user excluded this signal from triangulation. Excluded
-    /// badges still render (dimmed, struck through) so the row stays stable.</summary>
+    /// <summary>Whether the run asks about none of this signal's values.
+    /// Excluded badges still render (dimmed, struck through) so the row stays
+    /// stable.</summary>
     public bool Excluded { get; set; }
 
-    /// <summary>The values this signal could take, for the signals that offer a
-    /// choice. Empty for the disc ID and the barcode, which have one value
-    /// each; the catalog's are every number extracted from the candidate.</summary>
+    /// <summary>The values this signal offers, each marked when the run asks
+    /// about it. Empty for the disc ID, which has one value the badge itself
+    /// stands for, and for a signal the candidate carries no value of.</summary>
     public IReadOnlyList<SignalBadgeOption> Options { get; set; } = [];
 }
 
-/// <summary>One of the values a signal could take. At most one option of a
-/// signal is chosen — the one the identify run looks up.</summary>
+/// <summary>One of the values a signal offers. Several options of a signal can
+/// be chosen at once — every one the identify run asks about.</summary>
 public sealed class SignalBadgeOption
 {
     public string Value { get; set; } = string.Empty;

@@ -208,6 +208,7 @@
   <data name="signal.kind.barcode" xml:space="preserve"><value>Viivakoodi</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>Luettelo</value></data>
   <data name="signal.pick_catalog" xml:space="preserve"><value>Valitse haettava luettelonumero</value></data>
+  <data name="signal.pick_barcode" xml:space="preserve"><value>Valitse, mitkä viivakoodit haetaan</value></data>
   <data name="signal.catalog_stop_counting" xml:space="preserve"><value>Lakkaa laskemasta tätä luettelonumeroa</value></data>
   <data name="signal.catalog_count_again" xml:space="preserve"><value>Laske tämä luettelonumero uudelleen</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Levyn tunnus</value></data>

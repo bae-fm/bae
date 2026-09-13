@@ -32,17 +32,17 @@ pub enum SignalState {
     Failed { failure: LookupFailure },
 }
 
-/// One of the values a signal could take, for the signals that offer a choice.
-/// A candidate can carry thirty extracted catalog numbers; they are one badge
-/// with a list behind it, not thirty badges.
+/// One of the values a signal could take, for the signals that offer several.
+/// A candidate can carry thirty extracted catalog numbers, or two barcodes;
+/// each signal is one badge with its list behind it, not one badge per value.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignalOption {
     pub value: String,
     /// Where the value was first seen; a value seen in several places names
     /// the first.
     pub origin: SignalOrigin,
-    /// Whether the identify run looks this one up. Several options of a signal
-    /// can be chosen, each looked up on its own.
+    /// Whether the identify run asks about this one. Several options of a
+    /// signal can be chosen at once.
     pub chosen: bool,
 }
 
@@ -59,12 +59,13 @@ pub struct ToolbarSignal {
     pub value: Option<String>,
     pub origin: SignalOrigin,
     pub state: SignalState,
-    /// Whether the user has taken this signal out of the run. The catalog is
-    /// never "excluded" — choosing no option is how it stays out — so it is
+    /// Whether the run asks about none of this signal's values: the disc ID
+    /// taken out, or every one of the candidate's barcodes. The catalog is
+    /// never "excluded" — choosing no number is how it stays out — so it is
     /// always `false` there.
     pub excluded: bool,
-    /// The values this signal could take, when it is one of the signals that
-    /// offers a choice. Empty for the disc ID and the barcode, which have one
-    /// value each.
+    /// The values this signal offers, each marked when the run asks about it.
+    /// Empty for the disc ID, which has one value the badge itself stands for,
+    /// and for a signal the candidate carries no value of.
     pub options: Vec<SignalOption>,
 }

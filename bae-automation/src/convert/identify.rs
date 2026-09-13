@@ -56,6 +56,7 @@ mirror_struct! {
     fields: {
         value,
         sources: (each AutomationValueSource),
+        excluded,
         cells: (each AutomationProviderCell),
     },
 }
@@ -88,6 +89,10 @@ mirror_enum! {
             lookup: (AutomationLookupState),
         },
         ReadNotAsked {
+            disc_id,
+            source: (opt AutomationDiscIdFile),
+        },
+        LeftOut {
             disc_id,
             source: (opt AutomationDiscIdFile),
         },

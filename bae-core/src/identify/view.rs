@@ -87,6 +87,10 @@ pub struct SignalValueRow {
     pub value: String,
     /// Every place the value was read, in the order it was read there.
     pub sources: Vec<ValueSource>,
+    /// Whether the person left this value out of the run, so no provider was
+    /// asked about it and every cell says as much. Always false for a catalog
+    /// number: a row exists only for a number the run looks up.
+    pub excluded: bool,
     /// One per provider in the run, in the run's provider order.
     pub cells: Vec<ProviderCell>,
 }
@@ -126,10 +130,19 @@ pub enum DiscIdStepView {
         source: Option<DiscIdFile>,
         lookup: LookupView,
     },
-    /// A disc ID was read and the source that answers disc IDs was not asked,
-    /// so nothing looked it up. The value still stands — it is the folder's,
-    /// not the run's — with nothing to say about what it matched.
+    /// A disc ID was read and the source that answers disc IDs was not among
+    /// the run's providers, so nothing looked it up. The value still stands —
+    /// it is the folder's, not the run's — with nothing to say about what it
+    /// matched, and there is nothing for a person to switch: the source to ask
+    /// is switched on in Settings.
     ReadNotAsked {
+        disc_id: String,
+        source: Option<DiscIdFile>,
+    },
+    /// A disc ID was read and the person left it out of the run. The value
+    /// stands with nothing looked up against it, and asking about it again is
+    /// theirs to do.
+    LeftOut {
         disc_id: String,
         source: Option<DiscIdFile>,
     },
@@ -145,9 +158,11 @@ pub enum BarcodeStepView {
     NoCodes,
     /// Reading the candidate's barcodes failed, so no provider was asked.
     ScanFailed { failure: LookupFailure },
-    /// One row per code, each with every provider's lookup of it. While the
-    /// artwork is still being read, `scanning` says more rows may come and
-    /// every cell is queued: the walks start once the codes have settled.
+    /// One row per code the candidate carries, in the order they were first
+    /// seen, each with every provider's lookup of it — a row the person left
+    /// out says so and its cells were never asked. While the artwork is still
+    /// being read, `scanning` says more rows may come and every cell is queued:
+    /// the walks start once the codes have settled.
     Rows {
         scanning: bool,
         rows: Vec<SignalValueRow>,
@@ -395,10 +410,10 @@ impl From<IdentifyState> for IdentifyStateView {
 
 /// What the answered lookups combine to so far. Each signal contributes what
 /// its providers have returned — a provider still looking adds nothing yet —
-/// and a signal the user unchecked adds nothing at all, exactly as the settle
-/// treats it. A lookup that has not answered leaves its signal empty, which
-/// combine reads as taking no part, so the first answer shows on its own and
-/// later ones narrow or widen it the way the verdict will.
+/// and a disc ID the run was told to leave out adds nothing at all, exactly as
+/// the settle treats it. A lookup that has not answered leaves its signal
+/// empty, which combine reads as taking no part, so the first answer shows on
+/// its own and later ones narrow or widen it the way the verdict will.
 fn live_matches(
     discid: &DiscidProgress,
     barcode: &BarcodeProgress,
@@ -412,7 +427,7 @@ fn live_matches(
 ) {
     let outcome = combine_results(
         context.disc.active(discid.results()),
-        context.barcode.active(barcode.results()),
+        barcode.results(),
         context.catalog.active(catalog.results()),
         &context.text,
     );
@@ -563,10 +578,15 @@ fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) -> DiscIdSt
             }
         }
     };
+    // Two things leave a read disc ID unasked, and they are not the same thing
+    // to a person looking at it: they took it out of the run, or no provider
+    // the run asks answers disc IDs at all.
     if let DiscidProgress::NotAsked { .. } = progress {
-        return DiscIdStepView::ReadNotAsked {
-            disc_id,
-            source: source_file.map(disc_id_file),
+        let source = source_file.map(disc_id_file);
+        return if context.disc.excluded {
+            DiscIdStepView::LeftOut { disc_id, source }
+        } else {
+            DiscIdStepView::ReadNotAsked { disc_id, source }
         };
     }
     let lookup = match progress {
@@ -611,6 +631,12 @@ fn barcode_step(
     context: &SignalsContext,
     scanning: bool,
 ) -> BarcodeStepView {
+    let row = |code: String, excluded: bool, cells: Vec<ProviderCell>| SignalValueRow {
+        sources: sources_of(&context.barcode.codes, &code),
+        value: code,
+        excluded,
+        cells,
+    };
     match progress {
         // The walks start once the codes settle: every code read so far is a
         // row whose cells wait, and more rows may still come.
@@ -620,18 +646,7 @@ fn barcode_step(
                 .barcode
                 .code_values()
                 .into_iter()
-                .map(|code| SignalValueRow {
-                    sources: sources_of(&context.barcode.codes, &code),
-                    cells: context
-                        .providers
-                        .iter()
-                        .map(|&source| ProviderCell {
-                            source,
-                            lookup: LookupView::Queued,
-                        })
-                        .collect(),
-                    value: code,
-                })
+                .map(|code| row(code, false, uniform_cells(context, LookupView::Queued)))
                 .collect(),
         },
         BarcodeProgress::NoCodes => BarcodeStepView::NoCodes,
@@ -639,46 +654,62 @@ fn barcode_step(
             failure: failure.clone(),
         },
         BarcodeProgress::Skipped => BarcodeStepView::Absent,
-        // The codes are the run's and nobody was asked about them: every row
-        // stands with its cells saying so, rather than reading as a lookup
+        // Every code is the run's and nobody was asked about any of them: every
+        // row stands with its cells saying so, rather than reading as a lookup
         // that found nothing.
         BarcodeProgress::NotAsked { codes } => BarcodeStepView::Rows {
             scanning: false,
             rows: codes
                 .iter()
-                .map(|code| SignalValueRow {
-                    sources: sources_of(&context.barcode.codes, code),
-                    cells: context
-                        .providers
-                        .iter()
-                        .map(|&source| ProviderCell {
-                            source,
-                            lookup: LookupView::NotAsked,
-                        })
-                        .collect(),
-                    value: code.clone(),
+                .map(|code| {
+                    row(
+                        code.clone(),
+                        true,
+                        uniform_cells(context, LookupView::NotAsked),
+                    )
                 })
                 .collect(),
         },
+        // Every code the candidate carries is a row. The ones the run asks
+        // about take their cells from where each walk has got to, at the code's
+        // index among the asked ones; the rest were never asked, and the
+        // person's own choices say which of them they left out.
         BarcodeProgress::Lookups { codes, providers } => BarcodeStepView::Rows {
             scanning,
-            rows: codes
-                .iter()
-                .enumerate()
-                .map(|(index, code)| SignalValueRow {
-                    value: code.clone(),
-                    sources: sources_of(&context.barcode.codes, code),
-                    cells: providers
-                        .iter()
-                        .map(|provider| ProviderCell {
-                            source: provider.source,
-                            lookup: barcode_cell(&provider.state, index, codes),
-                        })
-                        .collect(),
+            rows: context
+                .barcode
+                .code_values()
+                .into_iter()
+                .map(|code| {
+                    let cells = match codes.iter().position(|asked| *asked == code) {
+                        Some(index) => providers
+                            .iter()
+                            .map(|provider| ProviderCell {
+                                source: provider.source,
+                                lookup: barcode_cell(&provider.state, index, codes),
+                            })
+                            .collect(),
+                        None => uniform_cells(context, LookupView::NotAsked),
+                    };
+                    let excluded = context.barcode.excluded.contains(&code);
+                    row(code, excluded, cells)
                 })
                 .collect(),
         },
     }
+}
+
+/// One cell per provider the run asks, all saying the same thing: a row whose
+/// codes are still queued, or one nobody was asked about.
+fn uniform_cells(context: &SignalsContext, lookup: LookupView) -> Vec<ProviderCell> {
+    context
+        .providers
+        .iter()
+        .map(|&source| ProviderCell {
+            source,
+            lookup: lookup.clone(),
+        })
+        .collect()
 }
 
 /// One provider's cell for the code at `index`, from where its walk is. A
@@ -748,6 +779,9 @@ fn catalog_row(lookup: &CatalogLookup, context: &SignalsContext) -> SignalValueR
     SignalValueRow {
         value: lookup.value.clone(),
         sources: sources_of(&context.catalog.numbers, &lookup.value),
+        // A catalog row exists only for a number the run looks up: taking one
+        // out drops its row and leaves the number offered as a candidate.
+        excluded: false,
         cells: lookup
             .providers
             .iter()

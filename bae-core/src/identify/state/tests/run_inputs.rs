@@ -3,7 +3,7 @@
 /// the barcode's alone.
 #[test]
 fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
-    let (state, effects) = started_with_choices(vec![MB], excluding(true, false));
+    let (state, effects) = started_with_choices(vec![MB], excluding(true, &[]));
     let (state, effects) = {
         assert!(effects.is_empty());
         update(state, disc_and_codes("d", &["BAR"]))
@@ -45,7 +45,7 @@ fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
 /// ID's answer stands alone.
 #[test]
 fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
-    let (state, _) = started_with_choices(vec![MB], excluding(false, true));
+    let (state, _) = started_with_choices(vec![MB], excluding(false, &["BAR"]));
     let (state, effects) = update(state, disc_and_codes("d", &["BAR"]));
     assert!(
         !effects.iter().any(|effect| matches!(
@@ -87,7 +87,7 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
 /// lands on the barcode's answer rather than on a failure.
 #[test]
 fn an_excluded_disc_id_cannot_fail_the_barcode_answer() {
-    let (state, _) = started_with_choices(vec![MB], excluding(true, false));
+    let (state, _) = started_with_choices(vec![MB], excluding(true, &[]));
     let (state, _) = update(state, disc_and_codes("d", &["BAR"]));
     let (state, _) = step(
         state,
@@ -128,4 +128,64 @@ fn an_answer_from_a_source_the_run_never_asked_lands_nowhere() {
 
     assert!(effects.is_empty());
     assert_eq!(after, state, "the unasked source's answer changed nothing");
+}
+
+/// A sleeve prints the box set's code beside the disc's. Leaving one of the two
+/// out asks only about the other: the walks start on the code the run still
+/// asks about, and the badge's options say which of the two that is.
+#[test]
+fn leaving_one_of_two_codes_out_asks_only_about_the_other() {
+    let (state, _) = started_with_choices(vec![MB], excluding(false, &["BOXSET"]));
+    let (state, effects) = update(state, disc_and_codes("d", &["BOXSET", "DISC"]));
+    assert_eq!(
+        effects
+            .iter()
+            .filter(|effect| matches!(effect, Effect::LookupBarcode { .. }))
+            .collect::<Vec<_>>(),
+        vec![&lookup_barcode(MB, "DISC")],
+        "only the code the run still asks about is asked: {effects:?}"
+    );
+
+    let barcode = badge(&state, SignalKind::Barcode);
+    assert!(
+        !barcode.excluded,
+        "one code left out of two is not the signal left out"
+    );
+    assert_eq!(
+        barcode
+            .options
+            .iter()
+            .map(|option| (option.value.as_str(), option.chosen))
+            .collect::<Vec<_>>(),
+        vec![("BOXSET", false), ("DISC", true)]
+    );
+}
+
+/// Leaving every code out asks about none of them. The codes are still the
+/// run's, so the pipe settles carrying them with nothing run against them, and
+/// the badge reads as left out.
+#[test]
+fn leaving_every_code_out_asks_about_none_of_them() {
+    let (state, _) = started_with_choices(vec![MB], excluding(false, &["BOXSET", "DISC"]));
+    let (state, effects) = update(state, disc_and_codes("d", &["BOXSET", "DISC"]));
+    assert!(
+        !effects
+            .iter()
+            .any(|effect| matches!(effect, Effect::LookupBarcode { .. })),
+        "nothing asks about a code the candidate says to leave out: {effects:?}"
+    );
+    match &state {
+        IdentifyState::Triangulating { barcode, .. } => assert_eq!(
+            barcode,
+            &BarcodeProgress::NotAsked {
+                codes: vec!["BOXSET".to_string(), "DISC".to_string()],
+            }
+        ),
+        other => panic!("expected the barcode pipe settled unasked, got {other:?}"),
+    }
+
+    let barcode = badge(&state, SignalKind::Barcode);
+    assert!(barcode.excluded, "no code is asked about, so the badge says so");
+    assert_eq!(barcode.state, SignalState::Skipped);
+    assert!(barcode.options.iter().all(|option| !option.chosen));
 }

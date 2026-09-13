@@ -103,18 +103,132 @@ fn a_landed_provider_s_matches_show_before_the_other_answers() {
     assert!(agreements[0].1.barcode);
 }
 
-/// A signal the user unchecked contributes nothing mid-run, as it will
-/// contribute nothing at settle.
+/// A disc ID the run was told to leave out contributes nothing: an answer in
+/// hand for it is not offered, and with nothing else answering the run reads as
+/// having found nothing.
 #[test]
-fn an_excluded_signal_s_matches_do_not_show() {
+fn a_left_out_disc_id_s_matches_do_not_show() {
     let mut context = context();
-    context.barcode.excluded = true;
-    let IdentifyStateView::Triangulating { groups, .. } =
-        IdentifyStateView::from(in_flight(context))
-    else {
-        panic!("a run in flight");
+    context.disc.signal = DiscIdSignal::Computed {
+        disc_id: "d".to_string(),
+        track_count: 9,
+        source_file: None,
     };
-    assert!(groups.is_empty());
+    context.disc.excluded = true;
+    context.disc.results = vec![result(MB, "mb-1")];
+    assert!(matches!(
+        IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context)),
+        IdentifyStateView::NotFoundAnywhere { .. }
+    ));
+}
+
+/// Every code the candidate carries is a row, whether the run asks about it or
+/// not: a code left out is a row saying so, with nothing run against it, beside
+/// the code the walks did ask about.
+#[test]
+fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
+    let mut context = context();
+    context.barcode.codes = vec![
+        SourcedValue::new("BOXSET".to_string(), SignalOrigin::Artwork),
+        SourcedValue::new("DISC".to_string(), SignalOrigin::CueSheet),
+    ];
+    context.barcode.excluded = vec!["BOXSET".to_string()];
+    context.providers = vec![MB];
+    let state = IdentifyState::Triangulating {
+        discid: DiscidProgress::Skipped { track_count: 9 },
+        barcode: BarcodeProgress::Lookups {
+            codes: vec!["DISC".to_string()],
+            providers: vec![ProviderBarcodeLookup {
+                source: MB,
+                state: BarcodeLookupState::Matched {
+                    code: "DISC".to_string(),
+                    results: vec![result(MB, "mb-1")],
+                },
+            }],
+        },
+        catalog: CatalogProgress::Skipped,
+        context,
+    };
+    let run = run_of(state);
+    let rows = barcode_rows(&run);
+    assert_eq!(
+        rows.iter()
+            .map(|row| (row.value.as_str(), row.excluded))
+            .collect::<Vec<_>>(),
+        vec![("BOXSET", true), ("DISC", false)]
+    );
+    assert_eq!(cells(&rows[0]), vec![&LookupView::NotAsked]);
+    assert!(matches!(
+        cells(&rows[1]).as_slice(),
+        [LookupView::Found { count: 1, .. }]
+    ));
+}
+
+/// Every code left out settles the pipe unasked, and each row still stands with
+/// its places beside it.
+#[test]
+fn every_code_left_out_lists_them_all_unasked() {
+    let mut context = context();
+    context.barcode.codes = vec![
+        SourcedValue::new("BOXSET".to_string(), SignalOrigin::Artwork),
+        SourcedValue::new("DISC".to_string(), SignalOrigin::CueSheet),
+    ];
+    context.barcode.excluded = vec!["BOXSET".to_string(), "DISC".to_string()];
+    let state = IdentifyState::Triangulating {
+        discid: DiscidProgress::Skipped { track_count: 9 },
+        barcode: BarcodeProgress::NotAsked {
+            codes: vec!["BOXSET".to_string(), "DISC".to_string()],
+        },
+        catalog: CatalogProgress::Skipped,
+        context,
+    };
+    let run = run_of(state);
+    let rows = barcode_rows(&run);
+    assert!(rows.iter().all(|row| row.excluded));
+    assert!(rows
+        .iter()
+        .all(|row| cells(row) == vec![&LookupView::NotAsked, &LookupView::NotAsked]));
+}
+
+/// A disc ID nothing looked up is two different situations, and the step tells
+/// them apart: the person left it out, or no provider the run asks answers disc
+/// IDs at all.
+#[test]
+fn a_left_out_disc_id_reads_apart_from_one_no_provider_answers() {
+    let unasked = |excluded: bool| {
+        let mut context = context();
+        context.disc.signal = DiscIdSignal::Computed {
+            disc_id: "d".to_string(),
+            track_count: 9,
+            source_file: Some("rip/Album.LOG".to_string()),
+        };
+        context.disc.excluded = excluded;
+        run_of(IdentifyState::Triangulating {
+            discid: DiscidProgress::NotAsked { track_count: 9 },
+            barcode: BarcodeProgress::NoCodes,
+            catalog: CatalogProgress::Skipped,
+            context,
+        })
+        .disc_id
+    };
+    let source = Some(DiscIdFile {
+        kind: DiscIdFileKind::Log,
+        file: "rip/Album.LOG".to_string(),
+    });
+    assert_eq!(
+        unasked(true),
+        DiscIdStepView::LeftOut {
+            disc_id: "d".to_string(),
+            source: source.clone(),
+        }
+    );
+    assert_eq!(
+        unasked(false),
+        DiscIdStepView::ReadNotAsked {
+            disc_id: "d".to_string(),
+            source,
+        }
+    );
 }
 
 /// Each code is a row, and each provider's walk fills the row's cell from
@@ -529,6 +643,7 @@ fn recorded_ledger() -> IdentifyRunView {
                     file: Some("back.jpg".to_string()),
                     region: None,
                 }],
+                excluded: false,
                 cells: vec![
                     ProviderCell {
                         source: MB,

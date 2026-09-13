@@ -15,7 +15,7 @@ async fn the_candidate_s_lookup_choices_read_back_on_its_pane() {
 
     let choices = LookupChoices {
         disc_id_excluded: false,
-        barcode_excluded: true,
+        excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
         chosen_catalogs: vec!["WPCR-80001".to_string()],
         discounted_catalogs: vec!["LBL-9".to_string()],
     };
@@ -48,7 +48,7 @@ async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let looked_up = LookupChoices {
         disc_id_excluded: false,
-        barcode_excluded: true,
+        excluded_barcodes: vec!["0123456789012".to_string()],
         chosen_catalogs: vec!["WPCR-80001".to_string()],
         discounted_catalogs: Vec::new(),
     };

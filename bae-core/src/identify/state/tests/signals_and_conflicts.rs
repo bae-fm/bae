@@ -60,12 +60,12 @@ fn started_with_choices(
     )
 }
 
-/// The choices a run reads when the person excluded one signal and chose no
-/// catalog number.
-fn excluding(disc_id: bool, barcode: bool) -> LookupChoices {
+/// The choices a run reads when the person left the disc ID and the named
+/// barcodes out, and chose no catalog number.
+fn excluding(disc_id: bool, barcodes: &[&str]) -> LookupChoices {
     LookupChoices {
         disc_id_excluded: disc_id,
-        barcode_excluded: barcode,
+        excluded_barcodes: barcodes.iter().map(|value| value.to_string()).collect(),
         chosen_catalogs: Vec::new(),
         discounted_catalogs: Vec::new(),
     }
@@ -76,7 +76,7 @@ fn excluding(disc_id: bool, barcode: bool) -> LookupChoices {
 fn choosing(catalogs: &[&str]) -> LookupChoices {
     LookupChoices {
         disc_id_excluded: false,
-        barcode_excluded: false,
+        excluded_barcodes: Vec::new(),
         chosen_catalogs: catalogs.iter().map(|value| value.to_string()).collect(),
         discounted_catalogs: Vec::new(),
     }

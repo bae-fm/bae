@@ -208,6 +208,7 @@
   <data name="signal.kind.barcode" xml:space="preserve"><value>Cod de bare</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>Catalog</value></data>
   <data name="signal.pick_catalog" xml:space="preserve"><value>Alege un număr de catalog de căutat</value></data>
+  <data name="signal.pick_barcode" xml:space="preserve"><value>Alege ce coduri de bare să fie căutate</value></data>
   <data name="signal.catalog_stop_counting" xml:space="preserve"><value>Nu mai număra acest număr de catalog</value></data>
   <data name="signal.catalog_count_again" xml:space="preserve"><value>Numără din nou acest număr de catalog</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID disc</value></data>

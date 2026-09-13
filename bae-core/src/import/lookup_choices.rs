@@ -21,10 +21,16 @@
 /// this disc's — and everything the folder's text says counts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LookupChoices {
-    /// Whether the run leaves the candidate's disc ID out.
+    /// Whether the run leaves the candidate's disc ID out. One value, so one
+    /// flag: a folder derives at most one disc ID.
     pub disc_id_excluded: bool,
-    /// Whether the run leaves the candidate's barcodes out.
-    pub barcode_excluded: bool,
+    /// The barcode values the run leaves out — one of the two codes on a
+    /// double sleeve, or every code the folder carries.
+    ///
+    /// A set, each value once, sorted, as `discounted_catalogs` is: nothing
+    /// dispatches on their order, and a code is left out or it is not. A code
+    /// in here is asked of no provider.
+    pub excluded_barcodes: Vec<String>,
     /// The catalog numbers the run looks up, each on its own, in the order
     /// they were chosen — which is the order their lookups are dispatched and
     /// their results laid out.
@@ -47,7 +53,7 @@ impl LookupChoices {
     /// answers are, which is why changing it needs no run.
     pub fn asks_the_same_as(&self, other: &Self) -> bool {
         self.disc_id_excluded == other.disc_id_excluded
-            && self.barcode_excluded == other.barcode_excluded
+            && self.excluded_barcodes == other.excluded_barcodes
             && self.chosen_catalogs == other.chosen_catalogs
     }
 }

@@ -208,6 +208,7 @@
   <data name="signal.kind.barcode" xml:space="preserve"><value>Čiarový kód</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>Katalóg</value></data>
   <data name="signal.pick_catalog" xml:space="preserve"><value>Vyber katalógové číslo na vyhľadanie</value></data>
+  <data name="signal.pick_barcode" xml:space="preserve"><value>Vyber, ktoré čiarové kódy vyhľadať</value></data>
   <data name="signal.catalog_stop_counting" xml:space="preserve"><value>Prestať toto katalógové číslo počítať</value></data>
   <data name="signal.catalog_count_again" xml:space="preserve"><value>Znova toto katalógové číslo počítať</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID disku</value></data>

@@ -208,6 +208,7 @@
   <data name="signal.kind.barcode" xml:space="preserve"><value>Γραμμωτός κώδικας</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>Κατάλογος</value></data>
   <data name="signal.pick_catalog" xml:space="preserve"><value>Επιλέξτε αριθμό καταλόγου για αναζήτηση</value></data>
+  <data name="signal.pick_barcode" xml:space="preserve"><value>Επιλέξτε ποιοι γραμμωτοί κώδικες θα αναζητηθούν</value></data>
   <data name="signal.catalog_stop_counting" xml:space="preserve"><value>Να μην προσμετράται αυτός ο αριθμός καταλόγου</value></data>
   <data name="signal.catalog_count_again" xml:space="preserve"><value>Να προσμετράται ξανά αυτός ο αριθμός καταλόγου</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID δίσκου</value></data>

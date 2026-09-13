@@ -339,8 +339,10 @@ mirror_struct! {
 pub struct BridgeLookupChoices {
     /// Whether the run leaves the candidate's disc ID out.
     pub disc_id_excluded: bool,
-    /// Whether the run leaves the candidate's barcodes out.
-    pub barcode_excluded: bool,
+    /// The barcode values the run leaves out. A set, each value once, sorted;
+    /// naming every code the candidate carries is how the barcode stays out
+    /// altogether.
+    pub excluded_barcodes: Vec<String>,
     /// The catalog numbers the run looks up, each on its own, in the order
     /// they were chosen.
     pub chosen_catalogs: Vec<String>,
@@ -358,7 +360,7 @@ mirror_struct! {
     into_core: pub fn,
     fields: {
         disc_id_excluded,
-        barcode_excluded,
+        excluded_barcodes,
         chosen_catalogs,
         discounted_catalogs,
     },
@@ -526,8 +528,8 @@ pub enum BridgeSignalState {
 pub struct BridgeSignalOption {
     pub value: String,
     pub origin: BridgeSignalOrigin,
-    /// Whether this is the one the identify run is using. At most one option of
-    /// a signal is chosen.
+    /// Whether the identify run asks about this one. Several options of a
+    /// signal can be chosen at once.
     pub chosen: bool,
 }
 
@@ -540,9 +542,9 @@ pub struct BridgeToolbarSignal {
     pub origin: BridgeSignalOrigin,
     pub state: BridgeSignalState,
     pub excluded: bool,
-    /// The values this signal could take. Empty for the disc ID and the
-    /// barcode, which have one value each; the catalog's are every number
-    /// extracted from the candidate.
+    /// The values this signal offers, each marked when the run asks about it.
+    /// Empty for the disc ID, which has one value the badge itself stands for,
+    /// and for a signal the candidate carries no value of.
     pub options: Vec<BridgeSignalOption>,
 }
 
@@ -654,6 +656,10 @@ pub struct BridgeSignalValueRow {
     pub value: String,
     /// Every place the value was read, in the order it was read there.
     pub sources: Vec<BridgeValueSource>,
+    /// Whether the person left this value out of the run, so no provider was
+    /// asked about it. Always false for a catalog number: a row exists only for
+    /// a number the run looks up.
+    pub excluded: bool,
     /// One per provider in the run, in the run's provider order.
     pub cells: Vec<BridgeProviderCell>,
 }
@@ -692,9 +698,16 @@ pub enum BridgeDiscIdStep {
         source: Option<BridgeDiscIdFile>,
         lookup: BridgeLookupState,
     },
-    /// A disc ID was read and the one source that answers disc IDs was not
-    /// asked, so nothing looked it up. The value stands with no count.
+    /// A disc ID was read and the one source that answers disc IDs is not among
+    /// the run's providers, so nothing looked it up. The value stands with no
+    /// count, and there is nothing here for a person to switch.
     ReadNotAsked {
+        disc_id: String,
+        source: Option<BridgeDiscIdFile>,
+    },
+    /// A disc ID was read and the person left it out of the run. The value
+    /// stands with no count, and asking about it again is theirs to do.
+    LeftOut {
         disc_id: String,
         source: Option<BridgeDiscIdFile>,
     },

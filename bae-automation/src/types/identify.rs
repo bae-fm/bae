@@ -48,6 +48,9 @@ pub struct AutomationProviderCell {
 pub struct AutomationSignalValueRow {
     pub value: String,
     pub sources: Vec<AutomationValueSource>,
+    /// Whether the person left this value out of the run, so no provider was
+    /// asked about it.
+    pub excluded: bool,
     pub cells: Vec<AutomationProviderCell>,
 }
 
@@ -80,8 +83,13 @@ pub enum AutomationDiscIdStep {
         source: Option<AutomationDiscIdFile>,
         lookup: AutomationLookupState,
     },
-    /// A disc ID was read and the source that answers disc IDs was not asked.
+    /// A disc ID was read and no provider the run asks answers disc IDs.
     ReadNotAsked {
+        disc_id: String,
+        source: Option<AutomationDiscIdFile>,
+    },
+    /// A disc ID was read and the person left it out of the run.
+    LeftOut {
         disc_id: String,
         source: Option<AutomationDiscIdFile>,
     },

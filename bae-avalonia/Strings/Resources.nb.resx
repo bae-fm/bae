@@ -208,6 +208,7 @@
   <data name="signal.kind.barcode" xml:space="preserve"><value>Strekkode</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>Katalog</value></data>
   <data name="signal.pick_catalog" xml:space="preserve"><value>Velg et katalognummer å slå opp</value></data>
+  <data name="signal.pick_barcode" xml:space="preserve"><value>Velg hvilke strekkoder som skal slås opp</value></data>
   <data name="signal.catalog_stop_counting" xml:space="preserve"><value>Slutt å telle dette katalognummeret</value></data>
   <data name="signal.catalog_count_again" xml:space="preserve"><value>Tell dette katalognummeret igjen</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Plate-ID</value></data>

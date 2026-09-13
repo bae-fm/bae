@@ -208,6 +208,7 @@
   <data name="signal.kind.barcode" xml:space="preserve"><value>Streckkod</value></data>
   <data name="signal.kind.catalog" xml:space="preserve"><value>Katalog</value></data>
   <data name="signal.pick_catalog" xml:space="preserve"><value>Välj ett katalognummer att slå upp</value></data>
+  <data name="signal.pick_barcode" xml:space="preserve"><value>Välj vilka streckkoder som ska slås upp</value></data>
   <data name="signal.catalog_stop_counting" xml:space="preserve"><value>Sluta räkna det här katalognumret</value></data>
   <data name="signal.catalog_count_again" xml:space="preserve"><value>Räkna det här katalognumret igen</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Skiv-ID</value></data>

@@ -221,6 +221,7 @@ mirror_struct! {
     fields: {
         value,
         sources: (each BridgeValueSource),
+        excluded,
         cells: (each BridgeProviderCell),
     },
 }
@@ -250,6 +251,10 @@ mirror_enum! {
             lookup: (BridgeLookupState),
         },
         ReadNotAsked {
+            disc_id,
+            source: (opt BridgeDiscIdFile),
+        },
+        LeftOut {
             disc_id,
             source: (opt BridgeDiscIdFile),
         },
@@ -647,6 +652,7 @@ mod tests {
                 region: None,
             }]
         );
+        assert!(!rows[0].excluded);
         assert_eq!(rows[0].cells.len(), 2);
         assert_eq!(rows[0].cells[0].source, BridgeMetadataSource::MusicBrainz);
         assert!(matches!(
@@ -662,21 +668,77 @@ mod tests {
         ));
     }
 
-    /// Both halves of what a candidate's identification asks about cross, and
-    /// cross back: the numbers a run looks up, and the numbers struck out of
-    /// the candidate's own text so they rank nothing.
+    /// Every part of what a candidate's identification asks about crosses, and
+    /// crosses back: the signals it leaves out, the numbers it looks up, and
+    /// the numbers struck out of the candidate's own text so they rank nothing.
     #[test]
-    fn both_halves_of_what_identification_asks_about_cross() {
+    fn every_part_of_what_identification_asks_about_crosses() {
         let choices = bae_core::import::LookupChoices {
             disc_id_excluded: true,
-            barcode_excluded: false,
+            excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
             chosen_catalogs: vec!["WPCR-80001".to_string()],
             discounted_catalogs: vec!["LBL-9".to_string()],
         };
         let crossed = crate::types::BridgeLookupChoices::from_core(choices.clone());
+        assert_eq!(
+            crossed.excluded_barcodes,
+            vec!["0123456789012".to_string(), "9999999999999".to_string()]
+        );
         assert_eq!(crossed.chosen_catalogs, vec!["WPCR-80001".to_string()]);
         assert_eq!(crossed.discounted_catalogs, vec!["LBL-9".to_string()]);
         assert_eq!(crossed.into_core(), choices);
+    }
+
+    /// A code the person left out crosses as a row that says so, beside the
+    /// codes the run asked about — the surface draws it as the off chip it is
+    /// rather than as a lookup that found nothing.
+    #[test]
+    fn a_code_left_out_crosses_as_a_row_that_says_so() {
+        let mut state = in_flight(BarcodeProgress::NotAsked {
+            codes: vec!["0123456789012".to_string()],
+        });
+        let IdentifyState::Triangulating { context, .. } = &mut state else {
+            panic!("a run in flight");
+        };
+        context.barcode.excluded = vec!["0123456789012".to_string()];
+        let step = barcode_step(state);
+        let BridgeBarcodeStep::Rows { rows, .. } = step else {
+            panic!("a left-out code still crosses as a row, got {step:?}");
+        };
+        assert_eq!(rows.len(), 1);
+        assert!(rows[0].excluded);
+        assert!(rows[0]
+            .cells
+            .iter()
+            .all(|cell| matches!(cell.lookup, BridgeLookupState::NotAsked)));
+    }
+
+    /// A disc ID nothing looked up crosses as which of the two it is: the
+    /// person left it out, or no provider the run asks answers disc IDs.
+    #[test]
+    fn a_left_out_disc_id_crosses_apart_from_one_no_provider_answers() {
+        let step = |excluded: bool| {
+            let mut state = in_flight(BarcodeProgress::Skipped);
+            let IdentifyState::Triangulating {
+                discid, context, ..
+            } = &mut state
+            else {
+                panic!("a run in flight");
+            };
+            *discid = DiscidProgress::NotAsked { track_count: 9 };
+            context.disc.signal = DiscIdSignal::Computed {
+                disc_id: "d".to_string(),
+                track_count: 9,
+                source_file: None,
+            };
+            context.disc.excluded = excluded;
+            match BridgeIdentifyState::from_core(state) {
+                BridgeIdentifyState::Triangulating { run, .. } => run.disc_id,
+                other => panic!("expected a run in flight, got {other:?}"),
+            }
+        };
+        assert!(matches!(step(true), BridgeDiscIdStep::LeftOut { .. }));
+        assert!(matches!(step(false), BridgeDiscIdStep::ReadNotAsked { .. }));
     }
 
     /// Reading the candidate's barcodes failing is not a provider's failure,

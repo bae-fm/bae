@@ -130,16 +130,17 @@ pub enum BarcodeProgress {
     /// There was a barcode source and it held no code: a no-match with
     /// nothing to ask.
     NoCodes,
-    /// The codes to try, and every provider's walk through them. Settled once
-    /// every provider is.
+    /// The codes to try — the ones the run asks about, in the order the walks
+    /// ask them — and every provider's walk through them. Settled once every
+    /// provider is.
     Lookups {
         codes: Vec<String>,
         providers: Vec<ProviderBarcodeLookup>,
     },
-    /// The candidate has barcodes and the person left them out of the run, so
-    /// no provider was asked about any of them. Settled: nothing is in flight
-    /// and nothing was found, which is different from having asked and found
-    /// nothing.
+    /// The candidate has barcodes and the person left every one of them out of
+    /// the run, so no provider was asked about any of them. Settled: nothing is
+    /// in flight and nothing was found, which is different from having asked
+    /// and found nothing.
     NotAsked { codes: Vec<String> },
     /// Reading the candidate's barcodes failed, so no provider was ever asked.
     /// Not a provider's failure, and not a skip either: there was artwork to
@@ -430,7 +431,7 @@ pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
 }
 
 /// The barcode badge of a settled run. Scanned and found nothing is a
-/// no-match; nothing to scan at all, and codes the run was told to leave out,
+/// no-match; nothing to scan at all, and a run told to leave every code out,
 /// are skips.
 pub(super) fn barcode_settled_state(context: &SignalsContext) -> SignalState {
     let barcode = &context.barcode;
@@ -446,7 +447,7 @@ pub(super) fn barcode_settled_state(context: &SignalsContext) -> SignalState {
             SignalState::Skipped
         };
     }
-    if barcode.excluded {
+    if barcode.every_code_excluded() {
         return SignalState::Skipped;
     }
     settled_lookup_state(barcode.results.len(), &barcode.failures)
@@ -514,16 +515,19 @@ pub(super) fn start_discid_progress(
     }
 }
 
-/// Start every provider's walk through the codes. A scan that failed has no
-/// codes to walk and never gets a lookup, so it settles as the failure it is
-/// rather than as the no-match an empty list would otherwise read as.
+/// Start every provider's walk through the codes the run asks about. A scan
+/// that failed has no codes to walk and never gets a lookup, so it settles as
+/// the failure it is rather than as the no-match an empty list would otherwise
+/// read as.
 ///
-/// `codes` is each code once, in the order the walks ask them.
+/// `codes` is every code the candidate carries, each once, in the order they
+/// were first seen; `excluded` is the values the person left out. The walks ask
+/// the rest, in that same order.
 pub(super) fn start_barcode_progress(
     codes: Vec<String>,
+    excluded: &[String],
     had_source: bool,
     scan_failure: Option<&LookupFailure>,
-    excluded: bool,
     providers: &[MetadataSource],
     effects: &mut Vec<Effect>,
 ) -> BarcodeProgress {
@@ -531,12 +535,6 @@ pub(super) fn start_barcode_progress(
         return BarcodeProgress::ScanFailed {
             failure: failure.clone(),
         };
-    }
-    if excluded && !codes.is_empty() {
-        // The person left the barcodes out, so nobody is asked about them —
-        // and the codes are still the run's, so they stay listed with nothing
-        // run against them.
-        return BarcodeProgress::NotAsked { codes };
     }
     if codes.is_empty() {
         // Nothing to look up. Whether that settles as "looked, found no match" or
@@ -548,12 +546,23 @@ pub(super) fn start_barcode_progress(
             BarcodeProgress::Skipped
         };
     }
+    let asked: Vec<String> = codes
+        .iter()
+        .filter(|code| !excluded.contains(code))
+        .cloned()
+        .collect();
+    if asked.is_empty() {
+        // Every code the folder carries is left out, so nobody is asked about
+        // any of them — and the codes are still the run's, so they stay listed
+        // with nothing run against them.
+        return BarcodeProgress::NotAsked { codes };
+    }
     let providers = providers
         .iter()
         .map(|&source| {
             effects.push(Effect::LookupBarcode {
                 source,
-                barcode: codes[0].clone(),
+                barcode: asked[0].clone(),
             });
             ProviderBarcodeLookup {
                 source,
@@ -561,7 +570,10 @@ pub(super) fn start_barcode_progress(
             }
         })
         .collect();
-    BarcodeProgress::Lookups { codes, providers }
+    BarcodeProgress::Lookups {
+        codes: asked,
+        providers,
+    }
 }
 
 /// Ask every provider about one chosen catalog number.

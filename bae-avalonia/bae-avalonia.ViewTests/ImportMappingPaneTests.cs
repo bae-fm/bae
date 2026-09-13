@@ -215,7 +215,7 @@ public sealed class ImportMappingPaneTests
             edit: BlankEdit(),
             lookupChoices: new BridgeLookupChoices(
                 DiscIdExcluded: false,
-                BarcodeExcluded: false,
+                ExcludedBarcodes: [],
                 ChosenCatalogs: [],
                 DiscountedCatalogs: ["BST 84055"]));
         var (pane, _) = Show(
@@ -241,7 +241,7 @@ public sealed class ImportMappingPaneTests
             edit: BlankEdit(),
             lookupChoices: new BridgeLookupChoices(
                 DiscIdExcluded: true,
-                BarcodeExcluded: false,
+                ExcludedBarcodes: [],
                 ChosenCatalogs: ["BST 84055"],
                 DiscountedCatalogs: []));
         var (pane, _) = Show(
@@ -257,6 +257,66 @@ public sealed class ImportMappingPaneTests
         Assert.True(written.DiscIdExcluded);
         Assert.Equal(new[] { "BST 84055" }, written.ChosenCatalogs);
         Assert.Equal(new[] { "BST 84055" }, written.DiscountedCatalogs);
+    }
+
+    // A sleeve prints the box set's code beside the disc's, so the barcode
+    // badge is a list: every code the folder carries, each checked while the
+    // run asks about it.
+    [AvaloniaFact]
+    public void TheBarcodeBadgeListsEveryCodeTheFolderCarries()
+    {
+        var (pane, _) = Show(
+            Detail(metadataProvenance: null, edit: BlankEdit()),
+            running: RunWithBarcodes(("0123456789012", true), ("9999999999999", false)),
+            initialPresentation: ImportMetadataPresentation.FindOnline);
+
+        Assert.Equal(
+            new object?[] { "\u2713 0123456789012", "9999999999999" },
+            BarcodeMenu(pane).Select(item => item.Header).ToArray());
+    }
+
+    // Leaving one code out sends back the whole value with only that code
+    // named: the other is still asked about.
+    [AvaloniaFact]
+    public void LeavingOneBarcodeOutSendsTheValueWithOnlyThatCodeOut()
+    {
+        var writes = new List<BridgeLookupChoices>();
+        var (pane, _) = Show(
+            Detail(metadataProvenance: null, edit: BlankEdit()),
+            running: RunWithBarcodes(("0123456789012", true), ("9999999999999", true)),
+            initialPresentation: ImportMetadataPresentation.FindOnline,
+            lookupChoiceWrites: writes);
+
+        BarcodeMenu(pane)[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        var written = Assert.Single(writes);
+        Assert.Equal(new[] { "0123456789012" }, written.ExcludedBarcodes);
+    }
+
+    // And asking about it again sends the value with that code no longer
+    // named, leaving the code that was already out where it was.
+    [AvaloniaFact]
+    public void AskingAboutALeftOutBarcodeAgainLeavesTheOtherOut()
+    {
+        var writes = new List<BridgeLookupChoices>();
+        var detail = Detail(
+            metadataProvenance: null,
+            edit: BlankEdit(),
+            lookupChoices: new BridgeLookupChoices(
+                DiscIdExcluded: false,
+                ExcludedBarcodes: ["0123456789012", "9999999999999"],
+                ChosenCatalogs: [],
+                DiscountedCatalogs: []));
+        var (pane, _) = Show(
+            detail,
+            running: RunWithBarcodes(("0123456789012", false), ("9999999999999", false)),
+            initialPresentation: ImportMetadataPresentation.FindOnline,
+            lookupChoiceWrites: writes);
+
+        BarcodeMenu(pane)[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        var written = Assert.Single(writes);
+        Assert.Equal(new[] { "9999999999999" }, written.ExcludedBarcodes);
     }
 
     [AvaloniaFact]
@@ -713,6 +773,40 @@ public sealed class ImportMappingPaneTests
             }),
             null,
             null);
+
+    /// <summary>A run whose barcode badge offers `codes`, each marked with
+    /// whether the run asks about it.</summary>
+    private static BridgeCandidateRuntimeSnapshot RunWithBarcodes(
+        params (string Value, bool Asked)[] codes) =>
+        new(
+            new BridgeIdentifyState.NotFoundAnywhere(null),
+            new BridgeSignalsToolbar(new[]
+            {
+                new BridgeToolbarSignal(
+                    BridgeSignalKind.Barcode,
+                    codes[0].Value,
+                    BridgeSignalOrigin.Artwork,
+                    new BridgeSignalState.NoMatch(),
+                    codes.All(code => !code.Asked),
+                    codes
+                        .Select(code => new BridgeSignalOption(
+                            code.Value,
+                            BridgeSignalOrigin.Artwork,
+                            code.Asked))
+                        .ToArray()),
+            }),
+            null,
+            null);
+
+    /// <summary>The codes behind the barcode badge, in the order it lists
+    /// them.</summary>
+    private static IReadOnlyList<MenuItem> BarcodeMenu(Control pane) =>
+        pane.GetLogicalDescendants()
+            .OfType<Button>()
+            .Select(button => button.Flyout)
+            .OfType<MenuFlyout>()
+            .SelectMany(flyout => flyout.ItemsSource!.OfType<MenuItem>())
+            .ToList();
 
     /// <summary>The one chip whose tooltip is `tip`.</summary>
     private static Button Chip(Control pane, string tip) =>

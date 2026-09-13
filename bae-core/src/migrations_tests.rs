@@ -18,6 +18,8 @@ mod migration_seventeen;
 mod migration_sixteen;
 #[path = "migrations_tests/migration_ten.rs"]
 mod migration_ten;
+#[path = "migrations_tests/migration_thirty.rs"]
+mod migration_thirty;
 #[path = "migrations_tests/migration_twelve.rs"]
 mod migration_twelve;
 #[path = "migrations_tests/migration_twenty.rs"]
@@ -149,6 +151,12 @@ fn version_twenty_four() -> Vec<coven::Migration> {
 fn version_twenty_eight() -> Vec<coven::Migration> {
     let mut migrations = all();
     migrations.truncate(28);
+    migrations
+}
+
+fn version_twenty_nine() -> Vec<coven::Migration> {
+    let mut migrations = all();
+    migrations.truncate(29);
     migrations
 }
 

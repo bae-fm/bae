@@ -21,7 +21,9 @@ use super::view::{run_view, IdentifyRunView};
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{LookupChoices, MetadataSource};
-use crate::signals::{ArtworkScan, BarcodeSignal, LookupFailure, SignalOrigin, Signals};
+use crate::signals::{
+    ArtworkScan, BarcodeSignal, LookupFailure, SignalOrigin, Signals, SourcedValue,
+};
 
 /// One candidate's identify state.
 ///
@@ -174,8 +176,11 @@ impl IdentifyState {
         }
     }
 
-    /// The badge shows the matched code, or the first one when nothing has matched
-    /// yet, and takes its origin from that code.
+    /// The badge shows the matched code, or the first one when nothing has
+    /// matched yet, and takes its origin from that code. Every code the folder
+    /// carries is behind it as the list to choose from, each marked when the
+    /// run asks about it; the badge reads as left out only once no code is
+    /// asked about.
     fn barcode_badge(&self, context: &SignalsContext) -> ToolbarSignal {
         let code = context
             .barcode
@@ -192,8 +197,10 @@ impl IdentifyState {
             value: code.map(|c| c.value.clone()),
             origin: code.map_or(SignalOrigin::Artwork, |c| c.origin),
             state,
-            excluded: context.barcode.excluded,
-            options: Vec::new(),
+            excluded: context.barcode.every_code_excluded(),
+            options: signal_options(&context.barcode.codes, |value| {
+                !context.barcode.excluded.iter().any(|left| left == value)
+            }),
         }
     }
 
@@ -213,26 +220,35 @@ impl IdentifyState {
             IdentifyState::Triangulating { catalog, .. } => catalog_progress_state(catalog),
             _ => catalog_settled_state(context),
         };
-        let mut options: Vec<SignalOption> = Vec::new();
-        for number in &context.catalog.numbers {
-            if options.iter().any(|option| option.value == number.value) {
-                continue;
-            }
-            options.push(SignalOption {
-                value: number.value.clone(),
-                origin: number.origin,
-                chosen: context.catalog.is_chosen(&number.value),
-            });
-        }
         ToolbarSignal {
             kind: SignalKind::Catalog,
             value: first_chosen.map(|c| c.value.clone()),
             origin: first_chosen.map_or(SignalOrigin::CueSheet, |c| c.origin),
             state,
             excluded: false,
-            options,
+            options: signal_options(&context.catalog.numbers, |value| {
+                context.catalog.is_chosen(value)
+            }),
         }
     }
+}
+
+/// The values one signal offers, each once, in the order they were first seen,
+/// with `chosen` saying whether the run asks about each. A value seen in two
+/// places is one option and names where it was first seen.
+fn signal_options(sightings: &[SourcedValue], chosen: impl Fn(&str) -> bool) -> Vec<SignalOption> {
+    let mut options: Vec<SignalOption> = Vec::new();
+    for sighting in sightings {
+        if options.iter().any(|option| option.value == sighting.value) {
+            continue;
+        }
+        options.push(SignalOption {
+            value: sighting.value.clone(),
+            origin: sighting.origin,
+            chosen: chosen(&sighting.value),
+        });
+    }
+    options
 }
 
 /// One provider's answer to one lookup, with each match paired with its
@@ -550,9 +566,9 @@ fn apply_signals(
     let barcode = match (barcode, &signals.barcode) {
         (BarcodeProgress::Scanning, BarcodeSignal::Settled { .. }) => start_barcode_progress(
             context.barcode.code_values(),
+            &context.barcode.excluded,
             true,
             None,
-            context.barcode.excluded,
             &context.providers,
             &mut effects,
         ),
@@ -647,12 +663,12 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     (re_derive(context, ledger), vec![])
 }
 
-/// Re-combine over the non-excluded signals and lift the outcome into a state.
-/// The one combine path: every way triangulation settles arrives here once the
-/// results are in the context.
+/// Re-combine over the evidence the run's choices still admit and lift the
+/// outcome into a state. The one combine path: every way triangulation settles
+/// arrives here once the results are in the context.
 ///
-/// Both sides empty — because the lookups found nothing, or because the user
-/// excluded the signals that did — lands on `NotFoundAnywhere`.
+/// Every side empty — because the lookups found nothing, or because the run was
+/// told to ask about nothing — lands on `NotFoundAnywhere`.
 fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> IdentifyState {
     // Combine first, whatever failed: a provider that did not answer never
     // invalidates what the others found, and a failed state that hid those
@@ -660,7 +676,7 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
     // had the answer.
     let outcome = combine_results(
         context.disc.active_results(),
-        context.barcode.active_results(),
+        context.barcode.results.clone(),
         context.catalog.active_results(),
         &context.text,
     );

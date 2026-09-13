@@ -33,7 +33,7 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
             &dir.to_string_lossy(),
             crate::import::LookupChoices {
                 disc_id_excluded: false,
-                barcode_excluded: true,
+                excluded_barcodes: vec!["0123456789012".to_string()],
                 chosen_catalogs: Vec::new(),
                 discounted_catalogs: Vec::new(),
             },
@@ -103,7 +103,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_the_sweep_s_slot() {
             &key,
             crate::import::LookupChoices {
                 disc_id_excluded: false,
-                barcode_excluded: true,
+                excluded_barcodes: vec!["0123456789012".to_string()],
                 chosen_catalogs: Vec::new(),
                 discounted_catalogs: Vec::new(),
             },

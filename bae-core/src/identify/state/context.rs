@@ -10,13 +10,13 @@
 //! an empty one: that run is over, and what it showed is the ledger the state
 //! carries.
 //!
-//! One type per signal, each holding that signal's input, whether the current
-//! selection uses it, what its lookup returned, and how it failed — the four
-//! facts every caller here reads together. The three are not the same shape and
-//! so are not one type parameterised over the signal: only the barcode can fail
-//! before any provider is asked and names which of several codes matched, only
-//! the disc ID has a single provider and so a single failure, and the catalog
-//! has no checkbox at all — choosing a number is what turns it on.
+//! One type per signal, each holding that signal's input, how much of it the
+//! current selection uses, what its lookup returned, and how it failed — the
+//! four facts every caller here reads together. The three are not the same
+//! shape and so are not one type parameterised over the signal: the disc ID is
+//! one value left in or out, the barcode is several codes each left in or out
+//! and can fail before any provider is asked, and the catalog has nothing to
+//! leave out at all — choosing a number is what turns it on.
 
 use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, LibraryStatus, MetadataResult, SourceFailure,
@@ -129,8 +129,10 @@ pub struct BarcodeEvidence {
     /// `BarcodeSignal` draws between `Settled { codes: [] }` and `Absent` has
     /// to be carried, not re-derived.
     pub had_source: bool,
-    /// Whether the user unchecked the barcode.
-    pub excluded: bool,
+    /// The code values the person left out of the run, as the choices named
+    /// them. A code in here is asked of no provider; a code the folder does
+    /// not carry names nothing and leaves out nothing.
+    pub excluded: Vec<String>,
     /// The lookup's results, once settled.
     pub results: Vec<(MetadataResult, LibraryStatus)>,
     /// The providers that did not answer. Independent of `results`: one
@@ -169,33 +171,33 @@ impl BarcodeEvidence {
         self.matched = progress.matched_barcode();
     }
 
-    /// The codes the walks ask, each once, in the order they were first seen.
+    /// The codes the candidate carries, each once, in the order they were
+    /// first seen — every row the barcode step lists, asked about or not.
     pub fn code_values(&self) -> Vec<String> {
         unique_values(&self.codes)
     }
 
-    /// `results` as the current selection sees them: nothing when the user
-    /// unchecked the barcode. Takes the results rather than reading
-    /// `self.results` so a lookup still in flight can be combined under the same
-    /// rule.
-    pub(crate) fn active<T>(&self, results: Vec<T>) -> Vec<T> {
-        if self.excluded {
-            Vec::new()
-        } else {
-            results
-        }
+    /// The codes the walks ask: `code_values` less the ones the person left
+    /// out, in the same order.
+    pub fn asked_code_values(&self) -> Vec<String> {
+        self.code_values()
+            .into_iter()
+            .filter(|code| !self.excluded.contains(code))
+            .collect()
     }
 
-    /// The results combine sees — empty when the signal is unchecked.
-    pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
-        self.active(self.results.clone())
+    /// Whether the candidate carries codes and the run asks about none of
+    /// them. A candidate with no codes at all is not "left out" — there was
+    /// nothing to leave.
+    pub fn every_code_excluded(&self) -> bool {
+        !self.codes.is_empty() && self.asked_code_values().is_empty()
     }
 
-    /// Failures belonging to evidence the current selection still uses.
+    /// Failures belonging to evidence the current selection still uses. Every
+    /// failure in hand came from a code the run asked about — a run reads what
+    /// it asks about once, at its start, and changing that starts another run
+    /// — so there is nothing here to leave out.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
-        if self.excluded {
-            return;
-        }
         if let Some(failure) = &self.scan_failure {
             into.push(IdentifyFailure::BarcodeScan(failure.clone()));
         }
@@ -414,7 +416,7 @@ impl SignalsContext {
                 ..Default::default()
             },
             barcode: BarcodeEvidence {
-                excluded: choices.barcode_excluded,
+                excluded: choices.excluded_barcodes,
                 ..Default::default()
             },
             catalog: CatalogEvidence {
