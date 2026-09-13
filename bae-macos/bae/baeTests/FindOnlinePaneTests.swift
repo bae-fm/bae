@@ -612,18 +612,105 @@ struct IdentifierBandTests {
         #expect(active != waiting)
     }
 
+    /// An identifier the person left out of the run is the off chip: outlined,
+    /// dimmed, and with no provider capsules. The same two codes with both
+    /// asked about draw differently.
+    @Test(
+        "a barcode left out of the run draws differently from one asked about"
+    )
+    func aLeftOutBarcodeDrawsDifferently() async throws {
+        let leftOut = try await Self.pixels(
+            PreviewData.identifyRunBarcodeLeftOut
+        )
+        let asked = try await Self.pixels(
+            PreviewData.identifyRunBothBarcodesAsked
+        )
+
+        #expect(leftOut != asked)
+    }
+
+    /// A disc ID nothing looked up is two different situations, and the band
+    /// draws them apart: the person took it out, which they can undo, or no
+    /// provider the run asks answers disc IDs, which they cannot.
+    @Test("a disc ID left out draws differently from one with no provider")
+    func aLeftOutDiscIdDrawsDifferently() async throws {
+        let leftOut = try await Self.pixels(
+            PreviewData.identifyRunDiscIdLeftOut
+        )
+        let noProvider = try await Self.pixels(
+            PreviewData.identifyRunOneSource
+        )
+
+        #expect(leftOut != noProvider)
+    }
+
     /// The band on its own, at the width the pane's previews give it.
     private static func pixels(_ run: BridgeIdentifyRun) async throws -> Data {
         try await FindOnlineRendering.pixels(
             IdentifierBand(
                 run: run,
                 catalogAgreements: [],
-                onToggleCatalog: { _ in },
+                onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
             )
             .importPreviewEnvironment(),
             size: NSSize(width: 660, height: 260)
+        )
+    }
+}
+
+/// Every chip in the band turns its own identifier over, and what goes back is
+/// the whole value of what this candidate's identification asks about — so one
+/// chip's click must leave every other decision where it was.
+@MainActor
+@Suite("Turning one identifier off and on")
+struct LookupToggleTests {
+    private static let choices = BridgeLookupChoices(
+        discIdExcluded: false,
+        excludedBarcodes: ["9999999999999"],
+        chosenCatalogs: ["LBL 001"],
+        discountedCatalogs: ["LBL 100"]
+    )
+
+    @Test("the disc ID goes out and comes back, leaving the rest alone")
+    func theDiscIdFlips() {
+        let out = Self.choices.toggling(.discId)
+        #expect(out.discIdExcluded)
+        #expect(out.excludedBarcodes == ["9999999999999"])
+        #expect(out.chosenCatalogs == ["LBL 001"])
+        #expect(out.discountedCatalogs == ["LBL 100"])
+
+        #expect(!out.toggling(.discId).discIdExcluded)
+    }
+
+    @Test("one barcode joins the codes left out and the others stay")
+    func oneBarcodeGoesOut() {
+        let out = Self.choices.toggling(.barcode("0123456789012"))
+        #expect(out.excludedBarcodes == ["0123456789012", "9999999999999"])
+        #expect(!out.discIdExcluded)
+        #expect(out.chosenCatalogs == ["LBL 001"])
+    }
+
+    @Test("asking about one code again leaves the other left out")
+    func oneBarcodeComesBack() {
+        let back = Self.choices.toggling(.barcode("9999999999999"))
+        #expect(back.excludedBarcodes.isEmpty)
+
+        let both = Self.choices
+            .toggling(.barcode("0123456789012"))
+            .toggling(.barcode("9999999999999"))
+        #expect(both.excludedBarcodes == ["0123456789012"])
+    }
+
+    @Test("a catalog number joins and leaves the numbers looked up")
+    func oneCatalogNumberFlips() {
+        let added = Self.choices.toggling(.catalog("LBL 002"))
+        #expect(added.chosenCatalogs == ["LBL 001", "LBL 002"])
+        #expect(added.excludedBarcodes == ["9999999999999"])
+
+        #expect(
+            added.toggling(.catalog("LBL 001")).chosenCatalogs == ["LBL 002"]
         )
     }
 }

@@ -183,10 +183,50 @@ struct CandidateSessionState: Equatable {
 
 // MARK: - BridgeLookupChoices
 
+/// Which identifier a chip in the band stands for. Every chip turns its own
+/// identifier over — the disc ID, one of the candidate's barcodes, or one of
+/// its catalog numbers — and the whole value of what identification asks about
+/// is what goes back.
+enum LookupToggle: Equatable {
+    case discId
+    case barcode(String)
+    case catalog(String)
+}
+
 extension BridgeLookupChoices {
-    /// This value with `catalog` among the numbers the run looks up, or
-    /// without it when it already was. The whole value is what a control
+    /// This value with one identifier turned over: a disc ID asked about or
+    /// left out, a barcode left out or asked about again, a catalog number
+    /// looked up or dropped from the run. The whole value is what a control
     /// sends back, so the change it makes is made here.
+    func toggling(_ toggle: LookupToggle) -> BridgeLookupChoices {
+        switch toggle {
+        case .discId:
+            return BridgeLookupChoices(
+                discIdExcluded: !discIdExcluded,
+                excludedBarcodes: excludedBarcodes,
+                chosenCatalogs: chosenCatalogs,
+                discountedCatalogs: discountedCatalogs
+            )
+        case .barcode(let code):
+            // A set, so it goes back sorted and each code appears once.
+            var leftOut = Set(excludedBarcodes)
+            if leftOut.remove(code) == nil {
+                leftOut.insert(code)
+            }
+            return BridgeLookupChoices(
+                discIdExcluded: discIdExcluded,
+                excludedBarcodes: leftOut.sorted(),
+                chosenCatalogs: chosenCatalogs,
+                discountedCatalogs: discountedCatalogs
+            )
+        case .catalog(let number):
+            return choosing(number)
+        }
+    }
+
+    /// This value with `catalog` among the numbers the run looks up, or
+    /// without it when it already was. The chosen numbers are dispatched in the
+    /// order they were chosen, so they are a list rather than a set.
     func choosing(_ catalog: String) -> BridgeLookupChoices {
         var chosen = chosenCatalogs
         if let index = chosen.firstIndex(of: catalog) {
@@ -197,7 +237,7 @@ extension BridgeLookupChoices {
         }
         return BridgeLookupChoices(
             discIdExcluded: discIdExcluded,
-            barcodeExcluded: barcodeExcluded,
+            excludedBarcodes: excludedBarcodes,
             chosenCatalogs: chosen,
             discountedCatalogs: discountedCatalogs
         )
@@ -213,7 +253,7 @@ extension BridgeLookupChoices {
         }
         return BridgeLookupChoices(
             discIdExcluded: discIdExcluded,
-            barcodeExcluded: barcodeExcluded,
+            excludedBarcodes: excludedBarcodes,
             chosenCatalogs: chosenCatalogs,
             discountedCatalogs: discounted.sorted()
         )
@@ -265,7 +305,7 @@ struct Candidate: Equatable, Identifiable {
     /// the sheet does.
     var lookupChoices = BridgeLookupChoices(
         discIdExcluded: false,
-        barcodeExcluded: false,
+        excludedBarcodes: [],
         chosenCatalogs: [],
         discountedCatalogs: []
     )

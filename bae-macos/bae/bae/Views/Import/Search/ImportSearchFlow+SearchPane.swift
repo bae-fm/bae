@@ -68,11 +68,11 @@ extension ImportSearchFlow {
             },
             onRetrySearch: { services.importer.retryCandidateSearch(key) },
             onOpenSettings: openSettings,
-            // The chip acts on one number; what goes back is the whole value
-            // of what this candidate's identification asks about, and the run
-            // that reads it starts from there.
-            onToggleCatalog: { value in
-                toggleCatalogLookup(value, services: services, input: input)
+            // The chip acts on one identifier; what goes back is the whole
+            // value of what this candidate's identification asks about, and
+            // the run that reads it starts from there.
+            onToggleLookup: { toggle in
+                toggleLookup(toggle, services: services, input: input)
             },
             onToggleCatalogAgreement: { value in
                 toggleCatalogAgreement(value, services: services, input: input)
@@ -81,7 +81,7 @@ extension ImportSearchFlow {
             // Re-asking what failed is asking for the run again: it reads
             // its inputs afresh, and the response cache answers the lookups
             // that had already succeeded. Where those inputs live is what
-            // differs — the same split `onToggleCatalog` makes.
+            // differs — the same split `onToggleLookup` makes.
             onRetryFailed: {
                 rerunIdentification(services: services, input: input)
             },
@@ -120,15 +120,16 @@ extension ImportSearchFlow {
         }
     }
 
-    /// Choose or unchoose a catalog number for lookup.
+    /// Take one identifier in or out of the run: the disc ID, one of the
+    /// candidate's barcodes, or one of its catalog numbers.
     @MainActor
-    private static func toggleCatalogLookup(
-        _ value: String,
+    private static func toggleLookup(
+        _ toggle: LookupToggle,
         services: ImportServices,
         input: SearchPaneInput
     ) {
         writeLookupChoices(
-            input.candidate.lookupChoices.choosing(value),
+            input.candidate.lookupChoices.toggling(toggle),
             services: services,
             input: input,
             failure: { line in

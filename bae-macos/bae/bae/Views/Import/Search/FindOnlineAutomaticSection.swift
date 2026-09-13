@@ -13,9 +13,10 @@ struct FindOnlineAutomaticSection: View {
     let state: ImportSearchState
     /// Open Settings on the Discogs page — offered when no source is on.
     let onOpenSettings: () -> Void
-    /// Take a catalog number in or out of the run. Core re-derives the state
-    /// the import projection delivers from what is chosen.
-    let onToggleCatalog: (String) -> Void
+    /// Turn one identifier in the band over — the disc ID, a barcode, a
+    /// catalog number. Core re-derives the state the import projection
+    /// delivers from what the candidate's choices then say.
+    let onToggleLookup: (LookupToggle) -> Void
     /// Count a catalog number the folder states, or stop counting it. Nothing
     /// is looked up: the answers in hand are ranked by the new value the next
     /// time the candidate is read.
@@ -82,7 +83,7 @@ struct FindOnlineAutomaticSection: View {
                         IdentifierBand(
                             run: run,
                             catalogAgreements: state.catalogAgreements,
-                            onToggleCatalog: onToggleCatalog,
+                            onToggleLookup: onToggleLookup,
                             onToggleCatalogAgreement:
                                 onToggleCatalogAgreement,
                             onRetryFailed: onRetryFailed

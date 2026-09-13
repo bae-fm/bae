@@ -515,7 +515,7 @@
                     signals: nil,
                     lookupChoices: BridgeLookupChoices(
                         discIdExcluded: false,
-                        barcodeExcluded: false,
+                        excludedBarcodes: [],
                         chosenCatalogs: [],
                         discountedCatalogs: []
                     ),

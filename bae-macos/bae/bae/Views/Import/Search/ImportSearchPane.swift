@@ -25,9 +25,10 @@ struct ImportSearchPane: View {
     let onRetrySearch: () -> Void
     /// Open Settings on the Discogs page — what the not-configured bar offers.
     let onOpenSettings: () -> Void
-    /// Take a catalog number in or out of the run. Core re-derives the state
-    /// the import projection delivers from what is chosen.
-    let onToggleCatalog: (String) -> Void
+    /// Turn one identifier in the band over — the disc ID, a barcode, a
+    /// catalog number. Core re-derives the state the import projection
+    /// delivers from what the candidate's choices then say.
+    let onToggleLookup: (LookupToggle) -> Void
     /// Count a catalog number the folder states, or stop counting it: the
     /// same answers, ranked by what the folder is taken to state about them.
     let onToggleCatalogAgreement: (String) -> Void
@@ -61,7 +62,7 @@ struct ImportSearchPane: View {
         onSearch: @escaping (CandidateSearchState) -> Void,
         onRetrySearch: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void,
-        onToggleCatalog: @escaping (String) -> Void,
+        onToggleLookup: @escaping (LookupToggle) -> Void,
         onToggleCatalogAgreement: @escaping (String) -> Void,
         initialSection: FindOnlineSection,
         onRetryFailed: @escaping () -> Void,
@@ -74,7 +75,7 @@ struct ImportSearchPane: View {
         self.onSearch = onSearch
         self.onRetrySearch = onRetrySearch
         self.onOpenSettings = onOpenSettings
-        self.onToggleCatalog = onToggleCatalog
+        self.onToggleLookup = onToggleLookup
         self.onToggleCatalogAgreement = onToggleCatalogAgreement
         self.onRetryFailed = onRetryFailed
         self.onSelect = onSelect
@@ -109,7 +110,7 @@ struct ImportSearchPane: View {
                 FindOnlineAutomaticSection(
                     state: state,
                     onOpenSettings: onOpenSettings,
-                    onToggleCatalog: onToggleCatalog,
+                    onToggleLookup: onToggleLookup,
                     onToggleCatalogAgreement: onToggleCatalogAgreement,
                     onRetryFailed: onRetryFailed,
                     onSelect: onSelect,
@@ -246,7 +247,7 @@ struct ImportSearchPane: View {
                 onSearch: { _ in },
                 onRetrySearch: {},
                 onOpenSettings: {},
-                onToggleCatalog: { _ in },
+                onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 initialSection: initialSection,
                 onRetryFailed: onRetryFailed,

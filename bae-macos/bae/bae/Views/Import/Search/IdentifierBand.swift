@@ -16,9 +16,10 @@ struct IdentifierBand: View {
     /// rather than drive a lookup. Empty while the run is still going: which
     /// numbers these are follows from the releases it settles on.
     let catalogAgreements: [BridgeCatalogAgreement]
-    /// Take a catalog number in or out of the run: a waiting chip starts being
-    /// looked up, a running one stops.
-    let onToggleCatalog: (String) -> Void
+    /// Turn one identifier in the band over: a disc ID or a barcode the run
+    /// asks about is left out and one left out is asked about again, a waiting
+    /// catalog number starts being looked up and a running one stops.
+    let onToggleLookup: (LookupToggle) -> Void
     /// Count a catalog number the folder states, or stop counting it. Nothing
     /// is looked up either way.
     let onToggleCatalogAgreement: (String) -> Void
@@ -39,7 +40,7 @@ struct IdentifierBand: View {
             ForEach(catalogCandidates, id: \.value) { candidate in
                 CatalogCandidateChip(
                     candidate: candidate,
-                    onActivate: { onToggleCatalog(candidate.value) }
+                    onActivate: { onToggleLookup(.catalog(candidate.value)) }
                 )
             }
             if isScanning {
@@ -54,6 +55,8 @@ struct IdentifierBand: View {
 
     /// One chip, whatever the step has reached. The disc-ID endpoint is
     /// MusicBrainz's alone, so the chip carries that one provider's capsule.
+    /// A disc ID that was read is a button: clicking it leaves it out of the
+    /// run, and clicking it again asks about it.
     @ViewBuilder
     private var discIdChip: some View {
         let label = SignalBadgeStyle.label(for: BridgeSignalKind.discId)
@@ -73,20 +76,26 @@ struct IdentifierBand: View {
                     )
                 )
         case .read(let discId, let source, let lookup):
-            IdentifierChip(
+            discIdButton(
                 label: label,
-                tags: .discIdFile(source),
-                value: discId
-            ) {
-                ProviderCapsule(
-                    source: .musicBrainz,
-                    lookup: lookup,
-                    onRetry: onRetryFailed
-                )
-            }
+                discId: discId,
+                source: source,
+                lookup: lookup
+            )
+        // The person took the disc ID out, so the chip reads as off and the
+        // way back is the chip itself.
+        case .leftOut(let discId, let source):
+            discIdButton(
+                label: label,
+                discId: discId,
+                source: source,
+                lookup: nil
+            )
         // The one source that answers disc IDs is not being asked, so the
         // value stands with a dash where a count would be — nothing looked,
-        // which is not the same as looking and finding none.
+        // which is not the same as looking and finding none. There is nothing
+        // here for a person to switch: which sources a run asks is a Settings
+        // switch, not this chip.
         case .readNotAsked(let discId, let source):
             IdentifierChip(
                 label: label,
@@ -98,8 +107,46 @@ struct IdentifierBand: View {
         }
     }
 
+    /// The disc ID as a switch. `lookup` is MusicBrainz's answer about it, and
+    /// is `nil` for a disc ID the person left out: nobody was asked, so there
+    /// is no answer to carry and the chip reads as off.
+    private func discIdButton(
+        label: String,
+        discId: String,
+        source: BridgeDiscIdFile?,
+        lookup: BridgeLookupState?
+    ) -> some View {
+        Button {
+            onToggleLookup(.discId)
+        } label: {
+            IdentifierChip(
+                label: label,
+                tags: .discIdFile(source),
+                value: discId,
+                style: lookup == nil ? .outlined : .filled
+            ) {
+                if let lookup {
+                    ProviderCapsule(
+                        source: .musicBrainz,
+                        lookup: lookup,
+                        onRetry: onRetryFailed
+                    )
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .help(
+            lookup == nil
+                ? "Ask about this disc ID again"
+                : "Leave this disc ID out of the run"
+        )
+    }
+
     // MARK: - Barcode
 
+    /// A chip per code the folder carries. Each is a button: clicking a code
+    /// the run asks about leaves it out, and clicking one left out asks about
+    /// it again.
     @ViewBuilder
     private var barcodeChips: some View {
         let label = SignalBadgeStyle.label(for: BridgeSignalKind.barcode)
@@ -120,13 +167,28 @@ struct IdentifierBand: View {
                 )
         case .rows(_, let rows):
             ForEach(rows, id: \.value) { row in
-                IdentifierChip(
-                    label: label,
-                    tags: .sources(row.sources),
-                    value: row.value
-                ) {
-                    capsules(row.cells)
+                Button {
+                    onToggleLookup(.barcode(row.value))
+                } label: {
+                    IdentifierChip(
+                        label: label,
+                        tags: .sources(row.sources),
+                        value: row.value,
+                        style: row.excluded ? .outlined : .filled
+                    ) {
+                        // A code nobody was asked about has no answer to
+                        // carry, so the chip is the value alone.
+                        if !row.excluded {
+                            capsules(row.cells)
+                        }
+                    }
                 }
+                .buttonStyle(.plain)
+                .help(
+                    row.excluded
+                        ? "Ask about this barcode again"
+                        : "Leave this barcode out of the run"
+                )
             }
         }
     }
@@ -146,7 +208,7 @@ struct IdentifierBand: View {
         case .numbers(_, let rows, _):
             ForEach(rows, id: \.value) { row in
                 Button {
-                    onToggleCatalog(row.value)
+                    onToggleLookup(.catalog(row.value))
                 } label: {
                     IdentifierChip(
                         label: label,
@@ -202,7 +264,7 @@ struct IdentifierBand: View {
         IdentifierBand(
             run: PreviewData.identifyRunInFlight,
             catalogAgreements: [],
-            onToggleCatalog: { _ in },
+            onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
@@ -218,7 +280,7 @@ struct IdentifierBand: View {
         IdentifierBand(
             run: PreviewData.identifyRunOneSource,
             catalogAgreements: [],
-            onToggleCatalog: { _ in },
+            onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
@@ -231,7 +293,7 @@ struct IdentifierBand: View {
         IdentifierBand(
             run: PreviewData.identifyRunStarting,
             catalogAgreements: [],
-            onToggleCatalog: { _ in },
+            onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
@@ -244,7 +306,7 @@ struct IdentifierBand: View {
         IdentifierBand(
             run: PreviewData.identifyRunProviderFailed,
             catalogAgreements: [],
-            onToggleCatalog: { _ in },
+            onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
@@ -260,10 +322,34 @@ struct IdentifierBand: View {
         IdentifierBand(
             run: PreviewData.identifyRunCatalogWaiting,
             catalogAgreements: PreviewData.catalogAgreements,
-            onToggleCatalog: { _ in },
+            onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )
+        .frame(width: 660)
+        .environment(PreviewData.artImageStore())
+        .windowBackground()
+    }
+
+    /// The off chips: a disc ID the person took out of the run, and one of two
+    /// barcodes left out beside the one still being looked up.
+    #Preview("Identifiers left out of the run") {
+        VStack(alignment: .leading, spacing: 0) {
+            IdentifierBand(
+                run: PreviewData.identifyRunDiscIdLeftOut,
+                catalogAgreements: [],
+                onToggleLookup: { _ in },
+                onToggleCatalogAgreement: { _ in },
+                onRetryFailed: {},
+            )
+            IdentifierBand(
+                run: PreviewData.identifyRunBarcodeLeftOut,
+                catalogAgreements: [],
+                onToggleLookup: { _ in },
+                onToggleCatalogAgreement: { _ in },
+                onRetryFailed: {},
+            )
+        }
         .frame(width: 660)
         .environment(PreviewData.artImageStore())
         .windowBackground()
@@ -273,7 +359,7 @@ struct IdentifierBand: View {
         IdentifierBand(
             run: PreviewData.identifyRunNothingFound,
             catalogAgreements: [],
-            onToggleCatalog: { _ in },
+            onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
         )

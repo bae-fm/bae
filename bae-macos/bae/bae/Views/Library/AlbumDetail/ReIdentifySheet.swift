@@ -316,7 +316,7 @@ extension ReIdentifySheet {
             importStore.reIdentifyCandidates[key]?.lookupChoices
                 ?? BridgeLookupChoices(
                     discIdExcluded: false,
-                    barcodeExcluded: false,
+                    excludedBarcodes: [],
                     chosenCatalogs: [],
                     discountedCatalogs: []
                 )

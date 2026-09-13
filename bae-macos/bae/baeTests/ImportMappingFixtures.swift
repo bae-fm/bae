@@ -536,7 +536,7 @@ extension MappingFixtures {
     /// no catalog number singled out.
     static let noLookupChoices = BridgeLookupChoices(
         discIdExcluded: false,
-        barcodeExcluded: false,
+        excludedBarcodes: [],
         chosenCatalogs: [],
         discountedCatalogs: []
     )

@@ -179,7 +179,7 @@ struct FindOnlineSourceSwitchTests {
                 IdentifierBand(
                     run: run,
                     catalogAgreements: [],
-                    onToggleCatalog: { _ in },
+                    onToggleLookup: { _ in },
                     onToggleCatalogAgreement: { _ in },
                     onRetryFailed: {}
                 ),
