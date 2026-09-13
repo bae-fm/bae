@@ -63,7 +63,8 @@ pub struct BridgeReleaseGroup {
     pub label: Option<String>,
     /// Representative cover for the card.
     pub cover_art: Option<BridgeRemoteCover>,
-    /// Every source carrying this group, in the order its rows name them.
+    /// Every source carrying this group, in the one order surfaces name
+    /// sources in.
     pub sources: Vec<BridgeReleaseGroupSource>,
     /// Earliest and latest pressing year for the UI's "1992 – 2012" span; both
     /// `None` when no pressing carries a year. Pressing count is `pressings.len()`.

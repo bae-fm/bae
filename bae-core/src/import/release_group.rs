@@ -46,9 +46,11 @@ pub struct ReleaseGroup {
     /// Representative cover for the card — the first pressing that surfaced
     /// one, MusicBrainz first.
     pub cover_art: Option<RemoteCover>,
-    /// Every source carrying this group, in the order its rows name them —
-    /// the leading record of the best row first; each with its editorial page
-    /// when the source named a group.
+    /// Every source carrying this group, in the one order surfaces list
+    /// sources in, each with its editorial page when the source named a
+    /// group. The chips under an album's title and the names on the rows
+    /// beneath it read the same way round, whichever record a row was read
+    /// from.
     pub sources: Vec<ReleaseGroupSource>,
     /// Earliest and latest pressing year, for the UI's "1992 – 2012" span.
     /// Both `None` when no pressing carries a year.
@@ -302,9 +304,9 @@ fn bucket_by_source_group(results: Vec<Judged>) -> Vec<Bucket> {
 }
 
 /// Pair each bucket with at most one bucket from the other source describing
-/// the same album. A merged card sits at the earlier bucket's position, and
-/// its buckets are ordered MusicBrainz first — the order the card's title,
-/// label and cover are read in.
+/// the same album. A merged card sits at the earlier bucket's position, and its
+/// buckets are ordered by [`source_rank`] — the order the card's title, label
+/// and cover are read in, and the order it names its sources in.
 fn merge_buckets(buckets: Vec<Bucket>) -> Vec<Vec<Bucket>> {
     let mut buckets: Vec<Option<Bucket>> = buckets.into_iter().map(Some).collect();
     let mut cards: Vec<Vec<Bucket>> = Vec::new();
@@ -386,7 +388,7 @@ fn build_group(card: Vec<Bucket>, judgements: &Judgements) -> (ReleaseGroup, u32
             artist,
             label,
             cover_art,
-            sources: ordered_sources(sources, &rows),
+            sources,
             year_min,
             year_max,
             pressings: rows.into_iter().map(|row| row.pressing).collect(),
@@ -493,33 +495,15 @@ fn states_tracklist(release: &MetadataResult) -> bool {
     )
 }
 
-/// MusicBrainz before Discogs — the last tie-break, where nothing the folder
-/// says tells two records or two buckets apart.
-fn source_rank(source: MetadataSource) -> u8 {
-    match source {
-        MetadataSource::MusicBrainz => 0,
-        MetadataSource::Discogs => 1,
-    }
-}
-
-/// The card's sources in the order its rows name them: whichever source leads
-/// the best row first, then whatever the rest of the rows add. The chips under
-/// an album's title say which sources describe it, and reading them in the
-/// order the rows do keeps the card and the row beneath it saying the same
-/// thing.
-fn ordered_sources(mut sources: Vec<ReleaseGroupSource>, rows: &[Row]) -> Vec<ReleaseGroupSource> {
-    let named: Vec<MetadataSource> = rows
+/// Where a source sits in the one order surfaces list sources in. The last
+/// tie-break between records and between buckets, where nothing the folder says
+/// tells them apart, and what puts a card's sources in that order: the buckets
+/// a card is built from are sorted by it, and its sources are read off them.
+fn source_rank(source: MetadataSource) -> usize {
+    MetadataSource::ALL
         .iter()
-        .flat_map(|row| &row.pressing.releases)
-        .map(|release| release.source)
-        .collect();
-    sources.sort_by_key(|source| {
-        named
-            .iter()
-            .position(|named| *named == source.source)
-            .expect("every source on a card lists a release of one of its rows")
-    });
-    sources
+        .position(|listed| *listed == source)
+        .expect("every source is one of MetadataSource::ALL")
 }
 
 /// The digits of a stated barcode. Sources print the same code with different

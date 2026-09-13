@@ -628,20 +628,25 @@ fn records_nothing_tells_apart_lead_with_musicbrainz() {
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
 }
 
-/// The chips under an album's title name its sources in the order its rows do,
-/// so a card whose best row leads with Discogs names Discogs first.
+/// The chips under an album's title name its sources in the one order surfaces
+/// list them in, whichever record the card's best row is read from.
 #[test]
-fn the_card_names_its_sources_in_the_order_its_rows_do() {
+fn the_card_names_its_sources_in_the_order_surfaces_list_them() {
     let (mb_release, dg_release) = paired();
 
     let groups = group_results(vec![(mb_release, agreed(1)), (dg_release, agreed(3))]);
 
+    assert_eq!(
+        lead_ids(&groups[0]),
+        vec![vec!["dg-1", "mb-1"]],
+        "the best row is read from the Discogs record",
+    );
     assert_eq!(
         groups[0]
             .sources
             .iter()
             .map(|source| source.source)
             .collect::<Vec<_>>(),
-        vec![MetadataSource::Discogs, MetadataSource::MusicBrainz]
+        vec![MetadataSource::MusicBrainz, MetadataSource::Discogs]
     );
 }

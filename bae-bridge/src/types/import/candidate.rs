@@ -137,6 +137,18 @@ pub fn bridge_metadata_source_name(source: crate::types::BridgeMetadataSource) -
     source.name().to_string()
 }
 
+/// Every metadata source, in the one order surfaces list them in.
+///
+/// A surface that names the sources carrying something — a card's chips, a
+/// pressing row's tags — reads them in this order, so the order is core's and
+/// no surface states it again.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_metadata_sources() -> Vec<crate::types::BridgeMetadataSource> {
+    bae_core::import::MetadataSource::ALL
+        .map(crate::types::BridgeMetadataSource::from_core)
+        .to_vec()
+}
+
 /// A role a person can put a file in, as opposed to the whole
 /// [`BridgeFileRole`] the scan proposes. Mirror of bae-core's
 /// `FileRoleChoice`. Only audio is a decision: an image is an image, and a

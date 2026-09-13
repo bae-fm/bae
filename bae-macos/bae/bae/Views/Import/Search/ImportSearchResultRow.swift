@@ -220,18 +220,20 @@ struct ImportSearchResultRow: View {
 
     // MARK: - Trailing
 
-    /// Every source listing this pressing, named. A label, not a choice: the
-    /// row is one pressing however many sources carry it, and picking it
-    /// claims all of them.
+    /// Every source listing this pressing, named in the order core states. A
+    /// label, not a choice: the row is one pressing however many sources carry
+    /// it, and picking it claims all of them.
     private var sourceTags: some View {
         HStack(spacing: 4) {
-            ForEach(pressing.releases) { release in
-                if release.releaseId != pressing.lead.releaseId {
+            ForEach(Array(pressing.sources.enumerated()), id: \.element) {
+                at,
+                source in
+                if at > 0 {
                     Text(verbatim: "\u{00b7}")
                         .font(.system(size: 11))
                         .foregroundStyle(.quaternary)
                 }
-                Text(bridgeMetadataSourceName(source: release.source))
+                Text(bridgeMetadataSourceName(source: source))
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }

@@ -361,6 +361,50 @@ struct FindOnlinePressingPickTests {
 }
 
 @MainActor
+@Suite("The sources a row names")
+struct FindOnlinePressingSourceTests {
+    /// Which record a row is read from decides what the row shows, not the
+    /// order its tags read in: those follow the one order every surface names
+    /// sources in, so a row and the card above it never disagree.
+    @Test("a row read from the Discogs record still names MusicBrainz first")
+    func aDiscogsLedRowNamesMusicBrainzFirst() throws {
+        let paired = PreviewData.exactPressings[1]
+        let discogsLead = try #require(paired.releases.last)
+        let musicBrainzPartner = try #require(paired.releases.first)
+        let pressing = try #require(
+            Pressing(
+                bridge: BridgePressing(
+                    releases: [discogsLead, musicBrainzPartner],
+                    pick: .externalRelease(
+                        source: discogsLead.source,
+                        releaseId: discogsLead.releaseId,
+                        partners: [
+                            BridgeMetadataRef(
+                                source: musicBrainzPartner.source,
+                                releaseId: musicBrainzPartner.releaseId
+                            )
+                        ]
+                    )
+                )
+            )
+        )
+
+        #expect(pressing.lead.source == .discogs)
+        #expect(pressing.sources == [.musicBrainz, .discogs])
+    }
+
+    /// A pressing one source lists names that source and nothing else.
+    @Test("an unpaired row names the one source that lists it")
+    func anUnpairedRowNamesOneSource() throws {
+        let pressing = try #require(
+            Pressing(bridge: PreviewData.exactPressings[0])
+        )
+
+        #expect(pressing.sources == [.musicBrainz])
+    }
+}
+
+@MainActor
 @Suite("The way into the form")
 struct FindOnlineFormFocusTests {
     /// "Search manually" is a request, not a flag: the cursor goes to the
