@@ -120,7 +120,7 @@ internal sealed partial class ImportSectionView
         Grid.SetColumn(text, 2);
         grid.Children.Add(text);
 
-        var trailing = BuildRowTrailing(row);
+        var trailing = RowTrailing(row);
         trailing.Margin = new Thickness(0, 9, 10, 7);
         trailing.VerticalAlignment = VerticalAlignment.Top;
         Grid.SetColumn(trailing, 3);
@@ -237,7 +237,7 @@ internal sealed partial class ImportSectionView
         {
             column.Children.Add(ImportProgressLine.Build(_import, row.CandidateKey));
         }
-        else if (SubLine(RowSubLine(row), Claimed(reading)) is { } subLine)
+        else if (SubLine(RowSubLine(row)) is { } subLine)
         {
             column.Children.Add(subLine);
         }
@@ -259,65 +259,26 @@ internal sealed partial class ImportSectionView
         return column;
     }
 
-    // The sources a reading names, or none.
-    private static IReadOnlyList<BridgeMetadataSource> Claimed(
-        TriageRowReading reading) =>
-        reading is TriageRowReading.Identified identified
-            ? identified.Sources
-            : Array.Empty<BridgeMetadataSource>();
-
-    // The line under the title: what the row has to say, then the sources its
-    // metadata was read from. The capsules keep their width and the line
-    // truncates before them; with nothing to say they stand alone, and with
-    // neither there is no line at all.
-    private static Control? SubLine(
-        string? text,
-        IReadOnlyList<BridgeMetadataSource> sources)
+    // The line under the title: what the row has to say, and nothing when it
+    // has nothing.
+    private static Control? SubLine(string? text)
     {
-        var hasText = text is { Length: > 0 };
-        if (!hasText && sources.Count == 0)
+        if (text is not { Length: > 0 })
         {
             return null;
         }
-        var line = new Grid
+        var sentence = new TextBlock
         {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-            ColumnSpacing = 6,
+            Text = text,
+            FontSize = 12.5,
+            MaxLines = 1,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 1, 0, 0),
         };
-        if (hasText)
-        {
-            var sentence = new TextBlock
-            {
-                Text = text,
-                FontSize = 12.5,
-                MaxLines = 1,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            sentence[!TextBlock.ForegroundProperty] =
-                new DynamicResourceExtension("BaeTextSecondaryBrush");
-            Grid.SetColumn(sentence, 0);
-            line.Children.Add(sentence);
-        }
-        if (sources.Count > 0)
-        {
-            var capsules = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 4,
-                HorizontalAlignment = HorizontalAlignment.Right,
-            };
-            foreach (var source in sources)
-            {
-                capsules.Children.Add(ImportPaneUi.SourceCapsule(
-                    BaeBridgeMethods.BridgeMetadataSourceName(source),
-                    linked: false));
-            }
-            Grid.SetColumn(capsules, 1);
-            line.Children.Add(capsules);
-        }
-        return line;
+        sentence[!TextBlock.ForegroundProperty] =
+            new DynamicResourceExtension("BaeTextSecondaryBrush");
+        return sentence;
     }
 
     // The second line: the resolved artist, a disagreement sentence, or an
@@ -425,12 +386,44 @@ internal sealed partial class ImportSectionView
         return button;
     }
 
-    private Control BuildRowTrailing(BridgeTriageRow row)
+    // The row's trailing column: the sources the draft was read from, then
+    // whatever the placement puts at the end of the row — both show when both
+    // apply.
+    private Control RowTrailing(BridgeTriageRow row)
+    {
+        var column = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+        };
+        // One badge per source the pick claims, in the order core lists them.
+        // The short name: the row's end is a badge's worth of width, not a
+        // sentence's.
+        if (TriageListModel.Reading(row) is TriageRowReading.Identified pick)
+        {
+            foreach (var source in pick.Sources)
+            {
+                column.Children.Add(ImportPaneUi.SourceCapsule(
+                    BaeBridgeMethods.BridgeMetadataSourceShortName(source),
+                    "BaeAccentBrush",
+                    arrow: false));
+            }
+        }
+        if (PlacementTrailing(row) is { } placement)
+        {
+            column.Children.Add(placement);
+        }
+        return column;
+    }
+
+    // What the placement itself puts at the end of the row, or nothing when it
+    // has nothing to put there.
+    private Control? PlacementTrailing(BridgeTriageRow row)
     {
         switch (row.Placement)
         {
             case BridgeTriagePlacement.Ready:
-                return new Panel();
+                return null;
             case BridgeTriagePlacement.Identification identifying:
                 return IdentificationTrailing(identifying.Status);
             case BridgeTriagePlacement.NeedsYou(var reason):
@@ -441,7 +434,7 @@ internal sealed partial class ImportSectionView
             case BridgeTriagePlacement.Done:
                 return ImportTrailing(row);
             default:
-                return new Panel();
+                return null;
         }
     }
 
@@ -461,7 +454,7 @@ internal sealed partial class ImportSectionView
         return indicator;
     }
 
-    private Control NeedsYouTrailing(BridgeTriageRow row, BridgeNeedsYou reason)
+    private Control? NeedsYouTrailing(BridgeTriageRow row, BridgeNeedsYou reason)
     {
         return reason switch
         {
@@ -476,7 +469,7 @@ internal sealed partial class ImportSectionView
             BridgeNeedsYou.LookupFailed => LookupFailedIcon(reason),
             BridgeNeedsYou.NoMatch or BridgeNeedsYou.NothingToLookUp =>
                 SearchManuallyChip(row),
-            _ => new Panel(),
+            _ => null,
         };
     }
 
@@ -497,7 +490,7 @@ internal sealed partial class ImportSectionView
     // What a row past the point of being asked anything shows: the running
     // import's spinner, the failure's tag, or the completed import's mark and
     // its cloud transition.
-    private Control ImportTrailing(BridgeTriageRow row) => row.ImportStatus switch
+    private Control? ImportTrailing(BridgeTriageRow row) => row.ImportStatus switch
     {
         BridgeTriageImportStatus.Importing => new Spinner { Width = 14, Height = 14 },
         BridgeTriageImportStatus.Complete =>
@@ -508,7 +501,7 @@ internal sealed partial class ImportSectionView
                 ImportUploadObservation.Active =>
                     Icons.Glyph(Icons.ArrowUp, 14, "BaeTextSecondaryBrush"),
                 ImportUploadObservation.Finished =>
-                    new Panel(),
+                    null,
                 _ => throw new InvalidOperationException(
                     "a completed import has no upload observation"),
             },
@@ -517,7 +510,7 @@ internal sealed partial class ImportSectionView
         // there is no in-session status to read — the fact is the same, so the
         // glyph is.
         null => DotIcon("BaeSuccessBrush", "✓"),
-        _ => new Panel(),
+        _ => null,
     };
 
     private static Control DotIcon(string brushKey, string glyph = "•")

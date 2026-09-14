@@ -138,12 +138,12 @@ public sealed class ImportSectionViewTests
         Assert.Contains("Applied Draft", text);
         Assert.Contains("Draft Artist", text);
         Assert.DoesNotContain("Album Title", text);
-        Assert.Equal(
-            new[] { "Applied Draft", "Draft Artist", "MusicBrainz" },
-            text);
+        Assert.Equal(new[] { "Applied Draft", "Draft Artist" }, RowMetaText(view));
+        Assert.Equal(new[] { "MB" }, RowTrailingText(view));
     }
 
-    // A draft read from a source's releases says which ones; one read off the
+    // A draft read from a source's releases says which ones, badged at the end
+    // of the row rather than on the line under the title; one read off the
     // files' tags has none to say.
     [AvaloniaFact]
     public void OnlyAnIdentifiedRowNamesItsSources()
@@ -164,11 +164,9 @@ public sealed class ImportSectionViewTests
                     ])),
             MatchedSummary(placement, BridgeTriageTab.Pending));
         Assert.Equal(
-            new[]
-            {
-                "Applied Draft", "Draft Artist", "MusicBrainz", "Discogs",
-            },
-            RowText(paired));
+            new[] { "Applied Draft", "Draft Artist" },
+            RowMetaText(paired));
+        Assert.Equal(new[] { "MB", "Discogs" }, RowTrailingText(paired));
 
         var tagged = BuildView(
             MatchedItems(
@@ -178,6 +176,38 @@ public sealed class ImportSectionViewTests
                 metadataProvenance: new BridgeMetadataProvenance.FileTags()),
             MatchedSummary(placement, BridgeTriageTab.Pending));
         Assert.Equal(new[] { "Applied Draft", "Draft Artist" }, RowText(tagged));
+    }
+
+    // The badges say where the draft came from and the placement's tag says
+    // what the row still needs: a row with both shows both.
+    [AvaloniaFact]
+    public void AnIdentifiedRowStillAwaitingAChoiceShowsBadgesAndItsTag()
+    {
+        var placement = new BridgeTriagePlacement.NeedsYou(
+            new BridgeNeedsYou.SeveralMatches(2));
+        var view = BuildView(
+            MatchedItems(
+                placement,
+                BridgeTriageSkipAction.Skip,
+                metadataSummary: AppliedDraft,
+                metadataProvenance: new BridgeMetadataProvenance.ExternalRelease(
+                    BridgeMetadataSource.MusicBrainz,
+                    "rel-several",
+                    [
+                        new BridgeMetadataRef(
+                            BridgeMetadataSource.Discogs,
+                            "discogs-several"),
+                    ])),
+            MatchedSummary(placement, BridgeTriageTab.Pending));
+
+        Assert.Equal(
+            new[]
+            {
+                "MB",
+                "Discogs",
+                BridgeDisplay.LocalizedLine(new BridgeNeedsYou.SeveralMatches(2)),
+            },
+            RowTrailingText(view));
     }
 
     // A row with no draft is the folder it came from: the glyph, the folder
@@ -244,7 +274,27 @@ public sealed class ImportSectionViewTests
         ]);
 
     private static List<string> RowText(ImportSectionView view) =>
+        TextOf(CandidateRow(view));
+
+    /// <summary>The text of the row's title-and-sub-line column, apart from
+    /// the trailing column the placement and the sources share.</summary>
+    private static List<string> RowMetaText(ImportSectionView view) =>
+        TextOf(RowColumn(view, 2));
+
+    private static List<string> RowTrailingText(ImportSectionView view) =>
+        TextOf(RowColumn(view, 3));
+
+    private static Control RowColumn(ImportSectionView view, int column) =>
         CandidateRow(view)
+            .GetLogicalDescendants()
+            .OfType<Grid>()
+            .First()
+            .Children
+            .OfType<Control>()
+            .Single(child => Grid.GetColumn(child) == column);
+
+    private static List<string> TextOf(Control root) =>
+        root
             .GetLogicalDescendants()
             .OfType<TextBlock>()
             .Select(block => block.Text)

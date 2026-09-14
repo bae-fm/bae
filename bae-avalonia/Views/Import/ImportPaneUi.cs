@@ -134,21 +134,25 @@ internal static class ImportPaneUi
         return button;
     }
 
-    /// <summary>One metadata source's name, in a capsule. The draft header
-    /// wraps it in a link to the release it names, which is what
-    /// <paramref name="linked"/> tints and marks; a candidate row draws it
-    /// plain.</summary>
-    internal static Border SourceCapsule(string label, bool linked)
+    /// <summary>One metadata source's name, in a capsule, in
+    /// <paramref name="foregroundKey"/>'s brush. The draft header wraps it in
+    /// a link to the release it names and marks that with
+    /// <paramref name="arrow"/>; a candidate row draws the same capsule with
+    /// no link to follow.</summary>
+    internal static Border SourceCapsule(
+        string label,
+        string foregroundKey,
+        bool arrow)
     {
         var text = new TextBlock
         {
-            Text = linked ? label + " ↗" : label,
+            Text = arrow ? label + " ↗" : label,
             FontSize = 10.5,
             FontWeight = FontWeight.Medium,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
-            linked ? "BaeAccentBrush" : "BaeTextSecondaryBrush");
+        text[!TextBlock.ForegroundProperty] =
+            new DynamicResourceExtension(foregroundKey);
         var capsule = new Border
         {
             CornerRadius = new CornerRadius(999),

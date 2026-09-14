@@ -350,7 +350,10 @@ internal sealed class ImportMetadataSourceSection
 
     private static Control SourceChip(string label, Uri? uri)
     {
-        var chip = ImportPaneUi.SourceCapsule(label, linked: uri is not null);
+        var chip = ImportPaneUi.SourceCapsule(
+            label,
+            uri is not null ? "BaeAccentBrush" : "BaeTextSecondaryBrush",
+            arrow: uri is not null);
         if (uri is null)
         {
             return chip;
