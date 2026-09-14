@@ -443,8 +443,8 @@ mirror_enum! {
 pub struct BridgeTriageRow {
     /// The candidate's folder path — the key every other import call takes.
     pub candidate_key: String,
-    /// The folder on disk: the mono subtitle, and the title when `matched` is
-    /// absent.
+    /// The folder on disk: what a row leads with while its draft is blank,
+    /// whatever identification matched.
     pub folder_name: String,
     /// Match against `BridgeWatchedFolder.path` for the section header.
     pub watched_folder_path: String,
