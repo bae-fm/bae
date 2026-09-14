@@ -607,11 +607,13 @@ public sealed class ImportSectionViewTests
         app.ImportStore.ApplyCandidateRuntime(
             new BridgeCandidateRuntimeChange.Reset([]));
 
+        // The progress the run reported is gone; the title is the folder's
+        // name and may carry digits of its own.
         var resetRow = CandidateRow(view);
         Assert.DoesNotContain(
             resetRow.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text is { } line
-                && line.Contains("0", StringComparison.Ordinal));
+                && line.Contains("40", StringComparison.Ordinal));
         Assert.True(resetRow.GetLogicalDescendants().OfType<ProgressBar>().Single().IsIndeterminate);
     }
 
