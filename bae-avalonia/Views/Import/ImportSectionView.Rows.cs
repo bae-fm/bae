@@ -199,6 +199,7 @@ internal sealed partial class ImportSectionView
 
     private Control BuildRowText(BridgeTriageRow row)
     {
+        var reading = TriageListModel.Reading(row);
         var upload = UploadProgressPresentation.ResolveImport(
             row.ImportStatus,
             _storage.Outbox);
@@ -213,8 +214,11 @@ internal sealed partial class ImportSectionView
             VerticalAlignment = VerticalAlignment.Center,
         };
         title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
-        if (TriageListModel.TitleIsFolderName(row))
+        if (reading is TriageRowReading.Unidentified)
         {
+            // Nothing has been written about the release, so the title is the
+            // folder on disk — the glyph and the mono family say so.
+            title.FontFamily = new FontFamily("monospace");
             var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
             titleRow.Children.Add(Icons.Glyph(Icons.Folder, 13, "BaeTextSecondaryBrush"));
             titleRow.Children.Add(title);
@@ -233,18 +237,9 @@ internal sealed partial class ImportSectionView
         {
             column.Children.Add(ImportProgressLine.Build(_import, row.CandidateKey));
         }
-        else if (RowSubLine(row) is { Length: > 0 } subLine)
+        else if (SubLine(RowSubLine(row), Claimed(reading)) is { } subLine)
         {
-            var sub = new TextBlock
-            {
-                Text = subLine,
-                FontSize = 12.5,
-                MaxLines = 1,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                Margin = new Thickness(0, 1, 0, 0),
-            };
-            sub[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-            column.Children.Add(sub);
+            column.Children.Add(subLine);
         }
 
         if (upload is ImportUploadObservation.Active)
@@ -264,6 +259,67 @@ internal sealed partial class ImportSectionView
         return column;
     }
 
+    // The sources a reading names, or none.
+    private static IReadOnlyList<BridgeMetadataSource> Claimed(
+        TriageRowReading reading) =>
+        reading is TriageRowReading.Identified identified
+            ? identified.Sources
+            : Array.Empty<BridgeMetadataSource>();
+
+    // The line under the title: what the row has to say, then the sources its
+    // metadata was read from. The capsules keep their width and the line
+    // truncates before them; with nothing to say they stand alone, and with
+    // neither there is no line at all.
+    private static Control? SubLine(
+        string? text,
+        IReadOnlyList<BridgeMetadataSource> sources)
+    {
+        var hasText = text is { Length: > 0 };
+        if (!hasText && sources.Count == 0)
+        {
+            return null;
+        }
+        var line = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            ColumnSpacing = 6,
+            Margin = new Thickness(0, 1, 0, 0),
+        };
+        if (hasText)
+        {
+            var sentence = new TextBlock
+            {
+                Text = text,
+                FontSize = 12.5,
+                MaxLines = 1,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            sentence[!TextBlock.ForegroundProperty] =
+                new DynamicResourceExtension("BaeTextSecondaryBrush");
+            Grid.SetColumn(sentence, 0);
+            line.Children.Add(sentence);
+        }
+        if (sources.Count > 0)
+        {
+            var capsules = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 4,
+                HorizontalAlignment = HorizontalAlignment.Right,
+            };
+            foreach (var source in sources)
+            {
+                capsules.Children.Add(ImportPaneUi.SourceCapsule(
+                    BaeBridgeMethods.BridgeMetadataSourceName(source),
+                    linked: false));
+            }
+            Grid.SetColumn(capsules, 1);
+            line.Children.Add(capsules);
+        }
+        return line;
+    }
+
     // The second line: the resolved artist, a disagreement sentence, or an
     // import failure. Identification activity belongs to its trailing
     // indicator's tooltip.
@@ -277,7 +333,7 @@ internal sealed partial class ImportSectionView
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.AlreadyInLibrary } =>
             RowArtist(row),
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.SeveralMatches } =>
-            row.Matched?.Artist,
+            RowArtist(row),
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.LookupFailed } =>
             null,
         BridgeTriagePlacement.NeedsYou needsYou =>
@@ -287,14 +343,16 @@ internal sealed partial class ImportSectionView
         _ => null,
     };
 
+    // The artist the draft names. A row with no draft is its folder and
+    // nothing else, so it has none to name.
     private static string? RowArtist(BridgeTriageRow row)
     {
-        if (row.MetadataSummary is { } summary)
+        if (row.MetadataSummary is not { } summary)
         {
-            var joined = ArtistAssignmentDisplay.Join(summary.AlbumArtistAssignments);
-            return string.IsNullOrEmpty(joined) ? null : joined;
+            return null;
         }
-        return row.Matched?.Artist;
+        var joined = ArtistAssignmentDisplay.Join(summary.AlbumArtistAssignments);
+        return string.IsNullOrEmpty(joined) ? null : joined;
     }
 
     private static string? ImportSubLine(BridgeTriageRow row) => row.ImportStatus switch

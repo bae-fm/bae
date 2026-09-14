@@ -350,24 +350,7 @@ internal sealed class ImportMetadataSourceSection
 
     private static Control SourceChip(string label, Uri? uri)
     {
-        var text = new TextBlock
-        {
-            Text = uri is null ? label : label + " ↗",
-            FontSize = 10.5,
-            FontWeight = FontWeight.Medium,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        text[!TextBlock.ForegroundProperty] =
-            new DynamicResourceExtension(uri is null ? "BaeTextSecondaryBrush" : "BaeAccentBrush");
-        var chip = new Border
-        {
-            CornerRadius = new CornerRadius(999),
-            Padding = new Thickness(5, 1),
-            Child = text,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        chip[!Border.BackgroundProperty] =
-            new DynamicResourceExtension("BaeElevatedBrush");
+        var chip = ImportPaneUi.SourceCapsule(label, linked: uri is not null);
         if (uri is null)
         {
             return chip;

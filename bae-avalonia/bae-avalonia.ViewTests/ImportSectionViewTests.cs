@@ -127,31 +127,130 @@ public sealed class ImportSectionViewTests
     public void AppliedDraftRowUsesItsPersistedTwoLineSummary()
     {
         var placement = new BridgeTriagePlacement.Ready();
-        var summary = new BridgeTriageMetadataSummary(
-            AlbumTitle: "Applied Draft",
-            AlbumArtistAssignments:
-            [
-                new BridgeArtistAssignment.New(
-                    new BridgeNewArtistSeed("Draft Artist", null, null, null)),
-            ]);
         var view = BuildView(
             MatchedItems(
                 placement,
                 BridgeTriageSkipAction.Skip,
-                metadataSummary: summary),
+                metadataSummary: AppliedDraft),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
-        var text = CandidateRow(view)
+        var text = RowText(view);
+        Assert.Contains("Applied Draft", text);
+        Assert.Contains("Draft Artist", text);
+        Assert.DoesNotContain("Album Title", text);
+        Assert.Equal(
+            new[] { "Applied Draft", "Draft Artist", "MusicBrainz" },
+            text);
+    }
+
+    // A draft read from a source's releases says which ones; one read off the
+    // files' tags has none to say.
+    [AvaloniaFact]
+    public void OnlyAnIdentifiedRowNamesItsSources()
+    {
+        var placement = new BridgeTriagePlacement.Ready();
+        var paired = BuildView(
+            MatchedItems(
+                placement,
+                BridgeTriageSkipAction.Skip,
+                metadataSummary: AppliedDraft,
+                metadataProvenance: new BridgeMetadataProvenance.ExternalRelease(
+                    BridgeMetadataSource.Discogs,
+                    "discogs-paired",
+                    [
+                        new BridgeMetadataRef(
+                            BridgeMetadataSource.MusicBrainz,
+                            "rel-paired"),
+                    ])),
+            MatchedSummary(placement, BridgeTriageTab.Pending));
+        Assert.Equal(
+            new[]
+            {
+                "Applied Draft", "Draft Artist", "MusicBrainz", "Discogs",
+            },
+            RowText(paired));
+
+        var tagged = BuildView(
+            MatchedItems(
+                placement,
+                BridgeTriageSkipAction.Skip,
+                metadataSummary: AppliedDraft,
+                metadataProvenance: new BridgeMetadataProvenance.FileTags()),
+            MatchedSummary(placement, BridgeTriageTab.Pending));
+        Assert.Equal(new[] { "Applied Draft", "Draft Artist" }, RowText(tagged));
+    }
+
+    // A row with no draft is the folder it came from: the glyph, the folder
+    // name, and nothing the queue once matched.
+    [AvaloniaFact]
+    public void ARowWithoutADraftLeadsWithItsFolder()
+    {
+        var placement = new BridgeTriagePlacement.Ready();
+        var view = BuildView(
+            MatchedItems(placement, BridgeTriageSkipAction.Skip),
+            MatchedSummary(placement, BridgeTriageTab.Pending));
+
+        Assert.Equal(new[] { "Release 01" }, RowText(view));
+    }
+
+    [Fact]
+    public void ARowWithNoDraftReadsAsUnidentified() =>
+        Assert.IsType<TriageRowReading.Unidentified>(
+            TriageListModel.Reading(
+                MatchedRow(new BridgeTriagePlacement.Ready(), null)));
+
+    [Fact]
+    public void ADraftReadOffTheFileTagsNamesNoSource() =>
+        Assert.IsType<TriageRowReading.Prefilled>(
+            TriageListModel.Reading(MatchedRow(
+                new BridgeTriagePlacement.Ready(),
+                null,
+                metadataSummary: AppliedDraft,
+                metadataProvenance: new BridgeMetadataProvenance.FileTags())));
+
+    // A pick pairs one source's release with another's into one pressing, and
+    // the row claims both — in the order every surface lists sources in,
+    // whichever of them the draft was read from.
+    [Fact]
+    public void APickNamesEverySourceItClaimsInTheFixedOrder()
+    {
+        var ordered = BaeBridgeMethods.BridgeMetadataSources();
+        foreach (var lead in ordered)
+        {
+            var partners = ordered
+                .Where(source => source != lead)
+                .Select(source => new BridgeMetadataRef(source, $"rel-{source}"))
+                .ToArray();
+            var reading = Assert.IsType<TriageRowReading.Identified>(
+                TriageListModel.Reading(MatchedRow(
+                    new BridgeTriagePlacement.Ready(),
+                    null,
+                    metadataSummary: AppliedDraft,
+                    metadataProvenance:
+                        new BridgeMetadataProvenance.ExternalRelease(
+                            lead,
+                            $"rel-{lead}",
+                            partners))));
+            Assert.Equal(ordered, reading.Sources);
+        }
+    }
+
+    private static readonly BridgeTriageMetadataSummary AppliedDraft = new(
+        AlbumTitle: "Applied Draft",
+        AlbumArtistAssignments:
+        [
+            new BridgeArtistAssignment.New(
+                new BridgeNewArtistSeed("Draft Artist", null, null, null)),
+        ]);
+
+    private static List<string> RowText(ImportSectionView view) =>
+        CandidateRow(view)
             .GetLogicalDescendants()
             .OfType<TextBlock>()
             .Select(block => block.Text)
             .Where(value => !string.IsNullOrEmpty(value))
+            .Select(value => value!)
             .ToList();
-        Assert.Contains("Applied Draft", text);
-        Assert.Contains("Draft Artist", text);
-        Assert.DoesNotContain("Album Title", text);
-        Assert.Equal(new[] { "Applied Draft", "Draft Artist" }, text);
-    }
 
     // A failed attempt is Pending work, and the row says what went wrong. It
     // offers no buttons of its own: retrying is the ordinary import, from the
@@ -547,10 +646,28 @@ public sealed class ImportSectionViewTests
         BridgeTriageImportStatus? importStatus = null,
         bool isGroupMember = false,
         BridgeTriageMetadataSummary? metadataSummary = null,
-        BridgeCoverImageSource? coverThumbnail = null) => new()
+        BridgeCoverImageSource? coverThumbnail = null,
+        BridgeMetadataProvenance? metadataProvenance = null) => new()
     {
         new BridgeImportListItem.Candidate(
             PreviewData.CandidateStableKey(CandidateKey),
+            MatchedRow(
+                placement,
+                skipAction,
+                importStatus,
+                metadataSummary,
+                coverThumbnail,
+                metadataProvenance),
+            IsGroupMember: isGroupMember),
+    };
+
+    private static BridgeTriageRow MatchedRow(
+        BridgeTriagePlacement placement,
+        BridgeTriageSkipAction? skipAction,
+        BridgeTriageImportStatus? importStatus = null,
+        BridgeTriageMetadataSummary? metadataSummary = null,
+        BridgeCoverImageSource? coverThumbnail = null,
+        BridgeMetadataProvenance? metadataProvenance = null) =>
             new BridgeTriageRow(
                 CandidateKey: CandidateKey,
                 FolderName: "Release 01",
@@ -585,16 +702,15 @@ public sealed class ImportSectionViewTests
                 CoverThumbnail: coverThumbnail,
                 Selectable: placement is BridgeTriagePlacement.Ready,
                 ImportStatus: importStatus,
-                MetadataProvenance: placement
-                    is BridgeTriagePlacement.Ready
-                        or BridgeTriagePlacement.Done
-                    ? new BridgeMetadataProvenance.ExternalRelease(
-                        BridgeMetadataSource.MusicBrainz,
-                        "rel-matched",
-                        [])
-                    : null),
-            IsGroupMember: isGroupMember),
-    };
+                MetadataProvenance: metadataProvenance
+                    ?? (placement
+                        is BridgeTriagePlacement.Ready
+                            or BridgeTriagePlacement.Done
+                        ? new BridgeMetadataProvenance.ExternalRelease(
+                            BridgeMetadataSource.MusicBrainz,
+                            "rel-matched",
+                            [])
+                        : null));
 
     private static BridgeImportQueueSummary MatchedSummary(
         BridgeTriagePlacement placement,

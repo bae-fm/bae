@@ -133,4 +133,30 @@ internal static class ImportPaneUi
         button[!Button.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         return button;
     }
+
+    /// <summary>One metadata source's name, in a capsule. The draft header
+    /// wraps it in a link to the release it names, which is what
+    /// <paramref name="linked"/> tints and marks; a candidate row draws it
+    /// plain.</summary>
+    internal static Border SourceCapsule(string label, bool linked)
+    {
+        var text = new TextBlock
+        {
+            Text = linked ? label + " ↗" : label,
+            FontSize = 10.5,
+            FontWeight = FontWeight.Medium,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
+            linked ? "BaeAccentBrush" : "BaeTextSecondaryBrush");
+        var capsule = new Border
+        {
+            CornerRadius = new CornerRadius(999),
+            Padding = new Thickness(5, 1),
+            Child = text,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        capsule[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
+        return capsule;
+    }
 }
