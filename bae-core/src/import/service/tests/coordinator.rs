@@ -436,6 +436,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
             service.event_tx.clone(),
             watcher,
             std::sync::Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
+            std::sync::Arc::new(crate::import::folder_scanner::OsDirectoryReader),
         ),
         completion_tx,
     );

@@ -312,6 +312,7 @@ impl CoordinatorHarness {
                 clock: service.clock.clone(),
                 ids: service.ids.clone(),
                 file_tags: Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
+                directories: Arc::new(crate::import::folder_scanner::OsDirectoryReader),
                 folder_state_commit: folder_state_commit.clone(),
             },
             starter,
@@ -404,6 +405,7 @@ fn test_scan_services(
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     folder_watcher: Arc<FolderWatcher>,
     file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
+    directories: Arc<dyn crate::import::folder_scanner::DirectoryReader>,
 ) -> ScanServices {
     ScanServices::new(
         crate::import::ImportServices {
@@ -413,6 +415,7 @@ fn test_scan_services(
             clock: service.clock.clone(),
             ids: service.ids.clone(),
             file_tags,
+            directories,
             folder_state_commit: Arc::new(tokio::sync::Mutex::new(())),
         },
         folder_watcher,
@@ -437,16 +440,19 @@ impl TestService {
         TestScan,
         broadcast::Receiver<crate::import::handle::ImportEvent>,
     ) {
-        self.scan_reading_tags_with(Arc::new(
-            crate::import::file_tag_snapshot::LoftyFileTagReader,
-        ))
+        self.scan_with(
+            Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
+            Arc::new(crate::import::folder_scanner::OsDirectoryReader),
+        )
     }
 
-    /// The same scan, reading the folder's tags through `file_tags` — for the
-    /// tests that count what the pre-fill opens.
-    fn scan_reading_tags_with(
+    /// The same scan, reading the folder's tags through `file_tags` and its
+    /// listings through `directories` — for the tests that count what the
+    /// pre-fill opens, and the one that holds a listing closed.
+    fn scan_with(
         &self,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
+        directories: Arc<dyn crate::import::folder_scanner::DirectoryReader>,
     ) -> (
         TestScan,
         broadcast::Receiver<crate::import::handle::ImportEvent>,
@@ -460,6 +466,7 @@ impl TestService {
                 event_tx,
                 Arc::new(FolderWatcher::new(fs_tx)),
                 file_tags,
+                directories,
             ),
             cancellation: crate::import::folder_scanner::ScanCancellation::new(),
             _fs_rx: fs_rx,
@@ -478,4 +485,5 @@ impl TestScan {
 include!("tests/coordinator.rs");
 include!("tests/cover_and_rescan.rs");
 include!("tests/edits_and_formats.rs");
+include!("tests/progressive_scan.rs");
 include!("tests/reading_progress.rs");

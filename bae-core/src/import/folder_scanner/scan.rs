@@ -9,7 +9,7 @@ pub(crate) struct DirectoryListing {
     directories: Vec<PathBuf>,
 }
 
-pub(crate) trait DirectoryReader {
+pub(crate) trait DirectoryReader: Send + Sync {
     fn read(
         &self,
         root: &Path,
@@ -18,7 +18,7 @@ pub(crate) trait DirectoryReader {
     ) -> Result<DirectoryListing, FolderScanError>;
 }
 
-pub(super) struct OsDirectoryReader;
+pub(crate) struct OsDirectoryReader;
 
 impl DirectoryReader for OsDirectoryReader {
     fn read(
@@ -165,7 +165,7 @@ pub(super) struct ScanRoot<'a> {
 
 /// One walk over a [`ScanRoot`]: how directories are read, and the release
 /// decisions each folder under it is read under.
-pub(super) struct Walk<'a, R> {
+pub(super) struct Walk<'a, R: ?Sized> {
     scan: ScanRoot<'a>,
     reader: &'a R,
     decisions: &'a FolderReleaseDecisions,
@@ -192,7 +192,7 @@ fn part_folder_names<R>(
     cancellation: &ScanCancellation,
 ) -> Result<Vec<String>, FolderScanError>
 where
-    R: DirectoryReader,
+    R: DirectoryReader + ?Sized,
 {
     let mut names = Vec::with_capacity(directories.len());
     for directory in directories {
@@ -221,7 +221,7 @@ fn holds_audio_below<R>(
     cancellation: &ScanCancellation,
 ) -> Result<bool, FolderScanError>
 where
-    R: DirectoryReader,
+    R: DirectoryReader + ?Sized,
 {
     let listing = reader.read(root, relative, cancellation)?;
     if listing
@@ -332,7 +332,7 @@ pub(super) fn scan_directory<R, F, D>(
     on_item: &mut F,
 ) -> Result<ScannedDirectory, FolderScanError>
 where
-    R: DirectoryReader,
+    R: DirectoryReader + ?Sized,
     F: FnMut(ScanItem),
     D: FnMut(PathBuf),
 {
@@ -601,7 +601,7 @@ pub(crate) fn scan_for_candidates_with_reader_cancellable_and_directories<R, F, 
     mut on_item: F,
 ) -> Result<(), FolderScanError>
 where
-    R: DirectoryReader,
+    R: DirectoryReader + ?Sized,
     F: FnMut(ScanItem),
     D: FnMut(PathBuf),
 {
@@ -679,32 +679,7 @@ where
     )
 }
 
-/// The progressive, cancellable scan the desktop import service drives.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn scan_for_candidates_with_decisions_cancellable_and_directories<F, D>(
-    root: PathBuf,
-    stored: &StoredCandidateEdits,
-    decisions: &FolderReleaseDecisions,
-    cancellation: &ScanCancellation,
-    on_directory: D,
-    on_item: F,
-) -> Result<(), FolderScanError>
-where
-    F: FnMut(ScanItem),
-    D: FnMut(PathBuf),
-{
-    scan_for_candidates_with_reader_cancellable_and_directories(
-        &OsDirectoryReader,
-        root,
-        stored,
-        decisions,
-        cancellation,
-        on_directory,
-        on_item,
-    )
-}
-
-pub(super) fn read_file_subtree<R: DirectoryReader>(
+pub(super) fn read_file_subtree<R: DirectoryReader + ?Sized>(
     reader: &R,
     root: &Path,
     relative: &Path,

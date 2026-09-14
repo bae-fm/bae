@@ -121,6 +121,10 @@ pub(crate) struct ImportServices {
     /// rather than reached for, so a test can hand the scan a reader whose
     /// answers — and whose count of calls — it decides.
     file_tags: std::sync::Arc<dyn file_tag_snapshot::FileTagReader>,
+    /// What lists a folder's entries for a scan. Held for the same reason as
+    /// `file_tags`: a test can hand the scan a reader that holds one folder's
+    /// listing closed, and observe what the scan has announced by then.
+    directories: std::sync::Arc<dyn folder_scanner::DirectoryReader>,
     folder_state_commit: std::sync::Arc<tokio::sync::Mutex<()>>,
 }
 
@@ -140,6 +144,7 @@ impl ImportServices {
             clock,
             ids,
             file_tags: std::sync::Arc::new(file_tag_snapshot::LoftyFileTagReader),
+            directories: std::sync::Arc::new(folder_scanner::OsDirectoryReader),
             folder_state_commit: std::sync::Arc::new(tokio::sync::Mutex::new(())),
         }
     }

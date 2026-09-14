@@ -514,7 +514,10 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     let reader = std::sync::Arc::new(CountingTagReader {
         reads: std::sync::atomic::AtomicUsize::new(0),
     });
-    let (scan, mut events) = test.scan_reading_tags_with(reader.clone());
+    let (scan, mut events) = test.scan_with(
+        reader.clone(),
+        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
+    );
     scan.rescan(&root)
         .await
         .expect("the candidate is read and stored");

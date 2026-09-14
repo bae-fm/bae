@@ -262,6 +262,7 @@ impl ImportServiceHandle {
             clock,
             ids,
             file_tags,
+            directories: _,
             folder_state_commit,
         } = services;
         let identify = crate::identify::IdentifyServiceHandle::new(

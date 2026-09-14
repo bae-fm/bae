@@ -243,6 +243,7 @@ impl ImportService {
         let walk_cancellation = cancellation.clone();
         let walk_watcher = scan.folder_watcher.clone();
         let walk_root = root.to_path_buf();
+        let directories = services.directories.clone();
         // What this pass wrote and what it displaced, for the log line at the
         // end. Two passes over an unchanged folder should displace nothing;
         // one that keeps rewriting the same entry names it here.
@@ -262,7 +263,8 @@ impl ImportService {
             let mut directory_mtimes: Option<Vec<(String, i64)>> = Some(Vec::new());
             let mut watch_available = true;
             let mut watch_failures = Vec::new();
-            let result = crate::import::folder_scanner::scan_for_candidates_with_decisions_cancellable_and_directories(
+            let result = crate::import::folder_scanner::scan_for_candidates_with_reader_cancellable_and_directories(
+                directories.as_ref(),
                 root_buf,
                 &stored_edits,
                 &decisions,
