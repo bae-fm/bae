@@ -78,19 +78,40 @@ struct TriageRowRenderingTests {
         #expect(lines.carrying("Album Title Twelve"))
         #expect(lines.carrying("Artist Name"))
         #expect(!lines.carrying("Release Folder Twelve"))
-        #expect(!lines.carrying("MusicBrainz"))
+        #expect(!lines.carrying("MB"))
         #expect(!lines.carrying("Discogs"))
     }
 
+    /// The badges are the row's trailing column, not part of the release: the
+    /// artist line says the artist and stops.
     @MainActor
-    @Test("an identified row names the sources its pick claims")
-    func identifiedRowNamesItsSources() async throws {
+    @Test("an identified row badges its sources away from the artist")
+    func identifiedRowBadgesItsSources() async throws {
         let lines = try await renderedLines(
             PreviewData.triageRowIdentifiedOnline
         )
         #expect(lines.carrying("Album Title Thirteen"))
-        #expect(lines.carrying("MusicBrainz"))
+        #expect(lines.carrying("MB"))
         #expect(lines.carrying("Discogs"))
+
+        let artistLines = lines.filter { $0.contains("Artist Name") }
+        #expect(!artistLines.isEmpty)
+        #expect(!artistLines.carrying("MB"))
+        #expect(!artistLines.carrying("Discogs"))
+    }
+
+    /// The badges and the placement's own tag are two different answers — one
+    /// says where the draft came from, the other what the row still needs —
+    /// so a row with both shows both.
+    @MainActor
+    @Test("a row both identified and unsettled shows its badges and its tag")
+    func identifiedRowKeepsItsPlacementTag() async throws {
+        let lines = try await renderedLines(
+            PreviewData.triageRowIdentifiedSeveralMatches
+        )
+        #expect(lines.carrying("MB"))
+        #expect(lines.carrying("Discogs"))
+        #expect(lines.carrying("2 matches"))
     }
 
     private static let rowSize = NSSize(width: 340, height: 80)

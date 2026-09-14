@@ -311,6 +311,12 @@ mod metadata_source_tests {
     }
 
     #[test]
+    fn short_names_tag_every_source() {
+        assert_eq!(MetadataSource::MusicBrainz.short_name(), "MB");
+        assert_eq!(MetadataSource::Discogs.short_name(), "Discogs");
+    }
+
+    #[test]
     fn group_urls_are_source_specific() {
         assert_eq!(
             MetadataSource::MusicBrainz.group_url("rg-1"),

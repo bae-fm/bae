@@ -262,6 +262,21 @@
             )
         )
 
+        private static let importTabIdentifiedSeveralMatchesCandidate =
+            importTabFolder(
+                path: "Release Folder Fourteen",
+                name: "Release Folder Fourteen",
+                identifyState: .found(
+                    run: identifyRunFound,
+                    groups: [searchGroupExact],
+                    libraryStatuses: [:],
+                    trackCount: 9,
+                    agreements: searchAgreementsExact,
+                    narrowedOut: .nothing,
+                    catalogAgreements: catalogAgreements
+                )
+            )
+
         /// Nothing written about the release yet: the row is its folder, and
         /// the folder's own image is still its cover.
         static let triageRowUnidentified = triageRow(
@@ -312,6 +327,33 @@
                     BridgeMetadataRef(
                         source: .discogs,
                         releaseId: "discogs-paired"
+                    )
+                ]
+            )
+        )
+
+        /// Identified, and still asked which of several pressings it is:
+        /// the row names its sources and carries the question at once.
+        static let triageRowIdentifiedSeveralMatches = triageRow(
+            for: importTabIdentifiedSeveralMatchesCandidate,
+            placement: .needsYou(
+                reason: .severalMatches(count: 2)
+            ),
+            skipAction: .skip,
+            actions: [.identify, .resetToTags, .clearMetadata, .skip],
+            matched: nil,
+            metadataSummary: BridgeTriageMetadataSummary(
+                albumTitle: "Album Title Fourteen",
+                albumArtistAssignments: [newArtist("Artist Name")]
+            ),
+            coverThumbnail: .local(path: previewArtPath("Front.png")),
+            metadataProvenance: .externalRelease(
+                source: .musicBrainz,
+                releaseId: "rel-several",
+                partners: [
+                    BridgeMetadataRef(
+                        source: .discogs,
+                        releaseId: "discogs-several"
                     )
                 ]
             )

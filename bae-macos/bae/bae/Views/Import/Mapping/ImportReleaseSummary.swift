@@ -79,9 +79,6 @@ struct ImportReleaseSummaryView: View {
 
     let summary: ImportReleaseSummary
     let style: Style
-    /// The sources the metadata was read from, named after the artist. Empty
-    /// unless the draft came from a source's release.
-    var sources: [BridgeMetadataSource] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: style.stackSpacing) {
@@ -115,28 +112,14 @@ struct ImportReleaseSummaryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The artist, then the sources the metadata came from. The capsules keep
-    /// their width and the artist truncates before them; with no artist they
-    /// stand alone on the line.
     @ViewBuilder
     private var artistLine: some View {
-        if summary.artist != nil || !sources.isEmpty {
-            HStack(spacing: 4) {
-                if let artist = summary.artist {
-                    Text(artist)
-                        .font(style.artistFont)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                ForEach(sources, id: \.self) { source in
-                    MetadataSourceCapsule(
-                        label: bridgeMetadataSourceName(source: source)
-                    )
-                    .foregroundStyle(.secondary)
-                    .fixedSize()
-                }
-            }
+        if let artist = summary.artist {
+            Text(artist)
+                .font(style.artistFont)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
         }
     }
 
@@ -200,8 +183,9 @@ private struct ImportMetadataProvenanceChips: View {
 }
 
 /// One metadata source's name, in a capsule. The draft header wraps it in a
-/// link to the release it names; a sidebar row draws it plain — so the text
-/// colour is the caller's, which is what tints a link's whole chip.
+/// link to the release it names; a candidate row draws the same capsule with
+/// no link — so the text colour is the caller's, which is what tints a link's
+/// whole chip.
 struct MetadataSourceCapsule: View {
     let label: String
 

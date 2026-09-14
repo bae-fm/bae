@@ -154,13 +154,11 @@ struct TriageRowView: View {
     @ViewBuilder
     private var meta: some View {
         VStack(alignment: .leading, spacing: 0) {
-            switch TriageRowReading.of(row) {
+            switch reading {
             case .unidentified:
                 folderLine
-            case .prefilled:
-                releaseSummary(sources: [])
-            case .identified(let sources):
-                releaseSummary(sources: sources)
+            case .prefilled, .identified:
+                releaseSummary
             }
             stateLine
             if let uploadObservation {
@@ -173,19 +171,19 @@ struct TriageRowView: View {
         }
     }
 
+    /// How the row reads, which decides both the text column and whether the
+    /// trailing column names sources.
+    private var reading: TriageRowReading {
+        TriageRowReading.of(row)
+    }
+
     /// The list projection owns the persisted draft summary, so it remains
     /// visible independently of selection. Every reading but `unidentified`
     /// is a row that carries one.
     @ViewBuilder
-    private func releaseSummary(
-        sources: [BridgeMetadataSource]
-    ) -> some View {
+    private var releaseSummary: some View {
         if let summary = ImportReleaseSummary(row: row) {
-            ImportReleaseSummaryView(
-                summary: summary,
-                style: .sidebar,
-                sources: sources
-            )
+            ImportReleaseSummaryView(summary: summary, style: .sidebar)
         }
     }
 
@@ -275,8 +273,35 @@ extension TriageRowView {
 
     // MARK: - Trailing
 
-    @ViewBuilder
+    /// The sources the draft was read from, then whatever the placement puts
+    /// at the end of the row — both show when both apply. Kept at its ideal
+    /// width: the release's title and artist truncate before a badge or a tag
+    /// does, since each of those is already as short as it gets.
     private var trailing: some View {
+        HStack(spacing: 6) {
+            sourceBadges
+            placementTrailing
+        }
+        .fixedSize()
+    }
+
+    /// One badge per source the pick claims, in the order every surface lists
+    /// sources in. The short name: the row's end is a badge's worth of width,
+    /// not a sentence's.
+    @ViewBuilder
+    private var sourceBadges: some View {
+        if case .identified(let sources) = reading {
+            ForEach(sources, id: \.self) { source in
+                MetadataSourceCapsule(
+                    label: bridgeMetadataSourceShortName(source: source)
+                )
+                .foregroundStyle(Theme.accent)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var placementTrailing: some View {
         switch row.placement {
         case .pending:
             EmptyView()
@@ -416,6 +441,16 @@ extension TriageRowView {
                 row: PreviewData.triageRowIdentifiedOnline,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowIdentifiedOnline
+                ),
+                uploadObservation: nil,
+                isGroupMember: false,
+                onReveal: {},
+                onSkip: { _ in }
+            )
+            TriageRowView(
+                row: PreviewData.triageRowIdentifiedSeveralMatches,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowIdentifiedSeveralMatches
                 ),
                 uploadObservation: nil,
                 isGroupMember: false,

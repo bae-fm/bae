@@ -40,6 +40,12 @@ impl BridgeMetadataSource {
     pub fn name(self) -> &'static str {
         self.into_core().display_name()
     }
+
+    /// The same brand shortened to a badge, for a surface with room for a tag
+    /// rather than a sentence.
+    pub fn short_name(self) -> &'static str {
+        self.into_core().short_name()
+    }
 }
 
 mirror_enum! {

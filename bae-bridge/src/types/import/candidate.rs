@@ -137,6 +137,15 @@ pub fn bridge_metadata_source_name(source: crate::types::BridgeMetadataSource) -
     source.name().to_string()
 }
 
+/// The short form of a source's name — "MB", "Discogs" — for a surface that
+/// names it in a badge rather than a sentence.
+///
+/// A brand name, so it is not translated and needs no catalog key.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_metadata_source_short_name(source: crate::types::BridgeMetadataSource) -> String {
+    source.short_name().to_string()
+}
+
 /// Every metadata source, in the one order surfaces list them in.
 ///
 /// A surface that names the sources carrying something — a card's chips, a

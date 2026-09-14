@@ -66,6 +66,16 @@ impl MetadataSource {
         }
     }
 
+    /// The source's name shortened to a badge, for a surface with room for a
+    /// tag rather than a sentence. A brand name like `display_name`, so it is
+    /// the same in every language; a name already short enough is unchanged.
+    pub fn short_name(&self) -> &'static str {
+        match self {
+            Self::MusicBrainz => "MB",
+            Self::Discogs => "Discogs",
+        }
+    }
+
     /// Human-readable name of the service a cover image came from.
     /// MusicBrainz release covers are served by its sister project, the
     /// Cover Art Archive, so the cover label differs from `display_name`.
