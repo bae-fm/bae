@@ -1,6 +1,32 @@
 import BaeKit
 import SwiftUI
 
+/// What a candidate row says about its release, in three steps: nothing yet,
+/// a draft, or a draft a source's release was read into.
+///
+/// `unidentified` is exactly a row with no `metadataSummary`: core leaves that
+/// absent when the draft is blank and no source has been applied.
+enum TriageRowReading: Equatable {
+    /// Nothing has been written about the release, from tags or anywhere.
+    case unidentified
+    /// A draft read off the files' tags, or typed in.
+    case prefilled
+    /// A draft read from a source's release, naming every source the pick
+    /// claims.
+    case identified([BridgeMetadataSource])
+
+    static func of(_ row: BridgeTriageRow) -> TriageRowReading {
+        guard row.metadataSummary != nil else { return .unidentified }
+        guard let provenance = row.metadataProvenance,
+            case .externalRelease = provenance
+        else {
+            return .prefilled
+        }
+        let claimed = Set(provenance.releaseRefs.map(\.source))
+        return .identified(bridgeMetadataSources().filter(claimed.contains))
+    }
+}
+
 /// One triage row: cover, title, metadata, and status. Selection belongs to
 /// the surrounding list.
 ///
@@ -125,23 +151,16 @@ struct TriageRowView: View {
 
     // MARK: - Meta
 
-    /// The list projection owns the persisted draft summary, so it remains
-    /// visible independently of selection.
-    private var releaseSummary: ImportReleaseSummary? {
-        ImportReleaseSummary(row: row)
-    }
-
     @ViewBuilder
     private var meta: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let releaseSummary {
-                ImportReleaseSummaryView(
-                    summary: releaseSummary,
-                    style: .sidebar
-                )
-            }
-            else {
-                folderTitle
+            switch TriageRowReading.of(row) {
+            case .unidentified:
+                folderLine
+            case .prefilled:
+                releaseSummary(sources: [])
+            case .identified(let sources):
+                releaseSummary(sources: sources)
             }
             stateLine
             if let uploadObservation {
@@ -154,12 +173,35 @@ struct TriageRowView: View {
         }
     }
 
-    private var folderTitle: some View {
-        Text(row.folderName)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .truncationMode(.middle)
+    /// The list projection owns the persisted draft summary, so it remains
+    /// visible independently of selection. Every reading but `unidentified`
+    /// is a row that carries one.
+    @ViewBuilder
+    private func releaseSummary(
+        sources: [BridgeMetadataSource]
+    ) -> some View {
+        if let summary = ImportReleaseSummary(row: row) {
+            ImportReleaseSummaryView(
+                summary: summary,
+                style: .sidebar,
+                sources: sources
+            )
+        }
+    }
+
+    /// A row nothing has been written about is the folder it came from, drawn
+    /// as the main pane's heading draws it.
+    private var folderLine: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "folder")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+            Text(row.folderName)
+                .font(.system(size: 12.5, design: .monospaced))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
     }
 
     @ViewBuilder
@@ -350,6 +392,36 @@ extension TriageRowView {
     #Preview("Triage rows") {
         let importStore = ImportStore()
         VStack(alignment: .leading, spacing: 0) {
+            TriageRowView(
+                row: PreviewData.triageRowUnidentified,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowUnidentified
+                ),
+                uploadObservation: nil,
+                isGroupMember: false,
+                onReveal: {},
+                onSkip: { _ in }
+            )
+            TriageRowView(
+                row: PreviewData.triageRowPrefilledFromTags,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowPrefilledFromTags
+                ),
+                uploadObservation: nil,
+                isGroupMember: false,
+                onReveal: {},
+                onSkip: { _ in }
+            )
+            TriageRowView(
+                row: PreviewData.triageRowIdentifiedOnline,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowIdentifiedOnline
+                ),
+                uploadObservation: nil,
+                isGroupMember: false,
+                onReveal: {},
+                onSkip: { _ in }
+            )
             TriageRowView(
                 row: PreviewData.triageRowReady,
                 coverContent: importStore.sidebarCover(

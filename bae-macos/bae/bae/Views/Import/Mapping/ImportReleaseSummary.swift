@@ -47,40 +47,19 @@ struct ImportReleaseSummary {
         sourceAudio = candidate.files.sourceAudio
     }
 
+    /// The row's applied draft. `nil` for a row that has none, which is the
+    /// `unidentified` reading — that row draws its folder instead of a
+    /// release.
     init?(row: BridgeTriageRow) {
-        if let summary = row.metadataSummary {
-            titleIsPlaceholder = summary.albumTitle.isEmpty
-            title =
-                summary.albumTitle.isEmpty ? "Album title" : summary.albumTitle
-            let artistNames = summary.albumArtistAssignments.map(\.displayName)
-            artist =
-                artistNames.isEmpty
-                ? nil : ListFormatter.localizedString(byJoining: artistNames)
-            factsLine = ""
-            provenance = nil
-            sourceAudio = nil
-            return
-        }
-        guard let matched = row.matched else { return nil }
-        title = matched.title
-        titleIsPlaceholder = false
-        artist = matched.artist
-        if let pressing = matched.pressing {
-            let trackText = pressing.trackCount.map {
-                String(localized: "\(Int($0)) tracks")
-            }
-            factsLine = Self.factsLine([
-                pressing.format,
-                pressing.year.map {
-                    Int($0).formatted(.number.grouping(.never))
-                },
-                trackText,
-            ])
-        }
-        else {
-            factsLine = ""
-        }
-        provenance = nil
+        guard let summary = row.metadataSummary else { return nil }
+        titleIsPlaceholder = summary.albumTitle.isEmpty
+        title = summary.albumTitle.isEmpty ? "Album title" : summary.albumTitle
+        let artistNames = summary.albumArtistAssignments.map(\.displayName)
+        artist =
+            artistNames.isEmpty
+            ? nil : ListFormatter.localizedString(byJoining: artistNames)
+        factsLine = ""
+        provenance = row.metadataProvenance
         sourceAudio = nil
     }
 
@@ -100,6 +79,9 @@ struct ImportReleaseSummaryView: View {
 
     let summary: ImportReleaseSummary
     let style: Style
+    /// The sources the metadata was read from, named after the artist. Empty
+    /// unless the draft came from a source's release.
+    var sources: [BridgeMetadataSource] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: style.stackSpacing) {
@@ -110,19 +92,16 @@ struct ImportReleaseSummaryView: View {
                 )
                 .lineLimit(1)
                 .truncationMode(style.titleTruncation)
-            if let artist = summary.artist {
-                Text(artist)
-                    .font(style.artistFont)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
+            artistLine
             HStack(spacing: 6) {
                 Text(summary.factsLine)
                     .font(.system(size: 11.5))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
-                if let provenance = summary.provenance {
+                // Only the style that shows this line builds its chips: the
+                // other draws it at zero height and full transparency, where
+                // a link would still take clicks off the row under it.
+                if style.showsFacts, let provenance = summary.provenance {
                     ImportMetadataProvenanceChips(provenance: provenance)
                 }
             }
@@ -134,6 +113,31 @@ struct ImportReleaseSummaryView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The artist, then the sources the metadata came from. The capsules keep
+    /// their width and the artist truncates before them; with no artist they
+    /// stand alone on the line.
+    @ViewBuilder
+    private var artistLine: some View {
+        if summary.artist != nil || !sources.isEmpty {
+            HStack(spacing: 4) {
+                if let artist = summary.artist {
+                    Text(artist)
+                        .font(style.artistFont)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                ForEach(sources, id: \.self) { source in
+                    MetadataSourceCapsule(
+                        label: bridgeMetadataSourceName(source: source)
+                    )
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                }
+            }
+        }
     }
 
 }
@@ -181,7 +185,7 @@ private struct ImportMetadataProvenanceChips: View {
         if let url {
             Link(destination: url) {
                 HStack(spacing: 3) {
-                    capsule(label)
+                    MetadataSourceCapsule(label: label)
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 9))
                 }
@@ -190,11 +194,18 @@ private struct ImportMetadataProvenanceChips: View {
             .buttonStyle(.plain)
         }
         else {
-            capsule(label).foregroundStyle(.secondary)
+            MetadataSourceCapsule(label: label).foregroundStyle(.secondary)
         }
     }
+}
 
-    private func capsule(_ label: String) -> some View {
+/// One metadata source's name, in a capsule. The draft header wraps it in a
+/// link to the release it names; a sidebar row draws it plain — so the text
+/// colour is the caller's, which is what tints a link's whole chip.
+struct MetadataSourceCapsule: View {
+    let label: String
+
+    var body: some View {
         Text(verbatim: label)
             .font(.system(size: 10.5, weight: .medium))
             .padding(.horizontal, 5)

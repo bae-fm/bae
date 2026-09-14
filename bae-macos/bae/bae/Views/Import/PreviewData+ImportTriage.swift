@@ -236,6 +236,87 @@
             ),
         ]
 
+        private static let importTabUnidentifiedCandidate = importTabFolder(
+            path: "Release Folder Eleven",
+            name: "Release Folder Eleven",
+            identifyState: searchStateNotFound.identifyState
+        )
+
+        private static let importTabTaggedCandidate = importTabFolder(
+            path: "Release Folder Twelve",
+            name: "Release Folder Twelve",
+            identifyState: searchStateNotFound.identifyState
+        )
+
+        private static let importTabIdentifiedCandidate = importTabFolder(
+            path: "Release Folder Thirteen",
+            name: "Release Folder Thirteen",
+            identifyState: .found(
+                run: identifyRunFound,
+                groups: [searchGroupExact],
+                libraryStatuses: [:],
+                trackCount: 9,
+                agreements: searchAgreementsExact,
+                narrowedOut: .nothing,
+                catalogAgreements: catalogAgreements
+            )
+        )
+
+        /// Nothing written about the release yet: the row is its folder, and
+        /// the folder's own image is still its cover.
+        static let triageRowUnidentified = triageRow(
+            for: importTabUnidentifiedCandidate,
+            placement: .pending,
+            skipAction: .skip,
+            actions: [.identify, .resetToTags, .skip],
+            matched: nil,
+            metadataSummary: nil,
+            coverThumbnail: .local(path: previewArtPath("Front.png"))
+        )
+
+        /// A draft read off the files' tags — a title and an artist, and no
+        /// source to name.
+        static let triageRowPrefilledFromTags = triageRow(
+            for: importTabTaggedCandidate,
+            placement: .pending,
+            skipAction: .skip,
+            actions: [.identify, .clearMetadata, .skip],
+            matched: nil,
+            metadataSummary: BridgeTriageMetadataSummary(
+                albumTitle: "Album Title Twelve",
+                albumArtistAssignments: [newArtist("Artist Name")]
+            ),
+            coverThumbnail: .local(path: previewArtPath("Front.png")),
+            metadataProvenance: .fileTags
+        )
+
+        /// A pick that paired two sources' releases into one pressing: the row
+        /// names both.
+        static let triageRowIdentifiedOnline = triageRow(
+            for: importTabIdentifiedCandidate,
+            placement: .ready,
+            skipAction: .skip,
+            actions: [
+                .importReady, .identify, .resetToTags, .clearMetadata, .skip,
+            ],
+            matched: nil,
+            metadataSummary: BridgeTriageMetadataSummary(
+                albumTitle: "Album Title Thirteen",
+                albumArtistAssignments: [newArtist("Artist Name")]
+            ),
+            coverThumbnail: .local(path: previewArtPath("Front.png")),
+            metadataProvenance: .externalRelease(
+                source: .musicBrainz,
+                releaseId: "rel-paired",
+                partners: [
+                    BridgeMetadataRef(
+                        source: .discogs,
+                        releaseId: "discogs-paired"
+                    )
+                ]
+            )
+        )
+
         @MainActor
         static let triageRowReady = triageRow(
             for: importTabCandidate,
