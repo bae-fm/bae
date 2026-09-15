@@ -366,6 +366,18 @@ impl ImportServiceHandle {
         let durations = crate::import::probe::source_durations(candidate.files())?;
         match &provenance {
             crate::import::MetadataProvenance::FileTags => {
+                // The snapshot is read under the lock the write holds: a scan
+                // that lands between the two restamps the candidate's
+                // generation, and the write refuses a snapshot stamped with
+                // the old one. The scan reads a folder's tags under this same
+                // lock, so the pick waits on it no longer than a scan does.
+                let _commit = self
+                    .commit_lock_for_revision(
+                        &candidate_key,
+                        &content_hash,
+                        current.file_edit_revision,
+                    )
+                    .await?;
                 let (snapshot_candidate, snapshot) = self.file_tag_snapshot(&candidate_key).await?;
                 let seed = crate::import::file_tags_seed::FileTagsSeed::project(
                     &snapshot_candidate,
@@ -375,13 +387,6 @@ impl ImportServiceHandle {
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?;
-                let _commit = self
-                    .commit_lock_for_revision(
-                        &candidate_key,
-                        &content_hash,
-                        current.file_edit_revision,
-                    )
-                    .await?;
                 return Ok(self
                     .preparations
                     .apply_file_tags(
