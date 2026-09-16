@@ -709,15 +709,28 @@ impl Fixture {
 
     /// Wait for identification to write an answer for `dir`, polling because
     /// the writer is a detached task rather than something the caller awaits.
+    /// The candidate's row once a run has stored its verdict. Bounded: a run
+    /// that never stores is the failure, and a wait with no end hides it
+    /// behind the harness's silence until someone kills the job.
     async fn await_identified_row(&self, dir: &Path) -> DbImportCandidateState {
-        loop {
-            if let Some(row) = self.stored_for(dir).await {
-                if row.identify.is_some() {
-                    return row;
+        tokio::time::timeout(Duration::from_secs(30), async {
+            loop {
+                if let Some(row) = self.stored_for(dir).await {
+                    if row.identify.is_some() {
+                        return row;
+                    }
                 }
+                tokio::time::sleep(Duration::from_millis(20)).await;
             }
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
+        })
+        .await
+        .unwrap_or_else(|_| {
+            panic!(
+                "no run stored a verdict for {}; requests so far: {:?}",
+                dir.display(),
+                self.provider.requests()
+            )
+        })
     }
 
     fn count_release_lookups(&self, release_id: &str) -> usize {
