@@ -10,6 +10,10 @@ struct ImportReleaseSummary {
     let factsLine: String
     let sourceAudio: BridgeCandidateSourceAudio?
     let provenance: BridgeMetadataProvenance?
+    /// The sources this draft was read from, each with what its own release
+    /// says. Empty for a draft that came from the files' tags, was typed in,
+    /// or is not there yet.
+    let identifiedFrom: [BridgeIdentifiedSource]
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
         let provenance = candidate.metadataProvenance
@@ -44,6 +48,9 @@ struct ImportReleaseSummary {
             factsLine = trackText
         }
         self.provenance = provenance
+        // The pane names its sources in the chips under the facts line; the
+        // mark is the sidebar's way of saying the same thing in a row's width.
+        identifiedFrom = []
         sourceAudio = candidate.files.sourceAudio
     }
 
@@ -60,6 +67,11 @@ struct ImportReleaseSummary {
             ? nil : ListFormatter.localizedString(byJoining: artistNames)
         factsLine = ""
         provenance = row.metadataProvenance
+        identifiedFrom =
+            switch row.reading {
+            case .identified(let sources): sources
+            case .unidentified, .prefilled: []
+            }
         sourceAudio = nil
     }
 
@@ -82,13 +94,7 @@ struct ImportReleaseSummaryView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: style.stackSpacing) {
-            Text(summary.title)
-                .font(style.titleFont)
-                .foregroundStyle(
-                    summary.titleIsPlaceholder ? .secondary : .primary
-                )
-                .lineLimit(1)
-                .truncationMode(style.titleTruncation)
+            titleLine
             artistLine
             HStack(spacing: 6) {
                 Text(summary.factsLine)
@@ -110,6 +116,33 @@ struct ImportReleaseSummaryView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The title, and the mark saying its draft was read from a source. The
+    /// title truncates before the mark does: the mark is one fixed glyph and
+    /// clipping it would lose the row's whole answer.
+    private var titleLine: some View {
+        HStack(spacing: 6) {
+            Text(summary.title)
+                .font(style.titleFont)
+                .foregroundStyle(
+                    summary.titleIsPlaceholder ? .secondary : .primary
+                )
+                .lineLimit(1)
+                .truncationMode(style.titleTruncation)
+            identifiedMark
+        }
+    }
+
+    /// The mark, where the style draws one and the draft was read from a
+    /// source. The pane's own style names its sources in the chips under the
+    /// facts line instead, so only the sidebar carries it.
+    @ViewBuilder
+    private var identifiedMark: some View {
+        if style.showsIdentifiedMark, !summary.identifiedFrom.isEmpty {
+            IdentifiedMark(sources: summary.identifiedFrom)
+                .layoutPriority(1)
+        }
     }
 
     @ViewBuilder
@@ -151,7 +184,12 @@ private struct ImportMetadataProvenanceChips: View {
                 ForEach(provenance.releaseRefs, id: \.source) { release in
                     chip(
                         label: bridgeMetadataSourceName(source: release.source),
-                        url: release.releaseURL
+                        url: URL(
+                            string: bridgeReleaseUrl(
+                                source: release.source,
+                                releaseId: release.releaseId
+                            )
+                        )
                     )
                 }
             case .fileTags:
@@ -214,17 +252,6 @@ extension BridgeMetadataProvenance {
     }
 }
 
-extension BridgeMetadataRef {
-    fileprivate var releaseURL: URL? {
-        let root =
-            switch source {
-            case .musicBrainz: URL(string: "https://musicbrainz.org/release")
-            case .discogs: URL(string: "https://www.discogs.com/release")
-            }
-        return root?.appending(path: releaseId)
-    }
-}
-
 extension ImportReleaseSummaryView.Style {
     fileprivate var stackSpacing: CGFloat {
         switch self {
@@ -258,6 +285,13 @@ extension ImportReleaseSummaryView.Style {
         switch self {
         case .sidebar: false
         case .card: true
+        }
+    }
+
+    fileprivate var showsIdentifiedMark: Bool {
+        switch self {
+        case .sidebar: true
+        case .card: false
         }
     }
 

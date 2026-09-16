@@ -506,3 +506,106 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
         "the verdict landed"
     );
 }
+
+/// The same release, printing the label and the date its own document states —
+/// the facts a row's identified hover reads back for that source.
+fn release_json_stating_pressing(
+    release_id: &str,
+    group_id: &str,
+    track_lengths: &[u64],
+    label: &str,
+    date: &str,
+) -> String {
+    let mut release: serde_json::Value =
+        serde_json::from_str(&release_json(release_id, group_id, track_lengths))
+            .expect("release fixture parses");
+    release["label-info"] = serde_json::json!([{ "label": { "name": label } }]);
+    release["date"] = serde_json::json!(date);
+    release.to_string()
+}
+
+/// The same Discogs release, printing its own label and year — different from
+/// the MusicBrainz document's, because two sources describing one pressing can
+/// disagree and a row naming both says what each of them says.
+fn discogs_release_json_stating_pressing(release_id: &str, label: &str, year: u32) -> String {
+    let mut release: serde_json::Value =
+        serde_json::from_str(&discogs_release_json(release_id))
+            .expect("the Discogs release fixture parses");
+    release["labels"] = serde_json::json!([{ "name": label, "catno": "CAT-1" }]);
+    release["year"] = serde_json::json!(year);
+    release.to_string()
+}
+
+/// The row says which sources its draft was read from, and what each of their
+/// own releases states. A pick pairs one source's release with another's into
+/// one pressing and claims both, so the row lists both — each stating its own
+/// document's label and year, which need not agree.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_picked_row_states_what_each_claimed_source_says() {
+    let fixture = Fixture::new("pick-reading").await;
+    fixture.use_discogs();
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.scan(1).await;
+    let key = dir.to_string_lossy().into_owned();
+
+    fixture.provider.route(
+        "/release/mb-stated-1?",
+        200,
+        release_json_stating_pressing(
+            "mb-stated-1",
+            "rg-stated-1",
+            &[probed, 0],
+            "Label Name",
+            "1976-04-01",
+        ),
+    );
+    fixture.provider.route(
+        "/releases/70000301",
+        200,
+        discogs_release_json_stating_pressing("70000301", "Other Label", 1988),
+    );
+    crate::musicbrainz::seed_discogs_url_lookup("70000301", None);
+
+    fixture
+        .import
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                source: crate::import::MetadataSource::MusicBrainz,
+                release_id: "mb-stated-1".to_string(),
+                partners: vec![crate::import::MetadataRef::new(
+                    "70000301",
+                    crate::import::MetadataSource::Discogs,
+                )],
+            },
+        )
+        .await
+        .expect("picking a paired pressing succeeds");
+
+    let reading = queue_row(&fixture, &key).await.reading;
+    let crate::import::triage::TriageReading::Identified { sources } = reading else {
+        panic!("a picked row reads as identified, got {reading:?}");
+    };
+    assert_eq!(
+        sources,
+        vec![
+            crate::import::triage::IdentifiedSource {
+                source: crate::import::MetadataSource::MusicBrainz,
+                release_id: "mb-stated-1".to_string(),
+                url: "https://musicbrainz.org/release/mb-stated-1".to_string(),
+                label: Some("Label Name".to_string()),
+                year: Some(1976),
+            },
+            crate::import::triage::IdentifiedSource {
+                source: crate::import::MetadataSource::Discogs,
+                release_id: "70000301".to_string(),
+                url: "https://www.discogs.com/release/70000301".to_string(),
+                label: Some("Other Label".to_string()),
+                year: Some(1988),
+            },
+        ],
+        "each line states its own source's document, not the draft they merged into"
+    );
+}

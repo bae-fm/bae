@@ -455,7 +455,8 @@
                 coverThumbnail: cover?.thumbnailSource,
                 selectable: !edit.albumTitle.isEmpty,
                 importStatus: nil,
-                metadataProvenance: metadataProvenance
+                metadataProvenance: metadataProvenance,
+                reading: .unidentified
             )
         }
 

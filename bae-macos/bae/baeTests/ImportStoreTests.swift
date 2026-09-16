@@ -169,7 +169,18 @@ private func readyRow(
             source: .musicBrainz,
             releaseId: "rel-\(key)",
             partners: []
-        )
+        ),
+        reading: metadataSummary == nil
+            ? .unidentified
+            : .identified(sources: [
+                BridgeIdentifiedSource(
+                    source: .musicBrainz,
+                    releaseId: "rel-\(key)",
+                    url: "https://musicbrainz.org/release/rel-\(key)",
+                    label: nil,
+                    year: nil
+                )
+            ])
     )
 }
 
@@ -190,7 +201,8 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         coverThumbnail: nil,
         selectable: false,
         importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
-        metadataProvenance: nil
+        metadataProvenance: nil,
+        reading: .unidentified
     )
 }
 
@@ -211,7 +223,8 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         coverThumbnail: nil,
         selectable: false,
         importStatus: nil,
-        metadataProvenance: nil
+        metadataProvenance: nil,
+        reading: .unidentified
     )
 }
 

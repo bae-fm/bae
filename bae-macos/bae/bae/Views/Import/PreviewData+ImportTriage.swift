@@ -55,7 +55,8 @@
             metadataSummary: BridgeTriageMetadataSummary? = nil,
             coverThumbnail: BridgeCoverImageSource? = nil,
             importStatus: BridgeTriageImportStatus? = nil,
-            metadataProvenance: BridgeMetadataProvenance? = nil
+            metadataProvenance: BridgeMetadataProvenance? = nil,
+            reading: BridgeTriageReading = .unidentified
         ) -> BridgeTriageRow {
             BridgeTriageRow(
                 candidateKey: candidate.key,
@@ -73,7 +74,8 @@
                 coverThumbnail: coverThumbnail,
                 selectable: actions.contains(.importReady),
                 importStatus: importStatus,
-                metadataProvenance: metadataProvenance
+                metadataProvenance: metadataProvenance,
+                reading: reading
             )
         }
 
@@ -302,8 +304,28 @@
                 albumArtistAssignments: [newArtist("Artist Name")]
             ),
             coverThumbnail: .local(path: previewArtPath("Front.png")),
-            metadataProvenance: .fileTags
+            metadataProvenance: .fileTags,
+            reading: .prefilled
         )
+
+        /// Both sources a pick paired, each stating what its own release
+        /// says — here two documents that happen to agree.
+        static let identifiedFromBothSources = [
+            BridgeIdentifiedSource(
+                source: .musicBrainz,
+                releaseId: "rel-paired",
+                url: "https://musicbrainz.org/release/rel-paired",
+                label: "Label Name",
+                year: 1976
+            ),
+            BridgeIdentifiedSource(
+                source: .discogs,
+                releaseId: "discogs-paired",
+                url: "https://www.discogs.com/release/discogs-paired",
+                label: "Label Name",
+                year: 1976
+            ),
+        ]
 
         /// A pick that paired two sources' releases into one pressing: the row
         /// names both.
@@ -329,7 +351,8 @@
                         releaseId: "discogs-paired"
                     )
                 ]
-            )
+            ),
+            reading: .identified(sources: identifiedFromBothSources)
         )
 
         /// Identified, and still asked which of several pressings it is:
@@ -356,7 +379,8 @@
                         releaseId: "discogs-several"
                     )
                 ]
-            )
+            ),
+            reading: .identified(sources: identifiedFromBothSources)
         )
 
         @MainActor

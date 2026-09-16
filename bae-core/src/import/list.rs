@@ -432,6 +432,10 @@ impl ImportCandidateDetailProjection {
             facts.identification.as_ref(),
             &known,
         );
+        // The pick and the draft summary the row leads with, read once: its
+        // reading, its summary and its provenance all state the same fact.
+        let picked = metadata_provenance.clone().filter(|_| actionable);
+        let metadata_summary = TriageMetadataSummary::of(&metadata_draft, picked.clone());
         let row = TriageRow {
             candidate_key: candidate.key().into_owned(),
             folder_name: candidate.name().to_string(),
@@ -444,14 +448,12 @@ impl ImportCandidateDetailProjection {
             selectable: actions.contains(&super::triage::CandidateAction::ImportReady),
             actions,
             matched: matched.filter(|_| actionable),
-            metadata_summary: TriageMetadataSummary::of(
-                &metadata_draft,
-                metadata_provenance.clone().filter(|_| actionable),
-            ),
+            reading: super::triage::TriageReading::of(metadata_summary.as_ref(), picked.as_ref()),
+            metadata_summary,
             cover_thumbnail: None,
             placement,
             import_status,
-            metadata_provenance: metadata_provenance.clone().filter(|_| actionable),
+            metadata_provenance: picked,
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
         let composition_action = if is_added

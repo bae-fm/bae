@@ -19,7 +19,7 @@ use crate::import::folder_scanner::{
 use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
 use crate::import::release_candidate::ReleaseCandidate;
 use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
-use crate::import::triage::MatchedRelease;
+use crate::import::triage::{IdentifiedSource, MatchedRelease};
 use crate::import::CoverSelection;
 use crate::import::MetadataRef;
 use crate::library::LibraryPageWindow;
@@ -148,8 +148,23 @@ impl WindowItemRows {
                 cover,
                 is_group_member,
             } => {
-                if row.metadata_provenance.is_some() {
-                    row.matched = picked.map(PickedReleaseRows::process).transpose()?;
+                match picked {
+                    Some(picked) => {
+                        let PickedRelease { matched, sources } = picked.process()?;
+                        row.matched = matched;
+                        // Whether the row says it is identified at all is its
+                        // own reading's answer; the pick only states what each
+                        // source that reading names says about its release.
+                        if let crate::import::triage::TriageReading::Identified { sources: named } =
+                            &mut row.reading
+                        {
+                            *named = sources;
+                        }
+                    }
+                    // File Tags names no external release, so nothing leads
+                    // the row: the verdict's lead does not stand in for a pick.
+                    None if row.metadata_provenance.is_some() => row.matched = None,
+                    None => {}
                 }
                 row.cover_thumbnail = match cover {
                     RowCover::Selected(cover) => Some(cover),
@@ -180,22 +195,45 @@ pub(super) enum RowCover {
 }
 
 pub(super) struct PickedReleaseRows {
-    source: MetadataSource,
-    payloads: crate::import::payloads::ReleasePayloads,
+    /// The release the draft was read from — what the row leads with.
+    primary: MetadataRef,
+    /// Every release the pick claims, primary and partners alike, each with
+    /// the documents archived for it. A release nothing archived documents for
+    /// is still listed: the pick claims it either way, and the row says so.
+    claimed: Vec<(MetadataRef, Option<crate::import::payloads::ReleasePayloads>)>,
     files: CategorizedFiles,
 }
 
+/// What the picked documents say: the release the row leads with, and what
+/// each source the pick claims states about its own release.
+pub(super) struct PickedRelease {
+    matched: Option<MatchedRelease>,
+    sources: Vec<IdentifiedSource>,
+}
+
 impl PickedReleaseRows {
-    fn process(self) -> Result<MatchedRelease, DbError> {
+    fn process(self) -> Result<PickedRelease, DbError> {
         let durations = crate::import::probe::source_durations(&self.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let audio_durations = crate::import::track_slots::audio_durations(&self.files, &durations)
             .map_err(|error| DbError::Message(error.to_string()))?;
-        let detail = self
-            .payloads
-            .detail_for_audio(&audio_durations)
-            .map_err(|error| DbError::Message(error.to_string()))?;
-        Ok(MatchedRelease::of_pick(self.source, &detail))
+        let mut matched = None;
+        let mut sources = Vec::with_capacity(self.claimed.len());
+        for (release, payloads) in self.claimed {
+            let detail = payloads
+                .map(|payloads| payloads.detail_for_audio(&audio_durations))
+                .transpose()
+                .map_err(|error| DbError::Message(error.to_string()))?;
+            let claim = IdentifiedSource::of_ref(&release);
+            sources.push(match &detail {
+                Some(detail) => claim.stating(detail),
+                None => claim,
+            });
+            if release == self.primary {
+                matched = detail.map(|detail| MatchedRelease::of_pick(release.source, &detail));
+            }
+        }
+        Ok(PickedRelease { matched, sources })
     }
 }
 
@@ -270,9 +308,8 @@ fn resolved_boundaries(
     )
 }
 
-/// The picked release as its own archived documents describe it. `None` when
-/// the folder is read as its own tags, and when nothing archived the documents
-/// behind a release pick.
+/// Every release a pick claims, with the documents archived for each. `None`
+/// when the folder is read as its own tags, which claims no release at all.
 fn picked_release(
     sql: &SqlReadContext<'_>,
     pick: &MetadataProvenance,
@@ -285,15 +322,17 @@ fn picked_release(
         return Ok(None);
     };
     let message = |error: crate::import::ImportError| DbError::Message(error.to_string());
-    let Some(payloads) =
-        load_release_payloads_on(sql, &MetadataRef::new(release_id.clone(), *source))
-            .map_err(message)?
-    else {
-        return Ok(None);
-    };
+    let claimed = pick
+        .claimed_releases()
+        .into_iter()
+        .map(|release| {
+            let payloads = load_release_payloads_on(sql, &release).map_err(message)?;
+            Ok((release, payloads))
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
     Ok(Some(PickedReleaseRows {
-        source: *source,
-        payloads,
+        primary: MetadataRef::new(release_id.clone(), *source),
+        claimed,
         files: files.clone(),
     }))
 }

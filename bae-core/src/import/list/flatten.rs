@@ -423,6 +423,10 @@ fn place_row(
         selectable: actions.contains(&crate::import::triage::CandidateAction::ImportReady),
         actions,
         matched: verdict.and_then(MatchedRelease::of_summary),
+        reading: crate::import::triage::TriageReading::of(
+            state.and_then(|state| state.metadata_summary.as_ref()),
+            metadata_provenance.as_ref(),
+        ),
         metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
         cover_thumbnail: None,
         placement,

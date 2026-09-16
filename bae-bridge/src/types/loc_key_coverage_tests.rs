@@ -74,6 +74,11 @@ const DIRECT_KEYS: &[&str] = &[
     // Generic lookup-failure line for the keyless `Diagnostic` variant:
     // `bridge_lookup_failure_key` returns `None`, the UI shows this line.
     "core.lookup.failure.diagnostic",
+    // The candidate row's identified mark: its accessibility label, and the
+    // header of the hover naming the sources the draft was read from. The
+    // reading itself is a typed field, so neither needs a key function.
+    "core.import.triage.identified",
+    "core.import.triage.identified_from",
 ];
 
 /// A stand-in cover choice for walking the file roles that carry one. The

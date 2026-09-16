@@ -264,7 +264,8 @@
                 coverThumbnail: nil,
                 selectable: true,
                 importStatus: nil,
-                metadataProvenance: nil
+                metadataProvenance: nil,
+                reading: .unidentified
             )
         }
 

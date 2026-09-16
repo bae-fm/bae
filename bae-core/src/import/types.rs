@@ -66,16 +66,6 @@ impl MetadataSource {
         }
     }
 
-    /// The source's name shortened to a badge, for a surface with room for a
-    /// tag rather than a sentence. A brand name like `display_name`, so it is
-    /// the same in every language; a name already short enough is unchanged.
-    pub fn short_name(&self) -> &'static str {
-        match self {
-            Self::MusicBrainz => "MB",
-            Self::Discogs => "Discogs",
-        }
-    }
-
     /// Human-readable name of the service a cover image came from.
     /// MusicBrainz release covers are served by its sister project, the
     /// Cover Art Archive, so the cover label differs from `display_name`.
@@ -92,6 +82,15 @@ impl MetadataSource {
         match self {
             Self::MusicBrainz => format!("https://musicbrainz.org/release-group/{group_id}"),
             Self::Discogs => format!("https://www.discogs.com/master/{group_id}"),
+        }
+    }
+
+    /// External URL for one release on this source — the page a surface sends
+    /// someone to when it names the release a draft was read from.
+    pub fn release_url(&self, release_id: &str) -> String {
+        match self {
+            Self::MusicBrainz => format!("https://musicbrainz.org/release/{release_id}"),
+            Self::Discogs => format!("https://www.discogs.com/release/{release_id}"),
         }
     }
 }
@@ -299,6 +298,37 @@ pub enum MetadataProvenance {
         partners: Vec<MetadataRef>,
     },
     FileTags,
+}
+
+impl MetadataProvenance {
+    /// Every release this provenance claims — the one the draft was read from
+    /// and each partner the pick paired it with — in the order surfaces list
+    /// sources. Empty for File Tags, which claims no external release.
+    pub fn claimed_releases(&self) -> Vec<MetadataRef> {
+        let Self::ExternalRelease {
+            source,
+            release_id,
+            partners,
+        } = self
+        else {
+            return Vec::new();
+        };
+        let claimed: Vec<MetadataRef> = std::iter::once(MetadataRef {
+            id: release_id.clone(),
+            source: *source,
+        })
+        .chain(partners.iter().cloned())
+        .collect();
+        MetadataSource::ALL
+            .into_iter()
+            .filter_map(|source| {
+                claimed
+                    .iter()
+                    .find(|release| release.source == source)
+                    .cloned()
+            })
+            .collect()
+    }
 }
 
 /// One candidate's editable metadata, independent of the source that last

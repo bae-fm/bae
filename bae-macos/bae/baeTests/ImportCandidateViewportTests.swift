@@ -433,7 +433,8 @@ extension ImportCandidateViewportTests {
                 coverThumbnail: nil,
                 selectable: false,
                 importStatus: nil,
-                metadataProvenance: nil
+                metadataProvenance: nil,
+                reading: .unidentified
             )
         )
     }

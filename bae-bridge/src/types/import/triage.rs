@@ -438,6 +438,66 @@ mirror_enum! {
     },
 }
 
+/// One source a pick claims: its release, that source's page for it, and what
+/// that source's own document says about it. Two sources describing one
+/// pressing can disagree, so each line states its own source's facts.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeIdentifiedSource {
+    pub source: BridgeMetadataSource,
+    pub release_id: String,
+    /// That source's page for the release.
+    pub url: String,
+    pub label: Option<String>,
+    pub year: Option<i32>,
+}
+
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeIdentifiedSource = bae_core::import::triage::IdentifiedSource,
+    from_core: pub(crate) fn,
+    fields: {
+        source: (BridgeMetadataSource),
+        release_id,
+        url,
+        label,
+        year,
+    },
+}
+
+/// What a row's text column says about its release. One value rather than a
+/// flag beside a source list: "identified naming no source" and "prefilled
+/// from a source" are both unrepresentable.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTriageReading {
+    /// No draft, from tags or anywhere: the row leads with its folder.
+    Unidentified,
+    /// A draft read off the files' tags, or typed in.
+    Prefilled,
+    /// A draft read from a source's release, naming every source the pick
+    /// claims in the order surfaces list them.
+    Identified {
+        sources: Vec<BridgeIdentifiedSource>,
+    },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeTriageReading = bae_core::import::triage::TriageReading,
+    from_core: pub(crate) fn,
+    variants: {
+        Unidentified,
+        Prefilled,
+        Identified { sources: (each BridgeIdentifiedSource) },
+    },
+}
+
+/// One release's page on the source it came from — what a surface naming a
+/// source links to. Which address a source uses is core's, so no UI builds one.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_release_url(source: BridgeMetadataSource, release_id: String) -> String {
+    source.into_core().release_url(&release_id)
+}
+
 /// One candidate's sidebar row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTriageRow {
@@ -468,6 +528,9 @@ pub struct BridgeTriageRow {
     pub import_status: Option<BridgeTriageImportStatus>,
     /// The metadata provenance already recorded for this candidate.
     pub metadata_provenance: Option<BridgeMetadataProvenance>,
+    /// How the row's text column reads: its folder, a draft, or a draft read
+    /// from the sources it names.
+    pub reading: BridgeTriageReading,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

@@ -1,32 +1,6 @@
 import BaeKit
 import SwiftUI
 
-/// What a candidate row says about its release, in three steps: nothing yet,
-/// a draft, or a draft a source's release was read into.
-///
-/// `unidentified` is exactly a row with no `metadataSummary`: core leaves that
-/// absent when the draft is blank and no source has been applied.
-enum TriageRowReading: Equatable {
-    /// Nothing has been written about the release, from tags or anywhere.
-    case unidentified
-    /// A draft read off the files' tags, or typed in.
-    case prefilled
-    /// A draft read from a source's release, naming every source the pick
-    /// claims.
-    case identified([BridgeMetadataSource])
-
-    static func of(_ row: BridgeTriageRow) -> TriageRowReading {
-        guard row.metadataSummary != nil else { return .unidentified }
-        guard let provenance = row.metadataProvenance,
-            case .externalRelease = provenance
-        else {
-            return .prefilled
-        }
-        let claimed = Set(provenance.releaseRefs.map(\.source))
-        return .identified(bridgeMetadataSources().filter(claimed.contains))
-    }
-}
-
 /// One triage row: cover, title, metadata, and status. Selection belongs to
 /// the surrounding list.
 ///
@@ -154,7 +128,7 @@ struct TriageRowView: View {
     @ViewBuilder
     private var meta: some View {
         VStack(alignment: .leading, spacing: 0) {
-            switch reading {
+            switch row.reading {
             case .unidentified:
                 folderLine
             case .prefilled, .identified:
@@ -169,12 +143,6 @@ struct TriageRowView: View {
                 .font(.system(size: 11.5))
             }
         }
-    }
-
-    /// How the row reads, which decides both the text column and whether the
-    /// trailing column names sources.
-    private var reading: TriageRowReading {
-        TriageRowReading.of(row)
     }
 
     /// The list projection owns the persisted draft summary, so it remains
@@ -273,31 +241,13 @@ extension TriageRowView {
 
     // MARK: - Trailing
 
-    /// The sources the draft was read from, then whatever the placement puts
-    /// at the end of the row — both show when both apply. Kept at its ideal
-    /// width: the release's title and artist truncate before a badge or a tag
-    /// does, since each of those is already as short as it gets.
+    /// Whatever the placement puts at the end of the row. Kept at its ideal
+    /// width: the release's title and artist truncate before a tag does, since
+    /// a tag is already as short as it gets. Where the draft came from is the
+    /// title line's mark, not a column of its own.
     private var trailing: some View {
-        HStack(spacing: 6) {
-            sourceBadges
-            placementTrailing
-        }
-        .fixedSize()
-    }
-
-    /// One badge per source the pick claims, in the order every surface lists
-    /// sources in. The short name: the row's end is a badge's worth of width,
-    /// not a sentence's.
-    @ViewBuilder
-    private var sourceBadges: some View {
-        if case .identified(let sources) = reading {
-            ForEach(sources, id: \.self) { source in
-                MetadataSourceCapsule(
-                    label: bridgeMetadataSourceShortName(source: source)
-                )
-                .foregroundStyle(Theme.accent)
-            }
-        }
+        placementTrailing
+            .fixedSize()
     }
 
     @ViewBuilder

@@ -477,7 +477,8 @@ extension MappingFixtures {
                 coverThumbnail: nil,
                 selectable: !edit.albumTitle.isEmpty,
                 importStatus: nil,
-                metadataProvenance: metadataProvenance
+                metadataProvenance: metadataProvenance,
+                reading: .unidentified
             ),
             release: {
                 if case .externalRelease = metadataProvenance {

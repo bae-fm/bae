@@ -298,6 +298,91 @@ fn source_track_count(source_tracks: &Option<SourceTracks>) -> Option<u32> {
     }
 }
 
+/// What a row's text column says about its release: nothing yet, a draft, or a
+/// draft one or more sources' releases were read into.
+///
+/// One value rather than a flag beside a source list, so "identified with no
+/// source" and "prefilled from a source" are both unrepresentable. Decided
+/// here rather than in each surface: two UIs deriving it from a summary and a
+/// provenance is two answers to one question.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TriageReading {
+    /// No draft, from tags or anywhere: the row leads with its folder.
+    Unidentified,
+    /// A draft read off the files' tags, or typed in.
+    Prefilled,
+    /// A draft read from a source's release.
+    Identified { sources: Vec<IdentifiedSource> },
+}
+
+/// One source a pick claims: its release, the page that release has there, and
+/// what that source's own document says about it.
+///
+/// The facts are that source's, not the draft's — two sources describing one
+/// pressing can disagree about its label and its year, and a row that names
+/// both says what each of them says.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IdentifiedSource {
+    pub source: MetadataSource,
+    pub release_id: String,
+    /// That source's page for the release.
+    pub url: String,
+    pub label: Option<String>,
+    pub year: Option<i32>,
+}
+
+impl IdentifiedSource {
+    /// The pick's claim on one source, before its archived document is read.
+    /// The source and its page stand on the pick alone; the facts arrive with
+    /// whoever reads the document.
+    pub fn of_ref(release: &MetadataRef) -> Self {
+        Self {
+            source: release.source,
+            release_id: release.id.clone(),
+            url: release.source.release_url(&release.id),
+            label: None,
+            year: None,
+        }
+    }
+
+    /// The same claim, stating what that source's own release says about
+    /// itself.
+    pub fn stating(mut self, detail: &ImportSearchReleaseDetail) -> Self {
+        self.label = detail.label.clone();
+        self.year = detail.year;
+        self
+    }
+}
+
+impl TriageReading {
+    /// How a row reads, from the draft it carries and where that draft came
+    /// from.
+    ///
+    /// `Unidentified` is exactly a row with no summary: the draft is blank and
+    /// no source has been applied, so the row has a folder and nothing else.
+    /// An external release names every source its pick claims, in the order
+    /// surfaces list sources; each source's own facts are absent until
+    /// whoever holds the archived documents states them.
+    pub fn of(
+        summary: Option<&TriageMetadataSummary>,
+        provenance: Option<&MetadataProvenance>,
+    ) -> Self {
+        if summary.is_none() {
+            return Self::Unidentified;
+        }
+        match provenance {
+            Some(pick @ MetadataProvenance::ExternalRelease { .. }) => Self::Identified {
+                sources: pick
+                    .claimed_releases()
+                    .iter()
+                    .map(IdentifiedSource::of_ref)
+                    .collect(),
+            },
+            Some(MetadataProvenance::FileTags) | None => Self::Prefilled,
+        }
+    }
+}
+
 /// One candidate's row.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TriageRow {
@@ -334,6 +419,11 @@ pub struct TriageRow {
     /// The metadata provenance already applied to this candidate. `None` while no
     /// source has been selected.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
+    /// How the row's text column reads. Built here naming the sources the pick
+    /// claims and nothing about their releases; the window pass, which already
+    /// reads the picked release's archived documents, states each source's
+    /// label and year.
+    pub reading: TriageReading,
 }
 
 #[derive(Debug, Clone, PartialEq)]

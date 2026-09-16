@@ -310,10 +310,18 @@ mod metadata_source_tests {
         assert!(MetadataSource::from_str("MusicBrainz").is_err());
     }
 
+    /// Both desktop UIs used to build these; the address a source uses for one
+    /// of its releases is core's answer and crosses as a field.
     #[test]
-    fn short_names_tag_every_source() {
-        assert_eq!(MetadataSource::MusicBrainz.short_name(), "MB");
-        assert_eq!(MetadataSource::Discogs.short_name(), "Discogs");
+    fn each_source_addresses_its_own_release_page() {
+        assert_eq!(
+            MetadataSource::MusicBrainz.release_url("d9f2a1c0"),
+            "https://musicbrainz.org/release/d9f2a1c0"
+        );
+        assert_eq!(
+            MetadataSource::Discogs.release_url("1234567"),
+            "https://www.discogs.com/release/1234567"
+        );
     }
 
     #[test]

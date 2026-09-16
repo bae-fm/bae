@@ -202,6 +202,7 @@ impl crate::types::BridgeTriageRow {
             selectable,
             import_status,
             metadata_provenance,
+            reading,
         } = row;
         crate::types::BridgeTriageRow {
             candidate_key,
@@ -229,6 +230,7 @@ impl crate::types::BridgeTriageRow {
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
+            reading: crate::types::BridgeTriageReading::from_core(reading),
         }
     }
 }

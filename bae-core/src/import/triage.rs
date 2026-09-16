@@ -21,7 +21,7 @@
 
 use super::folder_scanner::{FolderReleaseDecisionKey, ResolvedFolderReleaseBoundary};
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
-use super::types::{MetadataProvenance, MetadataSource};
+use super::types::{MetadataProvenance, MetadataRef, MetadataSource};
 use super::{CandidateRuntimeSnapshot, ImportedRelease};
 use crate::identify::{LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
 
@@ -186,5 +186,71 @@ mod tests {
         );
 
         assert!(!matches!(placement, TriagePlacement::NeedsYou { .. }));
+    }
+
+    fn a_draft() -> TriageMetadataSummary {
+        TriageMetadataSummary {
+            album_title: "Album Title".to_string(),
+            album_artist_assignments: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_row_with_no_draft_is_its_folder_and_nothing_else() {
+        assert_eq!(TriageReading::of(None, None), TriageReading::Unidentified);
+        assert_eq!(
+            TriageReading::of(None, Some(&MetadataProvenance::FileTags)),
+            TriageReading::Unidentified,
+            "a blank draft leads with its folder whatever once wrote it"
+        );
+    }
+
+    #[test]
+    fn a_draft_read_off_the_file_tags_names_no_source() {
+        assert_eq!(
+            TriageReading::of(Some(&a_draft()), Some(&MetadataProvenance::FileTags)),
+            TriageReading::Prefilled
+        );
+        assert_eq!(
+            TriageReading::of(Some(&a_draft()), None),
+            TriageReading::Prefilled,
+            "a typed-in draft came from nowhere and is still a draft"
+        );
+    }
+
+    /// A pick pairs one source's release with another's into one pressing and
+    /// claims both, so the row names both — in the order surfaces list
+    /// sources, whichever of them the draft was read from.
+    #[test]
+    fn a_pick_names_every_source_it_claims_in_the_fixed_order() {
+        let led_by_partner = MetadataProvenance::ExternalRelease {
+            source: MetadataSource::Discogs,
+            release_id: "discogs-1".to_string(),
+            partners: vec![MetadataRef::new(
+                "mb-1".to_string(),
+                MetadataSource::MusicBrainz,
+            )],
+        };
+        let TriageReading::Identified { sources } =
+            TriageReading::of(Some(&a_draft()), Some(&led_by_partner))
+        else {
+            panic!("a pick reads as identified");
+        };
+        assert_eq!(
+            sources
+                .iter()
+                .map(|source| (source.source, source.release_id.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                (MetadataSource::MusicBrainz, "mb-1"),
+                (MetadataSource::Discogs, "discogs-1"),
+            ]
+        );
+        assert_eq!(sources[0].url, "https://musicbrainz.org/release/mb-1");
+        assert_eq!(sources[1].url, "https://www.discogs.com/release/discogs-1");
+        assert!(
+            sources.iter().all(|source| source.label.is_none() && source.year.is_none()),
+            "the facts arrive with whoever reads the archived documents"
+        );
     }
 }

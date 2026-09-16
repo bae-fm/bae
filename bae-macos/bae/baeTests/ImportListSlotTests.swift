@@ -141,7 +141,8 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             coverThumbnail: nil,
             selectable: false,
             importStatus: nil,
-            metadataProvenance: nil
+            metadataProvenance: nil,
+            reading: .unidentified
         ),
         isGroupMember: false
     )
