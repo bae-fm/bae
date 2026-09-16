@@ -23,7 +23,7 @@ internal static class IdentifiedFromFlyout
 {
     internal static Control Build(IReadOnlyList<BridgeIdentifiedSource> sources)
     {
-        var column = new StackPanel { Spacing = 6, Width = 208 };
+        var column = new StackPanel { Spacing = 6, Width = 276 };
         var header = new TextBlock
         {
             Text = Loc.Core("core.import.triage.identified_from").ToUpperInvariant(),
@@ -45,7 +45,9 @@ internal static class IdentifiedFromFlyout
     {
         var row = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"),
+            // The source is what the line names, so its column is sized to
+            // it; a long label's facts take what is left and trim.
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
             ColumnSpacing = 6,
         };
 
@@ -70,6 +72,7 @@ internal static class IdentifiedFromFlyout
                 FontSize = 10.5,
                 MaxLines = 1,
                 TextTrimming = TextTrimming.CharacterEllipsis,
+                TextAlignment = TextAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
             };
             stated[!TextBlock.ForegroundProperty] =

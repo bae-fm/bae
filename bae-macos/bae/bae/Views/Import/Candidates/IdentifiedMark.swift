@@ -60,7 +60,7 @@ struct IdentifiedFromPopover: View {
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
-        .frame(width: 232)
+        .frame(width: 300)
     }
 }
 
@@ -71,21 +71,22 @@ struct IdentifiedSourceLine: View {
 
     var body: some View {
         HStack(spacing: 6) {
+            // The source is what the line names, so it never gives up a
+            // letter; a long label's facts truncate after it instead.
             Text(verbatim: bridgeMetadataSourceName(source: source.source))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.primary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize()
             if let facts {
-                // What the source says is why the line is here, so it keeps
-                // its width and the source's name yields — the name is a
-                // brand the reader already knows.
                 Text(verbatim: facts)
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .fixedSize()
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            else {
+                Spacer(minLength: 0)
             }
             if let url = URL(string: source.url) {
                 Link(destination: url) {

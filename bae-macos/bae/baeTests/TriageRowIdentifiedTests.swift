@@ -105,6 +105,8 @@ struct TriageRowIdentifiedTests {
             )
             .map(\.text)
 
+        // Both names whole: the MusicBrainz line's label is long enough to
+        // crowd it, and it is the label that gives way.
         #expect(lines.carrying("MusicBrainz"))
         #expect(lines.carrying("Discogs"))
         // The separator between a label and a year is a middle dot, which the
@@ -118,7 +120,7 @@ struct TriageRowIdentifiedTests {
     }
 
     private static let rowSize = NSSize(width: 340, height: 80)
-    private static let popoverSize = NSSize(width: 232, height: 96)
+    private static let popoverSize = NSSize(width: 300, height: 96)
 
     @MainActor
     private func hostedRow(_ row: BridgeTriageRow) -> NSView {

@@ -309,13 +309,14 @@
         )
 
         /// Both sources a pick paired, each stating what its own release
-        /// says — here two documents that happen to agree.
+        /// says. One label is long enough to crowd the line: the source's
+        /// name is what the line is for, so the facts give way, not the name.
         static let identifiedFromBothSources = [
             BridgeIdentifiedSource(
                 source: .musicBrainz,
                 releaseId: "rel-paired",
                 url: "https://musicbrainz.org/release/rel-paired",
-                label: "Label Name",
+                label: "Long Label Name Recordings International",
                 year: 1976
             ),
             BridgeIdentifiedSource(
