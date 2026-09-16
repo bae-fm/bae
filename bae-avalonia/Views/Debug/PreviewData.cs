@@ -151,7 +151,8 @@ internal static class PreviewData
                 CoverThumbnail: null,
                 Selectable: true,
                 ImportStatus: null,
-                MetadataProvenance: null),
+                MetadataProvenance: null,
+                Reading: new BridgeTriageReading.Prefilled()),
             IsGroupMember: true),
     };
 
@@ -210,6 +211,7 @@ internal static class PreviewData
             CoverThumbnail: null,
             Selectable: true,
             ImportStatus: null,
-            MetadataProvenance: null);
+            MetadataProvenance: null,
+            Reading: new BridgeTriageReading.Unidentified());
 }
 #endif

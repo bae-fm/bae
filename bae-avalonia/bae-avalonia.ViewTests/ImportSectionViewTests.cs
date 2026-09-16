@@ -131,7 +131,8 @@ public sealed class ImportSectionViewTests
             MatchedItems(
                 placement,
                 BridgeTriageSkipAction.Skip,
-                metadataSummary: AppliedDraft),
+                metadataSummary: AppliedDraft,
+                reading: new BridgeTriageReading.Prefilled()),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
         var text = RowText(view);
@@ -139,14 +140,14 @@ public sealed class ImportSectionViewTests
         Assert.Contains("Draft Artist", text);
         Assert.DoesNotContain("Album Title", text);
         Assert.Equal(new[] { "Applied Draft", "Draft Artist" }, RowMetaText(view));
-        Assert.Equal(new[] { "MB" }, RowTrailingText(view));
+        Assert.Empty(RowTrailingText(view));
     }
 
-    // A draft read from a source's releases says which ones, badged at the end
-    // of the row rather than on the line under the title; one read off the
-    // files' tags has none to say.
+    // A draft read from a source's release says so once, with the mark on its
+    // title line; the end of the row names no providers. One read off the
+    // files' tags carries no mark.
     [AvaloniaFact]
-    public void OnlyAnIdentifiedRowNamesItsSources()
+    public void OnlyAnIdentifiedRowMarksItsTitle()
     {
         var placement = new BridgeTriagePlacement.Ready();
         var paired = BuildView(
@@ -154,34 +155,25 @@ public sealed class ImportSectionViewTests
                 placement,
                 BridgeTriageSkipAction.Skip,
                 metadataSummary: AppliedDraft,
-                metadataProvenance: new BridgeMetadataProvenance.ExternalRelease(
-                    BridgeMetadataSource.Discogs,
-                    "discogs-paired",
-                    [
-                        new BridgeMetadataRef(
-                            BridgeMetadataSource.MusicBrainz,
-                            "rel-paired"),
-                    ])),
+                reading: new BridgeTriageReading.Identified(PairedSources)),
             MatchedSummary(placement, BridgeTriageTab.Pending));
-        Assert.Equal(
-            new[] { "Applied Draft", "Draft Artist" },
-            RowMetaText(paired));
-        Assert.Equal(new[] { "MB", "Discogs" }, RowTrailingText(paired));
+        Assert.Contains(ImportPaneUi.OutboundArrow, RowMetaText(paired));
+        Assert.Empty(RowTrailingText(paired));
 
         var tagged = BuildView(
             MatchedItems(
                 placement,
                 BridgeTriageSkipAction.Skip,
                 metadataSummary: AppliedDraft,
-                metadataProvenance: new BridgeMetadataProvenance.FileTags()),
+                reading: new BridgeTriageReading.Prefilled()),
             MatchedSummary(placement, BridgeTriageTab.Pending));
         Assert.Equal(new[] { "Applied Draft", "Draft Artist" }, RowText(tagged));
     }
 
-    // The badges say where the draft came from and the placement's tag says
+    // The mark says where the draft came from and the placement's tag says
     // what the row still needs: a row with both shows both.
     [AvaloniaFact]
-    public void AnIdentifiedRowStillAwaitingAChoiceShowsBadgesAndItsTag()
+    public void AnIdentifiedRowStillAwaitingAChoiceShowsItsMarkAndItsTag()
     {
         var placement = new BridgeTriagePlacement.NeedsYou(
             new BridgeNeedsYou.SeveralMatches(2));
@@ -190,25 +182,56 @@ public sealed class ImportSectionViewTests
                 placement,
                 BridgeTriageSkipAction.Skip,
                 metadataSummary: AppliedDraft,
-                metadataProvenance: new BridgeMetadataProvenance.ExternalRelease(
-                    BridgeMetadataSource.MusicBrainz,
-                    "rel-several",
-                    [
-                        new BridgeMetadataRef(
-                            BridgeMetadataSource.Discogs,
-                            "discogs-several"),
-                    ])),
+                reading: new BridgeTriageReading.Identified(PairedSources)),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
+        Assert.Contains(ImportPaneUi.OutboundArrow, RowMetaText(view));
         Assert.Equal(
             new[]
             {
-                "MB",
-                "Discogs",
                 BridgeDisplay.LocalizedLine(new BridgeNeedsYou.SeveralMatches(2)),
             },
             RowTrailingText(view));
     }
+
+    // Both sources the pick paired, each stating what its own release says —
+    // two documents describing one pressing can disagree, and the hover says
+    // what each of them says.
+    [AvaloniaFact]
+    public void TheIdentifiedHoverNamesEverySourceAndWhatItSays()
+    {
+        var text = TextOf(IdentifiedFromFlyout.Build(PairedSources));
+
+        Assert.Contains(
+            Loc.Core("core.import.triage.identified_from").ToUpperInvariant(),
+            text);
+        Assert.Contains(
+            BaeBridgeMethods.BridgeMetadataSourceName(
+                BridgeMetadataSource.MusicBrainz),
+            text);
+        Assert.Contains(
+            BaeBridgeMethods.BridgeMetadataSourceName(
+                BridgeMetadataSource.Discogs),
+            text);
+        Assert.Contains("Label Name · 1976", text);
+        Assert.Contains("Other Label · 1988", text);
+    }
+
+    private static readonly BridgeIdentifiedSource[] PairedSources =
+    [
+        new BridgeIdentifiedSource(
+            BridgeMetadataSource.MusicBrainz,
+            "rel-paired",
+            "https://musicbrainz.org/release/rel-paired",
+            "Label Name",
+            1976),
+        new BridgeIdentifiedSource(
+            BridgeMetadataSource.Discogs,
+            "discogs-paired",
+            "https://www.discogs.com/release/discogs-paired",
+            "Other Label",
+            1988),
+    ];
 
     // A row with no draft is the folder it came from: the glyph, the folder
     // name, and nothing the queue once matched.
@@ -221,48 +244,6 @@ public sealed class ImportSectionViewTests
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
         Assert.Equal(new[] { "Release 01" }, RowText(view));
-    }
-
-    [Fact]
-    public void ARowWithNoDraftReadsAsUnidentified() =>
-        Assert.IsType<TriageRowReading.Unidentified>(
-            TriageListModel.Reading(
-                MatchedRow(new BridgeTriagePlacement.Ready(), null)));
-
-    [Fact]
-    public void ADraftReadOffTheFileTagsNamesNoSource() =>
-        Assert.IsType<TriageRowReading.Prefilled>(
-            TriageListModel.Reading(MatchedRow(
-                new BridgeTriagePlacement.Ready(),
-                null,
-                metadataSummary: AppliedDraft,
-                metadataProvenance: new BridgeMetadataProvenance.FileTags())));
-
-    // A pick pairs one source's release with another's into one pressing, and
-    // the row claims both — in the order every surface lists sources in,
-    // whichever of them the draft was read from.
-    [Fact]
-    public void APickNamesEverySourceItClaimsInTheFixedOrder()
-    {
-        var ordered = BaeBridgeMethods.BridgeMetadataSources();
-        foreach (var lead in ordered)
-        {
-            var partners = ordered
-                .Where(source => source != lead)
-                .Select(source => new BridgeMetadataRef(source, $"rel-{source}"))
-                .ToArray();
-            var reading = Assert.IsType<TriageRowReading.Identified>(
-                TriageListModel.Reading(MatchedRow(
-                    new BridgeTriagePlacement.Ready(),
-                    null,
-                    metadataSummary: AppliedDraft,
-                    metadataProvenance:
-                        new BridgeMetadataProvenance.ExternalRelease(
-                            lead,
-                            $"rel-{lead}",
-                            partners))));
-            Assert.Equal(ordered, reading.Sources);
-        }
     }
 
     private static readonly BridgeTriageMetadataSummary AppliedDraft = new(
@@ -699,7 +680,8 @@ public sealed class ImportSectionViewTests
         bool isGroupMember = false,
         BridgeTriageMetadataSummary? metadataSummary = null,
         BridgeCoverImageSource? coverThumbnail = null,
-        BridgeMetadataProvenance? metadataProvenance = null) => new()
+        BridgeMetadataProvenance? metadataProvenance = null,
+        BridgeTriageReading? reading = null) => new()
     {
         new BridgeImportListItem.Candidate(
             PreviewData.CandidateStableKey(CandidateKey),
@@ -709,7 +691,8 @@ public sealed class ImportSectionViewTests
                 importStatus,
                 metadataSummary,
                 coverThumbnail,
-                metadataProvenance),
+                metadataProvenance,
+                reading),
             IsGroupMember: isGroupMember),
     };
 
@@ -719,7 +702,8 @@ public sealed class ImportSectionViewTests
         BridgeTriageImportStatus? importStatus = null,
         BridgeTriageMetadataSummary? metadataSummary = null,
         BridgeCoverImageSource? coverThumbnail = null,
-        BridgeMetadataProvenance? metadataProvenance = null) =>
+        BridgeMetadataProvenance? metadataProvenance = null,
+        BridgeTriageReading? reading = null) =>
             new BridgeTriageRow(
                 CandidateKey: CandidateKey,
                 FolderName: "Release 01",
@@ -762,7 +746,8 @@ public sealed class ImportSectionViewTests
                             BridgeMetadataSource.MusicBrainz,
                             "rel-matched",
                             [])
-                        : null));
+                        : null),
+                Reading: reading ?? new BridgeTriageReading.Unidentified());
 
     private static BridgeImportQueueSummary MatchedSummary(
         BridgeTriagePlacement placement,

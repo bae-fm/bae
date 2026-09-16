@@ -199,7 +199,6 @@ internal sealed partial class ImportSectionView
 
     private Control BuildRowText(BridgeTriageRow row)
     {
-        var reading = TriageListModel.Reading(row);
         var upload = UploadProgressPresentation.ResolveImport(
             row.ImportStatus,
             _storage.Outbox);
@@ -214,19 +213,23 @@ internal sealed partial class ImportSectionView
             VerticalAlignment = VerticalAlignment.Center,
         };
         title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
-        if (reading is TriageRowReading.Unidentified)
+        switch (row.Reading)
         {
-            // Nothing has been written about the release, so the title is the
-            // folder on disk — the glyph and the mono family say so.
-            title.FontFamily = new FontFamily("monospace");
-            var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
-            titleRow.Children.Add(Icons.Glyph(Icons.Folder, 13, "BaeTextSecondaryBrush"));
-            titleRow.Children.Add(title);
-            column.Children.Add(titleRow);
-        }
-        else
-        {
-            column.Children.Add(title);
+            case BridgeTriageReading.Unidentified:
+                // Nothing has been written about the release, so the title is
+                // the folder on disk — the glyph and the mono family say so.
+                title.FontFamily = new FontFamily("monospace");
+                var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
+                titleRow.Children.Add(Icons.Glyph(Icons.Folder, 13, "BaeTextSecondaryBrush"));
+                titleRow.Children.Add(title);
+                column.Children.Add(titleRow);
+                break;
+            case BridgeTriageReading.Identified identified:
+                column.Children.Add(TitleWithMark(title, identified.Sources));
+                break;
+            default:
+                column.Children.Add(title);
+                break;
         }
 
         // A running import is the one line on a row that changes by the
@@ -257,6 +260,36 @@ internal sealed partial class ImportSectionView
         }
 
         return column;
+    }
+
+    // The title, and after it the mark saying the draft was read from a
+    // source's release. The title takes the width that is left and trims; the
+    // mark is fixed, so it never clips — the mark is the row's answer, the
+    // title only its subject.
+    private static Control TitleWithMark(
+        TextBlock title,
+        IReadOnlyList<BridgeIdentifiedSource> sources)
+    {
+        var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        Grid.SetColumn(title, 0);
+        line.Children.Add(title);
+
+        var mark = new TextBlock
+        {
+            Text = ImportPaneUi.OutboundArrow,
+            FontSize = 11,
+            FontWeight = FontWeight.SemiBold,
+            Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        mark[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeSuccessBrush");
+        Avalonia.Automation.AutomationProperties.SetName(
+            mark,
+            Loc.Core("core.import.triage.identified"));
+        HoverFlyout.Attach(mark, () => IdentifiedFromFlyout.Build(sources));
+        Grid.SetColumn(mark, 1);
+        line.Children.Add(mark);
+        return line;
     }
 
     // The line under the title: what the row has to say, and nothing when it
@@ -386,35 +419,11 @@ internal sealed partial class ImportSectionView
         return button;
     }
 
-    // The row's trailing column: the sources the draft was read from, then
-    // whatever the placement puts at the end of the row — both show when both
-    // apply.
-    private Control RowTrailing(BridgeTriageRow row)
-    {
-        var column = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
-        };
-        // One badge per source the pick claims, in the order core lists them.
-        // The short name: the row's end is a badge's worth of width, not a
-        // sentence's.
-        if (TriageListModel.Reading(row) is TriageRowReading.Identified pick)
-        {
-            foreach (var source in pick.Sources)
-            {
-                column.Children.Add(ImportPaneUi.SourceCapsule(
-                    BaeBridgeMethods.BridgeMetadataSourceShortName(source),
-                    "BaeAccentBrush",
-                    arrow: false));
-            }
-        }
-        if (PlacementTrailing(row) is { } placement)
-        {
-            column.Children.Add(placement);
-        }
-        return column;
-    }
+    // The row's trailing column: whatever the placement puts at the end of the
+    // row. Where the draft came from is the title line's mark, not a column of
+    // its own.
+    private Control RowTrailing(BridgeTriageRow row) =>
+        PlacementTrailing(row) ?? new Panel();
 
     // What the placement itself puts at the end of the row, or nothing when it
     // has nothing to put there.

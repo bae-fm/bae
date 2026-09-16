@@ -1,4 +1,6 @@
-﻿using Avalonia;
+﻿using System;
+using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -15,6 +17,11 @@ namespace Bae.Desktop;
 /// </summary>
 internal static class ImportPaneUi
 {
+    /// <summary>The mark that says a thing leads somewhere outside the app —
+    /// on a source capsule that links to a release, and on a candidate row
+    /// whose draft was read from one.</summary>
+    internal const string OutboundArrow = "\u2197";
+
     /// <summary>A section's heading, with an optional plain note beside it (the
     /// reconciliation tally).</summary>
     internal static Control ZoneTitle(string text, string? note = null)
@@ -146,7 +153,7 @@ internal static class ImportPaneUi
     {
         var text = new TextBlock
         {
-            Text = arrow ? label + " ↗" : label,
+            Text = arrow ? label + " " + OutboundArrow : label,
             FontSize = 10.5,
             FontWeight = FontWeight.Medium,
             VerticalAlignment = VerticalAlignment.Center,
@@ -162,5 +169,32 @@ internal static class ImportPaneUi
         };
         capsule[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
         return capsule;
+    }
+
+    /// <summary>Open <paramref name="uri"/> in whatever the desktop uses for
+    /// it. The window a control sits in owns the launcher, so the control is
+    /// what this is asked through.</summary>
+    internal static async Task OpenExternal(Control from, Uri uri)
+    {
+        var launcher = TopLevel.GetTopLevel(from)?.Launcher;
+        if (launcher is null)
+        {
+            BaeDiagnostics.Logger.Warning(
+                $"Open metadata source failed: no launcher for {uri.Host}");
+            return;
+        }
+        try
+        {
+            if (!await launcher.LaunchUriAsync(uri))
+            {
+                BaeDiagnostics.Logger.Warning(
+                    $"Open metadata source failed: launcher rejected {uri.Host}");
+            }
+        }
+        catch (Exception exception)
+        {
+            BaeDiagnostics.Logger.Warning(
+                $"Open metadata source failed: {exception.Message}");
+        }
     }
 }

@@ -367,29 +367,7 @@ internal sealed class ImportMetadataSourceSection
             Cursor = new Avalonia.Input.Cursor(
                 Avalonia.Input.StandardCursorType.Hand),
         };
-        button.Click += async (_, _) =>
-        {
-            var launcher = TopLevel.GetTopLevel(button)?.Launcher;
-            if (launcher is null)
-            {
-                BaeDiagnostics.Logger.Warning(
-                    $"Open metadata source failed: no launcher for {uri.Host}");
-                return;
-            }
-            try
-            {
-                if (!await launcher.LaunchUriAsync(uri))
-                {
-                    BaeDiagnostics.Logger.Warning(
-                        $"Open metadata source failed: launcher rejected {uri.Host}");
-                }
-            }
-            catch (Exception exception)
-            {
-                BaeDiagnostics.Logger.Warning(
-                    $"Open metadata source failed: {exception.Message}");
-            }
-        };
+        button.Click += async (_, _) => await ImportPaneUi.OpenExternal(button, uri);
         return button;
     }
 

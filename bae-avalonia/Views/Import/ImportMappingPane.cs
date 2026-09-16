@@ -662,7 +662,9 @@ internal sealed partial class ImportMappingPane : UserControl
                     .Concat(external.Partners)
                     .Select(release => new ProvenanceChip(
                         BaeBridgeMethods.BridgeMetadataSourceName(release.Source),
-                        ExternalReleaseUri(release)))
+                        new Uri(BaeBridgeMethods.BridgeReleaseUrl(
+                            release.Source,
+                            release.ReleaseId))))
                     .ToList(),
             BridgeMetadataProvenance.FileTags =>
             [
@@ -674,22 +676,6 @@ internal sealed partial class ImportMappingPane : UserControl
                 _candidate.MetadataProvenance,
                 "Unknown metadata provenance"),
         };
-
-    private static Uri ExternalReleaseUri(BridgeMetadataRef release)
-    {
-        var root = release.Source switch
-        {
-            BridgeMetadataSource.MusicBrainz =>
-                "https://musicbrainz.org/release/",
-            BridgeMetadataSource.Discogs =>
-                "https://www.discogs.com/release/",
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(release.Source),
-                release.Source,
-                "Unknown metadata source"),
-        };
-        return new Uri(root + Uri.EscapeDataString(release.ReleaseId));
-    }
 
     private bool DraftIsBlank() => _candidate?.Detail?.MetadataDraftIsBlank ?? true;
 
