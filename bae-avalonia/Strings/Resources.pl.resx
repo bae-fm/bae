@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>nie udało się zatwierdzić tego urządzenia</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Oczekiwanie na urządzenie…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>przejdź do albumu</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>usuń</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nie udało się wczytać skrzynki nadawczej</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>wstrzymaj</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>nie udało się odczytać skrzynki nadawczej</value></data>

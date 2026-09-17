@@ -27,9 +27,4 @@ public static class ForgetLibraryModel
             ? ["settings.remove.confirm_synced", "settings.remove.confirm_pending", "settings.remove.confirm_again"]
             : ["settings.remove.confirm_synced", "settings.remove.confirm_again"];
     }
-
-    // Whether the outbox snapshot has cloud work that hasn't landed yet: queued
-    // uploads or deletes not yet applied to the cloud copy.
-    public static bool HasPendingCloudWork(int uploadGroupCount, long pendingDeletes) =>
-        uploadGroupCount > 0 || pendingDeletes > 0;
 }

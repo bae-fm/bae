@@ -188,11 +188,11 @@ public class OutboxStore {
             }
     }
 
-    /// Whether any cloud writes are still queued or in flight — uploads or
-    /// deletes that haven't reached the cloud home. Drives the extra
-    /// data-loss warning on the remove-library confirmation.
+    /// Whether any cloud writes are still queued or in flight — uploads that
+    /// haven't reached the cloud home. Drives the extra data-loss warning on the
+    /// remove-library confirmation.
     public var hasPendingCloudWork: Bool {
-        !snapshot.uploadGroups.isEmpty || snapshot.pendingDeletes > 0
+        !snapshot.uploadGroups.isEmpty
     }
 
     /// The idle queue used before the required initial snapshot arrives and by
@@ -202,7 +202,6 @@ public class OutboxStore {
         BridgeOutboxSnapshot(
             revision: 0,
             uploadGroups: [],
-            deletes: [],
             perRelease: [:],
             total: BridgeUploadProgress(
                 queued: 0,
@@ -218,7 +217,6 @@ public class OutboxStore {
                 canCancel: false,
                 issue: nil,
             ),
-            pendingDeletes: 0,
             summaryParts: [],
             pauseState: .running,
             throughputBps: 0,

@@ -49,24 +49,6 @@ impl Database {
             .collect())
     }
 
-    pub async fn queued_delete_count_for_test(&self) -> Result<usize, DbError> {
-        Ok(self.inner.handle.queued_deletes().await?.len())
-    }
-
-    pub async fn has_queued_delete_for_test(
-        &self,
-        namespace: &str,
-        blob_id: &str,
-    ) -> Result<bool, DbError> {
-        Ok(self
-            .inner
-            .handle
-            .queued_deletes()
-            .await?
-            .iter()
-            .any(|delete| delete.namespace == namespace && delete.blob_id == blob_id))
-    }
-
     pub async fn first_queued_upload_failure_for_test(
         &self,
     ) -> Result<Option<(u64, bool)>, DbError> {

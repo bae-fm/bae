@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>nije moguće odobriti ovaj uređaj</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Čekanje uređaja…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>idi na album</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>izbriši</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nije moguće učitati izlazni red</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pauziraj</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>nije moguće pročitati izlazni red</value></data>

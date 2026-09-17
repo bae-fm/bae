@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>تعذرت الموافقة على هذا الجهاز</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>في انتظار الجهاز…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>الانتقال إلى الألبوم</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>حذف</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>تعذّر تحميل صندوق الصادر</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>إيقاف مؤقت</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>تعذّرت قراءة صندوق الصادر</value></data>

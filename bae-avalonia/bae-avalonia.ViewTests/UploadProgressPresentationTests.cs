@@ -166,7 +166,6 @@ public sealed class UploadProgressPresentationTests
         new(
             revision,
             [],
-            [],
             progress is null
                 ? new Dictionary<string, BridgeReleaseUploadProgress>()
                 : new Dictionary<string, BridgeReleaseUploadProgress>
@@ -174,7 +173,6 @@ public sealed class UploadProgressPresentationTests
                     ["release-a"] = new BridgeReleaseUploadProgress(progress, 0),
                 },
             Progress(),
-            0,
             [],
             BridgeOutboxPauseState.Running,
             0,

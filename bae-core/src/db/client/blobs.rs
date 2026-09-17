@@ -53,13 +53,12 @@ impl Database {
     /// closure runs, and the old one is referenced by none after it repoints the
     /// row.
     ///
-    /// The replaced blob's cloud object is always tombstoned, because it is never the
-    /// object the new blob writes: an image's cloud key is a pure function of its
-    /// blob id under both home layouts — the hashed id on an opaque home, the
-    /// `cover-{blob_id}` / `artist-{blob_id}` readable path on a browsable one — and
-    /// a blob id is minted fresh per stored image. Whether the replaced blob ever
-    /// reached the cloud needs no separate check: tombstoning a key holding no
-    /// object is a no-op the GC cleans up.
+    /// The replaced blob's cloud object is coven's to retire: once the row points
+    /// at the new blob nothing names the old object, and accepted reclaim removes
+    /// the orphan. It is never the object the new blob writes — an image's cloud
+    /// key is a pure function of its blob id under both home layouts (the hashed
+    /// id on an opaque home, the `cover-{blob_id}` / `artist-{blob_id}` readable
+    /// path on a browsable one) and a blob id is minted fresh per stored image.
     pub async fn write_library_image_blob(
         &self,
         image: &DbLibraryImage,
@@ -74,21 +73,6 @@ impl Database {
             .map(|existing| {
                 crate::sync::image_blob_ref(namespace, &existing.blob_id, existing.cloud_path)
             });
-
-        // The cloud object the replaced blob occupies, captured as an exact row
-        // reference while the row still points at it. Only a blob that actually
-        // reached the cloud has one to remove — a Local image carries no stored
-        // locator, and coven refuses a tombstone for it.
-        let stale_remote = if replaced.is_some() {
-            self.inner
-                .handle
-                .row_blob_ref(image_table(&image.image_type), &image.id)
-                .await
-                .ok()
-                .filter(|current| current.stored().is_some())
-        } else {
-            None
-        };
 
         let new_blob =
             crate::sync::image_blob_ref(namespace, &image.blob_id, image.cloud_path.clone());
@@ -106,9 +90,6 @@ impl Database {
                 move |sql| {
                     let reg = sql.stamp();
                     upsert_library_image_row(&sql, &image, &reg).map_err(CovenError::from)?;
-                    if let Some(stale) = &stale_remote {
-                        sql.enqueue_blob_delete(stale).map_err(CovenError::from)?;
-                    }
                     Ok(())
                 },
             )
@@ -262,16 +243,17 @@ impl Database {
     /// Storage Manager renders it with. Backs the processing snapshot.
     ///
     /// The two halves come from the two owners: coven reports every queued upload
-    /// and cloud tombstone (oldest first, surviving restarts), and bae reads
-    /// display context from each upload's declared blob-bearing table. Missing
-    /// context is an invalid queue snapshot and is surfaced to the subscriber.
+    /// and make-Remote transition (oldest first, surviving restarts), and bae
+    /// reads display context from each upload's declared blob-bearing table.
+    /// Missing context is an invalid queue snapshot and is surfaced to the
+    /// subscriber.
     pub async fn outbox_queue(&self) -> Result<DbOutboxQueue, DbError> {
         let snapshot = self.inner.handle.cloud_outbox_snapshot().await?;
         self.outbox_queue_from(snapshot).await
     }
 
-    /// Subscribe to coven's durable uploads, deletes, and make-Remote intents
-    /// as one committed stream. Display context is joined by
+    /// Subscribe to coven's durable uploads and make-Remote intents as one
+    /// committed stream. Display context is joined by
     /// [`outbox_queue_from`](Self::outbox_queue_from) after each value arrives.
     pub fn subscribe_cloud_outbox(&self) -> coven::CloudOutboxLiveQuery {
         self.inner.handle.subscribe_cloud_outbox()
@@ -371,7 +353,6 @@ impl Database {
     ) -> Result<DbOutboxQueue, DbError> {
         let coven::CloudOutboxSnapshot {
             uploads,
-            deletes,
             make_remotes,
         } = snapshot;
 
@@ -426,20 +407,8 @@ impl Database {
             })
             .collect::<Result<Vec<_>, DbError>>()?;
 
-        let deletes = deletes
-            .into_iter()
-            .map(|delete| {
-                Ok(DbOutboxDelete {
-                    namespace: delete.namespace,
-                    blob_id: delete.blob_id,
-                    created_at: stamp_millis(&delete.created_at)?,
-                })
-            })
-            .collect::<Result<Vec<_>, DbError>>()?;
-
         Ok(DbOutboxQueue {
             uploads,
-            deletes,
             make_remotes,
         })
     }

@@ -125,17 +125,6 @@ async fn enqueue_release_save_captures_the_preset() {
     );
 }
 
-/// Whether coven's durable queue holds a cloud tombstone for this blob. A
-/// tombstone outlives the row that named it, so `(namespace, blob_id)` is all
-/// there is to identify it by.
-async fn has_queued_delete(manager: &LibraryManager, namespace: &str, blob_id: &str) -> bool {
-    manager
-        .database
-        .has_queued_delete_for_test(namespace, blob_id)
-        .await
-        .unwrap()
-}
-
 /// Break one of bae's own tables so the next read or write against it fails,
 /// standing in for a database that has gone bad under a delete. Only bae's tables
 /// are renameable: coven's SQL authorizer refuses a host statement that alters one

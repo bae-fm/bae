@@ -129,7 +129,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>não foi possível aprovar este dispositivo</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>À espera do dispositivo…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ir para o álbum</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>eliminar</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>não foi possível carregar a fila de envio</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pausa</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>não foi possível ler a fila de envio</value></data>

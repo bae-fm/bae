@@ -97,12 +97,6 @@ mirror_enum! {
     variants: { Filename(name), Cover, ArtistImage, Unwinding },
 }
 
-mirror_struct! {
-    crate::types::BridgeDeleteOp = bae_core::library::DeleteOp,
-    from_core: pub(super) fn,
-    fields: { namespace, blob_id, created_at },
-}
-
 impl crate::types::BridgeOutboxSnapshot {
     pub(super) fn from_core(snapshot: bae_core::library::OutboxSnapshot) -> Self {
         // Derived aggregates borrow `&snapshot`; compute them before the move.
@@ -121,7 +115,6 @@ impl crate::types::BridgeOutboxSnapshot {
                 )
             })
             .collect();
-        let pending_deletes = snapshot.pending_delete_count();
         let summary_parts = snapshot
             .summary_parts()
             .into_iter()
@@ -131,7 +124,6 @@ impl crate::types::BridgeOutboxSnapshot {
         let bae_core::library::OutboxSnapshot {
             revision,
             upload_groups,
-            deletes,
             total,
             pause_state,
             throughput_bps,
@@ -144,13 +136,8 @@ impl crate::types::BridgeOutboxSnapshot {
                 .into_iter()
                 .map(crate::types::BridgeUploadReleaseGroup::from_core)
                 .collect(),
-            deletes: deletes
-                .into_iter()
-                .map(crate::types::BridgeDeleteOp::from_core)
-                .collect(),
             per_release,
             total: crate::types::BridgeUploadProgress::from_core(total),
-            pending_deletes,
             summary_parts,
             pause_state: crate::types::BridgeOutboxPauseState::from_core(pause_state),
             throughput_bps,

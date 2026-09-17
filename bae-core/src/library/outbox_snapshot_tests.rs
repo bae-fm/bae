@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::{DbOutboxDelete, DbOutboxUpload};
+use crate::db::DbOutboxUpload;
 
 const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
 const SMALL_FILE: &str = "00415c7f-b363-4ed9-8aad-422b93e974e9";
@@ -89,7 +89,6 @@ fn two_queued_uploads() -> DbOutboxQueue {
             queued_upload(SMALL_FILE, "01 Track Title.flac", 100),
             queued_upload(LARGE_FILE, "02 Track Title.flac", 1000),
         ],
-        deletes: Vec::new(),
         make_remotes: Vec::new(),
     }
 }
@@ -193,7 +192,6 @@ fn a_releases_files_are_listed_by_name_with_the_cover_first() {
     let snapshot = build(
         DbOutboxQueue {
             uploads,
-            deletes: Vec::new(),
             make_remotes: Vec::new(),
         },
         &HashMap::new(),
@@ -360,7 +358,6 @@ fn upload_state_uses_the_blob_bearing_table_and_row() {
                 ..queued_upload(shared_row_id, "unused", 0)
             },
         ],
-        deletes: Vec::new(),
         make_remotes: Vec::new(),
     };
     queue.uploads[1].release_id = RELEASE.to_string();
@@ -427,36 +424,6 @@ fn a_recorded_failure_derives_retrying_with_its_error() {
         UploadState::RetryingPreparation {
             last_error: "boom".to_string()
         }
-    );
-}
-
-/// Pending tombstones carry into the snapshot and into the summary line even
-/// when nothing is uploading — the queue pane still has work to show.
-#[test]
-fn pending_deletes_survive_an_otherwise_empty_queue() {
-    let queue = DbOutboxQueue {
-        uploads: Vec::new(),
-        deletes: vec![DbOutboxDelete {
-            namespace: "release_files".to_string(),
-            blob_id: SMALL_FILE.to_string(),
-            created_at: 1_700_000_000_000,
-        }],
-        make_remotes: Vec::new(),
-    };
-
-    let snapshot = build(queue, &HashMap::new());
-
-    assert_eq!(snapshot.pending_delete_count(), 1);
-    assert_eq!(snapshot.deletes[0].namespace, "release_files");
-    assert_eq!(snapshot.deletes[0].blob_id, SMALL_FILE);
-    assert!(snapshot.upload_groups.is_empty());
-    assert_eq!(
-        snapshot
-            .summary_parts()
-            .iter()
-            .map(|part| part.key.as_str())
-            .collect::<Vec<_>>(),
-        vec!["core.outbox.pending_deletes"]
     );
 }
 
@@ -551,7 +518,6 @@ fn fully_done_group_is_dropped_while_queue_busy() {
             release_id: OTHER_RELEASE.to_string(),
             ..queued_upload(OTHER_FILE, "03 Track Title.flac", 500)
         }],
-        deletes: Vec::new(),
         make_remotes: Vec::new(),
     };
     let snapshot = build(queue, &HashMap::new());
@@ -612,7 +578,6 @@ fn durable_and_streamed_upload_phases_never_collapse_back_to_queued() {
 fn publishing_intent_keeps_the_release_visible_after_upload_rows_leave() {
     let queue = DbOutboxQueue {
         uploads: Vec::new(),
-        deletes: Vec::new(),
         make_remotes: vec![crate::db::DbMakeRemote {
             transition: coven::QueuedMakeRemote {
                 root_table: "releases".to_string(),
@@ -724,7 +689,6 @@ fn each_release_group_carries_only_its_own_upload_rate() {
         let snapshot = build_outbox_snapshot_at(
             DbOutboxQueue {
                 uploads: vec![first.clone(), second.clone()],
-                deletes: Vec::new(),
                 make_remotes: Vec::new(),
             },
             &transient,

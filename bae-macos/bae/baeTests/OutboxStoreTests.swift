@@ -59,14 +59,6 @@ struct OutboxStoreHasPendingCloudWorkTests {
         #expect(store.hasPendingCloudWork)
     }
 
-    @Test("a pending delete with no uploads counts as pending cloud work")
-    func pendingDeleteIsPending() {
-        let store = store { snapshot in
-            snapshot.pendingDeletes = 1
-        }
-        #expect(store.hasPendingCloudWork)
-    }
-
     @Test("an older delivery cannot replace newer queue state")
     func staleSnapshotCannotRegressTheStore() {
         var current = OutboxStore.emptySnapshot
@@ -75,11 +67,11 @@ struct OutboxStoreHasPendingCloudWorkTests {
 
         var stale = OutboxStore.emptySnapshot
         stale.revision = 1
-        stale.pendingDeletes = 1
+        stale.throughputBps = 1
         store.applySnapshot(stale)
 
         #expect(store.snapshot.revision == 2)
-        #expect(store.snapshot.pendingDeletes == 0)
+        #expect(store.snapshot.throughputBps == 0)
     }
 }
 

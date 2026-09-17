@@ -6,9 +6,8 @@ import SwiftUI
 /// state on its own line. The vertical shape leaves the title readable in the
 /// transfer inspector instead of forcing every field into one horizontal row.
 ///
-/// The cancel button is optional — a row for work that cannot be abandoned (a
-/// cloud tombstone, whose object would otherwise be stranded) passes no
-/// `cancel` and keeps the trailing space empty.
+/// The cancel button is optional — a row for work that cannot be abandoned
+/// passes no `cancel` and keeps the trailing space empty.
 struct QueueRow<Content: View, Badge: View>: View {
     /// The cancel affordance as one value: a button always ships with the
     /// tooltip naming what it abandons.

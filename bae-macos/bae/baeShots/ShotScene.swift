@@ -231,10 +231,7 @@ struct ShotScene {
                     inspectorPresented: true,
                     downloadSnapshot: PreviewData.emptyDownloadSnapshot,
                     outputSnapshot: PreviewData.emptyOutputSnapshot,
-                    outboxSnapshot: PreviewData.outboxSnapshot(
-                        uploadGroups: [],
-                        deletes: []
-                    )
+                    outboxSnapshot: PreviewData.outboxSnapshot(uploadGroups: [])
                 )
             )
         },
@@ -250,8 +247,7 @@ struct ShotScene {
                     downloadSnapshot: PreviewData.emptyDownloadSnapshot,
                     outputSnapshot: PreviewData.emptyOutputSnapshot,
                     outboxSnapshot: PreviewData.outboxSnapshot(
-                        uploadGroups: [PreviewData.uploadGroupDone],
-                        deletes: []
+                        uploadGroups: [PreviewData.uploadGroupDone]
                     )
                 )
             )

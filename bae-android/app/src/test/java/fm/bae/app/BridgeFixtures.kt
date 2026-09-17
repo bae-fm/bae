@@ -219,7 +219,6 @@ object BridgeFixtures {
         BridgeOutboxSnapshot(
             revision = 0uL,
             uploadGroups = emptyList(),
-            deletes = emptyList(),
             perRelease = emptyMap(),
             total =
                 BridgeUploadProgress(
@@ -236,7 +235,6 @@ object BridgeFixtures {
                     canCancel = false,
                     issue = null,
                 ),
-            pendingDeletes = 0u,
             summaryParts = emptyList(),
             pauseState = pauseState,
             throughputBps = 0uL,

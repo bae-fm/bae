@@ -40,8 +40,8 @@
 //! does not match the row that won. And a device applying a changeset written
 //! *before* a replacement could never satisfy that changeset's content hash,
 //! because the bytes it names were overwritten at the reused key. Distinct keys
-//! per blob leave the superseded object in place until its tombstone is
-//! collected, so both readers are served.
+//! per blob leave the superseded object in place until coven's reclaim retires
+//! it, so both readers are served.
 //!
 //! Audio files keep their real names: a release file's bytes never change in
 //! place — a new import is a new release id — so its key is already immutable.
@@ -190,7 +190,7 @@ mod tests {
 
     /// An image key is a pure function of its row and carries the row's blob id, so
     /// two successive covers of one release never name the same object. The
-    /// replacement path depends on this: it tombstones the object the old blob
+    /// replacement path depends on this: reclaim retires the object the old blob
     /// occupied, which must not be the one the new blob just wrote.
     #[test]
     fn a_new_cover_blob_never_reuses_the_previous_cover_key() {

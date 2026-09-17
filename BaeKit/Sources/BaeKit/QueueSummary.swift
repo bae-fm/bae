@@ -1,9 +1,9 @@
 import Foundation
 
 /// Locale-aware rendering of a storage-queue summary line from the parts bae-core
-/// emits, e.g. "2 uploading · 1 failed · 3 queued · 1 pending delete". Empty when
-/// the queue is idle so the band stays hidden. bae-core owns which parts appear,
-/// in what order, and that a zero drops out; the UI localizes each part and joins.
+/// emits, e.g. "2 uploading · 1 failed · 3 queued". Empty when the queue is idle
+/// so the band stays hidden. bae-core owns which parts appear, in what order,
+/// and that a zero drops out; the UI localizes each part and joins.
 public enum QueueSummary {
     /// A raw `Core`-table format string for a storage-queue message, e.g. the
     /// "{done} of {total}" byte-progress line. Callers apply their own

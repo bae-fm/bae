@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>не вдалося схвалити цей пристрій</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Очікування пристрою…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>перейти до альбому</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>видалити</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>не вдалося завантажити чергу надсилання</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>пауза</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>не вдалося прочитати чергу надсилання</value></data>

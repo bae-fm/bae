@@ -277,10 +277,7 @@ struct StorageManagerView: View {
             selectedReleaseId: "rel-row-4",
             downloadSnapshot: PreviewData.emptyDownloadSnapshot,
             outputSnapshot: PreviewData.emptyOutputSnapshot,
-            outboxSnapshot: PreviewData.outboxSnapshot(
-                uploadGroups: [],
-                deletes: []
-            )
+            outboxSnapshot: PreviewData.outboxSnapshot(uploadGroups: [])
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
@@ -381,8 +378,7 @@ struct StorageManagerView: View {
             downloadSnapshot: PreviewData.emptyDownloadSnapshot,
             outputSnapshot: PreviewData.emptyOutputSnapshot,
             outboxSnapshot: PreviewData.outboxSnapshot(
-                uploadGroups: [PreviewData.uploadGroupDone],
-                deletes: []
+                uploadGroups: [PreviewData.uploadGroupDone]
             )
         )
         StorageManagerView(
@@ -416,8 +412,7 @@ struct StorageManagerView: View {
             downloadSnapshot: PreviewData.emptyDownloadSnapshot,
             outputSnapshot: PreviewData.emptyOutputSnapshot,
             outboxSnapshot: PreviewData.outboxSnapshot(
-                uploadGroups: [PreviewData.uploadGroupSourceUnavailable],
-                deletes: []
+                uploadGroups: [PreviewData.uploadGroupSourceUnavailable]
             )
         )
         StorageManagerView(

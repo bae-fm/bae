@@ -147,15 +147,10 @@ async fn an_imported_folder_is_refused_a_second_import() {
         vec![prior_release_id],
         "the prior release still carries the content hash, alone"
     );
-    assert_eq!(
-        f.db.queued_delete_count_for_test().await.unwrap(),
-        0,
-        "a refused re-import queues nothing for deletion"
-    );
 }
 
-/// The same refusal for a release that lives in the cloud: nothing is queued
-/// for deletion, since nothing replaced it.
+/// The same refusal for a release that lives in the cloud: the prior release
+/// stays exactly as it was, since nothing replaced it.
 #[tokio::test]
 async fn a_remote_imported_folder_is_refused_a_second_import() {
     support::tracing_init();
@@ -217,11 +212,6 @@ async fn a_remote_imported_folder_is_refused_a_second_import() {
             .unwrap()
             .is_some(),
         "the remote release stays"
-    );
-    assert_eq!(
-        f.db.queued_delete_count_for_test().await.unwrap(),
-        0,
-        "a refused re-import queues no cloud blob for deletion"
     );
 }
 

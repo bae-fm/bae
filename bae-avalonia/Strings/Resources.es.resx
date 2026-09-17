@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>no se pudo aprobar este dispositivo</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Esperando al dispositivo…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ir al álbum</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>eliminar</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>no se pudo cargar la bandeja de salida</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pausar</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>no se pudo leer la bandeja de salida</value></data>

@@ -95,8 +95,8 @@ impl ReleaseRef {
 ///
 /// Publication is the sync loop's Store write, not the row write: storing a
 /// cover leaves its blob `PendingRemote` with no locator, and only the next
-/// cycle gives it one — which is what a cloud tombstone needs to name. A test
-/// that asserts on the tombstone has to be past that point.
+/// cycle gives it one. A test that needs a genuinely published blob — one whose
+/// row names a committed cloud object — has to be past that point.
 #[cfg(feature = "test-utils")]
 async fn wait_for_published_blob(manager: &LibraryManager, namespace: &str, row_id: &str) {
     for tick in 0..2_000 {
@@ -185,14 +185,29 @@ async fn make_remote_release_under_sync_loop(
 }
 
 /// Wait for a release's make-Remote to finish under a running sync loop, and
-/// assert it landed: no upload work outstanding and the gate flipped.
+/// assert it landed: no upload work outstanding, the durable intent retired, and
+/// the gate flipped.
+///
+/// The intent is part of "landed", not a detail: while it stands, the release's
+/// cloud objects are the transition's rather than accepted history, and coven
+/// refuses a make-Local against it.
 #[cfg(feature = "test-utils")]
 async fn wait_for_landed_make_remote(manager: &LibraryManager, release_id: &str) {
     wait_for_settled_uploads(manager, release_id).await;
-    assert!(
-        find_release(manager, release_id).await.unwrap().remote,
-        "every upload landed, so the release is Remote"
-    );
+    for tick in 0..2_000 {
+        if tick % 50 == 0 {
+            manager.database.sync_now();
+        }
+        if make_remote_progress(manager, release_id).await.is_none() {
+            assert!(
+                find_release(manager, release_id).await.unwrap().remote,
+                "every upload landed, so the release is Remote"
+            );
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    panic!("release {release_id} never retired its make-Remote intent");
 }
 
 #[cfg(feature = "test-utils")]
@@ -220,7 +235,6 @@ async fn insert_partially_uploaded_make_remote_release(
         !find_release(manager, &release.id).await.unwrap().remote,
         "the release must still be Local while one upload is unresolved"
     );
-    assert_eq!(queued_delete_count(manager).await, 0);
     release
 }
 

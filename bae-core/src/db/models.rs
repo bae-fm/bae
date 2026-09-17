@@ -713,9 +713,8 @@ impl DbRelease {
     /// A minimal release fixture. It lands **Local**, the way every import does:
     /// a Remote release is one whose every blob reached the cloud, which no bare
     /// row insert can make true — coven refuses to register an external file
-    /// against a Remote-gated row, and refuses to tombstone a blob that has no
-    /// cloud object. A test that wants Remote takes a release through the real
-    /// transition.
+    /// against a Remote-gated row. A test that wants Remote takes a release
+    /// through the real transition.
     pub fn new_test(album_id: &str, release_id: &str) -> Self {
         let now = chrono::Utc::now();
         DbRelease {

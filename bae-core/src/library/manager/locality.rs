@@ -38,8 +38,8 @@ impl LibraryManager {
     }
 
     /// Cancel an in-flight make-Remote of `release_id` through coven: clears the
-    /// intent and pending uploads and tombstones any blob already in the cloud.
-    /// The gate never flips, so the release stays Local.
+    /// intent and pending uploads and takes back out any object the uploads
+    /// already wrote. The gate never flips, so the release stays Local.
     pub(crate) async fn coven_cancel_make_remote(
         &self,
         release_id: &str,
@@ -74,9 +74,10 @@ impl LibraryManager {
     /// Make a release Local (Remote → Local) through coven: coven materializes each
     /// blob back to a local file durability-first — every release file (a
     /// user-provided blob) to `new_path/{original_filename}`, the host-provided
-    /// cover to coven's local store (no dest) — then flips the `remote` gate false,
-    /// registers the external refs, and enqueues the cloud deletes in one atomic
-    /// commit. `cancel` aborts before the commit (the release stays Remote).
+    /// cover to coven's local store (no dest) — then flips the `remote` gate false
+    /// and registers the external refs in one atomic commit. That flip releases
+    /// the cloud objects, which coven's accepted reclaim retires on its own.
+    /// `cancel` aborts before the commit (the release stays Remote).
     pub async fn coven_make_local(
         &self,
         release_id: &str,

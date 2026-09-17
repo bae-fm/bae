@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>이 기기를 승인할 수 없음</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>기기를 기다리는 중…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>앨범으로 이동</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>삭제</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>보낼 항목을 불러올 수 없음</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>일시 정지</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>보낼 항목을 읽을 수 없음</value></data>

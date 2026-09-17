@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>това устройство не можа да бъде одобрено</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Изчакване на устройството…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>отиди към албума</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>изтриване</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>изходящата опашка не може да бъде заредена</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>пауза</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>изходящата опашка не може да бъде прочетена</value></data>

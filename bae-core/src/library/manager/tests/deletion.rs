@@ -244,41 +244,6 @@ async fn delete_releases_with_content_hash_removes_only_matching() {
     assert_eq!(remaining[0].id, other.id);
 }
 
-/// Deleting one release of a multi-release album must tombstone its remote
-/// cloud blobs — delete_release has to queue the cloud-outbox deletes like
-/// delete_album/make-Local, or the remote blobs leak in the cloud (nothing else
-/// processes the release once its rows are gone).
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn delete_release_tombstones_remote_cloud_blobs() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-
-    // A release whose one file really did reach the cloud — the tombstone is
-    // owed to a cloud object that exists, which is the whole point.
-    let release1 =
-        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
-    let file_id = release_files(&manager, &release1).await[0].id.clone();
-    // A sibling release in the same album, so delete_release takes the
-    // album-survives branch.
-    let album_id = find_release(&manager, &release1)
-        .await
-        .expect("the release exists")
-        .album_id;
-    let mut release2 = create_test_release(&album_id);
-    release2.remote = false;
-    insert_release(&manager, &release2).await;
-
-    manager.delete_release(&release1).await.unwrap();
-
-    // delete_release awaits the deletion queueing, so by now the cloud object's
-    // tombstone is enqueued.
-    assert!(
-        has_queued_delete(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
-        "deleting a remote release tombstones its cloud blob"
-    );
-}
-
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_release_cancels_in_flight_make_remote() {
@@ -305,16 +270,12 @@ async fn delete_release_cancels_in_flight_make_remote() {
         "the drain took the deleted release's uploads out of the queue"
     );
     assert!(make_remote_progress(&manager, &release.id).await.is_none());
-    // The object that already reached the cloud is removed outright, not left
-    // as a queued tombstone: the make-Remote never published, so nothing else
-    // can reference it and the cancel's own unwind deletes it.
+    // The object that already reached the cloud is removed outright by the
+    // cancel's own unwind: the make-Remote never published, so no accepted
+    // history names the object and coven's reclaim could never find it.
     assert!(
         home.exact_delete_count() > deleted_before,
         "the uploaded object is deleted from the cloud"
-    );
-    assert!(
-        queued_delete_count(&manager).await == 0,
-        "an unpublished object needs no tombstone"
     );
 }
 
@@ -365,16 +326,12 @@ async fn delete_album_cancels_in_flight_make_remote() {
         "the drain took the deleted album's uploads out of the queue"
     );
     assert!(make_remote_progress(&manager, &release.id).await.is_none());
-    // The object that already reached the cloud is removed outright, not left
-    // as a queued tombstone: the make-Remote never published, so nothing else
-    // can reference it and the cancel's own unwind deletes it.
+    // The object that already reached the cloud is removed outright by the
+    // cancel's own unwind: the make-Remote never published, so no accepted
+    // history names the object and coven's reclaim could never find it.
     assert!(
         home.exact_delete_count() > deleted_before,
         "the uploaded object is deleted from the cloud"
-    );
-    assert!(
-        queued_delete_count(&manager).await == 0,
-        "an unpublished object needs no tombstone"
     );
 }
 
@@ -449,47 +406,11 @@ async fn delete_release_rolls_back_when_an_external_ref_clear_is_refused() {
             &release.id,
             &album.id,
             DeleteCleanupPlan {
-                blobs_to_tombstone: Vec::new(),
                 external_refs_to_clear: vec![("no_such_blob_table".to_string(), file.id.clone())],
             },
         )
         .await
         .expect_err("clearing a ref on an undeclared blob table is refused");
-
-    assert!(find_release(&manager, &release.id).await.is_some());
-}
-
-/// The tombstone half of the rollback above. A blob with no committed cloud
-/// object has nothing to remove and coven refuses to queue a tombstone for it, so
-/// a cover that never reached the cloud is a cleanup step that fails inside the
-/// delete transaction.
-#[tokio::test]
-async fn delete_release_rolls_back_when_a_blob_tombstone_is_refused() {
-    let (manager, _temp_dir, album, release) = manager_with_release().await;
-    store_test_cover_image(&manager, &release.id).await;
-
-    let cover_blob = manager
-        .database
-        .row_blob_ref(crate::sync::COVERS_NAMESPACE, &release.id)
-        .await
-        .unwrap();
-    assert!(
-        cover_blob.stored().is_none(),
-        "no provider is connected, so the cover reached no cloud object"
-    );
-
-    manager
-        .database
-        .delete_release_with_cleanup(
-            &release.id,
-            &album.id,
-            DeleteCleanupPlan {
-                blobs_to_tombstone: vec![cover_blob],
-                external_refs_to_clear: Vec::new(),
-            },
-        )
-        .await
-        .expect_err("tombstoning a blob with no cloud object is refused");
 
     assert!(find_release(&manager, &release.id).await.is_some());
 }
@@ -611,8 +532,9 @@ async fn delete_release_fails_before_rows_are_deleted_when_cover_lookup_fails() 
 }
 
 /// Deleting a release cascade-deletes its `covers` row (the FK on `covers.id`
-/// to `releases`), and the delete path cleans up the cover blob: a Remote
-/// release's cover is tombstoned in the cloud and dropped from the cache.
+/// to `releases`), including a cover whose blob really did reach the cloud —
+/// the delete plan reads the published cover's blob reference before the row
+/// goes, so a lookup failure there would take the delete down with it.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_release_removes_its_cover_image() {
@@ -620,7 +542,7 @@ async fn delete_release_removes_its_cover_image() {
     connect_test_cloud_with_sync_loop(&manager).await;
 
     // A genuinely Remote release, so storing its cover publishes the blob and
-    // there is a real cloud object for the delete to tombstone.
+    // the delete runs against a cover that names a real cloud object.
     let release1 = ReleaseRef::of(
         &manager,
         make_remote_release_under_sync_loop(
@@ -669,22 +591,10 @@ async fn delete_release_removes_its_cover_image() {
         .await
         .unwrap()
         .is_none());
-
-    // The cover blob's cloud object is tombstoned, named by the namespace and
-    // blob id coven queues it under.
-    assert!(
-        has_queued_delete(
-            &manager,
-            crate::sync::COVERS_NAMESPACE,
-            &bae_test_support::test_uuid(&format!("{}-cover-blob", release1.id)),
-        )
-        .await,
-        "cover blob delete must be enqueued"
-    );
 }
 
 /// delete_album removes each release's cover too (same helper, second wiring
-/// site): the cover row is gone and its blob delete is enqueued.
+/// site): the cover row is gone with its release.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_album_removes_release_covers() {
@@ -731,14 +641,6 @@ async fn delete_album_removes_release_covers() {
         .await
         .unwrap()
         .is_none());
-    assert!(
-        has_queued_delete(
-            &manager,
-            crate::sync::COVERS_NAMESPACE,
-            &bae_test_support::test_uuid(&format!("{}-cover-blob", release.id)),
-        )
-        .await
-    );
 }
 
 #[tokio::test]

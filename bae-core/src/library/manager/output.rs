@@ -18,7 +18,7 @@ impl LibraryManager {
     // and the user can pause/cancel/retry. The queue is transient — on restart
     // it's empty. Export changes no release state: it only reads (through coven's
     // locality-aware read) and writes to a user directory, so a Remote release
-    // stays Remote and no gate flips, external ref changes, or cloud tombstones.
+    // stays Remote and no gate flips, external ref changes, or cloud writes.
 
     /// Enqueue a release to export its files verbatim to `target_dir` — the
     /// inverse of import, reconstructing the imported file set byte-for-byte.

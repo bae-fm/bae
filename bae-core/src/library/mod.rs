@@ -30,8 +30,8 @@ pub use download_snapshot::{
 pub use local_lifecycle::remove_local_library;
 pub use manager::*;
 pub use outbox_snapshot::{
-    DeleteOp, OutboxPauseState, OutboxSnapshot, UploadActivity, UploadBar, UploadFileLabel,
-    UploadFileOp, UploadIssue, UploadPhase, UploadProgress, UploadReleaseGroup, UploadState,
+    OutboxPauseState, OutboxSnapshot, UploadActivity, UploadBar, UploadFileLabel, UploadFileOp,
+    UploadIssue, UploadPhase, UploadProgress, UploadReleaseGroup, UploadState,
 };
 pub use output_snapshot::{OutputKind, OutputOp, OutputProgress, OutputSnapshot, OutputState};
 pub use queued_releases::QueuedReleases;

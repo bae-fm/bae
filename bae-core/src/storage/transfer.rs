@@ -14,9 +14,10 @@
 //!   wakes subscribed release projections.
 //! - `make_release_local`: `coven.make_local` materializes every blob back to a
 //!   local file durability-first (release files to the chosen folder, the cover to
-//!   coven's local store), then flips `remote` false, registers the external refs,
-//!   and tombstones the cloud blobs — one atomic commit. A cancel before the
-//!   commit rolls back the partial copies and leaves the release Remote.
+//!   coven's local store), then flips `remote` false and registers the external
+//!   refs — one atomic commit. That flip releases the cloud objects, which coven's
+//!   accepted reclaim retires on its own. A cancel before the commit rolls back
+//!   the partial copies and leaves the release Remote.
 //! - `pin_release` / `unpin_release`: pin/unpin a Remote release's blobs in
 //!   coven's cache (`storage/pinned/` vs the evictable `storage/cache/`).
 //!
@@ -162,9 +163,8 @@ impl TransferService {
                 tokio::fs::create_dir_all(std::path::Path::new(&new_path)).await?;
 
                 // coven materializes each blob durability-first, flips the gate false,
-                // registers the external refs, and tombstones the cloud blobs in one
-                // atomic commit; a cancel before the commit is rolled back and surfaced
-                // as Ok.
+                // and registers the external refs in one atomic commit; a cancel before
+                // the commit is rolled back and surfaced as Ok.
                 library_manager
                     .coven_make_local(&localized_release_id, &new_path, &cancel)
                     .await?;

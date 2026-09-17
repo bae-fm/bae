@@ -160,14 +160,6 @@ async fn queued_upload_count(manager: &LibraryManager) -> usize {
         .unwrap()
 }
 
-async fn queued_delete_count(manager: &LibraryManager) -> usize {
-    manager
-        .database
-        .queued_delete_count_for_test()
-        .await
-        .unwrap()
-}
-
 async fn insert_release(manager: &LibraryManager, release: &DbRelease) {
     manager.database.insert_release(release).await.unwrap();
 }

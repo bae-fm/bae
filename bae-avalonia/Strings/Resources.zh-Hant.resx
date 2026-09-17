@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>無法核准此裝置</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>正在等待裝置…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>前往專輯</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>刪除</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>無法載入寄件匣</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>暫停</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>無法讀取寄件匣</value></data>

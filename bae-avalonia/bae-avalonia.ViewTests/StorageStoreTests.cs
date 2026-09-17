@@ -379,13 +379,11 @@ public sealed class StorageStoreTests
         return new BridgeOutboxSnapshot(
             revision,
             [],
-            [],
             new Dictionary<string, BridgeReleaseUploadProgress>
             {
                 [releaseId] = new BridgeReleaseUploadProgress(progress, 0),
             },
             progress,
-            0,
             [],
             BridgeOutboxPauseState.Running,
             0,
@@ -395,11 +393,9 @@ public sealed class StorageStoreTests
     private static BridgeOutboxSnapshot EmptyOutbox(ulong revision) => new(
         revision,
         [],
-        [],
         new Dictionary<string, BridgeReleaseUploadProgress>(),
         new BridgeUploadProgress(
             0, 0, 0, 0, 0, 0, 0, 0, null, null, false, null),
-        0,
         [],
         BridgeOutboxPauseState.Running,
         0,

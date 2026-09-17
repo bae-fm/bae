@@ -9,7 +9,7 @@
     }
 
     // Preview fixtures for the Storage Manager: its transfer/sync queue rows
-    // (downloads, exports, cloud-outbox uploads and deletes) and its release /
+    // (downloads, exports, cloud-outbox uploads) and its release /
     // file table cells, plus a seeded `Library` + stores so the whole screen
     // renders offline. Generic placeholder names only.
     @MainActor
@@ -157,7 +157,7 @@
             paused: false
         )
 
-        // MARK: - Cloud outbox (uploads + deletes)
+        // MARK: - Cloud outbox
 
         /// Every durable and transient upload-file phase.
         static let uploadFileOps: [BridgeUploadFileOp] = [
@@ -328,24 +328,10 @@
             throughputBps: 0
         )
 
-        static let deleteOps: [BridgeDeleteOp] = [
-            BridgeDeleteOp(
-                namespace: "release_files",
-                blobId: "8b1f0f2e-2a52-45b2-9d19-3c0a1e6b4d77",
-                createdAt: queuedAt(minutesAgo: 2)
-            ),
-            BridgeDeleteOp(
-                namespace: "covers",
-                blobId: "c4a7d3f1-6e88-4b90-8a02-5f1de9c3b210",
-                createdAt: queuedAt(minutesAgo: 6)
-            ),
-        ]
-
         static func outboxSnapshot(
             uploadGroups: [BridgeUploadReleaseGroup] = [
                 uploadGroup, uploadGroupDone,
             ],
-            deletes: [BridgeDeleteOp] = deleteOps,
             pauseState: BridgeOutboxPauseState = .running
         ) -> BridgeOutboxSnapshot {
             let perRelease = Dictionary(
@@ -362,7 +348,6 @@
             return BridgeOutboxSnapshot(
                 revision: 1,
                 uploadGroups: uploadGroups,
-                deletes: deletes,
                 perRelease: perRelease,
                 total: BridgeUploadProgress(
                     queued: 1,
@@ -382,15 +367,10 @@
                     canCancel: false,
                     issue: nil
                 ),
-                pendingDeletes: UInt32(deletes.count),
                 summaryParts: [
                     BridgeCountLabel(key: "core.queue.uploading", count: 1),
                     BridgeCountLabel(key: "core.outbox.retrying", count: 1),
                     BridgeCountLabel(key: "core.queue.queued", count: 1),
-                    BridgeCountLabel(
-                        key: "core.outbox.pending_deletes",
-                        count: UInt32(deletes.count)
-                    ),
                 ],
                 pauseState: pauseState,
                 throughputBps: 6_800_000,

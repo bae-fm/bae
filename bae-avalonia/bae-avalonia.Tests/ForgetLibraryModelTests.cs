@@ -45,22 +45,4 @@ public sealed class ForgetLibraryModelTests
             },
             ForgetLibraryModel.ConfirmKeys(hasCloudHome: true, hasPendingCloudWork: true));
     }
-
-    [Fact]
-    public void HasPendingCloudWork_False_AtZero()
-    {
-        Assert.False(ForgetLibraryModel.HasPendingCloudWork(uploadGroupCount: 0, pendingDeletes: 0));
-    }
-
-    [Fact]
-    public void HasPendingCloudWork_True_WithUploadGroupsOnly()
-    {
-        Assert.True(ForgetLibraryModel.HasPendingCloudWork(uploadGroupCount: 1, pendingDeletes: 0));
-    }
-
-    [Fact]
-    public void HasPendingCloudWork_True_WithPendingDeletesOnly()
-    {
-        Assert.True(ForgetLibraryModel.HasPendingCloudWork(uploadGroupCount: 0, pendingDeletes: 1));
-    }
 }

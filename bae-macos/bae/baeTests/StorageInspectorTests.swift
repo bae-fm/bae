@@ -43,7 +43,7 @@ struct StorageInspectorTests {
         let finished = bridgeStorageInspectorFiles(
             releaseId: "rel-row-1",
             files: [file],
-            outbox: PreviewData.outboxSnapshot(uploadGroups: [], deletes: [])
+            outbox: PreviewData.outboxSnapshot(uploadGroups: [])
         )
         #expect(finished.count == 1)
         #expect(finished.first?.identity == row.identity)
@@ -67,8 +67,7 @@ struct StorageInspectorTests {
             releaseId: "rel-row-3",
             files: [],
             outbox: PreviewData.outboxSnapshot(
-                uploadGroups: [PreviewData.uploadGroupSourceUnavailable],
-                deletes: []
+                uploadGroups: [PreviewData.uploadGroupSourceUnavailable]
             )
         )
         let row = try #require(rows.first)
@@ -124,8 +123,7 @@ struct StorageInspectorTests {
                 ops: PreviewData.outputOps + [output]
             ),
             outbox: PreviewData.outboxSnapshot(
-                uploadGroups: [PreviewData.uploadGroup, upload],
-                deletes: PreviewData.deleteOps
+                uploadGroups: [PreviewData.uploadGroup, upload]
             )
         )
 
@@ -140,21 +138,6 @@ struct StorageInspectorTests {
                 #expect(group.releaseId == selectedReleaseId)
             }
         }
-    }
-
-    @Test("cloud deletes are never attributed to a selected release")
-    func cloudDeletesAreNeverAttributedToASelectedRelease() {
-        let items = bridgeStorageInspectorTransfers(
-            releaseId: "rel-selected",
-            downloads: PreviewData.downloadSnapshot(ops: []),
-            outputs: PreviewData.outputSnapshot(ops: []),
-            outbox: PreviewData.outboxSnapshot(
-                uploadGroups: [],
-                deletes: PreviewData.deleteOps
-            )
-        )
-
-        #expect(items.isEmpty)
     }
 
     @Test("inspector requires exactly one selected release")

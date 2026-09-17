@@ -28,12 +28,8 @@ impl OutboxSnapshot {
             .collect()
     }
 
-    pub fn pending_delete_count(&self) -> u32 {
-        u32::try_from(self.deletes.len()).expect("pending delete count exceeds u32")
-    }
-
-    /// The summary line's phase counts in dominance order, followed by pending
-    /// deletes. Each zero count drops out; platforms only localize and join.
+    /// The summary line's phase counts in dominance order. Each zero count drops
+    /// out; platforms only localize and join.
     pub fn summary_parts(&self) -> Vec<CountLabel> {
         let mut parts = Vec::new();
         for (key, count) in [
@@ -52,13 +48,6 @@ impl OutboxSnapshot {
                     count,
                 });
             }
-        }
-        let pending_deletes = self.pending_delete_count();
-        if pending_deletes > 0 {
-            parts.push(CountLabel {
-                key: "core.outbox.pending_deletes".to_string(),
-                count: pending_deletes,
-            });
         }
         parts
     }

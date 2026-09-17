@@ -203,20 +203,6 @@ pub(crate) enum TransientUploadState {
     },
 }
 
-/// One cloud object still owed a removal. Deletes have no progress concept —
-/// they're a single DELETE call per entry.
-///
-/// The row that named the object is already gone, so the blob's namespace and
-/// id are all there is to identify it by; there is no filename or album to
-/// show. Together they are the entry's identity for the UI's list diffing.
-#[derive(Debug, Clone)]
-pub struct DeleteOp {
-    pub namespace: String,
-    pub blob_id: String,
-    /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
-    pub created_at: i64,
-}
-
 /// The dominant activity of one release transition or the whole cloud queue.
 /// The order matches the user journey and gives foreground work precedence over
 /// work waiting behind it. There is no terminal variant: after publication the
@@ -548,7 +534,6 @@ pub struct OutboxSnapshot {
     /// remains through provider completion and publication, then leaves only
     /// when coven consumes the durable make-Remote transition.
     pub upload_groups: Vec<UploadReleaseGroup>,
-    pub deletes: Vec<DeleteOp>,
     /// Sum across all uploads — drives the queue counts, ETA, the master
     /// progress bar, and the summary band.
     pub total: UploadProgress,
@@ -656,7 +641,7 @@ fn build_outbox_snapshot_from_rates(
     rates: &UploadRates,
     pause_requested: bool,
 ) -> OutboxSnapshot {
-    if queue.uploads.is_empty() && queue.deletes.is_empty() && queue.make_remotes.is_empty() {
+    if queue.uploads.is_empty() && queue.make_remotes.is_empty() {
         return OutboxSnapshot {
             pause_state: if pause_requested {
                 OutboxPauseState::Paused
@@ -667,15 +652,6 @@ fn build_outbox_snapshot_from_rates(
         };
     }
 
-    let deletes: Vec<DeleteOp> = queue
-        .deletes
-        .into_iter()
-        .map(|delete| DeleteOp {
-            namespace: delete.namespace,
-            blob_id: delete.blob_id,
-            created_at: delete.created_at,
-        })
-        .collect();
     let mut groups: Vec<GroupBuilder> = Vec::new();
     let mut group_index: HashMap<String, usize> = HashMap::new();
 
@@ -804,7 +780,6 @@ fn build_outbox_snapshot_from_rates(
     OutboxSnapshot {
         revision: 0,
         upload_groups,
-        deletes,
         total,
         pause_state,
         throughput_bps,

@@ -2,7 +2,7 @@
 //! Tests for the release storage state machine onto coven's owned-blob model:
 //! make-Remote (Local → Remote, the drain flips the gate after the uploads land)
 //! and make-Local (Remote → Local, materialize back through coven's cache then
-//! retract + tombstone). The local-only windows live in `test_transfer.rs`.
+//! retract). The local-only windows live in `test_transfer.rs`.
 //!
 //! Storage is TWO states — Local (the user's own file in place, a coven
 //! user-provided external ref) and Remote (a cloud blob fronted by coven's
@@ -11,9 +11,9 @@
 //! `storage/cache/`. A `retain_pinned` make-Remote populates the pinned cache as
 //! it drains, so the release becomes (Remote, pinned) only after the upload lands.
 //!
-//! coven owns the transitions (gate flip, source delete, materialize, retract,
-//! tombstone) and the durable-copy-before-delete ordering; tests drive them
-//! through the manager's coven seams (`coven_make_remote` + the upload drain via
+//! coven owns the transitions (gate flip, source delete, materialize, retract)
+//! and the durable-copy-before-delete ordering; tests drive them through the
+//! manager's coven seams (`coven_make_remote` + the upload drain via
 //! `drain_uploads_expecting_work`, `coven_make_local`). The
 //! cross-device gate retract + asset keep/leak behavior is exercised in coven's
 //! own gate tests (a `covers`/`artist_images` asset rides its subject's gate and
@@ -85,6 +85,47 @@ async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<InMem
         .await
         .unwrap();
     (db, mgr, cloud)
+}
+
+/// The same connection with the production sync loop running behind it. The
+/// make-Local tests need it: coven offers make-Local only a root whose
+/// make-Remote has been *accepted*, and only a cycle accepts one. Their drains
+/// are the loop's as well as their own, so they wait on published state instead
+/// of asserting a pass's count.
+async fn setup_with_synced_cloud(
+    tmp: &TempDir,
+) -> (Database, LibraryManager, Arc<InMemoryCloudHome>) {
+    let (db, mgr, cloud, enc) = setup_manager(tmp).await;
+    mgr.connect_test_cloud_home(cloud.clone(), CloudCipher::Encrypted(enc))
+        .await
+        .unwrap();
+    (db, mgr, cloud)
+}
+
+/// Wait until a release's make-Remote is accepted: the durable intent retired,
+/// not merely its uploads drained. While the intent stands, the release's cloud
+/// objects belong to the transition rather than to accepted history, and coven
+/// refuses a make-Local against it.
+async fn wait_for_landed_make_remote(db: &Database, mgr: &LibraryManager, release_id: &str) {
+    for tick in 0..2_000 {
+        if tick % 50 == 0 {
+            mgr.trigger_sync();
+        }
+        if db
+            .make_remote_progress_for_release(release_id)
+            .await
+            .unwrap()
+            .is_none()
+        {
+            assert!(
+                remote_flag(mgr, release_id).await,
+                "an accepted make-Remote leaves the release Remote"
+            );
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    panic!("release {release_id} never retired its make-Remote intent");
 }
 
 /// Insert an artist + album + a Local release, write its originals under
@@ -165,6 +206,7 @@ async fn create_local_release(
 /// Local, make-Remote via coven, and drain so the gate flips. Returns (release_id,
 /// [(file_id, original_filename, plaintext)]).
 async fn create_remote_cloud_only_release(
+    db: &Database,
     mgr: &LibraryManager,
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
@@ -182,12 +224,11 @@ async fn create_remote_cloud_only_release(
     }
 
     mgr.coven_make_remote(&release_id, false).await.unwrap();
-    let count = mgr.drain_uploads_expecting_work().await.unwrap();
-    assert_eq!(count, files.len(), "all files uploaded");
+    wait_for_landed_make_remote(db, mgr, &release_id).await;
     assert_eq!(
         storage(mgr, &release_id).await,
         (ReleaseStorageState::Remote, false),
-        "release is Remote (cloud-only) after the drain"
+        "release is Remote (cloud-only) once the transition is accepted"
     );
     (release_id, captured)
 }
@@ -400,16 +441,18 @@ async fn truncated_source_keeps_root_local_and_failed_work_queued() {
 }
 
 // ---------------------------------------------------------------------------
-// make-Local from Remote: bae's summary reads Local, each file's external ref
-// resolves to the new path, and a cloud delete is queued per blob.
+// make-Local from Remote: bae's summary reads Local and each file's external
+// ref resolves to the new path. The cloud objects the release stops naming are
+// coven's to retire through accepted reclaim.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn make_local_updates_summary_external_refs_and_queues_deletes() {
+async fn make_local_updates_summary_and_external_refs() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
+    let (db, mgr, _cloud) = setup_with_synced_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
+        &db,
         &mgr,
         &source_dir,
         &[("x.flac", b"download-x"), ("y.flac", b"download-yy")],
@@ -425,8 +468,7 @@ async fn make_local_updates_summary_external_refs_and_queues_deletes() {
     .await
     .unwrap();
 
-    // Release is Local; each file's external ref resolves to the new path, and a
-    // cloud delete is queued per blob.
+    // Release is Local, and each file's external ref resolves to the new path.
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Local, false)
@@ -439,10 +481,6 @@ async fn make_local_updates_summary_external_refs_and_queues_deletes() {
             "external ref points at the new path"
         );
     }
-    assert_eq!(
-        db.queued_delete_count_for_test().await.unwrap(),
-        files.len()
-    );
 }
 
 /// Remove one release file's cloud object from the mock home.
@@ -452,6 +490,11 @@ async fn make_local_updates_summary_external_refs_and_queues_deletes() {
 /// coven once, which records the slot that read touched, remove exactly that
 /// slot, then drop the cache copy the read just populated so the next read has
 /// to go back to the (now empty) cloud.
+///
+/// The running sync loop reads the store's own objects each cycle, so the
+/// recorded reads are narrowed to the release-file namespace: a release file is
+/// `CacheLazy`, which no cycle fetches, so the probe's read is the only one
+/// there.
 async fn remove_cloud_blob(mgr: &LibraryManager, cloud: &InMemoryCloudHome, file_id: &str) {
     let blob = mgr
         .release_blob_ref_for_test(file_id)
@@ -461,8 +504,15 @@ async fn remove_cloud_blob(mgr: &LibraryManager, cloud: &InMemoryCloudHome, file
     mgr.materialize_release_blob_for_test(file_id)
         .await
         .expect("the blob is readable before it is removed");
-    let slots = cloud.exact_reads();
-    assert_eq!(slots.len(), 1, "one exact read for one blob");
+    let slots: Vec<_> = cloud
+        .exact_reads()
+        .into_iter()
+        .filter(|slot| {
+            slot.logical_key()
+                .starts_with(bae_core::sync::RELEASE_FILES_NAMESPACE)
+        })
+        .collect();
+    assert_eq!(slots.len(), 1, "one exact read for one release file");
     cloud.remove_exact_object(&slots[0]);
     mgr.evict_blob_for_test(&blob)
         .await
@@ -470,15 +520,16 @@ async fn remove_cloud_blob(mgr: &LibraryManager, cloud: &InMemoryCloudHome, file
 }
 
 /// A failed make-Local (a missing cloud blob 404s on the cache-miss read) leaves
-/// bae's state consistent: the manager surfaces the error, no cloud delete is
-/// queued, and the summary stays Remote. The read-404 and make-Local rollback are
-/// coven's; this asserts the bae seam + summary after the failure.
+/// bae's state consistent: the manager surfaces the error and the summary stays
+/// Remote. The read-404 and make-Local rollback are coven's; this asserts the
+/// bae seam + summary after the failure.
 #[tokio::test]
-async fn make_local_missing_blob_fails_leaving_summary_remote_and_no_deletes() {
+async fn make_local_missing_blob_fails_leaving_summary_remote() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
+    let (db, mgr, cloud) = setup_with_synced_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
+        &db,
         &mgr,
         &source_dir,
         &[("x.flac", b"present"), ("y.flac", b"missing")],
@@ -499,7 +550,6 @@ async fn make_local_missing_blob_fails_leaving_summary_remote_and_no_deletes() {
         .await;
     assert!(result.is_err(), "missing blob must be a hard error");
 
-    assert_eq!(db.queued_delete_count_for_test().await.unwrap(), 0);
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)

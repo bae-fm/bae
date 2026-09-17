@@ -858,8 +858,8 @@ pub enum AutomationStorageActionOutcome {
     Unpinned {
         release_id: String,
     },
-    /// The files are at their new path and the cloud copies are tombstoned —
-    /// this one completes before it returns.
+    /// The files are at their new path and the release no longer names its cloud
+    /// copies — this one completes before it returns.
     MadeLocal {
         release_id: String,
     },

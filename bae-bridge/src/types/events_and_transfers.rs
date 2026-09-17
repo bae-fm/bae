@@ -240,21 +240,6 @@ pub enum BridgeUploadFileLabel {
     Unwinding,
 }
 
-/// One cloud object still owed a removal.
-///
-/// The row that named the object is gone — that is what makes the removal
-/// outstanding — so there is no filename or album to show, and no cancel: the
-/// object exists in the cloud and abandoning the tombstone would strand it.
-/// `namespace` and `blob_id` together identify it and serve as the row's
-/// identity for list diffing.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeDeleteOp {
-    pub namespace: String,
-    pub blob_id: String,
-    /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
-    pub created_at: i64,
-}
-
 /// Per-state counts, the phase-scoped progress `bar`, and a derived badge
 /// `activity`. Used per-release (the storage-row badge reads `activity`;
 /// storage-action gates read `can_cancel`) and as the overall total (queue
@@ -558,18 +543,14 @@ pub struct BridgeOutboxSnapshot {
     /// Uploads grouped by release for the queue pane's rows. A group leaves
     /// only after its durable make-Remote transition finishes publication.
     pub upload_groups: Vec<BridgeUploadReleaseGroup>,
-    pub deletes: Vec<BridgeDeleteOp>,
     /// Per-release aggregate derived from `upload_groups`, keyed by release id.
     /// Releases with no unfinished make-Remote transition are absent.
     pub per_release: std::collections::HashMap<String, BridgeReleaseUploadProgress>,
     /// Sum across all uploads: the queue counts and the queue-wide progress
     /// bar.
     pub total: BridgeUploadProgress,
-    /// Derived from `deletes.len()`.
-    pub pending_deletes: u32,
-    /// The one-line queue summary's parts (uploading/failed/queued/pending
-    /// deletes, each dropped when zero), decided by core. The UI resolves each
-    /// key and joins.
+    /// The one-line queue summary's parts (uploading/failed/queued, each dropped
+    /// when zero), decided by core. The UI resolves each key and joins.
     pub summary_parts: Vec<BridgeCountLabel>,
     pub pause_state: BridgeOutboxPauseState,
     /// Rolling-window transfer throughput in bytes per second. The UI formats it.

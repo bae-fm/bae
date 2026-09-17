@@ -11,9 +11,8 @@ internal sealed partial class StorageDialog
     private static BridgeDownloadTransferProgress? DownloadProgress(BridgeDownloadState state) =>
         state is BridgeDownloadState.Active active ? active.Progress : null;
 
-    // Core decides the outbox summary's parts (uploading/retrying/queued/pending
-    // deletes), their order, and the drop-if-zero rule; this only localizes and
-    // joins them.
+    // Core decides the outbox summary's parts (uploading/retrying/queued), their
+    // order, and the drop-if-zero rule; this only localizes and joins them.
     private static string OutboxSummary(BridgeOutboxSnapshot snapshot) =>
         UploadProgressPresentation.QueueSummary(
             snapshot.PauseState,
@@ -66,7 +65,4 @@ internal sealed partial class StorageDialog
         file.Bar is null
             ? Loc.Bytes(checked((long)file.SourceBytesTotal))
             : UploadProgressPresentation.BarLabel(file.Bar);
-
-    private static string DeleteLabel(BridgeDeleteOp delete) =>
-        $"{delete.Namespace}/{delete.BlobId} — {Loc.Chrome("outbox.delete.kind")}";
 }

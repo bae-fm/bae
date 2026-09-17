@@ -129,7 +129,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>δεν ήταν δυνατή η έγκριση αυτής της συσκευής</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Αναμονή για τη συσκευή…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>μετάβαση στο άλμπουμ</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>διαγραφή</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>δεν ήταν δυνατή η φόρτωση των εξερχομένων</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>παύση</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>δεν ήταν δυνατή η ανάγνωση των εξερχομένων</value></data>

@@ -62,10 +62,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             StorageManagerPreviewScene(
                 downloadSnapshot: PreviewData.emptyDownloadSnapshot,
                 outputSnapshot: PreviewData.emptyOutputSnapshot,
-                outboxSnapshot: PreviewData.outboxSnapshot(
-                    uploadGroups: [],
-                    deletes: []
-                )
+                outboxSnapshot: PreviewData.outboxSnapshot(uploadGroups: [])
             )
             .frame(width: size.width, height: size.height),
             size: size
@@ -147,10 +144,7 @@ final class StorageManagerLayoutTests: XCTestCase {
                 inspectorPresented: true,
                 downloadSnapshot: PreviewData.emptyDownloadSnapshot,
                 outputSnapshot: PreviewData.emptyOutputSnapshot,
-                outboxSnapshot: PreviewData.outboxSnapshot(
-                    uploadGroups: [],
-                    deletes: []
-                )
+                outboxSnapshot: PreviewData.outboxSnapshot(uploadGroups: [])
             )
             .frame(width: size.width, height: size.height),
             size: size

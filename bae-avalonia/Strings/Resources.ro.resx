@@ -129,7 +129,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>nu s-a putut aproba acest dispozitiv</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Se așteaptă dispozitivul…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>mergi la album</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>șterge</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nu s-a putut încărca coada de trimitere</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pauză</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>nu s-a putut citi coada de trimitere</value></data>

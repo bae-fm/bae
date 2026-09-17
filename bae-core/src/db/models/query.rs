@@ -300,7 +300,7 @@ pub enum StorageFilter {
 }
 
 /// What coven's durable cloud queue is holding, as the Storage Manager renders
-/// it: pending uploads and pending cloud tombstones, each oldest first.
+/// it: pending uploads and pending make-Remote transitions, each oldest first.
 ///
 /// coven owns the queue itself — which blob, under which gated root, how many
 /// attempts and why the last one failed. bae owns only the context a person
@@ -310,7 +310,6 @@ pub enum StorageFilter {
 #[derive(Debug, Clone, Default)]
 pub struct DbOutboxQueue {
     pub uploads: Vec<DbOutboxUpload>,
-    pub deletes: Vec<DbOutboxDelete>,
     pub make_remotes: Vec<DbMakeRemote>,
 }
 
@@ -351,15 +350,4 @@ pub struct DbOutboxUpload {
 pub struct DbMakeRemote {
     pub transition: coven::QueuedMakeRemote,
     pub album_title: String,
-}
-
-/// One cloud object still owed a removal. A tombstone outlives the row that
-/// named it, so there is no bae context to join — the blob's namespace and id
-/// are all that is left of it.
-#[derive(Debug, Clone)]
-pub struct DbOutboxDelete {
-    pub namespace: String,
-    pub blob_id: String,
-    /// Enqueue time as Unix epoch milliseconds, taken from coven's HLC stamp.
-    pub created_at: i64,
 }

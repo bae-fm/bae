@@ -129,7 +129,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>kunde inte godkänna den här enheten</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Väntar på enheten…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>gå till albumet</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>radera</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>kunde inte läsa in utkorgen</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pausa</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>kunde inte läsa utkorgen</value></data>

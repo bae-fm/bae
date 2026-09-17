@@ -76,6 +76,42 @@ async fn setup_with_cloud(tmp: &TempDir) -> LibraryManager {
     mgr
 }
 
+/// The same connection with the production sync loop running behind it, for the
+/// make-Local half of the round trip: coven offers make-Local only a root whose
+/// make-Remote has been accepted, and only a cycle accepts one.
+async fn setup_with_synced_cloud(tmp: &TempDir) -> LibraryManager {
+    let mgr = setup(tmp).await;
+    let cloud = Arc::new(InMemoryCloudHome::new());
+    let enc = EncryptionService::from_key([9u8; 32]);
+    mgr.connect_test_cloud_home(cloud, CloudCipher::Encrypted(enc))
+        .await
+        .unwrap();
+    mgr
+}
+
+/// Wait until the cloud queue has consumed a release's make-Remote transition.
+/// An upload group outlives its uploads — it leaves only when coven retires the
+/// durable transition — and until then the release's cloud objects belong to
+/// that transition rather than to accepted history, so coven refuses a
+/// make-Local against it.
+async fn wait_for_landed_make_remote(mgr: &LibraryManager, release_id: &str) {
+    for tick in 0..2_000 {
+        if tick % 50 == 0 {
+            mgr.trigger_sync();
+        }
+        let snapshot = mgr.outbox_snapshot().await.unwrap();
+        if !snapshot
+            .upload_groups
+            .iter()
+            .any(|group| group.release_id == release_id)
+        {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    panic!("release {release_id} never finished its make-Remote");
+}
+
 /// Insert a Local release: an album + release with `remote = false`, its originals
 /// written under `source_dir`, one `DbFile` per file, and each file registered as
 /// a coven user-provided external ref (the in-place files of a Local release).
@@ -509,7 +545,7 @@ async fn test_missing_external_source_maps_to_error() {
 async fn transition_completions_deliver_storage_values() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_synced_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
         create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
@@ -527,7 +563,7 @@ async fn transition_completions_deliver_storage_values() {
     expect_storage_state(&mut values, &release_id, ReleaseStorageState::Local).await;
 
     mgr.coven_make_remote(&release_id, false).await.unwrap();
-    mgr.drain_uploads_expecting_work().await.unwrap();
+    wait_for_landed_make_remote(&mgr, &release_id).await;
     expect_storage_state(&mut values, &release_id, ReleaseStorageState::Remote).await;
 
     let dest = tmp.path().join("brought-back");

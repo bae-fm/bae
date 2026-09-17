@@ -129,7 +129,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>nem sikerült jóváhagyni ezt az eszközt</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Várakozás az eszközre…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ugrás az albumhoz</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>törlés</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nem sikerült betölteni a kimenő tételeket</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>szünet</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>nem sikerült beolvasni a kimenő tételeket</value></data>

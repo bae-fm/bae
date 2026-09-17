@@ -9,19 +9,6 @@ use crate::types::CloudKitError;
 /// Synchronous CloudKit operations, implemented in Swift via UniFFI callback.
 #[uniffi::export(callback_interface)]
 pub trait CloudKitDriver: Send + Sync {
-    fn write_record(
-        &self,
-        owner_name: Option<String>,
-        zone_name: Option<String>,
-        key: String,
-        data: Vec<u8>,
-    ) -> Result<(), CloudKitError>;
-    fn read_record(
-        &self,
-        owner_name: Option<String>,
-        zone_name: Option<String>,
-        key: String,
-    ) -> Result<Vec<u8>, CloudKitError>;
     fn list_records(
         &self,
         owner_name: Option<String>,
@@ -359,29 +346,6 @@ impl coven::CloudKitOps for CloudKitDriverAdapter {
         self.driver
             .share_for_member(member_pubkey.to_string())
             .map(|share| share.map(BridgeCloudKitShare::into_core))
-            .map_err(cloudkit_err_to_cloud_home_err)
-    }
-
-    fn write_record(
-        &self,
-        scope: &coven::CloudKitScope,
-        key: &str,
-        data: Vec<u8>,
-    ) -> Result<(), coven::CloudHomeError> {
-        let (owner_name, zone_name) = scope_fields(scope);
-        self.driver
-            .write_record(owner_name, zone_name, key.to_string(), data)
-            .map_err(cloudkit_err_to_cloud_home_err)
-    }
-
-    fn read_record(
-        &self,
-        scope: &coven::CloudKitScope,
-        key: &str,
-    ) -> Result<Vec<u8>, coven::CloudHomeError> {
-        let (owner_name, zone_name) = scope_fields(scope);
-        self.driver
-            .read_record(owner_name, zone_name, key.to_string())
             .map_err(cloudkit_err_to_cloud_home_err)
     }
 

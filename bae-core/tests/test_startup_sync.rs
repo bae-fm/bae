@@ -97,19 +97,6 @@ impl CloudKitOps for PendingCloudKit {
         self.unexpected("accepted_read_write_share")
     }
 
-    fn write_record(
-        &self,
-        _scope: &CloudKitScope,
-        _key: &str,
-        _data: Vec<u8>,
-    ) -> Result<(), CloudHomeError> {
-        self.unexpected("write_record")
-    }
-
-    fn read_record(&self, _scope: &CloudKitScope, _key: &str) -> Result<Vec<u8>, CloudHomeError> {
-        self.unexpected("read_record")
-    }
-
     fn list_records(
         &self,
         _scope: &CloudKitScope,

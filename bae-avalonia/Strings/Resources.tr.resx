@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>bu cihaz onaylanamadı</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Cihaz bekleniyor…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>albüme git</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>sil</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>giden kutusu yüklenemedi</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>duraklat</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>giden kutusu okunamadı</value></data>

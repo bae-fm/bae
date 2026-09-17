@@ -74,9 +74,9 @@ impl LibraryManager {
     /// Stop uploading a release that's mid-make-Remote and keep it Local.
     ///
     /// coven owns the cancel: it clears the durable make-Remote intent and the
-    /// release's pending upload rows, and tombstones any blob that already reached
-    /// the cloud, in one transaction. The gate never flips, so the release stays
-    /// Local — its files are still the external refs coven holds, untouched.
+    /// release's pending upload rows, and the drain deletes each object the
+    /// uploads already wrote. The gate never flips, so the release stays Local —
+    /// its files are still the external refs coven holds, untouched.
     pub async fn cancel_release_upload(&self, release_id: &str) -> Result<(), LibraryError> {
         self.coven_cancel_make_remote(release_id).await?;
         self.emit_outbox_changed().await;

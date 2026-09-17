@@ -129,7 +129,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>nepodarilo sa schváliť toto zariadenie</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Čaká sa na zariadenie…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>prejsť na album</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>odstrániť</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nepodarilo sa načítať odchádzajúce</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pozastaviť</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>nepodarilo sa prečítať odchádzajúce</value></data>

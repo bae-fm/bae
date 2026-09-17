@@ -129,7 +129,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>kunne ikke godkjenne denne enheten</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Venter på enheten…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>gå til albumet</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>slett</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>kunne ikke laste inn utboksen</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pause</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>kunne ikke lese utboksen</value></data>

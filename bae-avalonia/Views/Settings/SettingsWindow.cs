@@ -338,8 +338,11 @@ internal sealed partial class SettingsWindow
                     BaeDiagnostics.Logger.Warning(
                         $"Could not read the outbox snapshot for the remove confirmation: {snapshotResult.Error}");
                 }
+                // Cloud work that hasn't landed yet is exactly the queued uploads:
+                // a deleted row's cloud object is coven's to retire, not a write
+                // this device still owes.
                 var hasPendingCloudWork = snapshotResult.Snapshot is { } snapshot
-                    && ForgetLibraryModel.HasPendingCloudWork(snapshot.UploadGroups.Length, snapshot.PendingDeletes);
+                    && snapshot.UploadGroups.Length > 0;
                 removeConfirm.Text = string.Join(
                     " ",
                     ForgetLibraryModel.ConfirmKeys(hasCloudHome, hasPendingCloudWork).Select(Loc.Chrome));

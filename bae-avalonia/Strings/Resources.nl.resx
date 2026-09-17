@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>kan dit apparaat niet goedkeuren</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Wachten op het apparaat…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ga naar album</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>verwijderen</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>kan de outbox niet laden</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pauzeren</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>kan de outbox niet lezen</value></data>

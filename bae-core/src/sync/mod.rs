@@ -83,22 +83,24 @@ pub const CACHE_BUDGETS: [(&str, u64); 3] = [
 /// ## The `releases.remote` gate
 ///
 /// `releases` is the only *gated root*: a row syncs only when its `remote` column
-/// is true, and the gate flows down the declared foreign keys, so a descendant
-/// syncs iff its root release is remote. The children — `tracks`, `track_artists`
-/// (2-hop, via `tracks`), `release_files`, `release_identities`, `audio_formats`,
-/// `audio_format_segments`, and the `covers` asset — are declared plain (or, for
-/// the cover, an `.asset()`) and pick the gate up from coven's FK walk, not from
-/// a per-table flag. Flipping `remote` true re-emits the whole now-visible
-/// subtree to peers as full inserts.
+/// is true, and the gate flows down to a descendant through the ONE foreign key
+/// that descendant declares with `.gated_through(…)`, so a descendant syncs iff
+/// the root release it names is remote. A plain table with a foreign key into a
+/// gated table must name that key — coven never chooses among a join row's
+/// several foreign keys, and refuses to open the schema if one is missing. That
+/// is why `track_artists` names `track_id` and not `artist_id`, and `work_parts`
+/// names `child_work_id` and not `parent_work_id`: the declaration is the answer,
+/// not a ranking of the schema. Flipping `remote` true re-emits the whole
+/// now-visible subtree to peers as full inserts.
 ///
 /// `albums`, `artists`, and `works` are FK-ancestors of `releases`, declared
 /// `gated_by_descendants()`: an album syncs only while it has a surviving
 /// (remote) release, and an artist syncs only while a surviving album,
-/// `album_artists`, or `track_artists` row references it. coven infers those
-/// keep-children from the FK graph, so a receiver never materializes an album
-/// with zero remote releases and there is no read-side filter to hide one.
-/// `album_artists`, `work_artists`, `work_parts`, `track_works`, and the
-/// `*_artist_roles` tables are plain join tables that ride along.
+/// `album_artists`, `track_artists`, or `work_artists` row references it. coven
+/// infers those keep-children from the FK graph — a table's declared
+/// gate-through parent is not one of them, so a join row never keeps the parent
+/// it inherits from alive — and a receiver never materializes an album with zero
+/// remote releases, so there is no read-side filter to hide one.
 ///
 /// `release_files` carries the user's own imported-file blobs; `covers` and
 /// `artist_images` carry bae-produced image blobs and are `.asset()`s of their
@@ -118,35 +120,41 @@ pub fn synced_tables() -> Vec<SyncedTable> {
     vec![
         SyncedTable::new("artists", RowIdentity::IndependentUuid).gated_by_descendants(),
         SyncedTable::new("albums", RowIdentity::IndependentUuid).gated_by_descendants(),
-        SyncedTable::new("album_artists", RowIdentity::IndependentUuid),
+        SyncedTable::new("album_artists", RowIdentity::IndependentUuid).gated_through("album_id"),
         SyncedTable::new("releases", RowIdentity::IndependentUuid).gated_by("remote"),
-        SyncedTable::new("release_identities", RowIdentity::IndependentUuid),
-        SyncedTable::new("tracks", RowIdentity::IndependentUuid),
-        SyncedTable::new("track_artists", RowIdentity::IndependentUuid),
+        SyncedTable::new("release_identities", RowIdentity::IndependentUuid)
+            .gated_through("release_id"),
+        SyncedTable::new("tracks", RowIdentity::IndependentUuid).gated_through("release_id"),
+        SyncedTable::new("track_artists", RowIdentity::IndependentUuid).gated_through("track_id"),
         SyncedTable::new("works", RowIdentity::IndependentUuid).gated_by_descendants(),
-        SyncedTable::new("work_artists", RowIdentity::IndependentUuid),
-        SyncedTable::new("work_parts", RowIdentity::IndependentUuid),
-        SyncedTable::new("track_works", RowIdentity::IndependentUuid),
-        SyncedTable::new("release_artist_roles", RowIdentity::IndependentUuid),
-        SyncedTable::new("track_artist_roles", RowIdentity::IndependentUuid),
+        SyncedTable::new("work_artists", RowIdentity::IndependentUuid).gated_through("artist_id"),
+        SyncedTable::new("work_parts", RowIdentity::IndependentUuid).gated_through("child_work_id"),
+        SyncedTable::new("track_works", RowIdentity::IndependentUuid).gated_through("track_id"),
+        SyncedTable::new("release_artist_roles", RowIdentity::IndependentUuid)
+            .gated_through("release_id"),
+        SyncedTable::new("track_artist_roles", RowIdentity::IndependentUuid)
+            .gated_through("track_id"),
         // The user's own imported files: user-provided (Local = the file at the
         // user's path, an external ref coven holds), CacheLazy (fetched on first
         // read when Remote). coven reads the blob id off the PK and the readable
         // path off `cloud_path`. write_once forbids repointing an existing row;
         // a re-import creates new release and file identities. Coven's exact
         // stored object references preserve the bytes each publication names.
-        SyncedTable::new("release_files", RowIdentity::IndependentUuid).carries_blob(
-            BlobDecl::new(
-                RELEASE_FILES_NAMESPACE,
-                Provenance::UserProvided,
-                CacheFill::CacheLazy,
-            )
-            .with_size_column("file_size")
-            .with_cloud_path_column("cloud_path")
-            .write_once(),
-        ),
-        SyncedTable::new("audio_formats", RowIdentity::IndependentUuid),
-        SyncedTable::new("audio_format_segments", RowIdentity::IndependentUuid),
+        SyncedTable::new("release_files", RowIdentity::IndependentUuid)
+            .gated_through("release_id")
+            .carries_blob(
+                BlobDecl::new(
+                    RELEASE_FILES_NAMESPACE,
+                    Provenance::UserProvided,
+                    CacheFill::CacheLazy,
+                )
+                .with_size_column("file_size")
+                .with_cloud_path_column("cloud_path")
+                .write_once(),
+            ),
+        SyncedTable::new("audio_formats", RowIdentity::IndependentUuid).gated_through("track_id"),
+        SyncedTable::new("audio_format_segments", RowIdentity::IndependentUuid)
+            .gated_through("audio_format_id"),
         // The bae-produced album cover: host-provided (coven owns the copy in
         // its local store while Local), CacheEager (pulled with the row when
         // Remote so the grid renders from local bytes). An asset — it rides its
@@ -156,6 +164,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         // and cannot move, while a coven blob id names one immutable byte-string.
         // Changing the cover mints a new `blob_id` and deletes the old blob.
         SyncedTable::new("covers", RowIdentity::IndependentUuid)
+            .gated_through("id")
             .carries_blob(
                 BlobDecl::new(
                     COVERS_NAMESPACE,
@@ -169,6 +178,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             .asset(),
         // The bae-produced artist image, same shape, riding `artists`' gate.
         SyncedTable::new("artist_images", RowIdentity::IndependentUuid)
+            .gated_through("id")
             .carries_blob(
                 BlobDecl::new(
                     ARTIST_IMAGES_NAMESPACE,
@@ -331,6 +341,55 @@ mod tests {
                 table.name()
             );
         }
+    }
+
+    /// The declared gate inheritance, table by table. coven refuses to open a
+    /// schema where a plain table with a foreign key into a gated table names no
+    /// parent, and it never picks among a join row's foreign keys — so this
+    /// mapping IS the gate shape, and an edit to it moves a row's visibility with
+    /// nothing else in the declarations changing.
+    #[test]
+    fn plain_tables_declare_the_foreign_key_they_inherit_the_gate_through() {
+        let tables = synced_tables();
+        let declared: BTreeSet<(&str, &str)> = tables
+            .iter()
+            .filter_map(|table| {
+                table
+                    .audience_parent_column()
+                    .map(|column| (table.name(), column))
+            })
+            .collect();
+        assert_eq!(
+            declared,
+            BTreeSet::from([
+                ("album_artists", "album_id"),
+                ("artist_images", "id"),
+                ("audio_format_segments", "audio_format_id"),
+                ("audio_formats", "track_id"),
+                ("covers", "id"),
+                ("release_artist_roles", "release_id"),
+                ("release_files", "release_id"),
+                ("release_identities", "release_id"),
+                ("track_artist_roles", "track_id"),
+                ("track_artists", "track_id"),
+                ("track_works", "track_id"),
+                ("tracks", "release_id"),
+                ("work_artists", "artist_id"),
+                ("work_parts", "child_work_id"),
+            ]),
+        );
+
+        // The roots and the kept ancestors declare nothing: coven refuses a
+        // gate-through declaration on a table that is itself a gate terminus.
+        let undeclared: BTreeSet<&str> = tables
+            .iter()
+            .filter(|table| table.audience_parent_column().is_none())
+            .map(|table| table.name())
+            .collect();
+        assert_eq!(
+            undeclared,
+            BTreeSet::from(["albums", "artists", "releases", "works"]),
+        );
     }
 
     /// `albums`, `artists`, and `works` are the FK-ancestors of the gated

@@ -409,7 +409,7 @@ internal sealed partial class StorageDialog
             }
         }
 
-        // ── Cloud outbox (upload/delete queue) ────────────────────────────────────
+        // ── Cloud outbox (upload queue) ───────────────────────────────────────────
         var outboxPanel = new StackPanel { Spacing = 4 };
         void LoadOutbox()
         {
@@ -418,7 +418,7 @@ internal sealed partial class StorageDialog
             {
                 return;
             }
-            if (snapshot.UploadGroups.Length == 0 && snapshot.Deletes.Length == 0)
+            if (snapshot.UploadGroups.Length == 0)
             {
                 return;
             }
@@ -598,16 +598,6 @@ internal sealed partial class StorageDialog
                     expander.ContextFlyout = CancelFlyout(() => _app.Sync.CancelReleaseTransition(group.ReleaseId));
                 }
                 outboxPanel.Children.Add(expander);
-            }
-
-            // A pending delete carries no cancel: the object is already in the
-            // cloud and the row that named it is gone, so abandoning the removal
-            // would strand the object with nothing left to address it by.
-            foreach (var delete in snapshot.Deletes)
-            {
-                var label = Primary(DeleteLabel(delete));
-                label.VerticalAlignment = VerticalAlignment.Center;
-                outboxPanel.Children.Add(label);
             }
         }
 

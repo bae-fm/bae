@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>このデバイスを承認できませんでした</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>デバイスを待機中…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>アルバムへ移動</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>削除</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>送信箱を読み込めませんでした</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>一時停止</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>送信箱を読み込めませんでした</value></data>

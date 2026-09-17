@@ -70,7 +70,6 @@ impl LibraryManager {
         let release_id = &release.id;
         let files = self.get_files_for_release(release_id).await?;
         let mut evict_blobs = Vec::new();
-        let mut blobs_to_tombstone = Vec::new();
         let mut external_refs_to_clear = Vec::new();
         // The transition outlasts its uploads — the queue empties at
         // publication-prepare while the intent lives until the Store write
@@ -86,33 +85,22 @@ impl LibraryManager {
                 })?
                 .is_some();
 
-        if release.remote {
-            for file in &files {
-                let blob = self.release_file_row_blob_ref(&file.id).await?;
-                // Whether there is a cloud object to remove is coven's locator,
-                // not bae's gate column: a blob with no committed object has
-                // nothing to tombstone and `enqueue_blob_delete` refuses it.
-                if blob.stored().is_some() {
-                    blobs_to_tombstone.push(blob.clone());
-                }
-                evict_blobs.push(blob);
-            }
-        } else if make_remote_in_flight {
-            // A make-remote caught mid-flight is coven's to unwind: it clears the
-            // intent, drops the still-queued uploads, and tombstones whatever
-            // already landed. bae only evicts the on-device copies afterwards.
+        // A file coven holds a copy of — a Remote one in its cache, or one an
+        // in-flight make-remote already wrote there — has an on-device copy to
+        // drop. The cloud object is not bae's to remove: the deleted row stops
+        // naming it, and coven's accepted reclaim retires the orphan once the
+        // accepted snapshot shows nothing owns the bytes. A mid-flight
+        // make-remote is coven's to unwind besides — it clears the intent, drops
+        // the still-queued uploads, and takes back out whatever already landed.
+        if release.remote || make_remote_in_flight {
             for file in &files {
                 evict_blobs.push(self.release_file_row_blob_ref(&file.id).await?);
             }
-            external_refs_to_clear.extend(
-                files
-                    .iter()
-                    .map(|f| ("release_files".to_string(), f.id.clone())),
-            );
-        } else {
-            // Local: the files are the user's own files in place — never delete
-            // them. Just drop coven's external registrations in the delete
-            // transaction so no orphan ref outlives the release row.
+        }
+        // While the release is not Remote its files are the user's own files in
+        // place — never deleted. Drop coven's external registrations in the
+        // delete transaction so no orphan ref outlives the release row.
+        if !release.remote {
             external_refs_to_clear.extend(
                 files
                     .iter()
@@ -126,24 +114,18 @@ impl LibraryManager {
             .await?;
 
         if cover.is_some() {
-            let blob = self
-                .database
-                .row_blob_ref(crate::sync::COVERS_NAMESPACE, release_id)
-                .await
-                .map_err(|e| {
-                    LibraryError::Storage(format!("blob ref for cover {release_id}: {e}"))
-                })?;
-            // Only a cover that reached the cloud has an object to remove; one
-            // with no stored locator would be refused by `enqueue_blob_delete`.
-            if blob.stored().is_some() {
-                blobs_to_tombstone.push(blob.clone());
-            }
-            evict_blobs.push(blob);
+            evict_blobs.push(
+                self.database
+                    .row_blob_ref(crate::sync::COVERS_NAMESPACE, release_id)
+                    .await
+                    .map_err(|e| {
+                        LibraryError::Storage(format!("blob ref for cover {release_id}: {e}"))
+                    })?,
+            );
         }
 
         Ok(ReleaseDeletePlan {
             db_cleanup: DeleteCleanupPlan {
-                blobs_to_tombstone,
                 external_refs_to_clear,
             },
             evict_blobs,

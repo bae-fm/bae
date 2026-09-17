@@ -128,7 +128,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>toto zařízení se nepodařilo schválit</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Čekání na zařízení…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>přejít na album</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>smazat</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nelze načíst odchozí frontu</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pozastavit</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>nelze přečíst odchozí frontu</value></data>

@@ -814,7 +814,6 @@ public sealed class ImportSectionViewTests
         BridgeUploadProgress? progress = null) => new(
         revision,
         [],
-        [],
         progress is null
             ? new Dictionary<string, BridgeReleaseUploadProgress>()
             : new Dictionary<string, BridgeReleaseUploadProgress>
@@ -823,7 +822,6 @@ public sealed class ImportSectionViewTests
             },
         new BridgeUploadProgress(
             0, 0, 0, 0, 0, 0, 0, 0, null, null, false, null),
-        0,
         [],
         BridgeOutboxPauseState.Running,
         0,

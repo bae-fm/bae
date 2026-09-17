@@ -128,23 +128,22 @@ pub(super) fn artist_image_cloud_path_for_storage(
         .then(|| resolve_artist_cloud_path(artist_id, blob_id, content_type))
 }
 
-/// What a delete owes coven's blob engine once its rows are gone.
+/// What a delete owes coven once its rows are gone.
 ///
-/// Both halves are captured *before* the delete runs, because both name rows
-/// that will not exist afterwards: a cloud tombstone is bound to the exact row
-/// blob it removes, and an external-file registration is keyed by its row. The
-/// transaction that drops the rows hands them over through
-/// `apply_delete_cleanup_on`.
+/// Captured *before* the delete runs, because an external-file registration is
+/// keyed by a row that will not exist afterwards. The transaction that drops the
+/// rows hands it over through `apply_delete_cleanup_on`.
 ///
-/// An in-flight make-remote is not represented here: cancelling one is
+/// A deleted row's cloud object is not represented here: a row that stops naming
+/// a blob leaves an orphan, and coven's accepted reclaim retires it once the
+/// accepted Store snapshot shows nothing owns the bytes. Neither is an in-flight
+/// make-remote: cancelling one is
 /// [`CovenHandle::cancel_make_remote`](coven::CovenHandle::cancel_make_remote),
-/// which clears the intent, drops the pending uploads, and tombstones whatever
-/// already reached the cloud — all of it coven's bookkeeping, none of it bae's.
+/// which clears the intent, drops the pending uploads, and takes back out
+/// whatever already reached the cloud — all of it coven's bookkeeping, none of
+/// it bae's.
 #[derive(Clone, Debug, Default)]
 pub struct DeleteCleanupPlan {
-    /// Remote blobs whose cloud objects this delete must tombstone, as the exact
-    /// row references captured while their rows still existed.
-    pub blobs_to_tombstone: Vec<coven::RowBlobRef>,
     /// `(table, row_id)` pairs whose external-file registration this delete must
     /// drop — the user's own in-place files, which are never themselves deleted.
     pub external_refs_to_clear: Vec<(String, String)>,
@@ -170,9 +169,6 @@ pub(super) fn apply_delete_cleanup_on(
     conn: &SqlContext<'_, '_>,
     cleanup: &DeleteCleanupPlan,
 ) -> Result<(), DbError> {
-    for blob in &cleanup.blobs_to_tombstone {
-        conn.enqueue_blob_delete(blob)?;
-    }
     for (table, row_id) in &cleanup.external_refs_to_clear {
         conn.clear_external_blob(table, row_id)?;
     }

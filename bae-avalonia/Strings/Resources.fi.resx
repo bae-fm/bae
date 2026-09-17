@@ -129,7 +129,6 @@
   <data name="members.pairing.failed" xml:space="preserve"><value>tätä laitetta ei voitu hyväksyä</value></data>
   <data name="members.pairing.waiting" xml:space="preserve"><value>Odotetaan laitetta…</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>siirry albumiin</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>poista</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>lähtevien kohteita ei voitu ladata</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>tauko</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>lähtevien kohteita ei voitu lukea</value></data>

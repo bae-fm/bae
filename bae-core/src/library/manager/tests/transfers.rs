@@ -217,19 +217,24 @@ async fn publishing_release_cannot_report_a_successful_cancel() {
     assert!(error.to_string().contains("already publishing"));
 }
 
-// Needs the test-utils mock cloud home: a Remote release implies a connected
-// home, which the make-Local read storage is built over (the cancel fires
-// before any blob is read, so the home is never actually called).
+// Needs the test-utils mock cloud home with its sync loop: make-Local is only
+// offered a release whose make-Remote has been accepted, so the transition has
+// to run all the way through a cycle and retire its intent first.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    connect_test_cloud_with_sync_loop(&manager).await;
     // Really Remote, through the real transition: make-Local resolves the
     // release's current locality from coven, which a fabricated `remote` column
     // with no cloud objects behind it cannot answer.
-    let release_id =
-        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
+    let release_id = make_remote_release_under_sync_loop(
+        &manager,
+        &temp_dir.path().join("r1"),
+        "Album One",
+        false,
+    )
+    .await;
 
     // A token cancelled before the materialize loop runs: coven aborts at the
     // first check, before reading/writing any blob, and never flips state. A
