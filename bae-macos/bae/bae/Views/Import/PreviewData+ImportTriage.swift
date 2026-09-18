@@ -56,7 +56,11 @@
             coverThumbnail: BridgeCoverImageSource? = nil,
             importStatus: BridgeTriageImportStatus? = nil,
             metadataProvenance: BridgeMetadataProvenance? = nil,
-            reading: BridgeTriageReading = .unidentified
+            reading: BridgeTriageReading = .unidentified,
+            marks: [BridgeReleaseMark] = [],
+            verification: BridgeVerification? = nil,
+            identifiedBy: BridgeMarkKind? = nil,
+            verified: Bool = false
         ) -> BridgeTriageRow {
             BridgeTriageRow(
                 candidateKey: candidate.key,
@@ -76,15 +80,17 @@
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance,
                 reading: reading,
-                marks: [],
-                verification: nil
+                marks: marks,
+                verification: verification,
+                identifiedBy: identifiedBy,
+                verified: verified
             )
         }
 
         /// A preview candidate showing `identifyState`. Nothing is running in
         /// a preview, so the state stands as the one its stored verdict would
         /// resume — which is what every surface falls back to.
-        private static func importTabFolder(
+        static func importTabFolder(
             path: String,
             name: String,
             trackCount: UInt32 = 9,

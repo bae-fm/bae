@@ -458,7 +458,9 @@
                 metadataProvenance: metadataProvenance,
                 reading: .unidentified,
                 marks: PreviewData.releaseMarks,
-                verification: PreviewData.releaseVerification
+                verification: PreviewData.releaseVerification,
+                identifiedBy: .discId,
+                verified: true
             )
         }
 

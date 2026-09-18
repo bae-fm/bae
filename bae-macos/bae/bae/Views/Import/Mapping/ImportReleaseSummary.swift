@@ -9,10 +9,6 @@ struct ImportReleaseSummary {
     let artist: String?
     let factsLine: String
     let sourceAudio: BridgeCandidateSourceAudio?
-    /// Every catalog that describes the release this draft was read from.
-    /// Empty for a draft that came from the files' tags, was typed in, or is
-    /// not there yet.
-    let records: [BridgeReleaseRecord]
     /// Every name the candidate's folder states, whatever the draft was read
     /// from. Empty until something has read it.
     let marks: [BridgeReleaseMark]
@@ -53,7 +49,6 @@ struct ImportReleaseSummary {
         case nil:
             factsLine = trackText
         }
-        records = candidate.records
         marks = candidate.marks
         verification = candidate.verification
         sourceAudio = candidate.files.sourceAudio
@@ -71,11 +66,6 @@ struct ImportReleaseSummary {
             artistNames.isEmpty
             ? nil : ListFormatter.localizedString(byJoining: artistNames)
         factsLine = ""
-        records =
-            switch row.reading {
-            case .identified(let records): records
-            case .unidentified, .prefilled: []
-            }
         marks = row.marks
         verification = row.verification
         sourceAudio = nil
@@ -89,7 +79,11 @@ struct ImportReleaseSummary {
 }
 
 /// One rendering of an import release summary, scaled for its two homes.
-struct ImportReleaseSummaryView: View {
+///
+/// What sits after the title is the caller's — the sidebar's row puts its
+/// identity glyphs there; the pane names its catalogs in the records row
+/// instead and puts nothing.
+struct ImportReleaseSummaryView<TitleAccessory: View>: View {
     enum Style {
         case sidebar
         case card
@@ -97,6 +91,8 @@ struct ImportReleaseSummaryView: View {
 
     let summary: ImportReleaseSummary
     let style: Style
+    @ViewBuilder
+    let titleAccessory: () -> TitleAccessory
 
     var body: some View {
         VStack(alignment: .leading, spacing: style.stackSpacing) {
@@ -116,9 +112,9 @@ struct ImportReleaseSummaryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The title, and the mark saying its draft was read from a catalog. The
-    /// title truncates before the mark does: the mark is one fixed glyph and
-    /// clipping it would lose the row's whole answer.
+    /// The title and whatever the caller puts after it. The title truncates
+    /// first: the accessory is already as short as it gets, and a clipped
+    /// title still reads.
     private var titleLine: some View {
         HStack(spacing: 6) {
             Text(summary.title)
@@ -128,22 +124,8 @@ struct ImportReleaseSummaryView: View {
                 )
                 .lineLimit(1)
                 .truncationMode(style.titleTruncation)
-            identifiedMark
-        }
-    }
-
-    /// The mark, where the style draws one and the draft was read from a
-    /// catalog's release. The pane names its catalogs in the records row
-    /// instead, so only the sidebar carries it.
-    @ViewBuilder
-    private var identifiedMark: some View {
-        if style.showsIdentifiedMark, !summary.records.isEmpty {
-            IdentifiedMark(
-                marks: summary.marks,
-                verification: summary.verification,
-                records: summary.records
-            )
-            .layoutPriority(1)
+            titleAccessory()
+                .layoutPriority(1)
         }
     }
 
@@ -158,6 +140,12 @@ struct ImportReleaseSummaryView: View {
         }
     }
 
+}
+
+extension ImportReleaseSummaryView where TitleAccessory == EmptyView {
+    init(summary: ImportReleaseSummary, style: Style) {
+        self.init(summary: summary, style: style) { EmptyView() }
+    }
 }
 
 extension ImportReleaseSummaryView.Style {
@@ -193,13 +181,6 @@ extension ImportReleaseSummaryView.Style {
         switch self {
         case .sidebar: false
         case .card: true
-        }
-    }
-
-    fileprivate var showsIdentifiedMark: Bool {
-        switch self {
-        case .sidebar: true
-        case .card: false
         }
     }
 

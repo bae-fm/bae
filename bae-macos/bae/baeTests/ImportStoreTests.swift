@@ -180,7 +180,9 @@ private func readyRow(
                 )
             ]),
         marks: [],
-        verification: nil
+        verification: nil,
+        identifiedBy: nil,
+        verified: false
     )
 }
 
@@ -204,7 +206,9 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         metadataProvenance: nil,
         reading: .unidentified,
         marks: [],
-        verification: nil
+        verification: nil,
+        identifiedBy: nil,
+        verified: false
     )
 }
 
@@ -228,7 +232,9 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         metadataProvenance: nil,
         reading: .unidentified,
         marks: [],
-        verification: nil
+        verification: nil,
+        identifiedBy: nil,
+        verified: false
     )
 }
 

@@ -182,6 +182,8 @@
                 // The same pressing is the one a rip log verified, so the
                 // popover preview states its match count too.
                 verification: album.id == "a-01" ? releaseVerification : nil,
+                identifiedBy: album.id == "a-01" ? .discId : nil,
+                verified: album.id == "a-01",
                 totalDuration: groupDuration(tracks),
                 fileCount: 0,
                 totalSize: 0,

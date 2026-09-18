@@ -77,11 +77,11 @@ const DIRECT_KEYS: &[&str] = &[
     // Generic lookup-failure line for the keyless `Diagnostic` variant:
     // `bridge_lookup_failure_key` returns `None`, the UI shows this line.
     "core.lookup.failure.diagnostic",
-    // The candidate row's identified mark: its accessibility label, and the
-    // header of the hover naming the sources the draft was read from. The
-    // reading itself is a typed field, so neither needs a key function.
-    "core.import.triage.identified",
-    "core.import.triage.identified_from",
+    // The two identity glyphs' accessibility labels and hover titles. Which
+    // of them a row draws is two typed fields, so neither needs a key
+    // function and neither word is ever drawn.
+    "core.identity.identified",
+    "core.identity.verified",
     // The rip-match line: core hands over the count, the surface resolves the
     // plural against it. Nothing enumerates a variant here, so no key fn.
     "core.verification.matches_other_rips",

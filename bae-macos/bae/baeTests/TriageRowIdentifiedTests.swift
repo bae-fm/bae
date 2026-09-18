@@ -5,9 +5,9 @@ import Testing
 
 @testable import bae
 
-/// What a candidate row shows about where its draft came from. Which reading a
-/// row has is core's answer and core tests it; these are about what the row
-/// draws once it has one.
+/// What a candidate row draws about its release. Which facts a row holds is
+/// core's answer and core tests it; these are about the glyphs the row draws
+/// once it has them, and about the card either glyph opens.
 @Suite("Triage row rendering")
 struct TriageRowIdentifiedTests {
     @MainActor
@@ -28,63 +28,83 @@ struct TriageRowIdentifiedTests {
     }
 
     @MainActor
-    @Test("a row filled from tags draws its draft and carries no mark")
-    func prefilledRowCarriesNoMark() async throws {
+    @Test("a row filled from tags draws its draft and no glyph")
+    func prefilledRowDrawsItsDraft() async throws {
         let lines = try await renderedLines(
             PreviewData.triageRowPrefilledFromTags
         )
         #expect(lines.carrying("Album Title Twelve"))
         #expect(lines.carrying("Artist Name"))
         #expect(!lines.carrying("Release Folder Twelve"))
-
-        let summary = try #require(
-            ImportReleaseSummary(row: PreviewData.triageRowPrefilledFromTags)
-        )
-        #expect(summary.records.isEmpty)
     }
 
-    /// The row says *that* it is identified, once, on the title line. Which
-    /// catalogs describe the release is the mark's hover — so the end of the
-    /// row no longer names providers.
+    /// Neither word is ever drawn: what the glyphs say is said by the glyphs.
     @MainActor
-    @Test("an identified row marks its title and badges no providers")
-    func identifiedRowMarksItsTitle() async throws {
-        let row = PreviewData.triageRowIdentifiedOnline
+    @Test("a row states its two facts without naming either")
+    func aRowNamesNeitherFact() async throws {
+        let lines = try await renderedLines(PreviewData.triageRowSealAndCheck)
+        #expect(lines.carrying("Album Title Fifteen"))
+        #expect(!lines.carrying(coreString("core.identity.identified")))
+        #expect(!lines.carrying(coreString("core.identity.verified")))
+    }
+
+    /// The four combinations are four different rows. Each is compared
+    /// against the same row with both facts cleared, which is the row that
+    /// draws no glyph at all — so the pixels are exactly the glyphs.
+    @MainActor
+    @Test("each combination of the two facts draws its own glyph set")
+    func eachCombinationDrawsItsOwnGlyphs() async throws {
+        let neither = try await pixels(of: PreviewData.triageRowNeitherGlyph)
+        var drawn: [Data] = []
+        for row in [
+            PreviewData.triageRowSealAndCheck,
+            PreviewData.triageRowSealOnly,
+            PreviewData.triageRowCheckOnly,
+        ] {
+            let rendered = try await pixels(of: row)
+            #expect(rendered != neither, "a glyph is missing from the row")
+            #expect(
+                !drawn.contains(rendered),
+                "two combinations drew the same thing"
+            )
+            drawn.append(rendered)
+        }
+    }
+
+    /// Several pressings in question means no record was chosen, so core
+    /// leaves the seal off; the check is about the bits and stands whatever
+    /// the question. The row shows it beside the question's own chip.
+    @MainActor
+    @Test("the check sits beside the several-matches chip, and no seal does")
+    func theCheckSitsBesideTheMatchesChip() async throws {
+        let row = PreviewData.triageRowCheckBesideMatches
+        #expect(row.identifiedBy == nil)
         let lines = try await renderedLines(row)
-        #expect(lines.carrying("Album Title Thirteen"))
-        #expect(!lines.carrying("MB"))
-        #expect(!lines.carrying("Discogs"))
+        #expect(lines.carrying("3 matches"))
 
-        let summary = try #require(ImportReleaseSummary(row: row))
-        #expect(summary.records.map(\.catalog) == [.musicBrainz, .discogs])
-        // The same row read as a plain draft draws the same words, so the mark
-        // is the whole of the difference and the pixels are where it shows up.
-        let marked = try await pixels(of: row)
-        let unmarked = try await pixels(of: row.reading(.prefilled))
-        #expect(marked != unmarked)
+        var unglyphed = row
+        unglyphed.verified = false
+        #expect(try await pixels(of: row) != pixels(of: unglyphed))
     }
 
-    /// The mark and the placement's own tag are two different answers — one
-    /// says the draft came from a source, the other what the row still needs —
-    /// so a row with both shows both.
+    /// On a selected row the whole text column goes white, and the glyphs
+    /// follow it rather than keeping their own colour.
     @MainActor
-    @Test("a row both identified and unsettled shows its mark and its tag")
-    func identifiedRowKeepsItsPlacementTag() async throws {
-        let row = PreviewData.triageRowIdentifiedSeveralMatches
-        let lines = try await renderedLines(row)
-        #expect(lines.carrying("2 matches"))
-
-        let marked = try await pixels(of: row)
-        let unmarked = try await pixels(of: row.reading(.prefilled))
-        #expect(marked != unmarked)
+    @Test("a selected row draws its glyphs in the column's colour")
+    func aSelectedRowDrawsItsGlyphsInTheColumnsColour() async throws {
+        let row = PreviewData.triageRowSealAndCheck
+        let resting = try await pixels(of: row)
+        let selected = try await pixels(of: row, prominence: .increased)
+        #expect(resting != selected)
     }
 
-    /// Every catalog that describes the pressing the pick claimed.
+    /// Every catalog that describes the pressing the pick claimed, plus what
+    /// the folder states and what the databases said — the card is all three.
     @MainActor
-    @Test("the hover names every catalog that describes the release")
-    func theHoverNamesEveryCatalog() async throws {
+    @Test("the card names every catalog that describes the release")
+    func theCardNamesEveryCatalog() async throws {
         let hosted = SnapshotTestSupport.hostInWindow(
-            IdentifiedFromPopover(
+            ReleaseFactsPopover(
                 marks: [],
                 verification: nil,
                 records: PreviewData.identifiedFromBothCatalogs
@@ -113,7 +133,10 @@ struct TriageRowIdentifiedTests {
     private static let popoverSize = NSSize(width: 300, height: 96)
 
     @MainActor
-    private func hostedRow(_ row: BridgeTriageRow) -> NSView {
+    private func hostedRow(
+        _ row: BridgeTriageRow,
+        prominence: BackgroundProminence = .standard
+    ) -> NSView {
         SnapshotTestSupport.hostInWindow(
             TriageRowView(
                 row: row,
@@ -123,6 +146,7 @@ struct TriageRowIdentifiedTests {
                 onReveal: {},
                 onSkip: { _ in }
             )
+            .environment(\.backgroundProminence, prominence)
             .environment(ImageStore.stub())
             .preferredColorScheme(.light)
             .background(.white)
@@ -133,8 +157,11 @@ struct TriageRowIdentifiedTests {
     }
 
     @MainActor
-    private func pixels(of row: BridgeTriageRow) async throws -> Data {
-        let host = hostedRow(row)
+    private func pixels(
+        of row: BridgeTriageRow,
+        prominence: BackgroundProminence = .standard
+    ) async throws -> Data {
+        let host = hostedRow(row, prominence: prominence)
         await SnapshotTestSupport.settle(host)
         return try await SnapshotTestSupport.capturePNG(
             host,
@@ -150,17 +177,5 @@ struct TriageRowIdentifiedTests {
             languages: ["en-US"]
         )
         .map(\.text)
-    }
-}
-
-extension BridgeTriageRow {
-    /// The same row read another way — what it would be had its draft come
-    /// from somewhere else.
-    fileprivate func reading(
-        _ reading: BridgeTriageReading
-    ) -> BridgeTriageRow {
-        var copy = self
-        copy.reading = reading
-        return copy
     }
 }

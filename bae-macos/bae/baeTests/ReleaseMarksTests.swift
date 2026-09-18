@@ -70,11 +70,11 @@ struct ReleaseMarksTests {
         )
     }
 
-    /// The row's hover leads with the folder's names, above the catalogs.
-    @Test("the identified hover states the folder's names and its catalogs")
-    func theHoverStatesNamesAndCatalogs() async throws {
+    /// The glyphs' card leads with the folder's names, above the catalogs.
+    @Test("the glyph card states the folder's names and its catalogs")
+    func theCardStatesNamesAndCatalogs() async throws {
         let lines = try await FindOnlineRendering.text(
-            IdentifiedFromPopover(
+            ReleaseFactsPopover(
                 marks: PreviewData.releaseMarks,
                 verification: nil,
                 records: PreviewData.releaseRecordsPair
@@ -84,11 +84,6 @@ struct ReleaseMarksTests {
             size: NSSize(width: 300, height: 260)
         )
         #expect(lines.carrying("0075678164521"))
-        #expect(
-            lines.carrying(
-                coreString("core.import.triage.identified_from").uppercased()
-            )
-        )
         #expect(lines.carrying("MusicBrainz"))
     }
 

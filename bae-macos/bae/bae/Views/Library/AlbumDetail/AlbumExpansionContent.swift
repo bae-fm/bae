@@ -210,34 +210,6 @@ struct AlbumExpansionContent: View {
     }
 }
 
-/// What the release says about itself: the names read off the object, then
-/// every catalog that describes it. Either half is absent when there is
-/// nothing of it to state.
-struct ReleaseFactsPopover: View {
-    let marks: [BridgeReleaseMark]
-    let verification: BridgeVerification?
-    let records: [BridgeReleaseRecord]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if !marks.isEmpty || verification != nil {
-                VStack(alignment: .leading, spacing: 4) {
-                    MarkLines(marks: marks)
-                    if let verification {
-                        RipMatchLine(verification: verification)
-                    }
-                }
-            }
-            if !records.isEmpty {
-                ReleaseRecordsRow(records: records)
-            }
-        }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .frame(width: 300)
-    }
-}
-
 /// The release's facts, and the way into where they came from.
 ///
 /// At rest the line reads as it always has. When the release carries names of

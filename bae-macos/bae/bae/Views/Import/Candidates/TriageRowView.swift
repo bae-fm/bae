@@ -151,12 +151,15 @@ struct TriageRowView: View {
     @ViewBuilder
     private var releaseSummary: some View {
         if let summary = ImportReleaseSummary(row: row) {
-            ImportReleaseSummaryView(summary: summary, style: .sidebar)
+            ImportReleaseSummaryView(summary: summary, style: .sidebar) {
+                glyphs
+            }
         }
     }
 
     /// A row nothing has been written about is the folder it came from, drawn
-    /// as the main pane's heading draws it.
+    /// as the main pane's heading draws it. Its bits can still have matched
+    /// other copies, so the glyphs follow the title here too.
     private var folderLine: some View {
         HStack(spacing: 6) {
             Image(systemName: "folder")
@@ -167,6 +170,29 @@ struct TriageRowView: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
+            glyphs
+                .layoutPriority(1)
+        }
+    }
+
+    /// What the row states about its release, after whichever title it leads
+    /// with. Core decides both facts; the row hands them over as they came.
+    private var glyphs: some View {
+        IdentityGlyphs(
+            identifiedBy: row.identifiedBy,
+            verified: row.verified,
+            marks: row.marks,
+            verification: row.verification,
+            records: records
+        )
+    }
+
+    /// Every catalog that describes the release the draft was read from —
+    /// what the glyphs' card links out to. Empty for every other reading.
+    private var records: [BridgeReleaseRecord] {
+        switch row.reading {
+        case .identified(let records): records
+        case .unidentified, .prefilled: []
         }
     }
 
@@ -243,8 +269,8 @@ extension TriageRowView {
 
     /// Whatever the placement puts at the end of the row. Kept at its ideal
     /// width: the release's title and artist truncate before a tag does, since
-    /// a tag is already as short as it gets. Where the draft came from is the
-    /// title line's mark, not a column of its own.
+    /// a tag is already as short as it gets. What the row states about its
+    /// release is the title line's glyphs, not a column of its own.
     private var trailing: some View {
         placementTrailing
             .fixedSize()
@@ -487,6 +513,48 @@ extension TriageRowView {
                 onReveal: {},
                 onSkip: { _ in }
             )
+        }
+        .padding()
+        .frame(width: 340)
+        .environment(PreviewData.artImageStore())
+        .candidateReaderPreviewEnvironment()
+        .windowBackground()
+    }
+
+    #Preview("Identity glyphs") {
+        let importStore = ImportStore()
+        let rows = [
+            PreviewData.triageRowSealAndCheck,
+            PreviewData.triageRowSealOnly,
+            PreviewData.triageRowCheckOnly,
+            PreviewData.triageRowNeitherGlyph,
+            PreviewData.triageRowCheckBesideMatches,
+        ]
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(rows, id: \.candidateKey) { row in
+                TriageRowView(
+                    row: row,
+                    coverContent: importStore.sidebarCover(for: row),
+                    uploadObservation: nil,
+                    isGroupMember: false,
+                    onReveal: {},
+                    onSkip: { _ in }
+                )
+            }
+            // The same row as the list's first, drawn as the selection draws
+            // it: the whole text column goes white and the glyphs follow.
+            TriageRowView(
+                row: PreviewData.triageRowSealAndCheck,
+                coverContent: importStore.sidebarCover(
+                    for: PreviewData.triageRowSealAndCheck
+                ),
+                uploadObservation: nil,
+                isGroupMember: false,
+                onReveal: {},
+                onSkip: { _ in }
+            )
+            .environment(\.backgroundProminence, .increased)
+            .background(Color.accentColor)
         }
         .padding()
         .frame(width: 340)

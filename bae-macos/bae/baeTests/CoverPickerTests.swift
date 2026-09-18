@@ -113,6 +113,8 @@ struct CoverPickerTests {
             records: [],
             marks: [],
             verification: nil,
+            identifiedBy: nil,
+            verified: false,
             totalDuration: nil,
             fileCount: 1,
             totalSize: 100,

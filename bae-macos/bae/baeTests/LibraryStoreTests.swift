@@ -65,6 +65,8 @@ private func makeBridgeRelease(
         records: [],
         marks: [],
         verification: nil,
+        identifiedBy: nil,
+        verified: false,
         totalDuration: totalDuration,
         fileCount: fileCount,
         totalSize: totalSize,

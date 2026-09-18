@@ -632,6 +632,8 @@
                 records: [],
                 marks: [],
                 verification: nil,
+                identifiedBy: nil,
+                verified: false,
                 totalDuration: nil,
                 fileCount: Int64(files.count),
                 totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },

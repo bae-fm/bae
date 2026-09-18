@@ -77,11 +77,11 @@ struct ReleaseVerificationTests {
         )
     }
 
-    /// The row's hover states it with the names, above the catalogs.
-    @Test("the identified hover states what the databases said")
-    func theHoverStatesTheCount() async throws {
+    /// The glyphs' card states it with the names, above the catalogs.
+    @Test("the glyph card states what the databases said")
+    func theCardStatesTheCount() async throws {
         let lines = try await FindOnlineRendering.text(
-            IdentifiedFromPopover(
+            ReleaseFactsPopover(
                 marks: PreviewData.releaseMarks,
                 verification: PreviewData.releaseVerification,
                 records: PreviewData.releaseRecordsPair

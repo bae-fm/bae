@@ -509,7 +509,9 @@ extension MappingFixtures {
         metadataProvenance: BridgeMetadataProvenance?,
         reading: BridgeTriageReading,
         marks: [BridgeReleaseMark],
-        verification: BridgeVerification? = nil
+        verification: BridgeVerification? = nil,
+        identifiedBy: BridgeMarkKind? = nil,
+        verified: Bool = false
     ) -> BridgeTriageRow {
         let undecided = metadataProvenance == nil && edit.albumTitle.isEmpty
         return BridgeTriageRow(
@@ -532,7 +534,9 @@ extension MappingFixtures {
             metadataProvenance: metadataProvenance,
             reading: reading,
             marks: marks,
-            verification: verification
+            verification: verification,
+            identifiedBy: identifiedBy,
+            verified: verified
         )
     }
 
