@@ -117,6 +117,7 @@ enum PreviewData {
             imageFiles: [],
             galleryItems: [],
             records: [],
+            marks: [],
             totalDuration: .minutesOnly(minutes: 39),
             fileCount: 0,
             totalSize: 0,

@@ -133,6 +133,7 @@ object PreviewData {
             imageFiles = emptyList(),
             galleryItems = emptyList(),
             records = emptyList(),
+            marks = emptyList(),
             totalDuration = null,
             fileCount = trackGroups.sumOf { it.tracks.size }.toLong(),
             totalSize = 300_000_000L,

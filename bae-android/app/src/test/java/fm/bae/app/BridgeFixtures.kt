@@ -88,6 +88,7 @@ object BridgeFixtures {
             imageFiles = emptyList(),
             galleryItems = galleryItems,
             records = emptyList(),
+            marks = emptyList(),
             totalDuration = null,
             fileCount = 0,
             totalSize = 0,
