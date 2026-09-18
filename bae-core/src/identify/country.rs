@@ -10,6 +10,7 @@
 //! and `XW` for a worldwide one — names no country, and is looked for in the
 //! text as the plain string it is.
 
+use crate::util::text::squash;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -29,7 +30,7 @@ pub(super) struct Country {
 /// and diacritics dropped — so `JP`, `jp`, `Japan` and `japan` all reach the
 /// same country.
 pub(super) fn named(value: &str) -> Option<&'static Country> {
-    let value = super::agreements::squash(value);
+    let value = squash(value);
     (!value.is_empty())
         .then(|| index().get(&value).map(|&at| &COUNTRIES[at]))
         .flatten()
@@ -41,9 +42,9 @@ fn index() -> &'static HashMap<String, usize> {
     INDEX.get_or_init(|| {
         let mut index = HashMap::new();
         for (at, country) in COUNTRIES.iter().enumerate() {
-            index.insert(super::agreements::squash(country.code), at);
+            index.insert(squash(country.code), at);
             for name in country.names {
-                index.insert(super::agreements::squash(name), at);
+                index.insert(squash(name), at);
             }
         }
         index
@@ -328,7 +329,7 @@ mod tests {
         let mut seen: HashMap<String, &str> = HashMap::new();
         for country in COUNTRIES {
             for spelling in std::iter::once(country.code).chain(country.names.iter().copied()) {
-                let key = super::super::agreements::squash(spelling);
+                let key = squash(spelling);
                 assert!(!key.is_empty(), "{spelling} squashes to nothing");
                 if let Some(other) = seen.insert(key, country.code) {
                     panic!("{spelling} names both {other} and {}", country.code);

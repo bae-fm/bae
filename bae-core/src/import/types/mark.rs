@@ -131,12 +131,12 @@ impl ReleaseMark {
         // punctuation and case dropped — so `NJ-8255` printed on the sleeve
         // and `NJ 8255` chosen off the record are one number.
         marks.extend(choices.chosen_catalogs.iter().flat_map(|chosen| {
-            let chosen = crate::identify::squash(chosen);
+            let chosen = crate::util::text::squash(chosen);
             signals
                 .text
                 .catalogs()
                 .iter()
-                .filter(move |sighting| crate::identify::squash(&sighting.value) == chosen)
+                .filter(move |sighting| crate::util::text::squash(&sighting.value) == chosen)
                 .map(|sighting| Self {
                     kind: MarkKind::CatalogNumber,
                     sighting: sighting.clone(),
@@ -158,10 +158,10 @@ impl ReleaseMarkLine {
         let mut lines: Vec<Self> = Vec::new();
         for kind in MarkKind::ALL {
             for mark in marks.iter().filter(|mark| mark.kind == kind) {
-                let key = crate::identify::squash(&mark.sighting.value);
+                let key = crate::util::text::squash(&mark.sighting.value);
                 match lines
                     .iter_mut()
-                    .find(|line| line.kind == kind && crate::identify::squash(&line.value) == key)
+                    .find(|line| line.kind == kind && crate::util::text::squash(&line.value) == key)
                 {
                     Some(line) => {
                         if !line.origins.contains(&mark.sighting.origin) {

@@ -182,11 +182,11 @@ impl CandidatePreparation {
         if !text.states_catalog(number) {
             return None;
         }
-        let key = crate::identify::squash(number);
+        let key = crate::util::text::squash(number);
         if current
             .chosen_catalogs
             .iter()
-            .any(|chosen| crate::identify::squash(chosen) == key)
+            .any(|chosen| crate::util::text::squash(chosen) == key)
         {
             return None;
         }
@@ -194,7 +194,7 @@ impl CandidatePreparation {
             .text
             .catalogs()
             .iter()
-            .find(|sighting| crate::identify::squash(&sighting.value) == key)
+            .find(|sighting| crate::util::text::squash(&sighting.value) == key)
             .map_or_else(|| number.to_string(), |sighting| sighting.value.clone());
         let mut confirmed = current.clone();
         confirmed.chosen_catalogs.push(spelling);

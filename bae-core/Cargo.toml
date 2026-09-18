@@ -29,6 +29,8 @@ hex = "0.4"
 # Natural, case-insensitive file-name order: the release file list every
 # platform shows (detail, gallery) and the desktop import scan share it.
 natord = "1.0"
+# Shared text comparison for identification and stored release marks.
+unicode-normalization = "0.1"
 # AirPlay 2 HomeKit pairing (src/airplay/pairing.rs). The password-less
 # "transient" pair-setup is SRP6a with the 3072-bit group + SHA-512. The
 # RustCrypto `srp` crate can't be used: its M1 proof is `H(A|B|K)` (its own
@@ -121,7 +123,6 @@ lofty = "0.24"
 notify = "8.2.0"
 notify-debouncer-full = "0.7.0"
 strsim = "0.11"
-unicode-normalization = "0.1"
 # Dev-mode `.env` loading (src/config/dev.rs).
 # Loudness + true-peak measurement at import (src/loudness.rs). Pure Rust, no
 # system libs. Import-only: playback derives its gain from the stored

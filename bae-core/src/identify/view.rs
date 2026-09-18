@@ -24,7 +24,7 @@
 //! The transports (`bae-bridge`'s uniffi records, `bae-automation`'s JSON) mirror
 //! this view into their own wire types field by field and decide nothing.
 
-use super::agreements::{judged_results, squash, Agreements, CandidateText};
+use super::agreements::{judged_results, Agreements, CandidateText};
 use super::combine::{combine_results, CombineOutcome, LookupProvenance, NarrowedOut};
 use super::state::{
     BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
@@ -35,6 +35,7 @@ use crate::import::release_group::{group_results, Judgements, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
 use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
+use crate::util::text::squash;
 use std::collections::HashSet;
 
 /// How one provider's lookup of one value is going — one cell of the ledger.

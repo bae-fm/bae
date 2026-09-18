@@ -59,11 +59,11 @@ impl LookupChoices {
         let struck_out: Vec<String> = self
             .discounted_catalogs
             .iter()
-            .map(|value| crate::identify::squash(value))
+            .map(|value| crate::util::text::squash(value))
             .collect();
         let mut kept: Vec<String> = Vec::new();
         self.chosen_catalogs.retain(|value| {
-            let key = crate::identify::squash(value);
+            let key = crate::util::text::squash(value);
             if struck_out.contains(&key) || kept.contains(&key) {
                 return false;
             }
