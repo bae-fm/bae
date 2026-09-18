@@ -880,11 +880,32 @@ enum FindOnlineRendering {
     /// Read off the window's own surface: text captured against
     /// transparency loses all but its coloured parts, which is a header read
     /// back as its blue link and nothing else.
-    static func text(_ view: some View, size: NSSize) async throws -> [String] {
-        let (window, host) = host(view.windowBackground(), size: size)
-        defer { withExtendedLifetime(window) {} }
+    static func text(
+        _ view: some View,
+        size: NSSize,
+        scale: CGFloat = 1
+    ) async throws -> [String] {
+        // Preserve the layout proposal while rendering more pixels for small
+        // type and opaque identifiers that OCR cannot infer from language.
+        let captureSize = NSSize(
+            width: size.width * scale,
+            height: size.height * scale
+        )
+        let (window, host) = host(
+            view.windowBackground()
+                .frame(width: size.width, height: size.height)
+                .scaleEffect(scale),
+            size: captureSize
+        )
+        defer {
+            window.contentView = nil
+            window.close()
+        }
         await SnapshotTestSupport.settle(host)
-        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+        let png = try await SnapshotTestSupport.capturePNG(
+            host,
+            size: captureSize
+        )
         return try await SnapshotTestSupport.recognizedText(in: png).map(\.text)
     }
 
@@ -893,9 +914,11 @@ enum FindOnlineRendering {
         size: NSSize = NSSize(width: 380, height: 220)
     ) async throws -> Data {
         let (window, host) = host(view.windowBackground(), size: size)
-        let pixels = try await SnapshotTestSupport.capturePNG(host, size: size)
-        withExtendedLifetime(window) {}
-        return pixels
+        defer {
+            window.contentView = nil
+            window.close()
+        }
+        return try await SnapshotTestSupport.capturePNG(host, size: size)
     }
 
     static func host<V: View>(
@@ -913,6 +936,7 @@ enum FindOnlineRendering {
             backing: .buffered,
             defer: false
         )
+        window.isReleasedWhenClosed = false
         window.contentView = host
         return (window, host)
     }

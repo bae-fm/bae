@@ -307,7 +307,8 @@ struct ImportReleaseEntryTests {
             .importPreviewEnvironment()
             .environment(Library.stub())
             .candidateReaderPreviewEnvironment(),
-            size: NSSize(width: 900, height: 420)
+            size: NSSize(width: 900, height: 620),
+            scale: 3
         )
 
         for label in [

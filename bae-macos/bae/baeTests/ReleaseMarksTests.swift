@@ -24,7 +24,8 @@ struct ReleaseMarksTests {
                 .frame(width: Self.lineSize.width)
                 .preferredColorScheme(.light)
                 .background(.white),
-            size: Self.lineSize
+            size: Self.lineSize,
+            scale: 3
         )
         for kind in [
             BridgeMarkKind.discId, .barcode, .catalogNumber,
@@ -81,7 +82,8 @@ struct ReleaseMarksTests {
             )
             .preferredColorScheme(.light)
             .background(.white),
-            size: NSSize(width: ReleaseFactsPopover.width, height: 260)
+            size: NSSize(width: ReleaseFactsPopover.width, height: 260),
+            scale: 3
         )
         #expect(lines.carrying("0075678164521"))
         #expect(lines.carrying("MusicBrainz"))
@@ -106,7 +108,8 @@ struct ReleaseMarksTests {
             )
             .preferredColorScheme(.light)
             .background(.white),
-            size: NSSize(width: ReleaseFactsPopover.width, height: 220)
+            size: NSSize(width: ReleaseFactsPopover.width, height: 220),
+            scale: 3
         )
 
         // A barcode fits the popover's width, so the line states it whole.
@@ -123,7 +126,12 @@ struct ReleaseMarksTests {
         }
         // A disc ID fits the card's width too, and is stated whole.
         let discId = try #require(release.marks.first { $0.kind == .discId })
-        #expect(lines.carrying(discId.value))
+        // Vision can split a monospaced identifier into words; compare every
+        // identifier character without the recognizer's word separators.
+        #expect(
+            lines.map { $0.replacingOccurrences(of: " ", with: "") }
+                .carrying(discId.value)
+        )
         for record in release.records {
             let name = bridgeCatalogName(catalog: record.catalog)
             #expect(lines.carrying(name), "\(name) is missing from \(lines)")
@@ -147,7 +155,8 @@ struct ReleaseMarksTests {
             .environment(store)
             .importPreviewEnvironment()
             .preferredColorScheme(.light),
-            size: Self.paneSize
+            size: Self.paneSize,
+            scale: 3
         )
     }
 }
