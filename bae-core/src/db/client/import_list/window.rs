@@ -152,15 +152,13 @@ impl WindowItemRows {
                     Some(picked) => {
                         let PickedRelease { matched, records } = picked.process()?;
                         row.matched = matched;
-                        // Whether the row says it is identified at all is its
-                        // own reading's answer; the pick only states which
-                        // catalogs describe the release that reading names.
-                        if let crate::import::triage::TriageReading::Identified {
-                            records: described,
-                        } = &mut row.reading
-                        {
-                            *described = records;
-                        }
+                        // The reading the queue placed the row with named no
+                        // records; this is where the documents are read.
+                        row.reading = crate::import::triage::TriageReading::of(
+                            row.metadata_summary.as_ref(),
+                            row.metadata_provenance.as_ref(),
+                            records,
+                        );
                     }
                     // File Tags names no external release, so nothing leads
                     // the row: the verdict's lead does not stand in for a pick.
@@ -398,7 +396,28 @@ pub(super) fn load_candidate_detail_on(
     // Only identity keys are needed for the next SQL query. Track and artwork
     // processing runs after the snapshot ends.
     let claimed = claimed_payloads_on(sql, &candidate, picked.as_ref())?;
-    let picked_library_status = match claimed.first().map(|(_, payloads)| payloads) {
+    // The records the pick's documents describe the release in, and the
+    // documents archived for those of them a catalog publishes — the
+    // cross-linked release the primary's document names among them, which
+    // is what the field dots compare the primary against.
+    let records = crate::import::payloads::claimed_records(
+        &claimed
+            .iter()
+            .map(|payloads| (payloads.release().clone(), Some(payloads.clone())))
+            .collect::<Vec<_>>(),
+    )
+    .map_err(|error| DbError::Message(error.to_string()))?;
+    let described = crate::import::payloads::documents_of_records(&records, |release| {
+        match claimed
+            .iter()
+            .find(|payloads| payloads.release() == release)
+        {
+            Some(payloads) => Ok(Some(payloads.clone())),
+            None => load_release_payloads_on(sql, release),
+        }
+    })
+    .map_err(|error| DbError::Message(error.to_string()))?;
+    let picked_library_status = match claimed.first() {
         Some(payloads) => {
             let check = payloads
                 .library_check()
@@ -446,11 +465,11 @@ pub(super) fn load_candidate_detail_on(
             crate::import::track_slots::audio_durations(candidate.files(), &durations)
                 .map_err(|error| DbError::Message(error.to_string()))?;
         let field_claims =
-            crate::import::payloads::field_claims(&claimed, clock.as_ref(), ids.as_ref())
+            crate::import::payloads::field_claims(&described, clock.as_ref(), ids.as_ref())
                 .map_err(|error| DbError::Message(error.to_string()))?;
         let release = claimed
             .first()
-            .map(|(_, payloads)| {
+            .map(|payloads| {
                 payloads
                     .detail_for_audio(&audio_durations)
                     .map_err(|error| DbError::Message(error.to_string()))
@@ -549,6 +568,7 @@ pub(super) fn load_candidate_detail_on(
             metadata_revision,
             imported_release,
             release: pane.release,
+            records,
             picked_library_status,
             metadata_draft: pane.edit,
             mapping: pane.mapping,
@@ -566,23 +586,22 @@ pub(super) fn load_candidate_detail_on(
 /// snapshot, the primary first and then its partners.
 ///
 /// The primary's documents are what the draft was read from and what the pane
-/// leads with; a partner's are its own description of the same object, which
-/// is what the field dots compare against. A stored pick always has readable
-/// documents — the pick write archives them first, for the primary and every
-/// partner alike — so a missing one is stated rather than served as half a
-/// pane.
+/// leads with; together with the partners' they are what the release's
+/// records are read off. A stored pick always has readable documents — the
+/// pick write archives them first, for the primary and every partner alike —
+/// so a missing one is stated rather than served as half a pane.
 fn claimed_payloads_on(
     sql: &SqlReadContext<'_>,
     candidate: &ReleaseCandidate,
     picked: Option<&MetadataProvenance>,
-) -> Result<Vec<(Catalog, crate::import::payloads::ReleasePayloads)>, DbError> {
+) -> Result<Vec<crate::import::payloads::ReleasePayloads>, DbError> {
     let Some(MetadataProvenance::ExternalRelease { record, partners }) = picked else {
         return Ok(Vec::new());
     };
     std::iter::once(record.clone())
         .chain(partners.iter().cloned())
         .map(|release| {
-            let payloads = load_release_payloads_on(sql, &release)
+            load_release_payloads_on(sql, &release)
                 .map_err(|error| DbError::Message(error.to_string()))?
                 .ok_or_else(|| {
                     DbError::Message(format!(
@@ -590,8 +609,7 @@ fn claimed_payloads_on(
                         release.key,
                         candidate.key()
                     ))
-                })?;
-            Ok((release.catalog, payloads))
+                })
         })
         .collect()
 }

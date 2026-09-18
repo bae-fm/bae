@@ -102,13 +102,10 @@ impl LibraryManager {
             tracks.iter().map(|(id, _)| id.as_str()),
         )?;
 
-        let claims = super::release_fields::release_field_claims(
-            &self.database,
-            &context.detail.records,
-            self.clock.as_ref(),
-            self.ids.as_ref(),
-        )
-        .await?;
+        let claims = self
+            .database
+            .release_field_claims(context.detail.records.clone())
+            .await?;
         Ok(crate::import::ReleaseEditSeed {
             field_provenance: crate::import::FieldProvenance::of(&edit.origins, &claims),
             edit,
@@ -132,13 +129,7 @@ impl LibraryManager {
             tracks.iter().map(|track| track.id.as_str()),
         )?;
         let records = self.database.get_release_records(release_id).await?;
-        let claims = super::release_fields::release_field_claims(
-            &self.database,
-            &records,
-            self.clock.as_ref(),
-            self.ids.as_ref(),
-        )
-        .await?;
+        let claims = self.database.release_field_claims(records).await?;
         Ok(crate::import::ReleaseFormReset {
             field_provenance: crate::import::FieldProvenance::of(&edit.origins, &claims),
             edit,

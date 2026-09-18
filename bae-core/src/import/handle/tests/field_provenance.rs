@@ -34,14 +34,14 @@ fn claim(
 
 /// A Discogs release stating a label and a catalog number, so two catalogs can
 /// be made to disagree about one field and agree about another.
-fn seed_discogs_pressing(release_id: &str, catalog_number: &str) {
+fn seed_discogs_pressing(release_id: &str, label: &str, catalog_number: &str) {
     let raw_release = serde_json::json!({
         "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
         "title": "Album Title",
         "year": 1996,
         "formats": [{ "name": "CD" }],
         "country": "US",
-        "labels": [{ "name": "Label Name", "catno": catalog_number }],
+        "labels": [{ "name": label, "catno": catalog_number }],
         "artists": [{ "id": 1, "name": "Artist Name" }],
         "tracklist": [{
             "position": "1",
@@ -194,7 +194,7 @@ async fn a_pick_reads_its_fields_from_the_catalog_and_keeps_what_was_typed() {
         .unwrap();
 
     let release_id = "70000101";
-    seed_discogs_pressing(release_id, "CAT-1");
+    seed_discogs_pressing(release_id, "Label Name", "CAT-1");
     handle
         .select_candidate_metadata_provenance(
             key.clone(),
@@ -250,9 +250,9 @@ async fn the_catalogs_readings_say_where_they_disagree() {
         .unwrap();
 
     let discogs_release_id = "70000102";
-    seed_discogs_pressing(discogs_release_id, "CAT-1");
+    seed_discogs_pressing(discogs_release_id, "Label Name", "CAT-1");
     let mb_release_id = "provenance-mb-rel-1";
-    seed_mb_pressing(mb_release_id, "provenance-mb-group-1", "CAT-2");
+    seed_mb_pressing(mb_release_id, Some("provenance-mb-group-1"), "CAT-2", None);
     let partner = crate::import::MetadataRef::new(
         crate::import::Catalog::MusicBrainz,
         mb_release_id.to_string(),
@@ -315,8 +315,122 @@ async fn the_catalogs_readings_say_where_they_disagree() {
     );
 }
 
-/// A one-track MusicBrainz release stating a label and a catalog number.
-fn seed_mb_pressing(release_id: &str, release_group_id: &str, catalog_number: &str) {
+/// The catalogs compared are the release's records, not the releases the pick
+/// claims: a MusicBrainz pick whose document links a Discogs release has that
+/// release's document archived beside its own, and the two are compared the
+/// same way before the import — in the candidate pane — and after it, in the
+/// library's editor.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_cross_linked_document_is_compared_before_import_and_after() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    handle
+        .library_manager
+        .set_discogs_key(
+            "test-discogs-token",
+            crate::config::DiscogsValidation::Valid,
+        )
+        .unwrap();
+
+    let discogs_release_id = "70000103";
+    seed_discogs_pressing(discogs_release_id, "Other Label", "CAT-1");
+    let mb_release_id = "provenance-mb-rel-2";
+    // No release group: the pick would otherwise fetch the group's front
+    // cover from the archive, which no test serves.
+    seed_mb_pressing(mb_release_id, None, "CAT-1", Some(discogs_release_id));
+    handle
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    mb_release_id.to_string(),
+                ),
+                partners: vec![],
+            },
+        )
+        .await
+        .unwrap();
+
+    let picked = pane(&handle, &key).await;
+    let crate::import::triage::TriageReading::Identified { records } = &picked.row.reading else {
+        panic!("a pick reads as identified");
+    };
+    assert_eq!(
+        records
+            .iter()
+            .map(|record| record.catalog)
+            .collect::<Vec<_>>(),
+        vec![
+            crate::import::Catalog::MusicBrainz,
+            crate::import::Catalog::Discogs
+        ],
+        "the cross-linked release is one of the pressing's records"
+    );
+    let label = provenance(&picked, CandidateEditField::Label);
+    assert_eq!(
+        claim(&label, crate::import::Catalog::MusicBrainz),
+        Some("Label Name".to_string())
+    );
+    assert_eq!(
+        claim(&label, crate::import::Catalog::Discogs),
+        Some("Other Label".to_string()),
+        "the cross-linked document states its own reading"
+    );
+    assert_eq!(label.dot, Some(FieldDot::Disagreement));
+    let catalog_number = provenance(&picked, CandidateEditField::CatalogNumber);
+    assert_eq!(
+        catalog_number.dot, None,
+        "the two documents agree about the catalog number"
+    );
+
+    let mut events = handle.subscribe_events();
+    let import_id = handle
+        .start_import(&key, crate::import::StorageMode::Local, false)
+        .await
+        .expect("the picked candidate enters the import queue");
+    let (release_id, _) = await_import_outcome(&mut events, &import_id)
+        .await
+        .unwrap_or_else(|error| panic!("import failed: {error}"));
+    let seed = handle
+        .library_manager
+        .release_edit_seed(&release_id)
+        .await
+        .unwrap();
+    shut_down(handle).await;
+
+    let stored_label = seed
+        .field_provenance
+        .iter()
+        .find(|entry| entry.field == CandidateEditField::Label)
+        .expect("every album-level field has one entry");
+    assert_eq!(stored_label.claims, label.claims);
+    assert_eq!(stored_label.dot, Some(FieldDot::Disagreement));
+}
+
+/// A one-track MusicBrainz release stating a label and a catalog number, in
+/// the release group `release_group_id` names, and — where `discogs_release`
+/// names one — an editor's link to the Discogs release of the same pressing.
+fn seed_mb_pressing(
+    release_id: &str,
+    release_group_id: Option<&str>,
+    catalog_number: &str,
+    discogs_release: Option<&str>,
+) {
+    let relations = discogs_release
+        .map(|id| crate::musicbrainz::MbRelation {
+            url: Some(crate::musicbrainz::MbUrlResource {
+                resource: Some(format!("https://www.discogs.com/release/{id}")),
+            }),
+            target_type: Some("url".to_string()),
+            relation_type: Some("discogs".to_string()),
+            direction: None,
+            artist: None,
+            work: None,
+            target_credit: None,
+        })
+        .into_iter()
+        .collect();
     let response = crate::musicbrainz::MbReleaseResponse {
         id: release_id.to_string(),
         title: "Album Title".to_string(),
@@ -331,8 +445,8 @@ fn seed_mb_pressing(release_id: &str, release_group_id: &str, catalog_number: &s
                 sort_name: Some("Artist Name".to_string()),
             }),
         }],
-        release_group: Some(crate::musicbrainz::MbReleaseGroupRef {
-            id: release_group_id.to_string(),
+        release_group: release_group_id.map(|id| crate::musicbrainz::MbReleaseGroupRef {
+            id: id.to_string(),
             first_release_date: None,
             relations: None,
         }),
@@ -359,7 +473,7 @@ fn seed_mb_pressing(release_id: &str, release_group_id: &str, catalog_number: &s
                 artist_credit: vec![],
             }],
         }],
-        relations: vec![],
+        relations,
         cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
             front: false,
             darkened: false,
@@ -367,8 +481,10 @@ fn seed_mb_pressing(release_id: &str, release_group_id: &str, catalog_number: &s
     };
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
     crate::musicbrainz::seed_release_cache(release_id, raw_json);
-    crate::musicbrainz::seed_release_group_json_cache(
-        release_group_id,
-        serde_json::json!({ "id": release_group_id }).to_string(),
-    );
+    if let Some(release_group_id) = release_group_id {
+        crate::musicbrainz::seed_release_group_json_cache(
+            release_group_id,
+            serde_json::json!({ "id": release_group_id }).to_string(),
+        );
+    }
 }

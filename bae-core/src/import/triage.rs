@@ -195,11 +195,31 @@ mod tests {
         }
     }
 
+    /// The records a pick's documents describe a release in, as the reader
+    /// of those documents hands them over.
+    fn described_in() -> Vec<crate::import::ReleaseRecord> {
+        vec![
+            crate::import::ReleaseRecord::new(
+                &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
+                None,
+                true,
+            ),
+            crate::import::ReleaseRecord::new(
+                &crate::import::MetadataRef::new(Catalog::Discogs, "discogs-1".to_string()),
+                None,
+                false,
+            ),
+        ]
+    }
+
     #[test]
     fn a_row_with_no_draft_is_its_folder_and_nothing_else() {
-        assert_eq!(TriageReading::of(None, None), TriageReading::Unidentified);
         assert_eq!(
-            TriageReading::of(None, Some(&MetadataProvenance::FileTags)),
+            TriageReading::of(None, None, Vec::new()),
+            TriageReading::Unidentified
+        );
+        assert_eq!(
+            TriageReading::of(None, Some(&MetadataProvenance::FileTags), Vec::new()),
             TriageReading::Unidentified,
             "a blank draft leads with its folder whatever once wrote it"
         );
@@ -208,51 +228,33 @@ mod tests {
     #[test]
     fn a_draft_read_off_the_file_tags_names_no_source() {
         assert_eq!(
-            TriageReading::of(Some(&a_draft()), Some(&MetadataProvenance::FileTags)),
+            TriageReading::of(
+                Some(&a_draft()),
+                Some(&MetadataProvenance::FileTags),
+                Vec::new()
+            ),
             TriageReading::Prefilled
         );
         assert_eq!(
-            TriageReading::of(Some(&a_draft()), None),
+            TriageReading::of(Some(&a_draft()), None, Vec::new()),
             TriageReading::Prefilled,
             "a typed-in draft came from nowhere and is still a draft"
         );
     }
 
-    /// A pick pairs one catalog's release with another's into one pressing and
-    /// claims both, so the row names both — in the order surfaces list
-    /// catalogs, whichever of them the draft was read from.
+    /// A pick reads as identified in exactly the records its documents were
+    /// read into — the reading names them, it does not derive them.
     #[test]
-    fn a_pick_names_every_catalog_it_claims_in_the_fixed_order() {
-        let led_by_partner = MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(Catalog::Discogs, "discogs-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(
-                Catalog::MusicBrainz,
-                "mb-1".to_string(),
-            )],
-        };
-        let TriageReading::Identified { records } =
-            TriageReading::of(Some(&a_draft()), Some(&led_by_partner))
-        else {
-            panic!("a pick reads as identified");
+    fn a_pick_reads_as_identified_in_the_records_it_is_handed() {
+        let pick = MetadataProvenance::ExternalRelease {
+            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
+            partners: Vec::new(),
         };
         assert_eq!(
-            records
-                .iter()
-                .map(|record| (record.catalog, record.key.as_str(), record.reads_draft))
-                .collect::<Vec<_>>(),
-            vec![
-                (Catalog::MusicBrainz, "mb-1", false),
-                (Catalog::Discogs, "discogs-1", true),
-            ]
-        );
-        assert_eq!(records[0].url, "https://musicbrainz.org/release/mb-1");
-        assert_eq!(records[1].url, "https://www.discogs.com/release/discogs-1");
-        assert!(
-            records
-                .iter()
-                .all(|record| record.group_key == record.key),
-            "until the archived documents are read, each release stands as its \
-             own group"
+            TriageReading::of(Some(&a_draft()), Some(&pick), described_in()),
+            TriageReading::Identified {
+                records: described_in()
+            }
         );
     }
 }

@@ -319,31 +319,24 @@ pub enum TriageReading {
 }
 
 impl TriageReading {
-    /// How a row reads, from the draft it carries and where that draft came
-    /// from.
+    /// How a row reads, from the draft it carries, where that draft came
+    /// from, and the records the pick's archived documents describe it in.
     ///
     /// `Unidentified` is exactly a row with no summary: the draft is blank and
     /// no catalog has been applied, so the row has a folder and nothing else.
-    /// An external release names the catalogs its pick claims, in the order
-    /// surfaces list catalogs; the rest of the catalogs describing it arrive
-    /// with whoever holds the archived documents.
+    /// An external release reads as identified in exactly `records`: the
+    /// caller derives them from the documents the pick claims, so every
+    /// surface that names the release's catalogs names the same ones.
     pub fn of(
         summary: Option<&TriageMetadataSummary>,
         provenance: Option<&MetadataProvenance>,
+        records: Vec<crate::import::ReleaseRecord>,
     ) -> Self {
         if summary.is_none() {
             return Self::Unidentified;
         }
         match provenance {
-            Some(pick @ MetadataProvenance::ExternalRelease { record, .. }) => Self::Identified {
-                records: pick
-                    .claimed_releases()
-                    .iter()
-                    .map(|release| {
-                        crate::import::ReleaseRecord::new(release, None, release == record)
-                    })
-                    .collect(),
-            },
+            Some(MetadataProvenance::ExternalRelease { .. }) => Self::Identified { records },
             Some(MetadataProvenance::FileTags) | None => Self::Prefilled,
         }
     }
@@ -385,10 +378,8 @@ pub struct TriageRow {
     /// The metadata provenance already applied to this candidate. `None` while no
     /// source has been selected.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
-    /// How the row's text column reads. Built here naming the sources the pick
-    /// claims and nothing about their releases; the window pass, which already
-    /// reads the picked release's archived documents, states each source's
-    /// label and year.
+    /// How the row's text column reads, with every catalog the pick's
+    /// archived documents describe the release in.
     pub reading: TriageReading,
     /// Every name this candidate's folder states — its disc ID, barcodes and
     /// catalog numbers — one line per value, in `MarkKind` order. Empty until

@@ -1,9 +1,8 @@
-//! Where a release's album-level values came from, and what the catalogs
-//! describing it say about them.
+//! Where a release's album-level values came from.
 //!
-//! Three answers over the same eight fields: what the release holds now,
-//! what a write leaves behind it, and what every catalog's archived document
-//! states — the last of which is read back rather than stored.
+//! Two answers over the same eight fields: what the release holds now, and
+//! what a write leaves behind it. What every catalog's archived document
+//! states about them is read back off the release's records, on the database.
 
 use super::*;
 
@@ -31,40 +30,6 @@ impl LibraryManager {
         values.apply_to(edit);
         Ok(())
     }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-/// What every catalog describing `records` says about the eight album-level
-/// fields, read from the documents archived for each through the same mapping
-/// the draft itself is read with — so a claim is exactly what resetting to
-/// that catalog would put in the field.
-///
-/// Only the two catalogs bae asks publish documents; the rest are pages a
-/// record links out to. One of those two whose document was never fetched —
-/// a record another catalog's cross-link named — states nothing either.
-pub(super) async fn release_field_claims(
-    database: &Database,
-    records: &[crate::import::ReleaseRecord],
-    clock: &dyn coven::Clock,
-    ids: &dyn coven::IdProvider,
-) -> Result<crate::import::FieldClaims, LibraryError> {
-    let mut claimed = Vec::new();
-    for record in records
-        .iter()
-        .filter(|record| crate::import::Catalog::LOOKUP.contains(&record.catalog))
-    {
-        let Some(payloads) = crate::import::payloads::load(database, &record.release_ref()).await?
-        else {
-            debug!(
-                "no archived {} document for release {}; it states nothing about the fields",
-                record.catalog.as_str(),
-                record.key
-            );
-            continue;
-        };
-        claimed.push((record.catalog, payloads));
-    }
-    Ok(crate::import::payloads::field_claims(&claimed, clock, ids)?)
 }
 
 /// The eight album-level fields a stored release holds, as the form renders

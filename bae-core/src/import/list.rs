@@ -213,8 +213,9 @@ pub(crate) struct GroupHeaderRow {
 
 /// One placed candidate row, and which scanned row it came from.
 pub(crate) struct PlacedRow {
-    /// The row with `resolved_boundaries` empty and `matched` read off the
-    /// verdict's lead. The window fills both in.
+    /// The row with `resolved_boundaries` empty, `matched` read off the
+    /// verdict's lead, and a reading naming no records. The window fills all
+    /// three in from what it reads for the rows it materialises.
     pub(crate) row: TriageRow,
     /// Index into [`crate::db::ImportQueueRows::candidates`].
     pub(crate) index: usize,
@@ -337,6 +338,9 @@ pub struct ImportCandidateDetailProjection {
     /// The picked release as its archived documents describe it. `None` with
     /// no pick, and for a folder read as its own tags.
     pub release: Option<ImportSearchReleaseDetail>,
+    /// Every catalog the pick's archived documents describe the release in,
+    /// in the order surfaces list catalogs. Empty with no pick.
+    pub records: Vec<crate::import::ReleaseRecord>,
     /// Whether the picked release is already in the library.
     pub picked_library_status: Option<LibraryStatus>,
     /// The candidate's one editable metadata draft.
@@ -391,6 +395,7 @@ impl ImportCandidateDetailProjection {
             metadata_revision,
             imported_release,
             release,
+            records,
             picked_library_status,
             metadata_draft,
             field_provenance,
@@ -457,7 +462,11 @@ impl ImportCandidateDetailProjection {
             selectable: actions.contains(&super::triage::CandidateAction::ImportReady),
             actions,
             matched: matched.filter(|_| actionable),
-            reading: super::triage::TriageReading::of(metadata_summary.as_ref(), picked.as_ref()),
+            reading: super::triage::TriageReading::of(
+                metadata_summary.as_ref(),
+                picked.as_ref(),
+                records,
+            ),
             marks: signals
                 .as_ref()
                 .map(|signals| {

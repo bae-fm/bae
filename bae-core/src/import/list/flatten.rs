@@ -423,9 +423,13 @@ fn place_row(
         selectable: actions.contains(&crate::import::triage::CandidateAction::ImportReady),
         actions,
         matched: verdict.and_then(MatchedRelease::of_summary),
+        // The records are read off the pick's archived documents, which the
+        // queue never opens: the window that materialises the row reads them
+        // and builds the reading over again.
         reading: crate::import::triage::TriageReading::of(
             state.and_then(|state| state.metadata_summary.as_ref()),
             metadata_provenance.as_ref(),
+            Vec::new(),
         ),
         metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
         marks: state.map(|state| state.marks.clone()).unwrap_or_default(),

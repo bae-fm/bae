@@ -230,29 +230,6 @@ pub enum MetadataProvenance {
     FileTags,
 }
 
-impl MetadataProvenance {
-    /// Every release this provenance claims — the one the draft was read from
-    /// and each partner the pick paired it with — in the order surfaces list
-    /// sources. Empty for File Tags, which claims no external release.
-    pub fn claimed_releases(&self) -> Vec<MetadataRef> {
-        let Self::ExternalRelease { record, partners } = self else {
-            return Vec::new();
-        };
-        let claimed: Vec<MetadataRef> = std::iter::once(record.clone())
-            .chain(partners.iter().cloned())
-            .collect();
-        Catalog::ALL
-            .into_iter()
-            .filter_map(|catalog| {
-                claimed
-                    .iter()
-                    .find(|release| release.catalog == catalog)
-                    .cloned()
-            })
-            .collect()
-    }
-}
-
 /// One candidate's editable metadata, independent of the source that last
 /// populated it. The selected cover belongs to the draft; candidate files and
 /// mapping decisions do not.
