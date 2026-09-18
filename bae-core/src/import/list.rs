@@ -338,6 +338,10 @@ pub struct ImportCandidateDetailProjection {
     pub picked_library_status: Option<LibraryStatus>,
     /// The candidate's one editable metadata draft.
     pub metadata_draft: RawReleaseEdit,
+    /// One entry per album-level field: where the draft's value came from,
+    /// what every catalog claiming the pick says about it, and what its dot
+    /// says.
+    pub field_provenance: Vec<crate::import::FieldProvenance>,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: MappingTable,
@@ -385,6 +389,7 @@ impl ImportCandidateDetailProjection {
             release,
             picked_library_status,
             metadata_draft,
+            field_provenance,
             mapping,
             cover,
             remote_covers,
@@ -491,6 +496,7 @@ impl ImportCandidateDetailProjection {
             file_evidence,
             metadata_draft,
             metadata_draft_is_blank,
+            field_provenance,
             metadata_provenance,
             metadata_author,
             metadata_revision,
@@ -523,6 +529,10 @@ pub struct ImportCandidateDetail {
     pub file_evidence: Vec<FileEvidence>,
     pub metadata_draft: RawReleaseEdit,
     pub metadata_draft_is_blank: bool,
+    /// One entry per album-level field: where the draft's value came from,
+    /// what every catalog claiming the pick says about it, and what its dot
+    /// says.
+    pub field_provenance: Vec<crate::import::FieldProvenance>,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// Who decided that identity. The pane returns to the draft when this
     /// becomes `Identification`: the run wrote the pick a click here would

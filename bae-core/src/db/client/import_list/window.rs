@@ -335,6 +335,8 @@ fn picked_release(
 pub(super) fn load_candidate_detail_on(
     sql: &SqlReadContext<'_>,
     key: &str,
+    clock: ClockRef,
+    ids: IdRef,
 ) -> Result<
     Option<impl FnOnce() -> Result<ImportCandidateDetailProjection, DbError> + Send + 'static>,
     DbError,
@@ -395,8 +397,8 @@ pub(super) fn load_candidate_detail_on(
         .transpose()?;
     // Only identity keys are needed for the next SQL query. Track and artwork
     // processing runs after the snapshot ends.
-    let payloads = payloads_for_pane_on(sql, &candidate, picked.as_ref())?;
-    let picked_library_status = match payloads.as_ref() {
+    let claimed = claimed_payloads_on(sql, &candidate, picked.as_ref())?;
+    let picked_library_status = match claimed.first().map(|(_, payloads)| payloads) {
         Some(payloads) => {
             let check = payloads
                 .library_check()
@@ -440,11 +442,15 @@ pub(super) fn load_candidate_detail_on(
     Ok(Some(move || {
         let durations = crate::import::probe::source_durations(candidate.files())
             .map_err(|error| DbError::Message(error.to_string()))?;
-        let release = payloads
-            .map(|payloads| {
-                let audio_durations =
-                    crate::import::track_slots::audio_durations(candidate.files(), &durations)
-                        .map_err(|error| DbError::Message(error.to_string()))?;
+        let audio_durations =
+            crate::import::track_slots::audio_durations(candidate.files(), &durations)
+                .map_err(|error| DbError::Message(error.to_string()))?;
+        let field_claims =
+            crate::import::payloads::field_claims(&claimed, clock.as_ref(), ids.as_ref())
+                .map_err(|error| DbError::Message(error.to_string()))?;
+        let release = claimed
+            .first()
+            .map(|(_, payloads)| {
                 payloads
                     .detail_for_audio(&audio_durations)
                     .map_err(|error| DbError::Message(error.to_string()))
@@ -516,6 +522,10 @@ pub(super) fn load_candidate_detail_on(
             embedded_cover.as_ref(),
         );
         Ok(ImportCandidateDetailProjection {
+            field_provenance: crate::import::FieldProvenance::of(
+                &pane_rows.draft.origins,
+                &field_claims,
+            ),
             is_added: imported_release.is_some(),
             candidate,
             source_error,
@@ -542,32 +552,38 @@ pub(super) fn load_candidate_detail_on(
     }))
 }
 
-/// Read the picked release documents in the pane's SQL snapshot.
-fn payloads_for_pane_on(
+/// Read the documents of every release the pick claims in the pane's SQL
+/// snapshot, the primary first and then its partners.
+///
+/// The primary's documents are what the draft was read from and what the pane
+/// leads with; a partner's are its own description of the same object, which
+/// is what the field dots compare against. A stored pick always has readable
+/// documents — the pick write archives them first, for the primary and every
+/// partner alike — so a missing one is stated rather than served as half a
+/// pane.
+fn claimed_payloads_on(
     sql: &SqlReadContext<'_>,
     candidate: &ReleaseCandidate,
     picked: Option<&MetadataProvenance>,
-) -> Result<Option<crate::import::payloads::ReleasePayloads>, DbError> {
-    let release = match picked {
-        Some(MetadataProvenance::ExternalRelease { record, .. }) => {
-            let release = record.clone();
-            // A stored pick always has readable documents: the pick write
-            // archives them first. Serving half a pane instead would hide the
-            // break rather than state it.
+) -> Result<Vec<(Catalog, crate::import::payloads::ReleasePayloads)>, DbError> {
+    let Some(MetadataProvenance::ExternalRelease { record, partners }) = picked else {
+        return Ok(Vec::new());
+    };
+    std::iter::once(record.clone())
+        .chain(partners.iter().cloned())
+        .map(|release| {
             let payloads = load_release_payloads_on(sql, &release)
                 .map_err(|error| DbError::Message(error.to_string()))?
                 .ok_or_else(|| {
                     DbError::Message(format!(
-                        "{} is picked for {} but nothing stored its lookups",
+                        "{} is claimed for {} but nothing stored its lookups",
                         release.key,
                         candidate.key()
                     ))
                 })?;
-            Some(payloads)
-        }
-        Some(MetadataProvenance::FileTags) | None => None,
-    };
-    Ok(release)
+            Ok((release.catalog, payloads))
+        })
+        .collect()
 }
 
 /// The cover the candidate commits with: its selection, the picked release's

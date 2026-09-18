@@ -79,6 +79,7 @@ async fn a_user_edit_overlays_the_picked_release() {
     generate_album_files(&album_dir, &["01 Track One.flac"]);
 
     let edit = ReleaseUserEdit {
+        origins: Default::default(),
         album_title: "Edited Title".to_string(),
         album_artist_assignments: vec![ArtistAssignment::new("Artist Edited")],
         album_year: Some(1977),

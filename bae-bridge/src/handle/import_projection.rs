@@ -509,6 +509,7 @@ impl crate::types::BridgeImportCandidateDetail {
             file_evidence,
             metadata_draft,
             metadata_draft_is_blank,
+            field_provenance,
             metadata_provenance,
             metadata_author,
             metadata_revision,
@@ -543,6 +544,10 @@ impl crate::types::BridgeImportCandidateDetail {
                 .collect(),
             metadata_draft: crate::types::BridgeRawReleaseEdit::from_core(metadata_draft),
             metadata_draft_is_blank,
+            field_provenance: field_provenance
+                .into_iter()
+                .map(crate::types::BridgeFieldProvenance::from_core)
+                .collect(),
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             metadata_author: crate::types::BridgeMetadataAuthor::from_core(metadata_author),

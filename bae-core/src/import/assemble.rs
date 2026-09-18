@@ -448,6 +448,9 @@ pub(crate) fn assemble_parsed_album(
         pressing: ir.pressing,
         disc_id: None,
         draft_from_tags: matches!(ir.metadata_provenance, Some(MetadataProvenance::FileTags)),
+        // The draft the user committed states where each of its fields was
+        // read; `apply_user_edit_to_seed` puts that on this row.
+        field_origins: Default::default(),
         // Imports land local; the upload observer flips `remote` true once the
         // release's audio is durably in the cloud.
         remote: false,

@@ -9,46 +9,10 @@ use crate::import::mapping::{
     mapping_with_track, mapping_without_track, MappingTable, MappingTrackSection,
 };
 use crate::import::types::{
-    ArtistAssignment, AudioFile, CandidateTrack, RawReleaseEdit, RawTrackEdit, TrackFileAuthor,
+    ArtistAssignment, AudioFile, CandidateEditField, CandidateTrack, FieldOrigin, RawReleaseEdit,
+    RawTrackEdit, TrackFileAuthor,
 };
 use chrono::{DateTime, Utc};
-
-/// One album-level field of the metadata form.
-///
-/// The form's own fields, not the wire edit's: `year` is text here because the
-/// field is text, and the commit is what parses it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CandidateEditField {
-    AlbumTitle,
-    AlbumYear,
-    PressingYear,
-    Format,
-    Label,
-    CatalogNumber,
-    Country,
-    Barcode,
-}
-
-impl CandidateEditField {
-    /// Put `value` in this field of `draft`.
-    pub(crate) fn set<Track>(
-        self,
-        draft: &mut crate::import::RawReleaseEditOf<Track>,
-        value: &str,
-    ) {
-        let slot = match self {
-            Self::AlbumTitle => &mut draft.album_title,
-            Self::AlbumYear => &mut draft.album_year,
-            Self::PressingYear => &mut draft.pressing.year,
-            Self::Format => &mut draft.pressing.format,
-            Self::Label => &mut draft.pressing.label,
-            Self::CatalogNumber => &mut draft.pressing.catalog_number,
-            Self::Country => &mut draft.pressing.country,
-            Self::Barcode => &mut draft.pressing.barcode,
-        };
-        *slot = value.to_string();
-    }
-}
 
 /// The album-level fields a person has typed, over whatever the picked release
 /// seeds.
@@ -201,6 +165,36 @@ pub(crate) fn apply_track_decisions(
             None => table,
         }
     })
+}
+
+/// Carry everything a person decided onto a newly projected draft: the file
+/// bindings and dropped rows they chose, and the fields they typed.
+///
+/// What a rewrite replaces is what a source states; what a person said stands
+/// until they say otherwise. A reset is the one thing that drops it, and a
+/// reset blanks the draft rather than coming through here.
+pub(crate) fn preserve_user_decisions(
+    proposed: &mut crate::import::CandidateDraft,
+    current: &crate::import::CandidateDraft,
+) {
+    proposed.tracks =
+        preserve_track_decisions(std::mem::take(&mut proposed.tracks), &current.tracks);
+    preserve_typed_fields(proposed, current);
+}
+
+/// Carry the fields a person typed onto a newly projected draft: each keeps
+/// the value they left and stays theirs.
+pub(crate) fn preserve_typed_fields<Proposed, Current>(
+    proposed: &mut crate::import::RawReleaseEditOf<Proposed>,
+    current: &crate::import::RawReleaseEditOf<Current>,
+) {
+    for field in CandidateEditField::ALL {
+        if current.origins.get(field) != Some(FieldOrigin::Typed) {
+            continue;
+        }
+        *field.slot_mut(proposed) = field.slot(current).to_string();
+        proposed.origins.set(field, Some(FieldOrigin::Typed));
+    }
 }
 
 /// Carry user-owned file bindings and dropped rows onto a newly projected

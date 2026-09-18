@@ -361,6 +361,39 @@ pub(super) fn row_to_track_with_prefix(
     })
 }
 
+/// The origin columns beside a release's eight album-level values, read in the
+/// order the fields are listed.
+fn row_to_field_origins(row: &Row) -> coven::rusqlite::Result<crate::import::FieldOrigins> {
+    const COLUMNS: [&str; 8] = [
+        "album_title_origin",
+        "album_year_origin",
+        "year_origin",
+        "format_origin",
+        "label_origin",
+        "catalog_number_origin",
+        "country_origin",
+        "barcode_origin",
+    ];
+    let mut origins = crate::import::FieldOrigins::default();
+    for (field, column) in crate::import::CandidateEditField::ALL
+        .into_iter()
+        .zip(COLUMNS)
+    {
+        let Some(stored) = row.get::<_, Option<String>>(column)? else {
+            continue;
+        };
+        let origin = stored.parse().map_err(|error: String| {
+            coven::rusqlite::Error::FromSqlConversionFailure(
+                0,
+                coven::rusqlite::types::Type::Text,
+                error.into(),
+            )
+        })?;
+        origins.set(field, Some(origin));
+    }
+    Ok(origins)
+}
+
 pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
     Ok(DbRelease {
         id: row.get("id")?,
@@ -376,6 +409,7 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
         },
         disc_id: row.get("disc_id")?,
         draft_from_tags: row.get("draft_from_tags")?,
+        field_origins: row_to_field_origins(row)?,
         remote: row.get("remote")?,
         source_folder_name: row.get("source_folder_name")?,
         content_hash: row.get("content_hash")?,

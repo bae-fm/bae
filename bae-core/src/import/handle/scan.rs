@@ -295,7 +295,13 @@ impl ImportServiceHandle {
             self.clock.as_ref(),
             self.ids.as_ref(),
         )?;
-        Ok(crate::import::pane::candidate_draft_from_source(pane))
+        let mut source = crate::import::pane::candidate_draft_from_source(pane);
+        // Every field the document states was read from the catalog that
+        // published it; what it leaves blank was read from nowhere.
+        source.draft = source
+            .draft
+            .read_from(crate::import::FieldOrigin::Record(payloads.release().catalog));
+        Ok(source)
     }
 
     /// Project one external release and prepare every provider image its
@@ -429,9 +435,9 @@ impl ImportServiceHandle {
                         current.cover.as_ref(),
                     )
                     .await?;
-                metadata.draft.tracks = crate::import::edits::preserve_track_decisions(
-                    metadata.draft.tracks,
-                    &current.draft.tracks,
+                crate::import::edits::preserve_user_decisions(
+                    &mut metadata.draft,
+                    &current.draft,
                 );
                 // A release the person chose answers the candidate. Where a run
                 // has already answered it, that run's own result is the record

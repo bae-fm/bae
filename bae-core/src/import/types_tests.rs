@@ -36,6 +36,7 @@ mod edit_shaping_tests {
     /// one aspect to exercise a single rule.
     fn valid_form() -> RawReleaseEdit {
         RawReleaseEdit {
+            origins: Default::default(),
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![ArtistAssignment::new("Artist One")],
             album_year: "1987".to_string(),
@@ -217,6 +218,7 @@ mod edit_shaping_tests {
     #[test]
     fn from_user_edit_round_trips_through_shape() {
         let original = ReleaseUserEdit {
+            origins: Default::default(),
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![
                 ArtistAssignment::existing(existing_artist()),

@@ -218,8 +218,7 @@ impl CandidatePreparations {
                 )
             })?;
         let mut draft = crate::import::pane::candidate_draft_from_edit(draft.clone()).draft;
-        draft.tracks =
-            super::edits::preserve_track_decisions(draft.tracks, &prep.metadata.draft.tracks);
+        super::edits::preserve_user_decisions(&mut draft, &prep.metadata.draft);
         let metadata = crate::import::CandidateMetadataDraft {
             draft,
             source_discogs_artist_ids: Default::default(),

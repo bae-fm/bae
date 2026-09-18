@@ -23,6 +23,10 @@ pub struct RawReleaseEditOf<Track> {
     pub album_year: String,
     pub pressing: RawPressingEdit,
     pub tracks: Vec<Track>,
+    /// Where each album-level value above came from. It travels with the
+    /// values rather than beside them, so every projection, edit and store
+    /// that carries one carries the other.
+    pub origins: FieldOrigins,
 }
 
 /// The editor's form: album fields over the rows a person edits.
@@ -94,6 +98,7 @@ impl CandidateDraft {
                 .filter(|track| !track.dropped)
                 .map(|track| track.edit.clone())
                 .collect(),
+            origins: self.origins.clone(),
         }
     }
 
@@ -106,6 +111,7 @@ impl CandidateDraft {
             album_year: self.album_year.clone(),
             pressing: self.pressing.clone(),
             tracks: self.tracks.iter().map(|track| track.edit.clone()).collect(),
+            origins: self.origins.clone(),
         }
     }
 }
@@ -246,6 +252,7 @@ impl RawReleaseEdit {
                     file: t.file.clone(),
                 })
                 .collect(),
+            origins: self.origins.clone(),
         }
         .normalized();
         edit.validate()?;
@@ -274,7 +281,18 @@ impl RawReleaseEdit {
                 .unwrap_or_default(),
             pressing: RawPressingEdit::from_pressing(&edit.pressing),
             tracks,
+            origins: edit.origins,
         }
+    }
+}
+
+impl<Track> RawReleaseEditOf<Track> {
+    /// The same form with every field it states read from `origin`, and
+    /// nothing said about the fields it leaves blank — what a projection of
+    /// one source produces.
+    pub fn read_from(mut self, origin: FieldOrigin) -> Self {
+        self.origins = FieldOrigins::of(&FieldValues::of_draft(&self), origin);
+        self
     }
 }
 

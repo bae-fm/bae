@@ -258,6 +258,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .apply_release_metadata_user_edit(
             &release.id,
             &crate::import::ReleaseUserEdit {
+                origins: Default::default(),
                 album_title: "Edited Album".to_string(),
                 album_artist_assignments: vec![crate::import::ArtistAssignment::new(
                     "Edited Album Artist",
@@ -322,5 +323,96 @@ async fn release_metadata_edit_preserves_records_and_audio() {
             .map(|artist| artist.name)
             .collect::<Vec<_>>(),
         vec!["Edited Track Artist"]
+    );
+}
+
+/// A person's edit says where its values came from where the form knows, and
+/// the write reads a field it changed without saying as theirs. A field the
+/// edit leaves as the release already had it keeps the answer it had.
+#[tokio::test]
+async fn an_edit_makes_the_fields_it_changes_the_persons() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.pressing.label = Some("Source Label".to_string());
+    release.field_origins.album_title = Some(crate::import::FieldOrigin::Tags);
+    release.field_origins.album_year = Some(crate::import::FieldOrigin::Tags);
+    release.field_origins.pressing_year = Some(crate::import::FieldOrigin::Tags);
+    release.field_origins.label = Some(crate::import::FieldOrigin::Tags);
+    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", Some(1));
+    manager.database.insert_album(&album).await.unwrap();
+    insert_release(&manager, &release).await;
+    manager.database.insert_track(&track).await.unwrap();
+    add_track_audio_sources(
+        &manager,
+        &track,
+        &[("track.flac", crate::album_detail::SourceAudioLayout::File)],
+    )
+    .await;
+
+    manager
+        .apply_release_metadata_user_edit(
+            &release.id,
+            &crate::import::ReleaseUserEdit {
+                origins: Default::default(),
+                album_title: "Edited Album".to_string(),
+                album_artist_assignments: vec![crate::import::ArtistAssignment::new(
+                    "Album Artist",
+                )],
+                album_year: album.year,
+                pressing: crate::import::PressingEdit {
+                    year: release.pressing.year,
+                    format: None,
+                    label: Some("Source Label".to_string()),
+                    catalog_number: None,
+                    country: None,
+                    barcode: None,
+                },
+                tracks: vec![crate::import::TrackUserEdit {
+                    title: track.title.clone(),
+                    side: track.side,
+                    track_number: track.track_number,
+                    artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                    file: None,
+                }],
+            },
+        )
+        .await
+        .unwrap();
+
+    let stored = manager
+        .get_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .expect("the edited release remains stored");
+    assert_eq!(
+        stored.field_origins.album_title,
+        Some(crate::import::FieldOrigin::Typed),
+        "the title the edit changed is the person's from here on"
+    );
+    assert_eq!(
+        stored.field_origins.label,
+        Some(crate::import::FieldOrigin::Tags),
+        "a field restated as it stood keeps where it was read"
+    );
+    assert_eq!(
+        stored.field_origins.barcode, None,
+        "a field the edit states nothing for came from nowhere"
+    );
+
+    let seed = manager.release_edit_seed(&release.id).await.unwrap();
+    assert_eq!(
+        seed.edit.origins, stored.field_origins,
+        "the form is seeded with the answers the release holds"
+    );
+    let title = seed
+        .field_provenance
+        .iter()
+        .find(|entry| entry.field == crate::import::CandidateEditField::AlbumTitle)
+        .expect("every album-level field has one entry");
+    assert_eq!(title.dot, Some(crate::import::FieldDot::Typed));
+    assert!(
+        title.claims.is_empty(),
+        "no catalog describes a release read from its files' tags"
     );
 }

@@ -150,6 +150,7 @@ pub enum ReleaseEditLoadError {
 }
 
 impl ReleaseEditDisplayContext {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn from_raw(raw: &DbReleaseDetail) -> Result<Self, ReleaseEditLoadError> {
         let has_multiple_sides = raw
             .tracks

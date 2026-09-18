@@ -170,6 +170,7 @@ impl Database {
             track_artists.to_vec(),
         );
         let now = self.inner.clock.now().to_rfc3339();
+        let origins = super::write::stored_field_origins(&release.field_origins);
         self.call_sql(move |sql| {
             let tx = &sql;
             // One HLC stamp for every synced row this edit touches.
@@ -206,7 +207,11 @@ impl Database {
 
             tx.execute(
                 r#"UPDATE releases SET year = ?, format = ?, label = ?, catalog_number = ?,
-                    country = ?, barcode = ?, _updated_at = ? WHERE id = ?"#,
+                    country = ?, barcode = ?,
+                    album_title_origin = ?, album_year_origin = ?, year_origin = ?,
+                    format_origin = ?, label_origin = ?, catalog_number_origin = ?,
+                    country_origin = ?, barcode_origin = ?,
+                    _updated_at = ? WHERE id = ?"#,
                 params![
                     release.pressing.year,
                     release.pressing.format,
@@ -214,6 +219,14 @@ impl Database {
                     release.pressing.catalog_number,
                     release.pressing.country,
                     release.pressing.barcode,
+                    origins[0],
+                    origins[1],
+                    origins[2],
+                    origins[3],
+                    origins[4],
+                    origins[5],
+                    origins[6],
+                    origins[7],
                     reg,
                     release_id,
                 ],

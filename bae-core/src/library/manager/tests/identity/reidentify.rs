@@ -555,6 +555,118 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
     );
 }
 
+/// Re-identifying rewrites what a source states and leaves what a person
+/// typed. The label they entered stands, still theirs; every field the tags
+/// state is read from the tags again.
+#[tokio::test]
+async fn re_identify_with_file_tags_keeps_the_fields_a_person_typed() {
+    use crate::import::{CandidateEditField, FieldOrigin, ReleaseReseed};
+    use lofty::config::WriteOptions;
+    use lofty::prelude::*;
+    use lofty::tag::{Tag, TagType};
+    use std::fs;
+
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let media = TempDir::new().unwrap();
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join("flac");
+    let src = fixtures.join("01 Test Track 1.flac");
+    let dest = media.path().join("01.flac");
+    fs::copy(&src, &dest).unwrap();
+    let mut tagged = lofty::read_from_path(&dest).unwrap();
+    let mut tag = Tag::new(TagType::VorbisComments);
+    tag.set_title("Tagged One".to_string());
+    tag.set_artist("Tagged Artist".to_string());
+    tag.set_album("Tagged Album".to_string());
+    tagged.insert_tag(tag);
+    tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
+
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.remote = false;
+    // A release read from MusicBrainz with one field a person typed over it.
+    release.pressing.label = Some("Typed Label".to_string());
+    release.field_origins.album_title =
+        Some(FieldOrigin::Record(crate::import::Catalog::MusicBrainz));
+    release.field_origins.label = Some(FieldOrigin::Typed);
+
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    manager
+        .database
+        .insert_release_records(&release.id, &[mb_identity("g1", "mb-rel-1")])
+        .await
+        .unwrap();
+
+    let track = crate::db::DbTrack {
+        id: "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
+        release_id: release.id.clone(),
+        title: "MB Track One".to_string(),
+        side: 1,
+        track_number: Some(1),
+        duration_ms: None,
+        discogs_position: None,
+        created_at: Utc::now(),
+    };
+    manager.database.insert_track(&track).await.unwrap();
+    let file = crate::db::DbFile::new(
+        &release.id,
+        "01.flac",
+        std::fs::metadata(&dest).unwrap().len() as i64,
+        crate::util::content_type::ContentType::Flac,
+        Uuid::new_v4().to_string(),
+        Utc::now(),
+    );
+    manager
+        .database
+        .insert_external_file_for_test(&file, &dest)
+        .await
+        .unwrap();
+
+    manager
+        .re_identify_release(&release.id, ReleaseReseed::FileTags)
+        .await
+        .unwrap();
+
+    let updated = manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        updated.pressing.label.as_deref(),
+        Some("Typed Label"),
+        "the rewrite leaves the field the person entered"
+    );
+    assert_eq!(
+        updated.field_origins.get(CandidateEditField::Label),
+        Some(FieldOrigin::Typed),
+        "and it is still theirs"
+    );
+
+    let landing_album_id = manager
+        .database
+        .find_album_id_for_release(&release.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let landing_album = manager
+        .database
+        .find_album_by_id(&landing_album_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(landing_album.title, "Tagged Album");
+    assert_eq!(
+        updated.field_origins.get(CandidateEditField::AlbumTitle),
+        Some(FieldOrigin::Tags),
+        "every field the tags state was read from them again"
+    );
+}
+
 /// Re-identifying onto a paired pressing keeps both sources: the picked
 /// release's own identity row and one for each partner, naming the release
 /// that source lists.

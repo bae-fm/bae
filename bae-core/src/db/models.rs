@@ -306,6 +306,11 @@ pub struct DbRelease {
     /// document a draft was read from, and a release with neither started
     /// blank.
     pub draft_from_tags: bool,
+    /// Where each album-level value the edit sheet edits came from: the album
+    /// title and year, and the five pressing fields beside the pressing year.
+    /// The album's own row keeps the title; where it was read is a fact about
+    /// this release's draft, so it sits here with the rest.
+    pub field_origins: crate::import::FieldOrigins,
     /// Shared, synced fact (the coven gate column): is this release's audio in
     /// the cloud home (remote) or local to one device (local). A local release's
     /// in-place files are registered with coven as the user's own external
@@ -727,6 +732,7 @@ impl DbRelease {
             pressing: Pressing::blank(),
             disc_id: None,
             draft_from_tags: false,
+            field_origins: Default::default(),
             remote: false,
             source_folder_name: None,
             content_hash: None,

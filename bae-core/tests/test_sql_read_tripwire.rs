@@ -98,6 +98,7 @@ async fn pure_reads_use_the_read_connection() {
             },
             metadata: Some(bae_core::import::CandidateMetadataDraft {
                 draft: bae_core::import::CandidateDraft {
+                    origins: Default::default(),
                     album_title: "Unwritten candidate".to_string(),
                     album_artist_assignments: Vec::new(),
                     album_year: String::new(),

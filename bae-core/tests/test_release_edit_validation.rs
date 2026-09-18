@@ -36,6 +36,7 @@ async fn seed(db: &Database) -> (String, String) {
         created_at: Utc::now(),
     };
     let release = DbRelease {
+        field_origins: Default::default(),
         id: Uuid::new_v4().to_string(),
         album_id: album.id.clone(),
         release_name: None,
@@ -70,6 +71,7 @@ async fn seed(db: &Database) -> (String, String) {
 /// `release_user_edit` builds one from an MCP tool call — no shaping, no trimming.
 fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUserEdit {
     ReleaseUserEdit {
+        origins: Default::default(),
         album_title: album_title.to_string(),
         album_artist_assignments: album_artist_seed_names
             .iter()

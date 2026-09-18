@@ -55,6 +55,7 @@ pub(crate) fn blank_source_for_tracks(
             album_year: None,
             pressing: crate::import::PressingEdit::blank(),
             tracks,
+            origins: Default::default(),
         },
         CANDIDATE_TRACK_ID_PREFIX,
     );
@@ -137,6 +138,7 @@ fn detach_candidate_mappings(
             album_year: draft.album_year,
             pressing: draft.pressing,
             tracks,
+            origins: draft.origins,
         },
         source_discogs_artist_ids,
         mapped_new_discogs_artist_ids,

@@ -40,6 +40,59 @@ mirror_struct! {
     },
 }
 
+mirror_enum! {
+    BridgeFieldOrigin = bae_core::import::FieldOrigin,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        Record(catalog: (BridgeCatalog)),
+        Tags,
+        Typed,
+    },
+}
+
+mirror_struct! {
+    BridgeFieldOrigins = bae_core::import::FieldOrigins,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: {
+        album_title: (opt BridgeFieldOrigin),
+        album_year: (opt BridgeFieldOrigin),
+        pressing_year: (opt BridgeFieldOrigin),
+        format: (opt BridgeFieldOrigin),
+        label: (opt BridgeFieldOrigin),
+        catalog_number: (opt BridgeFieldOrigin),
+        country: (opt BridgeFieldOrigin),
+        barcode: (opt BridgeFieldOrigin),
+    },
+}
+
+mirror_struct! {
+    BridgeFieldClaim = bae_core::import::FieldClaim,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { catalog: (BridgeCatalog), value },
+}
+
+mirror_enum! {
+    BridgeFieldDot = bae_core::import::FieldDot,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Typed, Disagreement },
+}
+
+mirror_struct! {
+    BridgeFieldProvenance = bae_core::import::FieldProvenance,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: {
+        field: (BridgeCandidateEditField),
+        origin: (opt BridgeFieldOrigin),
+        claims: (each BridgeFieldClaim),
+        dot: (opt BridgeFieldDot),
+    },
+}
+
 mirror_struct! {
     BridgeReleaseUserEdit = bae_core::import::ReleaseUserEdit,
     from_core: pub(crate) fn,
@@ -50,6 +103,7 @@ mirror_struct! {
         album_year,
         pressing: (BridgePressingEdit),
         tracks: (each BridgeTrackUserEdit),
+        origins: (BridgeFieldOrigins),
     },
 }
 
@@ -84,6 +138,7 @@ mirror_struct! {
         album_year,
         pressing: (BridgeRawPressingEdit),
         tracks: (each BridgeRawTrackEdit),
+        origins: (BridgeFieldOrigins),
     },
 }
 
@@ -132,6 +187,7 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         edit: (BridgeRawReleaseEdit),
+        field_provenance: (each BridgeFieldProvenance),
         can_reset_to_source,
         cover: (opt BridgeImageRef),
         display: (BridgeReleaseEditDisplayContext),

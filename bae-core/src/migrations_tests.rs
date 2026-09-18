@@ -22,6 +22,8 @@ mod migration_ten;
 mod migration_thirty;
 #[path = "migrations_tests/migration_thirty_one.rs"]
 mod migration_thirty_one;
+#[path = "migrations_tests/migration_thirty_two.rs"]
+mod migration_thirty_two;
 #[path = "migrations_tests/migration_twelve.rs"]
 mod migration_twelve;
 #[path = "migrations_tests/migration_twenty.rs"]

@@ -67,6 +67,11 @@ pub(crate) fn automation_candidate_from_folder(
             &folder.metadata_draft,
             &folder.mapping,
         ))),
+        field_provenance: folder
+            .field_provenance
+            .iter()
+            .map(automation_field_provenance)
+            .collect(),
         failure: folder
             .failure
             .as_ref()
@@ -118,7 +123,32 @@ fn shaped_edit(
             album_year: None,
             pressing: bae_core::import::PressingEdit::blank(),
             tracks: Vec::new(),
+            origins: Default::default(),
         })
+}
+
+fn automation_field_provenance(
+    provenance: &bae_core::import::FieldProvenance,
+) -> AutomationFieldProvenance {
+    AutomationFieldProvenance {
+        field: provenance.field.as_str().to_string(),
+        origin: provenance.origin.map(|origin| match origin {
+            bae_core::import::FieldOrigin::Record(catalog) => AutomationFieldOrigin::Record {
+                catalog: catalog.as_str().to_string(),
+            },
+            bae_core::import::FieldOrigin::Tags => AutomationFieldOrigin::Tags,
+            bae_core::import::FieldOrigin::Typed => AutomationFieldOrigin::Typed,
+        }),
+        claims: provenance
+            .claims
+            .iter()
+            .map(|claim| AutomationFieldClaim {
+                catalog: claim.catalog.as_str().to_string(),
+                value: claim.value.clone(),
+            })
+            .collect(),
+        records_disagree: provenance.records_disagree(),
+    }
 }
 
 /// An unimportable folder. The import service records no runtime against one —

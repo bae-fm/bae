@@ -10,7 +10,7 @@ use crate::import::file_tag_snapshot::FileTagSnapshot;
 use crate::import::pane::file_tags_pane;
 use crate::import::probe::SourceDurations;
 use crate::import::release_candidate::ReleaseCandidate;
-use crate::import::{CandidateDraft, CandidateTrack, CoverSelection, ImportError};
+use crate::import::{CandidateDraft, CandidateTrack, CoverSelection, FieldOrigin, ImportError};
 
 /// A folder read as its own files describe it.
 pub(crate) struct FileTagsSeed {
@@ -55,6 +55,9 @@ impl FileTagsSeed {
     /// `keeping` are the draft's current track rows: the decisions a person
     /// made about which file becomes which track outlive the metadata read
     /// over them. A candidate with no draft yet passes none.
+    ///
+    /// The fields do not: reading a folder as its own tags is a reset, and a
+    /// reset is the one thing that drops what a person typed.
     pub(crate) fn project(
         candidate: &ReleaseCandidate,
         snapshot: FileTagSnapshot,
@@ -72,7 +75,9 @@ impl FileTagsSeed {
             clock,
             ids,
         )?;
-        let mut draft = crate::import::pane::candidate_draft_from_source(pane).draft;
+        let mut draft = crate::import::pane::candidate_draft_from_source(pane)
+            .draft
+            .read_from(FieldOrigin::Tags);
         draft.tracks = crate::import::edits::preserve_track_decisions(draft.tracks, keeping);
         let cover = crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot);
         Ok(Self {

@@ -1,4 +1,8 @@
 //! Persisted release metadata editor loading and source reset.
+//!
+//! Desktop-only, like the editor itself: what a seed says about each field
+//! is read back from the archived documents, which only the desktop build
+//! carries.
 
 use super::release::cover_ref_for;
 use super::*;
@@ -93,11 +97,20 @@ impl LibraryManager {
                     barcode: release.pressing.barcode.clone(),
                 },
                 tracks: tracks.iter().map(|(_, track)| track.clone()).collect(),
+                origins: release.field_origins.clone(),
             },
             tracks.iter().map(|(id, _)| id.as_str()),
         )?;
 
+        let claims = super::release_fields::release_field_claims(
+            &self.database,
+            &context.detail.records,
+            self.clock.as_ref(),
+            self.ids.as_ref(),
+        )
+        .await?;
         Ok(crate::import::ReleaseEditSeed {
+            field_provenance: crate::import::FieldProvenance::of(&edit.origins, &claims),
             edit,
             can_reset_to_source,
             cover,
@@ -138,11 +151,13 @@ fn raw_release_edit_with_persisted_track_ids<'a>(
         album_year,
         pressing,
         tracks,
+        origins,
     } = edit;
     Ok(crate::import::RawReleaseEdit {
         album_title,
         album_artist_assignments,
         album_year: album_year.map(|year| year.to_string()).unwrap_or_default(),
+        origins,
         pressing: crate::import::RawPressingEdit::from_pressing(&pressing),
         tracks: tracks
             .into_iter()

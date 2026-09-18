@@ -159,8 +159,8 @@ desktop_only! {
     };
     pub use cover_art::{CoverChoice, CoverImageSource};
     pub use edits::{
-        apply_track_edits, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit,
-        ImportFailure, TrackEditState,
+        apply_track_edits, CandidateEditOverlay, CandidateTrackEdit, ImportFailure,
+        TrackEditState,
     };
 }
 pub(crate) use error::artist_source_ids_are_compatible;
@@ -211,10 +211,12 @@ desktop_only! {
 }
 pub use types::{
     asked_sources, is_the_only_asked_source, parse_catalog_url, ArtistAssignment, AudioFile,
-    CandidateDraft, CandidateTrack, Catalog, CatalogAvailability, CatalogPage, EditValidationError,
-    ExistingArtist, MetadataProvenance, NewArtistSeed, PressingEdit, RawPressingEdit,
-    RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed, ReleaseRecord,
-    ReleaseUserEdit, SourceAvailability, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit,
+    CandidateDraft, CandidateEditField, CandidateTrack, Catalog, CatalogAvailability, CatalogPage,
+    EditValidationError, ExistingArtist, FieldClaim, FieldClaims, FieldDot, FieldOrigin,
+    FieldOrigins, FieldProvenance, FieldValues, MetadataProvenance, NewArtistSeed, PressingEdit,
+    RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
+    ReleaseRecord, ReleaseUserEdit, SourceAvailability, TrackArtistAssignments, TrackFileAuthor,
+    TrackUserEdit,
 };
 desktop_only! {
     pub use types::{

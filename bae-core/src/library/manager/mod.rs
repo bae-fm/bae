@@ -87,7 +87,9 @@ mod playback_state;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod records;
 mod release;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod release_edit;
+mod release_fields;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod save;
 mod storage;

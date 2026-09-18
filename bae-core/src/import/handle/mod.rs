@@ -923,6 +923,9 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
             barcode: parsed.release.pressing.barcode.clone(),
         },
         tracks,
+        // A seed says what the release is; which source it was read from is
+        // the caller's to stamp, because a `ParsedAlbum` does not carry it.
+        origins: Default::default(),
     }
 }
 

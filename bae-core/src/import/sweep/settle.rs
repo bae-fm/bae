@@ -142,7 +142,7 @@ pub(super) async fn finish_candidate(
         &mut verdict,
     )
     .await;
-    if let Err(error) = preserve_current_mapping_decisions(context, candidate, &mut metadata).await
+    if let Err(error) = preserve_current_decisions(context, candidate, &mut metadata).await
     {
         return FinishCandidateOutcome::Failed {
             error: error.to_string(),
@@ -166,7 +166,7 @@ pub(super) async fn finish_candidate(
     .await
 }
 
-async fn preserve_current_mapping_decisions(
+async fn preserve_current_decisions(
     context: &SweepContext,
     candidate: &ReleaseCandidate,
     metadata: &mut Option<crate::import::CandidateMetadataDraft>,
@@ -184,10 +184,7 @@ async fn preserve_current_mapping_decisions(
                 candidate.key()
             ))
         })?;
-    metadata.draft.tracks = crate::import::edits::preserve_track_decisions(
-        std::mem::take(&mut metadata.draft.tracks),
-        &current.draft.tracks,
-    );
+    crate::import::edits::preserve_user_decisions(&mut metadata.draft, &current.draft);
     Ok(())
 }
 
@@ -490,7 +487,7 @@ pub(super) async fn record_explicit_lookup_verdict(
                 )
                 .await;
                 if let Err(error) =
-                    preserve_current_mapping_decisions(context, &entry.candidate, &mut metadata)
+                    preserve_current_decisions(context, &entry.candidate, &mut metadata)
                         .await
                 {
                     context

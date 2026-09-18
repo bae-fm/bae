@@ -157,7 +157,7 @@ impl LibraryManager {
 
         let records = self.database.get_release_records(release_id).await?;
         let draft_record = records.iter().find(|record| record.reads_draft);
-        let parsed = match (draft_record, release.draft_from_tags) {
+        let (parsed, origin) = match (draft_record, release.draft_from_tags) {
             (Some(record), _) => {
                 // The record names which archived document seeded this release,
                 // and the documents are keyed by exactly that — so what is read
@@ -174,23 +174,27 @@ impl LibraryManager {
                         ))
                     })?;
                 let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
-                parsed_for_existing_release(
-                    &payloads,
-                    record.catalog,
-                    &existing_tracks,
-                    self.clock.as_ref(),
-                    self.ids.as_ref(),
-                )?
+                (
+                    parsed_for_existing_release(
+                        &payloads,
+                        record.catalog,
+                        &existing_tracks,
+                        self.clock.as_ref(),
+                        self.ids.as_ref(),
+                    )?,
+                    crate::import::FieldOrigin::Record(record.catalog),
+                )
             }
-            (None, true) => {
+            (None, true) => (
                 project_file_tags(
                     &self.database,
                     &release,
                     self.clock.clone(),
                     self.ids.clone(),
                 )
-                .await?
-            }
+                .await?,
+                crate::import::FieldOrigin::Tags,
+            ),
             (None, false) => {
                 return Err(LibraryError::Import(format!(
                     "release '{release_id}' was read from nothing to reset to"
@@ -198,7 +202,9 @@ impl LibraryManager {
             }
         };
 
-        Ok(parsed_album_to_user_edit(&parsed))
+        // Every field the replayed source states was read from it, and a reset
+        // is the one thing that drops what a person typed.
+        Ok(parsed_album_to_user_edit(&parsed).read_from(origin))
     }
 
     /// Re-identify commit: translate the user's `ReleaseReseed` into a fully
@@ -299,7 +305,9 @@ impl LibraryManager {
         // editor — so this writes through the ungated path. The blank is not a user
         // edit, and the user-edit gate would reject it.
         if matches!(reseed, ReleaseReseed::FileTags) {
-            let edit = self.reset_metadata_to_source(release_id).await?;
+            let mut edit = self.reset_metadata_to_source(release_id).await?;
+            self.carry_typed_release_fields(release_id, &mut edit)
+                .await?;
             self.write_release_metadata(release_id, &edit).await?;
         }
 
@@ -339,7 +347,7 @@ impl LibraryManager {
     /// Load the album id, release, album, and existing tracks for a release
     /// being edited — the shared prelude of `release_edit_seed` and
     /// `apply_release_metadata_user_edit`.
-    async fn load_release_for_edit(
+    pub(super) async fn load_release_for_edit(
         &self,
         release_id: &str,
     ) -> Result<(String, DbRelease, DbAlbum, Vec<DbTrack>), LibraryError> {
@@ -466,6 +474,7 @@ impl LibraryManager {
                 country: edit.pressing.country.clone(),
                 barcode: edit.pressing.barcode.clone(),
             },
+            field_origins: super::release_fields::written_field_origins(edit, &album, &release),
             ..release.clone()
         };
 

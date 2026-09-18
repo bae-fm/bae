@@ -66,6 +66,7 @@ fn test_album(
 /// A local release read from file tags, pressed on CD in 2026.
 fn test_release(id: &str, album_id: &str, now: chrono::DateTime<chrono::Utc>) -> DbRelease {
     DbRelease {
+        field_origins: Default::default(),
         id: id.to_string(),
         album_id: album_id.to_string(),
         release_name: None,

@@ -115,6 +115,17 @@ pub(super) fn insert_album_artist_row(
 /// `source_folder_name` is the folder an export reconstructs under the user's
 /// target directory, so it is held to the same fragment policy as a file's name
 /// (see [`with_file_row_params`]).
+/// Each of a release's eight field origins as its column holds it, in the
+/// order [`crate::import::CandidateEditField::ALL`] lists the fields — so the
+/// values and the origins that describe them are written by one walk.
+pub(super) fn stored_field_origins(origins: &crate::import::FieldOrigins) -> [Option<String>; 8] {
+    crate::import::CandidateEditField::ALL.map(|field| {
+        origins
+            .get(field)
+            .map(|origin| origin.as_str().into_owned())
+    })
+}
+
 pub(super) fn insert_release_row(
     conn: &SqlContext<'_, '_>,
     release: &DbRelease,
@@ -128,17 +139,20 @@ pub(super) fn insert_release_row(
         )
         .map_err(|e| DbError::Message(e.to_string()))?;
     }
+    let origins = stored_field_origins(&release.field_origins);
     conn.execute(
         r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
             disc_id, draft_from_tags,
             format, label, catalog_number, country, barcode,
+            album_title_origin, album_year_origin, year_origin, format_origin,
+            label_origin, catalog_number_origin, country_origin, barcode_origin,
             remote,
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
             _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             release.id,
@@ -152,6 +166,14 @@ pub(super) fn insert_release_row(
             release.pressing.catalog_number,
             release.pressing.country,
             release.pressing.barcode,
+            origins[0],
+            origins[1],
+            origins[2],
+            origins[3],
+            origins[4],
+            origins[5],
+            origins[6],
+            origins[7],
             release.remote,
             release.source_folder_name,
             release.content_hash,

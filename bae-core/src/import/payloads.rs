@@ -450,6 +450,31 @@ impl ReleasePayloads {
 ///
 /// The primary's documents are read first, so what they say about another
 /// catalog stands unless that catalog is one the person themselves claimed — a
+/// What each of these catalogs' documents says about the eight album-level
+/// fields, projected through the same mapping the draft itself is read with —
+/// so a claim is exactly what picking that catalog would put in the field.
+///
+/// The one reading behind every field dot: the import pane hands the documents
+/// its pick already archived, and the library editor loads each record's own.
+pub fn field_claims(
+    claimed: &[(Catalog, ReleasePayloads)],
+    clock: &dyn coven::Clock,
+    ids: &dyn coven::IdProvider,
+) -> Result<crate::import::FieldClaims, ImportError> {
+    let readings = claimed
+        .iter()
+        .map(|(catalog, payloads)| {
+            // A claim is about the eight album-level fields, which no tracklist
+            // layout touches — so the Discogs layout has nothing to choose
+            // between here and needs no measured audio.
+            let parsed = payloads.parsed(&[], clock, ids)?;
+            let edit = crate::import::parsed_album_to_user_edit(&parsed);
+            Ok((*catalog, crate::import::FieldValues::of_edit(&edit)))
+        })
+        .collect::<Result<Vec<_>, ImportError>>()?;
+    Ok(crate::import::FieldClaims::of(readings))
+}
+
 /// claimed release's own document outranks what an editor cross-linked to it.
 /// Only the primary's anchor reads the draft.
 pub fn claimed_records(

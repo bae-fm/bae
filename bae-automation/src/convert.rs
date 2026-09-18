@@ -366,17 +366,46 @@ mirror_struct! {
     fields: { year, format, label, catalog_number, country, barcode },
 }
 
-mirror_struct! {
-    AutomationReleaseUserEdit = bae_core::import::ReleaseUserEdit,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    fields: {
-        album_title,
-        album_artist_assignments: (each AutomationArtistAssignment),
-        album_year,
-        pressing: (AutomationPressingEdit),
-        tracks: (each AutomationTrackUserEdit),
-    },
+/// Not a mirror: core's `origins` say where each value was read, which an edit
+/// built field for field cannot answer. It states nothing, and the write reads
+/// every field the edit changes as typed.
+impl AutomationReleaseUserEdit {
+    pub(crate) fn from_core(edit: bae_core::import::ReleaseUserEdit) -> Self {
+        Self {
+            album_title: edit.album_title,
+            album_artist_assignments: edit
+                .album_artist_assignments
+                .into_iter()
+                .map(AutomationArtistAssignment::from_core)
+                .collect(),
+            album_year: edit.album_year,
+            pressing: AutomationPressingEdit::from_core(edit.pressing),
+            tracks: edit
+                .tracks
+                .into_iter()
+                .map(AutomationTrackUserEdit::from_core)
+                .collect(),
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::ReleaseUserEdit {
+        bae_core::import::ReleaseUserEdit {
+            album_title: self.album_title,
+            album_artist_assignments: self
+                .album_artist_assignments
+                .into_iter()
+                .map(AutomationArtistAssignment::into_core)
+                .collect(),
+            album_year: self.album_year,
+            pressing: self.pressing.into_core(),
+            tracks: self
+                .tracks
+                .into_iter()
+                .map(AutomationTrackUserEdit::into_core)
+                .collect(),
+            origins: Default::default(),
+        }
+    }
 }
 
 impl AutomationTrackUserEdit {
