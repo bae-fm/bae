@@ -249,7 +249,7 @@
                 // what a release a MusicBrainz pick linked all the way out
                 // reads like.
                 records: PreviewData.releaseRecordsEveryCatalog,
-                marks: [],
+                marks: PreviewData.releaseMarks,
                 totalDuration: .minutesOnly(minutes: 39),
                 fileCount: Int64(files.count),
                 totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },

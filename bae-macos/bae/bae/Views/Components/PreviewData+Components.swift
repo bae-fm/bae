@@ -56,6 +56,29 @@
                 }
         }
 
+        /// Every name a folder can state: a disc ID off its log, one barcode
+        /// its cover and its CUE sheet both state, and a catalog number in its
+        /// own name.
+        static var releaseMarks: [BridgeReleaseMark] {
+            [
+                BridgeReleaseMark(
+                    kind: .discId,
+                    value: "Wn8eRBtfLDMmvbjEACGGMLhxxfM-",
+                    origins: [.discToc]
+                ),
+                BridgeReleaseMark(
+                    kind: .barcode,
+                    value: "0075678164521",
+                    origins: [.artwork, .cueSheet]
+                ),
+                BridgeReleaseMark(
+                    kind: .catalogNumber,
+                    value: "7559-60691-2",
+                    origins: [.folderName]
+                ),
+            ]
+        }
+
         static func record(
             _ catalog: BridgeCatalog,
             _ key: String,

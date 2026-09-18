@@ -23,6 +23,9 @@ public struct ReleaseDetail: Identifiable {
     /// Every catalog that describes this release, in the order core lists
     /// them. Empty when no catalog does.
     public var records: [BridgeReleaseRecord]
+    /// Every name read off the object itself, one line per value and in the
+    /// order core lists mark kinds. Empty when its folder stated none.
+    public var marks: [BridgeReleaseMark]
 
     public var id: String {
         summary.id
@@ -57,5 +60,6 @@ public struct ReleaseDetail: Identifiable {
         imageFiles = bridge.imageFiles
         galleryItems = bridge.galleryItems
         records = bridge.records
+        marks = bridge.marks
     }
 }

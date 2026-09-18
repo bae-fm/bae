@@ -46,7 +46,7 @@ struct ReleaseFieldWriter {
 /// The shared editable release header: cover, album identity, source context,
 /// and pressing facts. Its callers supply the cover and context so candidate
 /// and persisted-release ownership never leaks into this component.
-struct ReleaseMetadataHeader<Cover: View, Context: View, SourceAudio: View>:
+struct ReleaseMetadataHeader<Cover: View, Context: View, FolderFacts: View>:
     View
 {
     static var coverSize: CGFloat { 200 }
@@ -61,8 +61,11 @@ struct ReleaseMetadataHeader<Cover: View, Context: View, SourceAudio: View>:
     let cover: () -> Cover
     @ViewBuilder
     let context: () -> Context
+    /// What was read off the folder itself: the audio its files hold, and the
+    /// names the object carries. Sits under the album identity and above the
+    /// pressing facts; empty where there is no folder behind the release.
     @ViewBuilder
-    let sourceAudio: () -> SourceAudio
+    let folderFacts: () -> FolderFacts
 
     var body: some View {
         HStack(alignment: .top, spacing: Self.coverSpacing) {
@@ -75,7 +78,7 @@ struct ReleaseMetadataHeader<Cover: View, Context: View, SourceAudio: View>:
                     writer: writer,
                     editingCommands: editingCommands,
                     context: context,
-                    sourceAudio: sourceAudio
+                    folderFacts: folderFacts
                 )
                 ReleasePressingFieldsGrid(
                     values: values,
@@ -91,7 +94,7 @@ struct ReleaseMetadataHeader<Cover: View, Context: View, SourceAudio: View>:
 
 /// Album identity rendered as a document heading that becomes editable on
 /// hover and focus.
-struct ReleaseAlbumIdentityEditor<Context: View, SourceAudio: View>: View {
+struct ReleaseAlbumIdentityEditor<Context: View, FolderFacts: View>: View {
     let values: BridgeRawReleaseEdit
     let provenance: [BridgeFieldProvenance]
     let writer: ReleaseFieldWriter
@@ -99,7 +102,7 @@ struct ReleaseAlbumIdentityEditor<Context: View, SourceAudio: View>: View {
     @ViewBuilder
     let context: () -> Context
     @ViewBuilder
-    let sourceAudio: () -> SourceAudio
+    let folderFacts: () -> FolderFacts
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -145,7 +148,7 @@ struct ReleaseAlbumIdentityEditor<Context: View, SourceAudio: View>: View {
                 }
                 context()
             }
-            sourceAudio()
+            folderFacts()
                 .padding(.horizontal, FieldChrome.inlineHorizontalPadding)
         }
         .padding(.leading, -FieldChrome.inlineHorizontalPadding)
@@ -543,7 +546,7 @@ struct ArtistAssignmentsField: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             },
             context: { EmptyView() },
-            sourceAudio: { EmptyView() }
+            folderFacts: { EmptyView() }
         )
         .padding(24)
         .frame(width: 900, height: 360)
@@ -567,7 +570,7 @@ struct ArtistAssignmentsField: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             },
             context: { EmptyView() },
-            sourceAudio: { EmptyView() }
+            folderFacts: { EmptyView() }
         )
         .padding(24)
         .frame(width: 900, height: 360)

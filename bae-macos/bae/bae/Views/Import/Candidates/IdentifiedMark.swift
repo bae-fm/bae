@@ -3,12 +3,13 @@ import SwiftUI
 
 /// The mark a row's title carries when its draft was read from a catalog's
 /// release. What it says is that the row is identified at all — as opposed to
-/// filled in from the files' tags, or blank. Which catalogs describe the
-/// release is the hover's to say.
+/// filled in from the files' tags, or blank. What the folder states and which
+/// catalogs describe the release are the hover's to say.
 ///
 /// The same glyph the records row's links carry, so the two read as one
 /// gesture: this release came from somewhere you can go and look at.
 struct IdentifiedMark: View {
+    let marks: [BridgeReleaseMark]
     let records: [BridgeReleaseRecord]
 
     @Environment(\.backgroundProminence)
@@ -22,7 +23,7 @@ struct IdentifiedMark: View {
             .accessibilityIdentifier("identified-mark")
             .accessibilityLabel(coreString("core.import.triage.identified"))
             .hoverPopover(arrowEdge: .bottom) {
-                IdentifiedFromPopover(records: records)
+                IdentifiedFromPopover(marks: marks, records: records)
                     .popoverEntrance(anchor: .top)
                     .background { PopoverBehavior() }
             }
@@ -37,19 +38,29 @@ struct IdentifiedMark: View {
     }
 }
 
-/// Which catalogs describe the release this row's draft was read from, each
-/// linking to its own page for it.
+/// What this row's folder states, and which catalogs describe the release its
+/// draft was read from — the names first, then the catalogs, each linking to
+/// its own page.
 struct IdentifiedFromPopover: View {
+    let marks: [BridgeReleaseMark]
     let records: [BridgeReleaseRecord]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(coreString("core.import.triage.identified_from").uppercased())
+        VStack(alignment: .leading, spacing: 10) {
+            if !marks.isEmpty {
+                MarkLines(marks: marks)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(
+                    coreString("core.import.triage.identified_from")
+                        .uppercased()
+                )
                 .font(.system(size: 10, weight: .bold))
                 .kerning(0.6)
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 1)
-            ReleaseRecordsRow(records: records)
+                ReleaseRecordsRow(records: records)
+            }
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
@@ -62,7 +73,18 @@ struct IdentifiedFromPopover: View {
     // MARK: - Previews
 
     #Preview("Identified from") {
-        IdentifiedFromPopover(records: PreviewData.releaseRecordsPair)
-            .importPreviewEnvironment()
+        IdentifiedFromPopover(
+            marks: PreviewData.releaseMarks,
+            records: PreviewData.releaseRecordsPair
+        )
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Identified from, nothing read off the folder") {
+        IdentifiedFromPopover(
+            marks: [],
+            records: PreviewData.releaseRecordsPair
+        )
+        .importPreviewEnvironment()
     }
 #endif

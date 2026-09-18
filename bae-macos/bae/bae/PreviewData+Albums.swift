@@ -176,7 +176,9 @@
                 // linked all the way out reads like; the rest are the ordinary
                 // case of a library nobody has identified.
                 records: album.id == "a-01" ? releaseRecordsEveryCatalog : [],
-                marks: [],
+                // The same album's first pressing states every name a folder
+                // can carry, so the expansion preview shows a full popover.
+                marks: album.id == "a-01" ? releaseMarks : [],
                 totalDuration: groupDuration(tracks),
                 fileCount: 0,
                 totalSize: 0,

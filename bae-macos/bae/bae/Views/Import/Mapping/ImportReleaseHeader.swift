@@ -89,11 +89,18 @@ struct ImportReleaseHeader: View {
                     // line, under its own hairline — not a caption on the
                     // header's artist.
                     context: { EmptyView() },
-                    sourceAudio: {
-                        if let sourceAudio = releaseSummary.sourceAudio {
-                            ImportSourceAudioSummaryView(
-                                sourceAudio: sourceAudio
-                            )
+                    // What the folder itself states: what its audio is, and
+                    // the names printed on the object it was copied from.
+                    folderFacts: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if let sourceAudio = releaseSummary.sourceAudio {
+                                ImportSourceAudioSummaryView(
+                                    sourceAudio: sourceAudio
+                                )
+                            }
+                            if !releaseSummary.marks.isEmpty {
+                                MarkLines(marks: releaseSummary.marks)
+                            }
                         }
                     }
                 )

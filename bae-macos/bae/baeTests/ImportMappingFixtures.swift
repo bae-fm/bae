@@ -449,7 +449,8 @@ extension MappingFixtures {
         candidateKey key: String = MappingFixtures.candidateKey,
         folderName: String = "Walkthrough",
         audioIdentity: String = "empty-audio-files",
-        reading: BridgeTriageReading = .unidentified
+        reading: BridgeTriageReading = .unidentified,
+        marks: [BridgeReleaseMark] = []
     ) -> BridgeImportCandidateDetail {
         let folder = sourceFolder(
             key: key,
@@ -460,29 +461,12 @@ extension MappingFixtures {
             candidate: folder,
             actionable: true,
             resumedIdentifyState: .idle,
-            row: BridgeTriageRow(
-                candidateKey: key,
-                folderName: folderName,
-                watchedFolderPath: "/Music/Downloads",
-                displayPath: folderName,
-                resolvedBoundaries: [],
-                combineAncestorKey: nil,
-                actionable: true,
-                placement: metadataProvenance == nil && edit.albumTitle.isEmpty
-                    ? .pending : .ready,
-                skipAction: .skip,
-                actions: (metadataProvenance == nil && edit.albumTitle.isEmpty
-                    ? [] : [.importReady]) + [
-                        .identify, .resetToTags, .clearMetadata, .skip,
-                    ],
-                matched: nil,
-                metadataSummary: nil,
-                coverThumbnail: nil,
-                selectable: !edit.albumTitle.isEmpty,
-                importStatus: nil,
+            row: row(
+                folder: folder,
+                edit: edit,
                 metadataProvenance: metadataProvenance,
                 reading: reading,
-                marks: []
+                marks: marks
             ),
             release: {
                 if case .externalRelease = metadataProvenance {
@@ -511,6 +495,40 @@ extension MappingFixtures {
             lookupChoices: noLookupChoices,
             failure: failure,
             session: session(presentation: presentation)
+        )
+    }
+
+    /// The queue's row for that same folder — what the pane reads its title,
+    /// its placement and the names its folder states from.
+    @MainActor
+    private static func row(
+        folder: BridgeFolderCandidate,
+        edit: BridgeRawReleaseEdit,
+        metadataProvenance: BridgeMetadataProvenance?,
+        reading: BridgeTriageReading,
+        marks: [BridgeReleaseMark]
+    ) -> BridgeTriageRow {
+        let undecided = metadataProvenance == nil && edit.albumTitle.isEmpty
+        return BridgeTriageRow(
+            candidateKey: folder.folderPath,
+            folderName: folder.sourceFolderName,
+            watchedFolderPath: "/Music/Downloads",
+            displayPath: folder.sourceFolderName,
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
+            placement: undecided ? .pending : .ready,
+            skipAction: .skip,
+            actions: (undecided ? [] : [.importReady])
+                + [.identify, .resetToTags, .clearMetadata, .skip],
+            matched: nil,
+            metadataSummary: nil,
+            coverThumbnail: nil,
+            selectable: !edit.albumTitle.isEmpty,
+            importStatus: nil,
+            metadataProvenance: metadataProvenance,
+            reading: reading,
+            marks: marks
         )
     }
 
@@ -571,7 +589,8 @@ extension MappingFixtures {
         metadataProvenance: BridgeMetadataProvenance? = provenance,
         edit: BridgeRawReleaseEdit = albumEdit,
         presentation: BridgeMetadataPresentation = .draft,
-        reading: BridgeTriageReading = .unidentified
+        reading: BridgeTriageReading = .unidentified,
+        marks: [BridgeReleaseMark] = []
     ) -> ImportStore {
         let store = ImportStore()
         store.applyCandidateDetail(
@@ -581,7 +600,8 @@ extension MappingFixtures {
                 edit: edit,
                 metadataProvenance: metadataProvenance,
                 presentation: presentation,
-                reading: reading
+                reading: reading,
+                marks: marks
             )
         )
         return store

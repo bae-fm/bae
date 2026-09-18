@@ -189,7 +189,7 @@ struct ArtistAssignmentsFieldTests {
                 editingCommands: EditingCommitCommands(),
                 cover: { Color.clear },
                 context: { EmptyView() },
-                sourceAudio: { EmptyView() }
+                folderFacts: { EmptyView() }
             )
             .padding(24)
             .frame(width: size.width, height: size.height)

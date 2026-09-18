@@ -28,7 +28,7 @@ struct ReleaseMetadataEditorContent: View {
                 editingCommands: session.editingCommands,
                 cover: { cover },
                 context: { EmptyView() },
-                sourceAudio: { sourceAudio }
+                folderFacts: { sourceAudio }
             )
             trackTable
         }

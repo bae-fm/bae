@@ -277,7 +277,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
                 editingCommands: editingCommands,
                 cover: { EmptyView() },
                 context: { EmptyView() },
-                sourceAudio: { EmptyView() }
+                folderFacts: { EmptyView() }
             )
             .environment(Library.stub())
             .environment(UiStore())

@@ -458,6 +458,12 @@ struct Candidate: Equatable, Identifiable {
         }
     }
 
+    /// Every name this candidate's folder states, one line per value and in
+    /// the order core lists mark kinds. Empty until something has read it.
+    var marks: [BridgeReleaseMark] {
+        row?.marks ?? []
+    }
+
     /// Who wrote the current draft. `.nobody` for a candidate with no pick,
     /// and for a re-identify session, which has no candidate row to write one
     /// on.

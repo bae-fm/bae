@@ -13,6 +13,9 @@ struct ImportReleaseSummary {
     /// Empty for a draft that came from the files' tags, was typed in, or is
     /// not there yet.
     let records: [BridgeReleaseRecord]
+    /// Every name the candidate's folder states, whatever the draft was read
+    /// from. Empty until something has read it.
+    let marks: [BridgeReleaseMark]
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
         let provenance = candidate.metadataProvenance
@@ -47,6 +50,7 @@ struct ImportReleaseSummary {
             factsLine = trackText
         }
         records = candidate.records
+        marks = candidate.marks
         sourceAudio = candidate.files.sourceAudio
     }
 
@@ -67,6 +71,7 @@ struct ImportReleaseSummary {
             case .identified(let records): records
             case .unidentified, .prefilled: []
             }
+        marks = row.marks
         sourceAudio = nil
     }
 
@@ -127,7 +132,7 @@ struct ImportReleaseSummaryView: View {
     @ViewBuilder
     private var identifiedMark: some View {
         if style.showsIdentifiedMark, !summary.records.isEmpty {
-            IdentifiedMark(records: summary.records)
+            IdentifiedMark(marks: summary.marks, records: summary.records)
                 .layoutPriority(1)
         }
     }

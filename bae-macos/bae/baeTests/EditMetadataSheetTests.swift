@@ -104,7 +104,7 @@ struct EditMetadataSheetTests {
                 editingCommands: session.editingCommands,
                 cover: { EmptyView() },
                 context: { EmptyView() },
-                sourceAudio: { EmptyView() }
+                folderFacts: { EmptyView() }
             )
             .environment(Library.stub())
             .environment(UiStore())

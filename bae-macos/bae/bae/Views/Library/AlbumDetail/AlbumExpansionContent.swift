@@ -71,6 +71,7 @@ struct AlbumExpansionContent: View {
                     }
                     ReleaseFactsLine(
                         facts: selectedRelease.compactMetadata,
+                        marks: selectedRelease.marks,
                         records: selectedRelease.records
                     )
                     HStack(spacing: 10) {
@@ -208,29 +209,52 @@ struct AlbumExpansionContent: View {
     }
 }
 
+/// What the release says about itself: the names read off the object, then
+/// every catalog that describes it. Either half is absent when there is
+/// nothing of it to state.
+struct ReleaseFactsPopover: View {
+    let marks: [BridgeReleaseMark]
+    let records: [BridgeReleaseRecord]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if !marks.isEmpty {
+                MarkLines(marks: marks)
+            }
+            if !records.isEmpty {
+                ReleaseRecordsRow(records: records)
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .frame(width: 300)
+    }
+}
+
 /// The release's facts, and the way into where they came from.
 ///
-/// At rest the line reads as it always has. When a catalog describes the
-/// release, hovering fills the line softly and fades a seal in at its tail,
-/// and a click toggles a popover under it naming every catalog that does. A
-/// release no catalog describes has nothing behind the line, so it is not a
-/// trigger at all.
+/// At rest the line reads as it always has. When the release carries names of
+/// its own or a catalog describes it, hovering fills the line softly and fades
+/// a seal in at its tail, and a click toggles a popover under it stating both.
+/// A release with neither has nothing behind the line, so it is not a trigger
+/// at all.
 private struct ReleaseFactsLine: View {
     let facts: String
+    let marks: [BridgeReleaseMark]
     let records: [BridgeReleaseRecord]
 
     @State
     private var isHovering = false
     @State
-    private var isShowingRecords = false
+    private var isShowingPopover = false
 
     var body: some View {
-        if records.isEmpty {
+        if marks.isEmpty, records.isEmpty {
             factsText
         }
         else {
             Button {
-                isShowingRecords.toggle()
+                isShowingPopover.toggle()
             } label: {
                 HStack(spacing: 6) {
                     factsText
@@ -254,11 +278,8 @@ private struct ReleaseFactsLine: View {
             .buttonStyle(.plain)
             .onHover { isHovering = $0 }
             .accessibilityIdentifier("release-facts")
-            .popover(isPresented: $isShowingRecords, arrowEdge: .bottom) {
-                ReleaseRecordsRow(records: records)
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 12)
-                    .frame(width: 300)
+            .popover(isPresented: $isShowingPopover, arrowEdge: .bottom) {
+                ReleaseFactsPopover(marks: marks, records: records)
                     .background { PopoverBehavior() }
             }
         }

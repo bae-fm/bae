@@ -85,6 +85,7 @@ struct TriageRowIdentifiedTests {
     func theHoverNamesEveryCatalog() async throws {
         let hosted = SnapshotTestSupport.hostInWindow(
             IdentifiedFromPopover(
+                marks: [],
                 records: PreviewData.identifiedFromBothCatalogs
             )
             .preferredColorScheme(.light)

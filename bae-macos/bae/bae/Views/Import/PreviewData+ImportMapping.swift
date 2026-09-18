@@ -457,7 +457,7 @@
                 importStatus: nil,
                 metadataProvenance: metadataProvenance,
                 reading: .unidentified,
-                marks: []
+                marks: PreviewData.releaseMarks
             )
         }
 
