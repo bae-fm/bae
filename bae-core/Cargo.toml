@@ -129,6 +129,10 @@ unicode-normalization = "0.1"
 # a linear ratio (1.0 = 0 dBTP), stored verbatim as `*_peak_linear`.
 ebur128 = "0.1.10"
 
+# The CUETools database checksums a rip with plain CRC-32 over its PCM
+# (src/verification/ctdb.rs). Already in the tree behind flate2 and png.
+crc32fast = "1.5"
+
 # cpal drives the audio sink on desktop and iOS (its CoreAudio/AudioUnit backend
 # covers both). Android uses AAudio (the `ndk` dep above) instead, so cpal is off
 # there.

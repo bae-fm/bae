@@ -32,7 +32,7 @@ fn parse_log_toc_row(line: &str) -> Option<(i32, i32)> {
 
 /// Extract raw `(start_sector, end_sector)` pairs from an EAC/XLD LOG TOC table.
 /// Format: "       10  | 37:42.72 |  4:14.43 |    169722    |   188814"
-fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, std::io::Error> {
+pub(crate) fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, std::io::Error> {
     trace!("Parsing LOG file TOC");
     let mut in_toc_section = false;
     let mut track_sectors = Vec::new();
@@ -187,9 +187,19 @@ fn sectors_of(duration_ms: u64) -> u64 {
     (duration_ms * 75 + 500) / 1000
 }
 
-/// The disc a sheet and its audio describe, as MusicBrainz hashes it: every
-/// audio track's INDEX 01 as a sector on the disc, and the lead-out after the
-/// last, each offset including the 150-sector lead-in.
+/// Where a cue sheet's audio tracks sit on the disc: each track's number and
+/// its INDEX 01 as a 0-based sector, plus the sector the audio ends at.
+pub(crate) struct CueDiscLayout {
+    /// `(track number, start sector)` for each playable audio track, in sheet
+    /// order.
+    pub(crate) tracks: Vec<(u32, i32)>,
+    /// The first sector after the last track — the lead-out of a disc whose
+    /// content is the audio the sheet names.
+    pub(crate) leadout: i32,
+}
+
+/// The disc a sheet and its audio describe: every audio track's INDEX 01 as a
+/// 0-based sector, and the sector the audio ends at.
 ///
 /// The sheet lays the disc out across its files in `FILE` order — one file
 /// for the whole disc, or one per track. A track starts where its INDEX 01
@@ -197,11 +207,10 @@ fn sectors_of(duration_ms: u64) -> u64 {
 /// silence every `PREGAP` directive up to and including its own generates:
 /// that silence is on the disc and in no file. The lead-out is everything
 /// laid end to end.
-fn calculate_mb_discid_from_cue(
+pub(crate) fn cue_disc_layout(
     sheet: &CueSheet,
     audio: &[SheetAudioDuration<'_>],
-    method_label: &str,
-) -> Result<String, std::io::Error> {
+) -> Result<CueDiscLayout, std::io::Error> {
     if sheet.playable_tracks().next().is_none() {
         return Err(invalid_discid_data("CUE has no playable audio tracks"));
     }
@@ -225,23 +234,38 @@ fn calculate_mb_discid_from_cue(
             .map_err(|_| invalid_discid_data("CUE lays the disc out past the sector range"))
     };
     let mut generated = 0u64;
-    let mut raw_track_sectors = Vec::with_capacity(sheet.playable_track_count());
+    let mut tracks = Vec::with_capacity(sheet.playable_track_count());
     for track in sheet.playable_tracks() {
         generated += track.generated_pregap_frames().unwrap_or(0);
-        raw_track_sectors.push(sector(
-            file_start[track.file_reference.as_str()] + track.start_cue_frames + generated,
-        )?);
+        tracks.push((
+            track.number,
+            sector(file_start[track.file_reference.as_str()] + track.start_cue_frames + generated)?,
+        ));
     }
-    let raw_leadout_sector = sector(laid + generated)?;
     debug!(
         "Found {} track(s) across {} file(s) in CUE file",
-        raw_track_sectors.len(),
+        tracks.len(),
         file_start.len()
     );
+    Ok(CueDiscLayout {
+        tracks,
+        leadout: sector(laid + generated)?,
+    })
+}
+
+/// A MusicBrainz DiscID for the disc a sheet and its audio describe, each
+/// offset taking on the 150-sector lead-in MusicBrainz hashes.
+fn calculate_mb_discid_from_cue(
+    sheet: &CueSheet,
+    audio: &[SheetAudioDuration<'_>],
+    method_label: &str,
+) -> Result<String, std::io::Error> {
+    let layout = cue_disc_layout(sheet, audio)?;
+    let raw_track_sectors: Vec<i32> = layout.tracks.iter().map(|(_, start)| *start).collect();
     discid_from_raw_offsets(
         method_label,
         &raw_track_sectors,
-        raw_leadout_sector,
+        layout.leadout,
         "from the audio laid end to end",
     )
 }
