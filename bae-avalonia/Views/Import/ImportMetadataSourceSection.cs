@@ -27,6 +27,10 @@ internal sealed class ImportMetadataSourceSection
     /// <summary>Every name the folder states, drawn under the audio facts.
     /// Empty until something has read it.</summary>
     internal required IReadOnlyList<BridgeReleaseMark> Marks { get; init; }
+    /// <summary>What the rip databases said about the folder's audio, drawn
+    /// under the names it states. <c>null</c> until something has read its
+    /// log.</summary>
+    internal required BridgeVerification? Verification { get; init; }
     internal required bool IsReading { get; init; }
     internal required Control? LookupOptions { get; init; }
     internal required Action<Image>? LoadCover { get; init; }
@@ -217,11 +221,11 @@ internal sealed class ImportMetadataSourceSection
         }
         summary.Children.Add(ImportPaneUi.Cell(metaLine, secondary: true));
         summary.Children.Add(ImportPaneUi.Cell(sourceAudioLine, secondary: true));
-        if (Marks.Count > 0)
+        if (Marks.Count > 0 || Verification is not null)
         {
-            var marks = MarkLines.Build(Marks);
-            marks.Margin = new Thickness(0, 4, 0, 0);
-            summary.Children.Add(marks);
+            var read = RipMatchLine.BuildWithMarks(Marks, Verification);
+            read.Margin = new Thickness(0, 4, 0, 0);
+            summary.Children.Add(read);
         }
         var metadata = new StackPanel { Spacing = 12 };
         metadata.Children.Add(summary);

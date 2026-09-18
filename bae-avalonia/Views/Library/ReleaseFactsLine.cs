@@ -13,9 +13,10 @@ namespace Bae.Desktop;
 /// The release's facts, and the way into where they came from.
 ///
 /// At rest the line reads as a line of facts. When the release carries names of
-/// its own or a catalog describes it, pointing at it fills it softly and shows
-/// a seal at its tail, and a click opens a flyout stating both. A release with
-/// neither has nothing behind the line, so it is not a trigger at all.
+/// its own, the rip databases confirmed its audio, or a catalog describes it,
+/// pointing at it fills it softly and shows a seal at its tail, and a click
+/// opens a flyout stating them. A release with none of the three has nothing
+/// behind the line, so it is not a trigger at all.
 /// </summary>
 internal sealed class ReleaseFactsLine : ContentControl
 {
@@ -36,22 +37,25 @@ internal sealed class ReleaseFactsLine : ContentControl
     }
 
     /// <summary>Draw <paramref name="facts"/>, as a trigger when the release
-    /// states a name of its own or <paramref name="records"/> names a catalog,
-    /// and as plain text when it states neither.</summary>
+    /// states a name of its own, <paramref name="verification"/> says the rip
+    /// databases confirmed it, or <paramref name="records"/> names a catalog,
+    /// and as plain text when it has none of them.</summary>
     internal void Show(
         string facts,
         IReadOnlyList<BridgeReleaseMark> marks,
+        BridgeVerification? verification,
         IReadOnlyList<BridgeReleaseRecord> records)
     {
         _facts.Text = facts;
         IsVisible = facts.Length > 0;
-        Content = marks.Count == 0 && records.Count == 0
+        Content = marks.Count == 0 && records.Count == 0 && verification is null
             ? _facts
-            : Trigger(marks, records);
+            : Trigger(marks, verification, records);
     }
 
     private Control Trigger(
         IReadOnlyList<BridgeReleaseMark> marks,
+        BridgeVerification? verification,
         IReadOnlyList<BridgeReleaseRecord> records)
     {
         var seal = Icons.Glyph(Icons.Seal, 12, "BaeTextSecondaryBrush");
@@ -88,9 +92,9 @@ internal sealed class ReleaseFactsLine : ContentControl
             button.Background = Brushes.Transparent;
         };
         var body = new StackPanel { Spacing = 10 };
-        if (marks.Count > 0)
+        if (marks.Count > 0 || verification is not null)
         {
-            body.Children.Add(MarkLines.Build(marks));
+            body.Children.Add(RipMatchLine.BuildWithMarks(marks, verification));
         }
         if (records.Count > 0)
         {

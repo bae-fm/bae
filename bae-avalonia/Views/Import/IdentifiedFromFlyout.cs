@@ -16,12 +16,13 @@ internal static class IdentifiedFromFlyout
 {
     internal static Control Build(
         IReadOnlyList<BridgeReleaseMark> marks,
+        BridgeVerification? verification,
         IReadOnlyList<BridgeReleaseRecord> records)
     {
         var column = new StackPanel { Spacing = 10, Width = 276 };
-        if (marks.Count > 0)
+        if (marks.Count > 0 || verification is not null)
         {
-            column.Children.Add(MarkLines.Build(marks));
+            column.Children.Add(RipMatchLine.BuildWithMarks(marks, verification));
         }
         var catalogs = new StackPanel { Spacing = 6 };
         var header = new TextBlock

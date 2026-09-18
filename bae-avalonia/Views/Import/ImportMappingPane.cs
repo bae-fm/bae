@@ -547,6 +547,7 @@ internal sealed partial class ImportMappingPane : UserControl
         MetaLine = MetaLine(),
         SourceAudioLine = SourceAudioLine(_candidate?.Files),
         Marks = _candidate?.Marks ?? [],
+        Verification = _candidate?.Verification,
         IsReading = PickInFlight() is not null,
         LookupOptions = _candidate?.MetadataPresentation
             == ImportMetadataPresentation.FindOnline

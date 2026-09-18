@@ -377,6 +377,7 @@ internal static class ShotCapture
                             null,
                             2)))),
             Marks = [],
+            Verification = null,
             IsReading = false,
             LookupOptions = lookupOptions,
             LoadCover = null,

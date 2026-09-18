@@ -96,6 +96,11 @@ public sealed class ImportCandidate
     /// it.</summary>
     internal IReadOnlyList<BridgeReleaseMark> Marks => Detail?.Row.Marks ?? [];
 
+    /// <summary>What the rip databases said about this candidate's audio.
+    /// <c>null</c> until something has read its log, and for a folder whose
+    /// log states nothing about its bits.</summary>
+    internal BridgeVerification? Verification => Detail?.Row.Verification;
+
     /// <summary>The draft, or the Find online page, occupying the metadata
     /// slot. Opening the page never replaces the stored draft.</summary>
     internal ImportMetadataPresentation MetadataPresentation { get; private set; } =

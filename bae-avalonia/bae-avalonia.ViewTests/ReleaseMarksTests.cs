@@ -65,7 +65,7 @@ public sealed class ReleaseMarksTests
     [AvaloniaFact]
     public void TheIdentifiedHoverLeadsWithTheFoldersNames()
     {
-        var text = TextOf(IdentifiedFromFlyout.Build(Marks, Records));
+        var text = TextOf(IdentifiedFromFlyout.Build(Marks, null, Records));
 
         Assert.Contains("0075678164521", text);
         Assert.Contains(
@@ -80,7 +80,7 @@ public sealed class ReleaseMarksTests
     {
         var line = new ReleaseFactsLine();
 
-        line.Show("2003 · CD", Marks, []);
+        line.Show("2003 · CD", Marks, null, []);
 
         Assert.IsAssignableFrom<Button>(line.Content);
     }
@@ -97,6 +97,7 @@ public sealed class ReleaseMarksTests
             MetaLine = "2 tracks",
             SourceAudioLine = "FLAC · 44.1 kHz",
             Marks = marks,
+            Verification = null,
             FieldProvenance = ImportCandidateFixtures.FieldProvenance(),
             IsReading = false,
             LookupOptions = null,
