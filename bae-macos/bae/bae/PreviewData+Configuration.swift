@@ -26,18 +26,18 @@
         ///
         /// `canChange` is derived the way core derives it, so a fixture cannot
         /// show a switch as movable that core would refuse to move.
-        static func metadataSources(
+        static func lookupCatalogs(
             musicBrainz: BridgeSourceAvailability = .on,
             discogs: BridgeSourceAvailability = .on
-        ) -> [BridgeMetadataSourceSetting] {
+        ) -> [BridgeLookupCatalogSetting] {
             let asked = [musicBrainz, discogs].filter { $0 == .on }
             let onlyAsked = asked.count == 1
             func setting(
-                _ source: BridgeMetadataSource,
+                _ catalog: BridgeCatalog,
                 _ availability: BridgeSourceAvailability
-            ) -> BridgeMetadataSourceSetting {
-                BridgeMetadataSourceSetting(
-                    source: source,
+            ) -> BridgeLookupCatalogSetting {
+                BridgeLookupCatalogSetting(
+                    catalog: catalog,
                     availability: availability,
                     canChange: availability != .notConfigured
                         && !(availability == .on && onlyAsked)
@@ -78,7 +78,7 @@
                         maxConcurrentDownloads: 3,
                         identifyAutomatically: true,
                         prefillWithTags: true,
-                        metadataSources: metadataSources(
+                        lookupCatalogs: lookupCatalogs(
                             musicBrainz: musicBrainz,
                             discogs: discogs
                                 ?? (discogsUsable ? .on : .notConfigured)

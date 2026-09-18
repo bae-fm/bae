@@ -48,7 +48,7 @@ struct FindOnlineAutomaticSection: View {
     /// only by a source losing its credential after being left as the only one
     /// switched on.
     private var hasSourceToSearch: Bool {
-        configStore.config.metadataSources.contains { $0.availability == .on }
+        configStore.config.lookupCatalogs.contains { $0.availability == .on }
     }
 
     var body: some View {
@@ -177,7 +177,7 @@ struct FindOnlineAutomaticSection: View {
             guard let search = failure.failedSearch,
                 seen.insert(search).inserted
             else { return nil }
-            let source = bridgeMetadataSourceName(source: search.source)
+            let source = bridgeCatalogName(catalog: search.source)
             let step = SignalBadgeStyle.sentenceLabel(for: search.step)
             return String(
                 localized:

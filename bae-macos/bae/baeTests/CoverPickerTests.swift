@@ -110,6 +110,7 @@ struct CoverPickerTests {
             sourceAudio: nil,
             imageFiles: [file],
             galleryItems: [],
+            records: [],
             totalDuration: nil,
             fileCount: 1,
             totalSize: 100,
@@ -169,6 +170,6 @@ struct CoverPickerTests {
             .map(\.text)
         #expect(labels.carrying(String(localized: "Remote Sources")))
         #expect(labels.carrying(String(localized: "Release Files")))
-        #expect(labels.carrying(bridgeMetadataSourceName(source: .musicBrainz)))
+        #expect(labels.carrying(bridgeCatalogName(catalog: .musicBrainz)))
     }
 }

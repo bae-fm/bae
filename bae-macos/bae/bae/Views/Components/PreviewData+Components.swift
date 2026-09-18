@@ -30,4 +30,43 @@
             return error
         }()
     }
+
+    // The record fixtures stay off the main actor: the library fixtures that
+    // give a release its records are built there too.
+    extension PreviewData {
+        /// A release the two asked catalogs describe — what an import that
+        /// paired a MusicBrainz release with a Discogs one commits.
+        static var releaseRecordsPair: [BridgeReleaseRecord] {
+            [
+                record(.musicBrainz, "mb-release-1", readsDraft: true),
+                record(.discogs, "424242"),
+            ]
+        }
+
+        /// A release every catalog describes: what a MusicBrainz release with
+        /// a full set of url-rels seeds.
+        static var releaseRecordsEveryCatalog: [BridgeReleaseRecord] {
+            bridgeCatalogs()
+                .map { catalog in
+                    record(
+                        catalog,
+                        "key-1",
+                        readsDraft: catalog == .musicBrainz
+                    )
+                }
+        }
+
+        static func record(
+            _ catalog: BridgeCatalog,
+            _ key: String,
+            readsDraft: Bool = false
+        ) -> BridgeReleaseRecord {
+            BridgeReleaseRecord(
+                catalog: catalog,
+                key: key,
+                url: "https://example.test/\(key)",
+                readsDraft: readsDraft
+            )
+        }
+    }
 #endif

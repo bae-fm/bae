@@ -8,7 +8,7 @@ struct ReleaseSelectionFailure: Equatable {
 
     func matches(_ pressing: Pressing) -> Bool {
         pressing.releases.contains {
-            $0.source == release.source && $0.releaseId == release.releaseId
+            $0.source == release.catalog && $0.releaseId == release.key
         }
     }
 }

@@ -450,7 +450,7 @@ mod conversion_roundtrip {
     fn release_detail_derives_default_cover() {
         let core = bae_core::import::search::ImportSearchReleaseDetail {
             release_id: "rel-123".to_string(),
-            source: bae_core::import::MetadataSource::MusicBrainz,
+            source: bae_core::import::Catalog::MusicBrainz,
             source_group_id: Some("rg-1".to_string()),
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
@@ -472,7 +472,7 @@ mod conversion_roundtrip {
                 url: "https://example.test/cover.jpg".to_string(),
                 thumbnail_url: "https://example.test/thumb.jpg".to_string(),
                 label: "Front".to_string(),
-                source: bae_core::import::MetadataSource::MusicBrainz,
+                source: bae_core::import::Catalog::MusicBrainz,
             }],
         };
         // `default_cover` is derived from the first cover.

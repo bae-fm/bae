@@ -317,7 +317,7 @@ mirror_struct! {
     crate::types::BridgeMatchEvidence = bae_core::import::MatchEvidence,
     from_core: fn,
     fields: {
-        source: (crate::types::BridgeMetadataSource),
+        source: (crate::types::BridgeCatalog),
         signal: (opt crate::types::BridgeMatchedSignal),
     },
 }

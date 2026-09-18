@@ -17,7 +17,7 @@ struct FindOnlineDiscogsBar: View {
     let onDismiss: () -> Void
 
     private var discogs: String {
-        bridgeMetadataSourceName(source: .discogs)
+        bridgeCatalogName(catalog: .discogs)
     }
 
     var body: some View {

@@ -25,7 +25,7 @@
             year: Int32? = 1997,
             format: String? = "CD",
             trackCount: UInt32 = 12,
-            source: BridgeMetadataSource = .musicBrainz,
+            source: BridgeCatalog = .musicBrainz,
             signal: BridgeMatchedSignal? = .discId
         ) -> BridgeMatchedRelease {
             BridgeMatchedRelease(
@@ -218,8 +218,10 @@
                 isAdded: false
             ),
             metadataProvenance: .externalRelease(
-                source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId,
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
+                ),
                 partners: []
             ),
             release: releaseDetailBridge,
@@ -308,23 +310,20 @@
             reading: .prefilled
         )
 
-        /// Both sources a pick paired, each stating what its own release
-        /// says. One label is long enough to crowd the line: the source's
-        /// name is what the line is for, so the facts give way, not the name.
-        static let identifiedFromBothSources = [
-            BridgeIdentifiedSource(
-                source: .musicBrainz,
-                releaseId: "rel-paired",
+        /// Both catalogs a pick paired, each with its own page for the
+        /// pressing. The draft was read from the MusicBrainz one.
+        static let identifiedFromBothCatalogs = [
+            BridgeReleaseRecord(
+                catalog: .musicBrainz,
+                key: "rel-paired",
                 url: "https://musicbrainz.org/release/rel-paired",
-                label: "Long Label Name Recordings International",
-                year: 1976
+                readsDraft: true
             ),
-            BridgeIdentifiedSource(
-                source: .discogs,
-                releaseId: "discogs-paired",
+            BridgeReleaseRecord(
+                catalog: .discogs,
+                key: "discogs-paired",
                 url: "https://www.discogs.com/release/discogs-paired",
-                label: "Label Name",
-                year: 1976
+                readsDraft: false
             ),
         ]
 
@@ -344,16 +343,18 @@
             ),
             coverThumbnail: .local(path: previewArtPath("Front.png")),
             metadataProvenance: .externalRelease(
-                source: .musicBrainz,
-                releaseId: "rel-paired",
+                record: BridgeMetadataRef(
+                    catalog: .musicBrainz,
+                    key: "rel-paired"
+                ),
                 partners: [
                     BridgeMetadataRef(
-                        source: .discogs,
-                        releaseId: "discogs-paired"
+                        catalog: .discogs,
+                        key: "discogs-paired"
                     )
                 ]
             ),
-            reading: .identified(sources: identifiedFromBothSources)
+            reading: .identified(records: identifiedFromBothCatalogs)
         )
 
         /// Identified, and still asked which of several pressings it is:
@@ -372,16 +373,18 @@
             ),
             coverThumbnail: .local(path: previewArtPath("Front.png")),
             metadataProvenance: .externalRelease(
-                source: .musicBrainz,
-                releaseId: "rel-several",
+                record: BridgeMetadataRef(
+                    catalog: .musicBrainz,
+                    key: "rel-several"
+                ),
                 partners: [
                     BridgeMetadataRef(
-                        source: .discogs,
-                        releaseId: "discogs-several"
+                        catalog: .discogs,
+                        key: "discogs-several"
                     )
                 ]
             ),
-            reading: .identified(sources: identifiedFromBothSources)
+            reading: .identified(records: identifiedFromBothCatalogs)
         )
 
         @MainActor
@@ -403,8 +406,10 @@
             ),
             metadataSummary: nil,
             metadataProvenance: .externalRelease(
-                source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId,
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
+                ),
                 partners: []
             )
         )
@@ -592,8 +597,10 @@
                 ),
                 metadataSummary: nil,
                 metadataProvenance: .externalRelease(
-                    source: releaseDetailBridge.source,
-                    releaseId: releaseDetailBridge.releaseId,
+                    record: BridgeMetadataRef(
+                        catalog: releaseDetailBridge.source,
+                        key: releaseDetailBridge.releaseId
+                    ),
                     partners: []
                 )
             ),

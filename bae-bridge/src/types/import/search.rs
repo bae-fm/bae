@@ -13,7 +13,7 @@ use super::super::*;
 /// commit it or watch its library membership.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMetadataResult {
-    pub source: BridgeMetadataSource,
+    pub source: BridgeCatalog,
     pub release_id: String,
     pub year: Option<i32>,
     pub format: Option<String>,
@@ -76,7 +76,7 @@ pub struct BridgeReleaseGroup {
 /// One source carrying a group, and its editorial page for it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeReleaseGroupSource {
-    pub source: BridgeMetadataSource,
+    pub source: BridgeCatalog,
     /// Editorial URL for the group on this source (release-group on
     /// MusicBrainz, master on Discogs). `None` for an ungrouped result.
     pub group_url: Option<String>,
@@ -166,7 +166,7 @@ impl BridgeSearchStatus {
 /// them reads it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSourceSearchEntry {
-    pub source: BridgeMetadataSource,
+    pub source: BridgeCatalog,
     pub state: BridgeSourceSearch,
 }
 
@@ -203,7 +203,7 @@ impl BridgeCandidateSearch {
             sources: sources
                 .into_iter()
                 .map(|(source, state)| BridgeSourceSearchEntry {
-                    source: BridgeMetadataSource::from_core(source),
+                    source: BridgeCatalog::from_core(source),
                     state: BridgeSourceSearch::from_core(state),
                 })
                 .collect(),

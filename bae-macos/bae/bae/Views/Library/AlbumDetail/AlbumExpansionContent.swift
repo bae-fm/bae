@@ -69,9 +69,10 @@ struct AlbumExpansionContent: View {
                     if releaseCursor.canCycle {
                         releasePicker
                     }
-                    Text(selectedRelease.compactMetadata)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.tertiary)
+                    ReleaseFactsLine(
+                        facts: selectedRelease.compactMetadata,
+                        records: selectedRelease.records
+                    )
                     HStack(spacing: 10) {
                         Button(action: onPlay) {
                             Label("Play", systemImage: "play.fill")
@@ -204,6 +205,69 @@ struct AlbumExpansionContent: View {
             return false
         }
         return detail.tracks.contains(where: { $0.id == currentTrackId })
+    }
+}
+
+/// The release's facts, and the way into where they came from.
+///
+/// At rest the line reads as it always has. When a catalog describes the
+/// release, hovering fills the line softly and fades a seal in at its tail,
+/// and a click toggles a popover under it naming every catalog that does. A
+/// release no catalog describes has nothing behind the line, so it is not a
+/// trigger at all.
+private struct ReleaseFactsLine: View {
+    let facts: String
+    let records: [BridgeReleaseRecord]
+
+    @State
+    private var isHovering = false
+    @State
+    private var isShowingRecords = false
+
+    var body: some View {
+        if records.isEmpty {
+            factsText
+        }
+        else {
+            Button {
+                isShowingRecords.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    factsText
+                    Image(systemName: "seal")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .opacity(isHovering ? 1 : 0)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isHovering ? Theme.hover : Color.clear)
+                )
+                // The fill bleeds outward from where the line already sat, so
+                // the card reads the same at rest as it did before it became
+                // a trigger.
+                .padding(.horizontal, -6)
+                .padding(.vertical, -3)
+            }
+            .buttonStyle(.plain)
+            .onHover { isHovering = $0 }
+            .accessibilityIdentifier("release-facts")
+            .popover(isPresented: $isShowingRecords, arrowEdge: .bottom) {
+                ReleaseRecordsRow(records: records)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .frame(width: 300)
+                    .background { PopoverBehavior() }
+            }
+        }
+    }
+
+    private var factsText: some View {
+        Text(facts)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(.tertiary)
     }
 }
 

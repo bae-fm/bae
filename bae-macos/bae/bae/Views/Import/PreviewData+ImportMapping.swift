@@ -536,8 +536,10 @@
                 files: candidateFilesTracks
             ),
             metadataProvenance: .externalRelease(
-                source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId,
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
+                ),
                 partners: []
             ),
             release: releaseDetailBridge,
@@ -562,8 +564,10 @@
                 files: candidateFilesTracks
             ),
             metadataProvenance: .externalRelease(
-                source: discogsReleaseDetail.source,
-                releaseId: discogsReleaseDetail.releaseId,
+                record: BridgeMetadataRef(
+                    catalog: discogsReleaseDetail.source,
+                    key: discogsReleaseDetail.releaseId
+                ),
                 partners: []
             ),
             release: discogsReleaseDetail,
@@ -581,12 +585,14 @@
                 files: candidateFilesTracks
             ),
             metadataProvenance: .externalRelease(
-                source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId,
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
+                ),
                 partners: [
                     BridgeMetadataRef(
-                        source: discogsReleaseDetail.source,
-                        releaseId: discogsReleaseDetail.releaseId
+                        catalog: discogsReleaseDetail.source,
+                        key: discogsReleaseDetail.releaseId
                     )
                 ]
             ),
@@ -648,8 +654,10 @@
                 files: candidateFilesTracks
             ),
             metadataProvenance: .externalRelease(
-                source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId,
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
+                ),
                 partners: []
             ),
             release: releaseDetailBridge,
@@ -675,8 +683,10 @@
                 isAdded: false
             ),
             metadataProvenance: .externalRelease(
-                source: moreTracksReleaseDetail.source,
-                releaseId: moreTracksReleaseDetail.releaseId,
+                record: BridgeMetadataRef(
+                    catalog: moreTracksReleaseDetail.source,
+                    key: moreTracksReleaseDetail.releaseId
+                ),
                 partners: []
             ),
             release: moreTracksReleaseDetail,
@@ -696,8 +706,10 @@
                 files: bridgeCandidateFiles
             ),
             metadataProvenance: .externalRelease(
-                source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId,
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
+                ),
                 partners: []
             ),
             release: releaseDetailBridge,

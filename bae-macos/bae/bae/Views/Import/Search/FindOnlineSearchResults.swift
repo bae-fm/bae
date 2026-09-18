@@ -57,7 +57,7 @@ struct FindOnlineSearchResults: View {
     private var sourceLines: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(search.sources, id: \.source) { entry in
-                let name = bridgeMetadataSourceName(source: entry.source)
+                let name = bridgeCatalogName(catalog: entry.source)
                 switch entry.state {
                 case .searching:
                     HStack(spacing: 6) {

@@ -32,7 +32,7 @@ struct ImportSettingsTabTests {
 
         // The two settings, plus the sources core reports — which are core's
         // list, not a constant this tab repeats.
-        let sources = PreviewData.configStore().config.metadataSources
+        let sources = PreviewData.configStore().config.lookupCatalogs
         #expect(sources.count == 2)
         #expect(switches(in: host).count == 2 + sources.count)
     }
@@ -66,8 +66,8 @@ struct ImportSettingsTabTests {
         #expect(
             Set(recorder.sourceWrites.map(\.source))
                 == Set(
-                    PreviewData.configStore().config.metadataSources
-                        .map(\.source)
+                    PreviewData.configStore().config.lookupCatalogs
+                        .map(\.catalog)
                 )
         )
     }
@@ -213,7 +213,7 @@ struct ImportSettingsTabTests {
 private final class ImportSettingRecorder {
     var prefillWrites: [Bool] = []
     var identifyWrites: [Bool] = []
-    var sourceWrites: [(source: BridgeMetadataSource, enabled: Bool)] = []
+    var sourceWrites: [(source: BridgeCatalog, enabled: Bool)] = []
 
     var importer: Importer {
         Importer(

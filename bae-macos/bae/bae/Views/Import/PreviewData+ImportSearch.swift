@@ -26,8 +26,10 @@
                     )
                 ],
                 pick: .externalRelease(
-                    source: .musicBrainz,
-                    releaseId: "rel-123",
+                    record: BridgeMetadataRef(
+                        catalog: .musicBrainz,
+                        key: "rel-123"
+                    ),
                     partners: []
                 )
             ),
@@ -57,12 +59,14 @@
                     ),
                 ],
                 pick: .externalRelease(
-                    source: .musicBrainz,
-                    releaseId: "rel-456",
+                    record: BridgeMetadataRef(
+                        catalog: .musicBrainz,
+                        key: "rel-456"
+                    ),
                     partners: [
                         BridgeMetadataRef(
-                            source: .discogs,
-                            releaseId: "rel-456-d"
+                            catalog: .discogs,
+                            key: "rel-456-d"
                         )
                     ]
                 )
@@ -150,8 +154,10 @@
                             )
                         ],
                         pick: .externalRelease(
-                            source: .musicBrainz,
-                            releaseId: "rel-aaa",
+                            record: BridgeMetadataRef(
+                                catalog: .musicBrainz,
+                                key: "rel-aaa"
+                            ),
                             partners: []
                         )
                     ),
@@ -170,8 +176,10 @@
                             )
                         ],
                         pick: .externalRelease(
-                            source: .musicBrainz,
-                            releaseId: "rel-bbb",
+                            record: BridgeMetadataRef(
+                                catalog: .musicBrainz,
+                                key: "rel-bbb"
+                            ),
                             partners: []
                         )
                     ),
@@ -223,12 +231,14 @@
                             ),
                         ],
                         pick: .externalRelease(
-                            source: .musicBrainz,
-                            releaseId: "rel-ccc",
+                            record: BridgeMetadataRef(
+                                catalog: .musicBrainz,
+                                key: "rel-ccc"
+                            ),
                             partners: [
                                 BridgeMetadataRef(
-                                    source: .discogs,
-                                    releaseId: "rel-ddd"
+                                    catalog: .discogs,
+                                    key: "rel-ddd"
                                 )
                             ]
                         )
@@ -272,8 +282,10 @@
                         )
                     ],
                     pick: .externalRelease(
-                        source: .musicBrainz,
-                        releaseId: "rel-disc-1",
+                        record: BridgeMetadataRef(
+                            catalog: .musicBrainz,
+                            key: "rel-disc-1"
+                        ),
                         partners: []
                     )
                 )
@@ -310,8 +322,10 @@
                         )
                     ],
                     pick: .externalRelease(
-                        source: .musicBrainz,
-                        releaseId: "rel-bar-1",
+                        record: BridgeMetadataRef(
+                            catalog: .musicBrainz,
+                            key: "rel-bar-1"
+                        ),
                         partners: []
                     )
                 )

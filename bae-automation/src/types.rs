@@ -302,48 +302,88 @@ pub enum AutomationSearchQuery {
     General {
         artist: String,
         album: String,
-        source: AutomationMetadataSource,
+        source: AutomationCatalog,
     },
     CatalogNumber {
         catalog_number: String,
-        source: AutomationMetadataSource,
+        source: AutomationCatalog,
     },
     Barcode {
         barcode: String,
-        source: AutomationMetadataSource,
+        source: AutomationCatalog,
     },
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+/// A service that publishes descriptions of releases.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum AutomationMetadataSource {
+pub enum AutomationCatalog {
     MusicBrainz,
     Discogs,
+    AllMusic,
+    AppleMusic,
+    Bandcamp,
+    Deezer,
+    Genius,
+    MusikSammler,
+    RateYourMusic,
+    Spotify,
+    Wikidata,
 }
 
-impl From<AutomationMetadataSource> for MetadataSource {
-    fn from(value: AutomationMetadataSource) -> Self {
+impl From<AutomationCatalog> for Catalog {
+    fn from(value: AutomationCatalog) -> Self {
         match value {
-            AutomationMetadataSource::MusicBrainz => MetadataSource::MusicBrainz,
-            AutomationMetadataSource::Discogs => MetadataSource::Discogs,
+            AutomationCatalog::MusicBrainz => Catalog::MusicBrainz,
+            AutomationCatalog::Discogs => Catalog::Discogs,
+            AutomationCatalog::AllMusic => Catalog::AllMusic,
+            AutomationCatalog::AppleMusic => Catalog::AppleMusic,
+            AutomationCatalog::Bandcamp => Catalog::Bandcamp,
+            AutomationCatalog::Deezer => Catalog::Deezer,
+            AutomationCatalog::Genius => Catalog::Genius,
+            AutomationCatalog::MusikSammler => Catalog::MusikSammler,
+            AutomationCatalog::RateYourMusic => Catalog::RateYourMusic,
+            AutomationCatalog::Spotify => Catalog::Spotify,
+            AutomationCatalog::Wikidata => Catalog::Wikidata,
         }
     }
 }
 
-impl From<MetadataSource> for AutomationMetadataSource {
-    fn from(value: MetadataSource) -> Self {
+impl From<Catalog> for AutomationCatalog {
+    fn from(value: Catalog) -> Self {
         match value {
-            MetadataSource::MusicBrainz => AutomationMetadataSource::MusicBrainz,
-            MetadataSource::Discogs => AutomationMetadataSource::Discogs,
+            Catalog::MusicBrainz => AutomationCatalog::MusicBrainz,
+            Catalog::Discogs => AutomationCatalog::Discogs,
+            Catalog::AllMusic => AutomationCatalog::AllMusic,
+            Catalog::AppleMusic => AutomationCatalog::AppleMusic,
+            Catalog::Bandcamp => AutomationCatalog::Bandcamp,
+            Catalog::Deezer => AutomationCatalog::Deezer,
+            Catalog::Genius => AutomationCatalog::Genius,
+            Catalog::MusikSammler => AutomationCatalog::MusikSammler,
+            Catalog::RateYourMusic => AutomationCatalog::RateYourMusic,
+            Catalog::Spotify => AutomationCatalog::Spotify,
+            Catalog::Wikidata => AutomationCatalog::Wikidata,
         }
     }
+}
+
+/// One catalog's description of a release: which catalog, its key for the
+/// release, and the page it publishes.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AutomationReleaseRecord {
+    pub catalog: AutomationCatalog,
+    pub key: String,
+    /// The catalog's page for this release, built by core.
+    pub url: String,
+    /// True for the one record the draft's facts were read from.
+    pub reads_draft: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationReleaseReseed {
     ExternalRelease {
-        source: AutomationMetadataSource,
+        source: AutomationCatalog,
         release_id: String,
         /// The other sources' releases the picked pressing paired with.
         partners: Vec<AutomationMetadataRef>,
@@ -375,7 +415,7 @@ pub struct AutomationReleaseGroup {
 /// One source carrying a group, and its editorial page for it.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationReleaseGroupSource {
-    pub source: AutomationMetadataSource,
+    pub source: AutomationCatalog,
     pub group_url: Option<String>,
 }
 
@@ -393,7 +433,7 @@ pub struct AutomationPressing {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationMetadataResult {
-    pub source: AutomationMetadataSource,
+    pub source: AutomationCatalog,
     pub release_id: String,
     pub title: String,
     pub artist: Option<String>,
@@ -422,7 +462,7 @@ pub struct AutomationRemoteCover {
     pub url: String,
     pub thumbnail_url: String,
     pub label: String,
-    pub source: AutomationMetadataSource,
+    pub source: AutomationCatalog,
 }
 
 /// One signal that identified the picked release, and the candidate file it
@@ -448,7 +488,7 @@ pub enum AutomationEvidenceSignal {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationReleaseDetail {
     pub release_id: String,
-    pub source: AutomationMetadataSource,
+    pub source: AutomationCatalog,
     pub source_group_id: Option<String>,
     pub title: String,
     pub artist: Option<String>,
@@ -487,7 +527,7 @@ pub struct AutomationStartImport {
 pub enum AutomationCoverSelection {
     Remote {
         url: String,
-        source: AutomationMetadataSource,
+        source: AutomationCatalog,
     },
     Local {
         path: String,
@@ -564,6 +604,9 @@ pub struct AutomationRelease {
     pub files: Vec<AutomationFileDetail>,
     pub image_files: Vec<AutomationFileDetail>,
     pub gallery_items: Vec<AutomationGalleryItem>,
+    /// Every catalog's description of this release, in the order surfaces list
+    /// catalogs. Empty when no catalog describes it.
+    pub records: Vec<AutomationReleaseRecord>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -750,25 +793,25 @@ pub struct CandidateSkipSetInput {
     pub skipped: bool,
 }
 
-/// The metadata source a candidate will be committed from.
+/// Where a candidate's draft will be committed from.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationMetadataProvenance {
     ExternalRelease {
-        source: AutomationMetadataSource,
-        release_id: String,
-        /// The other sources' releases the picked pressing paired with. The
-        /// draft is read from `release_id`; the pick claims these too.
+        /// The catalog's release the draft is read from.
+        record: AutomationMetadataRef,
+        /// The other catalogs' releases the picked pressing paired with. The
+        /// pick claims these too.
         partners: Vec<AutomationMetadataRef>,
     },
     FileTags,
 }
 
-/// One source's release, named.
+/// One catalog's key for one release.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationMetadataRef {
-    pub source: AutomationMetadataSource,
-    pub release_id: String,
+    pub catalog: AutomationCatalog,
+    pub key: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

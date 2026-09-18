@@ -166,19 +166,17 @@ private func readyRow(
         selectable: true,
         importStatus: nil,
         metadataProvenance: .externalRelease(
-            source: .musicBrainz,
-            releaseId: "rel-\(key)",
+            record: BridgeMetadataRef(catalog: .musicBrainz, key: "rel-\(key)"),
             partners: []
         ),
         reading: metadataSummary == nil
             ? .unidentified
-            : .identified(sources: [
-                BridgeIdentifiedSource(
-                    source: .musicBrainz,
-                    releaseId: "rel-\(key)",
+            : .identified(records: [
+                BridgeReleaseRecord(
+                    catalog: .musicBrainz,
+                    key: "rel-\(key)",
                     url: "https://musicbrainz.org/release/rel-\(key)",
-                    label: nil,
-                    year: nil
+                    readsDraft: true
                 )
             ])
     )

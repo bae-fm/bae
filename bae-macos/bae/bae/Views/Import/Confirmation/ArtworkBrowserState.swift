@@ -15,8 +15,8 @@ struct ArtworkBrowserState {
             switch self {
             case .all: String(localized: "All")
             case .releaseFiles: String(localized: "Release Files")
-            case .discogs: bridgeMetadataSourceName(source: .discogs)
-            case .musicBrainz: bridgeMetadataSourceName(source: .musicBrainz)
+            case .discogs: bridgeCatalogName(catalog: .discogs)
+            case .musicBrainz: bridgeCatalogName(catalog: .musicBrainz)
             }
         }
 

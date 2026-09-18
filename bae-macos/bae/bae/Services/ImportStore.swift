@@ -231,10 +231,10 @@ class ImportStore {
     /// the spinner while it is read.
     func loadingReleaseId(forKey key: String) -> String? {
         guard
-            case .externalRelease(_, let releaseId, _) =
+            case .externalRelease(let record, _) =
                 metadataApplicationSession(forKey: key)?.provenance
         else { return nil }
-        return releaseId
+        return record.key
     }
 
     /// How this candidate's last pick failed, on the pressing it was about.
@@ -290,15 +290,12 @@ class ImportStore {
             return
         }
         if let error,
-            case .externalRelease(let source, let releaseId, _) = session
+            case .externalRelease(let record, _) = session
                 .provenance
         {
             picks[key]?.state = .failed(
                 ReleaseSelectionFailure(
-                    release: BridgeMetadataRef(
-                        source: source,
-                        releaseId: releaseId
-                    ),
+                    release: record,
                     message: error
                 )
             )

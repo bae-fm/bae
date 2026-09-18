@@ -23,7 +23,7 @@ impl BridgeMetadataResult {
             source_tracks: _,
         } = r;
         BridgeMetadataResult {
-            source: BridgeMetadataSource::from_core(source),
+            source: BridgeCatalog::from_core(source),
             release_id,
             year,
             format,
@@ -54,11 +54,11 @@ impl BridgeRemoteCover {
 
 fn bridge_remote_cover_selection(
     url: String,
-    source: bae_core::import::MetadataSource,
+    source: bae_core::import::Catalog,
 ) -> BridgeRemoteCoverSelection {
     BridgeRemoteCoverSelection {
         url,
-        source: BridgeMetadataSource::from_core(source),
+        source: BridgeCatalog::from_core(source),
     }
 }
 
@@ -105,7 +105,7 @@ impl BridgeReleaseDetail {
         } = d;
         BridgeReleaseDetail {
             release_id,
-            source: BridgeMetadataSource::from_core(source),
+            source: BridgeCatalog::from_core(source),
             source_group_id,
             title,
             artist,
@@ -212,7 +212,7 @@ mirror_struct! {
 mirror_struct! {
     BridgeProviderCell = bae_core::identify::ProviderCell,
     from_core: fn,
-    fields: { source: (BridgeMetadataSource), lookup: (BridgeLookupState) },
+    fields: { source: (BridgeCatalog), lookup: (BridgeLookupState) },
 }
 
 mirror_struct! {
@@ -301,7 +301,7 @@ mirror_struct! {
     BridgeIdentifyRun = bae_core::identify::IdentifyRunView,
     from_core: fn,
     fields: {
-        providers: (each BridgeMetadataSource),
+        providers: (each BridgeCatalog),
         disc_id: (BridgeDiscIdStep),
         barcode: (BridgeBarcodeStep),
         catalog: (BridgeCatalogStep),
@@ -311,7 +311,7 @@ mirror_struct! {
 mirror_struct! {
     BridgeReleaseGroupSource = bae_core::import::release_group::ReleaseGroupSource,
     from_core: fn,
-    fields: { source: (BridgeMetadataSource), group_url },
+    fields: { source: (BridgeCatalog), group_url },
 }
 
 impl BridgeReleaseGroup {
@@ -541,11 +541,11 @@ fn identify_failure(
             failure: BridgeLookupFailure::from_core(failure),
         },
         IdentifyFailure::Barcode(failure) => crate::types::BridgeIdentifyFailure::Barcode {
-            source: BridgeMetadataSource::from_core(failure.source),
+            source: BridgeCatalog::from_core(failure.source),
             failure: BridgeLookupFailure::from_core(failure.failure),
         },
         IdentifyFailure::Catalog(failure) => crate::types::BridgeIdentifyFailure::Catalog {
-            source: BridgeMetadataSource::from_core(failure.source),
+            source: BridgeCatalog::from_core(failure.source),
             failure: BridgeLookupFailure::from_core(failure.failure),
         },
         IdentifyFailure::ReleaseDetails(failure) => {
@@ -576,7 +576,7 @@ mod tests {
         BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
         ProviderBarcodeLookup,
     };
-    use bae_core::import::MetadataSource;
+    use bae_core::import::Catalog;
     use bae_core::signals::{DiscIdSignal, LookupFailure, SignalOrigin, SourcedValue};
 
     fn in_flight(barcode: BarcodeProgress) -> IdentifyState {
@@ -585,7 +585,7 @@ mod tests {
             barcode,
             catalog: CatalogProgress::Skipped,
             context: SignalsContext {
-                providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
+                providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
                 artwork: bae_core::signals::ArtworkScan::Absent,
                 disc: DiscIdEvidence {
                     signal: DiscIdSignal::Absent { track_count: 9 },
@@ -624,11 +624,11 @@ mod tests {
             codes: vec!["0123456789012".to_string()],
             providers: vec![
                 ProviderBarcodeLookup {
-                    source: MetadataSource::MusicBrainz,
+                    source: Catalog::MusicBrainz,
                     state: BarcodeLookupState::Trying { index: 0 },
                 },
                 ProviderBarcodeLookup {
-                    source: MetadataSource::Discogs,
+                    source: Catalog::Discogs,
                     state: BarcodeLookupState::Failed {
                         failure: LookupFailure::Diagnostic {
                             detail: "provider lookup failed".to_string(),
@@ -654,12 +654,12 @@ mod tests {
         );
         assert!(!rows[0].excluded);
         assert_eq!(rows[0].cells.len(), 2);
-        assert_eq!(rows[0].cells[0].source, BridgeMetadataSource::MusicBrainz);
+        assert_eq!(rows[0].cells[0].source, BridgeCatalog::MusicBrainz);
         assert!(matches!(
             rows[0].cells[0].lookup,
             BridgeLookupState::LookingUp
         ));
-        assert_eq!(rows[0].cells[1].source, BridgeMetadataSource::Discogs);
+        assert_eq!(rows[0].cells[1].source, BridgeCatalog::Discogs);
         assert!(matches!(
             &rows[0].cells[1].lookup,
             BridgeLookupState::Failed {

@@ -129,23 +129,33 @@ pub fn bridge_file_role_key(role: &BridgeFileRole) -> String {
     .to_string()
 }
 
-/// The name of the service a pick came from — "MusicBrainz", "Discogs".
+/// The name of the catalog a description came from — "MusicBrainz",
+/// "Discogs", "Rate Your Music".
 ///
 /// A brand name, so it is not translated and needs no catalog key.
 #[cfg_attr(feature = "desktop", uniffi::export)]
-pub fn bridge_metadata_source_name(source: crate::types::BridgeMetadataSource) -> String {
-    source.name().to_string()
+pub fn bridge_catalog_name(catalog: crate::types::BridgeCatalog) -> String {
+    catalog.name().to_string()
 }
 
-/// Every metadata source, in the one order surfaces list them in.
+/// Every catalog, in the one order surfaces list them in.
 ///
-/// A surface that names the sources carrying something — a card's chips, a
-/// pressing row's tags — reads them in this order, so the order is core's and
-/// no surface states it again.
+/// A surface that names the catalogs describing something reads them in this
+/// order, so the order is core's and no surface states it again.
 #[cfg_attr(feature = "desktop", uniffi::export)]
-pub fn bridge_metadata_sources() -> Vec<crate::types::BridgeMetadataSource> {
-    bae_core::import::MetadataSource::ALL
-        .map(crate::types::BridgeMetadataSource::from_core)
+pub fn bridge_catalogs() -> Vec<crate::types::BridgeCatalog> {
+    bae_core::import::Catalog::ALL
+        .map(crate::types::BridgeCatalog::from_core)
+        .to_vec()
+}
+
+/// The catalogs bae asks — a search, a disc ID, a barcode — in the order
+/// surfaces list them. The others hold pages a record links out to; nothing
+/// asks them anything, so nothing offers them as something to switch on.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_lookup_catalogs() -> Vec<crate::types::BridgeCatalog> {
+    bae_core::import::Catalog::LOOKUP
+        .map(crate::types::BridgeCatalog::from_core)
         .to_vec()
 }
 
@@ -656,7 +666,7 @@ pub struct BridgeValueSource {
 /// `bae_core::identify::ProviderCell`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeProviderCell {
-    pub source: BridgeMetadataSource,
+    pub source: BridgeCatalog,
     pub lookup: BridgeLookupState,
 }
 
@@ -786,7 +796,7 @@ pub struct BridgeCatalogAgreement {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeIdentifyRun {
     /// The providers the run asks, in the order their cells are listed.
-    pub providers: Vec<BridgeMetadataSource>,
+    pub providers: Vec<BridgeCatalog>,
     pub disc_id: BridgeDiscIdStep,
     pub barcode: BridgeBarcodeStep,
     pub catalog: BridgeCatalogStep,
@@ -974,11 +984,11 @@ pub enum BridgeIdentifyFailure {
         failure: BridgeLookupFailure,
     },
     Barcode {
-        source: BridgeMetadataSource,
+        source: BridgeCatalog,
         failure: BridgeLookupFailure,
     },
     Catalog {
-        source: BridgeMetadataSource,
+        source: BridgeCatalog,
         failure: BridgeLookupFailure,
     },
     ReleaseDetails {

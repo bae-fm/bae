@@ -6,7 +6,7 @@
 //!
 //! The copy cannot be replaced by `Serialize` derives on core's view types.
 //! The leaves this tree is built from — `signals::LookupFailure`,
-//! `import::SourceFailure`, `import::MetadataSource` — already carry a
+//! `import::SourceFailure`, `import::Catalog` — already carry a
 //! `Serialize`, and it is the on-disk format of `import_candidate_verdict`'s
 //! `failures_json`: externally tagged, `[{"Barcode":{"source":"MusicBrainz",
 //! "failure":{"Provider":{"status":503}}}}]`. This JSON is internally tagged

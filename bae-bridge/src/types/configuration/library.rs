@@ -65,7 +65,7 @@ pub struct BridgeReleaseRoleSummary {
     pub release_id: String,
     pub album_id: String,
     pub album_title: String,
-    pub source: BridgeMetadataSource,
+    pub source: BridgeCatalog,
     pub source_credit: Option<String>,
 }
 
@@ -78,7 +78,7 @@ pub struct BridgeTrackRoleSummary {
     pub album_title: String,
     pub artist_id: String,
     pub artist_name: String,
-    pub source: BridgeMetadataSource,
+    pub source: BridgeCatalog,
     pub source_credit: Option<String>,
 }
 

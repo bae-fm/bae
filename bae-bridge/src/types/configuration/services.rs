@@ -18,12 +18,12 @@ pub struct BridgeConfig {
     /// Whether a newly discovered candidate's draft is created from the
     /// folder's file tags, or starts blank.
     pub prefill_with_tags: bool,
-    /// Which metadata sources Find online asks, one entry per source in core's
+    /// Which catalogs Find online asks, one entry per catalog in core's
     /// order — what the switches on the Find online header and in Settings
     /// render, those being two views of one setting. Core folds the person's
-    /// choice and the source's credentials into a single answer, so no surface
+    /// choice and the catalog's credentials into a single answer, so no surface
     /// re-derives "on and reachable" from a flag plus `discogs_usable`.
-    pub metadata_sources: Vec<BridgeMetadataSourceSetting>,
+    pub lookup_catalogs: Vec<BridgeLookupCatalogSetting>,
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, not a
     /// per-device one — the seek bar reads it and never stores a copy.
@@ -59,7 +59,7 @@ pub struct BridgeConfig {
     pub sync: Option<BridgeSyncConfig>,
 }
 
-/// Whether Find online asks one source, and when it does not, why not. Mirrors
+/// Whether Find online asks one catalog, and when it does not, why not. Mirrors
 /// `bae_core::import::SourceAvailability`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSourceAvailability {
@@ -73,15 +73,15 @@ pub enum BridgeSourceAvailability {
     NotConfigured,
 }
 
-/// One metadata source and whether this library asks it — one switch, as a
+/// One catalog bae asks and whether this library asks it — one switch, as a
 /// surface draws it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeMetadataSourceSetting {
-    pub source: BridgeMetadataSource,
+pub struct BridgeLookupCatalogSetting {
+    pub catalog: BridgeCatalog,
     pub availability: BridgeSourceAvailability,
     /// Whether this switch can be moved at all. Core's answer, covering both
-    /// reasons it cannot: the source needs a credential this library does not
-    /// hold, which a switch cannot supply, and it is the only source still
+    /// reasons it cannot: the catalog needs a credential this library does not
+    /// hold, which a switch cannot supply, and it is the only catalog still
     /// being asked, which core refuses to leave nothing behind. A surface
     /// greys the switch out on this rather than working the two cases out for
     /// itself, so it is disabled on exactly the writes core would turn down.

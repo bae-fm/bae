@@ -1,15 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// The mark a row's title carries when its draft was read from a source's
+/// The mark a row's title carries when its draft was read from a catalog's
 /// release. What it says is that the row is identified at all — as opposed to
-/// filled in from the files' tags, or blank. Which sources, and what each of
-/// them states, is the hover's to say.
+/// filled in from the files' tags, or blank. Which catalogs describe the
+/// release is the hover's to say.
 ///
-/// The same glyph the main pane's source links carry, so the two read as one
+/// The same glyph the records row's links carry, so the two read as one
 /// gesture: this release came from somewhere you can go and look at.
 struct IdentifiedMark: View {
-    let sources: [BridgeIdentifiedSource]
+    let records: [BridgeReleaseRecord]
 
     @Environment(\.backgroundProminence)
     private var backgroundProminence
@@ -22,7 +22,7 @@ struct IdentifiedMark: View {
             .accessibilityIdentifier("identified-mark")
             .accessibilityLabel(coreString("core.import.triage.identified"))
             .hoverPopover(arrowEdge: .bottom) {
-                IdentifiedFromPopover(sources: sources)
+                IdentifiedFromPopover(records: records)
                     .popoverEntrance(anchor: .top)
                     .background { PopoverBehavior() }
             }
@@ -37,15 +37,10 @@ struct IdentifiedMark: View {
     }
 }
 
-/// Which sources a row's draft was read from, and what each of their releases
-/// says about itself.
-///
-/// Both lines when the pick paired both sources: a MusicBrainz release and a
-/// Discogs release describing one pressing can disagree about its label and
-/// its year, so each line states its own source's document rather than the
-/// draft they were merged into.
+/// Which catalogs describe the release this row's draft was read from, each
+/// linking to its own page for it.
 struct IdentifiedFromPopover: View {
-    let sources: [BridgeIdentifiedSource]
+    let records: [BridgeReleaseRecord]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -54,58 +49,11 @@ struct IdentifiedFromPopover: View {
                 .kerning(0.6)
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 1)
-            ForEach(sources, id: \.source) { source in
-                IdentifiedSourceLine(source: source)
-            }
+            ReleaseRecordsRow(records: records)
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .frame(width: 300)
-    }
-}
-
-/// One source's line: its name, what its own release says, and the way to that
-/// release's page there.
-struct IdentifiedSourceLine: View {
-    let source: BridgeIdentifiedSource
-
-    var body: some View {
-        HStack(spacing: 6) {
-            // The source is what the line names, so it never gives up a
-            // letter; a long label's facts truncate after it instead.
-            Text(verbatim: bridgeMetadataSourceName(source: source.source))
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.primary)
-                .fixedSize()
-            if let facts {
-                Text(verbatim: facts)
-                    .font(.system(size: 10.5, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-            else {
-                Spacer(minLength: 0)
-            }
-            if let url = URL(string: source.url) {
-                Link(destination: url) {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 10))
-                        .foregroundStyle(Theme.accent)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    /// The label and the year this source's own release states, whichever of
-    /// them it states. `nil` when it states neither — the line is then the
-    /// source's name and the way to it.
-    private var facts: String? {
-        let stated = [source.label, source.year.map(String.init)]
-            .compactMap { $0 }
-        return stated.isEmpty ? nil : stated.joined(separator: " \u{00b7} ")
     }
 }
 
@@ -114,7 +62,7 @@ struct IdentifiedSourceLine: View {
     // MARK: - Previews
 
     #Preview("Identified from") {
-        IdentifiedFromPopover(sources: PreviewData.identifiedFromBothSources)
+        IdentifiedFromPopover(records: PreviewData.releaseRecordsPair)
             .importPreviewEnvironment()
     }
 #endif

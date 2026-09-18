@@ -34,7 +34,7 @@ forward! { sync this => {
     /// Ask, or stop asking, one metadata source. Refused when it would leave
     /// nothing to ask — the error carries the sentence to show.
     fn set_metadata_source_enabled(
-        source: crate::types::BridgeMetadataSource,
+        source: crate::types::BridgeCatalog,
         enabled: bool,
     ) -> Result<(), BridgeError> {
         Ok(this

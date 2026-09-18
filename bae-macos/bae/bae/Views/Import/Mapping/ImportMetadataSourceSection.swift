@@ -105,7 +105,7 @@ private struct ImportOnlineMetadataBrowser: View {
                     input: ImportSearchFlow.SearchPaneInput(
                         candidate: candidate,
                         key: candidateKey,
-                        selectedReleaseId: candidate.pickedRelease?.releaseId,
+                        selectedReleaseId: candidate.pickedRelease?.key,
                         runtime: runtime,
                         initialSection: initialSection,
                         liveSignals: signals

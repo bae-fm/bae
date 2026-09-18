@@ -48,7 +48,7 @@ struct CoverItem: LightboxImage {
     var sourceLabel: String {
         switch selection {
         case .remoteCover(let remote):
-            bridgeMetadataSourceName(source: remote.source)
+            bridgeCatalogName(catalog: remote.source)
         case .releaseImage: String(localized: "Release Files")
         case .embeddedCover: coreString("ui.import.metadata.file_tags")
         case nil: String(localized: "Library")

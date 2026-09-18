@@ -26,8 +26,8 @@ struct FindOnlineSourceSwitchTests {
             size: Self.headerSize
         )
 
-        for source in [BridgeMetadataSource.musicBrainz, .discogs] {
-            let name = bridgeMetadataSourceName(source: source)
+        for source in [BridgeCatalog.musicBrainz, .discogs] {
+            let name = bridgeCatalogName(catalog: source)
             #expect(
                 lines.contains { $0.localizedCaseInsensitiveContains(name) },
                 "the header reads: \(lines)"
@@ -232,7 +232,7 @@ struct FindOnlineSourceSwitchTests {
 @MainActor
 private final class SourceSwitchRecorder {
     struct Write {
-        let source: BridgeMetadataSource
+        let source: BridgeCatalog
         let enabled: Bool
     }
 

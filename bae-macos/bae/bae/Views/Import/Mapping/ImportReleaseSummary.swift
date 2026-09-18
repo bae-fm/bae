@@ -9,11 +9,10 @@ struct ImportReleaseSummary {
     let artist: String?
     let factsLine: String
     let sourceAudio: BridgeCandidateSourceAudio?
-    let provenance: BridgeMetadataProvenance?
-    /// The sources this draft was read from, each with what its own release
-    /// says. Empty for a draft that came from the files' tags, was typed in,
-    /// or is not there yet.
-    let identifiedFrom: [BridgeIdentifiedSource]
+    /// Every catalog that describes the release this draft was read from.
+    /// Empty for a draft that came from the files' tags, was typed in, or is
+    /// not there yet.
+    let records: [BridgeReleaseRecord]
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
         let provenance = candidate.metadataProvenance
@@ -47,10 +46,7 @@ struct ImportReleaseSummary {
         case nil:
             factsLine = trackText
         }
-        self.provenance = provenance
-        // The pane names its sources in the chips under the facts line; the
-        // mark is the sidebar's way of saying the same thing in a row's width.
-        identifiedFrom = []
+        records = candidate.records
         sourceAudio = candidate.files.sourceAudio
     }
 
@@ -66,10 +62,9 @@ struct ImportReleaseSummary {
             artistNames.isEmpty
             ? nil : ListFormatter.localizedString(byJoining: artistNames)
         factsLine = ""
-        provenance = row.metadataProvenance
-        identifiedFrom =
+        records =
             switch row.reading {
-            case .identified(let sources): sources
+            case .identified(let records): records
             case .unidentified, .prefilled: []
             }
         sourceAudio = nil
@@ -96,21 +91,13 @@ struct ImportReleaseSummaryView: View {
         VStack(alignment: .leading, spacing: style.stackSpacing) {
             titleLine
             artistLine
-            HStack(spacing: 6) {
-                Text(summary.factsLine)
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                // Only the style that shows this line builds its chips: the
-                // other draws it at zero height and full transparency, where
-                // a link would still take clicks off the row under it.
-                if style.showsFacts, let provenance = summary.provenance {
-                    ImportMetadataProvenanceChips(provenance: provenance)
-                }
-            }
-            .padding(.top, style.factsTopPadding)
-            .frame(height: style.factsHeight)
-            .opacity(style.showsFacts ? 1 : 0)
+            Text(summary.factsLine)
+                .font(.system(size: 11.5))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .padding(.top, style.factsTopPadding)
+                .frame(height: style.factsHeight)
+                .opacity(style.showsFacts ? 1 : 0)
             if style.showsFacts, let sourceAudio = summary.sourceAudio {
                 ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
             }
@@ -118,7 +105,7 @@ struct ImportReleaseSummaryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The title, and the mark saying its draft was read from a source. The
+    /// The title, and the mark saying its draft was read from a catalog. The
     /// title truncates before the mark does: the mark is one fixed glyph and
     /// clipping it would lose the row's whole answer.
     private var titleLine: some View {
@@ -135,12 +122,12 @@ struct ImportReleaseSummaryView: View {
     }
 
     /// The mark, where the style draws one and the draft was read from a
-    /// source. The pane's own style names its sources in the chips under the
-    /// facts line instead, so only the sidebar carries it.
+    /// catalog's release. The pane names its catalogs in the records row
+    /// instead, so only the sidebar carries it.
     @ViewBuilder
     private var identifiedMark: some View {
-        if style.showsIdentifiedMark, !summary.identifiedFrom.isEmpty {
-            IdentifiedMark(sources: summary.identifiedFrom)
+        if style.showsIdentifiedMark, !summary.records.isEmpty {
+            IdentifiedMark(records: summary.records)
                 .layoutPriority(1)
         }
     }
@@ -156,100 +143,6 @@ struct ImportReleaseSummaryView: View {
         }
     }
 
-}
-
-/// The metadata source attached to the editable album identity. Pressing values
-/// live under Release; source audio sits below the cover.
-struct ImportReleaseContextView: View {
-    let summary: ImportReleaseSummary
-
-    var body: some View {
-        if let provenance = summary.provenance {
-            ImportMetadataProvenanceChips(provenance: provenance)
-        }
-    }
-}
-
-/// Every source this metadata claims, one chip each. A pick pairs a
-/// MusicBrainz release and a Discogs release into one pressing, and both are
-/// the release's, so both are named — the one the draft was read from first,
-/// each linking to its own release page.
-private struct ImportMetadataProvenanceChips: View {
-    let provenance: BridgeMetadataProvenance
-
-    var body: some View {
-        HStack(spacing: 4) {
-            switch provenance {
-            case .externalRelease:
-                ForEach(provenance.releaseRefs, id: \.source) { release in
-                    chip(
-                        label: bridgeMetadataSourceName(source: release.source),
-                        url: URL(
-                            string: bridgeReleaseUrl(
-                                source: release.source,
-                                releaseId: release.releaseId
-                            )
-                        )
-                    )
-                }
-            case .fileTags:
-                chip(
-                    label: coreString("ui.import.metadata.file_tags"),
-                    url: nil
-                )
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func chip(label: String, url: URL?) -> some View {
-        if let url {
-            Link(destination: url) {
-                HStack(spacing: 3) {
-                    MetadataSourceCapsule(label: label)
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 9))
-                }
-                .foregroundStyle(Theme.accent)
-            }
-            .buttonStyle(.plain)
-        }
-        else {
-            MetadataSourceCapsule(label: label).foregroundStyle(.secondary)
-        }
-    }
-}
-
-/// One metadata source's name, in a capsule. The draft header wraps it in a
-/// link to the release it names; a candidate row draws the same capsule with
-/// no link — so the text colour is the caller's, which is what tints a link's
-/// whole chip.
-struct MetadataSourceCapsule: View {
-    let label: String
-
-    var body: some View {
-        Text(verbatim: label)
-            .font(.system(size: 10.5, weight: .medium))
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(Color.secondary.opacity(0.15), in: Capsule())
-            .lineLimit(1)
-    }
-}
-
-extension BridgeMetadataProvenance {
-    /// The releases this provenance names — the one the draft was read from,
-    /// then each partner the pick carried. Empty for File Tags, which names
-    /// no external release.
-    var releaseRefs: [BridgeMetadataRef] {
-        switch self {
-        case .externalRelease(let source, let releaseId, let partners):
-            [BridgeMetadataRef(source: source, releaseId: releaseId)]
-                + partners
-        case .fileTags:
-            []
-        }
-    }
 }
 
 extension ImportReleaseSummaryView.Style {

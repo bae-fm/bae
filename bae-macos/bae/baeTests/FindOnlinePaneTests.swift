@@ -315,9 +315,16 @@ struct FindOnlinePressingPickTests {
         let pressing = try #require(Pressing(bridge: bridge))
 
         #expect(pressing.provenance == bridge.pick)
-        #expect(pressing.provenance.releaseRefs.count == 2)
+        guard
+            case .externalRelease(let record, let partners) =
+                pressing.provenance
+        else {
+            Issue.record("a picked row claims an external release")
+            return
+        }
+        #expect(partners.count == 1)
         #expect(
-            pressing.provenance.releaseRefs.map(\.releaseId)
+            ([record] + partners).map(\.key)
                 == bridge.releases.map(\.releaseId)
         )
     }
@@ -330,7 +337,7 @@ struct FindOnlinePressingPickTests {
         let pressing = try #require(Pressing(bridge: bridge))
 
         guard
-            case .externalRelease(let source, let releaseId, let partners) =
+            case .externalRelease(let record, let partners) =
                 pressing.provenance
         else {
             Issue.record("a picked row claims an external release")
@@ -339,8 +346,8 @@ struct FindOnlinePressingPickTests {
         #expect(
             pressing.reseed
                 == .externalRelease(
-                    releaseId: releaseId,
-                    source: source,
+                    releaseId: record.key,
+                    source: record.catalog,
                     partners: partners
                 )
         )
@@ -353,10 +360,15 @@ struct FindOnlinePressingPickTests {
         let pressing = try #require(Pressing(bridge: bridge))
 
         #expect(pressing.provenance == bridge.pick)
-        #expect(
-            pressing.provenance.releaseRefs.map(\.releaseId)
-                == [bridge.releases[0].releaseId]
-        )
+        guard
+            case .externalRelease(let record, let partners) =
+                pressing.provenance
+        else {
+            Issue.record("a picked row claims an external release")
+            return
+        }
+        #expect(partners.isEmpty)
+        #expect(record.key == bridge.releases[0].releaseId)
     }
 }
 
@@ -376,12 +388,14 @@ struct FindOnlinePressingSourceTests {
                 bridge: BridgePressing(
                     releases: [discogsLead, musicBrainzPartner],
                     pick: .externalRelease(
-                        source: discogsLead.source,
-                        releaseId: discogsLead.releaseId,
+                        record: BridgeMetadataRef(
+                            catalog: discogsLead.source,
+                            key: discogsLead.releaseId
+                        ),
                         partners: [
                             BridgeMetadataRef(
-                                source: musicBrainzPartner.source,
-                                releaseId: musicBrainzPartner.releaseId
+                                catalog: musicBrainzPartner.source,
+                                key: musicBrainzPartner.releaseId
                             )
                         ]
                     )

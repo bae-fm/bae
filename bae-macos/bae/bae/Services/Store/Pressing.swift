@@ -23,8 +23,8 @@ struct Pressing: Equatable, Identifiable {
     /// sources in — the names the row's tags carry. Which record the row is
     /// read from decides what the row shows, never what order its names read
     /// in, so a row and the card above it say the same thing.
-    var sources: [BridgeMetadataSource] {
-        bridgeMetadataSources()
+    var sources: [BridgeCatalog] {
+        bridgeLookupCatalogs()
             .filter { source in
                 releases.contains { $0.source == source }
             }
@@ -33,10 +33,10 @@ struct Pressing: Equatable, Identifiable {
     /// The same claim, in the shape a release already in the library takes.
     var reseed: BridgeReleaseReseed {
         switch provenance {
-        case .externalRelease(let source, let releaseId, let partners):
+        case .externalRelease(let record, let partners):
             .externalRelease(
-                releaseId: releaseId,
-                source: source,
+                releaseId: record.key,
+                source: record.catalog,
                 partners: partners
             )
         case .fileTags:

@@ -668,8 +668,10 @@ extension ImportMetadataCardLayoutTests {
         let (window, host) = SnapshotTestSupport.hostInWindow(
             metadataHeader(
                 provenance: .externalRelease(
-                    source: .musicBrainz,
-                    releaseId: "release-mb",
+                    record: BridgeMetadataRef(
+                        catalog: .musicBrainz,
+                        key: "release-mb"
+                    ),
                     partners: []
                 ),
                 draftIsBlank: false,
@@ -686,75 +688,6 @@ extension ImportMetadataCardLayoutTests {
         XCTAssertNoThrow(try menuFrame(in: host))
         window.contentView = nil
         window.orderOut(nil)
-    }
-
-    /// A pick that paired two sources says so: one chip per source it claims,
-    /// the release the draft was read from first, each linking to its own
-    /// release page.
-    func testPairedProvenanceShowsOneChipPerSource() {
-        let paired = BridgeMetadataProvenance.externalRelease(
-            source: .musicBrainz,
-            releaseId: "release-mb",
-            partners: [
-                BridgeMetadataRef(
-                    source: .discogs,
-                    releaseId: "release-discogs"
-                )
-            ]
-        )
-
-        XCTAssertEqual(
-            paired.releaseRefs.map(\.source),
-            [.musicBrainz, .discogs]
-        )
-        XCTAssertEqual(
-            paired.releaseRefs.map(\.releaseId),
-            ["release-mb", "release-discogs"]
-        )
-
-        let unpaired = BridgeMetadataProvenance.externalRelease(
-            source: .discogs,
-            releaseId: "release-discogs",
-            partners: []
-        )
-        XCTAssertEqual(unpaired.releaseRefs.count, 1)
-        XCTAssertEqual(BridgeMetadataProvenance.fileTags.releaseRefs, [])
-    }
-
-    /// Both chips draw, so a paired pick is visibly two sources rather than
-    /// one with a longer label.
-    func testPairedProvenanceDrawsBothChips() async throws {
-        let paired = try await FindOnlineRendering.pixels(
-            metadataHeader(
-                provenance: .externalRelease(
-                    source: .musicBrainz,
-                    releaseId: "release-mb",
-                    partners: [
-                        BridgeMetadataRef(
-                            source: .discogs,
-                            releaseId: "release-discogs"
-                        )
-                    ]
-                ),
-                draftIsBlank: false,
-                recorder: MetadataCardActionRecorder()
-            ),
-            size: NSSize(width: 900, height: 520)
-        )
-        let unpaired = try await FindOnlineRendering.pixels(
-            metadataHeader(
-                provenance: .externalRelease(
-                    source: .musicBrainz,
-                    releaseId: "release-mb",
-                    partners: []
-                ),
-                draftIsBlank: false,
-                recorder: MetadataCardActionRecorder()
-            ),
-            size: NSSize(width: 900, height: 520)
-        )
-
-        XCTAssertNotEqual(paired, unpaired)
     }
 
     func testSeveralSourceAudioProfilesReadAsVarious() {

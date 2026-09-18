@@ -196,7 +196,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             store.releaseSelectionFailure(
                 forKey: MappingFixtures.candidateKey
             )?
-            .release.releaseId == MappingFixtures.releaseId
+            .release.key == MappingFixtures.releaseId
         )
         #expect(
             !writes.errors(forKey: MappingFixtures.candidateKey)
@@ -241,13 +241,17 @@ final class MetadataApplicationEditingTests: XCTestCase {
         for provenance in [
             BridgeMetadataProvenance.fileTags,
             .externalRelease(
-                source: .musicBrainz,
-                releaseId: "release-mb",
+                record: BridgeMetadataRef(
+                    catalog: .musicBrainz,
+                    key: "release-mb"
+                ),
                 partners: []
             ),
             .externalRelease(
-                source: .discogs,
-                releaseId: "release-discogs",
+                record: BridgeMetadataRef(
+                    catalog: .discogs,
+                    key: "release-discogs"
+                ),
                 partners: []
             ),
         ] {
@@ -539,8 +543,10 @@ struct ImportSearchFlowLibraryStatusTests {
                                     )
                                 ],
                                 pick: .externalRelease(
-                                    source: .musicBrainz,
-                                    releaseId: "rel-live",
+                                    record: BridgeMetadataRef(
+                                        catalog: .musicBrainz,
+                                        key: "rel-live"
+                                    ),
                                     partners: []
                                 )
                             )
@@ -584,7 +590,7 @@ private final class ReleaseStatusHarness: @unchecked Sendable {
     private var subscriptions: [String: [TestReleaseStatusSubscription]] = [:]
 
     func subscribe(
-        _ source: BridgeMetadataSource,
+        _ source: BridgeCatalog,
         _ releaseId: String,
         _ sourceGroupId: String?,
         _ callback: ReleaseLibraryStatusCallback

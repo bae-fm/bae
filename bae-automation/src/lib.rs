@@ -15,11 +15,11 @@ use bae_core::import::folder_scanner::InvalidCandidate;
 use bae_core::import::release_group::ReleaseGroup;
 use bae_core::import::search::{ImportSearchReleaseDetail, MetadataResult};
 use bae_core::import::{
-    CandidateEditField, CandidateRuntimeSnapshot, CoverSelection, GroupedSearchResults,
+    CandidateEditField, CandidateRuntimeSnapshot, Catalog, CoverSelection, GroupedSearchResults,
     ImportCandidateDetail, ImportError, ImportInFlight, ImportListItem, ImportListView,
-    ImportPhase, ImportStep, MetadataProvenance, MetadataRef, MetadataSource, PrepareStep,
-    PressingEdit, ReleaseReseed, ScanEvent, SearchQuery, StorageMode, TrackUserEdit,
-    TriageImportStatus, TriageTab,
+    ImportPhase, ImportStep, MetadataProvenance, MetadataRef, PrepareStep, PressingEdit,
+    ReleaseReseed, ScanEvent, SearchQuery, StorageMode, TrackUserEdit, TriageImportStatus,
+    TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};
 use schemars::JsonSchema;

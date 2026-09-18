@@ -20,6 +20,9 @@ public struct ReleaseDetail: Identifiable {
     public var files: [BridgeFile]
     public var imageFiles: [BridgeFile]
     public var galleryItems: [BridgeGalleryItem]
+    /// Every catalog that describes this release, in the order core lists
+    /// them. Empty when no catalog does.
+    public var records: [BridgeReleaseRecord]
 
     public var id: String {
         summary.id
@@ -53,5 +56,6 @@ public struct ReleaseDetail: Identifiable {
         files = bridge.files
         imageFiles = bridge.imageFiles
         galleryItems = bridge.galleryItems
+        records = bridge.records
     }
 }

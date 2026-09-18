@@ -346,7 +346,7 @@ extension LibraryArtworkBrowserTests {
         func record(_ version: String) { versions.append(version) }
     }
 
-    private func remote(_ name: String, source: BridgeMetadataSource)
+    private func remote(_ name: String, source: BridgeCatalog)
         -> BridgeRemoteCover
     {
         let url = "https://images.example/\(name).png"

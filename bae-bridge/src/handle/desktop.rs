@@ -125,7 +125,7 @@ impl AppHandle {
 
     pub fn subscribe_release_library_status(
         &self,
-        source: crate::types::BridgeMetadataSource,
+        source: crate::types::BridgeCatalog,
         release_id: String,
         source_group_id: Option<String>,
         callback: Box<dyn crate::types::ReleaseLibraryStatusCallback>,

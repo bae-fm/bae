@@ -6,7 +6,7 @@ use super::{BridgeImageRef, BridgeSourceAudioLayout, BridgeSourceAudioSummary, B
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseDetail {
     pub release_id: String,
-    pub source: BridgeMetadataSource,
+    pub source: BridgeCatalog,
     /// Per-source release group: MB release-group ID for MusicBrainz,
     /// Discogs master ID for Discogs. `None` when the source didn't
     /// surface a group — the picked release commits without a group

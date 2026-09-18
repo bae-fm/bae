@@ -280,7 +280,7 @@ mod identify_mirrors {
         ProviderBarcodeLookup, SignalKind, SignalState, ToolbarSignal,
     };
     use bae_core::import::search::MetadataResult;
-    use bae_core::import::MetadataSource;
+    use bae_core::import::Catalog;
     use bae_core::signals::{
         BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
     };
@@ -296,7 +296,7 @@ mod identify_mirrors {
             label: Some("Label Name".to_string()),
             catalog_number: Some("CAT-1".to_string()),
             country: Some("US".to_string()),
-            ..MetadataResult::for_test(MetadataSource::MusicBrainz, release_id, Some(group_id))
+            ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some(group_id))
         }
     }
 
@@ -432,11 +432,11 @@ mod identify_mirrors {
                 codes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
                 providers: vec![
                     ProviderBarcodeLookup {
-                        source: MetadataSource::MusicBrainz,
+                        source: Catalog::MusicBrainz,
                         state: BarcodeLookupState::Trying { index: 1 },
                     },
                     ProviderBarcodeLookup {
-                        source: MetadataSource::Discogs,
+                        source: Catalog::Discogs,
                         state: BarcodeLookupState::Matched {
                             code: "0123456789012".to_string(),
                             results: vec![(
@@ -449,7 +449,7 @@ mod identify_mirrors {
             },
             catalog: CatalogProgress::Skipped,
             context: SignalsContext {
-                providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
+                providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
                 disc: DiscIdEvidence {
                     signal: DiscIdSignal::Computed {
                         disc_id: "disc-hash".to_string(),

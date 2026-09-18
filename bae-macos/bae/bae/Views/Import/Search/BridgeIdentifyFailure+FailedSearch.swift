@@ -4,7 +4,7 @@ import BaeKit
 /// which source. A failure names one; the same source may well have answered
 /// the other steps, and those matches are on the list.
 struct FailedSearch: Hashable {
-    let source: BridgeMetadataSource
+    let source: BridgeCatalog
     let step: BridgeSignalKind
 }
 

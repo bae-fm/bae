@@ -42,7 +42,7 @@ struct FindOnlineHeader: View {
             Text("Find online")
                 .font(.system(size: 13, weight: .semibold))
             Spacer(minLength: 12)
-            ForEach(configStore.config.metadataSources, id: \.source) {
+            ForEach(configStore.config.lookupCatalogs, id: \.catalog) {
                 setting in
                 sourceToggle(setting)
             }
@@ -55,15 +55,15 @@ struct FindOnlineHeader: View {
     /// this view's: a source with no credential and the only source left being
     /// asked are both writes core would turn down.
     private func sourceToggle(
-        _ setting: BridgeMetadataSourceSetting
+        _ setting: BridgeLookupCatalogSetting
     ) -> some View {
         Toggle(
             isOn: Binding(
                 get: { setting.availability == .on },
-                set: { setSourceEnabled(setting.source, $0) }
+                set: { setSourceEnabled(setting.catalog, $0) }
             )
         ) {
-            Text(verbatim: bridgeMetadataSourceName(source: setting.source))
+            Text(verbatim: bridgeCatalogName(catalog: setting.catalog))
                 .font(.system(size: 12))
         }
         .toggleStyle(.checkbox)
@@ -76,7 +76,7 @@ struct FindOnlineHeader: View {
     /// only when this would leave nothing to ask, and that checkbox is already
     /// disabled, so a refusal here is two windows racing.
     private func setSourceEnabled(
-        _ source: BridgeMetadataSource,
+        _ source: BridgeCatalog,
         _ enabled: Bool
     ) {
         do {

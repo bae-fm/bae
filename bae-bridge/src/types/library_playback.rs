@@ -25,14 +25,26 @@ mirror_enum! {
     variants: { Valid, Unvalidated, Rejected },
 }
 
+/// A service that publishes descriptions of releases. Mirrors
+/// `bae_core::import::Catalog`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeMetadataSource {
+pub enum BridgeCatalog {
     MusicBrainz,
     Discogs,
+    AllMusic,
+    AppleMusic,
+    Bandcamp,
+    Deezer,
+    Genius,
+    MusikSammler,
+    RateYourMusic,
+    Spotify,
+    Wikidata,
 }
 
-impl BridgeMetadataSource {
-    /// The service's own name, for a surface that says where a pick came from.
+impl BridgeCatalog {
+    /// The catalog's own name, for a surface that says where a description
+    /// came from.
     ///
     /// A brand, so it is the same in every language and carries no catalog
     /// key — and the service's full name rather than a code, because the name
@@ -43,30 +55,71 @@ impl BridgeMetadataSource {
 }
 
 mirror_enum! {
-    BridgeMetadataSource = bae_core::import::MetadataSource,
+    BridgeCatalog = bae_core::import::Catalog,
     from_core: pub fn,
     into_core: pub fn,
-    variants: { MusicBrainz, Discogs },
+    variants: {
+        MusicBrainz,
+        Discogs,
+        AllMusic,
+        AppleMusic,
+        Bandcamp,
+        Deezer,
+        Genius,
+        MusikSammler,
+        RateYourMusic,
+        Spotify,
+        Wikidata,
+    },
 }
 
-/// One source's release, named. Mirrors `bae_core::import::MetadataRef`.
+/// One catalog's key for one release. Mirrors
+/// `bae_core::import::MetadataRef`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMetadataRef {
-    pub source: BridgeMetadataSource,
-    pub release_id: String,
+    pub catalog: BridgeCatalog,
+    pub key: String,
+}
+
+/// One catalog's description of a release: which catalog, its key for the
+/// release, and the page it publishes. Mirrors
+/// `bae_core::import::ReleaseRecord`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeReleaseRecord {
+    pub catalog: BridgeCatalog,
+    pub key: String,
+    /// The catalog's page for this release, built by core. No surface builds
+    /// one.
+    pub url: String,
+    /// True for the one record the draft's facts were read from, and for no
+    /// other record of the same release.
+    pub reads_draft: bool,
+}
+
+impl BridgeReleaseRecord {
+    /// Not a copy: the group a record's release belongs to in its catalog is
+    /// what import dedup matches on, and no surface reads it.
+    pub(crate) fn from_core(record: bae_core::import::ReleaseRecord) -> Self {
+        Self {
+            catalog: BridgeCatalog::from_core(record.catalog),
+            key: record.key,
+            url: record.url,
+            reads_draft: record.reads_draft,
+        }
+    }
 }
 
 #[cfg(feature = "desktop")]
 impl BridgeMetadataRef {
     pub(crate) fn from_core(release_ref: bae_core::import::MetadataRef) -> Self {
         Self {
-            source: BridgeMetadataSource::from_core(release_ref.source),
-            release_id: release_ref.id,
+            catalog: BridgeCatalog::from_core(release_ref.catalog),
+            key: release_ref.key,
         }
     }
 
     pub(crate) fn into_core(self) -> bae_core::import::MetadataRef {
-        bae_core::import::MetadataRef::new(self.release_id, self.source.into_core())
+        bae_core::import::MetadataRef::new(self.catalog.into_core(), self.key)
     }
 }
 
@@ -278,6 +331,9 @@ pub struct BridgeRelease {
     /// `fetch_release_image_bytes`, which takes the item's `source` and
     /// dispatches the read. Consumers render this as-is.
     pub gallery_items: Vec<BridgeGalleryItem>,
+    /// Every catalog's description of this release, in the order surfaces list
+    /// catalogs. Empty when no catalog describes it.
+    pub records: Vec<BridgeReleaseRecord>,
     /// Total playing time across all tracks, as the words it reads in, or `None`
     /// when no track reports a length. The raw sum does not cross: with the
     /// milliseconds in hand a UI could name the total its own way, which is how
@@ -298,7 +354,7 @@ pub struct BridgeRelease {
 pub enum BridgeReleaseReseed {
     ExternalRelease {
         release_id: String,
-        source: BridgeMetadataSource,
+        source: BridgeCatalog,
         /// The other sources' releases the picked pressing paired with.
         partners: Vec<BridgeMetadataRef>,
     },
@@ -314,7 +370,7 @@ impl BridgeReleaseReseed {
                 source,
                 partners,
             } => bae_core::import::ReleaseReseed::ExternalRelease {
-                release_ref: bae_core::import::MetadataRef::new(release_id, source.into_core()),
+                release_ref: bae_core::import::MetadataRef::new(source.into_core(), release_id),
                 partners: partners
                     .into_iter()
                     .map(BridgeMetadataRef::into_core)
@@ -333,8 +389,8 @@ impl BridgeReleaseReseed {
                 release_ref,
                 partners,
             } => Self::ExternalRelease {
-                release_id: release_ref.id,
-                source: BridgeMetadataSource::from_core(release_ref.source),
+                release_id: release_ref.key,
+                source: BridgeCatalog::from_core(release_ref.catalog),
                 partners: partners
                     .into_iter()
                     .map(BridgeMetadataRef::from_core)
@@ -739,7 +795,7 @@ pub struct BridgeRemoteCover {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRemoteCoverSelection {
     pub url: String,
-    pub source: BridgeMetadataSource,
+    pub source: BridgeCatalog,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]

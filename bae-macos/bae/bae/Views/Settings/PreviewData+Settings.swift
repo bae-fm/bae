@@ -106,14 +106,14 @@
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,
             prefillWithTags: true,
-            metadataSources: [
-                BridgeMetadataSourceSetting(
-                    source: .musicBrainz,
+            lookupCatalogs: [
+                BridgeLookupCatalogSetting(
+                    catalog: .musicBrainz,
                     availability: .on,
                     canChange: true
                 ),
-                BridgeMetadataSourceSetting(
-                    source: .discogs,
+                BridgeLookupCatalogSetting(
+                    catalog: .discogs,
                     availability: .on,
                     canChange: true
                 ),

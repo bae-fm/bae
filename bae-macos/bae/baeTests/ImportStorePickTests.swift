@@ -67,7 +67,7 @@ struct ImportStorePickTests {
 
         #expect(store.metadataApplicationSession(forKey: Self.key) == nil)
         #expect(
-            store.releaseSelectionFailure(forKey: Self.key)?.release.releaseId
+            store.releaseSelectionFailure(forKey: Self.key)?.release.key
                 == MappingFixtures.releaseId
         )
     }

@@ -233,7 +233,7 @@ struct ImportSearchResultRow: View {
                         .font(.system(size: 11))
                         .foregroundStyle(.quaternary)
                 }
-                Text(bridgeMetadataSourceName(source: source))
+                Text(bridgeCatalogName(catalog: source))
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }

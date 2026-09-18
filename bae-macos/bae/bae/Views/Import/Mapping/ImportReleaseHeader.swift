@@ -82,9 +82,10 @@ struct ImportReleaseHeader: View {
                     writer: editActions,
                     editingCommands: editingCommands,
                     cover: { cover },
-                    context: {
-                        ImportReleaseContextView(summary: releaseSummary)
-                    },
+                    // Which catalogs describe the release is the pane's last
+                    // line, under its own hairline — not a caption on the
+                    // header's artist.
+                    context: { EmptyView() },
                     sourceAudio: {
                         if let sourceAudio = releaseSummary.sourceAudio {
                             ImportSourceAudioSummaryView(

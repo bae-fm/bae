@@ -54,7 +54,7 @@ struct ReleaseGroupCard: View {
     /// that returned the release ungrouped has no page, so its name is text.
     @ViewBuilder
     private func sourceLink(_ source: BridgeReleaseGroupSource) -> some View {
-        let name = bridgeMetadataSourceName(source: source.source)
+        let name = bridgeCatalogName(catalog: source.source)
         if let url = source.groupUrl.flatMap(URL.init(string:)) {
             Button {
                 NSWorkspace.shared.open(url)

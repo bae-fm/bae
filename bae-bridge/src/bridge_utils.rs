@@ -1,8 +1,8 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::types::BridgeOutputKind;
 use crate::types::{
-    BridgeConfig, BridgeDiscogsTokenStatus, BridgeMcpConfig, BridgeMetadataSource,
-    BridgeMetadataSourceSetting, BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken,
+    BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus, BridgeLookupCatalogSetting,
+    BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken,
     BridgeSavePregapPlacement, BridgeSavePreset, BridgeSourceAvailability, BridgeSubsonicConfig,
     BridgeSyncConfig, BridgeSyncProvider,
 };
@@ -13,20 +13,20 @@ mirror_enum! {
     variants: { On, Off, NotConfigured },
 }
 
-impl BridgeMetadataSourceSetting {
-    /// One source's switch, read out of the whole list: whether it can be moved
-    /// is a fact about the others too, since the last source still being asked
-    /// cannot be switched off.
+impl BridgeLookupCatalogSetting {
+    /// One catalog's switch, read out of the whole list: whether it can be
+    /// moved is a fact about the others too, since the last catalog still being
+    /// asked cannot be switched off.
     pub(crate) fn from_core(
-        sources: &[bae_core::import::MetadataSourceAvailability],
-        entry: bae_core::import::MetadataSourceAvailability,
+        catalogs: &[bae_core::import::CatalogAvailability],
+        entry: bae_core::import::CatalogAvailability,
     ) -> Self {
-        let bae_core::import::MetadataSourceAvailability { source, state } = entry;
-        BridgeMetadataSourceSetting {
-            source: BridgeMetadataSource::from_core(source),
+        let bae_core::import::CatalogAvailability { catalog, state } = entry;
+        BridgeLookupCatalogSetting {
+            catalog: BridgeCatalog::from_core(catalog),
             availability: BridgeSourceAvailability::from_core(state),
             can_change: state != bae_core::import::SourceAvailability::NotConfigured
-                && !bae_core::import::is_the_only_asked_source(sources, source),
+                && !bae_core::import::is_the_only_asked_source(catalogs, catalog),
         }
     }
 }
@@ -194,10 +194,10 @@ impl BridgeConfig {
     pub(crate) fn from_core(config: &bae_core::config::Config) -> Self {
         let discogs_status = config.discogs_token_status();
         let cloud_account_display = config.cloud_account_display();
-        let sources = config.metadata_sources();
-        let metadata_sources = sources
+        let catalogs = config.metadata_sources();
+        let lookup_catalogs = catalogs
             .iter()
-            .map(|entry| BridgeMetadataSourceSetting::from_core(&sources, *entry))
+            .map(|entry| BridgeLookupCatalogSetting::from_core(&catalogs, *entry))
             .collect();
         let bae_core::config::Config { inner, prefs, .. } = config;
         let bae_core::config::Preferences {
@@ -214,7 +214,7 @@ impl BridgeConfig {
             identify_automatically,
             prefill_with_tags,
             // Read through `Config::metadata_sources()` above, which folds this
-            // raw preference together with each source's credentials into the
+            // raw preference together with each catalog's credentials into the
             // one answer a surface renders.
             metadata_sources: _,
             show_remaining_time,
@@ -243,7 +243,7 @@ impl BridgeConfig {
             max_concurrent_downloads: max_concurrent_downloads.get(),
             identify_automatically: *identify_automatically,
             prefill_with_tags: *prefill_with_tags,
-            metadata_sources,
+            lookup_catalogs,
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
             save_presets: save_presets

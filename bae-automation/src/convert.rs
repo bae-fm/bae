@@ -144,7 +144,7 @@ fn storage_action_name(action: &AutomationReleaseStorageAction) -> &'static str 
 /// names a source — every configured provider answers a person's search — so an
 /// automation client's single-source request splits into the two arguments the
 /// one-shot search takes.
-pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, MetadataSource) {
+pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, Catalog) {
     match query {
         AutomationSearchQuery::General {
             artist,
@@ -161,8 +161,8 @@ pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, Metada
     }
 }
 
-/// Not a copy: core's `ExternalRelease` carries the source and release id as
-/// one `MetadataRef`, which the automation shape spells as two fields.
+/// Not a copy: core's `ExternalRelease` carries the catalog and its key as one
+/// `MetadataRef`, which the automation shape spells as two fields.
 pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
     match choice {
         AutomationReleaseReseed::ExternalRelease {
@@ -170,7 +170,7 @@ pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
             release_id,
             partners,
         } => ReleaseReseed::ExternalRelease {
-            release_ref: MetadataRef::new(release_id, source.into()),
+            release_ref: MetadataRef::new(source.into(), release_id),
             partners: partners
                 .into_iter()
                 .map(AutomationMetadataRef::into_core)
@@ -180,17 +180,26 @@ pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
     }
 }
 
-impl AutomationMetadataRef {
-    /// Not a copy: core names the release id `id`.
-    pub(crate) fn from_core(release_ref: MetadataRef) -> Self {
-        Self {
-            source: release_ref.source.into(),
-            release_id: release_ref.id,
-        }
-    }
+mirror_struct! {
+    AutomationMetadataRef = MetadataRef,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: {
+        catalog: (into),
+        key,
+    },
+}
 
-    pub(crate) fn into_core(self) -> MetadataRef {
-        MetadataRef::new(self.release_id, self.source.into())
+impl AutomationReleaseRecord {
+    /// Not a copy: the group a record's release belongs to in its catalog is
+    /// what import dedup matches on, and nothing outside core reads it.
+    pub(crate) fn from_core(record: bae_core::import::ReleaseRecord) -> Self {
+        Self {
+            catalog: record.catalog.into(),
+            key: record.key,
+            url: record.url,
+            reads_draft: record.reads_draft,
+        }
     }
 }
 
@@ -200,8 +209,7 @@ mirror_enum! {
     into_core: pub(crate) fn,
     variants: {
         ExternalRelease {
-            source: (into),
-            release_id,
+            record: (AutomationMetadataRef),
             partners: (each AutomationMetadataRef),
         },
         FileTags,
@@ -654,6 +662,11 @@ impl AutomationRelease {
                 .gallery_items
                 .into_iter()
                 .map(AutomationGalleryItem::from_core)
+                .collect(),
+            records: release
+                .records
+                .into_iter()
+                .map(AutomationReleaseRecord::from_core)
                 .collect(),
         }
     }

@@ -22,7 +22,7 @@ enum SearchTab: Hashable {
 }
 
 struct ReleaseLibraryStatusSubscriptionKey: Hashable {
-    let source: BridgeMetadataSource
+    let source: BridgeCatalog
     let releaseId: String
     let sourceGroupId: String?
 }
@@ -441,6 +441,16 @@ struct Candidate: Equatable, Identifiable {
         detail?.metadataProvenance
     }
 
+    /// Every catalog that describes the release this candidate's draft was
+    /// read from, in the order core lists them. Empty for a draft read from
+    /// the files' own tags, typed in, or not there yet.
+    var records: [BridgeReleaseRecord] {
+        switch row?.reading {
+        case .identified(let records): records
+        case .unidentified, .prefilled, nil: []
+        }
+    }
+
     /// Who wrote the current draft. `.nobody` for a candidate with no pick,
     /// and for a re-identify session, which has no candidate row to write one
     /// on.
@@ -460,14 +470,12 @@ struct Candidate: Equatable, Identifiable {
         }
     }
 
-    /// The external release the draft was read from, where it names one. The
+    /// The catalog's release the draft was read from, where it names one. The
     /// partners the same pick carried are the provenance's to say.
-    var pickedRelease: (source: BridgeMetadataSource, releaseId: String)? {
-        guard
-            case .externalRelease(let source, let releaseId, _) =
-                metadataProvenance
+    var pickedRelease: BridgeMetadataRef? {
+        guard case .externalRelease(let record, _) = metadataProvenance
         else { return nil }
-        return (source: source, releaseId: releaseId)
+        return record
     }
 
     /// The signals identification settled on for this candidate's files, as

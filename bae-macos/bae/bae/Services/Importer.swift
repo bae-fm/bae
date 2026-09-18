@@ -65,7 +65,7 @@ private struct ImportOperations: Sendable {
     let retryCandidateSearch: @Sendable (String) -> Void
     let subscribeReleaseLibraryStatus:
         @Sendable (
-            BridgeMetadataSource, String, String?, ReleaseLibraryStatusCallback
+            BridgeCatalog, String, String?, ReleaseLibraryStatusCallback
         ) -> any LiveSubscriptionProtocol
     let setCandidateLookupChoices:
         @Sendable (String, BridgeLookupChoices) async throws -> Void
@@ -96,7 +96,7 @@ private struct ImportOperations: Sendable {
     let setIdentifyAutomatically: @MainActor @Sendable (Bool) throws -> Void
     let setPrefillWithTags: @MainActor @Sendable (Bool) throws -> Void
     let setMetadataSourceEnabled:
-        @MainActor @Sendable (BridgeMetadataSource, Bool) throws -> Void
+        @MainActor @Sendable (BridgeCatalog, Bool) throws -> Void
 }
 
 extension ImportOperations {
@@ -373,7 +373,7 @@ final class Importer: Sendable, Observable {
         retryCandidateSearch: @escaping @Sendable (String) -> Void = { _ in },
         subscribeReleaseLibraryStatus:
             @escaping @Sendable (
-                BridgeMetadataSource, String, String?,
+                BridgeCatalog, String, String?,
                 ReleaseLibraryStatusCallback
             ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
                 InertLibraryStatusSubscription()
@@ -435,7 +435,7 @@ final class Importer: Sendable, Observable {
             @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
         setMetadataSourceEnabled:
             @escaping @MainActor @Sendable (
-                BridgeMetadataSource, Bool
+                BridgeCatalog, Bool
             ) throws -> Void = { _, _ in }
     ) {
         operations = ImportOperations(
@@ -608,7 +608,7 @@ extension Importer {
     }
 
     func subscribeReleaseLibraryStatus(
-        source: BridgeMetadataSource,
+        source: BridgeCatalog,
         releaseId: String,
         sourceGroupId: String?,
         onValue: @escaping @MainActor @Sendable (BridgeLibraryStatus) -> Void,
@@ -754,7 +754,7 @@ extension Importer {
     /// refuses, which is when it would leave nothing to ask.
     @MainActor
     func setMetadataSourceEnabled(
-        _ source: BridgeMetadataSource,
+        _ source: BridgeCatalog,
         _ enabled: Bool
     ) throws {
         try operations.setMetadataSourceEnabled(source, enabled)

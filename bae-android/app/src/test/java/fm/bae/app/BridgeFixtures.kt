@@ -5,6 +5,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
@@ -15,9 +16,8 @@ import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
-import uniffi.bae_bridge.BridgeMetadataSource
-import uniffi.bae_bridge.BridgeMetadataSourceSetting
 import uniffi.bae_bridge.BridgeOutboxPauseState
 import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeRelease
@@ -87,6 +87,7 @@ object BridgeFixtures {
             sourceAudio = sourceAudio,
             imageFiles = emptyList(),
             galleryItems = galleryItems,
+            records = emptyList(),
             totalDuration = null,
             fileCount = 0,
             totalSize = 0,
@@ -274,15 +275,15 @@ object BridgeFixtures {
             // state below: MusicBrainz is asked and, as the only source still
             // being asked, cannot be switched off; Discogs holds no key, so its
             // switch cannot be moved either.
-            metadataSources =
+            lookupCatalogs =
                 listOf(
-                    BridgeMetadataSourceSetting(
-                        source = BridgeMetadataSource.MUSIC_BRAINZ,
+                    BridgeLookupCatalogSetting(
+                        catalog = BridgeCatalog.MUSIC_BRAINZ,
                         availability = BridgeSourceAvailability.ON,
                         canChange = false,
                     ),
-                    BridgeMetadataSourceSetting(
-                        source = BridgeMetadataSource.DISCOGS,
+                    BridgeLookupCatalogSetting(
+                        catalog = BridgeCatalog.DISCOGS,
                         availability = BridgeSourceAvailability.NOT_CONFIGURED,
                         canChange = false,
                     ),

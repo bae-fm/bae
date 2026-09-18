@@ -91,6 +91,7 @@ impl BridgeRelease {
             source_audio,
             image_files,
             gallery_items,
+            records,
         } = rel;
         // Single-source the summary-derived fields through BridgeReleaseSummary,
         // then exhaustively destructure it into BridgeRelease's flat fields so the
@@ -133,6 +134,10 @@ impl BridgeRelease {
             gallery_items: gallery_items
                 .into_iter()
                 .map(BridgeGalleryItem::from_core)
+                .collect(),
+            records: records
+                .into_iter()
+                .map(crate::types::BridgeReleaseRecord::from_core)
                 .collect(),
             file_count,
             total_size,
@@ -400,7 +405,7 @@ impl BridgeReleaseRoleSummary {
             release_id,
             album_id,
             album_title,
-            source: BridgeMetadataSource::from_core(source),
+            source: BridgeCatalog::from_core(source),
             source_credit,
         }
     }
@@ -458,7 +463,7 @@ impl BridgeTrackRoleSummary {
             album_title,
             artist_id,
             artist_name,
-            source: BridgeMetadataSource::from_core(source),
+            source: BridgeCatalog::from_core(source),
             source_credit,
         }
     }

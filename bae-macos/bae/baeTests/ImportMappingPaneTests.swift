@@ -462,8 +462,10 @@ extension ImportMappingPaneTests {
             endEditing: {},
             key: MappingFixtures.candidateKey,
             provenance: .externalRelease(
-                source: MappingFixtures.source,
-                releaseId: "another-pressing",
+                record: BridgeMetadataRef(
+                    catalog: MappingFixtures.source,
+                    key: "another-pressing"
+                ),
                 partners: []
             )
         )
@@ -480,7 +482,7 @@ extension ImportMappingPaneTests {
         let failure = store.releaseSelectionFailure(
             forKey: MappingFixtures.candidateKey
         )
-        #expect(failure?.release.releaseId == "another-pressing")
+        #expect(failure?.release.key == "another-pressing")
         #expect(failure?.message.isEmpty == false)
         #expect(
             store.metadataApplicationSession(
@@ -690,7 +692,7 @@ extension ImportMappingPaneTests {
         #expect(candidate.mapping.trackMappings.count == 13)
         #expect(candidate.mapping.willWriteCount == 13)
         #expect(
-            candidate.pickedRelease?.releaseId == MappingFixtures.releaseId
+            candidate.pickedRelease?.key == MappingFixtures.releaseId
         )
     }
 }

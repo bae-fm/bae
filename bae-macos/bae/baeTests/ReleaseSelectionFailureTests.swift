@@ -86,8 +86,8 @@ struct ReleaseSelectionFailureTests {
         let message = "Release details unavailable"
         state.releaseSelectionFailure = ReleaseSelectionFailure(
             release: BridgeMetadataRef(
-                source: pressing.lead.source,
-                releaseId: pressing.lead.releaseId
+                catalog: pressing.lead.source,
+                key: pressing.lead.releaseId
             ),
             message: message
         )

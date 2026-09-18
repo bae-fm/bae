@@ -30,12 +30,12 @@ public struct Config: Equatable {
     /// Whether a newly added candidate's draft is created from the folder's
     /// file tags, or starts blank.
     public let prefillWithTags: Bool
-    /// Which metadata sources Find online asks, one entry per source in core's
-    /// order. Core folds the person's choice and the source's credentials into
-    /// one availability, so the switches on the Find online header and in
-    /// Settings render this rather than re-deriving "on and reachable" from
+    /// Which catalogs Find online asks, one entry per catalog in core's order.
+    /// Core folds the person's choice and the catalog's credentials into one
+    /// availability, so the switches on the Find online header and in Settings
+    /// render this rather than re-deriving "on and reachable" from
     /// `discogsUsable` plus a flag of their own.
-    public let metadataSources: [BridgeMetadataSourceSetting]
+    public let lookupCatalogs: [BridgeLookupCatalogSetting]
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, so the bar
     /// reads it here rather than keeping its own copy per device.
@@ -71,7 +71,7 @@ public struct Config: Equatable {
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         identifyAutomatically = bridge.identifyAutomatically
         prefillWithTags = bridge.prefillWithTags
-        metadataSources = bridge.metadataSources
+        lookupCatalogs = bridge.lookupCatalogs
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
         savePresets = bridge.savePresets

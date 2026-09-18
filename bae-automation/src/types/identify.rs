@@ -38,7 +38,7 @@ pub struct AutomationValueSource {
 /// Mirrors bae-core's `identify::ProviderCell`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationProviderCell {
-    pub source: AutomationMetadataSource,
+    pub source: AutomationCatalog,
     pub lookup: AutomationLookupState,
 }
 
@@ -143,7 +143,7 @@ pub struct AutomationCatalogAgreement {
 /// each provider's part of each signal reported on its own.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationIdentifyRun {
-    pub providers: Vec<AutomationMetadataSource>,
+    pub providers: Vec<AutomationCatalog>,
     pub disc_id: AutomationDiscIdStep,
     pub barcode: AutomationBarcodeStep,
     pub catalog: AutomationCatalogStep,
@@ -174,11 +174,11 @@ pub enum AutomationIdentifyFailure {
         failure: AutomationLookupFailure,
     },
     Barcode {
-        source: AutomationMetadataSource,
+        source: AutomationCatalog,
         failure: AutomationLookupFailure,
     },
     Catalog {
-        source: AutomationMetadataSource,
+        source: AutomationCatalog,
         failure: AutomationLookupFailure,
     },
     ReleaseDetails {

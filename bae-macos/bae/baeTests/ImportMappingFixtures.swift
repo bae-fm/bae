@@ -13,10 +13,9 @@ import Foundation
 enum MappingFixtures {
     static let candidateKey = "/Music/Downloads/Walkthrough"
     static let releaseId = "rel-walkthrough"
-    static let source: BridgeMetadataSource = .musicBrainz
+    static let source: BridgeCatalog = .musicBrainz
     static let provenance: BridgeMetadataProvenance = .externalRelease(
-        source: source,
-        releaseId: releaseId,
+        record: BridgeMetadataRef(catalog: source, key: releaseId),
         partners: []
     )
 
@@ -446,7 +445,8 @@ extension MappingFixtures {
         presentation: BridgeMetadataPresentation = .draft,
         candidateKey key: String = MappingFixtures.candidateKey,
         folderName: String = "Walkthrough",
-        audioIdentity: String = "empty-audio-files"
+        audioIdentity: String = "empty-audio-files",
+        reading: BridgeTriageReading = .unidentified
     ) -> BridgeImportCandidateDetail {
         let folder = sourceFolder(
             key: key,
@@ -478,7 +478,7 @@ extension MappingFixtures {
                 selectable: !edit.albumTitle.isEmpty,
                 importStatus: nil,
                 metadataProvenance: metadataProvenance,
-                reading: .unidentified
+                reading: reading
             ),
             release: {
                 if case .externalRelease = metadataProvenance {
@@ -565,7 +565,8 @@ extension MappingFixtures {
         mapping: BridgeMappingTable?,
         metadataProvenance: BridgeMetadataProvenance? = provenance,
         edit: BridgeRawReleaseEdit = albumEdit,
-        presentation: BridgeMetadataPresentation = .draft
+        presentation: BridgeMetadataPresentation = .draft,
+        reading: BridgeTriageReading = .unidentified
     ) -> ImportStore {
         let store = ImportStore()
         store.applyCandidateDetail(
@@ -574,7 +575,8 @@ extension MappingFixtures {
                 mapping: mapping,
                 edit: edit,
                 metadataProvenance: metadataProvenance,
-                presentation: presentation
+                presentation: presentation,
+                reading: reading
             )
         )
         return store

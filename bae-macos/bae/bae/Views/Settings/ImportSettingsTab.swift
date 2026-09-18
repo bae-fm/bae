@@ -33,12 +33,12 @@ struct ImportSettingsTab: View {
             }
 
             Section {
-                ForEach(sourceSwitches.beforeKey, id: \.source) { setting in
+                ForEach(sourceSwitches.beforeKey, id: \.catalog) { setting in
                     sourceToggle(setting)
                 }
                 if let afterKey = sourceSwitches.afterKey {
                     DiscogsKeySection()
-                    ForEach(afterKey, id: \.source) { setting in
+                    ForEach(afterKey, id: \.catalog) { setting in
                         sourceToggle(setting)
                     }
                 }
@@ -63,13 +63,13 @@ struct ImportSettingsTab: View {
     /// which is when there is no key to draw at all.
     private var sourceSwitches:
         (
-            beforeKey: [BridgeMetadataSourceSetting],
-            afterKey: [BridgeMetadataSourceSetting]?
+            beforeKey: [BridgeLookupCatalogSetting],
+            afterKey: [BridgeLookupCatalogSetting]?
         )
     {
-        let settings = configStore.config.metadataSources
+        let settings = configStore.config.lookupCatalogs
         guard
-            let discogs = settings.firstIndex(where: { $0.source == .discogs })
+            let discogs = settings.firstIndex(where: { $0.catalog == .discogs })
         else {
             return (settings, nil)
         }
@@ -83,19 +83,19 @@ struct ImportSettingsTab: View {
     /// this view's: a source with no credential and the only source left being
     /// asked are both writes core would turn down.
     private func sourceToggle(
-        _ setting: BridgeMetadataSourceSetting
+        _ setting: BridgeLookupCatalogSetting
     ) -> some View {
         Toggle(
             String(
                 localized:
-                    "Search \(bridgeMetadataSourceName(source: setting.source))"
+                    "Search \(bridgeCatalogName(catalog: setting.catalog))"
             ),
             isOn: Binding(
                 get: { setting.availability == .on },
                 set: { enabled in
                     do {
                         try importer.setMetadataSourceEnabled(
-                            setting.source,
+                            setting.catalog,
                             enabled
                         )
                     }

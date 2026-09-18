@@ -40,12 +40,12 @@ struct TriageRowIdentifiedTests {
         let summary = try #require(
             ImportReleaseSummary(row: PreviewData.triageRowPrefilledFromTags)
         )
-        #expect(summary.identifiedFrom.isEmpty)
+        #expect(summary.records.isEmpty)
     }
 
     /// The row says *that* it is identified, once, on the title line. Which
-    /// sources, and what each of them says, is the mark's hover — so the end
-    /// of the row no longer names providers.
+    /// catalogs describe the release is the mark's hover — so the end of the
+    /// row no longer names providers.
     @MainActor
     @Test("an identified row marks its title and badges no providers")
     func identifiedRowMarksItsTitle() async throws {
@@ -56,9 +56,7 @@ struct TriageRowIdentifiedTests {
         #expect(!lines.carrying("Discogs"))
 
         let summary = try #require(ImportReleaseSummary(row: row))
-        #expect(
-            summary.identifiedFrom.map(\.source) == [.musicBrainz, .discogs]
-        )
+        #expect(summary.records.map(\.catalog) == [.musicBrainz, .discogs])
         // The same row read as a plain draft draws the same words, so the mark
         // is the whole of the difference and the pixels are where it shows up.
         let marked = try await pixels(of: row)
@@ -81,13 +79,13 @@ struct TriageRowIdentifiedTests {
         #expect(marked != unmarked)
     }
 
-    /// Both sources the pick paired, each stating what its own release says.
+    /// Every catalog that describes the pressing the pick claimed.
     @MainActor
-    @Test("the hover names every source and what its release says")
-    func theHoverNamesEverySource() async throws {
+    @Test("the hover names every catalog that describes the release")
+    func theHoverNamesEveryCatalog() async throws {
         let hosted = SnapshotTestSupport.hostInWindow(
             IdentifiedFromPopover(
-                sources: PreviewData.identifiedFromBothSources
+                records: PreviewData.identifiedFromBothCatalogs
             )
             .preferredColorScheme(.light)
             .background(.white),
@@ -105,18 +103,8 @@ struct TriageRowIdentifiedTests {
             )
             .map(\.text)
 
-        // Both names whole: the MusicBrainz line's label is long enough to
-        // crowd it, and it is the label that gives way.
         #expect(lines.carrying("MusicBrainz"))
         #expect(lines.carrying("Discogs"))
-        // The separator between a label and a year is a middle dot, which the
-        // recognizer reads as whichever bullet it thinks it saw — the facts
-        // are the words on either side of it.
-        #expect(
-            lines.contains {
-                $0.contains("Label Name") && $0.contains("1976")
-            }
-        )
     }
 
     private static let rowSize = NSSize(width: 340, height: 80)

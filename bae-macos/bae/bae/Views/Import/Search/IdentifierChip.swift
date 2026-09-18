@@ -122,13 +122,13 @@ extension IdentifierChip where Trailing == EmptyView {
 /// provider's name and its lookup's glyph, on one ground so they read as one
 /// unit.
 struct ProviderCapsule: View {
-    let source: BridgeMetadataSource
+    let source: BridgeCatalog
     let lookup: BridgeLookupState
     let onRetry: () -> Void
 
     var body: some View {
         HStack(spacing: 4) {
-            Text(bridgeMetadataSourceName(source: source))
+            Text(bridgeCatalogName(catalog: source))
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .fixedSize()

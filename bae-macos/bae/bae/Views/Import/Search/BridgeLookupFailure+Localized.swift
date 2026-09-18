@@ -74,11 +74,11 @@ extension BridgeIdentifyFailure {
             return String(localized: "Barcode") + ": " + failure.badgeLine
         case .barcode(let source, let failure):
             return String(localized: "Barcode") + " \u{00b7} "
-                + bridgeMetadataSourceName(source: source) + ": "
+                + bridgeCatalogName(catalog: source) + ": "
                 + failure.badgeLine
         case .catalog(let source, let failure):
             return String(localized: "Catalog number") + " \u{00b7} "
-                + bridgeMetadataSourceName(source: source) + ": "
+                + bridgeCatalogName(catalog: source) + ": "
                 + failure.badgeLine
         case .releaseDetails(let failure):
             return String(

@@ -78,7 +78,7 @@
         private static func remote(
             _ image: String,
             label: String,
-            source: BridgeMetadataSource
+            source: BridgeCatalog
         ) -> CoverItem {
             let path = PreviewData.previewArtPath(image)
             return CoverItem(
