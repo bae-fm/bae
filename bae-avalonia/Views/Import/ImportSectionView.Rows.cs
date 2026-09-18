@@ -213,25 +213,15 @@ internal sealed partial class ImportSectionView
             VerticalAlignment = VerticalAlignment.Center,
         };
         title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
-        switch (row.Reading)
+        // Nothing written about the release yet means the title is the folder
+        // on disk — the glyph and the mono family say so.
+        Control? leading = null;
+        if (row.Reading is BridgeTriageReading.Unidentified)
         {
-            case BridgeTriageReading.Unidentified:
-                // Nothing has been written about the release, so the title is
-                // the folder on disk — the glyph and the mono family say so.
-                title.FontFamily = new FontFamily("monospace");
-                var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
-                titleRow.Children.Add(Icons.Glyph(Icons.Folder, 13, "BaeTextSecondaryBrush"));
-                titleRow.Children.Add(title);
-                column.Children.Add(titleRow);
-                break;
-            case BridgeTriageReading.Identified identified:
-                column.Children.Add(
-                    TitleWithMark(title, row.Marks, row.Verification, identified.Records));
-                break;
-            default:
-                column.Children.Add(title);
-                break;
+            title.FontFamily = new FontFamily("monospace");
+            leading = Icons.Glyph(Icons.Folder, 13, "BaeTextSecondaryBrush");
         }
+        column.Children.Add(TitleWithGlyphs(leading, title, row));
 
         // A running import is the one line on a row that changes by the
         // second, so it draws itself off the candidate-runtime signal rather
@@ -263,38 +253,89 @@ internal sealed partial class ImportSectionView
         return column;
     }
 
-    // The title, and after it the mark saying the draft was read from a
-    // catalog's release. The title takes the width that is left and trims; the
-    // mark is fixed, so it never clips — the mark is the row's answer, the
+    // The title, whatever leads it, and after it the two glyphs the row states
+    // its release with. The title takes the width that is left and trims; the
+    // glyphs are fixed, so they never clip — they are the row's answer, the
     // title only its subject.
-    private static Control TitleWithMark(
+    private static Control TitleWithGlyphs(
+        Control? leading,
         TextBlock title,
-        IReadOnlyList<BridgeReleaseMark> marks,
-        BridgeVerification? verification,
-        IReadOnlyList<BridgeReleaseRecord> records)
+        BridgeTriageRow row)
     {
-        var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        Grid.SetColumn(title, 0);
+        var line = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions(
+                leading is null ? "*,Auto" : "Auto,*,Auto"),
+        };
+        var column = 0;
+        if (leading is not null)
+        {
+            leading.Margin = new Thickness(0, 0, 5, 0);
+            Grid.SetColumn(leading, column++);
+            line.Children.Add(leading);
+        }
+        Grid.SetColumn(title, column++);
         line.Children.Add(title);
 
-        var mark = new TextBlock
+        var glyphs = IdentityGlyphs(row);
+        Grid.SetColumn(glyphs, column);
+        line.Children.Add(glyphs);
+        return line;
+    }
+
+    // A seal when a name read off the folder tied its files to the record its
+    // draft came from, a check when the rip databases found other copies of
+    // the disc carrying the same audio. Either without the other: core decides
+    // both, and nothing here derives either from the lines behind them.
+    // Neither word is ever drawn — pointing at a glyph opens the card.
+    private static Control IdentityGlyphs(BridgeTriageRow row)
+    {
+        var glyphs = new StackPanel
         {
-            Text = ImportPaneUi.OutboundArrow,
-            FontSize = 11,
-            FontWeight = FontWeight.SemiBold,
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
             Margin = new Thickness(6, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        mark[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeSuccessBrush");
-        Avalonia.Automation.AutomationProperties.SetName(
-            mark,
-            Loc.Core("core.import.triage.identified"));
-        HoverFlyout.Attach(
-            mark,
-            () => IdentifiedFromFlyout.Build(marks, verification, records));
-        Grid.SetColumn(mark, 1);
-        line.Children.Add(mark);
-        return line;
+        if (row.IdentifiedBy is not null)
+        {
+            glyphs.Children.Add(Glyph(
+                Icons.Seal,
+                "BaeTextSecondaryBrush",
+                "identified-glyph",
+                Loc.Core("core.identity.identified")));
+        }
+        if (row.Verified)
+        {
+            glyphs.Children.Add(Glyph(
+                Icons.Check,
+                "BaeSuccessBrush",
+                "verified-glyph",
+                Loc.Core("core.identity.verified")));
+        }
+        if (glyphs.Children.Count > 0)
+        {
+            var records = row.Reading is BridgeTriageReading.Identified identified
+                ? identified.Records
+                : [];
+            HoverFlyout.Attach(
+                glyphs,
+                () => ReleaseFactsFlyout.Build(row.Marks, row.Verification, records));
+        }
+        return glyphs;
+    }
+
+    private static Control Glyph(
+        string data,
+        string brushKey,
+        string automationId,
+        string name)
+    {
+        var glyph = Icons.Glyph(data, 11, brushKey);
+        glyph.VerticalAlignment = VerticalAlignment.Center;
+        Avalonia.Automation.AutomationProperties.SetAutomationId(glyph, automationId);
+        Avalonia.Automation.AutomationProperties.SetName(glyph, name);
+        return glyph;
     }
 
     // The line under the title: what the row has to say, and nothing when it

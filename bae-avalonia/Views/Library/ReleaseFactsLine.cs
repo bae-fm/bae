@@ -91,23 +91,10 @@ internal sealed class ReleaseFactsLine : ContentControl
             seal.Opacity = 0;
             button.Background = Brushes.Transparent;
         };
-        var body = new StackPanel { Spacing = 10 };
-        if (marks.Count > 0 || verification is not null)
-        {
-            body.Children.Add(RipMatchLine.BuildWithMarks(marks, verification));
-        }
-        if (records.Count > 0)
-        {
-            body.Children.Add(ReleaseRecordsRow.Build(records));
-        }
         var flyout = new Flyout
         {
             Placement = PlacementMode.Bottom,
-            Content = new Border
-            {
-                Padding = new Thickness(12, 10),
-                Child = body,
-            },
+            Content = ReleaseFactsFlyout.Build(marks, verification, records),
         };
         button.Click += (_, _) =>
         {

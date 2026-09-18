@@ -61,16 +61,17 @@ public sealed class ReleaseMarksTests
         Assert.DoesNotContain("0075678164521", TextOf(without));
     }
 
-    // The row's hover leads with the folder's names, above the catalogs.
+    // The glyphs' card leads with the folder's names, above the catalogs.
     [AvaloniaFact]
-    public void TheIdentifiedHoverLeadsWithTheFoldersNames()
+    public void TheGlyphCardLeadsWithTheFoldersNames()
     {
-        var text = TextOf(IdentifiedFromFlyout.Build(Marks, null, Records));
+        var text = TextOf(ReleaseFactsFlyout.Build(Marks, null, Records));
 
         Assert.Contains("0075678164521", text);
         Assert.Contains(
-            Loc.Core("core.import.triage.identified_from").ToUpperInvariant(),
-            text);
+            text,
+            line => line.StartsWith(
+                BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.MusicBrainz)));
     }
 
     // The library expansion's facts line is a trigger for a release that

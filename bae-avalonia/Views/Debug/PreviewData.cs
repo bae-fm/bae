@@ -154,7 +154,9 @@ internal static class PreviewData
                 MetadataProvenance: null,
                 Reading: new BridgeTriageReading.Prefilled(),
                 Marks: [],
-                Verification: null),
+                Verification: null,
+                IdentifiedBy: null,
+                Verified: false),
             IsGroupMember: true),
     };
 
@@ -216,6 +218,8 @@ internal static class PreviewData
             MetadataProvenance: null,
             Reading: new BridgeTriageReading.Unidentified(),
             Marks: [],
-            Verification: null);
+            Verification: null,
+            IdentifiedBy: null,
+            Verified: false);
 }
 #endif

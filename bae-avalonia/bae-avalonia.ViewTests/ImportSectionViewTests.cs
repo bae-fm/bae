@@ -143,53 +143,63 @@ public sealed class ImportSectionViewTests
         Assert.Empty(RowTrailingText(view));
     }
 
-    // A draft read from a source's release says so once, with the mark on its
-    // title line; the end of the row names no providers. One read off the
-    // files' tags carries no mark.
-    [AvaloniaFact]
-    public void OnlyAnIdentifiedRowMarksItsTitle()
+    // The four combinations of the two facts, each drawing exactly the glyphs
+    // it states and no word: which of them a row holds is core's answer, and
+    // the row draws it without deriving anything.
+    [AvaloniaTheory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public void EachCombinationOfTheTwoFactsDrawsItsOwnGlyphs(
+        bool identified,
+        bool verified)
     {
         var placement = new BridgeTriagePlacement.Ready();
-        var paired = BuildView(
-            MatchedItems(
-                placement,
-                BridgeTriageSkipAction.Skip,
-                metadataSummary: AppliedDraft,
-                reading: new BridgeTriageReading.Identified(PairedRecords)),
-            MatchedSummary(placement, BridgeTriageTab.Pending));
-        Assert.Contains(ImportPaneUi.OutboundArrow, RowMetaText(paired));
-        Assert.Empty(RowTrailingText(paired));
-
-        var tagged = BuildView(
-            MatchedItems(
-                placement,
-                BridgeTriageSkipAction.Skip,
-                metadataSummary: AppliedDraft,
-                reading: new BridgeTriageReading.Prefilled()),
-            MatchedSummary(placement, BridgeTriageTab.Pending));
-        Assert.Equal(new[] { "Applied Draft", "Draft Artist" }, RowText(tagged));
-    }
-
-    // The mark says where the draft came from and the placement's tag says
-    // what the row still needs: a row with both shows both.
-    [AvaloniaFact]
-    public void AnIdentifiedRowStillAwaitingAChoiceShowsItsMarkAndItsTag()
-    {
-        var placement = new BridgeTriagePlacement.NeedsYou(
-            new BridgeNeedsYou.SeveralMatches(2));
         var view = BuildView(
             MatchedItems(
                 placement,
                 BridgeTriageSkipAction.Skip,
                 metadataSummary: AppliedDraft,
-                reading: new BridgeTriageReading.Identified(PairedRecords)),
+                reading: identified
+                    ? new BridgeTriageReading.Identified(PairedRecords)
+                    : new BridgeTriageReading.Prefilled(),
+                identifiedBy: identified ? BridgeMarkKind.DiscId : null,
+                verified: verified),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
-        Assert.Contains(ImportPaneUi.OutboundArrow, RowMetaText(view));
+        Assert.Equal(identified, HasGlyph(view, "identified-glyph"));
+        Assert.Equal(verified, HasGlyph(view, "verified-glyph"));
+        // Neither word is ever drawn: the glyphs are the whole statement.
+        Assert.DoesNotContain(Loc.Core("core.identity.identified"), RowText(view));
+        Assert.DoesNotContain(Loc.Core("core.identity.verified"), RowText(view));
+        Assert.Empty(RowTrailingText(view));
+    }
+
+    // Several pressings in question means no record was chosen, so core leaves
+    // the seal off; the check is about the bits and stands whatever the
+    // question. The row shows it beside the question's own chip.
+    [AvaloniaFact]
+    public void TheCheckSitsBesideTheSeveralMatchesChip()
+    {
+        var placement = new BridgeTriagePlacement.NeedsYou(
+            new BridgeNeedsYou.SeveralMatches(3));
+        var view = BuildView(
+            MatchedItems(
+                placement,
+                BridgeTriageSkipAction.Skip,
+                metadataSummary: AppliedDraft,
+                reading: new BridgeTriageReading.Prefilled(),
+                identifiedBy: null,
+                verified: true),
+            MatchedSummary(placement, BridgeTriageTab.Pending));
+
+        Assert.False(HasGlyph(view, "identified-glyph"));
+        Assert.True(HasGlyph(view, "verified-glyph"));
         Assert.Equal(
             new[]
             {
-                BridgeDisplay.LocalizedLine(new BridgeNeedsYou.SeveralMatches(2)),
+                BridgeDisplay.LocalizedLine(new BridgeNeedsYou.SeveralMatches(3)),
             },
             RowTrailingText(view));
     }
@@ -197,13 +207,10 @@ public sealed class ImportSectionViewTests
     // Every catalog that describes the pressing the pick claimed, each
     // linking to its own page for it.
     [AvaloniaFact]
-    public void TheIdentifiedHoverNamesEveryCatalog()
+    public void TheGlyphCardNamesEveryCatalog()
     {
-        var text = TextOf(IdentifiedFromFlyout.Build([], null, PairedRecords));
+        var text = TextOf(ReleaseFactsFlyout.Build([], null, PairedRecords));
 
-        Assert.Contains(
-            Loc.Core("core.import.triage.identified_from").ToUpperInvariant(),
-            text);
         // Each link is one text run: the catalog's name and the outbound arrow.
         Assert.Contains(
             text,
@@ -252,6 +259,14 @@ public sealed class ImportSectionViewTests
 
     private static List<string> RowText(ImportSectionView view) =>
         TextOf(CandidateRow(view));
+
+    private static bool HasGlyph(ImportSectionView view, string automationId) =>
+        CandidateRow(view)
+            .GetLogicalDescendants()
+            .OfType<Control>()
+            .Any(control =>
+                Avalonia.Automation.AutomationProperties.GetAutomationId(control)
+                    == automationId);
 
     /// <summary>The text of the row's title-and-sub-line column, apart from
     /// the trailing column the placement and the sources share.</summary>
@@ -677,7 +692,9 @@ public sealed class ImportSectionViewTests
         BridgeTriageMetadataSummary? metadataSummary = null,
         BridgeCoverImageSource? coverThumbnail = null,
         BridgeMetadataProvenance? metadataProvenance = null,
-        BridgeTriageReading? reading = null) => new()
+        BridgeTriageReading? reading = null,
+        BridgeMarkKind? identifiedBy = null,
+        bool verified = false) => new()
     {
         new BridgeImportListItem.Candidate(
             PreviewData.CandidateStableKey(CandidateKey),
@@ -688,7 +705,9 @@ public sealed class ImportSectionViewTests
                 metadataSummary,
                 coverThumbnail,
                 metadataProvenance,
-                reading),
+                reading,
+                identifiedBy,
+                verified),
             IsGroupMember: isGroupMember),
     };
 
@@ -699,7 +718,9 @@ public sealed class ImportSectionViewTests
         BridgeTriageMetadataSummary? metadataSummary = null,
         BridgeCoverImageSource? coverThumbnail = null,
         BridgeMetadataProvenance? metadataProvenance = null,
-        BridgeTriageReading? reading = null) =>
+        BridgeTriageReading? reading = null,
+        BridgeMarkKind? identifiedBy = null,
+        bool verified = false) =>
             new BridgeTriageRow(
                 CandidateKey: CandidateKey,
                 FolderName: "Release 01",
@@ -744,7 +765,9 @@ public sealed class ImportSectionViewTests
                         : null),
                 Reading: reading ?? new BridgeTriageReading.Unidentified(),
                 Marks: [],
-                Verification: null);
+                Verification: null,
+                IdentifiedBy: identifiedBy,
+                Verified: verified);
 
     private static BridgeImportQueueSummary MatchedSummary(
         BridgeTriagePlacement placement,

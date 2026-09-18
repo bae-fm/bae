@@ -203,7 +203,9 @@ internal static class ImportCandidateFixtures
         MetadataProvenance: metadataProvenance,
         Reading: reading ?? new BridgeTriageReading.Unidentified(),
         Marks: [],
-        Verification: null);
+        Verification: null,
+        IdentifiedBy: null,
+        Verified: false);
 
     internal static BridgeRawReleaseEdit BlankEdit() => new(
         string.Empty,

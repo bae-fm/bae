@@ -44,11 +44,11 @@ public sealed class ReleaseVerificationTests
         Assert.DoesNotContain(Matches37, TextOf(ImportMetadataSection(null)));
     }
 
-    // The row's hover states it with the names, above the catalogs.
+    // The glyphs' card states it with the names, above the catalogs.
     [AvaloniaFact]
-    public void TheIdentifiedHoverStatesWhatTheDatabasesSaid()
+    public void TheGlyphCardStatesWhatTheDatabasesSaid()
     {
-        var text = TextOf(IdentifiedFromFlyout.Build([], Verified, Records));
+        var text = TextOf(ReleaseFactsFlyout.Build([], Verified, Records));
 
         Assert.Contains(Matches37, text);
     }
