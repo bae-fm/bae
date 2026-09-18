@@ -4,6 +4,12 @@ import Testing
 import Vision
 
 /// Shared AppKit hosting + snapshot helpers for the view tests.
+/// Whether a view has been hosted in this process before. The first
+/// hosting in a process lays text out a line taller than every later one,
+/// and the difference persists for that window, so the first view hosted is
+/// built, laid out, and discarded once before the caller's real one is built.
+nonisolated(unsafe) private var snapshotHostWarmedUp = false
+
 enum SnapshotTestSupport {
     /// Host `view` (sized to `size`) in a borderless key window. The caller keeps
     /// the returned window alive for the test's duration and uses the host to
@@ -13,6 +19,13 @@ enum SnapshotTestSupport {
         _ view: V,
         size: NSSize
     ) -> (window: NSWindow, host: NSHostingView<V>) {
+        if !snapshotHostWarmedUp {
+            snapshotHostWarmedUp = true
+            let (window, host) = hostInWindow(view, size: size)
+            host.layoutSubtreeIfNeeded()
+            window.contentView = nil
+            window.orderOut(nil)
+        }
         let bounds = NSRect(origin: .zero, size: size)
         let host = NSHostingView(rootView: view)
         host.frame = bounds
@@ -63,20 +76,29 @@ enum SnapshotTestSupport {
     /// view needs to publish at all. A view that animates never converges;
     /// `maxTurns` bounds the wait and leaves it as the last turn drew it.
     @MainActor
+    /// Lay the tree out until nothing in it has moved for `quietTurns`
+    /// consecutive turns, each a run-loop yield plus a few milliseconds.
+    /// One unchanged turn is not enough: work a view kicks off on a task
+    /// lands a few turns later and moves a row by a line, and a capture
+    /// taken before it reads a layout nobody will ever see.
     static func settle(
         _ host: NSView,
         minimumTurns: Int = 3,
-        maxTurns: Int = 120
+        quietTurns: Int = 5,
+        maxTurns: Int = 240
     ) async {
         var previous: [CGRect]?
+        var quiet = 0
         for turn in 0..<maxTurns {
             host.layoutSubtreeIfNeeded()
             let frames = descendants(of: host).map(\.frame)
-            if turn >= minimumTurns, frames == previous {
+            quiet = frames == previous ? quiet + 1 : 0
+            if turn >= minimumTurns, quiet >= quietTurns {
                 return
             }
             previous = frames
             await Task.yield()
+            try? await Task.sleep(for: .milliseconds(8))
         }
         host.layoutSubtreeIfNeeded()
     }
