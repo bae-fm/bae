@@ -91,6 +91,11 @@ public sealed class ImportCandidate
             ? identified.Records
             : [];
 
+    /// <summary>Every name this candidate's folder states, one line per value
+    /// and in the order core lists mark kinds. Empty until something has read
+    /// it.</summary>
+    internal IReadOnlyList<BridgeReleaseMark> Marks => Detail?.Row.Marks ?? [];
+
     /// <summary>The draft, or the Find online page, occupying the metadata
     /// slot. Opening the page never replaces the stored draft.</summary>
     internal ImportMetadataPresentation MetadataPresentation { get; private set; } =

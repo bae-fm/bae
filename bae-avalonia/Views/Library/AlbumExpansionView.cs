@@ -171,6 +171,7 @@ internal static class AlbumExpansionView
         var factsLine = new ReleaseFactsLine();
         void RenderFacts() => factsLine.Show(
             selectedRelease.FactsLine,
+            selectedRelease.Marks,
             selectedRelease.Records);
         RenderFacts();
 

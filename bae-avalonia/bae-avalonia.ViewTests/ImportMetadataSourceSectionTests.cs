@@ -254,6 +254,7 @@ public sealed class ImportMetadataSourceSectionTests
             DraftIsBlank = draftIsBlank,
             FieldProvenance = ImportCandidateFixtures.FieldProvenance(),
             Title = title ?? "Album Title",
+            Marks = [],
             Edit = edit ?? Edit(),
             MetaLine = "CD · 1996",
             SourceAudioLine = sourceAudioLine,

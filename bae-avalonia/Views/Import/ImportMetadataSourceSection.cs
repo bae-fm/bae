@@ -24,6 +24,9 @@ internal sealed class ImportMetadataSourceSection
     internal required IReadOnlyList<BridgeFieldProvenance> FieldProvenance { get; init; }
     internal required string MetaLine { get; init; }
     internal required string SourceAudioLine { get; init; }
+    /// <summary>Every name the folder states, drawn under the audio facts.
+    /// Empty until something has read it.</summary>
+    internal required IReadOnlyList<BridgeReleaseMark> Marks { get; init; }
     internal required bool IsReading { get; init; }
     internal required Control? LookupOptions { get; init; }
     internal required Action<Image>? LoadCover { get; init; }
@@ -214,6 +217,12 @@ internal sealed class ImportMetadataSourceSection
         }
         summary.Children.Add(ImportPaneUi.Cell(metaLine, secondary: true));
         summary.Children.Add(ImportPaneUi.Cell(sourceAudioLine, secondary: true));
+        if (Marks.Count > 0)
+        {
+            var marks = MarkLines.Build(Marks);
+            marks.Margin = new Thickness(0, 4, 0, 0);
+            summary.Children.Add(marks);
+        }
         var metadata = new StackPanel { Spacing = 12 };
         metadata.Children.Add(summary);
         if (edit is not null)

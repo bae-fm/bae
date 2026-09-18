@@ -12,10 +12,10 @@ namespace Bae.Desktop;
 /// <summary>
 /// The release's facts, and the way into where they came from.
 ///
-/// At rest the line reads as a line of facts. When a catalog describes the
-/// release, pointing at it fills it softly and shows a seal at its tail, and a
-/// click opens a flyout naming every catalog that does. A release no catalog
-/// describes has nothing behind the line, so it is not a trigger at all.
+/// At rest the line reads as a line of facts. When the release carries names of
+/// its own or a catalog describes it, pointing at it fills it softly and shows
+/// a seal at its tail, and a click opens a flyout stating both. A release with
+/// neither has nothing behind the line, so it is not a trigger at all.
 /// </summary>
 internal sealed class ReleaseFactsLine : ContentControl
 {
@@ -35,17 +35,24 @@ internal sealed class ReleaseFactsLine : ContentControl
         HorizontalAlignment = HorizontalAlignment.Left;
     }
 
-    /// <summary>Draw <paramref name="facts"/>, as a trigger when
-    /// <paramref name="records"/> names a catalog and as plain text when it
-    /// does not.</summary>
-    internal void Show(string facts, IReadOnlyList<BridgeReleaseRecord> records)
+    /// <summary>Draw <paramref name="facts"/>, as a trigger when the release
+    /// states a name of its own or <paramref name="records"/> names a catalog,
+    /// and as plain text when it states neither.</summary>
+    internal void Show(
+        string facts,
+        IReadOnlyList<BridgeReleaseMark> marks,
+        IReadOnlyList<BridgeReleaseRecord> records)
     {
         _facts.Text = facts;
         IsVisible = facts.Length > 0;
-        Content = records.Count == 0 ? _facts : Trigger(records);
+        Content = marks.Count == 0 && records.Count == 0
+            ? _facts
+            : Trigger(marks, records);
     }
 
-    private Control Trigger(IReadOnlyList<BridgeReleaseRecord> records)
+    private Control Trigger(
+        IReadOnlyList<BridgeReleaseMark> marks,
+        IReadOnlyList<BridgeReleaseRecord> records)
     {
         var seal = Icons.Glyph(Icons.Seal, 12, "BaeTextSecondaryBrush");
         seal.Opacity = 0;
@@ -80,13 +87,22 @@ internal sealed class ReleaseFactsLine : ContentControl
             seal.Opacity = 0;
             button.Background = Brushes.Transparent;
         };
+        var body = new StackPanel { Spacing = 10 };
+        if (marks.Count > 0)
+        {
+            body.Children.Add(MarkLines.Build(marks));
+        }
+        if (records.Count > 0)
+        {
+            body.Children.Add(ReleaseRecordsRow.Build(records));
+        }
         var flyout = new Flyout
         {
             Placement = PlacementMode.Bottom,
             Content = new Border
             {
                 Padding = new Thickness(12, 10),
-                Child = ReleaseRecordsRow.Build(records),
+                Child = body,
             },
         };
         button.Click += (_, _) =>

@@ -225,7 +225,7 @@ internal sealed partial class ImportSectionView
                 column.Children.Add(titleRow);
                 break;
             case BridgeTriageReading.Identified identified:
-                column.Children.Add(TitleWithMark(title, identified.Records));
+                column.Children.Add(TitleWithMark(title, row.Marks, identified.Records));
                 break;
             default:
                 column.Children.Add(title);
@@ -268,6 +268,7 @@ internal sealed partial class ImportSectionView
     // title only its subject.
     private static Control TitleWithMark(
         TextBlock title,
+        IReadOnlyList<BridgeReleaseMark> marks,
         IReadOnlyList<BridgeReleaseRecord> records)
     {
         var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
@@ -286,7 +287,7 @@ internal sealed partial class ImportSectionView
         Avalonia.Automation.AutomationProperties.SetName(
             mark,
             Loc.Core("core.import.triage.identified"));
-        HoverFlyout.Attach(mark, () => IdentifiedFromFlyout.Build(records));
+        HoverFlyout.Attach(mark, () => IdentifiedFromFlyout.Build(marks, records));
         Grid.SetColumn(mark, 1);
         line.Children.Add(mark);
         return line;

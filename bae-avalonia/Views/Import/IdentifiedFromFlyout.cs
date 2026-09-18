@@ -8,14 +8,22 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 /// <summary>
-/// Which catalogs describe the release a candidate row's draft was read from,
-/// each linking to its own page for it.
+/// What a candidate row's folder states, and which catalogs describe the
+/// release its draft was read from — the names first, then the catalogs, each
+/// linking to its own page.
 /// </summary>
 internal static class IdentifiedFromFlyout
 {
-    internal static Control Build(IReadOnlyList<BridgeReleaseRecord> records)
+    internal static Control Build(
+        IReadOnlyList<BridgeReleaseMark> marks,
+        IReadOnlyList<BridgeReleaseRecord> records)
     {
-        var column = new StackPanel { Spacing = 6, Width = 276 };
+        var column = new StackPanel { Spacing = 10, Width = 276 };
+        if (marks.Count > 0)
+        {
+            column.Children.Add(MarkLines.Build(marks));
+        }
+        var catalogs = new StackPanel { Spacing = 6 };
         var header = new TextBlock
         {
             Text = Loc.Core("core.import.triage.identified_from").ToUpperInvariant(),
@@ -25,8 +33,9 @@ internal static class IdentifiedFromFlyout
         };
         header[!TextBlock.ForegroundProperty] =
             new DynamicResourceExtension("BaeTextSecondaryBrush");
-        column.Children.Add(header);
-        column.Children.Add(ReleaseRecordsRow.Build(records));
+        catalogs.Children.Add(header);
+        catalogs.Children.Add(ReleaseRecordsRow.Build(records));
+        column.Children.Add(catalogs);
         return new Border { Padding = new Thickness(12, 10), Child = column };
     }
 }

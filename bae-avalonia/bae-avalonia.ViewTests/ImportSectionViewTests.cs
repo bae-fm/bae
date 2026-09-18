@@ -199,7 +199,7 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void TheIdentifiedHoverNamesEveryCatalog()
     {
-        var text = TextOf(IdentifiedFromFlyout.Build(PairedRecords));
+        var text = TextOf(IdentifiedFromFlyout.Build([], PairedRecords));
 
         Assert.Contains(
             Loc.Core("core.import.triage.identified_from").ToUpperInvariant(),

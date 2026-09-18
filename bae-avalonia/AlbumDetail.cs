@@ -83,6 +83,11 @@ public sealed class Release : INotifyPropertyChanged
     /// <see cref="StorageActions"/>.</summary>
     internal IReadOnlyList<BridgeReleaseRecord> Records => _release.Records;
 
+    /// <summary>Every name read off the object itself, one line per value and
+    /// in the order core lists mark kinds. Internal for the same reason as
+    /// <see cref="StorageActions"/>.</summary>
+    internal IReadOnlyList<BridgeReleaseMark> Marks => _release.Marks;
+
     /// <summary>Whether this release lives in the cloud (Remote) rather than
     /// locally.</summary>
     public bool IsCloud => _release.StorageState == BridgeReleaseStorageState.Remote;

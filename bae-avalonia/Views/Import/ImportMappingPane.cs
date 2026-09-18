@@ -546,6 +546,7 @@ internal sealed partial class ImportMappingPane : UserControl
             ?? Array.Empty<BridgeFieldProvenance>(),
         MetaLine = MetaLine(),
         SourceAudioLine = SourceAudioLine(_candidate?.Files),
+        Marks = _candidate?.Marks ?? [],
         IsReading = PickInFlight() is not null,
         LookupOptions = _candidate?.MetadataPresentation
             == ImportMetadataPresentation.FindOnline
