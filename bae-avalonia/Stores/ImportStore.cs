@@ -220,7 +220,7 @@ internal sealed partial class ImportStore : IDisposable
     }
 
     public void ObserveReleaseLibraryStatus(
-        BridgeMetadataSource source,
+        BridgeCatalog source,
         string releaseId,
         string? sourceGroupId)
     {

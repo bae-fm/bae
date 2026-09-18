@@ -65,6 +65,24 @@ public sealed class Release : INotifyPropertyChanged
     /// length.</summary>
     public string TotalDurationLabel => BridgeDisplay.DurationUnits(_release.TotalDuration);
 
+    /// <summary>The pressing's facts on one line — year, media, label, catalog
+    /// number, country — skipping whatever the release does not state.</summary>
+    public string FactsLine => string.Join(
+        " · ",
+        new[]
+        {
+            _release.Year?.ToString(System.Globalization.CultureInfo.CurrentCulture),
+            _release.Format,
+            _release.Label,
+            _release.CatalogNumber,
+            _release.Country,
+        }.Where(part => !string.IsNullOrEmpty(part)));
+
+    /// <summary>Every catalog that describes this release, in the order core
+    /// lists them. Internal for the same reason as
+    /// <see cref="StorageActions"/>.</summary>
+    internal IReadOnlyList<BridgeReleaseRecord> Records => _release.Records;
+
     /// <summary>Whether this release lives in the cloud (Remote) rather than
     /// locally.</summary>
     public bool IsCloud => _release.StorageState == BridgeReleaseStorageState.Remote;

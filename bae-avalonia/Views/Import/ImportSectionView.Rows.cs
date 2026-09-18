@@ -225,7 +225,7 @@ internal sealed partial class ImportSectionView
                 column.Children.Add(titleRow);
                 break;
             case BridgeTriageReading.Identified identified:
-                column.Children.Add(TitleWithMark(title, identified.Sources));
+                column.Children.Add(TitleWithMark(title, identified.Records));
                 break;
             default:
                 column.Children.Add(title);
@@ -263,12 +263,12 @@ internal sealed partial class ImportSectionView
     }
 
     // The title, and after it the mark saying the draft was read from a
-    // source's release. The title takes the width that is left and trims; the
+    // catalog's release. The title takes the width that is left and trims; the
     // mark is fixed, so it never clips — the mark is the row's answer, the
     // title only its subject.
     private static Control TitleWithMark(
         TextBlock title,
-        IReadOnlyList<BridgeIdentifiedSource> sources)
+        IReadOnlyList<BridgeReleaseRecord> records)
     {
         var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         Grid.SetColumn(title, 0);
@@ -286,7 +286,7 @@ internal sealed partial class ImportSectionView
         Avalonia.Automation.AutomationProperties.SetName(
             mark,
             Loc.Core("core.import.triage.identified"));
-        HoverFlyout.Attach(mark, () => IdentifiedFromFlyout.Build(sources));
+        HoverFlyout.Attach(mark, () => IdentifiedFromFlyout.Build(records));
         Grid.SetColumn(mark, 1);
         line.Children.Add(mark);
         return line;

@@ -9,10 +9,6 @@ using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-/// <summary>One source a draft's metadata claims, as the card names it: the
-/// service's own name, linking to that source's page for the release.</summary>
-internal readonly record struct ProvenanceChip(string Label, Uri? Link);
-
 /// <summary>The editable draft or one temporary source browser occupying the
 /// metadata slot.</summary>
 internal sealed class ImportMetadataSourceSection
@@ -23,10 +19,6 @@ internal sealed class ImportMetadataSourceSection
     internal required BridgeRawReleaseEdit? Edit { get; init; }
     internal required string MetaLine { get; init; }
     internal required string SourceAudioLine { get; init; }
-    /// <summary>One chip per source the draft's provenance claims, in the
-    /// order they are shown: the release the draft was read from, then each
-    /// partner the pick carried. Empty when there is no provenance.</summary>
-    internal required IReadOnlyList<ProvenanceChip> ProvenanceChips { get; init; }
     internal required bool IsReading { get; init; }
     internal required Control? LookupOptions { get; init; }
     internal required Action<Image>? LoadCover { get; init; }
@@ -84,7 +76,6 @@ internal sealed class ImportMetadataSourceSection
             MetaLine,
             SourceAudioLine,
             Edit,
-            ProvenanceChips,
             SourceActions(),
             CandidateActions(),
             includeSelectedValues: true);
@@ -187,7 +178,6 @@ internal sealed class ImportMetadataSourceSection
         string metaLine,
         string sourceAudioLine,
         BridgeRawReleaseEdit? edit,
-        IReadOnlyList<ProvenanceChip> provenanceChips,
         Control? actionControl,
         Control? destructiveAction,
         bool includeSelectedValues)
@@ -217,13 +207,7 @@ internal sealed class ImportMetadataSourceSection
         {
             summary.Children.Add(ImportPaneUi.Cell(artistText, secondary: true));
         }
-        var facts = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        facts.Children.Add(ImportPaneUi.Cell(metaLine, secondary: true));
-        foreach (var chip in provenanceChips)
-        {
-            facts.Children.Add(SourceChip(chip.Label, chip.Link));
-        }
-        summary.Children.Add(facts);
+        summary.Children.Add(ImportPaneUi.Cell(metaLine, secondary: true));
         summary.Children.Add(ImportPaneUi.Cell(sourceAudioLine, secondary: true));
         var metadata = new StackPanel { Spacing = 12 };
         metadata.Children.Add(summary);
@@ -346,29 +330,6 @@ internal sealed class ImportMetadataSourceSection
             e.Handled = true;
             OnSelectCover(new BridgeCoverSelection.ReleaseImage(fileId));
         });
-    }
-
-    private static Control SourceChip(string label, Uri? uri)
-    {
-        var chip = ImportPaneUi.SourceCapsule(
-            label,
-            uri is not null ? "BaeAccentBrush" : "BaeTextSecondaryBrush",
-            arrow: uri is not null);
-        if (uri is null)
-        {
-            return chip;
-        }
-        var button = new Button
-        {
-            Content = chip,
-            Padding = new Thickness(0),
-            BorderThickness = new Thickness(0),
-            Background = Brushes.Transparent,
-            Cursor = new Avalonia.Input.Cursor(
-                Avalonia.Input.StandardCursorType.Hand),
-        };
-        button.Click += async (_, _) => await ImportPaneUi.OpenExternal(button, uri);
-        return button;
     }
 
     private Control ReleaseFields(BridgeRawReleaseEdit edit)

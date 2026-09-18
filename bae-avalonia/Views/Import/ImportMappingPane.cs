@@ -195,7 +195,8 @@ internal sealed partial class ImportMappingPane : UserControl
             + "|"
             + string.Join(
                 ",",
-                signals.Select(badge => $"{badge.Kind}:{badge.State.Kind}:{badge.Excluded}"))
+                signals.Select(badge =>
+                    $"{badge.Kind}:{SignalStateTag(badge.State)}:{badge.Excluded}"))
             + "|"
             + SearchFingerprint(runtime?.Search);
     }
@@ -260,8 +261,8 @@ internal sealed partial class ImportMappingPane : UserControl
             return;
         }
         _import.ObserveReleaseLibraryStatus(
-            picked.Source,
-            picked.ReleaseId,
+            picked.Catalog,
+            picked.Key,
             _candidate.Release?.SourceGroupId);
     }
 
@@ -439,6 +440,13 @@ internal sealed partial class ImportMappingPane : UserControl
             // Both sections and their headings, as one block.
             sections.Children.Add(_table.Build());
         }
+        if (_candidate?.Records is { Count: > 0 } records)
+        {
+            // Which catalogs describe the release, last in the pane under a
+            // rule of their own.
+            sections.Children.Add(new Separator());
+            sections.Children.Add(ReleaseRecordsRow.Build(records));
+        }
 
         _content.Content = new ScrollViewer { Content = sections };
     }
@@ -536,7 +544,6 @@ internal sealed partial class ImportMappingPane : UserControl
         Edit = _candidate?.Edit,
         MetaLine = MetaLine(),
         SourceAudioLine = SourceAudioLine(_candidate?.Files),
-        ProvenanceChips = ProvenanceChips(),
         IsReading = PickInFlight() is not null,
         LookupOptions = _candidate?.MetadataPresentation
             == ImportMetadataPresentation.FindOnline
@@ -648,34 +655,21 @@ internal sealed partial class ImportMappingPane : UserControl
                 .Where(part => part.Length > 0));
     }
 
+    /// <summary>A badge's state as the fingerprint reads it: everything the
+    /// badge draws of it, so a count that moved redraws the row.</summary>
+    private static string SignalStateTag(BridgeSignalState state) => state switch
+    {
+        BridgeSignalState.LookingUp => "looking_up",
+        BridgeSignalState.Found found => $"found:{found.Count}",
+        BridgeSignalState.NoMatch => "no_match",
+        BridgeSignalState.Skipped => "skipped",
+        BridgeSignalState.Failed failed => $"failed:{failed.Failure}",
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(state), state, "Unknown signal state"),
+    };
+
     private static string SourceAudioLine(BridgeCandidateFiles? files) =>
         BridgeDisplay.SourceAudio(files?.SourceAudio?.Summary);
-
-    // A pick pairs a MusicBrainz release and a Discogs release into one
-    // pressing, and the draft claims both, so the card names both — the
-    // release it was read from first, then each partner the pick carried.
-    private IReadOnlyList<ProvenanceChip> ProvenanceChips() =>
-        _candidate?.MetadataProvenance switch
-        {
-            BridgeMetadataProvenance.ExternalRelease external =>
-                new[] { new BridgeMetadataRef(external.Source, external.ReleaseId) }
-                    .Concat(external.Partners)
-                    .Select(release => new ProvenanceChip(
-                        BaeBridgeMethods.BridgeMetadataSourceName(release.Source),
-                        new Uri(BaeBridgeMethods.BridgeReleaseUrl(
-                            release.Source,
-                            release.ReleaseId))))
-                    .ToList(),
-            BridgeMetadataProvenance.FileTags =>
-            [
-                new ProvenanceChip(Loc.Core("ui.import.metadata.file_tags"), null),
-            ],
-            null => [],
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(_candidate.MetadataProvenance),
-                _candidate.MetadataProvenance,
-                "Unknown metadata provenance"),
-        };
 
     private bool DraftIsBlank() => _candidate?.Detail?.MetadataDraftIsBlank ?? true;
 

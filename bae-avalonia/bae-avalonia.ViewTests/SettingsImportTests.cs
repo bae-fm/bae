@@ -66,10 +66,10 @@ public sealed class SettingsImportTests
 
         Render(renderers, new Settings
         {
-            MetadataSources = new List<BridgeMetadataSourceSetting>
+            LookupCatalogs = new List<BridgeLookupCatalogSetting>
             {
-                new(BridgeMetadataSource.MusicBrainz, BridgeSourceAvailability.Off, true),
-                new(BridgeMetadataSource.Discogs, BridgeSourceAvailability.On, false),
+                new(BridgeCatalog.MusicBrainz, BridgeSourceAvailability.Off, true),
+                new(BridgeCatalog.Discogs, BridgeSourceAvailability.On, false),
             },
         });
 
@@ -81,8 +81,8 @@ public sealed class SettingsImportTests
             Loc.Chrome(
                 "settings.import.search_source",
                 "source",
-                BaeBridgeMethods.BridgeMetadataSourceName(
-                    BridgeMetadataSource.MusicBrainz)),
+                BaeBridgeMethods.BridgeCatalogName(
+                    BridgeCatalog.MusicBrainz)),
             musicBrainz.Content);
         Assert.False(musicBrainz.IsChecked);
         Assert.True(musicBrainz.IsEnabled);
@@ -104,11 +104,11 @@ public sealed class SettingsImportTests
 
         Render(renderers, new Settings
         {
-            MetadataSources = new List<BridgeMetadataSourceSetting>
+            LookupCatalogs = new List<BridgeLookupCatalogSetting>
             {
-                new(BridgeMetadataSource.MusicBrainz, BridgeSourceAvailability.On, false),
+                new(BridgeCatalog.MusicBrainz, BridgeSourceAvailability.On, false),
                 new(
-                    BridgeMetadataSource.Discogs,
+                    BridgeCatalog.Discogs,
                     BridgeSourceAvailability.NotConfigured,
                     false),
             },

@@ -19,8 +19,7 @@ public sealed class ImportPickOwnershipTests
 {
     private static readonly BridgeMetadataProvenance Provenance =
         new BridgeMetadataProvenance.ExternalRelease(
-            BridgeMetadataSource.MusicBrainz,
-            "rel-1",
+            new BridgeMetadataRef(BridgeCatalog.MusicBrainz, "rel-1"),
             []);
 
     [Fact]
@@ -64,8 +63,7 @@ public sealed class ImportPickOwnershipTests
             store.BeginMetadataApplication(
                 CandidateKey,
                 new BridgeMetadataProvenance.ExternalRelease(
-                    BridgeMetadataSource.MusicBrainz,
-                    "rel-2",
+                    new BridgeMetadataRef(BridgeCatalog.MusicBrainz, "rel-2"),
                     [])));
 
         store.MetadataApplicationSucceeded(CandidateKey, first);

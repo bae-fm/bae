@@ -155,7 +155,7 @@ public sealed class ImportSectionViewTests
                 placement,
                 BridgeTriageSkipAction.Skip,
                 metadataSummary: AppliedDraft,
-                reading: new BridgeTriageReading.Identified(PairedSources)),
+                reading: new BridgeTriageReading.Identified(PairedRecords)),
             MatchedSummary(placement, BridgeTriageTab.Pending));
         Assert.Contains(ImportPaneUi.OutboundArrow, RowMetaText(paired));
         Assert.Empty(RowTrailingText(paired));
@@ -182,7 +182,7 @@ public sealed class ImportSectionViewTests
                 placement,
                 BridgeTriageSkipAction.Skip,
                 metadataSummary: AppliedDraft,
-                reading: new BridgeTriageReading.Identified(PairedSources)),
+                reading: new BridgeTriageReading.Identified(PairedRecords)),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
         Assert.Contains(ImportPaneUi.OutboundArrow, RowMetaText(view));
@@ -194,43 +194,36 @@ public sealed class ImportSectionViewTests
             RowTrailingText(view));
     }
 
-    // Both sources the pick paired, each stating what its own release says —
-    // two documents describing one pressing can disagree, and the hover says
-    // what each of them says.
+    // Every catalog that describes the pressing the pick claimed, each
+    // linking to its own page for it.
     [AvaloniaFact]
-    public void TheIdentifiedHoverNamesEverySourceAndWhatItSays()
+    public void TheIdentifiedHoverNamesEveryCatalog()
     {
-        var text = TextOf(IdentifiedFromFlyout.Build(PairedSources));
+        var text = TextOf(IdentifiedFromFlyout.Build(PairedRecords));
 
         Assert.Contains(
             Loc.Core("core.import.triage.identified_from").ToUpperInvariant(),
             text);
         Assert.Contains(
-            BaeBridgeMethods.BridgeMetadataSourceName(
-                BridgeMetadataSource.MusicBrainz),
+            BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.MusicBrainz),
             text);
         Assert.Contains(
-            BaeBridgeMethods.BridgeMetadataSourceName(
-                BridgeMetadataSource.Discogs),
+            BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.Discogs),
             text);
-        Assert.Contains("Label Name · 1976", text);
-        Assert.Contains("Other Label · 1988", text);
     }
 
-    private static readonly BridgeIdentifiedSource[] PairedSources =
+    internal static readonly BridgeReleaseRecord[] PairedRecords =
     [
-        new BridgeIdentifiedSource(
-            BridgeMetadataSource.MusicBrainz,
+        new BridgeReleaseRecord(
+            BridgeCatalog.MusicBrainz,
             "rel-paired",
             "https://musicbrainz.org/release/rel-paired",
-            "Label Name",
-            1976),
-        new BridgeIdentifiedSource(
-            BridgeMetadataSource.Discogs,
+            true),
+        new BridgeReleaseRecord(
+            BridgeCatalog.Discogs,
             "discogs-paired",
             "https://www.discogs.com/release/discogs-paired",
-            "Other Label",
-            1988),
+            false),
     ];
 
     // A row with no draft is the folder it came from: the glyph, the folder
@@ -732,7 +725,7 @@ public sealed class ImportSectionViewTests
                     Pressing: null,
                     CoverThumbnailUrl: null,
                     Evidence: new BridgeMatchEvidence(
-                        BridgeMetadataSource.MusicBrainz,
+                        BridgeCatalog.MusicBrainz,
                         BridgeMatchedSignal.DiscId)),
                 MetadataSummary: metadataSummary,
                 CoverThumbnail: coverThumbnail,
@@ -743,8 +736,7 @@ public sealed class ImportSectionViewTests
                         is BridgeTriagePlacement.Ready
                             or BridgeTriagePlacement.Done
                         ? new BridgeMetadataProvenance.ExternalRelease(
-                            BridgeMetadataSource.MusicBrainz,
-                            "rel-matched",
+                            new BridgeMetadataRef(BridgeCatalog.MusicBrainz, "rel-matched"),
                             [])
                         : null),
                 Reading: reading ?? new BridgeTriageReading.Unidentified());

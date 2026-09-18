@@ -250,7 +250,6 @@ public sealed class ImportMetadataSourceSectionTests
             Edit = edit ?? Edit(),
             MetaLine = "CD · 1996",
             SourceAudioLine = sourceAudioLine,
-            ProvenanceChips = [],
             IsReading = isReading,
             LookupOptions = new TextBlock { Text = "Search form" },
             LoadCover = null,

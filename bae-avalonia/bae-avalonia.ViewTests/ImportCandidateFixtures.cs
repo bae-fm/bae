@@ -26,8 +26,7 @@ internal static class ImportCandidateFixtures
         BridgeTriageImportStatus? importStatus = null) =>
         Detail(
             new BridgeMetadataProvenance.ExternalRelease(
-                BridgeMetadataSource.MusicBrainz,
-                "rel-1",
+                new BridgeMetadataRef(BridgeCatalog.MusicBrainz, "rel-1"),
                 []),
             failure: failure,
             importStatus: importStatus);
@@ -40,7 +39,8 @@ internal static class ImportCandidateFixtures
         BridgeTriageImportStatus? importStatus = null,
         BridgeLookupChoices? lookupChoices = null,
         string key = CandidateKey,
-        string audioIdentity = "mapping-pane-audio") =>
+        string audioIdentity = "mapping-pane-audio",
+        BridgeTriageReading? reading = null) =>
         new(
             Candidate: new BridgeFolderCandidate(
                 Combination: null,
@@ -63,7 +63,7 @@ internal static class ImportCandidateFixtures
                 IsAdded: false),
             Actionable: true,
             ResumedIdentifyState: new BridgeIdentifyState.Idle(),
-            Row: Row(metadataProvenance, importStatus, key),
+            Row: Row(metadataProvenance, importStatus, key, reading),
             Release: null,
             PickedLibraryStatus: null,
             FileEvidence: Array.Empty<BridgeFileEvidence>(),
@@ -113,7 +113,8 @@ internal static class ImportCandidateFixtures
     internal static BridgeTriageRow Row(
         BridgeMetadataProvenance? metadataProvenance,
         BridgeTriageImportStatus? importStatus,
-        string key = CandidateKey) => new(
+        string key = CandidateKey,
+        BridgeTriageReading? reading = null) => new(
         CandidateKey: key,
         FolderName: "Album",
         WatchedFolderPath: "/Music/Incoming",
@@ -130,7 +131,7 @@ internal static class ImportCandidateFixtures
         Selectable: true,
         ImportStatus: importStatus,
         MetadataProvenance: metadataProvenance,
-        Reading: new BridgeTriageReading.Unidentified());
+        Reading: reading ?? new BridgeTriageReading.Unidentified());
 
     internal static BridgeRawReleaseEdit BlankEdit() => new(
         string.Empty,

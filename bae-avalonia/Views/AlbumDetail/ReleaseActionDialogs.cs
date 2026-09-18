@@ -168,7 +168,7 @@ internal sealed class ReleaseActionDialogs
             // search: the search run is dropped, and the pipeline's own matches
             // draw again. A changed choice is a new run, not a change to the
             // one going.
-            void ToggleSignal(string kind, string value)
+            void ToggleSignal(BridgeSignalKind kind, string value)
             {
                 _app.Import.ClearCandidateSearch(key);
                 results.ResumePipeline();
@@ -552,7 +552,7 @@ internal sealed class ReleaseActionDialogs
                 "import.search.source_failed",
                 new Dictionary<string, object?>
                 {
-                    ["source"] = BaeBridgeMethods.BridgeMetadataSourceName(entry.Source),
+                    ["source"] = BaeBridgeMethods.BridgeCatalogName(entry.Source),
                     ["reason"] = BridgeDisplay.LocalizedLine(
                         ((BridgeSourceSearch.Failed)entry.State).Failure),
                 }))

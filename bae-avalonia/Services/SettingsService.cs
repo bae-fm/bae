@@ -35,7 +35,7 @@ internal sealed class SettingsService
 
     /// <summary>Ask, or stop asking, one metadata source. Core refuses to switch
     /// off the last source there is to ask and returns the sentence to show.</summary>
-    public Func<BridgeMetadataSource, bool, (bool Current, string? Error)> SetMetadataSourceEnabled { get; init; }
+    public Func<BridgeCatalog, bool, (bool Current, string? Error)> SetMetadataSourceEnabled { get; init; }
         = (_, _) => throw new InvalidOperationException(
             "SettingsService stub: SetMetadataSourceEnabled not wired");
 

@@ -167,6 +167,13 @@ internal static class AlbumExpansionView
         }
         RenderTracks();
 
+        // ── The release's facts, and the way into where they came from ────────
+        var factsLine = new ReleaseFactsLine();
+        void RenderFacts() => factsLine.Show(
+            selectedRelease.FactsLine,
+            selectedRelease.Records);
+        RenderFacts();
+
         var totalDuration = new TextBlock { FontSize = 12, Opacity = 0.7 };
         totalDuration[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         void RenderTotalDuration()
@@ -205,11 +212,13 @@ internal static class AlbumExpansionView
                     selectedRelease = release;
                     RebindCover();
                     RenderTracks();
+                    RenderFacts();
                     RenderTotalDuration();
                 }
             };
             detailStack.Children.Add(picker);
         }
+        detailStack.Children.Add(factsLine);
         detailStack.Children.Add(actions);
         detailStack.Children.Add(trackList);
         detailStack.Children.Add(totalDuration);

@@ -193,11 +193,11 @@ internal static class BridgeDisplay
             // have, and its matches are on the same state.
             BridgeIdentifyFailure.Barcode barcode =>
                 $"{Loc.Chrome("signal.kind.barcode")} · "
-                    + $"{BaeBridgeMethods.BridgeMetadataSourceName(barcode.Source)}: "
+                    + $"{BaeBridgeMethods.BridgeCatalogName(barcode.Source)}: "
                     + LocalizedLine(barcode.Failure),
             BridgeIdentifyFailure.Catalog catalog =>
                 $"{Loc.Chrome("signal.kind.catalog")} · "
-                    + $"{BaeBridgeMethods.BridgeMetadataSourceName(catalog.Source)}: "
+                    + $"{BaeBridgeMethods.BridgeCatalogName(catalog.Source)}: "
                     + LocalizedLine(catalog.Failure),
             BridgeIdentifyFailure.ReleaseDetails details =>
                 $"{Loc.Chrome("import.error.load_release")}: {LocalizedLine(details.Failure)}",

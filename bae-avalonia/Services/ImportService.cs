@@ -218,7 +218,7 @@ internal sealed class ImportService
     /// artwork offered (no source release).</summary>
     /// <summary>The chosen source release's current library membership. The
     /// confirm pane keeps this subscription for as long as that release is selected.</summary>
-    public Func<BridgeMetadataSource, string, string?, Action<BridgeLibraryStatus>, Action<Exception>, IDisposable?> SubscribeReleaseLibraryStatus { get; init; }
+    public Func<BridgeCatalog, string, string?, Action<BridgeLibraryStatus>, Action<Exception>, IDisposable?> SubscribeReleaseLibraryStatus { get; init; }
         = (_, _, _, _, _) => throw new InvalidOperationException("ImportService stub: SubscribeReleaseLibraryStatus not wired");
 
     /// <summary>Commit the import of a candidate at the storage the pane chose.

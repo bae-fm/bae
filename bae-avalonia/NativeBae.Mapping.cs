@@ -157,7 +157,7 @@ internal static partial class NativeBae
             PauseBetweenSides = config.PauseBetweenSides,
             IdentifyAutomatically = config.IdentifyAutomatically,
             PrefillWithTags = config.PrefillWithTags,
-            MetadataSources = config.MetadataSources.ToList(),
+            LookupCatalogs = config.LookupCatalogs.ToList(),
             ShowRemainingTime = config.ShowRemainingTime,
             LibraryFullWidth = config.LibraryFullWidth,
             SavePresets = config.SavePresets.Select(SavePreset).ToList(),
@@ -349,9 +349,9 @@ internal static partial class NativeBae
     private static SignalBadge SignalBadge(BridgeToolbarSignal signal) =>
         new()
         {
-            Kind = SignalKindTag(signal.Kind),
+            Kind = signal.Kind,
             Value = signal.Value,
-            State = SignalState(signal.State),
+            State = signal.State,
             Excluded = signal.Excluded,
             Options = signal.Options
                 .Select(option => new SignalBadgeOption
@@ -360,17 +360,6 @@ internal static partial class NativeBae
                     Chosen = option.Chosen,
                 })
                 .ToList(),
-        };
-
-    private static SignalBadgeState SignalState(BridgeSignalState state) =>
-        state switch
-        {
-            BridgeSignalState.LookingUp => new() { Kind = "looking_up" },
-            BridgeSignalState.Found found => new() { Kind = "found", Count = found.Count },
-            BridgeSignalState.NoMatch => new() { Kind = "no_match" },
-            BridgeSignalState.Skipped => new() { Kind = "skipped" },
-            BridgeSignalState.Failed failed => new() { Kind = "failed", Failure = failed.Failure },
-            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown signal state"),
         };
 
     private static ImportStep ImportStep(BridgeImportStep step) =>
@@ -434,15 +423,6 @@ internal static partial class NativeBae
             BridgeSyncProvider.OneDrive => "onedrive",
             BridgeSyncProvider.CloudKit => "cloudkit",
             _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown sync provider"),
-        };
-
-    private static string SignalKindTag(BridgeSignalKind kind) =>
-        kind switch
-        {
-            BridgeSignalKind.DiscId => "disc_id",
-            BridgeSignalKind.Barcode => "barcode",
-            BridgeSignalKind.Catalog => "catalog",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown signal kind"),
         };
 
     private static string PrepareStepTag(BridgePrepareStep step) =>

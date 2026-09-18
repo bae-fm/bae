@@ -72,10 +72,18 @@ public sealed class ImportCandidate
     internal BridgeMetadataProvenance? MetadataProvenance =>
         Detail?.MetadataProvenance;
 
-    /// <summary>The release this candidate is selected as, where provenance names
-    /// one.</summary>
-    internal BridgeMetadataProvenance.ExternalRelease? PickedRelease =>
-        MetadataProvenance as BridgeMetadataProvenance.ExternalRelease;
+    /// <summary>The catalog's release this candidate is selected as, where its
+    /// draft names one.</summary>
+    internal BridgeMetadataRef? PickedRelease =>
+        (MetadataProvenance as BridgeMetadataProvenance.ExternalRelease)?.Record;
+
+    /// <summary>Every catalog that describes the release this candidate's
+    /// draft was read from, in the order core lists them. Empty for a draft
+    /// read from the files' own tags, typed in, or not there yet.</summary>
+    internal IReadOnlyList<BridgeReleaseRecord> Records =>
+        Detail?.Row.Reading is BridgeTriageReading.Identified identified
+            ? identified.Records
+            : [];
 
     /// <summary>The draft, or the Find online page, occupying the metadata
     /// slot. Opening the page never replaces the stored draft.</summary>

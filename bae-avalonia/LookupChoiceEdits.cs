@@ -21,13 +21,13 @@ internal static class LookupChoiceEdits
     /// text is taken to state about the answers is carried through untouched —
     /// no badge acts on it.</summary>
     internal static BridgeLookupChoices Toggling(
-        BridgeLookupChoices current, string kind, string value)
+        BridgeLookupChoices current, BridgeSignalKind kind, string value)
     {
         switch (kind)
         {
-            case "disc_id":
+            case BridgeSignalKind.DiscId:
                 return current with { DiscIdExcluded = !current.DiscIdExcluded };
-            case "barcode":
+            case BridgeSignalKind.Barcode:
                 // A set, so it goes back sorted and each code once.
                 var leftOut = new SortedSet<string>(current.ExcludedBarcodes);
                 if (!leftOut.Remove(value))

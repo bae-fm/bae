@@ -21,7 +21,7 @@ public sealed class ReleaseCandidateChoice
         _lead = pressing.Releases[0];
     }
 
-    internal BridgeMetadataSource Source => _lead.Source;
+    internal BridgeCatalog Source => _lead.Source;
     public string ReleaseId => _lead.ReleaseId;
 
     /// <summary>What picking this row claims, as core settled it.</summary>
@@ -33,7 +33,7 @@ public sealed class ReleaseCandidateChoice
     {
         BridgeMetadataProvenance.ExternalRelease external =>
             new BridgeReleaseReseed.ExternalRelease(
-                external.ReleaseId, external.Source, external.Partners),
+                external.Record.Key, external.Record.Catalog, external.Partners),
         BridgeMetadataProvenance.FileTags => new BridgeReleaseReseed.FileTags(),
         _ => throw new ArgumentOutOfRangeException(
             nameof(Provenance), Provenance, "Unknown metadata provenance"),

@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -22,7 +23,7 @@ internal static class SignalBadgeRow
     public static Control Build(
         IReadOnlyList<SignalBadge> signals,
         IReadOnlyList<CatalogAgreement> agreements,
-        Action<string, string> onToggleSignal,
+        Action<BridgeSignalKind, string> onToggleSignal,
         Action<string> onToggleAgreement,
         Action onRerun)
     {
@@ -113,7 +114,7 @@ internal static class SignalBadgeRow
     // What one signal's badge is: the list of its values where it offers
     // several, the switch for its one value where it names one, and neither
     // where the candidate turned up nothing for it to act on.
-    private static Control Badge(SignalBadge signal, Action<string, string> onToggleSignal)
+    private static Control Badge(SignalBadge signal, Action<BridgeSignalKind, string> onToggleSignal)
     {
         if (signal.Options.Count > 0)
         {
@@ -128,7 +129,9 @@ internal static class SignalBadgeRow
     // checked when the run asks about that value. Checking one leaves the rest
     // as they are — several codes and several numbers can be asked about at
     // once.
-    private static Control BuildChoiceBadge(SignalBadge signal, Action<string, string> onToggleSignal)
+    private static Control BuildChoiceBadge(
+        SignalBadge signal,
+        Action<BridgeSignalKind, string> onToggleSignal)
     {
         var badge = BuildBadge(signal, null);
         var items = new List<Control>();
@@ -147,15 +150,17 @@ internal static class SignalBadgeRow
         return badge;
     }
 
-    private static string PickTipKey(string kind) => kind switch
+    private static string PickTipKey(BridgeSignalKind kind) => kind switch
     {
-        "barcode" => "signal.pick_barcode",
+        BridgeSignalKind.Barcode => "signal.pick_barcode",
         _ => "signal.pick_catalog",
     };
 
     // `onToggleSignal` is null for a badge with nothing to switch: one that
     // opens a list instead, and one the candidate turned up no value for.
-    private static Button BuildBadge(SignalBadge signal, Action<string, string>? onToggleSignal)
+    private static Button BuildBadge(
+        SignalBadge signal,
+        Action<BridgeSignalKind, string>? onToggleSignal)
     {
         var inner = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
 
@@ -215,25 +220,23 @@ internal static class SignalBadgeRow
         {
             return StateGlyph("✕", "BaeTextSecondaryBrush");
         }
-        switch (signal.State.Kind)
+        switch (signal.State)
         {
-            case "looking_up":
+            case BridgeSignalState.LookingUp:
                 return new Spinner { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center };
-            case "found":
-                return CountPill((signal.State.Count ?? 0).ToString(), "BaeSuccessBrush");
-            case "no_match":
+            case BridgeSignalState.Found found:
+                return CountPill(found.Count.ToString(), "BaeSuccessBrush");
+            case BridgeSignalState.NoMatch:
                 return CountPill("0", "BaeTextSecondaryBrush");
-            case "skipped":
+            case BridgeSignalState.Skipped:
                 return StateGlyph("–", "BaeTextSecondaryBrush");
-            case "failed":
+            case BridgeSignalState.Failed failed:
                 var warning = StateGlyph("⚠", "BaeDangerBrush");
-                if (signal.State.Failure is { } failure)
-                {
-                    ToolTip.SetTip(warning, BridgeDisplay.LocalizedLine(failure));
-                }
+                ToolTip.SetTip(warning, BridgeDisplay.LocalizedLine(failed.Failure));
                 return warning;
             default:
-                return new TextBlock();
+                throw new ArgumentOutOfRangeException(
+                    nameof(signal), signal.State, "Unknown signal state");
         }
     }
 
@@ -263,11 +266,12 @@ internal static class SignalBadgeRow
         };
     }
 
-    private static string SignalKindLabel(string kind) => kind switch
+    private static string SignalKindLabel(BridgeSignalKind kind) => kind switch
     {
-        "disc_id" => Loc.Chrome("signal.kind.disc_id"),
-        "barcode" => Loc.Chrome("signal.kind.barcode"),
-        "catalog" => Loc.Chrome("signal.kind.catalog"),
-        _ => kind,
+        BridgeSignalKind.DiscId => Loc.Chrome("signal.kind.disc_id"),
+        BridgeSignalKind.Barcode => Loc.Chrome("signal.kind.barcode"),
+        BridgeSignalKind.Catalog => Loc.Chrome("signal.kind.catalog"),
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(kind), kind, "Unknown signal kind"),
     };
 }

@@ -340,10 +340,7 @@ internal static class ShotCapture
         AddMetadataSource(
             grid, 1, 0, edit: PreviewRawMetadata());
         AddMetadataSource(
-            grid, 2, 0, edit: PreviewRawMetadata(), provenanceLabel: "MusicBrainz");
-        AddMetadataSource(
-            grid, 0, 1, edit: PreviewRawMetadata(),
-            provenanceLabel: Loc.Core("ui.import.metadata.file_tags"));
+            grid, 2, 0, edit: PreviewRawMetadata());
         AddMetadataSource(
             grid, 1, 1, presentation: ImportMetadataPresentation.FindOnline,
             lookupOptions: new TextBlock { Text = "Search form and results" });
@@ -357,7 +354,6 @@ internal static class ShotCapture
         ImportMetadataPresentation presentation = ImportMetadataPresentation.Draft,
         bool draftIsBlank = false,
         BridgeRawReleaseEdit? edit = null,
-        string? provenanceLabel = null,
         Control? lookupOptions = null)
     {
         var section = new ImportMetadataSourceSection
@@ -379,9 +375,6 @@ internal static class ShotCapture
                             16,
                             null,
                             2)))),
-            ProvenanceChips = provenanceLabel is { Length: > 0 } label
-                ? [new ProvenanceChip(label, null)]
-                : [],
             IsReading = false,
             LookupOptions = lookupOptions,
             LoadCover = null,

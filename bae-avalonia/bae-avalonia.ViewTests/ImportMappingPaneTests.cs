@@ -419,10 +419,10 @@ public sealed class ImportMappingPaneTests
             new BridgeSourceSearchEntry[]
             {
                 new(
-                    BridgeMetadataSource.MusicBrainz,
+                    BridgeCatalog.MusicBrainz,
                     new BridgeSourceSearch.Failed(new BridgeLookupFailure.Network())),
                 new(
-                    BridgeMetadataSource.Discogs,
+                    BridgeCatalog.Discogs,
                     new BridgeSourceSearch.NotConfigured()),
             },
             Array.Empty<BridgeReleaseGroup>(),
@@ -449,8 +449,7 @@ public sealed class ImportMappingPaneTests
         var detailCallbacks = new List<Action<BridgeImportCandidateDetail?>>();
         var gate = new TaskCompletionSource();
         var provenance = new BridgeMetadataProvenance.ExternalRelease(
-            BridgeMetadataSource.MusicBrainz,
-            "rel-1",
+            new BridgeMetadataRef(BridgeCatalog.MusicBrainz, "rel-1"),
             []);
         var (pane, _) = Show(
             Detail(provenance, metadataRevision: 1),
@@ -593,6 +592,50 @@ public sealed class ImportMappingPaneTests
     }
 
     // ── Building the pane ────────────────────────────────────────────────────
+
+    // The pane draws the records once, at its end: which catalogs describe the
+    // release is one answer, and the card above them names none of its own.
+    [AvaloniaFact]
+    public void ThePaneNamesItsCatalogsOnceAtItsEnd()
+    {
+        var (pane, _) = Show(Detail(
+            new BridgeMetadataProvenance.ExternalRelease(
+                new BridgeMetadataRef(BridgeCatalog.MusicBrainz, "rel-1"), []),
+            reading: new BridgeTriageReading.Identified([
+                new BridgeReleaseRecord(
+                    BridgeCatalog.MusicBrainz,
+                    "rel-1",
+                    "https://musicbrainz.org/release/rel-1",
+                    true),
+                new BridgeReleaseRecord(
+                    BridgeCatalog.Discogs,
+                    "4242",
+                    "https://www.discogs.com/release/4242",
+                    false),
+            ])));
+
+        var rows = pane
+            .GetLogicalDescendants()
+            .OfType<WrapPanel>()
+            .Where(panel =>
+                Avalonia.Automation.AutomationProperties.GetAutomationId(panel)
+                    == "release-records")
+            .ToList();
+        var row = Assert.Single(rows);
+        var named = row
+            .GetLogicalDescendants()
+            .OfType<TextBlock>()
+            .Select(block => block.Text ?? string.Empty)
+            .ToList();
+        Assert.Contains(
+            named,
+            line => line.Contains(
+                BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.MusicBrainz)));
+        Assert.Contains(
+            named,
+            line => line.Contains(
+                BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.Discogs)));
+    }
 
     private static (ImportMappingPane Pane, AppService App) Show(
         BridgeImportCandidateDetail detail,
@@ -838,7 +881,7 @@ public sealed class ImportMappingPaneTests
     private static BridgeReleaseGroup ChoiceGroup(string releaseId)
     {
         var release = new BridgeMetadataResult(
-            BridgeMetadataSource.MusicBrainz,
+            BridgeCatalog.MusicBrainz,
             releaseId,
             1996,
             "CD",
@@ -856,7 +899,7 @@ public sealed class ImportMappingPaneTests
                 new[]
                 {
                     new BridgeReleaseGroupSource(
-                        BridgeMetadataSource.MusicBrainz,
+                        BridgeCatalog.MusicBrainz,
                         "https://musicbrainz.org/release-group/source-group-1"),
                 },
                 1996,
@@ -866,7 +909,7 @@ public sealed class ImportMappingPaneTests
                     new BridgePressing(
                         new[] { release },
                         new BridgeMetadataProvenance.ExternalRelease(
-                            BridgeMetadataSource.MusicBrainz, releaseId, [])),
+                            new BridgeMetadataRef(BridgeCatalog.MusicBrainz, releaseId), [])),
                 });
     }
 

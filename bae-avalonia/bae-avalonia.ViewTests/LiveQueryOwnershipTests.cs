@@ -74,11 +74,11 @@ public sealed class LiveQueryOwnershipTests
             apply => apply());
 
         store.ObserveReleaseLibraryStatus(
-            BridgeMetadataSource.MusicBrainz,
+            BridgeCatalog.MusicBrainz,
             "release-a",
             null);
         store.ObserveReleaseLibraryStatus(
-            BridgeMetadataSource.MusicBrainz,
+            BridgeCatalog.MusicBrainz,
             "release-b",
             null);
         values["release-a"](

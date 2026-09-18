@@ -129,7 +129,7 @@ internal sealed partial class ImportMappingPane
                         Loc.Chrome(
                             "import.search.searching_source",
                             "source",
-                            BaeBridgeMethods.BridgeMetadataSourceName(source)),
+                            BaeBridgeMethods.BridgeCatalogName(source)),
                         secondary: true));
                     break;
                 case BridgeSourceSearch.Failed failure:
@@ -140,7 +140,7 @@ internal sealed partial class ImportMappingPane
                         Loc.Chrome(
                             "import.search.source_not_configured",
                             "source",
-                            BaeBridgeMethods.BridgeMetadataSourceName(source)),
+                            BaeBridgeMethods.BridgeCatalogName(source)),
                         secondary: true));
                     break;
             }
@@ -155,7 +155,7 @@ internal sealed partial class ImportMappingPane
     }
 
     private Control SourceFailureRow(
-        BridgeMetadataSource source,
+        BridgeCatalog source,
         BridgeLookupFailure failure)
     {
         var row = new StackPanel
@@ -168,7 +168,7 @@ internal sealed partial class ImportMappingPane
                 "import.search.source_failed",
                 new Dictionary<string, object?>
                 {
-                    ["source"] = BaeBridgeMethods.BridgeMetadataSourceName(source),
+                    ["source"] = BaeBridgeMethods.BridgeCatalogName(source),
                     ["reason"] = BridgeDisplay.LocalizedLine(failure),
                 }),
             secondary: true));
@@ -341,8 +341,8 @@ internal sealed partial class ImportMappingPane
             Width = 14,
             Height = 14,
             IsVisible = PickInFlight() is BridgeMetadataProvenance.ExternalRelease applying
-                && applying.Source == choice.Source
-                && applying.ReleaseId == choice.ReleaseId,
+                && applying.Record.Catalog == choice.Source
+                && applying.Record.Key == choice.ReleaseId,
         };
         Grid.SetColumn(progress, 1);
         row.Children.Add(progress);

@@ -5,20 +5,22 @@ namespace Bae.Desktop;
 
 /// <summary>
 /// One signals-toolbar badge. Core derives all per-signal state; the UI
-/// iterates and renders these directly. <see cref="Kind"/>
-/// is the snake_case wire name the badge view maps to an icon / label.
+/// iterates and renders these directly.
 /// </summary>
 public sealed class SignalBadge
 {
-    /// <summary>"disc_id" / "barcode" / "catalog".</summary>
-    public string Kind { get; set; } = string.Empty;
+    /// <summary>Which signal this badge stands for. Internal: the generated
+    /// bridge enums are internal, so a public member exposing one is
+    /// inconsistent accessibility (CS0053).</summary>
+    internal BridgeSignalKind Kind { get; set; } = BridgeSignalKind.DiscId;
 
     /// <summary>The badge value (disc-ID hash, barcode digits, catalog number),
     /// or null when an identity signal had no value to show.</summary>
     public string? Value { get; set; }
 
-    /// <summary>The live lookup/match state — the badge's trailing visual.</summary>
-    public SignalBadgeState State { get; set; } = new();
+    /// <summary>The live lookup/match state — the badge's trailing visual.
+    /// Internal for the same reason as <see cref="Kind"/>.</summary>
+    internal BridgeSignalState State { get; set; } = new BridgeSignalState.Skipped();
 
     /// <summary>Whether the run asks about none of this signal's values.
     /// Excluded badges still render (dimmed, struck through) so the row stays
@@ -37,21 +39,4 @@ public sealed class SignalBadgeOption
 {
     public string Value { get; set; } = string.Empty;
     public bool Chosen { get; set; }
-}
-
-/// <summary>
-/// A badge's live lookup state. <see cref="Count"/> is set for "found",
-/// <see cref="Failure"/> for "failed", both null otherwise. The locale never
-/// crosses the bridge, so the failed state carries the generated bridge
-/// failure, not a prose message.
-/// </summary>
-public sealed class SignalBadgeState
-{
-    /// <summary>"looking_up" / "found" / "no_match" / "skipped" / "failed".</summary>
-    public string Kind { get; set; } = string.Empty;
-    public uint? Count { get; set; }
-
-    /// <summary>The structured lookup failure for the "failed" state; null
-    /// otherwise. The badge resolves its localized line from this.</summary>
-    internal BridgeLookupFailure? Failure { get; set; }
 }

@@ -590,7 +590,7 @@ internal static partial class NativeBae
         CaptureError(() => handle.SetPrefillWithTags(enabled));
 
     internal static string? SetMetadataSourceEnabled(
-        AppHandle handle, BridgeMetadataSource source, bool enabled) =>
+        AppHandle handle, BridgeCatalog source, bool enabled) =>
         CaptureError(() => handle.SetMetadataSourceEnabled(source, enabled));
 
     internal static BridgeConfig GetConfig(AppHandle handle) => handle.GetConfig();
@@ -941,7 +941,7 @@ internal static partial class NativeBae
 
     internal static LiveSubscription SubscribeReleaseLibraryStatus(
         AppHandle handle,
-        BridgeMetadataSource source,
+        BridgeCatalog source,
         string releaseId,
         string? sourceGroupId,
         Action<BridgeLibraryStatus> onValue,

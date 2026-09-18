@@ -81,18 +81,18 @@ internal sealed partial class SettingsWindow
         List<Action<Settings>> renderers)
     {
         host.Children.Clear();
-        foreach (var entry in fresh.MetadataSources)
+        foreach (var entry in fresh.LookupCatalogs)
         {
             var box = new CheckBox
             {
                 Content = Loc.Chrome(
                     "settings.import.search_source",
                     "source",
-                    BaeBridgeMethods.BridgeMetadataSourceName(entry.Source)),
+                    BaeBridgeMethods.BridgeCatalogName(entry.Catalog)),
                 IsChecked = entry.Availability == BridgeSourceAvailability.On,
                 IsEnabled = entry.CanChange,
             };
-            var source = entry.Source;
+            var catalog = entry.Catalog;
             box.IsCheckedChanged += (_, _) =>
             {
                 if (_refreshingSettings)
@@ -101,7 +101,7 @@ internal sealed partial class SettingsWindow
                 }
                 WriteSetting(
                     () => _app.Settings.SetMetadataSourceEnabled(
-                        source, box.IsChecked == true),
+                        catalog, box.IsChecked == true),
                     () => RenderCurrent(renderers));
             };
             host.Children.Add(box);

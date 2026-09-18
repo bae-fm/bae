@@ -394,7 +394,7 @@ struct FixtureDuplicateList: View {
             self.assertEqual(
                 BOUNDARY.check(root),
                 [
-                    f"{relative}:198: repeated Avalonia child TextBlock reaches "
+                    f"{relative}:205: repeated Avalonia child TextBlock reaches "
                     "entity-data owner AppService"
                 ],
             )
