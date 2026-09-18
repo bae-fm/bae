@@ -28,8 +28,9 @@ pub(crate) struct ScannedCandidateKey {
     pub candidate_path: String,
 }
 
-/// Scan-side rows a candidate save carries in its transaction, because they
-/// describe the same file shape the save is checked against.
+/// Rows a candidate save carries in its transaction beside the candidate's
+/// own: the scan-side rows that describe the same file shape the save is
+/// checked against, and the choices a pick in the save confirms.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct CandidateSaveExtras {
     /// The File Tags reading the draft was projected from, stored under the
@@ -39,6 +40,13 @@ pub(crate) struct CandidateSaveExtras {
     /// the saved file decisions. Their scan rows are rewritten to this shape
     /// and stamped with the saved file revision.
     pub reshaped_files: Option<Vec<(String, CategorizedFiles)>>,
+    /// Whether the save lands a pick that confirms what the candidate's
+    /// identification asks about: a number the picked record carries and the
+    /// folder prints becomes a chosen one, read against the stored choices
+    /// and written back inside this same transaction — so no reader sees the
+    /// pick without the choice it made, and no choice written in between is
+    /// overwritten. A save that lands no pick asks for nothing.
+    pub confirms_pick: bool,
 }
 
 /// What a save did.
@@ -192,6 +200,15 @@ pub(super) fn save_preparation_on(
     )?;
     delete_file_edits(sql, content_hash)?;
     insert_file_edits(sql, content_hash, &prep.file_edits)?;
+    if extras.confirms_pick {
+        let current = lookup_choice_rows::load_lookup_choice_rows_on(sql, Some(content_hash))?
+            .assemble()
+            .remove(content_hash)
+            .unwrap_or_default();
+        if let Some(confirmed) = prep.choices_confirming_pick(&current) {
+            lookup_choice_rows::replace_lookup_choices_on(sql, content_hash, &confirmed)?;
+        }
+    }
 
     let reshaped = match &extras.reshaped_files {
         None => Vec::new(),

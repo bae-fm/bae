@@ -186,7 +186,9 @@ internal sealed class ReleaseActionDialogs
             {
                 _app.Import.ClearCandidateSearch(key);
                 results.ResumePipeline();
-                choices = LookupChoiceEdits.Discounting(choices, value);
+                // Nothing is picked while the release is being re-identified,
+                // so counting a number again chooses nothing.
+                choices = LookupChoiceEdits.Discounting(choices, value, null);
                 _app.Import.AutoIdentifyRelease(key, releaseId, choices);
             }
 

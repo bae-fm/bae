@@ -771,6 +771,39 @@ struct LookupToggleTests {
             added.toggling(.catalog("LBL 001")).chosenCatalogs == ["LBL 002"]
         )
     }
+
+    /// A struck-out number is not one the run looks up: striking it out
+    /// takes it out of the chosen numbers, whatever else stands.
+    @Test("striking a number out takes it out of the numbers looked up")
+    func strikingOutUnchooses() {
+        let struck = Self.choices.discounting("LBL 001", pickedNumber: nil)
+        #expect(struck.discountedCatalogs == ["LBL 001", "LBL 100"])
+        #expect(struck.chosenCatalogs.isEmpty)
+        #expect(struck.excludedBarcodes == ["9999999999999"])
+        #expect(!struck.discIdExcluded)
+    }
+
+    /// Counting a number again chooses it only when it is the picked
+    /// record's own: keeping that agreement is what chose it.
+    @Test("counting a number again re-chooses it only for the picked record")
+    func countingAgainRechoosesThePickedNumber() {
+        let picked = Self.choices.discounting(
+            "LBL 100",
+            pickedNumber: "LBL 100"
+        )
+        #expect(picked.discountedCatalogs.isEmpty)
+        #expect(picked.chosenCatalogs == ["LBL 001", "LBL 100"])
+
+        let other = Self.choices.discounting("LBL 100", pickedNumber: "LBL 200")
+        #expect(other.discountedCatalogs.isEmpty)
+        #expect(other.chosenCatalogs == ["LBL 001"])
+
+        #expect(
+            Self.choices.discounting("LBL 100", pickedNumber: nil)
+                .chosenCatalogs
+                == ["LBL 001"]
+        )
+    }
 }
 
 /// A pick being read is not yet a pick. Its row says so — a spinner, and no

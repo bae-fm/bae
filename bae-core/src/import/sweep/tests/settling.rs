@@ -702,3 +702,76 @@ async fn two_distinct_pressings_do_not_settle() {
         QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
     );
 }
+
+/// The sweep's settle is a pick like any other: a disc-ID lead whose release
+/// carries a number the folder prints lands with that number chosen, in the
+/// folder's spelling, with nobody touching the toolbar.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn settling_a_lead_chooses_the_number_the_folder_prints() {
+    let fixture = Fixture::new("settle-chooses-catalog").await;
+    let dir = fixture.disc_id_candidate("NJ-8255");
+    let probed = fixture.probed_total_ms(&dir);
+
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json_with_catalog("mb-catalog-1", "rg-catalog-1", &[probed, 0], "NJ 8255"),
+    );
+    fixture.provider.route(
+        "/release/mb-catalog-1?",
+        200,
+        release_json_with_catalog("mb-catalog-1", "rg-catalog-1", &[probed, 0], "NJ 8255"),
+    );
+    fixture.scan(1).await;
+
+    fixture.sweep_once().await;
+
+    let pane = fixture
+        .pane(&dir)
+        .await
+        .expect("the settled candidate has a pane");
+    assert_eq!(
+        pane.metadata_provenance,
+        Some(crate::import::MetadataProvenance::ExternalRelease {
+            record: crate::import::MetadataRef::new(
+                crate::import::Catalog::MusicBrainz,
+                "mb-catalog-1".to_string()
+            ),
+            partners: vec![],
+        })
+    );
+    assert_eq!(
+        pane.lookup_choices.chosen_catalogs,
+        vec!["NJ-8255".to_string()],
+        "the number the record carries, as the folder prints it"
+    );
+}
+
+/// `release_json` for a release that carries `catalog_number`.
+fn release_json_with_catalog(
+    release_id: &str,
+    group_id: &str,
+    track_lengths: &[u64],
+    catalog_number: &str,
+) -> String {
+    let mut release: serde_json::Value =
+        serde_json::from_str(&release_json(release_id, group_id, track_lengths))
+            .expect("release fixture parses");
+    release["label-info"] = serde_json::json!([{ "catalog-number": catalog_number }]);
+    release.to_string()
+}
+
+/// `discid_json` for a release that carries `catalog_number`.
+fn discid_json_with_catalog(
+    release_id: &str,
+    group_id: &str,
+    track_lengths: &[u64],
+    catalog_number: &str,
+) -> String {
+    let mut answer: serde_json::Value =
+        serde_json::from_str(&discid_json(release_id, group_id, track_lengths))
+            .expect("the disc ID fixture parses");
+    answer["releases"][0]["label-info"] = serde_json::json!([{ "catalog-number": catalog_number }]);
+    answer.to_string()
+}

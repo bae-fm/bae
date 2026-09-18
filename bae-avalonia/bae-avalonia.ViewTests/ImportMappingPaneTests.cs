@@ -230,10 +230,11 @@ public sealed class ImportMappingPaneTests
         Assert.Empty(Assert.Single(writes).DiscountedCatalogs);
     }
 
-    // Striking a number out is not the same decision as taking one out of the
-    // run: the numbers the run looks up are carried through untouched.
+    // A struck-out number is not one the run looks up: striking it out takes
+    // it out of the chosen numbers, and leaves every other decision where it
+    // was.
     [AvaloniaFact]
-    public void StrikingANumberOutLeavesWhatTheRunLooksUpAlone()
+    public void StrikingANumberOutTakesItOutOfWhatTheRunLooksUp()
     {
         var writes = new List<BridgeLookupChoices>();
         var detail = Detail(
@@ -255,7 +256,7 @@ public sealed class ImportMappingPaneTests
 
         var written = Assert.Single(writes);
         Assert.True(written.DiscIdExcluded);
-        Assert.Equal(new[] { "BST 84055" }, written.ChosenCatalogs);
+        Assert.Empty(written.ChosenCatalogs);
         Assert.Equal(new[] { "BST 84055" }, written.DiscountedCatalogs);
     }
 

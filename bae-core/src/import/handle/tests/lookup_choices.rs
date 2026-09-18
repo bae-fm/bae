@@ -1,5 +1,6 @@
 use super::*;
 use crate::import::{ChoiceChange, LookupChoices};
+use serial_test::serial;
 
 /// The choices a person makes about what a run asks come back with the
 /// candidate: the pane reads them off its own value rather than out of a run
@@ -81,4 +82,221 @@ async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
         "writing the same lookups again asks nothing new of the providers"
     );
     shut_down(handle).await;
+}
+
+/// A number in both lists is the person contradicting themselves, and the
+/// write settles it the one way it can go: struck out is not chosen.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_struck_out_number_is_written_as_not_chosen() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    handle
+        .set_candidate_lookup_choices(
+            &key,
+            LookupChoices {
+                chosen_catalogs: vec!["WPCR-80001".to_string(), "NJ 8255".to_string()],
+                discounted_catalogs: vec!["NJ-8255".to_string()],
+                ..LookupChoices::default()
+            },
+        )
+        .await
+        .unwrap();
+    let stored = pane(&handle, &key).await.lookup_choices;
+    shut_down(handle).await;
+    assert_eq!(stored.chosen_catalogs, vec!["WPCR-80001".to_string()]);
+    assert_eq!(stored.discounted_catalogs, vec!["NJ-8255".to_string()]);
+}
+
+/// The folder prints `NJ-8255` and the picked record carries `NJ 8255`: the
+/// agreement the person sees kept is the number, and keeping it chooses it —
+/// in the folder's own spelling, which is what the marks fold sightings by.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn picking_a_record_the_folder_prints_the_number_of_chooses_it() {
+    let (handle, _tmp, key, hash) = pane_fixture().await;
+    store_settled_text(&handle, &hash, "NJ-8255").await;
+    seed_mb_release_with_catalog("chosen-mb-rel-1", "NJ 8255");
+
+    pick(&handle, &key, "chosen-mb-rel-1").await;
+
+    let chosen = pane(&handle, &key).await.lookup_choices.chosen_catalogs;
+    shut_down(handle).await;
+    assert_eq!(chosen, vec!["NJ-8255".to_string()]);
+}
+
+/// A number the folder does not print is nothing the person saw kept, so the
+/// pick chooses nothing.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn picking_a_record_whose_number_the_folder_does_not_print_chooses_nothing() {
+    let (handle, _tmp, key, hash) = pane_fixture().await;
+    store_settled_text(&handle, &hash, "NJ-8255").await;
+    seed_mb_release_with_catalog("chosen-mb-rel-2", "ZZ 9999");
+
+    pick(&handle, &key, "chosen-mb-rel-2").await;
+
+    let chosen = pane(&handle, &key).await.lookup_choices.chosen_catalogs;
+    shut_down(handle).await;
+    assert!(chosen.is_empty(), "nothing was confirmed: {chosen:?}");
+}
+
+/// A number the person struck out stays struck out through the pick: it was
+/// not kept, so it is not chosen.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn picking_a_record_whose_number_is_struck_out_chooses_nothing() {
+    let (handle, _tmp, key, hash) = pane_fixture().await;
+    store_settled_text(&handle, &hash, "NJ-8255").await;
+    handle
+        .set_candidate_lookup_choices(
+            &key,
+            LookupChoices {
+                discounted_catalogs: vec!["NJ-8255".to_string()],
+                ..LookupChoices::default()
+            },
+        )
+        .await
+        .unwrap();
+    seed_mb_release_with_catalog("chosen-mb-rel-3", "NJ 8255");
+
+    pick(&handle, &key, "chosen-mb-rel-3").await;
+
+    let stored = pane(&handle, &key).await.lookup_choices;
+    shut_down(handle).await;
+    assert!(stored.chosen_catalogs.is_empty(), "{stored:?}");
+    assert_eq!(stored.discounted_catalogs, vec!["NJ-8255".to_string()]);
+}
+
+/// A second record with the same number confirms what is already chosen:
+/// the number is chosen once.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_second_pick_with_the_same_number_chooses_it_once() {
+    let (handle, _tmp, key, hash) = pane_fixture().await;
+    store_settled_text(&handle, &hash, "NJ-8255").await;
+    seed_mb_release_with_catalog("chosen-mb-rel-4", "NJ 8255");
+    seed_mb_release_with_catalog("chosen-mb-rel-5", "NJ-8255");
+
+    pick(&handle, &key, "chosen-mb-rel-4").await;
+    pick(&handle, &key, "chosen-mb-rel-5").await;
+
+    let chosen = pane(&handle, &key).await.lookup_choices.chosen_catalogs;
+    shut_down(handle).await;
+    assert_eq!(chosen, vec!["NJ-8255".to_string()]);
+}
+
+/// Store the signals a run settled on for the fixture's candidate: its own
+/// text stating `printed` — the folder's name — classified as a catalog
+/// number sighting in that spelling.
+async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &str) {
+    let prep = handle
+        .library_manager
+        .load_import_candidate_preparation(hash)
+        .await
+        .unwrap()
+        .expect("the fixture candidate is prepared");
+    let stored = handle
+        .preparations
+        .store_verdict(&crate::db::NewImportCandidateVerdict {
+            candidate: crate::import::CandidateAsRead {
+                content_hash: hash.to_string(),
+                file_edit_revision: prep.file_edit_revision,
+                metadata_revision: prep.metadata_revision,
+            },
+            folder_path: String::new(),
+            verdict: crate::identify::TerminalVerdict::ManualOnly {
+                track_count: 1,
+                ledger: None,
+            },
+            signals: crate::signals::Signals {
+                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                verification: None,
+                barcode: crate::signals::BarcodeSignal::Absent,
+                text: crate::signals::TextSignal::Settled {
+                    catalogs: vec![crate::signals::SourcedValue::new(
+                        printed.to_string(),
+                        crate::signals::SignalOrigin::FolderName,
+                    )],
+                    free_text: Vec::new(),
+                },
+                text_pool: vec![crate::signals::TextLine {
+                    text: printed.to_string(),
+                    origin: crate::signals::SignalOrigin::FolderName,
+                    file: None,
+                    region: None,
+                }],
+                durations: crate::import::probe::SourceDurations::totalling(1_000),
+            },
+            metadata: None,
+        })
+        .await
+        .unwrap();
+    assert!(stored, "the settled signals land on the fixture candidate");
+}
+
+async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &str) {
+    handle
+        .select_candidate_metadata_provenance(
+            key.to_string(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    release_id.to_string(),
+                ),
+                partners: vec![],
+            },
+        )
+        .await
+        .unwrap();
+}
+
+/// A one-track MusicBrainz release carrying `catalog_number`, in no release
+/// group: a group would have the pick fetch its front cover from the archive,
+/// which no test serves.
+fn seed_mb_release_with_catalog(release_id: &str, catalog_number: &str) {
+    let response = crate::musicbrainz::MbReleaseResponse {
+        id: release_id.to_string(),
+        title: "Album Title".to_string(),
+        date: Some("1996".to_string()),
+        country: Some("US".to_string()),
+        barcode: None,
+        artist_credit: vec![crate::musicbrainz::MbArtistCredit {
+            name: "Artist Name".to_string(),
+            artist: Some(crate::musicbrainz::MbArtistRef {
+                id: Some("mb-artist-1".to_string()),
+                name: Some("Artist Name".to_string()),
+                sort_name: Some("Artist Name".to_string()),
+            }),
+        }],
+        release_group: None,
+        label_info: vec![crate::musicbrainz::MbLabelInfo {
+            label: Some(crate::musicbrainz::MbLabel {
+                name: Some("Label Name".to_string()),
+            }),
+            catalog_number: Some(catalog_number.to_string()),
+        }],
+        media: vec![crate::musicbrainz::MbMedium {
+            discs: vec![],
+            format: Some("CD".to_string()),
+            tracks: vec![crate::musicbrainz::MbTrack {
+                position: Some(1),
+                number: Some("1".to_string()),
+                title: None,
+                length: None,
+                recording: Some(crate::musicbrainz::MbRecording {
+                    id: None,
+                    title: Some("Track One".to_string()),
+                    artist_credit: vec![],
+                    relations: vec![],
+                }),
+                artist_credit: vec![],
+            }],
+        }],
+        relations: vec![],
+        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
+    };
+    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
+    crate::musicbrainz::seed_release_cache(release_id, raw_json);
 }

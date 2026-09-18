@@ -42,11 +42,37 @@ pub struct LookupChoices {
     /// A set, each value once: nothing dispatches on their order, and a value
     /// is struck out or it is not. Nothing here reaches a provider — striking
     /// a number out changes how the answers in hand are ranked, not what was
-    /// asked for them — so a number can be looked up and struck out at once.
+    /// asked for them. A struck-out number is never a chosen one: striking it
+    /// out takes it out of `chosen_catalogs`, and [`Self::normalized`] is
+    /// what every write goes through to keep the two apart.
     pub discounted_catalogs: Vec<String>,
 }
 
 impl LookupChoices {
+    /// This value with its one rule enforced: a number the person struck out
+    /// is not one the run looks up, and a number is chosen once however it is
+    /// spelled. Numbers are compared as the text is searched, with case and
+    /// punctuation dropped, so `NJ-8255` struck out takes `NJ 8255` out of
+    /// the chosen ones. The first spelling of a chosen number stands, in the
+    /// order it was chosen.
+    pub fn normalized(mut self) -> Self {
+        let struck_out: Vec<String> = self
+            .discounted_catalogs
+            .iter()
+            .map(|value| crate::identify::squash(value))
+            .collect();
+        let mut kept: Vec<String> = Vec::new();
+        self.chosen_catalogs.retain(|value| {
+            let key = crate::identify::squash(value);
+            if struck_out.contains(&key) || kept.contains(&key) {
+                return false;
+            }
+            kept.push(key);
+            true
+        });
+        self
+    }
+
     /// Whether these two ask the providers the same thing: the same signals
     /// and the same numbers. What the folder's text is taken to state about
     /// the answers is not part of it — that is read afresh every time the
@@ -70,4 +96,47 @@ pub enum ChoiceChange {
     /// about their answers is different. Nothing is asked again; the next
     /// read of the candidate ranks the stored answers by the new value.
     Ranking,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LookupChoices;
+
+    fn strings(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| value.to_string()).collect()
+    }
+
+    /// A number in both lists is struck out, not chosen, whichever way the
+    /// two lists spell it; the chosen numbers that are not struck out keep
+    /// their order.
+    #[test]
+    fn a_struck_out_number_is_not_a_chosen_one() {
+        let normalized = LookupChoices {
+            disc_id_excluded: false,
+            excluded_barcodes: Vec::new(),
+            chosen_catalogs: strings(&["WPCR-80001", "NJ 8255", "COCQ 84487"]),
+            discounted_catalogs: strings(&["nj-8255"]),
+        }
+        .normalized();
+        assert_eq!(
+            normalized.chosen_catalogs,
+            strings(&["WPCR-80001", "COCQ 84487"])
+        );
+        assert_eq!(normalized.discounted_catalogs, strings(&["nj-8255"]));
+    }
+
+    /// One number is chosen once: the second spelling of it is dropped and
+    /// the first stands where it was chosen.
+    #[test]
+    fn a_number_is_chosen_once_however_it_is_spelled() {
+        let normalized = LookupChoices {
+            chosen_catalogs: strings(&["NJ-8255", "WPCR-80001", "NJ 8255"]),
+            ..LookupChoices::default()
+        }
+        .normalized();
+        assert_eq!(
+            normalized.chosen_catalogs,
+            strings(&["NJ-8255", "WPCR-80001"])
+        );
+    }
 }

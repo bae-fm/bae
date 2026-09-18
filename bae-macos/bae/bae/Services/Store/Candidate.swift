@@ -246,15 +246,28 @@ extension BridgeLookupChoices {
     /// This value with `catalog` struck out of what the folder is taken to
     /// state, or counted again when it already was struck out. A set, so it
     /// goes back sorted and each value appears once.
-    func discounting(_ catalog: String) -> BridgeLookupChoices {
+    ///
+    /// A struck-out number is never a chosen one, so striking it out takes it
+    /// out of the numbers the run looks up. Counting it again puts it back
+    /// only when it is the picked record's own number — `pickedNumber` —
+    /// since keeping that agreement is what chose it in the first place.
+    func discounting(
+        _ catalog: String,
+        pickedNumber: String?
+    ) -> BridgeLookupChoices {
         var discounted = Set(discountedCatalogs)
+        var chosen = chosenCatalogs
         if discounted.remove(catalog) == nil {
             discounted.insert(catalog)
+            chosen.removeAll { $0 == catalog }
+        }
+        else if pickedNumber == catalog, !chosen.contains(catalog) {
+            chosen.append(catalog)
         }
         return BridgeLookupChoices(
             discIdExcluded: discIdExcluded,
             excludedBarcodes: excludedBarcodes,
-            chosenCatalogs: chosenCatalogs,
+            chosenCatalogs: chosen,
             discountedCatalogs: discounted.sorted()
         )
     }

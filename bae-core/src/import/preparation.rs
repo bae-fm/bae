@@ -10,7 +10,7 @@
 
 use crate::db::DbCandidateIdentifyResult;
 use crate::import::folder_scanner::CandidateFileEdits;
-use crate::import::{CandidateMetadataDraft, CoverSelection};
+use crate::import::{CandidateMetadataDraft, CoverSelection, LookupChoices, MetadataProvenance};
 use crate::library::LibraryError;
 use crate::signals::Signals;
 use std::collections::BTreeSet;
@@ -153,6 +153,54 @@ pub struct CandidatePreparation {
 }
 
 impl CandidatePreparation {
+    /// The choices a pick confirms, or `None` when the pick confirms nothing
+    /// they do not already say.
+    ///
+    /// A pick lands on a release whose catalog number the folder's own text
+    /// prints, and that number is not struck out: the agreement the person
+    /// sees kept is that number, and keeping it is choosing it — so it joins
+    /// the numbers the run looks up, in the spelling the folder prints it in
+    /// (the first sighting extraction classified that reads as the number
+    /// once normalized), which is the spelling the marks fold sightings by.
+    /// A number the text does not state, one struck out, one already chosen
+    /// however it is spelled, or a draft read from anywhere but a record,
+    /// changes nothing.
+    pub fn choices_confirming_pick(&self, current: &LookupChoices) -> Option<LookupChoices> {
+        let Some(MetadataProvenance::ExternalRelease { .. }) = &self.metadata.provenance else {
+            return None;
+        };
+        let signals = self.signals.as_ref()?;
+        let number = self.metadata.draft.release_edit().pressing.catalog_number;
+        let number = number.trim();
+        if number.is_empty() {
+            return None;
+        }
+        let text = crate::identify::CandidateText::of(
+            &signals.text_pool,
+            &current.discounted_catalogs,
+        );
+        if !text.states_catalog(number) {
+            return None;
+        }
+        let key = crate::identify::squash(number);
+        if current
+            .chosen_catalogs
+            .iter()
+            .any(|chosen| crate::identify::squash(chosen) == key)
+        {
+            return None;
+        }
+        let spelling = signals
+            .text
+            .catalogs()
+            .iter()
+            .find(|sighting| crate::identify::squash(&sighting.value) == key)
+            .map_or_else(|| number.to_string(), |sighting| sighting.value.clone());
+        let mut confirmed = current.clone();
+        confirmed.chosen_catalogs.push(spelling);
+        Some(confirmed.normalized())
+    }
+
     /// The Discogs artists whose image answers this draft needs: the ones the
     /// source credits, plus every new artist with a Discogs identity on the
     /// album or on a track that commits.

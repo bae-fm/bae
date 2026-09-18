@@ -225,3 +225,81 @@ async fn a_row_with_no_record_was_tied_by_nothing() {
         .unwrap();
     assert_eq!(rows(&projection)[0].identified_by, None);
 }
+
+/// A run that settles on a record whose catalog number the folder prints
+/// chooses that number as it lands — so the row and the import preparation
+/// carry the catalog line with nobody touching the toolbar.
+#[tokio::test]
+async fn a_settled_pick_states_the_number_the_folder_prints() {
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    let mut edit = crate::import::pane::blank_candidate_draft(&candidate.files).release_edit();
+    edit.pressing.catalog_number = "NJ 8255".to_string();
+    assert!(crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&NewImportCandidateVerdict {
+            candidate: crate::import::CandidateAsRead {
+                content_hash: candidate.files.content_hash(),
+                file_edit_revision: 0,
+                metadata_revision: 0,
+            },
+            folder_path: candidate.path.to_string_lossy().into_owned(),
+            verdict: verdict("mb-verdict", None),
+            signals: crate::signals::Signals {
+                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                verification: None,
+                barcode: crate::signals::BarcodeSignal::Absent,
+                text: crate::signals::TextSignal::Settled {
+                    catalogs: vec![crate::signals::SourcedValue::new(
+                        "NJ-8255".to_string(),
+                        crate::signals::SignalOrigin::FolderName,
+                    )],
+                    free_text: Vec::new(),
+                },
+                text_pool: vec![crate::signals::TextLine {
+                    text: "NJ-8255".to_string(),
+                    origin: crate::signals::SignalOrigin::FolderName,
+                    file: None,
+                    region: None,
+                }],
+                durations: crate::import::probe::SourceDurations::totalling(1_000),
+            },
+            metadata: Some(crate::import::CandidateMetadataDraft {
+                draft: crate::import::pane::candidate_draft_from_edit(edit).draft,
+                source_discogs_artist_ids: Default::default(),
+                provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
+                    record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-verdict"),
+                    partners: Vec::new(),
+                }),
+                cover: None,
+                assets: crate::import::CandidatePreparedAssets::default(),
+            }),
+        })
+        .await
+        .unwrap());
+
+    let catalog = crate::import::ReleaseMarkLine {
+        kind: crate::import::MarkKind::CatalogNumber,
+        value: "NJ-8255".to_string(),
+        origins: vec![crate::signals::SignalOrigin::FolderName],
+    };
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    assert_eq!(rows(&projection)[0].marks, vec![catalog]);
+    let preparation = db
+        .load_import_candidate_preparation(&candidate.files.content_hash())
+        .await
+        .unwrap()
+        .expect("the settled candidate is prepared");
+    assert_eq!(
+        preparation.marks,
+        vec![crate::import::ReleaseMark {
+            kind: crate::import::MarkKind::CatalogNumber,
+            sighting: crate::signals::SourcedValue::new(
+                "NJ-8255".to_string(),
+                crate::signals::SignalOrigin::FolderName,
+            ),
+        }]
+    );
+}

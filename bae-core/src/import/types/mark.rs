@@ -127,13 +127,16 @@ impl ReleaseMark {
                 }),
         );
         // Every sighting of a chosen number, so the surfaces that stated it
-        // still fold into one line's tags.
+        // still fold into one line's tags. Matched as the text is searched —
+        // punctuation and case dropped — so `NJ-8255` printed on the sleeve
+        // and `NJ 8255` chosen off the record are one number.
         marks.extend(choices.chosen_catalogs.iter().flat_map(|chosen| {
+            let chosen = crate::identify::squash(chosen);
             signals
                 .text
                 .catalogs()
                 .iter()
-                .filter(move |sighting| &sighting.value == chosen)
+                .filter(move |sighting| crate::identify::squash(&sighting.value) == chosen)
                 .map(|sighting| Self {
                     kind: MarkKind::CatalogNumber,
                     sighting: sighting.clone(),
@@ -146,13 +149,19 @@ impl ReleaseMark {
 impl ReleaseMarkLine {
     /// The lines `marks` draw as: one per value, in [`MarkKind::ALL`] order
     /// and, within a kind, in the order the values were first read.
+    ///
+    /// A value is one value however it is punctuated or cased — `NJ-8255` on
+    /// the folder and `NJ 8255` on the scan are one line, spelled as it was
+    /// first read — because that is how the text is searched for it and how
+    /// a chosen number gathers its sightings.
     pub fn fold(marks: &[ReleaseMark]) -> Vec<Self> {
         let mut lines: Vec<Self> = Vec::new();
         for kind in MarkKind::ALL {
             for mark in marks.iter().filter(|mark| mark.kind == kind) {
+                let key = crate::identify::squash(&mark.sighting.value);
                 match lines
                     .iter_mut()
-                    .find(|line| line.kind == kind && line.value == mark.sighting.value)
+                    .find(|line| line.kind == kind && crate::identify::squash(&line.value) == key)
                 {
                     Some(line) => {
                         if !line.origins.contains(&mark.sighting.origin) {
@@ -391,6 +400,40 @@ mod tests {
                 .iter()
                 .all(|mark| mark.kind != MarkKind::CatalogNumber),
             "a folder nobody has decided about carries no catalog number"
+        );
+    }
+
+    /// A number is chosen as the record spells it and printed as the sleeve
+    /// does; both spellings are one number, so a chosen `NJ 8255` folds the
+    /// `NJ-8255` the folder and the scan state into one line.
+    #[test]
+    fn a_chosen_number_folds_its_sightings_however_they_are_punctuated() {
+        let spelled_two_ways = Signals {
+            text: TextSignal::Settled {
+                catalogs: vec![
+                    SourcedValue::new("NJ-8255".to_string(), SignalOrigin::FolderName),
+                    SourcedValue::in_file(
+                        "NJ 8255".to_string(),
+                        SignalOrigin::Artwork,
+                        "back.jpg".to_string(),
+                    ),
+                ],
+                free_text: Vec::new(),
+            },
+            barcode: BarcodeSignal::Absent,
+            disc_id: DiscIdSignal::Absent { track_count: 0 },
+            ..signals()
+        };
+        assert_eq!(
+            ReleaseMarkLine::fold(&ReleaseMark::of_signals(
+                &spelled_two_ways,
+                &choosing(&["NJ 8255"]),
+            )),
+            vec![ReleaseMarkLine {
+                kind: MarkKind::CatalogNumber,
+                value: "NJ-8255".to_string(),
+                origins: vec![SignalOrigin::FolderName, SignalOrigin::Artwork],
+            }],
         );
     }
 

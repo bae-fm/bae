@@ -82,9 +82,15 @@ impl CandidatePreparations {
             prep.assets_prepared = true;
             prep.metadata_revision += 1;
         }
+        // A run that settled on a release is a pick, and confirms the number
+        // that release carries the same way a person's pick does.
+        let extras = CandidateSaveExtras {
+            confirms_pick: true,
+            ..CandidateSaveExtras::default()
+        };
         Ok(matches!(
             self.database
-                .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
+                .save_candidate_preparation(prep, expected, extras)
                 .await?,
             CandidateSaved::Landed(_)
         ))
@@ -179,9 +185,12 @@ impl CandidatePreparations {
             .filter(|asset| required.contains(asset.discogs_artist_id()))
             .cloned()
             .collect();
+        // A file decision lands no pick, so there is no number to confirm;
+        // the choices stand as the person left them.
         let extras = CandidateSaveExtras {
             file_tag_snapshot: None,
             reshaped_files: Some(settled_candidates.to_vec()),
+            confirms_pick: false,
         };
         match self
             .database
@@ -363,6 +372,7 @@ impl CandidatePreparations {
         let extras = CandidateSaveExtras {
             file_tag_snapshot,
             reshaped_files: None,
+            confirms_pick: true,
         };
         match self
             .database

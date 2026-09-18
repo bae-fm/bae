@@ -54,7 +54,8 @@ internal sealed partial class ImportMappingPane
                     signalKey,
                     LookupChoiceEdits.Discounting(
                         _candidate?.LookupChoices ?? LookupChoiceEdits.Untouched(),
-                        value)),
+                        value,
+                        _candidate?.Release?.CatalogNumber)),
                 () => _ = _app.Import.RerunIdentifyForCandidate(signalKey)));
         }
         var matches = EffectiveMatches;

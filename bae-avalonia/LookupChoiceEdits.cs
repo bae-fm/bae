@@ -49,18 +49,30 @@ internal static class LookupChoiceEdits
     /// what the folder is taken to state, or counted again when it already was
     /// struck out. A set, so it goes back sorted and each number once.
     ///
-    /// What the run looks up is untouched: striking a number out asks the
-    /// providers nothing, it only says what their answers are ranked by.
-    /// </summary>
+    /// A struck-out number is never a chosen one, so striking it out takes it
+    /// out of the numbers the run looks up. Counting it again puts it back
+    /// only when it is the picked record's own number —
+    /// <paramref name="pickedCatalogNumber"/> — since keeping that agreement
+    /// is what chose it in the first place.</summary>
     internal static BridgeLookupChoices Discounting(
-        BridgeLookupChoices current, string value)
+        BridgeLookupChoices current, string value, string? pickedCatalogNumber)
     {
         var struckOut = new SortedSet<string>(current.DiscountedCatalogs);
+        var chosen = new List<string>(current.ChosenCatalogs);
         if (!struckOut.Remove(value))
         {
             struckOut.Add(value);
+            chosen.RemoveAll(number => number == value);
         }
-        return current with { DiscountedCatalogs = [.. struckOut] };
+        else if (pickedCatalogNumber == value && !chosen.Contains(value))
+        {
+            chosen.Add(value);
+        }
+        return current with
+        {
+            ChosenCatalogs = [.. chosen],
+            DiscountedCatalogs = [.. struckOut],
+        };
     }
 
     /// <summary>The choices a candidate nobody has touched runs with: nothing
