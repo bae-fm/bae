@@ -141,7 +141,7 @@ impl ReleasePayloads {
     ///
     /// The anchor reads the draft — these are the documents its facts come
     /// from. A set fetched for a partner of a pick says the same about its own
-    /// anchor, and [`crate::import::service::records_for_commit`] is where that
+    /// anchor, and `records_for_commit` is where that
     /// is settled across the releases one pick claims.
     ///
     /// A link to a catalog the anchor already is, is not followed: the

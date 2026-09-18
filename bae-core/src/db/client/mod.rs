@@ -19,6 +19,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 // paths live on the types that carry them.
 #[cfg(any(test, feature = "test-utils"))]
 use std::path::Path;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::str::FromStr;
 use std::sync::Arc;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -3,15 +3,6 @@
 use super::*;
 
 impl LibraryManager {
-    /// Every catalog's description of a release. Empty when no catalog
-    /// describes it.
-    pub async fn get_release_records(
-        &self,
-        release_id: &str,
-    ) -> Result<Vec<crate::import::ReleaseRecord>, LibraryError> {
-        Ok(self.database.get_release_records(release_id).await?)
-    }
-
     /// Test-only: seed records directly. Production writes them only through
     /// `finalize_import_atomic` or `set_records`.
     #[cfg(test)]

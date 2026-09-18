@@ -204,12 +204,15 @@ public sealed class ImportSectionViewTests
         Assert.Contains(
             Loc.Core("core.import.triage.identified_from").ToUpperInvariant(),
             text);
+        // Each link is one text run: the catalog's name and the outbound arrow.
         Assert.Contains(
-            BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.MusicBrainz),
-            text);
+            text,
+            line => line.StartsWith(
+                BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.MusicBrainz)));
         Assert.Contains(
-            BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.Discogs),
-            text);
+            text,
+            line => line.StartsWith(
+                BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.Discogs)));
     }
 
     internal static readonly BridgeReleaseRecord[] PairedRecords =

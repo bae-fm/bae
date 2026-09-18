@@ -3,6 +3,17 @@
 use super::*;
 
 impl LibraryManager {
+    /// Every catalog's description of a release. Empty when no catalog
+    /// describes it. A read every platform makes: the mobile apps draw a
+    /// release's records too, so it lives outside the desktop-only import
+    /// operations.
+    pub async fn get_release_records(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<crate::import::ReleaseRecord>, LibraryError> {
+        Ok(self.database.get_release_records(release_id).await?)
+    }
+
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_audio_format_with_segments_for_test(
         &self,
