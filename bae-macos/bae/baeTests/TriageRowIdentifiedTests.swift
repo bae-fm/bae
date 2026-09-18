@@ -48,43 +48,27 @@ struct TriageRowIdentifiedTests {
         #expect(!lines.carrying(coreString("core.identity.verified")))
     }
 
-    /// The four combinations are four different rows. Each is compared
-    /// against the same row with both facts cleared, which is the row that
-    /// draws no glyph at all — so the pixels are exactly the glyphs.
+    /// Verification stays in the detail: toggling it changes no list pixels.
     @MainActor
-    @Test("each combination of the two facts draws its own glyph set")
-    func eachCombinationDrawsItsOwnGlyphs() async throws {
-        let neither = try await pixels(of: PreviewData.triageRowNeitherGlyph)
-        var drawn: [Data] = []
-        for row in [
-            PreviewData.triageRowSealAndCheck,
-            PreviewData.triageRowSealOnly,
-            PreviewData.triageRowCheckOnly,
-        ] {
-            let rendered = try await pixels(of: row)
-            #expect(rendered != neither, "a glyph is missing from the row")
-            #expect(
-                !drawn.contains(rendered),
-                "two combinations drew the same thing"
-            )
-            drawn.append(rendered)
-        }
-    }
-
-    /// Several pressings in question means no record was chosen, so core
-    /// leaves the seal off; the check is about the bits and stands whatever
-    /// the question. The row shows it beside the question's own chip.
-    @MainActor
-    @Test("the check sits beside the several-matches chip, and no seal does")
-    func theCheckSitsBesideTheMatchesChip() async throws {
+    @Test("rip verification adds no check to a candidate row")
+    func verificationAddsNoListCheck() async throws {
+        #expect(
+            try await pixels(of: PreviewData.triageRowSealAndCheck)
+                == pixels(of: PreviewData.triageRowSealOnly)
+        )
+        #expect(
+            try await pixels(of: PreviewData.triageRowCheckOnly)
+                == pixels(of: PreviewData.triageRowNeitherGlyph)
+        )
+        #expect(
+            try await pixels(of: PreviewData.triageRowSealOnly)
+                != pixels(of: PreviewData.triageRowNeitherGlyph)
+        )
         let row = PreviewData.triageRowCheckBesideMatches
-        #expect(row.identifiedBy == nil)
-        let lines = try await renderedLines(row)
-        #expect(lines.carrying("3 matches"))
-
-        var unglyphed = row
-        unglyphed.verified = false
-        #expect(try await pixels(of: row) != pixels(of: unglyphed))
+        #expect(try await renderedLines(row).carrying("3 matches"))
+        var unverified = row
+        unverified.verified = false
+        #expect(try await pixels(of: row) == pixels(of: unverified))
     }
 
     /// On a selected row the whole text column goes white, and the glyphs

@@ -143,15 +143,13 @@ public sealed class ImportSectionViewTests
         Assert.Empty(RowTrailingText(view));
     }
 
-    // The four combinations of the two facts, each drawing exactly the glyphs
-    // it states and no word: which of them a row holds is core's answer, and
-    // the row draws it without deriving anything.
+    // Identification is stated in the list; rip verification belongs in the pane.
     [AvaloniaTheory]
     [InlineData(true, true)]
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(false, false)]
-    public void EachCombinationOfTheTwoFactsDrawsItsOwnGlyphs(
+    public void RipVerificationNeverAddsACheckToTheList(
         bool identified,
         bool verified)
     {
@@ -169,18 +167,16 @@ public sealed class ImportSectionViewTests
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
         Assert.Equal(identified, HasGlyph(view, "identified-glyph"));
-        Assert.Equal(verified, HasGlyph(view, "verified-glyph"));
+        Assert.False(HasGlyph(view, "verified-glyph"));
         // Neither word is ever drawn: the glyphs are the whole statement.
         Assert.DoesNotContain(Loc.Core("core.identity.identified"), RowText(view));
         Assert.DoesNotContain(Loc.Core("core.identity.verified"), RowText(view));
         Assert.Empty(RowTrailingText(view));
     }
 
-    // Several pressings in question means no record was chosen, so core leaves
-    // the seal off; the check is about the bits and stands whatever the
-    // question. The row shows it beside the question's own chip.
+    // Several matches remain visible without a rip verification check.
     [AvaloniaFact]
-    public void TheCheckSitsBesideTheSeveralMatchesChip()
+    public void SeveralMatchesHaveNoVerificationCheck()
     {
         var placement = new BridgeTriagePlacement.NeedsYou(
             new BridgeNeedsYou.SeveralMatches(3));
@@ -195,7 +191,7 @@ public sealed class ImportSectionViewTests
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
         Assert.False(HasGlyph(view, "identified-glyph"));
-        Assert.True(HasGlyph(view, "verified-glyph"));
+        Assert.False(HasGlyph(view, "verified-glyph"));
         Assert.Equal(
             new[]
             {

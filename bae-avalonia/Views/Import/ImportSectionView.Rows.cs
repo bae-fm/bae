@@ -253,10 +253,8 @@ internal sealed partial class ImportSectionView
         return column;
     }
 
-    // The title, whatever leads it, and after it the two glyphs the row states
-    // its release with. The title takes the width that is left and trims; the
-    // glyphs are fixed, so they never clip — they are the row's answer, the
-    // title only its subject.
+    // The title takes the remaining width and trims; the identification seal
+    // keeps its width so it stays visible.
     private static Control TitleWithGlyphs(
         Control? leading,
         TextBlock title,
@@ -283,11 +281,8 @@ internal sealed partial class ImportSectionView
         return line;
     }
 
-    // A seal when a name read off the folder tied its files to the record its
-    // draft came from, a check when the rip databases found other copies of
-    // the disc carrying the same audio. Either without the other: core decides
-    // both, and nothing here derives either from the lines behind them.
-    // Neither word is ever drawn — pointing at a glyph opens the card.
+    // The seal identifies the chosen record. Rip verification is stated in
+    // the details behind it and in the pane, without a check in the list.
     private static Control IdentityGlyphs(BridgeTriageRow row)
     {
         var glyphs = new StackPanel
@@ -304,14 +299,6 @@ internal sealed partial class ImportSectionView
                 "BaeTextSecondaryBrush",
                 "identified-glyph",
                 Loc.Core("core.identity.identified")));
-        }
-        if (row.Verified)
-        {
-            glyphs.Children.Add(Glyph(
-                Icons.Check,
-                "BaeSuccessBrush",
-                "verified-glyph",
-                Loc.Core("core.identity.verified")));
         }
         if (glyphs.Children.Count > 0)
         {

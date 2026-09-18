@@ -157,9 +157,8 @@ struct TriageRowView: View {
         }
     }
 
-    /// A row nothing has been written about is the folder it came from, drawn
-    /// as the main pane's heading draws it. Its bits can still have matched
-    /// other copies, so the glyphs follow the title here too.
+    /// A row nothing has been written about names the folder it came from,
+    /// as the main pane's heading does.
     private var folderLine: some View {
         HStack(spacing: 6) {
             Image(systemName: "folder")
@@ -176,11 +175,10 @@ struct TriageRowView: View {
     }
 
     /// What the row states about its release, after whichever title it leads
-    /// with. Core decides both facts; the row hands them over as they came.
+    /// with. Core decides whether an identifier tied it to the chosen record.
     private var glyphs: some View {
         IdentityGlyphs(
             identifiedBy: row.identifiedBy,
-            verified: row.verified,
             marks: row.marks,
             verification: row.verification,
             records: records
