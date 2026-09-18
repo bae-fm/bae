@@ -64,10 +64,6 @@ pub(crate) mod test_logs;
 pub mod text_encoding;
 pub mod ui;
 pub mod util;
-// Computing a rip's disc ids and checksums decodes its audio and reads the
-// import pipeline's TOC parsers, both of which are desktop-only.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod verification;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod wikidata;
 

@@ -967,7 +967,6 @@ dependencies = [
  "coreaudio-sys",
  "coven",
  "cpal",
- "crc32fast",
  "dirs",
  "ebur128",
  "ed25519-dalek",
