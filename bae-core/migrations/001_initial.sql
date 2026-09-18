@@ -376,6 +376,9 @@ CREATE TABLE IF NOT EXISTS source_release_payloads (
     --                                     release id — MusicBrainz's URL lookup
     --                                     found it, so nothing in the Discogs
     --                                     document names it back
+    --   'wikidata'                        the Wikidata item a MusicBrainz
+    --                                     release or release group links to,
+    --                                     by item id
     source TEXT NOT NULL,
     source_release_id TEXT NOT NULL,
     -- The document as the provider returned it.

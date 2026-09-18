@@ -110,6 +110,9 @@ pub enum PayloadSource {
     /// direction's is: MusicBrainz's URL lookup endpoint found it, and nothing
     /// in the Discogs document names it back.
     MusicBrainzDiscogsXref,
+    /// A Wikidata item, by item id — read out of the url-rels of the
+    /// MusicBrainz release or release group that names it.
+    Wikidata,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -122,6 +125,7 @@ impl PayloadSource {
             Self::Discogs => "discogs",
             Self::DiscogsMaster => "discogs_master",
             Self::MusicBrainzDiscogsXref => "musicbrainz_discogs_xref",
+            Self::Wikidata => "wikidata",
         }
     }
 
@@ -147,6 +151,7 @@ impl std::str::FromStr for PayloadSource {
             "discogs" => Ok(Self::Discogs),
             "discogs_master" => Ok(Self::DiscogsMaster),
             "musicbrainz_discogs_xref" => Ok(Self::MusicBrainzDiscogsXref),
+            "wikidata" => Ok(Self::Wikidata),
             _ => Err(format!("unknown payload source: {s}")),
         }
     }

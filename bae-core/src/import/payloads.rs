@@ -2,11 +2,12 @@
 //! replayed from them.
 //!
 //! A release is described by more than its own document: MusicBrainz adds a
-//! release group and, where an editor linked one, a Discogs cross-reference
-//! with its master. [`ReleasePayloads`] is that whole set, and every shape the
-//! import surfaces need — the picker's detail, the editor's seed, the commit's
-//! `ParsedAlbum`, the tracklist the Ready rule checks, the cover options the
-//! archive serves — is projected from it without touching the network.
+//! release group, the Wikidata item that group names, and — where an editor
+//! linked one — a Discogs cross-reference with its master. [`ReleasePayloads`]
+//! is that whole set, and every shape the import surfaces need — the picker's
+//! detail, the editor's seed, the commit's `ParsedAlbum`, the tracklist the
+//! Ready rule checks, the cover options the archive serves — is projected from
+//! it without touching the network.
 //!
 //! Each document is stored under the entity it describes, so two releases that
 //! share a release group or a Discogs master share its row. The set is
@@ -26,6 +27,7 @@ use crate::import::{
 };
 use crate::musicbrainz::MbReleaseResponse;
 use crate::util::rate_limiter::CallPriority;
+use crate::wikidata::WikidataEntity;
 use tracing::warn;
 
 /// The catalogs whose documents bae fetches and archives are exactly the ones
@@ -123,6 +125,20 @@ impl ReleasePayloads {
         })
     }
 
+    /// The Wikidata item MusicBrainz's documents named for this release,
+    /// parsed. `None` when no editor linked one, and when the fetch that would
+    /// have archived it failed — either way the release describes itself with
+    /// the records its own catalogs' documents state, and the next
+    /// identification asks Wikidata again.
+    fn wikidata(&self) -> Result<Option<WikidataEntity>, ImportError> {
+        let Some(json) = self.document(PayloadSource::Wikidata) else {
+            return Ok(None);
+        };
+        crate::wikidata::parse_entity(json)
+            .map(Some)
+            .map_err(|e| self.source_data(format!("stored Wikidata item does not parse: {e}")))
+    }
+
     /// The original release year the Discogs master states, falling back to the
     /// release's own year when no master was archived — the same reading the
     /// fetch path does.
@@ -183,6 +199,13 @@ impl ReleasePayloads {
                             key: master,
                         });
                     }
+                }
+                // Wikidata's item for the album carries identifiers for the
+                // catalogs MusicBrainz editors leave unlinked. It is read last,
+                // so what a document bae fetched itself says about a catalog
+                // stands over what the item says about the same one.
+                if let Some(item) = self.wikidata()? {
+                    linked.extend(item.catalog_pages());
                 }
                 (release_group, linked)
             }
@@ -490,6 +513,49 @@ pub async fn fetch(
     })
 }
 
+/// The archived MusicBrainz release-group document among `documents`.
+fn archived_release_group(documents: &[SourcePayload]) -> Option<&str> {
+    documents
+        .iter()
+        .find(|d| d.source == PayloadSource::MusicBrainzReleaseGroup)
+        .map(|d| d.json.as_str())
+}
+
+/// The Wikidata item MusicBrainz names for this release, if an editor linked
+/// one.
+///
+/// An editor files the link on whichever of the release and its group they were
+/// looking at, so both documents state it — which is why the group's own
+/// document has to be in hand before the item's key is knowable. The fetch and
+/// the read-back agree on this reading, so a set reads back with exactly the
+/// item it was archived with.
+fn wikidata_item(
+    release: &MbReleaseResponse,
+    release_group_json: Option<&str>,
+) -> Result<Option<String>, ImportError> {
+    let group = release_group_json
+        .map(crate::musicbrainz::parse_release_group)
+        .transpose()
+        .map_err(|e| ImportError::SourceData {
+            catalog: Catalog::MusicBrainz,
+            detail: format!("stored MusicBrainz release group does not parse: {e}"),
+        })?;
+    let group_urls = group
+        .iter()
+        .flat_map(|group| crate::musicbrainz::relation_urls(&group.relations));
+    let item = release
+        .related_urls()
+        .chain(group_urls)
+        .find_map(|url| match parse_catalog_url(url) {
+            Some(CatalogPage::Release {
+                catalog: Catalog::Wikidata,
+                key,
+            }) => Some(key),
+            _ => None,
+        });
+    Ok(item)
+}
+
 async fn fetch_musicbrainz(
     discogs_client: Option<&DiscogsClient>,
     release_id: &str,
@@ -497,6 +563,16 @@ async fn fetch_musicbrainz(
 ) -> Result<(String, Vec<SourcePayload>), ImportError> {
     let fetched = crate::musicbrainz::fetch_release_with_metadata(release_id, priority).await?;
     let mut supporting: Vec<SourcePayload> = fetched.release_group.into_iter().collect();
+
+    // The Wikidata item is best-effort like the release group: a release
+    // archived without it still describes itself in every catalog its own
+    // documents name, and the next identification asks for the item again.
+    if let Some(item) = wikidata_item(&fetched.response, archived_release_group(&supporting))? {
+        match crate::wikidata::fetch_entity(&item, priority).await {
+            Ok(json) => supporting.push(SourcePayload::new(PayloadSource::Wikidata, &item, json)),
+            Err(e) => warn!("Failed to fetch Wikidata item {item}: {e}"),
+        }
+    }
 
     if let (Some(client), Some(url)) = (discogs_client, fetched.discogs_url.as_deref()) {
         if let Some((_release, xref)) =
@@ -617,7 +693,12 @@ pub(crate) fn load_on(
             {
                 keys.push((PayloadSource::Discogs, key));
             }
-            let supporting = read(&keys)?;
+            let mut supporting = read(&keys)?;
+            // The item is named by a url-rel on the release or on its group, so
+            // the group's document has to be read before its key is knowable.
+            if let Some(item) = wikidata_item(&response, archived_release_group(&supporting))? {
+                supporting.extend(read(&[(PayloadSource::Wikidata, item)])?);
+            }
             // The master is named by the cross-referenced Discogs release.
             let discogs_json = supporting
                 .iter()

@@ -1,5 +1,6 @@
 use super::*;
 use crate::db::DbSourceReleasePayload;
+use serial_test::serial;
 use coven::{FixedClock, SequentialIdProvider};
 use std::sync::Arc;
 
@@ -155,6 +156,37 @@ fn mb_release_with_relations(
             }))
             .collect::<Vec<_>>(),
     })
+}
+
+/// A release-group document whose url-rels name a Wikidata item, which is
+/// where MusicBrainz editors file the link.
+fn wikidata_linked_release_group(item: &str) -> String {
+    serde_json::json!({
+        "relations": [
+            { "url": { "resource": format!("https://www.wikidata.org/wiki/{item}") } }
+        ]
+    })
+    .to_string()
+}
+
+/// One item's entity document, stating the album's key in three catalogs: the
+/// Discogs master nothing else names, plus two catalogs MusicBrainz links to
+/// neither of.
+fn wikidata_item(item: &str) -> String {
+    serde_json::json!({
+        "entities": {
+            item: {
+                "claims": {
+                    "P1954": [{ "mainsnak": { "datavalue": { "value": "909090" } } }],
+                    "P1729": [{ "mainsnak": { "datavalue": { "value": "mw0000424242" } } }],
+                    "P2205": [{
+                        "mainsnak": { "datavalue": { "value": "4242424242424242424242" } }
+                    }]
+                }
+            }
+        }
+    })
+    .to_string()
 }
 
 /// Every URL relation an editor filed on the release or on its release
@@ -328,6 +360,109 @@ fn the_archived_cross_reference_names_the_discogs_master() {
     assert_eq!(discogs.group_key, "909090");
 }
 
+/// Wikidata's item for the album is the hub the catalogs MusicBrainz editors
+/// leave unlinked are reached through: one archived item adds a record per
+/// identifier it states, and fills in the Discogs master nothing else named.
+#[test]
+fn an_archived_wikidata_item_records_the_catalogs_it_identifies() {
+    let payloads = ReleasePayloads {
+        release: MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        anchor: mb_release_with_relations(
+            "mb-release",
+            "mb-group",
+            &["https://www.discogs.com/release/4242"],
+        )
+        .to_string(),
+        supporting: vec![
+            SourcePayload::new(
+                PayloadSource::MusicBrainzReleaseGroup,
+                "mb-group",
+                wikidata_linked_release_group("Q424242"),
+            ),
+            SourcePayload::new(PayloadSource::Wikidata, "Q424242", wikidata_item("Q424242")),
+        ],
+    };
+
+    let records = payloads.records().expect("the stored documents read");
+    let described: Vec<(Catalog, &str, &str, &str)> = records
+        .iter()
+        .map(|record| {
+            (
+                record.catalog,
+                record.key.as_str(),
+                record.group_key.as_str(),
+                record.url.as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        described,
+        vec![
+            (
+                Catalog::MusicBrainz,
+                "mb-release",
+                "mb-group",
+                "https://musicbrainz.org/release/mb-release",
+            ),
+            (
+                Catalog::Discogs,
+                "4242",
+                "909090",
+                "https://www.discogs.com/release/4242",
+            ),
+            (
+                Catalog::AllMusic,
+                "mw0000424242",
+                "mw0000424242",
+                "https://www.allmusic.com/album/mw0000424242",
+            ),
+            (
+                Catalog::Spotify,
+                "4242424242424242424242",
+                "4242424242424242424242",
+                "https://open.spotify.com/album/4242424242424242424242",
+            ),
+            (
+                Catalog::Wikidata,
+                "Q424242",
+                "Q424242",
+                "https://www.wikidata.org/wiki/Q424242",
+            ),
+        ]
+    );
+}
+
+/// A document bae fetched itself outranks what the item says about the same
+/// catalog: MusicBrainz's own link to a Spotify album is an editor looking at
+/// this pressing, and the item describes the album.
+#[test]
+fn a_musicbrainz_link_outranks_the_item_on_the_same_catalog() {
+    let payloads = ReleasePayloads {
+        release: MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        anchor: mb_release_with_relations(
+            "mb-release",
+            "mb-group",
+            &["https://open.spotify.com/album/9090909090909090909090"],
+        )
+        .to_string(),
+        supporting: vec![
+            SourcePayload::new(
+                PayloadSource::MusicBrainzReleaseGroup,
+                "mb-group",
+                wikidata_linked_release_group("Q424242"),
+            ),
+            SourcePayload::new(PayloadSource::Wikidata, "Q424242", wikidata_item("Q424242")),
+        ],
+    };
+
+    let records = payloads.records().expect("the stored documents read");
+    let spotify = records
+        .iter()
+        .find(|record| record.catalog == Catalog::Spotify)
+        .expect("the linked Spotify album is a record");
+    assert_eq!(spotify.key, "9090909090909090909090");
+}
+
 /// A pick claims one release per catalog. What the primary's document says
 /// about another catalog stands, unless the person claimed that catalog
 /// themselves — then their release outranks the cross-link. Only the
@@ -487,4 +622,147 @@ async fn an_unfetched_release_reads_back_as_nothing() {
     .await
     .expect("the read succeeds");
     assert!(payloads.is_none());
+}
+
+/// Records are recomputed from the archived documents, so what Wikidata's item
+/// added at identification time is still there for a commit, a re-identify or a
+/// reset — with nothing asked of the network.
+#[tokio::test]
+async fn an_archived_item_reads_back_with_the_set_offline() {
+    let (database, _dir) = test_database().await;
+    archive(
+        &database,
+        &[
+            (
+                PayloadSource::MusicBrainz,
+                "offline-mb-release",
+                mb_release_with_relations("offline-mb-release", "offline-mb-group", &[]),
+            ),
+            (
+                PayloadSource::MusicBrainzReleaseGroup,
+                "offline-mb-group",
+                serde_json::from_str(&wikidata_linked_release_group("Q424242"))
+                    .expect("the release group document parses"),
+            ),
+            (
+                PayloadSource::Wikidata,
+                "Q424242",
+                serde_json::from_str(&wikidata_item("Q424242"))
+                    .expect("the entity document parses"),
+            ),
+        ],
+    )
+    .await;
+
+    let payloads = load(
+        &database,
+        &MetadataRef::new(Catalog::MusicBrainz, "offline-mb-release"),
+    )
+    .await
+    .expect("the stored set reads back")
+    .expect("the anchor is archived");
+
+    let catalogs: Vec<Catalog> = payloads
+        .records()
+        .expect("the stored documents read")
+        .iter()
+        .map(|record| record.catalog)
+        .collect();
+    assert_eq!(
+        catalogs,
+        vec![
+            Catalog::MusicBrainz,
+            Catalog::AllMusic,
+            Catalog::Spotify,
+            Catalog::Wikidata,
+        ]
+    );
+}
+
+/// Identifying a release archives the Wikidata item its MusicBrainz documents
+/// name, which is what lets the records it adds be read back later without a
+/// second round trip to Wikidata.
+#[tokio::test]
+#[serial(musicbrainz)]
+async fn identification_archives_the_item_musicbrainz_names() {
+    let release_id = "archives-item-mb-release";
+    let group_id = "archives-item-mb-group";
+    crate::musicbrainz::seed_release_cache(
+        release_id,
+        mb_release_with_relations(release_id, group_id, &[]).to_string(),
+    );
+    crate::musicbrainz::seed_release_group_json_cache(
+        group_id,
+        wikidata_linked_release_group("Q424242"),
+    );
+    crate::wikidata::seed_entity_cache("Q424242", Some(wikidata_item("Q424242")));
+
+    let payloads = fetch(
+        None,
+        &MetadataRef::new(Catalog::MusicBrainz, release_id),
+        CallPriority::Interactive,
+    )
+    .await
+    .expect("the release's documents fetch");
+
+    let archived: Vec<(PayloadSource, String)> = payloads
+        .rows(now())
+        .into_iter()
+        .map(|row| (row.source, row.source_release_id))
+        .collect();
+    assert_eq!(
+        archived,
+        vec![
+            (PayloadSource::MusicBrainz, release_id.to_string()),
+            (PayloadSource::MusicBrainzReleaseGroup, group_id.to_string()),
+            (PayloadSource::Wikidata, "Q424242".to_string()),
+        ]
+    );
+    assert!(payloads
+        .records()
+        .expect("the fetched documents read")
+        .iter()
+        .any(|record| record.catalog == Catalog::Spotify));
+}
+
+/// Wikidata not answering is not an identification failure: the release keeps
+/// every record its own catalogs' documents state, including the item the
+/// url-rel named, and the next identification asks for the item again.
+#[tokio::test]
+#[serial(musicbrainz)]
+async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
+    let release_id = "missing-item-mb-release";
+    let group_id = "missing-item-mb-group";
+    crate::musicbrainz::seed_release_cache(
+        release_id,
+        mb_release_with_relations(release_id, group_id, &[]).to_string(),
+    );
+    crate::musicbrainz::seed_release_group_json_cache(
+        group_id,
+        wikidata_linked_release_group("Q909090"),
+    );
+    crate::wikidata::seed_entity_cache("Q909090", None);
+
+    let payloads = fetch(
+        None,
+        &MetadataRef::new(Catalog::MusicBrainz, release_id),
+        CallPriority::Interactive,
+    )
+    .await
+    .expect("a release whose item will not fetch still identifies");
+
+    assert!(
+        !payloads
+            .rows(now())
+            .iter()
+            .any(|row| row.source == PayloadSource::Wikidata),
+        "nothing is archived under an item Wikidata did not return"
+    );
+    let catalogs: Vec<Catalog> = payloads
+        .records()
+        .expect("the fetched documents read")
+        .iter()
+        .map(|record| record.catalog)
+        .collect();
+    assert_eq!(catalogs, vec![Catalog::MusicBrainz, Catalog::Wikidata]);
 }
