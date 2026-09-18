@@ -5114,11 +5114,44 @@ da = "Filmærker"
 nb = "Filmerkelapper"
 fi = "Tiedoston tunnisteet"
 
-[messages."ui.import.metadata.from_file_tags"]
-comment = "Import metadata card: where the selected metadata came from when it was read from the folder's embedded audio-file tags."
+[messages."core.field.origin.typed"]
+comment = "Where one metadata field's value came from: a person entered it by hand."
+value = "Typed"
+
+[messages."core.field.origin.typed".translations]
+es = "Escrito"
+fr = "Saisi"
+de = "Eingegeben"
+"pt-BR" = "Digitado"
+ja = "手入力"
+ko = "직접 입력"
+"zh-Hans" = "手动输入"
+ar = "مُدخَل يدويًا"
+he = "הוזן ידנית"
+uk = "Введено вручну"
+bg = "Въведено ръчно"
+pl = "Wpisane"
+cs = "Zadáno ručně"
+hr = "Ručno uneseno"
+"zh-Hant" = "手動輸入"
+it = "Digitato"
+tr = "Elle girildi"
+nl = "Ingevoerd"
+sk = "Zadané ručne"
+hu = "Beírva"
+ro = "Introdus manual"
+el = "Πληκτρολογήθηκε"
+pt-PT = "Escrito"
+sv = "Inskrivet"
+da = "Indtastet"
+nb = "Skrevet inn"
+fi = "Kirjoitettu"
+
+[messages."core.field.origin.tags"]
+comment = "Where a metadata value came from: the folder's embedded audio-file tags. Shown for a whole draft on the import card and for one field beside its value."
 value = "From file tags"
 
-[messages."ui.import.metadata.from_file_tags".translations]
+[messages."core.field.origin.tags".translations]
 es = "De las etiquetas de los archivos"
 fr = "D’après les tags des fichiers"
 de = "Aus den Datei-Tags"

@@ -2,6 +2,21 @@
     import BaeKit
     import Foundation
 
+    extension BridgeFieldOrigins {
+        /// A form nothing has described yet: no field states where its value
+        /// was read, because no source has filled one.
+        static let unstated = BridgeFieldOrigins(
+            albumTitle: nil,
+            albumYear: nil,
+            pressingYear: nil,
+            format: nil,
+            label: nil,
+            catalogNumber: nil,
+            country: nil,
+            barcode: nil
+        )
+    }
+
     extension PreviewData {
         // MARK: - Config and edit-metadata fixtures
 
@@ -143,7 +158,17 @@
                             trackNumber: Int32(n),
                             file: .standalone(fileId: "\(n).flac")
                         )
-                    }
+                    },
+                origins: BridgeFieldOrigins(
+                    albumTitle: .tags,
+                    albumYear: .tags,
+                    pressingYear: .record(catalog: .musicBrainz),
+                    format: .record(catalog: .musicBrainz),
+                    label: .typed,
+                    catalogNumber: .record(catalog: .musicBrainz),
+                    country: .record(catalog: .musicBrainz),
+                    barcode: nil
+                )
             )
         }
 
@@ -158,6 +183,84 @@
                     existingArtist("Artist Name \(n)", artistId: "artist-\(n)")
                 } + [newArtist("New Artist One"), newArtist("New Artist Two")]
             return draft
+        }
+
+        /// A label the person typed over what the files' tags said, and a
+        /// catalog number the two catalogs describing the release disagree
+        /// about — the two things a field's dot has to say.
+        static let typedLabel = BridgeFieldProvenance(
+            field: .label,
+            origin: .typed,
+            claims: [
+                BridgeFieldClaim(catalog: .musicBrainz, value: "Some Label"),
+                BridgeFieldClaim(catalog: .discogs, value: "Some Label"),
+            ],
+            dot: .typed
+        )
+
+        static let disagreeingCatalogNumber = BridgeFieldProvenance(
+            field: .catalogNumber,
+            origin: .record(catalog: .musicBrainz),
+            claims: [
+                BridgeFieldClaim(catalog: .musicBrainz, value: "CAT-0001"),
+                BridgeFieldClaim(catalog: .discogs, value: "CAT-0001-A"),
+            ],
+            dot: .disagreement
+        )
+
+        /// One entry per album-level field of `editMetadataDraft`, as core
+        /// reads that draft: a typed label, a catalog number the two catalogs
+        /// disagree about, and nothing to say about the rest.
+        static func fieldProvenance() -> [BridgeFieldProvenance] {
+            let agreed = { (catalog: String) in
+                [
+                    BridgeFieldClaim(catalog: .musicBrainz, value: catalog),
+                    BridgeFieldClaim(catalog: .discogs, value: catalog),
+                ]
+            }
+            return [
+                BridgeFieldProvenance(
+                    field: .albumTitle,
+                    origin: .tags,
+                    claims: agreed("Album Title"),
+                    dot: nil
+                ),
+                BridgeFieldProvenance(
+                    field: .albumYear,
+                    origin: .tags,
+                    claims: agreed("1983"),
+                    dot: nil
+                ),
+                BridgeFieldProvenance(
+                    field: .pressingYear,
+                    origin: .record(catalog: .musicBrainz),
+                    claims: agreed("1997"),
+                    dot: nil
+                ),
+                BridgeFieldProvenance(
+                    field: .format,
+                    origin: .record(catalog: .musicBrainz),
+                    claims: agreed("CD"),
+                    dot: nil
+                ),
+                typedLabel,
+                disagreeingCatalogNumber,
+                BridgeFieldProvenance(
+                    field: .country,
+                    origin: .record(catalog: .musicBrainz),
+                    claims: agreed("US"),
+                    dot: nil
+                ),
+                BridgeFieldProvenance(
+                    field: .barcode,
+                    origin: nil,
+                    claims: [
+                        BridgeFieldClaim(catalog: .musicBrainz, value: nil),
+                        BridgeFieldClaim(catalog: .discogs, value: nil),
+                    ],
+                    dot: nil
+                ),
+            ]
         }
 
         static func releaseEditSeed(trackCount: Int) -> BridgeReleaseEditSeed {
@@ -196,7 +299,8 @@
                                 sideHeaderKey: nil
                             )
                         }
-                )
+                ),
+                fieldProvenance: fieldProvenance()
             )
         }
 
@@ -210,7 +314,11 @@
                     releaseEditSeed(trackCount: 5)
                 },
                 resetReleaseEditToSource: { _ in
-                    releaseEditSeed(trackCount: 5).edit
+                    let seed = releaseEditSeed(trackCount: 5)
+                    return BridgeReleaseFormReset(
+                        edit: seed.edit,
+                        fieldProvenance: seed.fieldProvenance
+                    )
                 }
             )
         }

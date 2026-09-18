@@ -362,7 +362,8 @@ extension MappingFixtures {
             country: nil,
             barcode: nil
         ),
-        tracks: []
+        tracks: [],
+        origins: .unstated
     )
 
     static let albumEdit = BridgeRawReleaseEdit(
@@ -377,7 +378,8 @@ extension MappingFixtures {
             country: "",
             barcode: ""
         ),
-        tracks: []
+        tracks: [],
+        origins: .unstated
     )
 
     static let blankEdit = BridgeRawReleaseEdit(
@@ -392,7 +394,8 @@ extension MappingFixtures {
             country: "",
             barcode: ""
         ),
-        tracks: []
+        tracks: [],
+        origins: .unstated
     )
 
     /// The release the fixture folder is picked as, as its documents describe
@@ -490,6 +493,7 @@ extension MappingFixtures {
             fileEvidence: [],
             metadataDraft: edit,
             metadataDraftIsBlank: edit.albumTitle.isEmpty,
+            fieldProvenance: PreviewData.fieldProvenance(),
             metadataProvenance: metadataProvenance,
             metadataAuthor: metadataAuthor
                 ?? (metadataProvenance == nil ? .nobody : .user),

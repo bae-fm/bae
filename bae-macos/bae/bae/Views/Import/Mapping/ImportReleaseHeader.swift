@@ -43,6 +43,8 @@ struct ImportReleaseHeader: View {
     let hasCoverOptions: Bool
     /// `nil` when there is no release to edit.
     let editValues: BridgeRawReleaseEdit?
+    /// One entry per album-level field of that draft, as core reads them.
+    let editProvenance: [BridgeFieldProvenance]
     /// Where a typed field's value goes.
     let editActions: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
@@ -79,6 +81,7 @@ struct ImportReleaseHeader: View {
             if let editValues {
                 ReleaseMetadataHeader(
                     values: editValues,
+                    provenance: editProvenance,
                     writer: editActions,
                     editingCommands: editingCommands,
                     cover: { cover },
@@ -313,6 +316,7 @@ struct ImportReleaseHeader: View {
             coverContent: nil,
             hasCoverOptions: true,
             editValues: PreviewData.confirmEditValues,
+            editProvenance: PreviewData.fieldProvenance(),
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
             commit: nil,

@@ -589,6 +589,16 @@ pub struct ReleaseEditSeed {
     pub display: crate::album_detail::ReleaseEditDisplayContext,
 }
 
+/// A release's form as its source states it again, with what describes each of
+/// its fields — what a reset hands the editor. The reset writes nothing, so
+/// the cover and the read-only context the sheet already holds stay as they
+/// are and only these two change.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseFormReset {
+    pub edit: RawReleaseEdit,
+    pub field_provenance: Vec<FieldProvenance>,
+}
+
 /// Trim a raw pressing field; empty (after trim) becomes `None`.
 fn trim_to_option(raw: &str) -> Option<String> {
     let trimmed = raw.trim();

@@ -23,6 +23,7 @@ struct ReleaseMetadataEditorContent: View {
         VStack(alignment: .leading, spacing: 20) {
             ReleaseMetadataHeader(
                 values: session.form,
+                provenance: session.fieldProvenance,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 cover: { cover },

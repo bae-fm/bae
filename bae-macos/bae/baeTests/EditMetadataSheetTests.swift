@@ -50,7 +50,12 @@ struct EditMetadataSheetTests {
             save: { releaseId, edit in
                 await recorder.record(releaseId, edit)
             },
-            reset: { _ in seed.edit }
+            reset: { _ in
+                BridgeReleaseFormReset(
+                    edit: seed.edit,
+                    fieldProvenance: seed.fieldProvenance
+                )
+            }
         )
         await session.fieldWriter.setField(.albumTitle, "Saved title")
 
@@ -78,19 +83,23 @@ struct EditMetadataSheetTests {
         let recorder = SavedEditRecorder()
         var seed = PreviewData.releaseEditSeed(trackCount: 2)
         seed.edit.albumTitle = "Original title"
-        let resetEdit = seed.edit
+        let reset = BridgeReleaseFormReset(
+            edit: seed.edit,
+            fieldProvenance: seed.fieldProvenance
+        )
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
             save: { releaseId, edit in
                 await recorder.record(releaseId, edit)
             },
-            reset: { _ in resetEdit }
+            reset: { _ in reset }
         )
         let size = NSSize(width: 900, height: 500)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ReleaseMetadataHeader(
                 values: session.form,
+                provenance: session.fieldProvenance,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 cover: { EmptyView() },
@@ -201,12 +210,15 @@ struct EditMetadataSheetTests {
                 )
             ]
         }
-        let resetEdit = seed.edit
+        let reset = BridgeReleaseFormReset(
+            edit: seed.edit,
+            fieldProvenance: seed.fieldProvenance
+        )
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
             save: { _, _ in },
-            reset: { _ in resetEdit }
+            reset: { _ in reset }
         )
         let size = NSSize(width: width, height: 700)
         let (window, host) = SnapshotTestSupport.hostInWindow(
@@ -247,7 +259,12 @@ struct EditMetadataSheetTests {
             releaseId: "release-test",
             seed: seed,
             onSave: { _ in },
-            onReset: { seed.edit },
+            onReset: {
+                BridgeReleaseFormReset(
+                    edit: seed.edit,
+                    fieldProvenance: seed.fieldProvenance
+                )
+            },
             onSaved: {},
             onCancel: {}
         )

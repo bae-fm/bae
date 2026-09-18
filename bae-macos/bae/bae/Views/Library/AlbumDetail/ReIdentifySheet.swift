@@ -370,10 +370,10 @@ extension ReIdentifySheet {
         let releaseId = self.releaseId
         commitTask = Task { @MainActor in
             do {
-                let raw = try await releaseEditor.resetReleaseEditToSource(
+                let reset = try await releaseEditor.resetReleaseEditToSource(
                     releaseId
                 )
-                let shaped = shapeReleaseEdit(raw: raw)
+                let shaped = shapeReleaseEdit(raw: reset.edit)
                 guard case .valid(let edit) = shaped else {
                     if case .invalid(let reason) = shaped {
                         phase = .error(reason.localizedMessage)

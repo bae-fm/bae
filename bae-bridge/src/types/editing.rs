@@ -606,15 +606,18 @@ pub fn bridge_field_name(field: BridgeCandidateEditField) -> String {
     field.into_core().as_str().to_string()
 }
 
-/// One field as a person typing over it leaves it.
+/// One field as a person typing `value` into it leaves it.
 ///
 /// A form a surface holds until it is saved has no stored origin to read yet,
 /// so the dot it draws while a person types is this one — core's own rule,
 /// asked rather than re-derived.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
-pub fn bridge_typed_field_provenance(provenance: BridgeFieldProvenance) -> BridgeFieldProvenance {
-    BridgeFieldProvenance::from_core(provenance.into_core().typed())
+pub fn bridge_typed_field_provenance(
+    provenance: BridgeFieldProvenance,
+    value: String,
+) -> BridgeFieldProvenance {
+    BridgeFieldProvenance::from_core(provenance.into_core().typed(&value))
 }
 
 /// Raw edit-metadata form values, exactly as the editor holds them — text
@@ -631,6 +634,14 @@ pub struct BridgeRawReleaseEdit {
     /// Where each album-level value above came from, so a form that is saved
     /// tells core what it was told.
     pub origins: BridgeFieldOrigins,
+}
+
+/// A release's form as its source states it again, with what describes each of
+/// its fields. Mirrors `bae_core::import::ReleaseFormReset`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseFormReset {
+    pub edit: BridgeRawReleaseEdit,
+    pub field_provenance: Vec<BridgeFieldProvenance>,
 }
 
 /// The raw edit form for one library release plus core's answer about whether

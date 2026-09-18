@@ -215,8 +215,8 @@ pub use types::{
     EditValidationError, ExistingArtist, FieldClaim, FieldClaims, FieldDot, FieldOrigin,
     FieldOrigins, FieldProvenance, FieldValues, MetadataProvenance, NewArtistSeed, PressingEdit,
     RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
-    ReleaseRecord, ReleaseUserEdit, SourceAvailability, TrackArtistAssignments, TrackFileAuthor,
-    TrackUserEdit,
+    ReleaseFormReset, ReleaseRecord, ReleaseUserEdit, SourceAvailability, TrackArtistAssignments,
+    TrackFileAuthor, TrackUserEdit,
 };
 desktop_only! {
     pub use types::{

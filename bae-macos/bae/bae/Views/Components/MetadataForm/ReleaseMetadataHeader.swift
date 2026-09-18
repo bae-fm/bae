@@ -53,6 +53,8 @@ struct ReleaseMetadataHeader<Cover: View, Context: View, SourceAudio: View>:
     static var coverSpacing: CGFloat { 24 }
 
     let values: BridgeRawReleaseEdit
+    /// One entry per album-level field, as core reads them.
+    let provenance: [BridgeFieldProvenance]
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     @ViewBuilder
@@ -69,6 +71,7 @@ struct ReleaseMetadataHeader<Cover: View, Context: View, SourceAudio: View>:
             VStack(alignment: .leading, spacing: 22) {
                 ReleaseAlbumIdentityEditor(
                     values: values,
+                    provenance: provenance,
                     writer: writer,
                     editingCommands: editingCommands,
                     context: context,
@@ -76,6 +79,7 @@ struct ReleaseMetadataHeader<Cover: View, Context: View, SourceAudio: View>:
                 )
                 ReleasePressingFieldsGrid(
                     values: values,
+                    provenance: provenance,
                     writer: writer,
                     editingCommands: editingCommands
                 )
@@ -89,6 +93,7 @@ struct ReleaseMetadataHeader<Cover: View, Context: View, SourceAudio: View>:
 /// hover and focus.
 struct ReleaseAlbumIdentityEditor<Context: View, SourceAudio: View>: View {
     let values: BridgeRawReleaseEdit
+    let provenance: [BridgeFieldProvenance]
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     @ViewBuilder
@@ -98,14 +103,19 @@ struct ReleaseAlbumIdentityEditor<Context: View, SourceAudio: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            CommittedTextField(
-                placeholder: String(localized: "Album title"),
-                value: values.albumTitle,
-                chrome: .inline,
-                font: .system(size: 24, weight: .semibold),
-                editingCommands: editingCommands,
-                onCommit: { await writer.setField(.albumTitle, $0) },
-            )
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                CommittedTextField(
+                    placeholder: String(localized: "Album title"),
+                    value: values.albumTitle,
+                    chrome: .inline,
+                    font: .system(size: 24, weight: .semibold),
+                    editingCommands: editingCommands,
+                    onCommit: { await writer.setField(.albumTitle, $0) },
+                )
+                if let title = provenance.forField(.albumTitle) {
+                    FieldOriginDot(provenance: title)
+                }
+            }
             HStack(alignment: .center, spacing: 6) {
                 ArtistAssignmentsField(
                     assignments: values.albumArtistAssignments,
@@ -130,6 +140,9 @@ struct ReleaseAlbumIdentityEditor<Context: View, SourceAudio: View>: View {
                 )
                 .foregroundStyle(.secondary)
                 .frame(width: 72)
+                if let year = provenance.forField(.albumYear) {
+                    FieldOriginDot(provenance: year)
+                }
                 context()
             }
             sourceAudio()
@@ -144,6 +157,7 @@ struct ReleaseAlbumIdentityEditor<Context: View, SourceAudio: View>: View {
 /// the persisted release editor.
 struct ReleasePressingFieldsGrid: View {
     let values: BridgeRawReleaseEdit
+    let provenance: [BridgeFieldProvenance]
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
 
@@ -230,7 +244,18 @@ struct ReleasePressingFieldsGrid: View {
                 onCommit: { await writer.setField(field, $0) },
             )
             .frame(width: Self.valueWidth)
+            if let entry = provenance.forField(field) {
+                FieldOriginDot(provenance: entry)
+            }
         }
+    }
+}
+
+extension [BridgeFieldProvenance] {
+    /// This field's entry. Core states one per album-level field, so a form
+    /// core has not described yet — a preview's, a test's — states none.
+    func forField(_ field: BridgeCandidateEditField) -> BridgeFieldProvenance? {
+        first { $0.field == field }
     }
 }
 
@@ -510,6 +535,7 @@ struct ArtistAssignmentsField: View {
         var form = PreviewData.editMetadataDraft(trackCount: 3)
         ReleaseMetadataHeader(
             values: form,
+            provenance: PreviewData.fieldProvenance(),
             writer: .binding($form),
             editingCommands: EditingCommitCommands(),
             cover: {
@@ -533,6 +559,7 @@ struct ArtistAssignmentsField: View {
         var form = PreviewData.manyAlbumArtistsDraft()
         ReleaseMetadataHeader(
             values: form,
+            provenance: PreviewData.fieldProvenance(),
             writer: .binding($form),
             editingCommands: EditingCommitCommands(),
             cover: {

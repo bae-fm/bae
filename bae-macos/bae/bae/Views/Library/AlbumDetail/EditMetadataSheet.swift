@@ -20,7 +20,7 @@ struct EditMetadataSheet: View {
             @escaping @Sendable (
                 BridgeReleaseUserEdit
             ) async throws -> Void,
-        onReset: @escaping @Sendable () async throws -> BridgeRawReleaseEdit,
+        onReset: @escaping @Sendable () async throws -> BridgeReleaseFormReset,
         onSaved: @escaping @MainActor @Sendable () -> Void,
         onCancel: @escaping @MainActor @Sendable () -> Void
     ) {
@@ -155,7 +155,12 @@ struct EditMetadataSheet: View {
             releaseId: "release-preview",
             seed: seed,
             onSave: { _ in },
-            onReset: { seed.edit },
+            onReset: {
+                BridgeReleaseFormReset(
+                    edit: seed.edit,
+                    fieldProvenance: seed.fieldProvenance
+                )
+            },
             onSaved: {},
             onCancel: {}
         )

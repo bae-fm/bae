@@ -131,11 +131,17 @@ async fn release_edit_reset_preserves_persisted_track_ids() {
         .unwrap();
     assert_eq!(
         reset
+            .edit
             .tracks
             .into_iter()
             .map(|track| track.id)
             .collect::<Vec<_>>(),
         persisted_ids
+    );
+    assert_eq!(
+        reset.field_provenance.len(),
+        crate::import::CandidateEditField::ALL.len(),
+        "a reset hands back what describes every field it replaced"
     );
 }
 

@@ -124,13 +124,25 @@ impl LibraryManager {
     pub async fn reset_release_edit_to_source(
         &self,
         release_id: &str,
-    ) -> Result<crate::import::RawReleaseEdit, LibraryError> {
+    ) -> Result<crate::import::ReleaseFormReset, LibraryError> {
         let edit = self.reset_metadata_to_source(release_id).await?;
         let tracks = self.database.get_tracks_for_release(release_id).await?;
-        raw_release_edit_with_persisted_track_ids(
+        let edit = raw_release_edit_with_persisted_track_ids(
             edit,
             tracks.iter().map(|track| track.id.as_str()),
+        )?;
+        let records = self.database.get_release_records(release_id).await?;
+        let claims = super::release_fields::release_field_claims(
+            &self.database,
+            &records,
+            self.clock.as_ref(),
+            self.ids.as_ref(),
         )
+        .await?;
+        Ok(crate::import::ReleaseFormReset {
+            field_provenance: crate::import::FieldProvenance::of(&edit.origins, &claims),
+            edit,
+        })
     }
 }
 

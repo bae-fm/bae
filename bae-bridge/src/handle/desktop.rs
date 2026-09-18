@@ -571,13 +571,13 @@ forward! {
         /// touched.
         fn reset_release_edit_to_source(
             release_id: String,
-        ) -> crate::types::BridgeRawReleaseEdit {
-            let edit = this
+        ) -> crate::types::BridgeReleaseFormReset {
+            let reset = this
                 .services
                 .reset_release_edit_to_source(&release_id)
                 .await
                 .map_err(BridgeError::import)?;
-            Ok(crate::types::BridgeRawReleaseEdit::from_core(edit))
+            Ok(crate::types::BridgeReleaseFormReset::from_core(reset))
         }
 
         fn fetch_remote_covers(

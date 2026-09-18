@@ -374,11 +374,14 @@ impl FieldProvenance {
             .collect()
     }
 
-    /// This field as a person typing over it leaves it. A form held in a
-    /// surface until it is saved has no stored origin to read yet, so the dot
-    /// it draws while a person types is this one.
-    pub fn typed(self) -> Self {
-        Self::one(self.field, Some(FieldOrigin::Typed), self.claims)
+    /// This field as a person typing `value` into it leaves it. A form held in
+    /// a surface until it is saved has no stored origin to read yet, so the
+    /// dot it draws while a person types is this one. Emptying the field
+    /// leaves no value for an origin to describe, exactly as the stored write
+    /// reads it.
+    pub fn typed(self, value: &str) -> Self {
+        let origin = (!value.trim().is_empty()).then_some(FieldOrigin::Typed);
+        Self::one(self.field, origin, self.claims)
     }
 
     /// Whether two catalogs state different things for this field.

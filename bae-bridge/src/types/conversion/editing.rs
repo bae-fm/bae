@@ -183,6 +183,15 @@ mirror_struct! {
 }
 
 mirror_struct! {
+    BridgeReleaseFormReset = bae_core::import::ReleaseFormReset,
+    from_core: pub(crate) fn,
+    fields: {
+        edit: (BridgeRawReleaseEdit),
+        field_provenance: (each BridgeFieldProvenance),
+    },
+}
+
+mirror_struct! {
     BridgeReleaseEditSeed = bae_core::import::ReleaseEditSeed,
     from_core: pub(crate) fn,
     fields: {

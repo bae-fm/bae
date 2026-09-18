@@ -507,6 +507,7 @@
                     fileEvidence: [],
                     metadataDraft: edit,
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
+                    fieldProvenance: PreviewData.fieldProvenance(),
                     metadataProvenance: metadataProvenance,
                     metadataAuthor: metadataProvenance == nil
                         ? .nobody : .user,
@@ -755,7 +756,8 @@
                         trackNumber: Int32(index),
                         file: .standalone(fileId: "Track \(index).flac")
                     )
-                }
+                },
+            origins: .unstated
         )
 
         /// Nine audio files with nothing said about them yet, the folder's
