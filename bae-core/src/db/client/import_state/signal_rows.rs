@@ -306,8 +306,8 @@ fn free_text(text: &TextSignal) -> &[String] {
 /// from: the names its folder carries, and what the rip databases said about
 /// its audio.
 pub(crate) struct CandidateSignalFacts {
-    /// One line per value, in `MarkKind` order.
-    pub(crate) marks: Vec<crate::import::ReleaseMarkLine>,
+    /// Extracted readings, before the selected record's lookups corroborate them.
+    pub(crate) marks: Vec<crate::import::ReleaseMark>,
     /// `None` for a candidate whose log states nothing about its bits.
     pub(crate) verification: Option<Verification>,
 }
@@ -337,7 +337,7 @@ pub(crate) fn load_signal_facts_on(
             (
                 content_hash,
                 CandidateSignalFacts {
-                    marks: crate::import::ReleaseMarkLine::fold(&marks),
+                    marks,
                     verification: signals.verification,
                 },
             )
@@ -626,4 +626,3 @@ fn sourced_value(
     }
     .at(region))
 }
-

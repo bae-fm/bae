@@ -16,6 +16,54 @@ namespace Bae.Desktop.ViewTests;
 /// </summary>
 public sealed class ReleaseMarksTests
 {
+    [AvaloniaFact]
+    public void OnlyTheCorroboratedBarcodeHasASeal()
+    {
+        var lines = MarkLines.Build([
+            new BridgeReleaseMark(BridgeMarkKind.Barcode, "1234567890001", [BridgeSignalOrigin.Artwork], false),
+            new BridgeReleaseMark(BridgeMarkKind.Barcode, "1234567890002", [BridgeSignalOrigin.Artwork], true),
+        ]);
+        var seals = lines.GetLogicalDescendants().OfType<Control>()
+            .Where(control => Avalonia.Automation.AutomationProperties.GetName(control)
+                == Loc.Core("core.identity.identified")).ToList();
+        Assert.Equal(new double[] { 0, 1 }, seals.Select(seal => seal.Opacity));
+        Assert.Equal(Avalonia.Automation.AccessibilityView.Raw,
+            Avalonia.Automation.AutomationProperties.GetAccessibilityView(seals[0]));
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TheLibraryHoverSealsOnlyAnIdentifiedRelease(bool identified)
+    {
+        var line = new ReleaseFactsLine();
+        line.Show("2003 · CD", identified ? BridgeMarkKind.Barcode : null, Marks, null, []);
+        var button = Assert.IsType<Button>(line.Content);
+        var seal = button.GetLogicalDescendants().OfType<Control>()
+            .Single(control => Avalonia.Automation.AutomationProperties.GetName(control)
+                == Loc.Core("core.identity.identified"));
+        seal.Transitions = null;
+        button.RaiseEvent(new Avalonia.Input.PointerEventArgs(
+            Avalonia.Input.InputElement.PointerEnteredEvent, button,
+            new Avalonia.Input.Pointer(1, Avalonia.Input.PointerType.Mouse, true),
+            button, default, 0, default, default));
+        Assert.Equal(identified ? 1 : 0, seal.Opacity);
+    }
+
+    [AvaloniaFact]
+    public void AnExtractedIdentifierWithoutAMatchHasNoSeal()
+    {
+        var lines = MarkLines.Build(Marks);
+        var seals = lines.GetLogicalDescendants()
+            .OfType<Control>()
+            .Where(control => Avalonia.Automation.AutomationProperties.GetName(control)
+                == Loc.Core("core.identity.identified"))
+            .ToList();
+
+        Assert.NotEmpty(seals);
+        Assert.All(seals, seal => Assert.Equal(0, seal.Opacity));
+    }
+
     // Each line states what kind of name it is, the value as it was read, and
     // a tag for every surface it was read from.
     [AvaloniaFact]
@@ -81,7 +129,7 @@ public sealed class ReleaseMarksTests
     {
         var line = new ReleaseFactsLine();
 
-        line.Show("2003 · CD", Marks, null, []);
+        line.Show("2003 · CD", null, Marks, null, []);
 
         Assert.IsAssignableFrom<Button>(line.Content);
     }
@@ -124,11 +172,13 @@ public sealed class ReleaseMarksTests
         new BridgeReleaseMark(
             BridgeMarkKind.DiscId,
             DiscId,
-            [BridgeSignalOrigin.DiscToc]),
+            [BridgeSignalOrigin.DiscToc],
+            false),
         new BridgeReleaseMark(
             BridgeMarkKind.Barcode,
             "0075678164521",
-            [BridgeSignalOrigin.Artwork, BridgeSignalOrigin.CueSheet]),
+            [BridgeSignalOrigin.Artwork, BridgeSignalOrigin.CueSheet],
+            false),
     ];
 
     private static readonly BridgeReleaseRecord[] Records =

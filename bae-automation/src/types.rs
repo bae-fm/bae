@@ -402,6 +402,7 @@ pub struct AutomationReleaseMark {
     pub kind: AutomationMarkKind,
     pub value: String,
     pub origins: Vec<AutomationSignalOrigin>,
+    pub corroborated: bool,
 }
 
 /// Where a release's verification came from. Mirrors

@@ -216,6 +216,7 @@ mirror_struct! {
         kind: (AutomationMarkKind),
         value,
         origins: (each AutomationSignalOrigin),
+        corroborated,
     },
 }
 

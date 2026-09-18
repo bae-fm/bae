@@ -329,6 +329,7 @@ pub struct ImportCandidateDetailProjection {
     /// Which name read off the folder tied its files to the record the draft
     /// was read from, read off the verdict's match rows.
     pub identified_by: Option<crate::import::MarkKind>,
+    pub marks: Vec<crate::import::ReleaseMarkLine>,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// Who decided that identity: the person, identification, or nobody yet.
     pub metadata_author: crate::import::MetadataAuthor,
@@ -390,6 +391,7 @@ impl ImportCandidateDetailProjection {
             answer,
             matched,
             identified_by,
+            marks,
             metadata_provenance,
             metadata_author,
             metadata_revision,
@@ -467,14 +469,7 @@ impl ImportCandidateDetailProjection {
                 picked.as_ref(),
                 records,
             ),
-            marks: signals
-                .as_ref()
-                .map(|signals| {
-                    crate::import::ReleaseMarkLine::fold(
-                        &crate::import::ReleaseMark::of_signals(signals, &lookup_choices),
-                    )
-                })
-                .unwrap_or_default(),
+            marks,
             verified: signals
                 .as_ref()
                 .and_then(|signals| signals.verification.as_ref())

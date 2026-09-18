@@ -531,6 +531,15 @@ pub(super) fn load_candidate_detail_on(
                 .into_iter()
                 .flat_map(|identify| identify.verdict.lookups()),
         );
+        let mut marks = signals.as_ref()
+            .map(|signals| crate::import::ReleaseMark::of_signals(signals, &lookup_choices))
+            .unwrap_or_default();
+        crate::identify::corroborate_marks(
+            &mut marks,
+            picked.as_ref(),
+            identify.into_iter().flat_map(|identify| identify.verdict.lookups()),
+            identify.and_then(|identify| identify.verdict.ledger()),
+        );
         let pane = crate::import::pane::draft_pane(
             release,
             candidate.files(),
@@ -563,6 +572,7 @@ pub(super) fn load_candidate_detail_on(
             answer,
             matched,
             identified_by,
+            marks: crate::import::ReleaseMarkLine::fold(&marks),
             metadata_provenance: picked,
             metadata_author,
             metadata_revision,

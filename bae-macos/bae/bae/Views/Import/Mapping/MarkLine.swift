@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// One name the object itself carries: the seal, what kind of name it is, the
-/// value as it was read, and a tag per surface it was read from.
+/// One name read off the object, sealed only when its lookup found the chosen
+/// release record, with a tag per surface it was read from.
 ///
 /// Core folds the readings — two scans showing one barcode arrive as one mark
 /// tagged `scan` — so this draws what it is given.
@@ -15,6 +15,9 @@ struct MarkLine: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .accessibilityLabel(coreString("core.identity.identified"))
+                .opacity(mark.corroborated ? 1 : 0)
+                .allowsHitTesting(mark.corroborated)
+                .accessibilityHidden(!mark.corroborated)
             Text(coreString(bridgeMarkKindKey(kind: mark.kind)))
                 .font(.system(size: 11.5))
                 .foregroundStyle(.secondary)

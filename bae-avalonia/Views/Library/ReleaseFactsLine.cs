@@ -16,7 +16,7 @@ namespace Bae.Desktop;
 ///
 /// At rest the line reads as a line of facts. When the release carries names of
 /// its own, the rip databases confirmed its audio, or a catalog describes it,
-/// pointing at it fills it softly and fades a seal in at its tail, and a click
+/// pointing at it fills it softly and fades a seal in for an identifier match. A click
 /// toggles a card under it stating them. A release with none of the three has
 /// nothing behind the line, so it is not a trigger at all.
 ///
@@ -50,6 +50,7 @@ internal sealed class ReleaseFactsLine : ContentControl
     /// and as plain text when it has none of them.</summary>
     internal void Show(
         string facts,
+        BridgeMarkKind? identifiedBy,
         IReadOnlyList<BridgeReleaseMark> marks,
         BridgeVerification? verification,
         IReadOnlyList<BridgeReleaseRecord> records)
@@ -59,10 +60,11 @@ internal sealed class ReleaseFactsLine : ContentControl
         Content = marks.Count == 0 && records.Count == 0
             && verification?.MatchedCopies is null
             ? _facts
-            : Trigger(marks, verification, records);
+            : Trigger(identifiedBy, marks, verification, records);
     }
 
     private Control Trigger(
+        BridgeMarkKind? identifiedBy,
         IReadOnlyList<BridgeReleaseMark> marks,
         BridgeVerification? verification,
         IReadOnlyList<BridgeReleaseRecord> records)
@@ -70,6 +72,11 @@ internal sealed class ReleaseFactsLine : ContentControl
         var seal = Icons.Glyph(Icons.Seal, 11, "BaeTextSecondaryBrush");
         seal.Opacity = 0;
         seal.VerticalAlignment = VerticalAlignment.Center;
+        seal.IsHitTestVisible = false;
+        Avalonia.Automation.AutomationProperties.SetAccessibilityView(
+            seal, identifiedBy is null
+                ? Avalonia.Automation.AccessibilityView.Raw
+                : Avalonia.Automation.AccessibilityView.Content);
         Avalonia.Automation.AutomationProperties.SetName(
             seal, Loc.Core("core.identity.identified"));
         // The seal fades rather than snaps: it is a hint at the line's tail,
@@ -104,7 +111,7 @@ internal sealed class ReleaseFactsLine : ContentControl
         Avalonia.Automation.AutomationProperties.SetAutomationId(button, "release-facts");
         button.PointerEntered += (_, _) =>
         {
-            seal.Opacity = 1;
+            seal.Opacity = identifiedBy is null ? 0 : 1;
             button[!BackgroundProperty] = new DynamicResourceExtension("BaeHoverBrush");
         };
         button.PointerExited += (_, _) =>

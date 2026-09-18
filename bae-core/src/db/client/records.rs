@@ -212,6 +212,13 @@ impl Database {
             }
 
             // 2. Replace the records.
+            // The old readings' proof belongs to the previous identification.
+            // Replacing records supplies no per-value lookup evidence.
+            tx.execute(
+                "UPDATE release_marks SET corroborated = 0, _updated_at = ? \
+                 WHERE release_id = ? AND corroborated = 1",
+                params![reg, release_id],
+            )?;
             tx.execute(
                 "DELETE FROM release_records WHERE release_id = ?",
                 params![release_id],

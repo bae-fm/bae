@@ -80,6 +80,8 @@ pub struct BridgeReleaseMark {
     /// order it was first read from them. Core folds the sightings, so a line
     /// tags what it tags without any surface counting them.
     pub origins: Vec<BridgeSignalOrigin>,
+    /// This value's lookup named the chosen release record.
+    pub corroborated: bool,
 }
 
 mirror_struct! {
@@ -89,5 +91,6 @@ mirror_struct! {
         kind: (BridgeMarkKind),
         value,
         origins: (each BridgeSignalOrigin),
+        corroborated,
     },
 }

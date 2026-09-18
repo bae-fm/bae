@@ -32,6 +32,7 @@ pub mod combine;
 mod country;
 pub mod discid;
 mod label;
+mod mark_corroboration;
 pub mod ready;
 pub mod service;
 pub mod state;
@@ -41,6 +42,7 @@ pub mod view;
 
 pub use agreements::{agreements_of, judged_results, Agreements, CandidateText};
 pub use combine::{identified_by, LookupProvenance, NarrowedOut};
+pub(crate) use mark_corroboration::corroborate_marks;
 pub use ready::{
     classify, classify_summary, LeadMatch, NeedsYou, QueueClassification, VerdictKind,
     VerdictSummary,

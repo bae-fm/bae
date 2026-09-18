@@ -391,10 +391,13 @@ struct FixtureDuplicateList: View {
                 1,
             )
             path.write_text(source)
+            template_line = source.count(
+                "\n", 0, source.index("ItemTemplate = new FuncDataTemplate<Release>")
+            ) + 1
             self.assertEqual(
                 BOUNDARY.check(root),
                 [
-                    f"{relative}:207: repeated Avalonia child TextBlock reaches "
+                    f"{relative}:{template_line}: repeated Avalonia child TextBlock reaches "
                     "entity-data owner AppService"
                 ],
             )

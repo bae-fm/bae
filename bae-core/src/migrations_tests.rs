@@ -26,6 +26,8 @@ mod migration_thirty_five;
 mod migration_thirty_four;
 #[path = "migrations_tests/migration_thirty_one.rs"]
 mod migration_thirty_one;
+#[path = "migrations_tests/migration_thirty_six.rs"]
+mod migration_thirty_six;
 #[path = "migrations_tests/migration_thirty_three.rs"]
 mod migration_thirty_three;
 #[path = "migrations_tests/migration_thirty_two.rs"]

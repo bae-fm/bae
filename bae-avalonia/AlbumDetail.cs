@@ -92,6 +92,7 @@ public sealed class Release : INotifyPropertyChanged
     /// <c>null</c> for a release no source verified. Internal for the same
     /// reason as <see cref="StorageActions"/>.</summary>
     internal BridgeVerification? Verification => _release.Verification;
+    internal BridgeMarkKind? IdentifiedBy => _release.IdentifiedBy;
 
     /// <summary>Whether this release lives in the cloud (Remote) rather than
     /// locally.</summary>

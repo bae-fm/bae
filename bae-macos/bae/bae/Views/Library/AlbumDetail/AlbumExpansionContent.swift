@@ -71,6 +71,7 @@ struct AlbumExpansionContent: View {
                     }
                     ReleaseFactsLine(
                         facts: selectedRelease.compactMetadata,
+                        identifiedBy: selectedRelease.identifiedBy,
                         marks: selectedRelease.marks,
                         verification: selectedRelease.verification,
                         records: selectedRelease.records
@@ -214,8 +215,8 @@ struct AlbumExpansionContent: View {
 ///
 /// At rest the line reads as it always has. When the release carries names of
 /// its own, the rip databases confirmed its audio, or a catalog describes it,
-/// hovering fills the line softly and fades a seal in at its tail, and a
-/// click toggles a card under it stating all three. A release with none of
+/// hovering fills the line softly and, for an identifier match, fades a seal
+/// in at its tail. A click toggles a card under it stating all three. A release with none of
 /// them has nothing behind the line, so it is not a trigger at all.
 ///
 /// The card is drawn in the window, anchored to the line's leading edge and
@@ -225,6 +226,7 @@ struct AlbumExpansionContent: View {
 /// that closes it on a click away or Escape.
 private struct ReleaseFactsLine: View {
     let facts: String
+    let identifiedBy: BridgeMarkKind?
     let marks: [BridgeReleaseMark]
     let verification: BridgeVerification?
     let records: [BridgeReleaseRecord]
@@ -255,7 +257,9 @@ private struct ReleaseFactsLine: View {
                     Image(systemName: "seal")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                        .opacity(isHovering ? 1 : 0)
+                        .opacity(isHovering && identifiedBy != nil ? 1 : 0)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(identifiedBy == nil)
                         .animation(
                             .easeInOut(duration: 0.15),
                             value: isHovering

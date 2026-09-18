@@ -29,6 +29,7 @@ public struct ReleaseDetail: Identifiable {
     /// What the rip databases said about this release's audio. `nil` for a
     /// release no source verified.
     public var verification: BridgeVerification?
+    public var identifiedBy: BridgeMarkKind?
 
     public var id: String {
         summary.id
@@ -65,5 +66,6 @@ public struct ReleaseDetail: Identifiable {
         records = bridge.records
         marks = bridge.marks
         verification = bridge.verification
+        identifiedBy = bridge.identifiedBy
     }
 }

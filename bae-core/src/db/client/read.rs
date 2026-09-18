@@ -280,7 +280,7 @@ pub(super) fn get_release_marks_on(
 ) -> Result<Vec<crate::import::ReleaseMark>, DbError> {
     sql.query(
         r#"
-            SELECT kind, value, origin, origin_path,
+            SELECT kind, value, origin, origin_path, corroborated,
                    region_x, region_y, region_width, region_height
             FROM release_marks
             WHERE release_id = ?
@@ -301,6 +301,7 @@ pub(super) fn get_release_marks_on(
             .map_err(|e| column_conversion_error(row, "region_x", e.to_string()))?;
             Ok(crate::import::ReleaseMark {
                 kind: parsed_column(row, "kind")?,
+                corroborated: row.get("corroborated")?,
                 sighting: crate::signals::SourcedValue {
                     value,
                     origin: parsed_column(row, "origin")?,

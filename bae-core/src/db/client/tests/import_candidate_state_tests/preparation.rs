@@ -789,6 +789,7 @@ async fn the_preparation_carries_the_names_the_folder_states() {
     );
 
     let barcode = crate::import::ReleaseMark {
+        corroborated: false,
         kind: crate::import::MarkKind::Barcode,
         sighting: SourcedValue::in_file(
             "0075678164521".to_string(),
@@ -829,6 +830,7 @@ async fn the_preparation_carries_the_names_the_folder_states() {
         vec![
             barcode,
             crate::import::ReleaseMark {
+                corroborated: false,
                 kind: crate::import::MarkKind::CatalogNumber,
                 sighting: SourcedValue::new(
                     "7559-60691-2".to_string(),

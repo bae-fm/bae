@@ -14,6 +14,60 @@ struct ReleaseMarksTests {
     private static let paneSize = NSSize(width: 900, height: 1800)
     private static let lineSize = NSSize(width: 460, height: 160)
 
+    @Test("only a corroborated identifier draws an identification seal")
+    func onlyCorroboratedIdentifiersDrawASeal() async throws {
+        for corroborated in [false, true] {
+            let mark = BridgeReleaseMark(
+                kind: .barcode,
+                value: "1234567890123",
+                origins: [.artwork],
+                corroborated: corroborated
+            )
+            let (window, host) = FindOnlineRendering.host(
+                MarkLine(mark: mark)
+                    .frame(
+                        width: Self.lineSize.width,
+                        height: Self.lineSize.height,
+                        alignment: .leading
+                    )
+                    .preferredColorScheme(.light)
+                    .background(.white),
+                size: Self.lineSize
+            )
+            defer {
+                window.contentView = nil
+                window.close()
+            }
+            await SnapshotTestSupport.settle(host)
+            let png = try await SnapshotTestSupport.capturePNG(
+                host,
+                size: Self.lineSize
+            )
+            let bitmap = try #require(NSBitmapImageRep(data: png))
+            // Only the glyph occupies the first 12 points; the kind label
+            // starts after the HStack's seven-point gap.
+            let glyphWidth = Int(
+                12 * CGFloat(bitmap.pixelsWide) / Self.lineSize.width
+            )
+            var hasInk = false
+            for y in 0..<bitmap.pixelsHigh {
+                for x in 0..<glyphWidth {
+                    let color = try #require(
+                        bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB)
+                    )
+                    hasInk =
+                        hasInk
+                        || min(
+                            color.redComponent,
+                            color.greenComponent,
+                            color.blueComponent
+                        ) < 0.9
+                }
+            }
+            #expect(hasInk == corroborated)
+        }
+    }
+
     /// Each line states what kind of name it is, the value as it was read, and
     /// a tag for every surface it was read from.
     @Test("every mark draws its kind, its value and its surfaces")

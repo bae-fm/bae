@@ -783,8 +783,8 @@ pub(super) fn insert_release_mark_row(
         INSERT INTO release_marks (
             id, release_id, position, kind, value, origin, origin_path,
             region_x, region_y, region_width, region_height,
-            _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            corroborated, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             id,
@@ -798,6 +798,7 @@ pub(super) fn insert_release_mark_row(
             region.map(|region| f64::from(region.y)),
             region.map(|region| f64::from(region.width)),
             region.map(|region| f64::from(region.height)),
+            mark.corroborated,
             reg,
             now,
         ],

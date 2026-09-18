@@ -404,8 +404,9 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut provenances = load_provenance_on(sql, None)?;
     let mut verdicts: HashMap<String, (VerdictSummary, u64)> = HashMap::new();
     let mut identified: HashMap<String, crate::import::MarkKind> = HashMap::new();
+    let mut signal_facts = load_signal_facts_on(sql, None)?;
     for row in sql.query(
-        "SELECT content_hash, kind, track_count, probed_total_duration_ms \
+        "SELECT content_hash, kind, track_count, probed_total_duration_ms, ledger_json \
          FROM import_candidate_verdict",
         [],
         |row| {
@@ -414,16 +415,28 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, i64>(3)?,
+                row.get::<_, Option<String>>(4)?,
             ))
         },
     )? {
-        let (content_hash, kind, track_count, probed) = row;
+        let (content_hash, kind, track_count, probed, ledger_json) = row;
         // Read the lead off the first row, then spend the rest on the count:
         // both come from the one read of this candidate's matches.
         // The releases agreement narrowed out are not what the verdict
         // settled on: the row leads with a match and counts pressings among
         // the matches alone.
         let found = matches.remove(&content_hash).unwrap_or_default().found;
+        if let Some(facts) = signal_facts.get_mut(&content_hash) {
+            let ledger = ledger_json.map(|json| serde_json::from_str::<crate::identify::IdentifyRunView>(&json)
+                .map_err(|error| DbError::Message(format!("the identify ledger for {content_hash} is unreadable: {error}"))))
+                .transpose()?;
+            crate::identify::corroborate_marks(
+                &mut facts.marks,
+                provenances.get(&content_hash).map(|(provenance, _)| provenance),
+                found.iter().map(|(result, provenance)| (result, provenance)),
+                ledger.as_ref(),
+            );
+        }
         let lead = found
             .first()
             .map(|(result, provenance)| LeadMatch::of(result, Some(provenance)));
@@ -458,7 +471,6 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         );
     }
 
-    let mut signal_facts = load_signal_facts_on(sql, None)?;
     let mut states = HashMap::new();
     for (content_hash, edit_revision) in sql.query(
         "SELECT content_hash, edit_revision FROM import_candidate_state",
@@ -480,7 +492,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             crate::import::TriageMetadataSummary::of(&release_edit, metadata_provenance.clone());
         let selected_cover = covers.remove(&content_hash);
         let (marks, verification) = match signal_facts.remove(&content_hash) {
-            Some(facts) => (facts.marks, facts.verification),
+            Some(facts) => (crate::import::ReleaseMarkLine::fold(&facts.marks), facts.verification),
             None => (Vec::new(), None),
         };
         let identified_by = identified.remove(&content_hash);

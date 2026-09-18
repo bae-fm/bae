@@ -61,7 +61,7 @@ public sealed class ReleaseVerificationTests
     {
         var line = new ReleaseFactsLine();
 
-        line.Show("2003 · CD", [], Verified, []);
+        line.Show("2003 · CD", null, [], Verified, []);
 
         Assert.IsAssignableFrom<Button>(line.Content);
     }

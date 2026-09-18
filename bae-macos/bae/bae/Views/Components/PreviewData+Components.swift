@@ -64,17 +64,20 @@
                 BridgeReleaseMark(
                     kind: .discId,
                     value: "Wn8eRBtfLDMmvbjEACGGMLhxxfM-",
-                    origins: [.discToc]
+                    origins: [.discToc],
+                    corroborated: true
                 ),
                 BridgeReleaseMark(
                     kind: .barcode,
                     value: "0075678164521",
-                    origins: [.artwork, .cueSheet]
+                    origins: [.artwork, .cueSheet],
+                    corroborated: false
                 ),
                 BridgeReleaseMark(
                     kind: .catalogNumber,
                     value: "7559-60691-2",
-                    origins: [.folderName]
+                    origins: [.folderName],
+                    corroborated: false
                 ),
             ]
         }

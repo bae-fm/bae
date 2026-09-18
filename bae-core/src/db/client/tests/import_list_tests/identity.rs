@@ -5,6 +5,171 @@
 
 use super::*;
 
+#[tokio::test]
+async fn only_the_barcode_that_found_the_chosen_record_is_sealed_on_every_read() {
+    use crate::identify::{
+        BarcodeStepView, CatalogStepView, DiscIdStepView, IdentifyRunView, LookupView,
+        ProviderCell, SignalValueRow,
+    };
+    use crate::import::{MarkKind, MetadataRef, ReleaseMarkLine};
+    use crate::signals::{
+        BarcodeSignal, DiscIdSignal, SignalOrigin, Signals, SourcedValue, TextSignal,
+    };
+
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    let hash = candidate.files.content_hash();
+    let result = MetadataResult::for_test(Catalog::MusicBrainz, "mb-chosen", None);
+    let found = LookupView::Found {
+        count: 1,
+        groups: crate::import::release_group::group_results(
+            crate::import::release_group::unranked(vec![result.clone()]),
+        ),
+    };
+    let values = ["1234567890001", "1234567890002", "1234567890003"];
+    let ledger = IdentifyRunView {
+        providers: vec![Catalog::MusicBrainz],
+        disc_id: DiscIdStepView::Absent,
+        barcode: BarcodeStepView::Rows {
+            scanning: false,
+            rows: values
+                .iter()
+                .zip([LookupView::NoMatch, found, LookupView::NotAsked])
+                .map(|(value, lookup)| SignalValueRow {
+                    value: value.to_string(),
+                    sources: Vec::new(),
+                    excluded: false,
+                    cells: vec![ProviderCell {
+                        source: Catalog::MusicBrainz,
+                        lookup,
+                    }],
+                })
+                .collect(),
+        },
+        catalog: CatalogStepView::NoneFound,
+    };
+    db.save_source_release_payloads(&[DbSourceReleasePayload {
+        source: PayloadSource::MusicBrainz,
+        source_release_id: result.release_id.clone(),
+        json: musicbrainz_release(&result.release_id, "Album Title").to_string(),
+        fetched_at: fixed_now(),
+    }])
+    .await
+    .unwrap();
+    let draft = crate::import::pane::blank_candidate_draft(&candidate.files);
+    assert!(crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&NewImportCandidateVerdict {
+            candidate: crate::import::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: 0,
+                metadata_revision: 0
+            },
+            folder_path: candidate.path.to_string_lossy().into_owned(),
+            verdict: TerminalVerdict::Found {
+                matches: vec![result.clone()],
+                track_count: 1,
+                provenance: vec![LookupProvenance {
+                    by_disc_id: false,
+                    by_barcode: true,
+                    by_catalog: false
+                }],
+                narrowed_out: Vec::new(),
+                narrowed_out_provenance: Vec::new(),
+                ledger: Some(ledger),
+            },
+            signals: Signals {
+                disc_id: DiscIdSignal::Absent { track_count: 1 },
+                verification: None,
+                barcode: BarcodeSignal::Settled {
+                    codes: values
+                        .iter()
+                        .map(|value| SourcedValue::new(value.to_string(), SignalOrigin::Artwork))
+                        .collect()
+                },
+                text: TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new()
+                },
+                text_pool: Vec::new(),
+                durations: crate::import::probe::SourceDurations::totalling(1_000),
+            },
+            metadata: Some(crate::import::CandidateMetadataDraft {
+                draft: draft.clone(),
+                source_discogs_artist_ids: Default::default(),
+                provenance: Some(MetadataProvenance::ExternalRelease {
+                    record: MetadataRef::new(result.source, result.release_id.clone()),
+                    partners: Vec::new()
+                }),
+                cover: None,
+                assets: crate::import::CandidatePreparedAssets::default(),
+            }),
+        })
+        .await
+        .unwrap());
+
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    let row = rows(&projection).remove(0);
+    assert_eq!(row.identified_by, Some(MarkKind::Barcode));
+    assert_eq!(
+        row.marks
+            .iter()
+            .map(|mark| mark.corroborated)
+            .collect::<Vec<_>>(),
+        vec![false, true, false]
+    );
+    let detail = db
+        .load_import_candidate(&candidate.path.to_string_lossy())
+        .await
+        .unwrap()
+        .unwrap()
+        .resolve(&crate::import::TriageRuntimeFacts::default());
+    assert_eq!(detail.row.marks, row.marks);
+    let preparation = db
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(ReleaseMarkLine::fold(&preparation.marks), row.marks);
+
+    crate::import::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &hash,
+            &candidate.path.to_string_lossy(),
+            &draft.release_edit(),
+            Some(&MetadataProvenance::FileTags),
+        )
+        .await
+        .unwrap();
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    let row = rows(&projection).remove(0);
+    assert_eq!(row.identified_by, None);
+    assert_eq!(
+        row.marks.len(),
+        3,
+        "the readings survive changing the selected source"
+    );
+    assert!(row.marks.iter().all(|mark| !mark.corroborated));
+    let detail = db
+        .load_import_candidate(&candidate.path.to_string_lossy())
+        .await
+        .unwrap()
+        .unwrap()
+        .resolve(&crate::import::TriageRuntimeFacts::default());
+    assert_eq!(detail.row.marks, row.marks);
+    let preparation = db
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(ReleaseMarkLine::fold(&preparation.marks), row.marks);
+}
+
 /// A row states the names its folder carries: one line per value, folded here
 /// so neither surface decides that two scans of one barcode are one line, and
 /// tagged with every surface the value was read from.
@@ -18,6 +183,7 @@ async fn a_row_states_the_names_its_folder_carries() {
     save_verdict_with_marks(&db, &candidate, "mb-verdict").await;
 
     let barcode = crate::import::ReleaseMarkLine {
+        corroborated: false,
         kind: crate::import::MarkKind::Barcode,
         value: "0075678164521".to_string(),
         origins: vec![
@@ -46,6 +212,7 @@ async fn a_row_states_the_names_its_folder_carries() {
         vec![
             barcode,
             crate::import::ReleaseMarkLine {
+                corroborated: false,
                 kind: crate::import::MarkKind::CatalogNumber,
                 value: "7559-60691-2".to_string(),
                 origins: vec![crate::signals::SignalOrigin::FolderName],
@@ -278,6 +445,7 @@ async fn a_settled_pick_states_the_number_the_folder_prints() {
         .unwrap());
 
     let catalog = crate::import::ReleaseMarkLine {
+        corroborated: false,
         kind: crate::import::MarkKind::CatalogNumber,
         value: "NJ-8255".to_string(),
         origins: vec![crate::signals::SignalOrigin::FolderName],
@@ -295,6 +463,7 @@ async fn a_settled_pick_states_the_number_the_folder_prints() {
     assert_eq!(
         preparation.marks,
         vec![crate::import::ReleaseMark {
+            corroborated: false,
             kind: crate::import::MarkKind::CatalogNumber,
             sighting: crate::signals::SourcedValue::new(
                 "NJ-8255".to_string(),

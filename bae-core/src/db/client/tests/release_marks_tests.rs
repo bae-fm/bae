@@ -12,6 +12,7 @@ const MARKED_RELEASE: &str = "c1c1c1c1-0000-4000-8000-000000000001";
 
 fn seen_on_artwork(value: &str, file: &str, region: Option<ImageRegion>) -> ReleaseMark {
     ReleaseMark {
+        corroborated: false,
         kind: MarkKind::Barcode,
         sighting: SourcedValue::in_file(value.to_string(), SignalOrigin::Artwork, file.to_string())
             .at(region),
@@ -47,6 +48,7 @@ async fn a_commit_keeps_every_sighting_whole() {
 
     let marks = vec![
         ReleaseMark {
+            corroborated: true,
             kind: MarkKind::DiscId,
             sighting: SourcedValue::in_file(
                 "XyZ.abc-123".to_string(),
@@ -61,6 +63,7 @@ async fn a_commit_keeps_every_sighting_whole() {
         ),
         seen_on_artwork("0075678164521", "obi.jpg", None),
         ReleaseMark {
+            corroborated: false,
             kind: MarkKind::CatalogNumber,
             sighting: SourcedValue::new("7559-60691-2".to_string(), SignalOrigin::FolderName),
         },
@@ -89,6 +92,16 @@ async fn a_commit_keeps_every_sighting_whole() {
         db.get_release_marks(&release.id).await.unwrap(),
         marks,
         "every sighting survives the commit, region and all"
+    );
+
+    db.set_records_atomic(&release.id, &[], true, None, &album.id, &album.id, None)
+        .await
+        .unwrap();
+    let replaced = db.get_release_marks(&release.id).await.unwrap();
+    assert_eq!(replaced.len(), marks.len());
+    assert!(
+        replaced.iter().all(|mark| !mark.corroborated),
+        "choosing another source must not keep proof for the previous record"
     );
 }
 

@@ -22,6 +22,17 @@ impl MarkKind {
     /// first, then the two codes printed on the package.
     pub const ALL: [MarkKind; 3] = [Self::DiscId, Self::Barcode, Self::CatalogNumber];
 
+    /// Catalog spellings ignore punctuation and case; opaque IDs and barcode
+    /// digits must agree exactly before their readings share evidence.
+    pub(crate) fn same_value(self, left: &str, right: &str) -> bool {
+        match self {
+            Self::CatalogNumber => {
+                crate::util::text::squash(left) == crate::util::text::squash(right)
+            }
+            Self::DiscId | Self::Barcode => left == right,
+        }
+    }
+
     /// The stored `kind` column value.
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -60,6 +71,8 @@ impl std::fmt::Display for MarkKind {
 pub struct ReleaseMark {
     pub kind: MarkKind,
     pub sighting: SourcedValue,
+    /// This value's lookup named the record chosen for the release.
+    pub corroborated: bool,
 }
 
 /// One name the object carries, as a surface draws it: the kind, the value,
@@ -74,6 +87,7 @@ pub struct ReleaseMarkLine {
     /// Every surface this value was read from, each named once, in the order
     /// it was first read from them.
     pub origins: Vec<SignalOrigin>,
+    pub corroborated: bool,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -104,6 +118,7 @@ impl ReleaseMark {
             if !choices.disc_id_excluded {
                 marks.push(Self {
                     kind: MarkKind::DiscId,
+                    corroborated: false,
                     sighting: SourcedValue {
                         value: disc_id.clone(),
                         // A disc ID is derived from the table of contents; there
@@ -123,6 +138,7 @@ impl ReleaseMark {
                 .filter(|sighting| !choices.excluded_barcodes.contains(&sighting.value))
                 .map(|sighting| Self {
                     kind: MarkKind::Barcode,
+                    corroborated: false,
                     sighting: sighting.clone(),
                 }),
         );
@@ -139,6 +155,7 @@ impl ReleaseMark {
                 .filter(move |sighting| crate::util::text::squash(&sighting.value) == chosen)
                 .map(|sighting| Self {
                     kind: MarkKind::CatalogNumber,
+                    corroborated: false,
                     sighting: sighting.clone(),
                 })
         }));
@@ -150,7 +167,7 @@ impl ReleaseMarkLine {
     /// The lines `marks` draw as: one per value, in [`MarkKind::ALL`] order
     /// and, within a kind, in the order the values were first read.
     ///
-    /// A value is one value however it is punctuated or cased — `NJ-8255` on
+    /// Catalog values ignore punctuation and case — `NJ-8255` on
     /// the folder and `NJ 8255` on the scan are one line, spelled as it was
     /// first read — because that is how the text is searched for it and how
     /// a chosen number gathers its sightings.
@@ -158,18 +175,18 @@ impl ReleaseMarkLine {
         let mut lines: Vec<Self> = Vec::new();
         for kind in MarkKind::ALL {
             for mark in marks.iter().filter(|mark| mark.kind == kind) {
-                let key = crate::util::text::squash(&mark.sighting.value);
-                match lines
-                    .iter_mut()
-                    .find(|line| line.kind == kind && crate::util::text::squash(&line.value) == key)
-                {
+                match lines.iter_mut().find(|line| {
+                    line.kind == kind && kind.same_value(&line.value, &mark.sighting.value)
+                }) {
                     Some(line) => {
+                        line.corroborated |= mark.corroborated;
                         if !line.origins.contains(&mark.sighting.origin) {
                             line.origins.push(mark.sighting.origin);
                         }
                     }
                     None => lines.push(Self {
                         kind,
+                        corroborated: mark.corroborated,
                         value: mark.sighting.value.clone(),
                         origins: vec![mark.sighting.origin],
                     }),
@@ -247,6 +264,7 @@ mod tests {
             ReleaseMark::of_signals(&signals(), &choosing(&["7559-60691-2"])),
             vec![
                 ReleaseMark {
+                    corroborated: false,
                     kind: MarkKind::DiscId,
                     sighting: SourcedValue::in_file(
                         "XyZ.abc-123".to_string(),
@@ -255,6 +273,7 @@ mod tests {
                     ),
                 },
                 ReleaseMark {
+                    corroborated: false,
                     kind: MarkKind::Barcode,
                     sighting: SourcedValue::in_file(
                         "0075678164521".to_string(),
@@ -264,6 +283,7 @@ mod tests {
                     .at(region()),
                 },
                 ReleaseMark {
+                    corroborated: false,
                     kind: MarkKind::Barcode,
                     sighting: SourcedValue::in_file(
                         "0075678164521".to_string(),
@@ -272,6 +292,7 @@ mod tests {
                     ),
                 },
                 ReleaseMark {
+                    corroborated: false,
                     kind: MarkKind::CatalogNumber,
                     sighting: SourcedValue::new(
                         "7559-60691-2".to_string(),
@@ -280,6 +301,19 @@ mod tests {
                 },
             ],
         );
+    }
+
+    #[test]
+    fn distinct_disc_ids_cannot_share_a_seal() {
+        let marks = [("aBc-1", false), ("abc-1", true)].map(|(value, corroborated)| ReleaseMark {
+            kind: MarkKind::DiscId,
+            sighting: SourcedValue::new(value.to_string(), SignalOrigin::DiscToc),
+            corroborated,
+        });
+        let lines = ReleaseMarkLine::fold(&marks);
+        assert_eq!(lines.len(), 2);
+        assert!(!lines[0].corroborated);
+        assert!(lines[1].corroborated);
     }
 
     /// The two sightings of one barcode draw one line, tagged with both
@@ -293,16 +327,19 @@ mod tests {
             )),
             vec![
                 ReleaseMarkLine {
+                    corroborated: false,
                     kind: MarkKind::DiscId,
                     value: "XyZ.abc-123".to_string(),
                     origins: vec![SignalOrigin::DiscToc],
                 },
                 ReleaseMarkLine {
+                    corroborated: false,
                     kind: MarkKind::Barcode,
                     value: "0075678164521".to_string(),
                     origins: vec![SignalOrigin::Artwork, SignalOrigin::CueSheet],
                 },
                 ReleaseMarkLine {
+                    corroborated: false,
                     kind: MarkKind::CatalogNumber,
                     value: "7559-60691-2".to_string(),
                     origins: vec![SignalOrigin::FolderName],
@@ -318,6 +355,7 @@ mod tests {
     fn one_surface_is_named_once_however_many_times_it_stated_a_value() {
         let twice = vec![
             ReleaseMark {
+                corroborated: false,
                 kind: MarkKind::Barcode,
                 sighting: SourcedValue::in_file(
                     "0075678164521".to_string(),
@@ -326,6 +364,7 @@ mod tests {
                 ),
             },
             ReleaseMark {
+                corroborated: false,
                 kind: MarkKind::Barcode,
                 sighting: SourcedValue::in_file(
                     "0075678164521".to_string(),
@@ -337,6 +376,7 @@ mod tests {
         assert_eq!(
             ReleaseMarkLine::fold(&twice),
             vec![ReleaseMarkLine {
+                corroborated: false,
                 kind: MarkKind::Barcode,
                 value: "0075678164521".to_string(),
                 origins: vec![SignalOrigin::Artwork],
@@ -374,10 +414,12 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 ReleaseMark {
+                    corroborated: false,
                     kind: MarkKind::CatalogNumber,
                     sighting: SourcedValue::new("RISECD073".to_string(), SignalOrigin::FolderName),
                 },
                 ReleaseMark {
+                    corroborated: false,
                     kind: MarkKind::CatalogNumber,
                     sighting: SourcedValue::in_file(
                         "RISECD073".to_string(),
@@ -390,6 +432,7 @@ mod tests {
         assert_eq!(
             ReleaseMarkLine::fold(&ReleaseMark::of_signals(&pooled, &choosing(&["RISECD073"]))),
             vec![ReleaseMarkLine {
+                corroborated: false,
                 kind: MarkKind::CatalogNumber,
                 value: "RISECD073".to_string(),
                 origins: vec![SignalOrigin::FolderName, SignalOrigin::Artwork],
@@ -430,6 +473,7 @@ mod tests {
                 &choosing(&["NJ 8255"]),
             )),
             vec![ReleaseMarkLine {
+                corroborated: false,
                 kind: MarkKind::CatalogNumber,
                 value: "NJ-8255".to_string(),
                 origins: vec![SignalOrigin::FolderName, SignalOrigin::Artwork],

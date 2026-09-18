@@ -10,8 +10,8 @@ namespace Bae.Desktop;
 
 /// <summary>
 /// The names an object itself carries, one line each in the order core lists
-/// mark kinds. Each line is the seal, what kind of name it is, the value as it
-/// was read, and a tag per surface it was read from.
+/// mark kinds. A line is sealed only when its lookup found the chosen record.
+/// It names the kind, value, and surfaces it was read from.
 ///
 /// Core folds the readings — two scans showing one barcode arrive as one mark
 /// tagged `scan` — so this draws what it is given.
@@ -45,6 +45,12 @@ internal static class MarkLines
         };
         var seal = Icons.Glyph(Icons.Seal, 12, "BaeTextSecondaryBrush");
         seal.VerticalAlignment = VerticalAlignment.Center;
+        seal.Opacity = mark.Corroborated ? 1 : 0;
+        seal.IsHitTestVisible = mark.Corroborated;
+        Avalonia.Automation.AutomationProperties.SetAccessibilityView(
+            seal, mark.Corroborated
+                ? Avalonia.Automation.AccessibilityView.Content
+                : Avalonia.Automation.AccessibilityView.Raw);
         Avalonia.Automation.AutomationProperties.SetName(
             seal, Loc.Core("core.identity.identified"));
         row.Children.Add(seal);
