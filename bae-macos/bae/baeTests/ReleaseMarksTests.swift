@@ -76,6 +76,7 @@ struct ReleaseMarksTests {
         let lines = try await FindOnlineRendering.text(
             IdentifiedFromPopover(
                 marks: PreviewData.releaseMarks,
+                verification: nil,
                 records: PreviewData.releaseRecordsPair
             )
             .preferredColorScheme(.light)
@@ -105,6 +106,7 @@ struct ReleaseMarksTests {
         let lines = try await FindOnlineRendering.text(
             ReleaseFactsPopover(
                 marks: release.marks,
+                verification: nil,
                 records: release.records
             )
             .preferredColorScheme(.light)

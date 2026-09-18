@@ -16,6 +16,10 @@ struct ImportReleaseSummary {
     /// Every name the candidate's folder states, whatever the draft was read
     /// from. Empty until something has read it.
     let marks: [BridgeReleaseMark]
+    /// What the rip databases said about the folder's audio. `nil` until
+    /// something has read its log, and for a folder whose log states nothing
+    /// about its bits.
+    let verification: BridgeVerification?
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
         let provenance = candidate.metadataProvenance
@@ -51,6 +55,7 @@ struct ImportReleaseSummary {
         }
         records = candidate.records
         marks = candidate.marks
+        verification = candidate.verification
         sourceAudio = candidate.files.sourceAudio
     }
 
@@ -72,6 +77,7 @@ struct ImportReleaseSummary {
             case .unidentified, .prefilled: []
             }
         marks = row.marks
+        verification = row.verification
         sourceAudio = nil
     }
 
@@ -132,8 +138,12 @@ struct ImportReleaseSummaryView: View {
     @ViewBuilder
     private var identifiedMark: some View {
         if style.showsIdentifiedMark, !summary.records.isEmpty {
-            IdentifiedMark(marks: summary.marks, records: summary.records)
-                .layoutPriority(1)
+            IdentifiedMark(
+                marks: summary.marks,
+                verification: summary.verification,
+                records: summary.records
+            )
+            .layoutPriority(1)
         }
     }
 

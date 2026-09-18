@@ -72,6 +72,7 @@ struct AlbumExpansionContent: View {
                     ReleaseFactsLine(
                         facts: selectedRelease.compactMetadata,
                         marks: selectedRelease.marks,
+                        verification: selectedRelease.verification,
                         records: selectedRelease.records
                     )
                     HStack(spacing: 10) {
@@ -214,12 +215,18 @@ struct AlbumExpansionContent: View {
 /// nothing of it to state.
 struct ReleaseFactsPopover: View {
     let marks: [BridgeReleaseMark]
+    let verification: BridgeVerification?
     let records: [BridgeReleaseRecord]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if !marks.isEmpty {
-                MarkLines(marks: marks)
+            if !marks.isEmpty || verification != nil {
+                VStack(alignment: .leading, spacing: 4) {
+                    MarkLines(marks: marks)
+                    if let verification {
+                        RipMatchLine(verification: verification)
+                    }
+                }
             }
             if !records.isEmpty {
                 ReleaseRecordsRow(records: records)
@@ -241,6 +248,7 @@ struct ReleaseFactsPopover: View {
 private struct ReleaseFactsLine: View {
     let facts: String
     let marks: [BridgeReleaseMark]
+    let verification: BridgeVerification?
     let records: [BridgeReleaseRecord]
 
     @State
@@ -249,7 +257,7 @@ private struct ReleaseFactsLine: View {
     private var isShowingPopover = false
 
     var body: some View {
-        if marks.isEmpty, records.isEmpty {
+        if marks.isEmpty, records.isEmpty, verification == nil {
             factsText
         }
         else {
@@ -279,8 +287,12 @@ private struct ReleaseFactsLine: View {
             .onHover { isHovering = $0 }
             .accessibilityIdentifier("release-facts")
             .popover(isPresented: $isShowingPopover, arrowEdge: .bottom) {
-                ReleaseFactsPopover(marks: marks, records: records)
-                    .background { PopoverBehavior() }
+                ReleaseFactsPopover(
+                    marks: marks,
+                    verification: verification,
+                    records: records
+                )
+                .background { PopoverBehavior() }
             }
         }
     }

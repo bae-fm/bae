@@ -101,6 +101,9 @@ struct ImportReleaseHeader: View {
                             if !releaseSummary.marks.isEmpty {
                                 MarkLines(marks: releaseSummary.marks)
                             }
+                            if let verification = releaseSummary.verification {
+                                RipMatchLine(verification: verification)
+                            }
                         }
                     }
                 )

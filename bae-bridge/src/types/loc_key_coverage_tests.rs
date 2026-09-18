@@ -82,6 +82,9 @@ const DIRECT_KEYS: &[&str] = &[
     // reading itself is a typed field, so neither needs a key function.
     "core.import.triage.identified",
     "core.import.triage.identified_from",
+    // The rip-match line: core hands over the count, the surface resolves the
+    // plural against it. Nothing enumerates a variant here, so no key fn.
+    "core.verification.matches_other_rips",
 ];
 
 /// A stand-in cover choice for walking the file roles that carry one. The

@@ -10,6 +10,7 @@ import SwiftUI
 /// gesture: this release came from somewhere you can go and look at.
 struct IdentifiedMark: View {
     let marks: [BridgeReleaseMark]
+    let verification: BridgeVerification?
     let records: [BridgeReleaseRecord]
 
     @Environment(\.backgroundProminence)
@@ -23,9 +24,13 @@ struct IdentifiedMark: View {
             .accessibilityIdentifier("identified-mark")
             .accessibilityLabel(coreString("core.import.triage.identified"))
             .hoverPopover(arrowEdge: .bottom) {
-                IdentifiedFromPopover(marks: marks, records: records)
-                    .popoverEntrance(anchor: .top)
-                    .background { PopoverBehavior() }
+                IdentifiedFromPopover(
+                    marks: marks,
+                    verification: verification,
+                    records: records
+                )
+                .popoverEntrance(anchor: .top)
+                .background { PopoverBehavior() }
             }
     }
 
@@ -43,12 +48,18 @@ struct IdentifiedMark: View {
 /// its own page.
 struct IdentifiedFromPopover: View {
     let marks: [BridgeReleaseMark]
+    let verification: BridgeVerification?
     let records: [BridgeReleaseRecord]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if !marks.isEmpty {
-                MarkLines(marks: marks)
+            if !marks.isEmpty || verification != nil {
+                VStack(alignment: .leading, spacing: 4) {
+                    MarkLines(marks: marks)
+                    if let verification {
+                        RipMatchLine(verification: verification)
+                    }
+                }
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text(
@@ -75,6 +86,7 @@ struct IdentifiedFromPopover: View {
     #Preview("Identified from") {
         IdentifiedFromPopover(
             marks: PreviewData.releaseMarks,
+            verification: PreviewData.releaseVerification,
             records: PreviewData.releaseRecordsPair
         )
         .importPreviewEnvironment()
@@ -83,6 +95,7 @@ struct IdentifiedFromPopover: View {
     #Preview("Identified from, nothing read off the folder") {
         IdentifiedFromPopover(
             marks: [],
+            verification: nil,
             records: PreviewData.releaseRecordsPair
         )
         .importPreviewEnvironment()

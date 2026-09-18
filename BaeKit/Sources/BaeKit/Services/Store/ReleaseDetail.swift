@@ -26,6 +26,9 @@ public struct ReleaseDetail: Identifiable {
     /// Every name read off the object itself, one line per value and in the
     /// order core lists mark kinds. Empty when its folder stated none.
     public var marks: [BridgeReleaseMark]
+    /// What the rip databases said about this release's audio. `nil` for a
+    /// release no source verified.
+    public var verification: BridgeVerification?
 
     public var id: String {
         summary.id
@@ -61,5 +64,6 @@ public struct ReleaseDetail: Identifiable {
         galleryItems = bridge.galleryItems
         records = bridge.records
         marks = bridge.marks
+        verification = bridge.verification
     }
 }
