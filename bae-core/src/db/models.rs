@@ -302,6 +302,15 @@ pub struct DbRelease {
     /// document a draft was read from, and a release with neither started
     /// blank.
     pub draft_from_tags: bool,
+    /// Which name read off the object tied its files to the record the draft
+    /// was read from: the disc ID from the rip log's table of contents, a
+    /// barcode read off a scan, a catalog number read off the folder. `None`
+    /// where nothing did — a record somebody found by searching, a draft read
+    /// off the files' own tags, a release that started blank.
+    ///
+    /// Not the same question as which marks the release carries: a folder can
+    /// state a barcode no catalog ever answered to.
+    pub identified_by: Option<crate::import::MarkKind>,
     /// Where each album-level value the edit sheet edits came from: the album
     /// title and year, and the five pressing fields beside the pressing year.
     /// The album's own row keeps the title; where it was read is a fact about
@@ -727,6 +736,7 @@ impl DbRelease {
             release_name: None,
             pressing: Pressing::blank(),
             draft_from_tags: false,
+            identified_by: None,
             field_origins: Default::default(),
             remote: false,
             source_folder_name: None,

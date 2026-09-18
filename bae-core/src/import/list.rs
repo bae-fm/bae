@@ -325,6 +325,9 @@ pub struct ImportCandidateDetailProjection {
     /// The identity the row leads with: the pick's archived documents where
     /// there is a pick, the verdict's lead otherwise.
     pub matched: Option<MatchedRelease>,
+    /// Which name read off the folder tied its files to the record the draft
+    /// was read from, read off the verdict's match rows.
+    pub identified_by: Option<crate::import::MarkKind>,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// Who decided that identity: the person, identification, or nobody yet.
     pub metadata_author: crate::import::MetadataAuthor,
@@ -382,6 +385,7 @@ impl ImportCandidateDetailProjection {
             resumed_identify_state,
             answer,
             matched,
+            identified_by,
             metadata_provenance,
             metadata_author,
             metadata_revision,
@@ -462,9 +466,14 @@ impl ImportCandidateDetailProjection {
                     )
                 })
                 .unwrap_or_default(),
+            verified: signals
+                .as_ref()
+                .and_then(|signals| signals.verification.as_ref())
+                .is_some_and(crate::import::Verification::verified),
             verification: signals
                 .as_ref()
                 .and_then(|signals| signals.verification.clone()),
+            identified_by,
             metadata_summary,
             cover_thumbnail: None,
             placement,

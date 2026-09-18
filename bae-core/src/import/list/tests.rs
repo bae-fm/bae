@@ -123,6 +123,7 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
         selected_cover: None,
         marks: Vec::new(),
         verification: None,
+        identified_by: None,
     }
 }
 
@@ -143,6 +144,7 @@ fn several_matches_state() -> CandidateStateListRow {
         selected_cover: None,
         marks: Vec::new(),
         verification: None,
+        identified_by: None,
     }
 }
 
@@ -163,6 +165,7 @@ fn not_found_state() -> CandidateStateListRow {
         selected_cover: None,
         marks: Vec::new(),
         verification: None,
+        identified_by: None,
     }
 }
 

@@ -205,6 +205,8 @@ impl crate::types::BridgeTriageRow {
             reading,
             marks,
             verification,
+            identified_by,
+            verified,
         } = row;
         crate::types::BridgeTriageRow {
             candidate_key,
@@ -238,6 +240,8 @@ impl crate::types::BridgeTriageRow {
                 .map(crate::types::BridgeReleaseMark::from_core)
                 .collect(),
             verification: verification.map(crate::types::BridgeVerification::from_core),
+            identified_by: identified_by.map(crate::types::BridgeMarkKind::from_core),
+            verified,
         }
     }
 }

@@ -144,7 +144,7 @@ pub(super) fn insert_release_row(
         r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
-            draft_from_tags,
+            draft_from_tags, identified_by,
             format, label, catalog_number, country, barcode,
             album_title_origin, album_year_origin, year_origin, format_origin,
             label_origin, catalog_number_origin, country_origin, barcode_origin,
@@ -152,7 +152,7 @@ pub(super) fn insert_release_row(
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
             _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             release.id,
@@ -160,6 +160,7 @@ pub(super) fn insert_release_row(
             release.release_name,
             release.pressing.year,
             release.draft_from_tags,
+            release.identified_by.map(|kind| kind.as_str()),
             release.pressing.format,
             release.pressing.label,
             release.pressing.catalog_number,

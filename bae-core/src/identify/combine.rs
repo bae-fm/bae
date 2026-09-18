@@ -29,7 +29,7 @@ use super::agreements::{agreements_of, CandidateText};
 use crate::db::LibraryStatus;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing};
 use crate::import::search::MetadataResult;
-use crate::import::Catalog;
+use crate::import::{Catalog, MarkKind};
 use std::collections::{HashMap, HashSet};
 
 /// Which lookup produced one result: the result came back from that signal's
@@ -44,6 +44,50 @@ pub struct LookupProvenance {
     pub by_disc_id: bool,
     pub by_barcode: bool,
     pub by_catalog: bool,
+}
+
+impl LookupProvenance {
+    /// Which name the object carries produced this result, where one did: the
+    /// disc's own identity first, then the two codes printed on the package.
+    /// Several lookups can name one release, and the first of them in that
+    /// order is what tied the files to it — a disc ID identifies the pressing,
+    /// a barcode only the product.
+    ///
+    /// `None` for a result no lookup claims, which is a release somebody found
+    /// by searching.
+    fn mark(&self) -> Option<MarkKind> {
+        if self.by_disc_id {
+            Some(MarkKind::DiscId)
+        } else if self.by_barcode {
+            Some(MarkKind::Barcode)
+        } else if self.by_catalog {
+            Some(MarkKind::CatalogNumber)
+        } else {
+            None
+        }
+    }
+}
+
+/// Which name read off the folder tied its files to the record `picked` reads
+/// its draft from, over the lookups' answers `lookups` pairs with the releases
+/// they named.
+///
+/// The question is asked of the chosen record alone: another answer's route is
+/// a fact about a release nobody settled on. So a draft read off the files'
+/// own tags, a draft nobody has filled, and a record found by searching all
+/// answer `None` — as does a candidate still being asked which pressing it is,
+/// since it has chosen no record to ask about.
+pub fn identified_by<'a>(
+    picked: Option<&crate::import::MetadataProvenance>,
+    lookups: impl IntoIterator<Item = (&'a MetadataResult, &'a LookupProvenance)>,
+) -> Option<MarkKind> {
+    let crate::import::MetadataProvenance::ExternalRelease { record, .. } = picked? else {
+        return None;
+    };
+    lookups
+        .into_iter()
+        .find(|(result, _)| result.source == record.catalog && result.release_id == record.key)
+        .and_then(|(_, provenance)| provenance.mark())
 }
 
 /// The pressings agreement left out, as the releases they are made of — every
@@ -841,5 +885,90 @@ mod tests {
         );
         let (matches, _) = found(outcome);
         assert_eq!(crate::import::release_group::pressing_count(matches), 1);
+    }
+
+    // ── Which name tied the files to the chosen record ──────────────────
+
+    fn named_by(by_disc_id: bool, by_barcode: bool, by_catalog: bool) -> LookupProvenance {
+        LookupProvenance {
+            by_disc_id,
+            by_barcode,
+            by_catalog,
+        }
+    }
+
+    fn picked(release_id: &str) -> crate::import::MetadataProvenance {
+        crate::import::MetadataProvenance::ExternalRelease {
+            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id),
+            partners: Vec::new(),
+        }
+    }
+
+    /// Two answers, and the chosen one is the second: the question is about
+    /// the record the draft reads, not about whichever the run led with.
+    #[test]
+    fn the_chosen_record_s_own_lookup_is_the_answer() {
+        let run = [
+            (mk_result("rel-a", None), named_by(true, false, false)),
+            (mk_result("rel-b", None), named_by(false, true, false)),
+        ];
+        assert_eq!(
+            identified_by(Some(&picked("rel-b")), run.iter().map(|(r, p)| (r, p))),
+            Some(MarkKind::Barcode),
+        );
+        assert_eq!(
+            identified_by(Some(&picked("rel-a")), run.iter().map(|(r, p)| (r, p))),
+            Some(MarkKind::DiscId),
+        );
+    }
+
+    /// Several lookups can name one release. The disc's own identity is the
+    /// one that tied the files to it: it identifies the pressing, where a
+    /// barcode identifies the product and a catalog number the issue.
+    #[test]
+    fn the_disc_s_own_identity_is_named_over_the_printed_codes() {
+        for (provenance, expected) in [
+            (named_by(true, true, true), MarkKind::DiscId),
+            (named_by(false, true, true), MarkKind::Barcode),
+            (named_by(false, false, true), MarkKind::CatalogNumber),
+        ] {
+            let run = [(mk_result("rel-a", None), provenance)];
+            assert_eq!(
+                identified_by(Some(&picked("rel-a")), run.iter().map(|(r, p)| (r, p))),
+                Some(expected),
+            );
+        }
+    }
+
+    /// A release somebody found by searching is in no lookup's answer, and a
+    /// draft read off the files' own tags names no record at all. Neither was
+    /// tied to the object by a name read off it.
+    #[test]
+    fn a_record_no_lookup_named_ties_nothing() {
+        let run = [(mk_result("rel-a", None), named_by(true, false, false))];
+        let lookups = || run.iter().map(|(r, p)| (r, p));
+        assert_eq!(
+            identified_by(Some(&picked("rel-searched")), lookups()),
+            None
+        );
+        assert_eq!(
+            identified_by(
+                Some(&crate::import::MetadataProvenance::FileTags),
+                lookups()
+            ),
+            None,
+        );
+        assert_eq!(identified_by(None, lookups()), None);
+    }
+
+    /// A folder still being asked which of several pressings it is has
+    /// settled on no record, so there is nothing to ask the question of.
+    #[test]
+    fn a_folder_asked_which_pressing_names_nothing() {
+        let run = [
+            (mk_result("rel-a", None), named_by(true, false, false)),
+            (mk_result("rel-b", None), named_by(true, false, false)),
+        ];
+        assert_eq!(identified_by(None, run.iter().map(|(r, p)| (r, p))), None);
     }
 }

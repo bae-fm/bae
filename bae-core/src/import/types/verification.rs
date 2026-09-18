@@ -77,4 +77,11 @@ impl Verification {
             .min()
             .flatten()
     }
+
+    /// Whether other copies of this release's audio agree with it at all —
+    /// every track confirmed by at least one database. The count says how
+    /// many; this says whether, which is the fact a surface draws as a glyph.
+    pub fn verified(&self) -> bool {
+        self.matched_copies().is_some()
+    }
 }

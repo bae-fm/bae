@@ -141,6 +141,10 @@ pub struct DbCandidateImportPreparation {
     /// settled signals. `None` for a candidate whose log states nothing about
     /// its bits; commit keeps this with the release.
     pub verification: Option<crate::import::Verification>,
+    /// Which name read off the folder tied its files to the record the draft
+    /// was read from, as the stored verdict's match rows record it. `None`
+    /// where nothing did; commit keeps this with the release.
+    pub identified_by: Option<crate::import::MarkKind>,
 }
 
 /// The exact candidate state a library import transaction is allowed to

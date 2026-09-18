@@ -90,6 +90,8 @@ object BridgeFixtures {
             records = emptyList(),
             marks = emptyList(),
             verification = null,
+            identifiedBy = null,
+            verified = false,
             totalDuration = null,
             fileCount = 0,
             totalSize = 0,

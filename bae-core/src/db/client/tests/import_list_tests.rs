@@ -871,3 +871,68 @@ async fn a_row_nothing_has_read_states_no_names() {
         .unwrap();
     assert!(rows(&projection)[0].marks.is_empty());
 }
+
+/// The row says what tied the folder's files to the record its draft reads,
+/// read off the verdict's own match rows.
+#[tokio::test]
+async fn a_row_states_what_tied_its_files_to_its_record() {
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    assert!(crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&NewImportCandidateVerdict {
+            candidate: crate::import::CandidateAsRead {
+                content_hash: candidate.files.content_hash(),
+                file_edit_revision: 0,
+                metadata_revision: 0,
+            },
+            folder_path: candidate.path.to_string_lossy().into_owned(),
+            verdict: verdict("mb-verdict", None),
+            signals: crate::signals::Signals {
+                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                verification: None,
+                barcode: crate::signals::BarcodeSignal::Absent,
+                text: crate::signals::TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                text_pool: Vec::new(),
+                durations: crate::import::probe::SourceDurations::totalling(1_000),
+            },
+            metadata: Some(crate::import::CandidateMetadataDraft {
+                draft: crate::import::pane::blank_candidate_draft(&candidate.files),
+                source_discogs_artist_ids: Default::default(),
+                provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
+                    record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-verdict"),
+                    partners: Vec::new(),
+                }),
+                cover: None,
+                assets: crate::import::CandidatePreparedAssets::default(),
+            }),
+        })
+        .await
+        .unwrap());
+
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    assert_eq!(
+        rows(&projection)[0].identified_by,
+        Some(crate::import::MarkKind::DiscId),
+    );
+}
+
+/// A folder nobody has settled a record for was tied to nothing, however many
+/// releases its lookups named.
+#[tokio::test]
+async fn a_row_with_no_record_was_tied_by_nothing() {
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    save_verdict(&db, &candidate, "mb-verdict").await;
+
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    assert_eq!(rows(&projection)[0].identified_by, None);
+}

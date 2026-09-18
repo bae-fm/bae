@@ -614,6 +614,7 @@ fn a_valid_source_less_draft_is_ready_and_bulk_importable() {
             selected_cover: None,
             marks: Vec::new(),
             verification: None,
+            identified_by: None,
         },
     );
 

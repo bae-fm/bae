@@ -94,6 +94,9 @@ pub struct CandidateStateListRow {
     /// something has extracted its signals, and for a folder whose log states
     /// nothing about its bits.
     pub verification: Option<crate::import::Verification>,
+    /// Which name read off the folder tied its files to the record the draft
+    /// was read from, as the verdict's own match rows record it.
+    pub identified_by: Option<crate::import::MarkKind>,
 }
 
 /// Every column the queue is placed from, in one read.
@@ -395,7 +398,12 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     // verdict named is what the Ready rule asks, and two sources' records of
     // one pressing pair by fields no `COUNT(*)` can see.
     let mut matches = load_matches_on(sql, None)?;
+    // Read before the verdicts: which lookup named the record a draft was read
+    // from is asked of the match row naming *that* record, which is not always
+    // the lead, so the pick has to be in hand while the match rows still are.
+    let mut provenances = load_provenance_on(sql, None)?;
     let mut verdicts: HashMap<String, (VerdictSummary, u64)> = HashMap::new();
+    let mut identified: HashMap<String, crate::import::MarkKind> = HashMap::new();
     for row in sql.query(
         "SELECT content_hash, kind, track_count, probed_total_duration_ms \
          FROM import_candidate_verdict",
@@ -419,6 +427,14 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         let lead = found
             .first()
             .map(|(result, provenance)| LeadMatch::of(result, Some(provenance)));
+        if let Some(mark) = crate::identify::identified_by(
+            provenances
+                .get(&content_hash)
+                .map(|(provenance, _)| provenance),
+            found.iter().map(|(result, provenance)| (result, provenance)),
+        ) {
+            identified.insert(content_hash.clone(), mark);
+        }
         let pressing_count = crate::import::release_group::pressing_count(
             found.into_iter().map(|(result, _)| result).collect(),
         ) as u32;
@@ -442,7 +458,6 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         );
     }
 
-    let mut provenances = load_provenance_on(sql, None)?;
     let mut signal_facts = load_signal_facts_on(sql, None)?;
     let mut states = HashMap::new();
     for (content_hash, edit_revision) in sql.query(
@@ -468,6 +483,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             Some(facts) => (facts.marks, facts.verification),
             None => (Vec::new(), None),
         };
+        let identified_by = identified.remove(&content_hash);
         states.insert(
             content_hash,
             CandidateStateListRow {
@@ -480,6 +496,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 selected_cover,
                 marks,
                 verification,
+                identified_by,
             },
         );
     }

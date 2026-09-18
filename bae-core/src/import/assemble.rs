@@ -447,6 +447,9 @@ pub(crate) fn assemble_parsed_album(
         release_name: None,
         pressing: ir.pressing,
         draft_from_tags: matches!(ir.metadata_provenance, Some(MetadataProvenance::FileTags)),
+        // Which lookup found the record is the candidate's answer, not this
+        // assembly's; `run_import` stamps it onto the row it writes.
+        identified_by: None,
         // The draft the user committed states where each of its fields was
         // read; `apply_user_edit_to_seed` puts that on this row.
         field_origins: Default::default(),

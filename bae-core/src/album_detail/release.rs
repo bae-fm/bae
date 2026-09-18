@@ -113,6 +113,13 @@ pub struct ReleaseDetail {
     /// copies of each track agree with this one. `None` for a release no
     /// source verified.
     pub verification: Option<crate::import::Verification>,
+    /// Which name read off the object tied its files to the record the draft
+    /// was read from. `None` where nothing did.
+    pub identified_by: Option<crate::import::MarkKind>,
+    /// Whether other copies of this release's audio agree with it. Derived
+    /// from `verification` once, here, so no surface reads a count to answer
+    /// a yes-or-no question.
+    pub verified: bool,
 }
 
 /// One physical source file that supplies a persisted track. A track can span
@@ -401,6 +408,11 @@ impl ReleaseDetail {
             gallery_items: gallery,
             records: raw.records,
             marks: crate::import::ReleaseMarkLine::fold(&raw.marks),
+            identified_by: release.identified_by,
+            verified: raw
+                .verification
+                .as_ref()
+                .is_some_and(crate::import::Verification::verified),
             verification: raw.verification,
         };
         (detail, audio_format_orphans)

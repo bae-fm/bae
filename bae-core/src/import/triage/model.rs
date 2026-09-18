@@ -398,6 +398,15 @@ pub struct TriageRow {
     /// log states it. `None` until something has extracted the folder's
     /// signals, and for a folder whose log states nothing about its bits.
     pub verification: Option<crate::import::Verification>,
+    /// Which name read off the folder tied its files to the record the draft
+    /// was read from. `None` for a record somebody found by searching, for a
+    /// draft read off the files' own tags, and for a row still being asked
+    /// which pressing it is — that row has settled on no record.
+    pub identified_by: Option<crate::import::MarkKind>,
+    /// Whether other copies of this candidate's audio agree with it. Derived
+    /// from `verification` once, here, so no surface reads a count to answer
+    /// a yes-or-no question.
+    pub verified: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

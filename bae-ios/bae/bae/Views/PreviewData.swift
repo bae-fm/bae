@@ -119,6 +119,8 @@ enum PreviewData {
             records: [],
             marks: [],
             verification: nil,
+            identifiedBy: nil,
+            verified: false,
             totalDuration: .minutesOnly(minutes: 39),
             fileCount: 0,
             totalSize: 0,

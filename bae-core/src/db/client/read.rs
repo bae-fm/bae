@@ -548,6 +548,18 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
             barcode: row.get("barcode")?,
         },
         draft_from_tags: row.get("draft_from_tags")?,
+        identified_by: row
+            .get::<_, Option<String>>("identified_by")?
+            .map(|stored| {
+                stored.parse().map_err(|error: String| {
+                    coven::rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        coven::rusqlite::types::Type::Text,
+                        error.into(),
+                    )
+                })
+            })
+            .transpose()?,
         field_origins: row_to_field_origins(row)?,
         remote: row.get("remote")?,
         source_folder_name: row.get("source_folder_name")?,

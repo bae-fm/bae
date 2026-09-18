@@ -40,7 +40,7 @@ pub mod verdict;
 pub mod view;
 
 pub use agreements::{agreements_of, judged_results, Agreements, CandidateText};
-pub use combine::{LookupProvenance, NarrowedOut};
+pub use combine::{identified_by, LookupProvenance, NarrowedOut};
 pub use ready::{
     classify, classify_summary, LeadMatch, NeedsYou, QueueClassification, VerdictKind,
     VerdictSummary,

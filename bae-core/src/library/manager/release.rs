@@ -295,6 +295,11 @@ impl LibraryManager {
             release_id,
             new_records,
             matches!(reseed, ReleaseReseed::FileTags),
+            // A release re-identified from the library was answered by a
+            // person picking a record or by its own files' tags. Neither is a
+            // name read off the object tying the files to it, so whatever the
+            // import once recorded no longer describes this release.
+            None,
         )
         .await?;
 

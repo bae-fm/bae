@@ -752,6 +752,8 @@ impl AutomationRelease {
                 .into_iter()
                 .map(AutomationReleaseMark::from_core)
                 .collect(),
+            identified_by: release.identified_by.map(AutomationMarkKind::from_core),
+            verified: release.verified,
             verification: release.verification.map(AutomationVerification::from_core),
         }
     }

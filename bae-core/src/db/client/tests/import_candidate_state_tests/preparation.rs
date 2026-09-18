@@ -871,3 +871,43 @@ async fn the_preparation_carries_what_the_rip_databases_said() {
         "every track's counts survive the store, the unverified one included"
     );
 }
+
+/// Which name read off the folder tied its files to the record the draft
+/// reads is asked of the stored verdict's own match rows, and handed to the
+/// commit. A record the run never named — one somebody found by searching —
+/// was tied to the folder by nothing.
+#[tokio::test]
+async fn the_preparation_carries_what_tied_the_files_to_the_record() {
+    for (pick, expected) in [
+        (release_pick("rel-1"), Some(crate::import::MarkKind::DiscId)),
+        (release_pick("rel-searched"), None),
+    ] {
+        let (db, _tmp) = empty_db().await;
+        let (_, hash) = stored_pane_candidate(&db).await;
+        assert!(crate::import::CandidatePreparations::new(db.clone())
+            .store_verdict(&NewImportCandidateVerdict {
+                candidate: as_read(&hash, 0),
+                folder_path: pane_candidate_path(),
+                verdict: sample_verdict(),
+                signals: signals_with(SourceDurations::default()),
+                metadata: Some(crate::import::CandidateMetadataDraft {
+                    draft: candidate_draft("Album Title", "Artist Name"),
+                    source_discogs_artist_ids: Default::default(),
+                    provenance: Some(pick),
+                    cover: None,
+                    assets: crate::import::CandidatePreparedAssets::default(),
+                }),
+            })
+            .await
+            .unwrap());
+
+        assert_eq!(
+            db.load_import_candidate_preparation(&hash)
+                .await
+                .unwrap()
+                .expect("the scanned candidate is prepared")
+                .identified_by,
+            expected,
+        );
+    }
+}

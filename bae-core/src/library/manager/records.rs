@@ -47,6 +47,7 @@ impl LibraryManager {
         release_id: &str,
         new_records: Vec<crate::import::ReleaseRecord>,
         draft_from_tags: bool,
+        identified_by: Option<crate::import::MarkKind>,
     ) -> Result<(), LibraryError> {
         let current_album_id = self
             .database
@@ -66,6 +67,7 @@ impl LibraryManager {
                 release_id,
                 &new_records,
                 draft_from_tags,
+                identified_by,
                 &current_album_id,
                 &target.album_id,
                 target.new_album.as_ref(),

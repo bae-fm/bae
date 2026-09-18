@@ -29,6 +29,12 @@ pub struct AutomationRelease {
     /// What the rip databases said about this release's audio. `None` for a
     /// release no source verified.
     pub verification: Option<AutomationVerification>,
+    /// Which name read off the object tied its files to the record its draft
+    /// was read from. `None` where nothing did.
+    pub identified_by: Option<AutomationMarkKind>,
+    /// Whether other copies of this release's audio agree with it — every
+    /// track confirmed by at least one database.
+    pub verified: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

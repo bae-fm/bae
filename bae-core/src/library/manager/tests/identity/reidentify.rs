@@ -55,6 +55,10 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.remote = false;
+    // The import that made this release was answered by the disc's own
+    // identity. The re-identify below is answered by the files' tags, which
+    // is not a name read off the object at all.
+    release.identified_by = Some(crate::import::MarkKind::DiscId);
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
@@ -130,6 +134,10 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
         .unwrap()
         .unwrap();
     assert!(updated.draft_from_tags);
+    assert_eq!(
+        updated.identified_by, None,
+        "what tied the files to the old record says nothing about this one"
+    );
     // The archived document describes `mb-rel-1`, not this release, and is
     // shared with every candidate that matched it. Dropping the pointer is what
     // stops it being read here; nothing deletes it.

@@ -229,6 +229,9 @@ impl ImportService {
         // What the rip databases said about this folder's audio, from the log
         // the extraction pass already read.
         let verification = preparation.verification;
+        // What tied these files to the record their draft was read from, as
+        // the candidate's stored verdict recorded it.
+        let identified_by = preparation.identified_by;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
@@ -368,6 +371,8 @@ impl ImportService {
             crate::import::release_candidate::CandidateSource::Combination => None,
         };
         prepared.db_release.content_hash = Some(content_hash);
+        // Kept with the release the way its marks and its verification are.
+        prepared.db_release.identified_by = identified_by;
 
         prepared.selected_cover = selected_cover.clone();
 

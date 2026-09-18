@@ -27,6 +27,15 @@ impl Database {
                 .as_ref()
                 .map(crate::import::ReleaseMark::of_signals)
                 .unwrap_or_default();
+            // Which lookup produced the record the draft reads, asked of the
+            // stored verdict's own match rows before the pick is handed on.
+            let identified_by = crate::identify::identified_by(
+                state.metadata_provenance.as_ref(),
+                state
+                    .identify
+                    .iter()
+                    .flat_map(|identification| identification.verdict.lookups()),
+            );
             Ok(Some(crate::db::DbCandidateImportPreparation {
                 file_edit_revision: state.file_edits.revision,
                 metadata_revision: state.metadata_revision,
@@ -40,6 +49,7 @@ impl Database {
                     .signals
                     .as_ref()
                     .and_then(|signals| signals.verification.clone()),
+                identified_by,
             }))
         })
         .await

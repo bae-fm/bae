@@ -504,6 +504,15 @@ pub struct BridgeTriageRow {
     /// something has read its log, and for a folder whose log states nothing
     /// about its bits.
     pub verification: Option<crate::types::BridgeVerification>,
+    /// Which name read off the folder tied its files to the record the draft
+    /// was read from. `None` for a record found by searching, for a draft read
+    /// off the files' own tags, and for a row still being asked which pressing
+    /// it is. Core decides it; a surface draws the glyph and nothing else.
+    pub identified_by: Option<crate::types::BridgeMarkKind>,
+    /// Whether other copies of this candidate's audio agree with it. Core
+    /// derives it from the verification; a surface never reads a count to
+    /// answer a yes-or-no question.
+    pub verified: bool,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

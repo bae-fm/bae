@@ -135,6 +135,8 @@ object PreviewData {
             records = emptyList(),
             marks = emptyList(),
             verification = null,
+            identifiedBy = null,
+            verified = false,
             totalDuration = null,
             fileCount = trackGroups.sumOf { it.tracks.size }.toLong(),
             totalSize = 300_000_000L,

@@ -178,6 +178,11 @@ pub fn all() -> Vec<coven::Migration> {
             "release_verification",
             include_str!("../migrations/034_release_verification.sql"),
         ),
+        coven::Migration::sql(
+            35,
+            "release_identified_by",
+            include_str!("../migrations/035_release_identified_by.sql"),
+        ),
     ]
 }
 

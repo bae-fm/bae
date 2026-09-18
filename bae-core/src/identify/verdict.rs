@@ -123,6 +123,23 @@ impl TerminalVerdict {
             ledger: None,
         }
     }
+
+    /// Every release this verdict settled on, paired with the lookups that
+    /// named it. Empty for a verdict that settled on none, and for the
+    /// releases agreement narrowed out — those are answers about releases the
+    /// verdict did not settle on.
+    pub fn lookups(&self) -> impl Iterator<Item = (&MetadataResult, &LookupProvenance)> {
+        match self {
+            Self::Found {
+                matches,
+                provenance,
+                ..
+            } => matches.iter().zip(provenance.iter()),
+            Self::NotFoundAnywhere { .. } | Self::ManualOnly { .. } | Self::Failed { .. } => {
+                [].iter().zip([].iter())
+            }
+        }
+    }
 }
 
 impl TryFrom<IdentifyState> for TerminalVerdict {
