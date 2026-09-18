@@ -58,7 +58,7 @@ fn discid_from_log_rejects_end_sector_that_overflows_leadout_derivation() {
 
 #[test]
 fn test_extract_leadout_from_log() {
-    let log_content = crate::text_encoding::read_text_file(&fixture("test_album.log"))
+    let log_content = crate::text_encoding::read_text_file(&fixture("logs/test_album.log"))
         .expect("LOG fixture should be readable")
         .text;
     let toc_sectors = extract_log_toc_sectors(&log_content).expect("LOG TOC should parse");
@@ -80,7 +80,7 @@ fn test_extract_leadout_from_log() {
 
 #[test]
 fn test_calculate_mb_discid_from_log() {
-    let discid = calculate_mb_discid_from_log(&fixture("test_album.log"))
+    let discid = calculate_mb_discid_from_log(&fixture("logs/test_album.log"))
         .expect("disc ID should compute from the LOG fixture");
     assert_eq!(discid.len(), 28, "DiscID should be 28 characters");
     assert!(

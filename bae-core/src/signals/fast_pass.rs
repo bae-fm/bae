@@ -372,7 +372,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let dir = tmp.path();
 
-        let fixture_log = std::path::Path::new("tests/fixtures/test_album.log");
+        let fixture_log = std::path::Path::new("tests/fixtures/logs/test_album.log");
         std::fs::copy(fixture_log, dir.join("test_album.log")).unwrap();
 
         let fixture_dir = std::path::Path::new("tests/fixtures/flac");

@@ -47,6 +47,8 @@ desktop_only! {
     pub mod probe;
     pub mod release_candidate;
     pub mod release_group;
+    /// Reads what an EAC / XLD / CUERipper log says about the rip it describes.
+    pub mod rip_log;
     pub mod search;
     pub(crate) mod service;
 }

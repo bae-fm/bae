@@ -725,7 +725,7 @@ fn walkthrough_folder() -> tempfile::TempDir {
     )
     .unwrap();
     std::fs::copy(
-        fixtures.join("tests/fixtures/test_album.log"),
+        fixtures.join("tests/fixtures/logs/test_album.log"),
         tmp.path().join("rip.log"),
     )
     .unwrap();

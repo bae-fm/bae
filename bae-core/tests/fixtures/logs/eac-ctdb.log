@@ -1,0 +1,184 @@
+Exact Audio Copy V1.3 from 2. September 2016
+
+EAC extraction logfile from 18. June 2017, 0:14
+
+Artist Name / Album Title (CD1)
+
+Used drive  : HL-DT-STBD-RE  GGW-H20L   Adapter: 1  ID: 0
+
+Read mode               : Secure
+Utilize accurate stream : Yes
+Defeat audio cache      : Yes
+Make use of C2 pointers : No
+
+Read offset correction                      : 667
+Overread into Lead-In and Lead-Out          : No
+Fill up missing offset samples with silence : Yes
+Delete leading and trailing silent blocks   : No
+Null samples used in CRC calculations       : Yes
+Used interface                              : Native Win32 interface for Win NT & 2000
+Gap handling                                : Appended to previous track
+
+Used output format              : User Defined Encoder
+Selected bitrate                : 896 kBit/s
+Quality                         : High
+Add ID3 tag                     : No
+Command line compressor         : C:\Program Files (x86)\Exact Audio Copy\Flac\flac.exe
+Additional command line options : -8 -e -p -V -T "ARTIST=%artist%" -T "TITLE=%title%" -T "ALBUM=%albumtitle%" -T "DATE=%year%" -T "TRACKNUMBER=%tracknr%" -T "GENRE=%genre%" -T "PERFORMER=%albuminterpret%" -T "COMPOSER=%composer%" %haslyrics%--tag-from-file=LYRICS="%lyricsfile%"%haslyrics% -T "ALBUMARTIST=%albumartist%" -T "DISCNUMBER=%cdnumber%" -T "TOTALDISCS=%totalcds%" -T "TOTALTRACKS=%numtracks%" -T "COMMENT=%comment%" %source% -o %dest%
+
+
+TOC of the extracted CD
+
+     Track |   Start  |  Length  | Start sector | End sector 
+    ---------------------------------------------------------
+        1  |  0:00.00 |  8:23.64 |         0    |    37788   
+        2  |  8:23.64 |  6:45.40 |     37789    |    68203   
+        3  | 15:09.29 |  8:34.08 |     68204    |   106761   
+        4  | 23:43.37 |  2:54.23 |    106762    |   119834   
+        5  | 26:37.60 |  5:22.04 |    119835    |   143988   
+        6  | 31:59.64 |  7:58.07 |    143989    |   179845   
+        7  | 39:57.71 |  7:07.21 |    179846    |   211891   
+        8  | 47:05.17 |  7:26.15 |    211892    |   245356   
+        9  | 54:31.32 |  4:36.60 |    245357    |   266116   
+
+
+Track  1
+
+     Filename D:\Rips\Artist Name - Album Title\Disc 1\01 - Track One.wav
+
+     Pre-gap length  0:00:02.00
+
+     Peak level 99.1 %
+     Extraction speed 5.1 X
+     Track quality 100.0 %
+     Test CRC 67520160
+     Copy CRC 67520160
+     Accurately ripped (confidence 5)  [FE8254C9]  (AR v2)
+     Copy OK
+
+Track  2
+
+     Filename D:\Rips\Artist Name - Album Title\Disc 1\02 - Track Two.wav
+
+     Peak level 98.8 %
+     Extraction speed 5.8 X
+     Track quality 100.0 %
+     Test CRC 3FE28A70
+     Copy CRC 3FE28A70
+     Accurately ripped (confidence 5)  [B1D1296D]  (AR v2)
+     Copy OK
+
+Track  3
+
+     Filename D:\Rips\Artist Name - Album Title\Disc 1\03 - Track Three.wav
+
+     Peak level 98.8 %
+     Extraction speed 6.7 X
+     Track quality 100.0 %
+     Test CRC 2257F33F
+     Copy CRC 2257F33F
+     Accurately ripped (confidence 5)  [A01D5F80]  (AR v2)
+     Copy OK
+
+Track  4
+
+     Filename D:\Rips\Artist Name - Album Title\Disc 1\04 - Track Four.wav
+
+     Pre-gap length  0:00:01.00
+
+     Peak level 98.8 %
+     Extraction speed 5.0 X
+     Track quality 99.9 %
+     Test CRC 8E5AAB14
+     Copy CRC 8E5AAB14
+     Accurately ripped (confidence 5)  [E1D8109C]  (AR v2)
+     Copy OK
+
+Track  5
+
+     Filename D:\Rips\Artist Name - Album Title\Disc 1\05 - Track Five.wav
+
+     Peak level 100.0 %
+     Extraction speed 6.3 X
+     Track quality 99.9 %
+     Test CRC AD9AA3D1
+     Copy CRC AD9AA3D1
+     Accurately ripped (confidence 5)  [5CB70105]  (AR v2)
+     Copy OK
+
+Track  6
+
+     Filename D:\Rips\Artist Name - Album Title\Disc 1\06 - Track Six.wav
+
+     Peak level 100.0 %
+     Extraction speed 7.3 X
+     Track quality 99.9 %
+     Test CRC F5050992
+     Copy CRC F5050992
+     Accurately ripped (confidence 5)  [CD61763A]  (AR v2)
+     Copy OK
+
+Track  7
+
+     Filename D:\Rips\Artist Name - Album Title\Disc 1\07 - Track Seven.wav
+
+     Peak level 100.0 %
+     Extraction speed 7.6 X
+     Track quality 99.9 %
+     Test CRC BA25F578
+     Copy CRC BA25F578
+     Accurately ripped (confidence 5)  [8D2FF96B]  (AR v2)
+     Copy OK
+
+Track  8
+
+     Filename D:\Rips\Artist Name - Album Title\Disc 1\08 - Track Eight.wav
+
+     Peak level 100.0 %
+     Extraction speed 5.3 X
+     Track quality 99.8 %
+     Test CRC D5118F31
+     Copy CRC D5118F31
+     Cannot be verified as accurate (confidence 5)  [BF12B7A9], AccurateRip returned [8E5D8011]  (AR v2)
+     Copy OK
+
+Track  9
+
+     Filename D:\Rips\Artist Name - Album Title\Disc 1\09 - Track Nine.wav
+
+     Peak level 98.8 %
+     Extraction speed 9.1 X
+     Track quality 100.0 %
+     Test CRC 7743FC02
+     Copy CRC 7743FC02
+     Accurately ripped (confidence 4)  [223C5678]  (AR v2)
+     Copy OK
+
+
+ 8 track(s) accurately ripped
+ 1 track(s) could not be verified as accurate
+
+Some tracks could not be verified as accurate
+
+No errors occurred
+
+End of status report
+
+---- CUETools DB Plugin V2.1.6
+
+[CTDB TOCID: 6CgGdovQOYDcrOIMxNcFY5wZilc-] found
+Submit result: 6CgGdovQOYDcrOIMxNcFY5wZilc- has been submitted
+Track | CTDB Status
+  1   | (16/16) Accurately ripped
+  2   | (16/16) Accurately ripped
+  3   | (16/16) Accurately ripped
+  4   | (16/16) Accurately ripped
+  5   | (16/16) Accurately ripped
+  6   | (16/16) Accurately ripped
+  7   | (16/16) Accurately ripped
+  8   | (16/16) Differs in 12 samples @04:02:27,04:02:45,04:02:64,04:03:07
+  9   | (16/16) Accurately ripped
+If you are sure that your rip contains errors, you can use CUETools to repair it.
+
+
+==== Log checksum 5E7998F2B049A7D9E820145C2E2FD232EB082EE66CBBC50064E848ADD40A42F8 ====

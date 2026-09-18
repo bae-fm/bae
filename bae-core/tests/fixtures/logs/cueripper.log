@@ -1,0 +1,67 @@
+CUERipper v2.1.4 Copyright (C) 2008-12 Grigory Chudov
+Extraction logfile from : 04/25/2012 02:09:24
+Used drive              : hp       - DVDRAM GT31L
+Read offset correction  : 103
+Read command            : BEh, 12h, 42h, 16 blocks at a time
+Secure mode             : 1
+Disk length             : 44:24:55
+AccurateRip             : ok
+
+TOC of the extracted CD
+
+     Track |   Start  |  Length  | Start sector | End sector 
+    ---------------------------------------------------------
+        1  |  0:00.00 | 11:03.37 |         0    |    49761   
+        2  | 11:03.37 | 12:13.00 |     49762    |   104736   
+        3  | 23:16.37 | 10:01.50 |    104737    |   149861   
+        4  | 33:18.12 | 11:06.43 |    149862    |   199854   
+
+     Track |   Pregap  | Indexes
+    ---------------------------------------------------------
+        1  | 00:02:00 |     1
+        2  | 00:00:00 |     1
+        3  | 00:00:00 |     1
+        4  | 00:00:00 |     1
+
+Destination files
+    C:\Rips\Artist Name - Album Title\01 - Track One.flac
+    C:\Rips\Artist Name - Album Title\02 - Track Two.flac
+    C:\Rips\Artist Name - Album Title\03 - Track Three.flac
+    C:\Rips\Artist Name - Album Title\04 - Track Four.flac
+
+[CTDB TOCID: rNlVkfa2M2YBSqIfjvEqecBqYGE-] found.
+        [ CTDBID ] Status
+        [ccbbd393] (2/2) Accurately ripped
+Track | CTDB Status
+  1   | (2/2) Accurately ripped
+  2   | (2/2) Accurately ripped
+  3   | (2/2) Accurately ripped
+  4   | (2/2) Accurately ripped
+
+AccurateRip summary
+
+[AccurateRip ID: 0007b198-001eb52b-2a0a6804] found.
+Track   [  CRC   |   V2   ] Status
+ 01     [1c4d0bd3|46837ce2] (06+03/15) Accurately ripped
+ 02     [77c24650|437f3eda] (06+03/15) Accurately ripped
+ 03     [02386509|cf823924] (06+03/15) Accurately ripped
+ 04     [2d40e7de|5ca9a766] (04+02/11) Accurately ripped
+Offsetted by -1366:
+ 01     [d13e858d] (04/15) Accurately ripped
+ 02     [d5e3ca7c] (04/15) Accurately ripped
+ 03     [60985c81] (04/15) Accurately ripped
+ 04     [224f4082] (03/11) Accurately ripped
+Offsetted by -669:
+ 01     [8658dc6e] (02/15) Accurately ripped
+ 02     [05d010ca] (02/15) Accurately ripped
+ 03     [37efd3ed] (02/15) Accurately ripped
+ 04     [273fdabf] (02/11) Accurately ripped
+
+Track Peak [ CRC32  ] [W/O NULL] 
+ --   99.5 [72B8DEB7] [4C790640]           
+ 01   97.3 [F57D3663] [ED6E98C0]           
+ 02   97.4 [6311B24F] [21E0E5D1]           
+ 03   99.5 [F9F0C720] [D108A46A]           
+ 04   96.8 [3F3DFC13] [14C91ADF]           
+
+End of status report

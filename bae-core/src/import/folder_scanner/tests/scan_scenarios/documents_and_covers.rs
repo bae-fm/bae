@@ -182,7 +182,7 @@ fn audio_no_sheet_references_survives() {
 fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
     let (tmp, album) = album_dir();
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
-    std::fs::copy(fixtures.join("test_album.log"), album.join("rip.log")).unwrap();
+    std::fs::copy(fixtures.join("logs/test_album.log"), album.join("rip.log")).unwrap();
     std::fs::copy(
         fixtures.join("flac/01 Test Track 1.flac"),
         album.join("01 Test Track 1.flac"),

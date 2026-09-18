@@ -588,7 +588,7 @@ impl Fixture {
     fn disc_id_candidate(&self, folder: &str) -> PathBuf {
         let dir = self.candidate_dir(folder);
         copy_fixture(
-            Path::new("tests/fixtures/test_album.log"),
+            Path::new("tests/fixtures/logs/test_album.log"),
             &dir.join("test_album.log"),
         );
         dir

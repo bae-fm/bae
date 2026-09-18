@@ -322,7 +322,7 @@ mod tests {
         std::fs::create_dir_all(&local_dir).unwrap();
 
         std::fs::copy(
-            std::path::Path::new("tests/fixtures/test_album.log"),
+            std::path::Path::new("tests/fixtures/logs/test_album.log"),
             local_dir.join("test_album.log"),
         )
         .unwrap();
