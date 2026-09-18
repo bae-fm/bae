@@ -4,7 +4,8 @@
 use super::{LookupFailure, SourcedValue};
 
 /// The codes found in a candidate's files, deduped, in discovery order, each with
-/// its [`SignalOrigin`]. Identify looks every one of them up.
+/// its [`SignalOrigin`]. A run looks up the ones the person left in, and those
+/// same codes are the barcodes the release keeps as marks.
 ///
 /// [`SignalOrigin`]: super::SignalOrigin
 #[derive(Debug, Clone, PartialEq, Eq)]

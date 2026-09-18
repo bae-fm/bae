@@ -78,12 +78,22 @@ pub struct ReleaseMarkLine {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl ReleaseMark {
-    /// Every mark one extraction pass read: the disc ID derived from a LOG or
-    /// CUE, every barcode sighting, and every catalog-number sighting.
+    /// The names one extraction pass read that the person let the run ask
+    /// about: the disc ID derived from a LOG or CUE unless it is left out,
+    /// every sighting of a barcode that is not left out, and every sighting of
+    /// a chosen catalog number, the numbers in the order they were chosen.
+    ///
+    /// Extraction's catalog-number pool is guesses — OCR off a scan reads a
+    /// date and a misread of the number beside the number itself — so a number
+    /// is a name the object carries once somebody says it is, which is the
+    /// same thing that decides whether the run looks it up.
     ///
     /// Only what was read off the folder. What a catalog says the barcode is
     /// lives in that catalog's record.
-    pub fn of_signals(signals: &crate::signals::Signals) -> Vec<Self> {
+    pub fn of_signals(
+        signals: &crate::signals::Signals,
+        choices: &crate::import::LookupChoices,
+    ) -> Vec<Self> {
         let mut marks = Vec::new();
         if let crate::signals::DiscIdSignal::Computed {
             disc_id,
@@ -91,25 +101,43 @@ impl ReleaseMark {
             ..
         } = &signals.disc_id
         {
-            marks.push(Self {
-                kind: MarkKind::DiscId,
-                sighting: SourcedValue {
-                    value: disc_id.clone(),
-                    // A disc ID is derived from the table of contents; there is
-                    // no other surface it can be read off.
-                    origin: SignalOrigin::DiscToc,
-                    origin_path: source_file.clone(),
-                    region: None,
-                },
-            });
+            if !choices.disc_id_excluded {
+                marks.push(Self {
+                    kind: MarkKind::DiscId,
+                    sighting: SourcedValue {
+                        value: disc_id.clone(),
+                        // A disc ID is derived from the table of contents; there
+                        // is no other surface it can be read off.
+                        origin: SignalOrigin::DiscToc,
+                        origin_path: source_file.clone(),
+                        region: None,
+                    },
+                });
+            }
         }
-        marks.extend(signals.barcode.codes().iter().map(|sighting| Self {
-            kind: MarkKind::Barcode,
-            sighting: sighting.clone(),
-        }));
-        marks.extend(signals.text.catalogs().iter().map(|sighting| Self {
-            kind: MarkKind::CatalogNumber,
-            sighting: sighting.clone(),
+        marks.extend(
+            signals
+                .barcode
+                .codes()
+                .iter()
+                .filter(|sighting| !choices.excluded_barcodes.contains(&sighting.value))
+                .map(|sighting| Self {
+                    kind: MarkKind::Barcode,
+                    sighting: sighting.clone(),
+                }),
+        );
+        // Every sighting of a chosen number, so the surfaces that stated it
+        // still fold into one line's tags.
+        marks.extend(choices.chosen_catalogs.iter().flat_map(|chosen| {
+            signals
+                .text
+                .catalogs()
+                .iter()
+                .filter(move |sighting| &sighting.value == chosen)
+                .map(|sighting| Self {
+                    kind: MarkKind::CatalogNumber,
+                    sighting: sighting.clone(),
+                })
         }));
         marks
     }
@@ -146,10 +174,20 @@ impl ReleaseMarkLine {
 #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
 mod tests {
     use super::*;
+    use crate::import::LookupChoices;
     use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 
     fn region() -> Option<crate::signals::ImageRegion> {
         crate::signals::ImageRegion::new(0.1, 0.2, 0.3, 0.4)
+    }
+
+    /// Choices whose only decision is which catalog numbers the run asks
+    /// about.
+    fn choosing(catalogs: &[&str]) -> LookupChoices {
+        LookupChoices {
+            chosen_catalogs: catalogs.iter().map(|value| value.to_string()).collect(),
+            ..LookupChoices::default()
+        }
     }
 
     /// One folder's whole reading: a disc ID derived from its log, the same
@@ -189,15 +227,15 @@ mod tests {
         }
     }
 
-    /// Every name the folder states becomes a sighting, and each keeps where
-    /// it was read: the disc ID is the table of contents' whatever file
-    /// carried it, and the barcode read off a scan keeps the box it was read
-    /// in. The free text is not a name the object carries, so nothing of it
-    /// survives here.
+    /// Every name the person let the run ask about becomes a sighting, and
+    /// each keeps where it was read: the disc ID is the table of contents'
+    /// whatever file carried it, and the barcode read off a scan keeps the box
+    /// it was read in. The free text is not a name the object carries, so
+    /// nothing of it survives here.
     #[test]
-    fn every_name_the_folder_states_becomes_a_sighting() {
+    fn every_name_the_run_asks_about_becomes_a_sighting() {
         assert_eq!(
-            ReleaseMark::of_signals(&signals()),
+            ReleaseMark::of_signals(&signals(), &choosing(&["7559-60691-2"])),
             vec![
                 ReleaseMark {
                     kind: MarkKind::DiscId,
@@ -240,7 +278,10 @@ mod tests {
     #[test]
     fn the_sightings_of_one_value_draw_one_line() {
         assert_eq!(
-            ReleaseMarkLine::fold(&ReleaseMark::of_signals(&signals())),
+            ReleaseMarkLine::fold(&ReleaseMark::of_signals(
+                &signals(),
+                &choosing(&["7559-60691-2"]),
+            )),
             vec![
                 ReleaseMarkLine {
                     kind: MarkKind::DiscId,
@@ -294,6 +335,81 @@ mod tests {
         );
     }
 
+    /// A pool is what extraction guessed — the number printed on the disc
+    /// beside a date and a misread of it — so only the number somebody said
+    /// this disc carries is a mark, and every surface that stated it is kept.
+    #[test]
+    fn only_the_chosen_number_of_a_pool_is_a_name() {
+        let pooled = Signals {
+            text: TextSignal::Settled {
+                catalogs: vec![
+                    SourcedValue::new("JUNE 2000".to_string(), SignalOrigin::Artwork),
+                    SourcedValue::new("RISECD073".to_string(), SignalOrigin::FolderName),
+                    SourcedValue::in_file(
+                        "RISECD073".to_string(),
+                        SignalOrigin::Artwork,
+                        "back.jpg".to_string(),
+                    ),
+                    SourcedValue::new("BECD073".to_string(), SignalOrigin::Artwork),
+                ],
+                free_text: Vec::new(),
+            },
+            barcode: BarcodeSignal::Absent,
+            disc_id: DiscIdSignal::Absent { track_count: 0 },
+            ..signals()
+        };
+        assert_eq!(
+            ReleaseMark::of_signals(&pooled, &choosing(&["RISECD073"]))
+                .into_iter()
+                .filter(|mark| mark.kind == MarkKind::CatalogNumber)
+                .collect::<Vec<_>>(),
+            vec![
+                ReleaseMark {
+                    kind: MarkKind::CatalogNumber,
+                    sighting: SourcedValue::new("RISECD073".to_string(), SignalOrigin::FolderName),
+                },
+                ReleaseMark {
+                    kind: MarkKind::CatalogNumber,
+                    sighting: SourcedValue::in_file(
+                        "RISECD073".to_string(),
+                        SignalOrigin::Artwork,
+                        "back.jpg".to_string(),
+                    ),
+                },
+            ],
+        );
+        assert_eq!(
+            ReleaseMarkLine::fold(&ReleaseMark::of_signals(&pooled, &choosing(&["RISECD073"]))),
+            vec![ReleaseMarkLine {
+                kind: MarkKind::CatalogNumber,
+                value: "RISECD073".to_string(),
+                origins: vec![SignalOrigin::FolderName, SignalOrigin::Artwork],
+            }],
+        );
+        assert!(
+            ReleaseMark::of_signals(&pooled, &LookupChoices::default())
+                .iter()
+                .all(|mark| mark.kind != MarkKind::CatalogNumber),
+            "a folder nobody has decided about carries no catalog number"
+        );
+    }
+
+    /// A signal the person took out of the run is not a name the disc carries
+    /// either: they are saying the code on the box set's sleeve or the ID of
+    /// the wrong pressing is not this object's.
+    #[test]
+    fn a_signal_left_out_of_the_run_is_no_name() {
+        assert!(ReleaseMark::of_signals(
+            &signals(),
+            &LookupChoices {
+                disc_id_excluded: true,
+                excluded_barcodes: vec!["0075678164521".to_string()],
+                ..LookupChoices::default()
+            },
+        )
+        .is_empty());
+    }
+
     /// A folder nothing was read off states no names.
     #[test]
     fn a_folder_that_stated_nothing_marks_nothing() {
@@ -308,7 +424,7 @@ mod tests {
             text_pool: Vec::new(),
             durations: crate::import::probe::SourceDurations::default(),
         };
-        assert!(ReleaseMark::of_signals(&silent).is_empty());
+        assert!(ReleaseMark::of_signals(&silent, &LookupChoices::default()).is_empty());
     }
 
     /// The stored word and the kind read back from it are one mapping.

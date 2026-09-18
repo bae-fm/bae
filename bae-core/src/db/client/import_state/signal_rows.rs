@@ -317,16 +317,23 @@ pub(crate) struct CandidateSignalFacts {
 /// Read through the signals themselves rather than off the value rows
 /// directly: which of a candidate's signals are names read off the object is
 /// [`crate::import::ReleaseMark::of_signals`]'s answer, and asking it twice is
-/// two answers to one question. Both facts come out of one load, because both
-/// are readings of one settled extraction.
+/// two answers to one question. That answer reads the person's lookup choices,
+/// so they are loaded here beside the signals; a candidate with no stored
+/// choices runs with the default, as every other reader of them does. Both
+/// facts come out of one load, because both are readings of one settled
+/// extraction.
 pub(crate) fn load_signal_facts_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
 ) -> Result<HashMap<String, CandidateSignalFacts>, DbError> {
-    Ok(load_signals_on(sql, only)?()?
+    let signals = load_signals_on(sql, only)?;
+    let choices = super::lookup_choice_rows::load_lookup_choices_on(sql, only)?;
+    let mut choices = choices()?;
+    Ok(signals()?
         .into_iter()
         .map(|(content_hash, signals)| {
-            let marks = crate::import::ReleaseMark::of_signals(&signals);
+            let choices = choices.remove(&content_hash).unwrap_or_default();
+            let marks = crate::import::ReleaseMark::of_signals(&signals, &choices);
             (
                 content_hash,
                 CandidateSignalFacts {

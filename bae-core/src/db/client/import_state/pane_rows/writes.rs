@@ -25,7 +25,9 @@ impl Database {
             let marks = state
                 .signals
                 .as_ref()
-                .map(crate::import::ReleaseMark::of_signals)
+                .map(|signals| {
+                    crate::import::ReleaseMark::of_signals(signals, &state.lookup_choices)
+                })
                 .unwrap_or_default();
             // Which lookup produced the record the draft reads, asked of the
             // stored verdict's own match rows before the pick is handed on.

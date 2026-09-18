@@ -4,8 +4,9 @@
 
 use super::{ImageRegion, LookupFailure, SignalOrigin, SourcedValue};
 
-/// Two classified pools. `catalogs` are the catalog-number candidates: identify
-/// narrows by them, each becomes a Refine badge, and they feed the Catalog
+/// Two classified pools. `catalogs` are the catalog-number candidates: a run
+/// looks up the ones the person chose, those same chosen ones are the catalog
+/// numbers the release keeps as marks, and the whole pool feeds the Catalog
 /// autocomplete — so they carry a [`SignalOrigin`] to show where each came from.
 /// `free_text` are artist/album candidates and only feed an autocomplete, so they
 /// don't. Both accumulate while `Scanning` and are final once `Settled`; either may

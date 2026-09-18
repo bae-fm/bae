@@ -112,6 +112,19 @@ async fn save_verdict_with_marks(db: &Database, candidate: &FolderCandidate, rel
         .unwrap());
 }
 
+/// Say which of the folder's catalog numbers this candidate's runs ask about.
+async fn choose_catalogs(db: &Database, candidate: &FolderCandidate, catalogs: &[&str]) {
+    db.save_import_candidate_lookup_choices(
+        &candidate.files.content_hash(),
+        &crate::import::LookupChoices {
+            chosen_catalogs: catalogs.iter().map(|value| value.to_string()).collect(),
+            ..crate::import::LookupChoices::default()
+        },
+    )
+    .await
+    .unwrap();
+}
+
 /// Store a verdict and the ledger its run recorded, beside the signals
 /// extraction read — the group one write lands.
 async fn save_verdict_with_ledger(
@@ -815,11 +828,34 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
 /// A row states the names its folder carries: one line per value, folded here
 /// so neither surface decides that two scans of one barcode are one line, and
 /// tagged with every surface the value was read from.
+///
+/// A catalog number is one of them once somebody says this disc carries it —
+/// until then it is one of extraction's guesses, which the row leaves alone.
 #[tokio::test]
 async fn a_row_states_the_names_its_folder_carries() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict_with_marks(&db, &candidate, "mb-verdict").await;
+
+    let barcode = crate::import::ReleaseMarkLine {
+        kind: crate::import::MarkKind::Barcode,
+        value: "0075678164521".to_string(),
+        origins: vec![
+            crate::signals::SignalOrigin::Artwork,
+            crate::signals::SignalOrigin::CueSheet,
+        ],
+    };
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    assert_eq!(
+        rows(&projection)[0].marks,
+        vec![barcode.clone()],
+        "nobody has chosen the folder's catalog number, so the row states none"
+    );
+
+    choose_catalogs(&db, &candidate, &["7559-60691-2"]).await;
 
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)
@@ -828,14 +864,7 @@ async fn a_row_states_the_names_its_folder_carries() {
     assert_eq!(
         rows(&projection)[0].marks,
         vec![
-            crate::import::ReleaseMarkLine {
-                kind: crate::import::MarkKind::Barcode,
-                value: "0075678164521".to_string(),
-                origins: vec![
-                    crate::signals::SignalOrigin::Artwork,
-                    crate::signals::SignalOrigin::CueSheet,
-                ],
-            },
+            barcode,
             crate::import::ReleaseMarkLine {
                 kind: crate::import::MarkKind::CatalogNumber,
                 value: "7559-60691-2".to_string(),

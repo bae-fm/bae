@@ -462,7 +462,7 @@ impl ImportCandidateDetailProjection {
                 .as_ref()
                 .map(|signals| {
                     crate::import::ReleaseMarkLine::fold(
-                        &crate::import::ReleaseMark::of_signals(signals),
+                        &crate::import::ReleaseMark::of_signals(signals, &lookup_choices),
                     )
                 })
                 .unwrap_or_default(),

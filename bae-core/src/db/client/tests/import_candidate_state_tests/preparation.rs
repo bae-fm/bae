@@ -747,7 +747,8 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
 
 /// The import reads the folder's own names off the signals identification
 /// settled on, so a commit keeps them whatever the draft was read from — a
-/// folder identified from its tags still states its barcode.
+/// folder identified from its tags still states its barcode. A catalog number
+/// out of extraction's pool is one of them only once somebody chose it.
 #[tokio::test]
 async fn the_preparation_carries_the_names_the_folder_states() {
     let (db, _tmp) = empty_db().await;
@@ -787,6 +788,36 @@ async fn the_preparation_carries_the_names_the_folder_states() {
         .await
     );
 
+    let barcode = crate::import::ReleaseMark {
+        kind: crate::import::MarkKind::Barcode,
+        sighting: SourcedValue::in_file(
+            "0075678164521".to_string(),
+            SignalOrigin::Artwork,
+            "back.jpg".to_string(),
+        ),
+    };
+    let marks = db
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .expect("the scanned candidate is prepared")
+        .marks;
+    assert_eq!(
+        marks,
+        vec![barcode.clone()],
+        "nobody has chosen the folder's catalog number, so the commit keeps none"
+    );
+
+    db.save_import_candidate_lookup_choices(
+        &hash,
+        &crate::import::LookupChoices {
+            chosen_catalogs: vec!["7559-60691-2".to_string()],
+            ..crate::import::LookupChoices::default()
+        },
+    )
+    .await
+    .unwrap();
+
     let marks = db
         .load_import_candidate_preparation(&hash)
         .await
@@ -796,14 +827,7 @@ async fn the_preparation_carries_the_names_the_folder_states() {
     assert_eq!(
         marks,
         vec![
-            crate::import::ReleaseMark {
-                kind: crate::import::MarkKind::Barcode,
-                sighting: SourcedValue::in_file(
-                    "0075678164521".to_string(),
-                    SignalOrigin::Artwork,
-                    "back.jpg".to_string(),
-                ),
-            },
+            barcode,
             crate::import::ReleaseMark {
                 kind: crate::import::MarkKind::CatalogNumber,
                 sighting: SourcedValue::new(
