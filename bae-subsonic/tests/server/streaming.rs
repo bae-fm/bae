@@ -203,6 +203,7 @@ async fn musicbrainz_id_surfaces_when_present() {
     };
     let release = DbRelease {
         field_origins: Default::default(),
+            identified_by: None,
         id: bae_test_support::test_uuid("mb-release-1"),
         album_id: album.id.clone(),
         release_name: None,
