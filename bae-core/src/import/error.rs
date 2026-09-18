@@ -7,7 +7,7 @@
 //! back into a string, for the user-facing `ImportProgress::Failed { error }`.
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 
 /// Two exact provider identities that currently belong to different library
 /// artists. Import stops until a person confirms that the two rows represent
@@ -76,15 +76,12 @@ pub enum ImportError {
     /// artist credits, missing release_group, multi-side track with no side
     /// letter, medium with no tracks, no track title, ...).
     ///
-    /// The field is `metadata_source`, not `source`: thiserror reserves a field
-    /// literally named `source` for the error-chain source, which a
-    /// `MetadataSource` (not an `Error`) can't be.
+    /// The field is `catalog`, not `source`: thiserror reserves a field
+    /// literally named `source` for the error-chain source, which a `Catalog`
+    /// (not an `Error`) can't be.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[error("{} release data cannot be mapped: {detail}", metadata_source.as_str())]
-    SourceData {
-        metadata_source: MetadataSource,
-        detail: String,
-    },
+    #[error("{} release data cannot be mapped: {detail}", catalog.as_str())]
+    SourceData { catalog: Catalog, detail: String },
 
     /// Local file-tag evidence can't seed a File Tags import (no audio files,
     /// a file failed to open / parse, embedded-cover read failure).

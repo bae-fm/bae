@@ -190,7 +190,7 @@ pub(crate) fn load_covers_on(
             })?),
             "remote" => CoverSelection::Remote(
                 url.ok_or_else(|| DbError::Message("a remote cover names no address".into()))?,
-                MetadataSource::from_str(
+                Catalog::from_str(
                     &source
                         .ok_or_else(|| DbError::Message("a remote cover names no source".into()))?,
                 )

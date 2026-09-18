@@ -91,7 +91,7 @@ async fn release_edit_seed_uses_persisted_track_ids() {
 #[tokio::test]
 #[serial(musicbrainz)]
 async fn release_edit_reset_preserves_persisted_track_ids() {
-    use crate::import::{MetadataRef, MetadataSource, ReleaseReseed};
+    use crate::import::{MetadataRef, Catalog, ReleaseReseed};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
@@ -118,10 +118,7 @@ async fn release_edit_reset_preserves_persisted_track_ids() {
         .re_identify_release(
             &release.id,
             ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef {
-                    source: MetadataSource::MusicBrainz,
-                    id: source_release_id.to_string(),
-                },
+                release_ref: MetadataRef::new(Catalog::MusicBrainz, source_release_id),
                 partners: vec![],
             },
         )
@@ -225,11 +222,10 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
 }
 
 #[tokio::test]
-async fn release_metadata_edit_preserves_identity_provenance_and_audio() {
+async fn release_metadata_edit_preserves_records_and_audio() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.metadata_provenance = Some(crate::import::MetadataProvenance::FileTags);
+    let release = create_test_release(&album.id);
     let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", Some(1));
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
@@ -240,14 +236,14 @@ async fn release_metadata_edit_preserves_identity_provenance_and_audio() {
         &[("track.flac", crate::album_detail::SourceAudioLayout::File)],
     )
     .await;
-    let identity = crate::import::ReleaseIdentity {
-        source: crate::import::MetadataSource::MusicBrainz,
-        source_release_id: "source-release".to_string(),
-        source_group_id: "source-group".to_string(),
-    };
+    let identity = crate::import::ReleaseRecord::new(
+        &crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "source-release"),
+        Some("source-group".to_string()),
+        true,
+    );
     manager
         .database
-        .insert_release_identities(&release.id, std::slice::from_ref(&identity))
+        .insert_release_records(&release.id, std::slice::from_ref(&identity))
         .await
         .unwrap();
     let stored_before = manager
@@ -302,14 +298,14 @@ async fn release_metadata_edit_preserves_identity_provenance_and_audio() {
     assert_eq!(
         manager
             .database
-            .get_release_identities(&release.id)
+            .get_release_records(&release.id)
             .await
             .unwrap(),
         vec![identity]
     );
     assert_eq!(
-        stored_after.release.metadata_provenance,
-        release.metadata_provenance
+        stored_after.release.draft_from_tags,
+        release.draft_from_tags
     );
     assert_eq!(stored_after.release.id, release.id);
     assert_eq!(stored_after.release.album_id, album.id);

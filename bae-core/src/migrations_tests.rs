@@ -20,6 +20,8 @@ mod migration_sixteen;
 mod migration_ten;
 #[path = "migrations_tests/migration_thirty.rs"]
 mod migration_thirty;
+#[path = "migrations_tests/migration_thirty_one.rs"]
+mod migration_thirty_one;
 #[path = "migrations_tests/migration_twelve.rs"]
 mod migration_twelve;
 #[path = "migrations_tests/migration_twenty.rs"]
@@ -37,6 +39,20 @@ fn config(store_id: &str) -> coven::Config {
     )
 }
 
+/// What these fixtures declare as synced: nothing.
+///
+/// A fixture opens its store twice — once at the rung it seeds, once at the
+/// top — and coven pins the routing contract the first open resolves, then
+/// refuses any later open that resolves a different one. A rung that renames a
+/// synced table or drops a column ahead of a routed one resolves a different
+/// contract by construction, so a fixture that declares the library's tables
+/// could only ever test the rungs that leave routing alone. These fixtures are
+/// about what the ladder does to rows; `crate::sync`'s own tests are about
+/// what the library routes.
+fn fixture_synced_tables() -> Vec<coven::SyncedTable> {
+    Vec::new()
+}
+
 fn open(
     store_dir: StoreDir,
     store_id: &str,
@@ -44,7 +60,7 @@ fn open(
 ) -> Result<coven::CovenHandle, CovenError> {
     crate::config::install_test_keyring();
     Coven::builder(store_dir, config(store_id))
-        .synced_tables(crate::sync::synced_tables())
+        .synced_tables(fixture_synced_tables())
         .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
         .clock(Arc::new(FixedClock(
             Utc.with_ymd_and_hms(2026, 1, 2, 3, 4, 5)
@@ -157,6 +173,12 @@ fn version_twenty_eight() -> Vec<coven::Migration> {
 fn version_twenty_nine() -> Vec<coven::Migration> {
     let mut migrations = all();
     migrations.truncate(29);
+    migrations
+}
+
+fn version_thirty() -> Vec<coven::Migration> {
+    let mut migrations = all();
+    migrations.truncate(30);
     migrations
 }
 

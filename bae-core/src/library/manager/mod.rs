@@ -76,8 +76,6 @@ mod discogs;
 /// a compile error rather than a release that sits `Queued` with nothing to run it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod export;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod identity;
 mod image;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;
@@ -86,6 +84,8 @@ mod locality;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod output;
 mod playback_state;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod records;
 mod release;
 mod release_edit;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -100,12 +100,12 @@ pub(crate) use discogs::discogs_validation_from_result;
 pub use sync_status::{BlockedSyncOperation, BlockedSyncOperationKind};
 use sync_status::{SyncStatus, SyncStatusUpdate};
 
-/// Outcome of `resolve_identity_target_album` — where a release should
-/// land after a `set_identity` call. `new_album` carries the album row
+/// Outcome of `resolve_records_target_album` — where a release should
+/// land after a `set_records` call. `new_album` carries the album row
 /// to insert when the target is brand-new; otherwise the target is an
 /// existing album and `new_album` is `None`.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-struct IdentityTargetAlbum {
+struct RecordsTargetAlbum {
     album_id: String,
     new_album: Option<DbAlbum>,
 }
@@ -786,7 +786,7 @@ pub enum CoverSelection {
     /// Download from a remote URL.
     RemoteCover {
         url: String,
-        source: crate::import::MetadataSource,
+        source: crate::import::Catalog,
     },
 }
 

@@ -103,6 +103,9 @@ pub struct ReleaseDetail {
     /// The cover, then every image file the release has — including cloud-only ones,
     /// which the lightbox fetches on demand.
     pub gallery_items: Vec<GalleryItem>,
+    /// Every catalog's description of this release, in the order surfaces list
+    /// catalogs. Empty when no catalog describes it.
+    pub records: Vec<crate::import::ReleaseRecord>,
 }
 
 /// One physical source file that supplies a persisted track. A track can span
@@ -388,6 +391,7 @@ impl ReleaseDetail {
             source_audio,
             image_files,
             gallery_items: gallery,
+            records: raw.records,
         };
         (detail, audio_format_orphans)
     }
@@ -437,7 +441,7 @@ mod release_edit_display_tests {
                 end_byte: None,
                 created_at: now,
             }],
-            identities: Vec::new(),
+            records: Vec::new(),
         };
 
         assert!(matches!(

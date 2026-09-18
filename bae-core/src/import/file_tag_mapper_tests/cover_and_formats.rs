@@ -110,7 +110,6 @@ fn mp3_with_id3v2_tags() {
     assert_eq!(parsed.tracks.len(), 1);
     assert_eq!(parsed.tracks[0].title, "MP3 Track");
     assert_eq!(parsed.artists[0].name, "MP3 Artist");
-    assert!(parsed.identities.is_empty());
 }
 
 /// M4A with MP4 ilst tags leaves release media blank.
@@ -143,7 +142,6 @@ fn m4a_with_mp4_ilst_tags() {
     assert_eq!(parsed.release.pressing.format, None);
     assert_eq!(parsed.tracks.len(), 1);
     assert_eq!(parsed.tracks[0].title, "Track One");
-    assert!(parsed.identities.is_empty());
 }
 
 #[test]

@@ -76,7 +76,7 @@ pub(super) fn build_release_detail_on(
     let files = get_files_for_release_on(sql, &release.id)?;
     let audio_formats = get_audio_formats_for_release_on(sql, &release.id)?;
     let audio_segments = get_audio_segments_for_release_on(sql, &release.id)?;
-    let identities = get_release_identities_on(sql, &release.id)?;
+    let records = get_release_records_on(sql, &release.id)?;
 
     Ok(ReleaseDetailRows {
         release,
@@ -84,7 +84,7 @@ pub(super) fn build_release_detail_on(
         files,
         audio_formats,
         audio_segments,
-        identities,
+        records,
     })
 }
 
@@ -94,7 +94,7 @@ pub(super) struct ReleaseDetailRows {
     files: Vec<DbFile>,
     audio_formats: Vec<DbAudioFormat>,
     audio_segments: Vec<DbAudioSegment>,
-    identities: Vec<crate::import::ReleaseIdentity>,
+    records: Vec<crate::import::ReleaseRecord>,
 }
 
 impl ReleaseDetailRows {
@@ -105,7 +105,7 @@ impl ReleaseDetailRows {
             files: process_files(self.files),
             audio_formats: self.audio_formats,
             audio_segments: self.audio_segments,
-            identities: self.identities,
+            records: self.records,
         }
     }
 }
@@ -232,42 +232,36 @@ pub(super) fn get_audio_segments_for_release_on(
     .map_err(DbError::from)
 }
 
-pub(super) fn get_release_identities_on(
+/// Every catalog's description of a release, in the order surfaces list
+/// catalogs.
+pub(super) fn get_release_records_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<Vec<crate::import::ReleaseIdentity>, DbError> {
-    let raw = sql.query(
+) -> Result<Vec<crate::import::ReleaseRecord>, DbError> {
+    let mut records = sql.query(
         r#"
-            SELECT source, source_group_id, source_release_id
-            FROM release_identities
+            SELECT catalog, key, group_key, url, reads_draft
+            FROM release_records
             WHERE release_id = ?
             "#,
         params![release_id],
         |row| {
-            Ok((
-                row.get::<_, String>("source")?,
-                row.get::<_, String>("source_group_id")?,
-                row.get::<_, String>("source_release_id")?,
-            ))
+            Ok(crate::import::ReleaseRecord {
+                catalog: catalog_column(row, "catalog")?,
+                key: row.get("key")?,
+                group_key: row.get("group_key")?,
+                url: row.get("url")?,
+                reads_draft: row.get("reads_draft")?,
+            })
         },
     )?;
-
-    let mut identities = Vec::with_capacity(raw.len());
-    for (source_str, source_group_id, source_release_id) in raw {
-        let Ok(source) = crate::import::MetadataSource::from_str(&source_str) else {
-            tracing::warn!(
-                %release_id, source = %source_str,
-                "skipping release_identities row with unknown source"
-            );
-            continue;
-        };
-        identities.push(crate::import::ReleaseIdentity {
-            source,
-            source_group_id,
-            source_release_id,
-        });
-    }
-    Ok(identities)
+    records.sort_by_key(|record| {
+        crate::import::Catalog::ALL
+            .iter()
+            .position(|catalog| *catalog == record.catalog)
+            .expect("every stored catalog is one of the catalogs")
+    });
+    Ok(records)
 }
 
 /// Build a column-conversion error for a named column whose stored text the
@@ -305,12 +299,9 @@ pub(super) fn rfc3339_column(row: &Row, column: &str) -> coven::rusqlite::Result
         })
 }
 
-pub(super) fn metadata_source_column(
-    row: &Row,
-    column: &str,
-) -> coven::rusqlite::Result<MetadataSource> {
+pub(super) fn catalog_column(row: &Row, column: &str) -> coven::rusqlite::Result<Catalog> {
     let raw: String = row.get(column)?;
-    raw.parse::<MetadataSource>()
+    raw.parse::<Catalog>()
         .map_err(|e| column_conversion_error(row, column, e))
 }
 
@@ -371,34 +362,6 @@ pub(super) fn row_to_track_with_prefix(
 }
 
 pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
-    let metadata_source: String = row.get("metadata_source")?;
-    let metadata_source_release_id: Option<String> = row.get("metadata_source_release_id")?;
-    let metadata_provenance = match (metadata_source.as_str(), metadata_source_release_id) {
-        ("none", None) => None,
-        ("file_tags", None) => Some(crate::import::MetadataProvenance::FileTags),
-        (source, Some(release_id)) => {
-            let source = source.parse::<MetadataSource>().map_err(|e| {
-                column_conversion_error(row, "metadata_source", format!("releases.{e}"))
-            })?;
-            Some(crate::import::MetadataProvenance::ExternalRelease {
-                source,
-                release_id,
-                // A library release records what its pick claimed as one
-                // `release_identities` row per source; its provenance names
-                // the anchor document alone.
-                partners: Vec::new(),
-            })
-        }
-        (source, release_id) => {
-            return Err(column_conversion_error(
-                row,
-                "metadata_source",
-                format!(
-                    "invalid releases metadata provenance columns: source={source:?}, release_id={release_id:?}"
-                ),
-            ));
-        }
-    };
     Ok(DbRelease {
         id: row.get("id")?,
         album_id: row.get("album_id")?,
@@ -412,7 +375,7 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
             barcode: row.get("barcode")?,
         },
         disc_id: row.get("disc_id")?,
-        metadata_provenance,
+        draft_from_tags: row.get("draft_from_tags")?,
         remote: row.get("remote")?,
         source_folder_name: row.get("source_folder_name")?,
         content_hash: row.get("content_hash")?,

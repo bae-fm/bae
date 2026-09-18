@@ -55,8 +55,8 @@ async fn cover_versions_merges_chunks() {
         // covers.id is a FK to releases.id, so every cover needs its release.
         for (index, release_id) in seed_release_ids.iter().enumerate() {
             conn.execute(
-                "INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at) \
-                 VALUES (?1, 'a67c03ad-425f-45e9-8279-0144c852aaa5', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z')",
+                "INSERT INTO releases (id, album_id, remote, _updated_at, created_at) \
+                 VALUES (?1, 'a67c03ad-425f-45e9-8279-0144c852aaa5', 1, 'stamp', '2026-01-01T00:00:00Z')",
                 params![release_id],
             )?;
             conn.execute(

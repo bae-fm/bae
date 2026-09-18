@@ -8,7 +8,7 @@ fn grouped(results: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
 
 fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
     MetadataResult {
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         release_id: release_id.to_string(),
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
@@ -28,7 +28,7 @@ fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataRe
 /// therefore differs from MusicBrainz's.
 fn discogs(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
     MetadataResult {
-        source: MetadataSource::Discogs,
+        source: Catalog::Discogs,
         ..mb(release_id, group_id, year)
     }
 }
@@ -37,8 +37,8 @@ fn cover() -> RemoteCover {
     RemoteCover {
         url: "https://caa.example/front.jpg".to_string(),
         thumbnail_url: "https://caa.example/thumb.jpg".to_string(),
-        label: MetadataSource::MusicBrainz.cover_source_label().to_string(),
-        source: MetadataSource::MusicBrainz,
+        label: Catalog::MusicBrainz.cover_source_label().to_string(),
+        source: Catalog::MusicBrainz,
     }
 }
 
@@ -68,7 +68,7 @@ fn same_group_collapses_into_one_card() {
     assert_eq!(
         groups[0].sources,
         vec![ReleaseGroupSource {
-            source: MetadataSource::MusicBrainz,
+            source: Catalog::MusicBrainz,
             group_url: Some("https://musicbrainz.org/release-group/group-x".to_string()),
         }]
     );
@@ -99,7 +99,7 @@ fn ungrouped_result_is_its_own_single_pressing_card() {
     assert_eq!(
         groups[0].sources,
         vec![ReleaseGroupSource {
-            source: MetadataSource::MusicBrainz,
+            source: Catalog::MusicBrainz,
             group_url: None,
         }]
     );
@@ -141,11 +141,11 @@ fn the_same_album_across_sources_merges_into_one_card() {
         groups[0].sources,
         vec![
             ReleaseGroupSource {
-                source: MetadataSource::MusicBrainz,
+                source: Catalog::MusicBrainz,
                 group_url: Some("https://musicbrainz.org/release-group/group-x".to_string()),
             },
             ReleaseGroupSource {
-                source: MetadataSource::Discogs,
+                source: Catalog::Discogs,
                 group_url: Some("https://www.discogs.com/master/master-7".to_string()),
             },
         ]
@@ -219,12 +219,8 @@ fn a_paired_row_is_picked_with_its_partner() {
     assert_eq!(
         groups[0].pressings[0].pick(),
         crate::import::MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-            release_id: "mb-1".to_string(),
-            partners: vec![crate::import::MetadataRef::new(
-                "dg-1",
-                MetadataSource::Discogs
-            )],
+            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
+            partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1")],
         }
     );
 }
@@ -236,8 +232,7 @@ fn a_lone_row_is_picked_with_no_partner() {
     assert_eq!(
         groups[0].pressings[0].pick(),
         crate::import::MetadataProvenance::ExternalRelease {
-            source: MetadataSource::Discogs,
-            release_id: "dg-1".to_string(),
+            record: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1".to_string()),
             partners: vec![],
         }
     );
@@ -376,8 +371,8 @@ fn a_merged_card_prefers_the_musicbrainz_cover() {
     discogs_covered.cover_art = Some(RemoteCover {
         url: "https://discogs.example/front.jpg".to_string(),
         thumbnail_url: "https://discogs.example/thumb.jpg".to_string(),
-        label: MetadataSource::Discogs.cover_source_label().to_string(),
-        source: MetadataSource::Discogs,
+        label: Catalog::Discogs.cover_source_label().to_string(),
+        source: Catalog::Discogs,
     });
     let mut mb_covered = mb("mb-1", Some("group-x"), Some(1992));
     mb_covered.cover_art = Some(cover());
@@ -404,7 +399,7 @@ fn the_same_group_id_across_sources_does_not_collide() {
             .iter()
             .map(|group| group.sources[0].source)
             .collect::<Vec<_>>(),
-        vec![MetadataSource::MusicBrainz, MetadataSource::Discogs]
+        vec![Catalog::MusicBrainz, Catalog::Discogs]
     );
 }
 
@@ -590,12 +585,8 @@ fn the_record_the_text_says_most_about_leads_its_pressing() {
     assert_eq!(
         groups[0].pressings[0].pick(),
         crate::import::MetadataProvenance::ExternalRelease {
-            source: MetadataSource::Discogs,
-            release_id: "dg-1".to_string(),
-            partners: vec![crate::import::MetadataRef::new(
-                "mb-1",
-                MetadataSource::MusicBrainz
-            )],
+            record: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1".to_string()),
+            partners: vec![crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1")],
         }
     );
 }
@@ -647,6 +638,6 @@ fn the_card_names_its_sources_in_the_order_surfaces_list_them() {
             .iter()
             .map(|source| source.source)
             .collect::<Vec<_>>(),
-        vec![MetadataSource::MusicBrainz, MetadataSource::Discogs]
+        vec![Catalog::MusicBrainz, Catalog::Discogs]
     );
 }

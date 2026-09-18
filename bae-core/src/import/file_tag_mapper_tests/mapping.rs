@@ -352,10 +352,7 @@ fn flac_with_vorbis_comments_basic() {
     assert_eq!(parsed.album.year, Some(1999));
     assert_eq!(parsed.release.pressing.year, Some(1999));
     assert_eq!(parsed.release.pressing.format, None);
-    assert_eq!(
-        parsed.release.metadata_provenance,
-        Some(crate::import::MetadataProvenance::FileTags)
-    );
+    assert!(parsed.release.draft_from_tags);
 
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[0].title, "Track One");
@@ -378,10 +375,6 @@ fn flac_with_vorbis_comments_basic() {
         .iter()
         .all(|ta| ta.artist_id == parsed.artists[0].id));
 
-    assert!(
-        parsed.identities.is_empty(),
-        "File Tags imports never claim external identity"
-    );
 }
 
 /// Multi-disc rip: DISCNUMBER + TRACKNUMBER produce side groupings.

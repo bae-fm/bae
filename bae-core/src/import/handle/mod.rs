@@ -1,7 +1,7 @@
 use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
 };
-use crate::import::types::{ImportCommand, ImportProgress, MetadataSource, StorageMode};
+use crate::import::types::{ImportCommand, ImportProgress, Catalog, StorageMode};
 use crate::import::watched_folder::WatchedFolder;
 use crate::util::worker_thread::WorkerThread;
 use crate::library::manager::discogs_validation_from_result as validation_from_validate_result;

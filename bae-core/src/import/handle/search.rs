@@ -60,7 +60,7 @@ impl ImportServiceHandle {
     ///
     /// Called after the preference is written, so every search started from
     /// here on is started without the source and has nothing to close.
-    pub fn stop_asking_source(&self, source: MetadataSource) {
+    pub fn stop_asking_source(&self, source: Catalog) {
         self.runtime.switch_source_off(source);
     }
 
@@ -71,7 +71,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: String,
         query: SearchQuery,
-        source: MetadataSource,
+        source: Catalog,
         run: u64,
     ) {
         let library_manager = self.library_manager.clone();
@@ -112,7 +112,7 @@ impl ImportServiceHandle {
     pub async fn search_with_status(
         &self,
         query: SearchQuery,
-        source: MetadataSource,
+        source: Catalog,
     ) -> Result<GroupedSearchResults, crate::import::ImportError> {
         use crate::db::LibraryCheck;
 
@@ -188,26 +188,22 @@ impl ImportServiceHandle {
             .library_manager
             .load_import_candidate_state(&candidate.files().content_hash())
             .await?;
-        let Some(crate::import::MetadataProvenance::ExternalRelease {
-            source,
-            release_id,
-            partners,
-        }) = state.and_then(|state| state.metadata_provenance)
+        let Some(crate::import::MetadataProvenance::ExternalRelease { record, partners }) =
+            state.and_then(|state| state.metadata_provenance)
         else {
             return Ok(RemoteCoverGallery::Unlinked);
         };
         let mut covers = Vec::new();
-        let primary = crate::import::MetadataRef::new(release_id, source);
-        for identity in std::iter::once(primary).chain(partners) {
+        for claimed in std::iter::once(record).chain(partners) {
             let payloads = self
                 .library_manager
-                .load_release_payloads(&identity)
+                .load_release_payloads(&claimed)
                 .await?
                 .ok_or_else(|| crate::import::ImportError::Internal {
                     detail: format!(
                         "{key} names {} release {} without archived metadata",
-                        identity.source.as_str(),
-                        identity.id
+                        claimed.catalog.as_str(),
+                        claimed.key
                     ),
                 })?;
             for cover in payloads.gallery_covers().await? {
@@ -221,39 +217,40 @@ impl ImportServiceHandle {
         &self,
         release_id: &str,
     ) -> Result<RemoteCoverGallery, crate::import::ImportError> {
-        let identities = self
-            .library_manager
-            .get_release_identities(release_id)
-            .await?;
+        let records = self.library_manager.get_release_records(release_id).await?;
 
-        if identities.is_empty() {
+        if records.is_empty() {
             return Ok(RemoteCoverGallery::Unlinked);
         }
 
         let mut covers = Vec::new();
 
-        for identity in &identities {
-            match identity.source {
-                MetadataSource::MusicBrainz => {
+        // Only the catalogs bae asks serve artwork; the rest are pages a record
+        // links out to.
+        for record in records.iter().filter(|record| {
+            crate::import::Catalog::LOOKUP.contains(&record.catalog)
+        }) {
+            match record.catalog {
+                Catalog::MusicBrainz => {
                     let gallery = crate::import::cover_art::musicbrainz_gallery(
-                        &identity.source_release_id,
-                        Some(&identity.source_group_id),
+                        &record.key,
+                        Some(record.group_key.as_str()),
                     )
                     .await?;
                     for cover in gallery {
                         crate::import::cover_art::push_unique_cover(&mut covers, cover);
                     }
                 }
-                MetadataSource::Discogs => {
-                    let rid = &identity.source_release_id;
+                Catalog::Discogs => {
                     let found = self
                         .library_manager
-                        .fetch_discogs_release_covers(rid, CallPriority::Interactive)
+                        .fetch_discogs_release_covers(&record.key, CallPriority::Interactive)
                         .await?;
                     for cover in found {
                         crate::import::cover_art::push_unique_cover(&mut covers, cover);
                     }
                 }
+                other => unreachable!("{} serves no artwork", other.as_str()),
             }
         }
 
@@ -286,8 +283,8 @@ impl ImportServiceHandle {
                 .ok_or_else(|| crate::import::ImportError::Internal {
                     detail: format!(
                         "{candidate_key} settled on {} release {} but nothing stored its lookups",
-                        release.source.as_str(),
-                        release.id
+                        release.catalog.as_str(),
+                        release.key
                     ),
                 });
         }
@@ -328,8 +325,8 @@ impl ImportServiceHandle {
         let [only] = matches.as_slice() else {
             return Ok(false);
         };
-        Ok(only.source == release.source
-            && only.release_id == release.id
+        Ok(only.source == release.catalog
+            && only.release_id == release.key
             && only.source_tracks.is_some())
     }
 

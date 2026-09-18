@@ -19,7 +19,7 @@ fn cover_art_archive_addresses_are_derived_from_the_entity_id() {
         format!("{base}/release/rel-1/front-250")
     );
     assert_eq!(release.label, "Cover Art Archive");
-    assert_eq!(release.source, MetadataSource::MusicBrainz);
+    assert_eq!(release.source, Catalog::MusicBrainz);
 
     let group = RemoteCover::musicbrainz_release_group("rg-1");
     assert_eq!(group.url, format!("{base}/release-group/rg-1/front"));
@@ -36,7 +36,7 @@ fn push_unique_cover_dedupes_by_url() {
         url: "https://caa.example/cover.jpg".to_string(),
         thumbnail_url: "https://caa.example/thumb-a.jpg".to_string(),
         label: "Cover Art Archive".to_string(),
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
     }];
 
     push_unique_cover(
@@ -45,7 +45,7 @@ fn push_unique_cover_dedupes_by_url() {
             url: "https://caa.example/cover.jpg".to_string(),
             thumbnail_url: "https://caa.example/thumb-b.jpg".to_string(),
             label: "Cover Art Archive (Album)".to_string(),
-            source: MetadataSource::MusicBrainz,
+            source: Catalog::MusicBrainz,
         },
     );
 

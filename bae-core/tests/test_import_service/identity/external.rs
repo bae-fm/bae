@@ -12,9 +12,9 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
     }
 }
 
-/// A source-backed import: the identity row carries `source_release_id`, and
-/// the pressing fields (year, format, label, catalog number, country) seed
-/// from the picked release.
+/// A catalog-backed import: the record carries the catalog's key for the
+/// release, and the pressing fields (year, format, label, catalog number,
+/// country) seed from the picked release.
 #[tokio::test]
 async fn a_picked_release_writes_its_id_and_pressing_fields() {
     support::tracing_init();
@@ -47,25 +47,20 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
     assert_eq!(release.pressing.catalog_number.as_deref(), Some("CAT-001"));
     assert_eq!(release.pressing.country.as_deref(), Some("US"));
 
-    // Provenance points at the picked release.
+    // The record the draft was read from points at the picked release.
+    assert!(!release.draft_from_tags);
+    let records = f.db.get_release_records(&release.id).await.unwrap();
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].catalog, Catalog::Discogs);
+    assert!(records[0].reads_draft);
     assert_eq!(
-        release.metadata_provenance,
-        Some(MetadataProvenance::ExternalRelease {
-            source: MetadataSource::Discogs,
-            release_id: release_id_key.clone(),
-            partners: vec![],
-        })
-    );
-
-    let identities = f.db.get_release_identities(&release.id).await.unwrap();
-    assert_eq!(identities.len(), 1);
-    assert_eq!(identities[0].source, MetadataSource::Discogs);
-    assert_eq!(
-        identities[0].source_group_id,
+        records[0].group_key,
         support::discogs_fixture_id("master-exact")
     );
+    assert_eq!(records[0].key, release_id_key);
     assert_eq!(
-        identities[0].source_release_id, release_id_key
+        records[0].url,
+        format!("https://www.discogs.com/release/{release_id_key}")
     );
 }
 
@@ -135,18 +130,18 @@ async fn a_user_edit_overlays_the_picked_release() {
     assert_eq!(tracks.len(), 1);
     assert_eq!(tracks[0].title, "Edited Track");
 
-    // The identity still names the picked pressing — a user edit is not an
-    // identity change.
-    let identities = f.db.get_release_identities(&release.id).await.unwrap();
-    assert_eq!(identities.len(), 1);
-    assert_eq!(identities[0].source_release_id, release_id_key);
+    // The record still names the picked pressing — a user edit does not change
+    // which catalog release describes it.
+    let records = f.db.get_release_records(&release.id).await.unwrap();
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].key, release_id_key);
 }
 
-// ── cross-source identity rows ──────────────────────────────────────────────
+// ── cross-catalog records ───────────────────────────────────────────────────
 //
 // When MB url-rels link to a Discogs release with a master id (or vice
-// versa), the mapper emits two `release_identities` rows, each carrying its
-// own source's release id.
+// versa), the pick commits two `release_records` rows, each carrying its own
+// catalog's release key.
 
 /// Seed a Discogs release the MB-rooted import path will resolve via MB
 /// url-rels. Returns the Discogs release id.
@@ -214,10 +209,10 @@ fn seed_mb_with_discogs_xref(
     mb_release_id.to_string()
 }
 
-/// An MB-rooted import with a Discogs cross-link writes two identity rows,
-/// both carrying their per-source `source_release_id`.
+/// An MB-rooted import with a Discogs cross-link writes two records, each
+/// carrying its own catalog's key.
 #[tokio::test]
-async fn cross_source_writes_both_release_ids() {
+async fn a_cross_link_writes_both_catalogs_records() {
     support::tracing_init();
 
     let discogs_id = seed_discogs_for_xref("90000001", "xref-d-master-exact", "Album Title");
@@ -244,8 +239,7 @@ async fn cross_source_writes_both_release_ids() {
             &import_id,
             album_dir,
             MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: mb_id.clone(),
+                record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
             },
         ))
@@ -255,38 +249,38 @@ async fn cross_source_writes_both_release_ids() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    let identities = f.db.get_release_identities(&release_id).await.unwrap();
-    assert_eq!(identities.len(), 2, "expected MB + Discogs identity rows");
+    let records = f.db.get_release_records(&release_id).await.unwrap();
+    assert_eq!(records.len(), 2, "expected MB + Discogs records");
 
-    let mb = identities
+    let mb = records
         .iter()
-        .find(|i| i.source == MetadataSource::MusicBrainz)
-        .expect("MB identity row missing");
-    assert_eq!(mb.source_group_id, "xref-mb-group-exact");
-    assert_eq!(mb.source_release_id, mb_id);
+        .find(|record| record.catalog == Catalog::MusicBrainz)
+        .expect("MusicBrainz record missing");
+    assert_eq!(mb.group_key, "xref-mb-group-exact");
+    assert_eq!(mb.key, mb_id);
 
-    let discogs = identities
+    let discogs = records
         .iter()
-        .find(|i| i.source == MetadataSource::Discogs)
-        .expect("Discogs identity row missing");
+        .find(|record| record.catalog == Catalog::Discogs)
+        .expect("Discogs record missing");
     assert_eq!(
-        discogs.source_group_id,
+        discogs.group_key,
         support::discogs_fixture_id("xref-d-master-exact")
     );
-    assert_eq!(discogs.source_release_id, discogs_id);
+    assert_eq!(discogs.key, discogs_id);
 }
 
 // ── a pick's partners ───────────────────────────────────────────────────────
 //
 // Find online pairs a MusicBrainz release and a Discogs release into one
 // pressing row. Picking that row claims both: the draft is read from the
-// primary, and each partner contributes its own source's identity row.
+// primary, and each partner contributes its own catalog's record.
 
-/// A pick carrying a partner writes one identity row per source, each naming
-/// the release that source lists — even though neither document cross-links
-/// the other.
+/// A pick carrying a partner writes one record per catalog, each naming the
+/// release that catalog lists — even though neither document cross-links the
+/// other.
 #[tokio::test]
-async fn a_pick_with_a_partner_writes_both_identity_rows() {
+async fn a_pick_with_a_partner_writes_both_records() {
     support::tracing_init();
 
     let discogs_id = seed_discogs_for_xref("90000101", "partner-d-master", "Album Title");
@@ -304,13 +298,9 @@ async fn a_pick_with_a_partner_writes_both_identity_rows() {
             &import_id,
             album_dir,
             MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: mb_id.clone(),
+                record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
                 partners: vec![
-                    bae_core::import::MetadataRef::new(
-                        discogs_id.clone(),
-                        MetadataSource::Discogs,
-                    ),
+                    bae_core::import::MetadataRef::new(Catalog::Discogs, discogs_id.clone()),
                 ],
             },
         ))
@@ -320,32 +310,34 @@ async fn a_pick_with_a_partner_writes_both_identity_rows() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    let identities = f.db.get_release_identities(&release_id).await.unwrap();
-    assert_eq!(identities.len(), 2, "expected MB + Discogs identity rows");
+    let records = f.db.get_release_records(&release_id).await.unwrap();
+    assert_eq!(records.len(), 2, "expected MB + Discogs records");
 
-    let mb = identities
+    let mb = records
         .iter()
-        .find(|i| i.source == MetadataSource::MusicBrainz)
-        .expect("MB identity row missing");
-    assert_eq!(mb.source_group_id, "partner-mb-group");
-    assert_eq!(mb.source_release_id, mb_id);
+        .find(|record| record.catalog == Catalog::MusicBrainz)
+        .expect("MusicBrainz record missing");
+    assert_eq!(mb.group_key, "partner-mb-group");
+    assert_eq!(mb.key, mb_id);
+    assert!(mb.reads_draft, "the draft was read from the primary");
 
-    let discogs = identities
+    let discogs = records
         .iter()
-        .find(|i| i.source == MetadataSource::Discogs)
-        .expect("Discogs identity row missing");
+        .find(|record| record.catalog == Catalog::Discogs)
+        .expect("Discogs record missing");
     assert_eq!(
-        discogs.source_group_id,
+        discogs.group_key,
         support::discogs_fixture_id("partner-d-master")
     );
-    assert_eq!(discogs.source_release_id, discogs_id);
+    assert_eq!(discogs.key, discogs_id);
+    assert!(!discogs.reads_draft);
 }
 
-/// The partner is what the person picked, so it replaces the Discogs identity
+/// The partner is what the person picked, so it replaces the Discogs record
 /// the MusicBrainz document's url-rels merely suggested: one Discogs row, and
 /// it names the picked pressing rather than the cross-referenced one.
 #[tokio::test]
-async fn a_partner_replaces_an_inferred_identity_of_the_same_source() {
+async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
     support::tracing_init();
 
     let inferred_id = seed_discogs_for_xref("90000201", "inferred-d-master", "Album Title");
@@ -370,13 +362,9 @@ async fn a_partner_replaces_an_inferred_identity_of_the_same_source() {
             &import_id,
             album_dir,
             MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: mb_id.clone(),
+                record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
                 partners: vec![
-                    bae_core::import::MetadataRef::new(
-                        picked_id.clone(),
-                        MetadataSource::Discogs,
-                    ),
+                    bae_core::import::MetadataRef::new(Catalog::Discogs, picked_id.clone()),
                 ],
             },
         ))
@@ -386,18 +374,18 @@ async fn a_partner_replaces_an_inferred_identity_of_the_same_source() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    let identities = f.db.get_release_identities(&release_id).await.unwrap();
-    let discogs: Vec<_> = identities
+    let records = f.db.get_release_records(&release_id).await.unwrap();
+    let discogs: Vec<_> = records
         .iter()
-        .filter(|i| i.source == MetadataSource::Discogs)
+        .filter(|record| record.catalog == Catalog::Discogs)
         .collect();
-    assert_eq!(discogs.len(), 1, "one row per source");
+    assert_eq!(discogs.len(), 1, "one row per catalog");
     assert_eq!(
-        discogs[0].source_release_id, picked_id,
+        discogs[0].key, picked_id,
         "the picked release outranks the cross-referenced one"
     );
     assert_eq!(
-        discogs[0].source_group_id,
+        discogs[0].group_key,
         support::discogs_fixture_id("picked-d-master")
     );
 }

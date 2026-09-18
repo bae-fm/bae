@@ -868,7 +868,7 @@ impl Fixture {
         }
         let verdict = TerminalVerdict::Found {
             matches: vec![MetadataResult {
-                source: crate::import::MetadataSource::MusicBrainz,
+                source: crate::import::Catalog::MusicBrainz,
                 release_id: release_id.to_string(),
                 title: "Album".to_string(),
                 artist: Some("Artist".to_string()),
@@ -925,8 +925,7 @@ impl Fixture {
                         draft,
                         source_discogs_artist_ids: Default::default(),
                         provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
-                            source: crate::import::MetadataSource::MusicBrainz,
-                            release_id: release_id.to_string(),
+                            record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, release_id.to_string()),
                             partners: vec![],
                         }),
                         cover: None,

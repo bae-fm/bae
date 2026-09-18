@@ -23,7 +23,7 @@
 use crate::identify::agreements::Agreements;
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::MetadataResult;
-use crate::import::types::MetadataSource;
+use crate::import::types::Catalog;
 use crate::signals::candidate_text::normalize;
 
 /// An album, as one or both sources describe it, with the pressings they
@@ -62,7 +62,7 @@ pub struct ReleaseGroup {
 /// One source carrying a group, and where its editorial page for it is.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReleaseGroupSource {
-    pub source: MetadataSource,
+    pub source: Catalog,
     /// Editorial URL for the group on this source (release-group on
     /// MusicBrainz, master on Discogs). `None` when the source returned the
     /// release ungrouped, which has no group page to open.
@@ -116,7 +116,7 @@ impl Pressing {
     /// same thing.
     pub(crate) fn claims(&self) -> (crate::import::MetadataRef, Vec<crate::import::MetadataRef>) {
         let mut releases = self.releases.iter().map(|release| {
-            crate::import::MetadataRef::new(release.release_id.clone(), release.source)
+            crate::import::MetadataRef::new(release.source, release.release_id.clone())
         });
         let primary = releases
             .next()
@@ -143,8 +143,7 @@ impl Pressing {
     pub fn pick(&self) -> crate::import::MetadataProvenance {
         let (primary, partners) = self.claims();
         crate::import::MetadataProvenance::ExternalRelease {
-            source: primary.source,
-            release_id: primary.id,
+            record: primary,
             partners,
         }
     }
@@ -157,7 +156,7 @@ impl Pressing {
 /// paired: a pressing row is only known once pairing has run, and what the row
 /// agrees with is what its records agree with.
 #[derive(Debug, Clone, Default)]
-pub struct Judgements(std::collections::HashMap<(MetadataSource, String), Agreements>);
+pub struct Judgements(std::collections::HashMap<(Catalog, String), Agreements>);
 
 impl Judgements {
     /// What was said about these results, ready to be asked release by
@@ -186,7 +185,7 @@ impl Judgements {
 /// One source's bucket of releases under one of its groups, each with what the
 /// candidate's own text agrees with about it.
 struct Bucket {
-    source: MetadataSource,
+    source: Catalog,
     source_group_id: Option<String>,
     releases: Vec<Judged>,
 }
@@ -219,7 +218,7 @@ impl Bucket {
             group_url: self
                 .source_group_id
                 .as_deref()
-                .map(|group_id| self.source.group_url(group_id)),
+                .and_then(|group_id| self.source.group_url(group_id)),
         }
     }
 }
@@ -276,7 +275,7 @@ fn bucket_by_source_group(results: Vec<Judged>) -> Vec<Bucket> {
     use std::collections::HashMap;
 
     let mut buckets: Vec<Bucket> = Vec::new();
-    let mut index: HashMap<(MetadataSource, String), usize> = HashMap::new();
+    let mut index: HashMap<(Catalog, String), usize> = HashMap::new();
     for judged in results {
         match judged.0.source_group_id.clone() {
             Some(group_id) => {
@@ -499,11 +498,11 @@ fn states_tracklist(release: &MetadataResult) -> bool {
 /// tie-break between records and between buckets, where nothing the folder says
 /// tells them apart, and what puts a card's sources in that order: the buckets
 /// a card is built from are sorted by it, and its sources are read off them.
-fn source_rank(source: MetadataSource) -> usize {
-    MetadataSource::ALL
+fn source_rank(source: Catalog) -> usize {
+    Catalog::ALL
         .iter()
         .position(|listed| *listed == source)
-        .expect("every source is one of MetadataSource::ALL")
+        .expect("every source is one of Catalog::ALL")
 }
 
 /// The digits of a stated barcode. Sources print the same code with different

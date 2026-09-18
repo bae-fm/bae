@@ -5,7 +5,7 @@
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::RemoteCover;
 use crate::import::parse_year;
-use crate::import::types::MetadataSource;
+use crate::import::types::Catalog;
 use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::signals::LookupFailure;
@@ -21,7 +21,7 @@ use tracing::warn;
 /// row each, read back unchanged.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MetadataResult {
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub release_id: String,
     pub title: String,
     pub artist: Option<String>,
@@ -94,7 +94,7 @@ impl MetadataResult {
     /// other field is the empty value, so a test that cares about one of them
     /// sets it with struct-update syntax.
     pub fn for_test(
-        source: MetadataSource,
+        source: Catalog,
         release_id: &str,
         source_group_id: Option<&str>,
     ) -> Self {
@@ -151,11 +151,11 @@ impl From<&MetadataResult> for crate::db::LibraryCheck {
 /// `country` and `barcode` are pressing-level fields the user can review or
 /// override in the edit-metadata form before commit. `source_group_id` carries
 /// the per-source group (MB release-group ID or Discogs master ID) so the UI can
-/// build a `ReleaseIdentity` row from the picked release without a second fetch.
+/// build a `ReleaseRecord` row from the picked release without a second fetch.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportSearchReleaseDetail {
     pub release_id: String,
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub source_group_id: Option<String>,
     pub title: String,
     pub artist: Option<String>,
@@ -205,7 +205,7 @@ pub fn discogs_search_result_to_metadata(
     let cover_art = r.remote_cover();
     let source_group_id = r.master_id.map(|id| id.to_string());
     MetadataResult {
-        source: MetadataSource::Discogs,
+        source: Catalog::Discogs,
         release_id: r.id.to_string(),
         title: album,
         artist,
@@ -275,7 +275,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         .has_front_cover()
         .then(|| RemoteCover::musicbrainz_release(&r.id));
     Some(MetadataResult {
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         release_id: r.id,
         title: r.title,
         artist: r.artist_credit.first().map(|ac| ac.name.clone()),
@@ -304,7 +304,7 @@ fn mb_discid_releases_to_metadata(
 fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
     let (label, catalog_number) = musicbrainz::label_and_catno(&r.label_info);
     MetadataResult {
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         release_id: r.id,
         title: r.title,
         artist: r.artist_credit.first().map(|ac| ac.name.clone()),
@@ -404,7 +404,7 @@ pub type SourceLookup = Result<Vec<MetadataResult>, LookupFailure>;
 /// [`crate::identify::IdentifyFailure`], which a failed verdict persists.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SourceFailure {
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub failure: LookupFailure,
 }
 
@@ -459,17 +459,18 @@ impl SearchQuery {
 /// caller that reports the provider's error as it is.
 pub async fn search_provider(
     library_manager: &crate::library::LibraryManager,
-    source: MetadataSource,
+    source: Catalog,
     query: &SearchQuery,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, ImportError> {
     match source {
-        MetadataSource::MusicBrainz => search_mb(query.musicbrainz_params(), priority).await,
-        MetadataSource::Discogs => {
+        Catalog::MusicBrainz => search_mb(query.musicbrainz_params(), priority).await,
+        Catalog::Discogs => {
             library_manager
                 .search_discogs(query.discogs_params(), priority)
                 .await
         }
+        other => unreachable!("{} answers no searches", other.as_str()),
     }
 }
 
@@ -477,7 +478,7 @@ pub async fn search_provider(
 /// the per-source primitive a candidate's manual search is built from.
 pub async fn search_source(
     library_manager: &crate::library::LibraryManager,
-    source: MetadataSource,
+    source: Catalog,
     query: &SearchQuery,
     priority: CallPriority,
 ) -> SourceLookup {
@@ -559,7 +560,7 @@ pub(crate) fn build_mb_detail(
 
     Ok(ImportSearchReleaseDetail {
         release_id: mb_response.id.clone(),
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         source_group_id: mb_response.release_group.as_ref().map(|rg| rg.id.clone()),
         title: mb_response.title.clone(),
         artist,
@@ -621,7 +622,7 @@ pub(crate) fn build_discogs_detail(
 
     ImportSearchReleaseDetail {
         release_id: release.id.clone(),
-        source: MetadataSource::Discogs,
+        source: Catalog::Discogs,
         source_group_id: release.master_id.clone(),
         title: release.title.clone(),
         artist,

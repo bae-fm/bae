@@ -20,7 +20,7 @@ impl AppServices {
     delegate_async!(import, import_get_candidate => get_candidate(key: &str) -> Result<Option<crate::import::ImportCandidateSnapshot>, crate::library::LibraryError>);
     delegate_sync!(import, import_subscribe_folder_scan_events => subscribe_folder_scan_events() -> tokio::sync::mpsc::UnboundedReceiver<crate::import::ScanEvent>);
     delegate_async!(import, import_set_candidate_skipped => set_candidate_skipped(path: String, skipped: bool) -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery, source: crate::import::MetadataSource) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
+    delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery, source: crate::import::Catalog) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
     delegate_sync!(import, import_start_candidate_search => start_candidate_search(candidate_key: String, query: crate::import::SearchQuery) -> ());
     delegate_sync!(import, import_retry_candidate_search => retry_candidate_search(candidate_key: String) -> ());
     delegate_sync!(import, import_clear_candidate_search => clear_candidate_search(candidate_key: String) -> ());

@@ -41,7 +41,7 @@ async fn seed(db: &Database) -> (String, String) {
         release_name: None,
         pressing: Pressing::blank(),
         disc_id: None,
-        metadata_provenance: Some(bae_core::import::MetadataProvenance::FileTags),
+        draft_from_tags: true,
         remote: true,
         source_folder_name: None,
         content_hash: None,

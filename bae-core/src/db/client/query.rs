@@ -422,7 +422,7 @@ pub(super) fn row_to_track_role_summary(
             track_id: row.get("track_id")?,
             artist_id: row.get("artist_id")?,
             position: row.get("position")?,
-            source: metadata_source_column(row, "role_source")?,
+            source: catalog_column(row, "role_source")?,
             source_credit: row.get("source_credit")?,
             created_at: rfc3339_column(row, "created_at")?,
         },

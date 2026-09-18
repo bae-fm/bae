@@ -8,7 +8,7 @@ use super::verdict_rows::{
     identification_of, read_match_row, read_verdict_row, unreadable, StoredMatches, VERDICT_COLUMNS,
 };
 use super::*;
-use crate::import::{MetadataAuthor, MetadataProvenance, MetadataRef, MetadataSource};
+use crate::import::{MetadataAuthor, MetadataProvenance, MetadataRef, Catalog};
 use std::str::FromStr;
 
 type CandidateProvenances = HashMap<String, (MetadataProvenance, MetadataAuthor)>;
@@ -34,12 +34,10 @@ fn provenance_columns<'a>(
             release_id: None,
             author,
         },
-        MetadataProvenance::ExternalRelease {
-            source, release_id, ..
-        } => ProvenanceColumns {
+        MetadataProvenance::ExternalRelease { record, .. } => ProvenanceColumns {
             kind: "external_release",
-            source: Some(source.as_str()),
-            release_id: Some(release_id.as_str()),
+            source: Some(record.catalog.as_str()),
+            release_id: Some(record.key.as_str()),
             author,
         },
     }
@@ -94,7 +92,7 @@ pub(super) fn insert_provenance(
         sql.execute(
             "INSERT INTO import_candidate_provenance_partner (content_hash, source, release_id) \
              VALUES (?, ?, ?)",
-            params![content_hash, partner.source.as_str(), partner.id],
+            params![content_hash, partner.catalog.as_str(), partner.key],
         )?;
     }
     Ok(())
@@ -146,11 +144,11 @@ pub(crate) fn load_provenance_rows_on(
     Ok(move || {
         let mut partners: HashMap<String, Vec<MetadataRef>> = HashMap::new();
         for (content_hash, source, release_id) in partners_rows {
-            let source = MetadataSource::from_str(&source).map_err(DbError::Message)?;
+            let source = Catalog::from_str(&source).map_err(DbError::Message)?;
             partners
                 .entry(content_hash)
                 .or_default()
-                .push(MetadataRef::new(release_id, source));
+                .push(MetadataRef::new(source, release_id));
         }
         let mut out = HashMap::with_capacity(rows.len());
         for (content_hash, kind, source, release_id, author) in rows {
@@ -164,9 +162,11 @@ pub(crate) fn load_provenance_rows_on(
                         ))
                     };
                     MetadataProvenance::ExternalRelease {
-                        source: MetadataSource::from_str(&source.ok_or_else(|| missing("source"))?)
-                            .map_err(DbError::Message)?,
-                        release_id: release_id.ok_or_else(|| missing("release"))?,
+                        record: MetadataRef::new(
+                            Catalog::from_str(&source.ok_or_else(|| missing("catalog"))?)
+                                .map_err(DbError::Message)?,
+                            release_id.ok_or_else(|| missing("release"))?,
+                        ),
                         partners,
                     }
                 }

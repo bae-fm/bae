@@ -1,7 +1,7 @@
 use super::super::*;
 use super::*;
 use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease};
-use crate::import::{MetadataProvenance, MetadataSource, ReleaseIdentity};
+use crate::import::{Catalog, ReleaseRecord};
 use chrono::Utc;
 use coven::SystemClock;
 use std::sync::Arc;
@@ -37,12 +37,12 @@ async fn db_with_sequential_ids() -> (Database, tempfile::TempDir) {
     (db, tmp)
 }
 
-fn identity(source: MetadataSource, release_id: &str) -> ReleaseIdentity {
-    ReleaseIdentity {
-        source,
-        source_group_id: format!("group-{release_id}"),
-        source_release_id: release_id.to_string(),
-    }
+fn identity(source: Catalog, release_id: &str) -> ReleaseRecord {
+    ReleaseRecord::new(
+        &crate::import::MetadataRef::new(source, release_id),
+        Some(format!("group-{release_id}")),
+        source == Catalog::MusicBrainz,
+    )
 }
 
 #[tokio::test]
@@ -76,16 +76,16 @@ async fn identity_rows_take_their_ids_from_the_injected_provider() {
     let release = DbRelease::new_test(&album.id, RELEASE_1);
     db.insert_release(&release).await.unwrap();
 
-    db.insert_release_identities(
+    db.insert_release_records(
         &release.id,
-        &[identity(MetadataSource::Discogs, "discogs-release-1")],
+        &[identity(Catalog::Discogs, "discogs-release-1")],
     )
     .await
     .unwrap();
 
     let ids: Vec<String> = db
         .read(|sql| {
-            sql.query("SELECT id FROM release_identities", [], |row| {
+            sql.query("SELECT id FROM release_records", [], |row| {
                 row.get::<_, String>(0)
             })
             .map_err(DbError::from)
@@ -103,14 +103,10 @@ async fn identity_rows_take_their_ids_from_the_injected_provider() {
     // Moving the release to a fresh album copies its album_artists rows; those
     // PKs are minted here too.
     let target = DbAlbum::new_test("Target Album", &artist.id);
-    db.set_identity_atomic(
+    db.set_records_atomic(
         &release.id,
-        &[identity(MetadataSource::MusicBrainz, "mb-release-1")],
-        Some(MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-            release_id: "mb-release-1".to_string(),
-            partners: vec![],
-        }),
+        &[identity(Catalog::MusicBrainz, "mb-release-1")],
+        false,
         &album.id,
         &target.id,
         Some(&target),

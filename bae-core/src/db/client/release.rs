@@ -7,7 +7,7 @@ mod fail_import;
 use fail_import::*;
 
 /// The row lists an import commit writes around its release — the artist, work,
-/// role, audio-format, and identity rows that hang off it.
+/// role, audio-format, and record rows that hang off it.
 ///
 /// One group rather than thirteen parameters: each is a plain list the caller
 /// either has or does not, and `Default` is every one of them empty, so a
@@ -29,7 +29,7 @@ pub(crate) struct ImportRows<'a> {
     pub artist_external_id_updates: &'a [(String, DbArtist)],
     pub audio_formats: &'a [DbAudioFormat],
     pub audio_segments: &'a [DbAudioSegment],
-    pub identities: &'a [crate::import::ReleaseIdentity],
+    pub records: &'a [crate::import::ReleaseRecord],
 }
 
 impl Database {
@@ -133,7 +133,7 @@ impl Database {
     ///
     /// Deliberately untouched: `source_release_payloads` (the archived provider
     /// document is what the source said, independent of a user edit) and
-    /// `release_identities` and metadata provenance (identity is orthogonal to
+    /// the release's records and where the draft was read (a record is orthogonal to
     /// editable metadata).
     #[allow(clippy::too_many_arguments)]
     pub async fn update_release_metadata_user_edit(
@@ -649,7 +649,7 @@ impl Database {
             })
             .collect();
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
-        let identities = rows.identities.to_vec();
+        let records = rows.records.to_vec();
         let replacement_deletes = replacement_deletes.to_vec();
 
         let now_dt = self.inner.clock.now();
@@ -723,18 +723,12 @@ impl Database {
 
                     insert_release_row(tx, &release, &reg)?;
 
-                    // Per-source identity rows, empty without an external identity.
-                    // `release_identities` is uniquely keyed on `(release_id,
-                    // source)`, so a release never carries two rows for one source.
-                    for identity in &identities {
-                        insert_release_identity_row(
-                            tx,
-                            &release.id,
-                            identity,
-                            ids.new_id(),
-                            &reg,
-                            &now,
-                        )?;
+                    // One row per catalog that describes the release, empty when
+                    // none does. The records are uniquely keyed on
+                    // `(release_id, catalog)`, so a release never carries two
+                    // rows for one catalog.
+                    for record in &records {
+                        insert_release_record_row(tx, &release.id, record, ids.new_id(), &reg, &now)?;
                     }
 
                     // Works are globally identified; they go in before their links.

@@ -41,26 +41,28 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
     assert_eq!(second_page.rows[0].release.id, TIEBREAK_HI);
 }
 
-// ── set_identity ───────────────────────────────────────────────────
+// ── set_records ────────────────────────────────────────────────────
 
-fn mb_identity(group: &str, release: &str) -> crate::import::ReleaseIdentity {
-    crate::import::ReleaseIdentity {
-        source: crate::import::MetadataSource::MusicBrainz,
-        source_group_id: group.to_string(),
-        source_release_id: release.to_string(),
-    }
+/// Exactly one record of a release reads its draft; these fixtures put that on
+/// MusicBrainz, so a release carrying both records still has one.
+fn mb_identity(group: &str, release: &str) -> crate::import::ReleaseRecord {
+    crate::import::ReleaseRecord::new(
+        &crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, release),
+        Some(group.to_string()),
+        true,
+    )
 }
 
-fn discogs_identity(group: &str, release: &str) -> crate::import::ReleaseIdentity {
-    crate::import::ReleaseIdentity {
-        source: crate::import::MetadataSource::Discogs,
-        source_group_id: group.to_string(),
-        source_release_id: release.to_string(),
-    }
+fn discogs_identity(group: &str, release: &str) -> crate::import::ReleaseRecord {
+    crate::import::ReleaseRecord::new(
+        &crate::import::MetadataRef::new(crate::import::Catalog::Discogs, release),
+        Some(group.to_string()),
+        false,
+    )
 }
 
 /// Insert `album`, then one release under it per `(group, release)` MusicBrainz
-/// identity named — the arrangement every `set_identity` test below starts
+/// record named — the arrangement every `set_records` test below starts
 /// from. The returned releases are in the order the identities were given.
 async fn seed_grouped_releases(
     manager: &LibraryManager,
@@ -74,7 +76,7 @@ async fn seed_grouped_releases(
         manager.database.insert_release(&release).await.unwrap();
         manager
             .database
-            .insert_release_identities(&release.id, &[mb_identity(group, release_id)])
+            .insert_release_records(&release.id, &[mb_identity(group, release_id)])
             .await
             .unwrap();
         releases.push(release);
@@ -83,30 +85,25 @@ async fn seed_grouped_releases(
 }
 
 #[tokio::test]
-async fn set_identity_to_file_tags_moves_release_to_fresh_album() {
+async fn set_records_to_file_tags_moves_release_to_fresh_album() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
-        source: crate::import::MetadataSource::MusicBrainz,
-        release_id: "mb-rel-1".to_string(),
-        partners: vec![],
-    });
+    let release = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
     manager
         .database
-        .insert_release_identities(&release.id, &[mb_identity("g1", "mb-rel-1")])
+        .insert_release_records(&release.id, &[mb_identity("g1", "mb-rel-1")])
         .await
         .unwrap();
 
     manager
-        .set_identity(
+        .set_records(
             &release.id,
             vec![],
-            crate::import::MetadataProvenance::FileTags,
+            true,
         )
         .await
         .unwrap();
@@ -138,7 +135,7 @@ async fn set_identity_to_file_tags_moves_release_to_fresh_album() {
     // Identity rows wiped, metadata source flipped to file_tags.
     let identities = manager
         .database
-        .get_release_identities(&release.id)
+        .get_release_records(&release.id)
         .await
         .unwrap();
     assert!(identities.is_empty());
@@ -148,14 +145,11 @@ async fn set_identity_to_file_tags_moves_release_to_fresh_album() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(
-        updated.metadata_provenance,
-        Some(crate::import::MetadataProvenance::FileTags)
-    );
+    assert!(updated.draft_from_tags);
 }
 
 #[tokio::test]
-async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
+async fn set_records_replaces_rows_when_the_new_records_fit_the_current_album() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     // Album has two releases, both MB identities on group g1.
@@ -167,14 +161,10 @@ async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
     // Re-point release1 at another pressing within g1. The new row still
     // agrees with release2's group, so release1 stays put.
     manager
-        .set_identity(
+        .set_records(
             &release1.id,
             vec![mb_identity("g1", "mb-rel-99")],
-            crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-rel-99".to_string(),
-                partners: vec![],
-            },
+            false,
         )
         .await
         .unwrap();
@@ -189,12 +179,12 @@ async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
 
     let identities = manager
         .database
-        .get_release_identities(&release1.id)
+        .get_release_records(&release1.id)
         .await
         .unwrap();
     assert_eq!(identities.len(), 1);
-    assert_eq!(identities[0].source_group_id, "g1");
-    assert_eq!(identities[0].source_release_id, "mb-rel-99");
+    assert_eq!(identities[0].group_key, "g1");
+    assert_eq!(identities[0].key, "mb-rel-99");
 
     let updated = manager
         .database
@@ -202,14 +192,7 @@ async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(
-        updated.metadata_provenance,
-        Some(crate::import::MetadataProvenance::ExternalRelease {
-            source: crate::import::MetadataSource::MusicBrainz,
-            release_id: "mb-rel-99".to_string(),
-            partners: vec![],
-        }),
-    );
+    assert!(!updated.draft_from_tags);
 
     // Source album still holds both releases.
     let siblings = manager
@@ -221,7 +204,7 @@ async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
 }
 
 #[tokio::test]
-async fn set_identity_creates_new_album_when_no_existing_album_fits() {
+async fn set_records_creates_a_new_album_when_no_existing_album_fits() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     // Two albums, neither matching the new MB group g2.
@@ -238,14 +221,10 @@ async fn set_identity_creates_new_album_when_no_existing_album_fits() {
     // album (album_a) holds release_beta on g1, so it can't stay.
     // No other album holds g2 either → fresh album.
     manager
-        .set_identity(
+        .set_records(
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
-            crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-rel-g2".to_string(),
-                partners: vec![],
-            },
+            false,
         )
         .await
         .unwrap();
@@ -270,7 +249,7 @@ async fn set_identity_creates_new_album_when_no_existing_album_fits() {
 }
 
 #[tokio::test]
-async fn set_identity_moves_release_to_matching_album() {
+async fn set_records_moves_the_release_to_the_matching_album() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     // Source album (album_a) carries release_alpha solo at MB g1.
@@ -285,14 +264,10 @@ async fn set_identity_moves_release_to_matching_album() {
     seed_grouped_releases(&manager, &album_b, &[("g2", "g2-rel")]).await;
 
     manager
-        .set_identity(
+        .set_records(
             &release_alpha.id,
             vec![mb_identity("g2", "mb-rel-pressing")],
-            crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-rel-pressing".to_string(),
-                partners: vec![],
-            },
+            false,
         )
         .await
         .unwrap();
@@ -322,7 +297,7 @@ async fn set_identity_moves_release_to_matching_album() {
 }
 
 #[tokio::test]
-async fn set_identity_keeps_vacated_album_when_other_releases_remain() {
+async fn set_records_keeps_the_vacated_album_when_other_releases_remain() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     // album_a holds two releases, both on MB g1. Move release_alpha
@@ -334,14 +309,10 @@ async fn set_identity_keeps_vacated_album_when_other_releases_remain() {
     let release_beta = &releases[1];
 
     manager
-        .set_identity(
+        .set_records(
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
-            crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-rel-g2".to_string(),
-                partners: vec![],
-            },
+            false,
         )
         .await
         .unwrap();
@@ -363,7 +334,7 @@ async fn set_identity_keeps_vacated_album_when_other_releases_remain() {
 }
 
 #[tokio::test]
-async fn set_identity_does_not_touch_metadata_columns() {
+async fn set_records_does_not_touch_metadata_columns() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let mut album = create_test_album();
@@ -381,7 +352,7 @@ async fn set_identity_does_not_touch_metadata_columns() {
     manager.database.insert_release(&release).await.unwrap();
     manager
         .database
-        .insert_release_identities(&release.id, &[mb_identity("g1", "mb-rel-1")])
+        .insert_release_records(&release.id, &[mb_identity("g1", "mb-rel-1")])
         .await
         .unwrap();
 
@@ -399,14 +370,10 @@ async fn set_identity_does_not_touch_metadata_columns() {
     manager.database.insert_track(&track).await.unwrap();
 
     manager
-        .set_identity(
+        .set_records(
             &release.id,
             vec![discogs_identity("dg1", "dg-rel-1")],
-            crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::Discogs,
-                release_id: "dg-rel-1".to_string(),
-                partners: vec![],
-            },
+            false,
         )
         .await
         .unwrap();
@@ -447,7 +414,7 @@ async fn set_identity_does_not_touch_metadata_columns() {
 }
 
 #[tokio::test]
-async fn set_identity_to_fresh_album_preserves_album_artists() {
+async fn set_records_to_a_fresh_album_preserves_album_artists() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     // Two extra artists so the album carries multiple album_artists
@@ -491,14 +458,10 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
     // release_alpha takes a different group → can't stay in album_a
     // (g1 disagrees with g2), no other album holds g2 → fresh album.
     manager
-        .set_identity(
+        .set_records(
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
-            crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-rel-g2".to_string(),
-                partners: vec![],
-            },
+            false,
         )
         .await
         .unwrap();
@@ -524,7 +487,7 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
 }
 
 #[tokio::test]
-async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
+async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let now = Utc::now();
     let beta_track_id = TRACK_BETA.to_string();
@@ -562,14 +525,10 @@ async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
         .unwrap();
 
     manager
-        .set_identity(
+        .set_records(
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
-            crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-rel-g2".to_string(),
-                partners: vec![],
-            },
+            false,
         )
         .await
         .unwrap();
@@ -602,9 +561,9 @@ async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
 }
 
 #[tokio::test]
-async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
+async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
     // The TOCTOU window: a separate writer lands a release into the source album
-    // between `set_identity`'s pre-flight read and its atomic call. Drive the atomic
+    // between `set_records`'s pre-flight read and its atomic call. Drive the atomic
     // API directly with `current_album_id` at the source album, after seeding an
     // extra release into it. The atomic call must NOT delete the source — its
     // in-transaction recheck sees the surviving release.
@@ -640,14 +599,10 @@ async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
 
     manager
         .database
-        .set_identity_atomic(
+        .set_records_atomic(
             &release_alpha.id,
             &[mb_identity("g2", "g2-rel")],
-            Some(crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-rel-g2".to_string(),
-                partners: vec![],
-            }),
+            false,
             &album_a.id,
             &fresh_album.id,
             Some(&fresh_album),

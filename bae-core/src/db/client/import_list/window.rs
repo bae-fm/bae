@@ -6,7 +6,7 @@
 //! the one key a selection names — never for the queue.
 
 use super::super::folder_scans::load_resolved_boundaries;
-use super::super::identity::check_releases_in_library_on;
+use super::super::records::check_releases_in_library_on;
 use super::super::import_combinations::{load_candidate_on, skipped_on};
 use super::super::import_state::{load_pane_rows_on, load_states_on};
 use super::super::payloads::load_release_payloads_on;
@@ -19,7 +19,7 @@ use crate::import::folder_scanner::{
 use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
 use crate::import::release_candidate::ReleaseCandidate;
 use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
-use crate::import::triage::{IdentifiedSource, MatchedRelease};
+use crate::import::triage::MatchedRelease;
 use crate::import::CoverSelection;
 use crate::import::MetadataRef;
 use crate::library::LibraryPageWindow;
@@ -150,15 +150,16 @@ impl WindowItemRows {
             } => {
                 match picked {
                     Some(picked) => {
-                        let PickedRelease { matched, sources } = picked.process()?;
+                        let PickedRelease { matched, records } = picked.process()?;
                         row.matched = matched;
                         // Whether the row says it is identified at all is its
-                        // own reading's answer; the pick only states what each
-                        // source that reading names says about its release.
-                        if let crate::import::triage::TriageReading::Identified { sources: named } =
-                            &mut row.reading
+                        // own reading's answer; the pick only states which
+                        // catalogs describe the release that reading names.
+                        if let crate::import::triage::TriageReading::Identified {
+                            records: described,
+                        } = &mut row.reading
                         {
-                            *named = sources;
+                            *described = records;
                         }
                     }
                     // File Tags names no external release, so nothing leads
@@ -195,20 +196,19 @@ pub(super) enum RowCover {
 }
 
 pub(super) struct PickedReleaseRows {
-    /// The release the draft was read from — what the row leads with.
-    primary: MetadataRef,
-    /// Every release the pick claims, primary and partners alike, each with
-    /// the documents archived for it. A release nothing archived documents for
-    /// is still listed: the pick claims it either way, and the row says so.
+    /// Every release the pick claims, the primary first and then its partners,
+    /// each with the documents archived for it. A release nothing archived
+    /// documents for is still listed: the pick claims it either way, and the
+    /// row says so.
     claimed: Vec<(MetadataRef, Option<crate::import::payloads::ReleasePayloads>)>,
     files: CategorizedFiles,
 }
 
-/// What the picked documents say: the release the row leads with, and what
-/// each source the pick claims states about its own release.
+/// What the picked documents say: the release the row leads with, and every
+/// catalog that describes it.
 pub(super) struct PickedRelease {
     matched: Option<MatchedRelease>,
-    sources: Vec<IdentifiedSource>,
+    records: Vec<crate::import::ReleaseRecord>,
 }
 
 impl PickedReleaseRows {
@@ -217,23 +217,21 @@ impl PickedReleaseRows {
             .map_err(|error| DbError::Message(error.to_string()))?;
         let audio_durations = crate::import::track_slots::audio_durations(&self.files, &durations)
             .map_err(|error| DbError::Message(error.to_string()))?;
-        let mut matched = None;
-        let mut sources = Vec::with_capacity(self.claimed.len());
-        for (release, payloads) in self.claimed {
-            let detail = payloads
-                .map(|payloads| payloads.detail_for_audio(&audio_durations))
-                .transpose()
-                .map_err(|error| DbError::Message(error.to_string()))?;
-            let claim = IdentifiedSource::of_ref(&release);
-            sources.push(match &detail {
-                Some(detail) => claim.stating(detail),
-                None => claim,
-            });
-            if release == self.primary {
-                matched = detail.map(|detail| MatchedRelease::of_pick(release.source, &detail));
-            }
-        }
-        Ok(PickedRelease { matched, sources })
+        let records = crate::import::payloads::claimed_records(&self.claimed)
+            .map_err(|error| DbError::Message(error.to_string()))?;
+        // Only the release the draft was read from states the row's facts; a
+        // partner's own document is not a second set of them.
+        let (primary, payloads) = self
+            .claimed
+            .into_iter()
+            .next()
+            .expect("a pick claims at least its primary");
+        let matched = payloads
+            .map(|payloads| payloads.detail_for_audio(&audio_durations))
+            .transpose()
+            .map_err(|error| DbError::Message(error.to_string()))?
+            .map(|detail| MatchedRelease::of_pick(primary.catalog, &detail));
+        Ok(PickedRelease { matched, records })
     }
 }
 
@@ -315,23 +313,18 @@ fn picked_release(
     pick: &MetadataProvenance,
     files: &CategorizedFiles,
 ) -> Result<Option<PickedReleaseRows>, DbError> {
-    let MetadataProvenance::ExternalRelease {
-        source, release_id, ..
-    } = pick
-    else {
+    let MetadataProvenance::ExternalRelease { record, partners } = pick else {
         return Ok(None);
     };
     let message = |error: crate::import::ImportError| DbError::Message(error.to_string());
-    let claimed = pick
-        .claimed_releases()
-        .into_iter()
+    let claimed = std::iter::once(record.clone())
+        .chain(partners.iter().cloned())
         .map(|release| {
             let payloads = load_release_payloads_on(sql, &release).map_err(message)?;
             Ok((release, payloads))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
     Ok(Some(PickedReleaseRows {
-        primary: MetadataRef::new(release_id.clone(), *source),
         claimed,
         files: files.clone(),
     }))
@@ -556,10 +549,8 @@ fn payloads_for_pane_on(
     picked: Option<&MetadataProvenance>,
 ) -> Result<Option<crate::import::payloads::ReleasePayloads>, DbError> {
     let release = match picked {
-        Some(MetadataProvenance::ExternalRelease {
-            source, release_id, ..
-        }) => {
-            let release = MetadataRef::new(release_id.clone(), *source);
+        Some(MetadataProvenance::ExternalRelease { record, .. }) => {
+            let release = record.clone();
             // A stored pick always has readable documents: the pick write
             // archives them first. Serving half a pane instead would hide the
             // break rather than state it.
@@ -568,7 +559,7 @@ fn payloads_for_pane_on(
                 .ok_or_else(|| {
                     DbError::Message(format!(
                         "{} is picked for {} but nothing stored its lookups",
-                        release.id,
+                        release.key,
                         candidate.key()
                     ))
                 })?;

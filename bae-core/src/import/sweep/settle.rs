@@ -336,7 +336,7 @@ async fn settle_lead(
         Err(error) => {
             debug!(
                 "sweep: could not settle {} ({error}); storing the failure",
-                primary.id
+                primary.key
             );
             *verdict = TerminalVerdict::Failed {
                 failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(
@@ -365,7 +365,7 @@ async fn settle_lead(
             // from the primary's document, and a partner states its own.
             matches
                 .iter_mut()
-                .find(|result| result.source == primary.source && result.release_id == primary.id)
+                .find(|result| result.source == primary.catalog && result.release_id == primary.key)
                 .expect("the pressing's primary is one of the verdict's matches")
                 .source_tracks = Some(source_tracks);
             Ok(SettledLead::ExternalRelease {
@@ -376,7 +376,7 @@ async fn settle_lead(
         Err(error) => {
             debug!(
                 "sweep: {} states no readable tracklist ({error}); storing the failure",
-                primary.id
+                primary.key
             );
             *verdict = TerminalVerdict::Failed {
                 failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(

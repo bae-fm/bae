@@ -20,7 +20,7 @@ use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
-use crate::import::{LookupChoices, MetadataSource};
+use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
     ArtworkScan, BarcodeSignal, LookupFailure, SignalOrigin, Signals, SourcedValue,
 };
@@ -268,7 +268,7 @@ pub enum IdentifyEvent {
     /// only way a choice enters a run: nothing changes one while the run is
     /// going, so a different decision is a different run.
     Started {
-        providers: Vec<MetadataSource>,
+        providers: Vec<Catalog>,
         choices: LookupChoices,
     },
     Cancelled,
@@ -297,14 +297,14 @@ pub enum IdentifyEvent {
     /// One provider answered about one barcode: matches, none, or why not.
     /// The reducer moves that provider's walk on and leaves the others alone.
     BarcodeLookupAnswered {
-        source: MetadataSource,
+        source: Catalog,
         for_barcode: String,
         outcome: LookupOutcome,
     },
 
     /// One provider answered about one chosen catalog number.
     CatalogLookupAnswered {
-        source: MetadataSource,
+        source: Catalog,
         for_catalog: String,
         outcome: LookupOutcome,
     },
@@ -316,18 +316,9 @@ pub enum IdentifyEvent {
 /// here.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Effect {
-    LookupDiscid {
-        disc_id: String,
-        track_count: u32,
-    },
-    LookupBarcode {
-        source: MetadataSource,
-        barcode: String,
-    },
-    LookupCatalog {
-        source: MetadataSource,
-        catalog: String,
-    },
+    LookupDiscid { disc_id: String, track_count: u32 },
+    LookupBarcode { source: Catalog, barcode: String },
+    LookupCatalog { source: Catalog, catalog: String },
 }
 
 /// Drive the state machine one step. `Cancelled` always resets to `Idle`.
@@ -509,7 +500,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
 /// match ends it, a miss asks about the next code (or ends it exhausted), a
 /// failure leaves it failed.
 fn advance_barcode_walk(
-    source: MetadataSource,
+    source: Catalog,
     index: usize,
     codes: &[String],
     outcome: LookupOutcome,

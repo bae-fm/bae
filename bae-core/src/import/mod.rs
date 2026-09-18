@@ -81,9 +81,10 @@ pub struct ParsedWorkGraph {
     pub track_works: Vec<DbTrackWork>,
 }
 
-/// A parsed release (MusicBrainz, Discogs, or file tags) in the shape that
-/// flows into commit: commit turns `identities` into `release_identities` rows
-/// and the rest into `albums` / `releases` / `tracks` writes.
+/// A parsed release (a catalog's document, or the files' own tags) in the shape
+/// that flows into commit, which turns it into `albums` / `releases` / `tracks`
+/// writes. The records are the pick's to state, not this mapping's, so they
+/// reach commit alongside rather than inside it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub struct ParsedAlbum {
@@ -96,9 +97,6 @@ pub struct ParsedAlbum {
     pub work_graph: ParsedWorkGraph,
     pub release_artist_roles: Vec<DbReleaseArtistRole>,
     pub track_artist_roles: Vec<DbTrackArtistRole>,
-    /// One element per source the parser resolved for this release.
-    /// Empty for File Tags and direct-entry imports, which claim no external identity.
-    pub identities: Vec<crate::import::types::ReleaseIdentity>,
 }
 
 /// The import service's shared dependencies: the library it reads and writes,
@@ -210,11 +208,11 @@ desktop_only! {
     pub use types::ImportCommand;
 }
 pub use types::{
-    asked_sources, is_the_only_asked_source, ArtistAssignment, AudioFile, CandidateDraft,
-    CandidateTrack, EditValidationError, ExistingArtist, MetadataProvenance, MetadataSource,
-    MetadataSourceAvailability, NewArtistSeed, PressingEdit, RawPressingEdit, RawReleaseEdit,
-    RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed, ReleaseIdentity, ReleaseUserEdit,
-    SourceAvailability, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit,
+    asked_sources, is_the_only_asked_source, parse_catalog_url, ArtistAssignment, AudioFile,
+    CandidateDraft, CandidateTrack, Catalog, CatalogAvailability, CatalogPage, EditValidationError,
+    ExistingArtist, MetadataProvenance, NewArtistSeed, PressingEdit, RawPressingEdit,
+    RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed, ReleaseRecord,
+    ReleaseUserEdit, SourceAvailability, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit,
 };
 desktop_only! {
     pub use types::{

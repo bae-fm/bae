@@ -271,30 +271,26 @@ impl ImportService {
         let audio_durations =
             crate::import::track_slots::audio_durations(&categorized, &source_durations)?;
 
+        let mut records = Vec::new();
         let parsed = match &metadata_provenance {
-            Some(crate::import::MetadataProvenance::ExternalRelease {
-                source,
-                release_id,
-                partners,
-            }) => {
+            Some(crate::import::MetadataProvenance::ExternalRelease { record, partners }) => {
                 // The documents are archived by `prepare_release`, keyed by the
-                // picked source release — so nothing about this release's rows
-                // needs to carry them, and the pointer written below is what
-                // finds them again.
-                let release_ref = crate::import::MetadataRef::new(release_id.clone(), *source);
+                // picked catalog release — so nothing about this release's rows
+                // needs to carry them, and the records written below are what
+                // find them again.
                 let payloads = library_manager
-                    .load_release_payloads(&release_ref)
+                    .load_release_payloads(record)
                     .await?
                     .ok_or_else(|| crate::import::ImportError::Internal {
                         detail: format!(
                             "{candidate_key}'s selected release payloads are not prepared"
                         ),
                     })?;
-                let mut parsed =
+                let parsed =
                     payloads.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
-                parsed.identities = crate::import::service::identities_with_partners(
+                records = crate::import::service::records_for_commit(
                     library_manager,
-                    parsed.identities,
+                    &payloads,
                     partners,
                 )
                 .await?;
@@ -352,6 +348,7 @@ impl ImportService {
         let mut prepared = self
             .reconcile_prepared_release(
                 parsed,
+                records,
                 user_edit,
                 &replacement_release_ids,
                 &prepared_assets.artist_images,
@@ -523,7 +520,7 @@ impl ImportService {
             artists,
             artist_external_id_updates,
             artist_images,
-            identities,
+            records,
             selected_cover,
             remote_cover_image,
             embedded_cover,
@@ -790,7 +787,7 @@ impl ImportService {
                     artist_external_id_updates,
                     audio_formats: &built_audio.audio_formats,
                     audio_segments: &built_audio.audio_segments,
-                    identities,
+                    records,
                 },
                 prepared_files,
                 library_image,

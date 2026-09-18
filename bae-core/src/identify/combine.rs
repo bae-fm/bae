@@ -29,7 +29,7 @@ use super::agreements::{agreements_of, CandidateText};
 use crate::db::LibraryStatus;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing};
 use crate::import::search::MetadataResult;
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 use std::collections::{HashMap, HashSet};
 
 /// Which lookup produced one result: the result came back from that signal's
@@ -98,7 +98,7 @@ pub enum CombineOutcome {
 }
 
 type Results = Vec<(MetadataResult, LibraryStatus)>;
-type ReleaseKey = (MetadataSource, String);
+type ReleaseKey = (Catalog, String);
 
 /// Settle the checked signals' results into a `CombineOutcome`.
 ///
@@ -303,7 +303,7 @@ mod tests {
     }
 
     fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
-        MetadataResult::for_test(MetadataSource::MusicBrainz, release_id, group_id)
+        MetadataResult::for_test(Catalog::MusicBrainz, release_id, group_id)
     }
 
     fn pair(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
@@ -314,7 +314,7 @@ mod tests {
     }
 
     fn pair_src(
-        source: MetadataSource,
+        source: Catalog,
         release_id: &str,
         group_id: Option<&str>,
     ) -> (MetadataResult, LibraryStatus) {
@@ -460,8 +460,8 @@ mod tests {
     /// providers is two releases and never intersects by accident.
     #[test]
     fn the_same_id_on_two_providers_is_two_releases() {
-        let discid = vec![pair_src(MetadataSource::MusicBrainz, "rel-a", None)];
-        let barcode = vec![pair_src(MetadataSource::Discogs, "rel-a", None)];
+        let discid = vec![pair_src(Catalog::MusicBrainz, "rel-a", None)];
+        let barcode = vec![pair_src(Catalog::Discogs, "rel-a", None)];
         let (matches, _) = found(combine(discid, barcode, vec![]));
         assert_eq!(matches.len(), 2);
     }
@@ -723,7 +723,7 @@ mod tests {
     fn van_halen_discogs(release_id: &str, year: Option<i32>) -> (MetadataResult, LibraryStatus) {
         (
             MetadataResult {
-                source: MetadataSource::Discogs,
+                source: Catalog::Discogs,
                 title: "Van Halen II".to_string(),
                 artist: Some("Van Halen".to_string()),
                 label: Some("Warner Bros.".to_string()),
@@ -774,12 +774,11 @@ mod tests {
         assert_eq!(
             offered[0].0.pick(),
             crate::import::MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: "mb-van-halen-ii".to_string(),
-                partners: vec![crate::import::MetadataRef::new(
-                    "dg-1988",
-                    MetadataSource::Discogs
-                )],
+                record: crate::import::MetadataRef::new(
+                    Catalog::MusicBrainz,
+                    "mb-van-halen-ii".to_string()
+                ),
+                partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1988")],
             },
             "so picking the row claims both sources"
         );

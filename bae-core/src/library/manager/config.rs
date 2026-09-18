@@ -49,11 +49,11 @@ impl LibraryManager {
     pref_setter!(set_identify_automatically, identify_automatically: bool);
 
     /// Which metadata sources this library asks, one entry per
-    /// [`MetadataSource`](crate::import::MetadataSource). See
+    /// [`Catalog`](crate::import::Catalog). See
     /// [`Config::metadata_sources`](crate::config::Config::metadata_sources) —
     /// the answer is a fact about the stored config, read here off the current
     /// one.
-    pub fn metadata_sources(&self) -> Vec<crate::import::MetadataSourceAvailability> {
+    pub fn metadata_sources(&self) -> Vec<crate::import::CatalogAvailability> {
         self.config_handle.config().metadata_sources()
     }
 
@@ -71,7 +71,7 @@ impl LibraryManager {
     /// job — this layer owns config and knows nothing about what is running.
     pub fn set_metadata_source_enabled(
         &self,
-        source: crate::import::MetadataSource,
+        source: crate::import::Catalog,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
         if !enabled && crate::import::is_the_only_asked_source(&self.metadata_sources(), source) {

@@ -31,7 +31,7 @@ async fn pure_reads_use_the_read_connection() {
     db.find_track_by_id("missing").await.unwrap();
     db.get_all_track_ids().await.unwrap();
     db.find_release_by_id("missing").await.unwrap();
-    db.get_release_identities("missing").await.unwrap();
+    db.get_release_records("missing").await.unwrap();
     db.load_playback_state().await.unwrap();
     db.has_pending_cloud_upload("missing").await.unwrap();
     db.outbox_queue().await.unwrap();

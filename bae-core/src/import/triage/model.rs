@@ -146,7 +146,7 @@ impl MatchedSignal {
 /// Which provider answered, and what matched.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchEvidence {
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub signal: Option<MatchedSignal>,
 }
 
@@ -270,7 +270,7 @@ impl MatchedRelease {
     /// there is no question left for the row to ask. No signal claims it
     /// either: a match somebody chose was not matched by a disc ID or a
     /// barcode, and the row shows the provider alone.
-    pub fn of_pick(source: MetadataSource, detail: &ImportSearchReleaseDetail) -> Self {
+    pub fn of_pick(source: Catalog, detail: &ImportSearchReleaseDetail) -> Self {
         Self {
             release_id: detail.release_id.clone(),
             title: detail.title.clone(),
@@ -311,47 +311,11 @@ pub enum TriageReading {
     Unidentified,
     /// A draft read off the files' tags, or typed in.
     Prefilled,
-    /// A draft read from a source's release.
-    Identified { sources: Vec<IdentifiedSource> },
-}
-
-/// One source a pick claims: its release, the page that release has there, and
-/// what that source's own document says about it.
-///
-/// The facts are that source's, not the draft's — two sources describing one
-/// pressing can disagree about its label and its year, and a row that names
-/// both says what each of them says.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct IdentifiedSource {
-    pub source: MetadataSource,
-    pub release_id: String,
-    /// That source's page for the release.
-    pub url: String,
-    pub label: Option<String>,
-    pub year: Option<i32>,
-}
-
-impl IdentifiedSource {
-    /// The pick's claim on one source, before its archived document is read.
-    /// The source and its page stand on the pick alone; the facts arrive with
-    /// whoever reads the document.
-    pub fn of_ref(release: &MetadataRef) -> Self {
-        Self {
-            source: release.source,
-            release_id: release.id.clone(),
-            url: release.source.release_url(&release.id),
-            label: None,
-            year: None,
-        }
-    }
-
-    /// The same claim, stating what that source's own release says about
-    /// itself.
-    pub fn stating(mut self, detail: &ImportSearchReleaseDetail) -> Self {
-        self.label = detail.label.clone();
-        self.year = detail.year;
-        self
-    }
+    /// A draft read from a catalog's release, with every catalog that
+    /// describes it.
+    Identified {
+        records: Vec<crate::import::ReleaseRecord>,
+    },
 }
 
 impl TriageReading {
@@ -359,10 +323,10 @@ impl TriageReading {
     /// from.
     ///
     /// `Unidentified` is exactly a row with no summary: the draft is blank and
-    /// no source has been applied, so the row has a folder and nothing else.
-    /// An external release names every source its pick claims, in the order
-    /// surfaces list sources; each source's own facts are absent until
-    /// whoever holds the archived documents states them.
+    /// no catalog has been applied, so the row has a folder and nothing else.
+    /// An external release names the catalogs its pick claims, in the order
+    /// surfaces list catalogs; the rest of the catalogs describing it arrive
+    /// with whoever holds the archived documents.
     pub fn of(
         summary: Option<&TriageMetadataSummary>,
         provenance: Option<&MetadataProvenance>,
@@ -371,11 +335,13 @@ impl TriageReading {
             return Self::Unidentified;
         }
         match provenance {
-            Some(pick @ MetadataProvenance::ExternalRelease { .. }) => Self::Identified {
-                sources: pick
+            Some(pick @ MetadataProvenance::ExternalRelease { record, .. }) => Self::Identified {
+                records: pick
                     .claimed_releases()
                     .iter()
-                    .map(IdentifiedSource::of_ref)
+                    .map(|release| {
+                        crate::import::ReleaseRecord::new(release, None, release == record)
+                    })
                     .collect(),
             },
             Some(MetadataProvenance::FileTags) | None => Self::Prefilled,

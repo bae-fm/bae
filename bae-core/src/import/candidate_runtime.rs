@@ -40,7 +40,7 @@ use super::candidates::{CandidateRuntimeSnapshot, IdentifyQueueOwner, ImportInFl
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
-use super::types::{ImportProgress, ImportStep, MetadataSource, PrepareStep};
+use super::types::{ImportProgress, ImportStep, Catalog, PrepareStep};
 use crate::db::LibraryStatus;
 use crate::identify::{IdentifyRunId, IdentifyState};
 use crate::signals::{LookupFailure, Signals};
@@ -303,7 +303,7 @@ impl CandidateRuntime {
     pub(super) fn retry_search(
         &self,
         key: &str,
-    ) -> Option<(SearchQuery, Vec<MetadataSource>, u64)> {
+    ) -> Option<(SearchQuery, Vec<Catalog>, u64)> {
         self.set(key, |inner, runtime| {
             let running = runtime.search.as_mut()?;
             let mut search = running.search.clone();
@@ -333,7 +333,7 @@ impl CandidateRuntime {
     /// dropped source still lands on its current run and is dropped there,
     /// because a part that is not looking takes no answer. Superseding the run
     /// instead would take the other source's in-flight lookup down with it.
-    pub(super) fn switch_source_off(&self, source: MetadataSource) {
+    pub(super) fn switch_source_off(&self, source: Catalog) {
         let searching: Vec<String> = self
             .inner
             .lock()
@@ -376,7 +376,7 @@ impl CandidateRuntime {
         &self,
         key: &str,
         run: u64,
-        source: MetadataSource,
+        source: Catalog,
         outcome: Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure>,
     ) -> bool {
         self.set(key, |_, runtime| {

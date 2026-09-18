@@ -12,7 +12,7 @@
 
 mod window;
 
-use super::identity::check_releases_in_library_on;
+use super::records::check_releases_in_library_on;
 use super::import_state::{load_matches_on, load_provenance_on};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};

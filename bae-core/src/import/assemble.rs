@@ -16,7 +16,7 @@ use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart, Pressing,
 };
-use crate::import::types::{MetadataProvenance, MetadataSource, ReleaseIdentity};
+use crate::import::types::{Catalog, MetadataProvenance};
 use crate::import::{ParsedAlbum, ParsedWorkGraph};
 use chrono::{DateTime, Utc};
 use coven::{Clock, IdProvider};
@@ -93,14 +93,14 @@ pub(crate) enum TrackEvent {
     Role {
         position: i32,
         artist: ArtistRef,
-        source: MetadataSource,
+        source: Catalog,
         source_credit: Option<String>,
     },
     /// Work performance → work graph rows + a `track_works` row (deduped per
     /// track on work id).
     Work {
         position: i32,
-        source: MetadataSource,
+        source: Catalog,
         work: WorkGraphRef,
     },
 }
@@ -119,7 +119,7 @@ pub(crate) struct TrackIr {
 pub(crate) struct ReleaseRole {
     pub position: i32,
     pub artist: ArtistRef,
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub source_credit: Option<String>,
 }
 
@@ -146,7 +146,6 @@ pub(crate) struct ReleaseIr {
     pub album_artist_scope: AlbumArtistScope,
     pub release_roles: Vec<ReleaseRole>,
     pub tracks: Vec<TrackIr>,
-    pub identities: Vec<ReleaseIdentity>,
 }
 
 /// 1-based position of each element within its side, counting in input order
@@ -201,7 +200,7 @@ fn push_artist(
 fn find_or_push_artist(
     artists: &mut Vec<DbArtist>,
     artist_ref: &ArtistRef,
-    source: Option<MetadataSource>,
+    source: Option<Catalog>,
     ids: &dyn IdProvider,
     now: DateTime<Utc>,
 ) -> String {
@@ -215,10 +214,13 @@ fn find_or_push_artist(
             match source {
                 // An id-less MusicBrainz credit only merges into an artist that
                 // also lacks a musicbrainz id.
-                Some(MetadataSource::MusicBrainz) => {
+                Some(Catalog::MusicBrainz) => {
                     name_matches && artist.musicbrainz_artist_id.is_none()
                 }
-                Some(MetadataSource::Discogs) | None => name_matches,
+                Some(Catalog::Discogs) | None => name_matches,
+                Some(other) => {
+                    unreachable!("no {} credit reaches a mapper", other.as_str())
+                }
             }
         }
     });
@@ -264,7 +266,7 @@ fn push_work_part(
     pools: &mut WorkPools,
     parent_work_id: &str,
     child_work_id: &str,
-    source: MetadataSource,
+    source: Catalog,
     ids: &dyn IdProvider,
     now: DateTime<Utc>,
 ) {
@@ -292,7 +294,7 @@ fn push_work_part(
 fn push_work_graph(
     node: &WorkNode,
     parent: Option<&str>,
-    source: MetadataSource,
+    source: Catalog,
     pools: &mut WorkPools,
     ids: &dyn IdProvider,
     now: DateTime<Utc>,
@@ -334,7 +336,7 @@ fn push_work_graph(
                 let artist_id = find_or_push_artist(
                     pools.artists,
                     artist_ref,
-                    Some(MetadataSource::MusicBrainz),
+                    Some(Catalog::MusicBrainz),
                     ids,
                     now,
                 );
@@ -377,7 +379,7 @@ fn push_work_graph(
 fn push_work_ref(
     work: &WorkGraphRef,
     parent: Option<&str>,
-    source: MetadataSource,
+    source: Catalog,
     pools: &mut WorkPools,
     ids: &dyn IdProvider,
     now: DateTime<Utc>,
@@ -417,7 +419,7 @@ pub(crate) fn assemble_parsed_album(
 ) -> ParsedAlbum {
     let now = clock.now();
     let artist_source = match &ir.metadata_provenance {
-        Some(MetadataProvenance::ExternalRelease { source, .. }) => Some(*source),
+        Some(MetadataProvenance::ExternalRelease { record, .. }) => Some(record.catalog),
         Some(MetadataProvenance::FileTags) | None => None,
     };
 
@@ -445,7 +447,7 @@ pub(crate) fn assemble_parsed_album(
         release_name: None,
         pressing: ir.pressing,
         disc_id: None,
-        metadata_provenance: ir.metadata_provenance,
+        draft_from_tags: matches!(ir.metadata_provenance, Some(MetadataProvenance::FileTags)),
         // Imports land local; the upload observer flips `remote` true once the
         // release's audio is durably in the cloud.
         remote: false,
@@ -597,7 +599,6 @@ pub(crate) fn assemble_parsed_album(
         },
         release_artist_roles,
         track_artist_roles,
-        identities: ir.identities,
     }
 }
 

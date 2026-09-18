@@ -496,7 +496,7 @@ async fn a_cover_choice_round_trips_in_both_shapes() {
         CoverSelection::Local("cover.jpg".to_string()),
         CoverSelection::Remote(
             "https://example.invalid/front".to_string(),
-            MetadataSource::Discogs,
+            Catalog::Discogs,
         ),
     ] {
         let (db, _tmp) = empty_db().await;
@@ -520,7 +520,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
     let (_, hash) = stored_pane_candidate(&db).await;
     let cover = CoverSelection::Remote(
         "https://example.invalid/image".to_string(),
-        MetadataSource::Discogs,
+        Catalog::Discogs,
     );
     let image = crate::import::cover_art::RemoteImage {
         bytes: vec![1, 2, 3, 4],
@@ -552,7 +552,7 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
     let (_, hash) = stored_pane_candidate(&db).await;
     let cover = CoverSelection::Remote(
         "https://example.invalid/image".to_string(),
-        MetadataSource::Discogs,
+        Catalog::Discogs,
     );
 
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
@@ -586,7 +586,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     let (_, hash) = stored_pane_candidate(&db).await;
     let current_cover = CoverSelection::Remote(
         "https://example.invalid/current".to_string(),
-        MetadataSource::Discogs,
+        Catalog::Discogs,
     );
     let current_image = crate::import::cover_art::RemoteImage {
         bytes: vec![1, 2, 3],
@@ -604,7 +604,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
 
     let stale_cover = CoverSelection::Remote(
         "https://example.invalid/stale".to_string(),
-        MetadataSource::MusicBrainz,
+        Catalog::MusicBrainz,
     );
     let stale_image = crate::import::cover_art::RemoteImage {
         bytes: vec![4, 5, 6],

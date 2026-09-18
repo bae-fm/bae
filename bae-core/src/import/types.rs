@@ -23,6 +23,8 @@ use serde::{Deserialize, Serialize};
 mod progress;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use progress::*;
+mod catalog;
+pub use catalog::{parse_catalog_url, Catalog, CatalogPage};
 mod raw_release_edit;
 pub use raw_release_edit::{
     CandidateDraft, CandidateTrack, EditValidationError, RawPressingEdit, RawReleaseEdit,
@@ -30,70 +32,6 @@ pub use raw_release_edit::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::{path::Path, path::PathBuf, sync::Arc};
-
-/// Metadata source for a release.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum MetadataSource {
-    MusicBrainz,
-    Discogs,
-}
-
-impl MetadataSource {
-    /// Every metadata source, in the order surfaces list them and runs ask
-    /// them. The one list behind "an entry per source": a preference, an
-    /// availability, a typed search's per-source part, a ledger column. No
-    /// source is the main one — adding a variant extends every one of those.
-    pub const ALL: [MetadataSource; 2] = [Self::MusicBrainz, Self::Discogs];
-
-    /// The one source that answers a disc ID. Disc IDs are a MusicBrainz
-    /// identifier, so no other source has an endpoint to ask; with this
-    /// source not asked, a disc ID read off a LOG or CUE stands with nothing
-    /// looked up against it.
-    pub const DISC_ID_SOURCE: MetadataSource = Self::MusicBrainz;
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::MusicBrainz => "musicbrainz",
-            Self::Discogs => "discogs",
-        }
-    }
-
-    /// Human-readable source name for user-facing copy.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::MusicBrainz => "MusicBrainz",
-            Self::Discogs => "Discogs",
-        }
-    }
-
-    /// Human-readable name of the service a cover image came from.
-    /// MusicBrainz release covers are served by its sister project, the
-    /// Cover Art Archive, so the cover label differs from `display_name`.
-    pub fn cover_source_label(&self) -> &'static str {
-        match self {
-            Self::MusicBrainz => "Cover Art Archive",
-            Self::Discogs => "Discogs",
-        }
-    }
-
-    /// External URL for a release group on this source — a release-group on
-    /// MusicBrainz, a master on Discogs.
-    pub fn group_url(&self, group_id: &str) -> String {
-        match self {
-            Self::MusicBrainz => format!("https://musicbrainz.org/release-group/{group_id}"),
-            Self::Discogs => format!("https://www.discogs.com/master/{group_id}"),
-        }
-    }
-
-    /// External URL for one release on this source — the page a surface sends
-    /// someone to when it names the release a draft was read from.
-    pub fn release_url(&self, release_id: &str) -> String {
-        match self {
-            Self::MusicBrainz => format!("https://musicbrainz.org/release/{release_id}"),
-            Self::Discogs => format!("https://www.discogs.com/release/{release_id}"),
-        }
-    }
-}
 
 /// Whether a source is asked when the sources are asked together, and when it
 /// is not, why not. Core's answer, so no surface re-derives "on and reachable"
@@ -119,18 +57,18 @@ impl SourceAvailability {
 
 /// One source and whether this library asks it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MetadataSourceAvailability {
-    pub source: MetadataSource,
+pub struct CatalogAvailability {
+    pub catalog: Catalog,
     pub state: SourceAvailability,
 }
 
 /// The sources an availability list says to ask, in list order. What a run's
 /// provider list and a search's dispatch are both a projection of.
-pub fn asked_sources(sources: &[MetadataSourceAvailability]) -> Vec<MetadataSource> {
+pub fn asked_sources(sources: &[CatalogAvailability]) -> Vec<Catalog> {
     sources
         .iter()
         .filter(|entry| entry.state.is_on())
-        .map(|entry| entry.source)
+        .map(|entry| entry.catalog)
         .collect()
 }
 
@@ -141,29 +79,14 @@ pub fn asked_sources(sources: &[MetadataSourceAvailability]) -> Vec<MetadataSour
 /// rule the bridge greys that source's switch out by — one function, so a
 /// switch cannot move on exactly the writes core would turn down, rather than
 /// on a surface's own guess at them.
-pub fn is_the_only_asked_source(
-    sources: &[MetadataSourceAvailability],
-    source: MetadataSource,
-) -> bool {
+pub fn is_the_only_asked_source(sources: &[CatalogAvailability], source: Catalog) -> bool {
     asked_sources(sources) == [source]
-}
-
-impl std::str::FromStr for MetadataSource {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "musicbrainz" => Ok(Self::MusicBrainz),
-            "discogs" => Ok(Self::Discogs),
-            _ => Err(format!("unknown metadata source: {s}")),
-        }
-    }
 }
 
 /// Which lookup produced a stored document, and therefore which entity's id the
 /// `source_release_payloads` row is keyed by.
 ///
-/// Wider than [`MetadataSource`]: identifying one release fetches supporting
+/// Wider than [`Catalog`]: identifying one release fetches supporting
 /// documents that belong to other entities — its release group, a Discogs
 /// master — and each is keyed by the entity it describes so two releases that
 /// share one never store it twice.
@@ -204,10 +127,11 @@ impl PayloadSource {
 
     /// The payload holding a release's own editorial metadata on `source` — the
     /// anchor of everything else identification fetched alongside it.
-    pub fn release_of(source: MetadataSource) -> Self {
-        match source {
-            MetadataSource::MusicBrainz => Self::MusicBrainz,
-            MetadataSource::Discogs => Self::Discogs,
+    pub fn release_of(catalog: Catalog) -> Self {
+        match catalog {
+            Catalog::MusicBrainz => Self::MusicBrainz,
+            Catalog::Discogs => Self::Discogs,
+            other => unreachable!("nothing fetches documents from {}", other.as_str()),
         }
     }
 }
@@ -256,19 +180,13 @@ impl SourcePayload {
     }
 }
 
-impl std::fmt::Display for MetadataSource {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-/// A source-tagged identifier into a metadata system. Whether this points at a
-/// release vs. a release-group/master is determined by the field this value
-/// lives in — there's no structural difference, both are `(id, source)`.
+/// One catalog's key for one entity. Whether this points at a release vs. a
+/// release-group/master is determined by the field this value lives in —
+/// there's no structural difference, both are `(catalog, key)`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MetadataRef {
-    pub id: String,
-    pub source: MetadataSource,
+    pub catalog: Catalog,
+    pub key: String,
 }
 
 /// Where the current candidate metadata draft began. Direct entry and a
@@ -276,11 +194,9 @@ pub struct MetadataRef {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MetadataProvenance {
     ExternalRelease {
-        /// The source of the document the draft is read from.
-        source: MetadataSource,
-        /// The release that document describes.
-        release_id: String,
-        /// The other sources' releases the picked pressing paired with. Find
+        /// The catalog's release the draft is read from.
+        record: MetadataRef,
+        /// The other catalogs' releases the picked pressing paired with. Find
         /// online pairs a MusicBrainz release and a Discogs release into one
         /// pressing row when they agree on a barcode or a catalog number;
         /// picking the row claims both, and these are the ones the draft is
@@ -292,8 +208,8 @@ pub enum MetadataProvenance {
         /// the documents.
         ///
         /// Only an import candidate stores these. A library release records
-        /// what its pick claimed as one `release_identities` row per source,
-        /// so reading a release's provenance back names its anchor document
+        /// what its pick claimed as one record per catalog, so
+        /// reading a release's provenance back names its anchor document
         /// alone.
         partners: Vec<MetadataRef>,
     },
@@ -305,26 +221,18 @@ impl MetadataProvenance {
     /// and each partner the pick paired it with — in the order surfaces list
     /// sources. Empty for File Tags, which claims no external release.
     pub fn claimed_releases(&self) -> Vec<MetadataRef> {
-        let Self::ExternalRelease {
-            source,
-            release_id,
-            partners,
-        } = self
-        else {
+        let Self::ExternalRelease { record, partners } = self else {
             return Vec::new();
         };
-        let claimed: Vec<MetadataRef> = std::iter::once(MetadataRef {
-            id: release_id.clone(),
-            source: *source,
-        })
-        .chain(partners.iter().cloned())
-        .collect();
-        MetadataSource::ALL
+        let claimed: Vec<MetadataRef> = std::iter::once(record.clone())
+            .chain(partners.iter().cloned())
+            .collect();
+        Catalog::ALL
             .into_iter()
-            .filter_map(|source| {
+            .filter_map(|catalog| {
                 claimed
                     .iter()
-                    .find(|release| release.source == source)
+                    .find(|release| release.catalog == catalog)
                     .cloned()
             })
             .collect()
@@ -402,38 +310,69 @@ impl PreparedArtistImage {
 }
 
 impl MetadataRef {
-    pub fn new(id: impl Into<String>, source: MetadataSource) -> Self {
+    pub fn new(catalog: Catalog, key: impl Into<String>) -> Self {
         Self {
-            id: id.into(),
-            source,
+            catalog,
+            key: key.into(),
         }
     }
 }
 
-/// A single source's claim about which release this is. A release in
-/// memory carries a `Vec<ReleaseIdentity>` — zero rows means no external identity
-/// (no identity claim), one row per source for identified releases.
+/// One catalog's description of a release: which catalog, its key for this
+/// release, the group that release belongs to there, and the page it publishes.
 ///
-/// Every row names a specific pressing within its group: picking a release is
-/// a claim about that pressing, and there is no album-only claim to record.
+/// A release carries a `Vec<ReleaseRecord>` — no rows means no catalog
+/// describes it, one row per catalog that does. Every row names a specific
+/// pressing: picking a release is a claim about that pressing, and there is no
+/// album-only claim to record.
 ///
-/// At commit, each element becomes one row in `release_identities`.
+/// At commit, each element becomes one record row.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ReleaseIdentity {
-    pub source: MetadataSource,
-    pub source_group_id: String,
-    pub source_release_id: String,
+pub struct ReleaseRecord {
+    pub catalog: Catalog,
+    pub key: String,
+    /// The group this release belongs to in that catalog — a MusicBrainz
+    /// release group, a Discogs master. A release the catalog did not group
+    /// stands as its own group, which is what a catalog that groups nothing
+    /// says about every release it lists: cross-catalog album merging matches
+    /// on `(catalog, group)`, so such a release merges only with itself.
+    pub group_key: String,
+    /// The page the catalog publishes for this release. Built here, at the one
+    /// place that knows a catalog's address shapes, so no surface builds one.
+    pub url: String,
+    /// True for the one record the draft's facts were read from, and for no
+    /// other record of the same release.
+    pub reads_draft: bool,
 }
 
-/// A new metadata source chosen for a release already in the library.
+impl ReleaseRecord {
+    /// The record for `release`, with its page built from the catalog's address
+    /// shape.
+    pub fn new(release: &MetadataRef, group_key: Option<String>, reads_draft: bool) -> Self {
+        Self {
+            catalog: release.catalog,
+            key: release.key.clone(),
+            // A release its catalog did not group is its own group.
+            group_key: group_key.unwrap_or_else(|| release.key.clone()),
+            url: release.catalog.release_url(&release.key),
+            reads_draft,
+        }
+    }
+
+    /// This record's release, as the key into the archived documents.
+    pub fn release_ref(&self) -> MetadataRef {
+        MetadataRef::new(self.catalog, self.key.clone())
+    }
+}
+
+/// A new catalog release chosen for a release already in the library.
 ///
-/// - **ExternalRelease** — "this IS my pressing." The identity row carries
-///   `source_release_id = release_ref.id`, and pressing-level metadata (year,
-///   format, label, catalog number, country) seeds from the picked release,
-///   and the release records that exact external provenance.
-/// - **FileTags** — no identity claim. Zero `release_identities` rows, File
-///   Tags provenance, and a fresh album. Metadata seeds from embedded file
-///   tags.
+/// - **ExternalRelease** — "this IS my pressing." The record carries
+///   `key = release_ref.key`, pressing-level metadata (year, format, label,
+///   catalog number, country) seeds from the picked release, and the release
+///   records that exact external provenance.
+/// - **FileTags** — no catalog claim. No records, File Tags
+///   provenance, and a fresh album. Metadata seeds from embedded file tags.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ReleaseReseed {
@@ -454,8 +393,7 @@ impl ReleaseReseed {
                 release_ref,
                 partners,
             } => MetadataProvenance::ExternalRelease {
-                source: release_ref.source,
-                release_id: release_ref.id.clone(),
+                record: release_ref.clone(),
                 partners: partners.clone(),
             },
             Self::FileTags => MetadataProvenance::FileTags,
@@ -517,7 +455,7 @@ pub enum TrackArtistAssignments {
 /// whether the person selected a library artist or entered a new one; commit
 /// never guesses that relationship from a name.
 ///
-/// Identity and provenance are out of scope: `release_identities` and the
+/// Records and provenance are out of scope: the release's records and the
 /// release's metadata provenance are untouched. So are the archived provider
 /// documents, so a later re-projection can still re-seed from what the source
 /// said.

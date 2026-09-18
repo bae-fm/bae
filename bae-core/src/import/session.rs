@@ -69,7 +69,7 @@ impl CandidateSession {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::import::MetadataSource;
+    use crate::import::Catalog;
 
     /// A candidate nobody has touched opens on its draft — pre-filled from the
     /// folder's tags or blank, that is where its metadata is.
@@ -84,8 +84,7 @@ mod tests {
             MetadataPresentation::Draft
         );
         let picked = MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-            release_id: "release".to_string(),
+            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "release".to_string()),
             partners: Vec::new(),
         };
         assert_eq!(

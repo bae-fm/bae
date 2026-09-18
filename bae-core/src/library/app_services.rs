@@ -698,7 +698,7 @@ impl AppServices {
     /// throw away an answer the person is reading.
     pub fn set_metadata_source_enabled(
         &self,
-        source: crate::import::MetadataSource,
+        source: crate::import::Catalog,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
         self.inner
@@ -753,6 +753,8 @@ impl AppServices {
     delegate_async!(manager, get_albums => get_albums(sort: &[crate::db::AlbumSortCriterion]) -> Result<Vec<crate::db::DbAlbum>, crate::library::LibraryError>);
     delegate_async!(manager, get_releases_for_album => get_releases_for_album(album_id: &str) -> Result<Vec<crate::db::DbRelease>, crate::library::LibraryError>);
     delegate_async!(manager, get_release_by_id => get_release_by_id(release_id: &str) -> Result<Option<crate::db::DbRelease>, crate::library::LibraryError>);
+
+    delegate_async!(manager, get_release_records => get_release_records(release_id: &str) -> Result<Vec<crate::import::ReleaseRecord>, crate::library::LibraryError>);
     delegate_async!(manager, get_tracks_for_release => get_tracks_for_release(release_id: &str) -> Result<Vec<crate::db::DbTrack>, crate::library::LibraryError>);
     delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<crate::db::DbFile>, crate::library::LibraryError>);
     delegate_async!(manager, get_file_by_id => get_file_by_id(file_id: &str) -> Result<Option<crate::db::DbFile>, crate::library::LibraryError>);

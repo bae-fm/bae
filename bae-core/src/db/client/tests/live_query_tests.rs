@@ -33,8 +33,8 @@ pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
              INSERT INTO albums
                (id, title, artist_id, primary_release_id, is_compilation, _updated_at, created_at)
              VALUES ('{ALBUM_ID}', 'Album Title', '{ARTIST_ID}', '{RELEASE_ID}', 0, 'seed', '2026-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
-             VALUES ('{RELEASE_ID}', '{ALBUM_ID}', 'file_tags', 1, 'seed', '2026-01-01T00:00:00Z');"
+             INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
+             VALUES ('{RELEASE_ID}', '{ALBUM_ID}', 1, 'seed', '2026-01-01T00:00:00Z');"
         ),
     )
     .await;
@@ -116,8 +116,8 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
             "INSERT INTO albums
                (id, title, artist_id, primary_release_id, is_compilation, _updated_at, created_at)
              VALUES ('{OTHER_ALBUM_ID}', 'Album Title Second', '{ARTIST_ID}', '{OTHER_RELEASE_ID}', 0, 'album-v1', '2026-01-02T00:00:00Z');
-             INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
-             VALUES ('{OTHER_RELEASE_ID}', '{OTHER_ALBUM_ID}', 'file_tags', 1, 'release-v1', '2026-01-02T00:00:00Z');"
+             INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
+             VALUES ('{OTHER_RELEASE_ID}', '{OTHER_ALBUM_ID}', 1, 'release-v1', '2026-01-02T00:00:00Z');"
         ),
     )
     .await;
@@ -551,7 +551,7 @@ async fn release_library_status_subscription_delivers_identity_changes() {
     let (db, _temp) = live_db().await;
     let check = LibraryCheck {
         release_id: "source-release-1".to_string(),
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         source_group_id: Some("source-group-1".to_string()),
     };
     let mut live = db.subscribe_release_library_status(check);
@@ -562,9 +562,12 @@ async fn release_library_status_subscription_delivers_identity_changes() {
 
     exec(
         &db,
-            "INSERT INTO release_identities
-         (id, release_id, source, source_release_id, source_group_id, _updated_at, created_at)
-         VALUES (?1, ?2, 'musicbrainz', 'source-release-1', 'source-group-1', 'identity-v1', '2026-01-01T00:00:00Z')",
+        "INSERT INTO release_records
+         (id, release_id, catalog, key, group_key, url, reads_draft,
+          _updated_at, created_at)
+         VALUES (?1, ?2, 'musicbrainz', 'source-release-1', 'source-group-1',
+                 'https://musicbrainz.org/release/source-release-1', 1,
+                 'identity-v1', '2026-01-01T00:00:00Z')",
         &[IDENTITY_ID, RELEASE_ID],
     )
     .await;
@@ -775,8 +778,8 @@ async fn album_page_subscription_delivers_a_write_materialized_by_sync() {
                  INSERT INTO albums
                    (id, title, artist_id, primary_release_id, is_compilation, _updated_at, created_at)
                  VALUES ('{ALBUM_ID}', 'Synced Album', '{ARTIST_ID}', '{RELEASE_ID}', 0, 'remote', '2026-01-01T00:00:00Z');
-                 INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
-                 VALUES ('{RELEASE_ID}', '{ALBUM_ID}', 'file_tags', 1, 'remote', '2026-01-01T00:00:00Z');"
+                 INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
+                 VALUES ('{RELEASE_ID}', '{ALBUM_ID}', 1, 'remote', '2026-01-01T00:00:00Z');"
             ))
             .map_err(DbError::from)
         })

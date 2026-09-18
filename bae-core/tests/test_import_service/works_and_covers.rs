@@ -104,8 +104,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
         None,
         StorageMode::Local,
         MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-                release_id: prior_mb,
+            record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, prior_mb),
             partners: vec![],
         },
     )
@@ -158,8 +157,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
                 &import_id,
                 album_dir,
                 MetadataProvenance::ExternalRelease {
-                    source: MetadataSource::MusicBrainz,
-                    release_id: remote_mb,
+                    record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, remote_mb),
                     partners: vec![],
                 },
             )
@@ -254,8 +252,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         None,
         StorageMode::Local,
         MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-                release_id: first_mb,
+            record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, first_mb),
             partners: vec![],
         },
     )
@@ -281,8 +278,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         None,
         StorageMode::Local,
         MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-                release_id: second_mb,
+            record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, second_mb),
             partners: vec![],
         },
     )

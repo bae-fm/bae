@@ -97,8 +97,8 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     db.call(move |sql| {
         let reg = sql.stamp();
         sql.execute(
-            "INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at) \
-             VALUES (?, ?, 'file_tags', 1, ?, '2026-01-02T03:04:05Z')",
+            "INSERT INTO releases (id, album_id, remote, _updated_at, created_at) \
+             VALUES (?, ?, 1, ?, '2026-01-02T03:04:05Z')",
             params![seed_release_id, seed_album_id, reg],
         )?;
         sql.execute(

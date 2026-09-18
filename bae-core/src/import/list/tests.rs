@@ -9,7 +9,7 @@ use crate::db::{CandidateStateListRow, ImportQueueRows, ScanCandidateKind, ScanC
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_scanner::InvalidReason;
 use crate::import::search::SourceTracks;
-use crate::import::types::MetadataSource;
+use crate::import::types::Catalog;
 use crate::import::watched_folder::host_root;
 use crate::import::{FolderScanStatus, ImportedRelease};
 use crate::import::{IdentificationStatus, TriageImportStatus, TriagePlacement};
@@ -86,7 +86,7 @@ fn key(display_path: &str) -> String {
 fn lead(release_id: &str) -> LeadMatch {
     LeadMatch {
         release_id: release_id.to_string(),
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         source_group_id: Some("group-1".to_string()),
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
@@ -115,8 +115,7 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
         }),
         probed_total_duration_ms: 2_400_000,
         metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-            release_id: release_id.to_string(),
+            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id.to_string()),
             partners: vec![],
         }),
         metadata_draft_valid: true,
@@ -164,8 +163,7 @@ fn not_found_state() -> CandidateStateListRow {
 /// The external release seed chosen from a release row.
 fn external_release_seed(release_id: &str) -> MetadataProvenance {
     MetadataProvenance::ExternalRelease {
-        source: MetadataSource::MusicBrainz,
-        release_id: release_id.to_string(),
+        record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id.to_string()),
         partners: vec![],
     }
 }

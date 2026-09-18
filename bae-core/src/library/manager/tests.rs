@@ -24,7 +24,7 @@ use crate::db::{
     DbAlbum, DbAlbumArtist, DbFile, DbLibraryImage, DbRelease, DbTrackWork, DbWork,
     LibraryImageType,
 };
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 #[cfg(feature = "test-utils")]
 use crate::sync::CloudCipher;
 use crate::util::content_type::ContentType;
@@ -189,7 +189,7 @@ fn create_test_release(album_id: &str) -> DbRelease {
             barcode: None,
         },
         disc_id: None,
-        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
+        draft_from_tags: true,
         remote: true,
         source_folder_name: None,
         content_hash: None,

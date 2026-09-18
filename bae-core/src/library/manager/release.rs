@@ -60,45 +60,46 @@ impl LibraryManager {
         Ok(self.database.get_tracks_for_release(release_id).await?)
     }
 
-    /// The existing album a new import should attach to, from a two-pass identity
-    /// dedup against `release_identities`:
+    /// The existing album a new import should attach to, from a two-pass dedup
+    /// against the release records:
     ///
-    /// 1. **Per-pressing rejection.** A release in the library carrying an identity
-    ///    row that matches one of the new release's `(source, source_release_id)`
-    ///    pairs means this is a duplicate import. Surface that album's title so
-    ///    the user sees what they already have.
-    /// 2. **Cross-source merge.** A release carrying an identity row matching one of
-    ///    the new release's `(source, source_group_id)` pairs gives up its
-    ///    `album_id`, so the new release attaches to the same album. Identities pair
-    ///    across sources, so an MB-rooted import that carried a cross-link Discogs
-    ///    row is reachable from a later Discogs-rooted import of the same master.
+    /// 1. **Per-pressing rejection.** A release in the library carrying a record
+    ///    that matches one of the new release's `(catalog, key)` pairs means this
+    ///    is a duplicate import. Surface that album's title so the user sees what
+    ///    they already have.
+    /// 2. **Cross-catalog merge.** A release carrying a record matching one of
+    ///    the new release's `(catalog, group_key)` pairs gives up its `album_id`,
+    ///    so the new release attaches to the same album. Records pair across
+    ///    catalogs, so an MB-rooted import that carried a cross-linked Discogs
+    ///    record is reachable from a later Discogs-rooted import of the same
+    ///    master.
     ///
-    /// Empty `identities` skips both lookups — File Tags and direct-entry imports always
-    /// get a fresh album.
+    /// Empty `records` skips both lookups — File Tags and direct-entry imports
+    /// always get a fresh album.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn find_existing_album_for_import(
         &self,
-        identities: &[crate::import::ReleaseIdentity],
+        records: &[crate::import::ReleaseRecord],
     ) -> Result<Option<String>, crate::import::ImportError> {
-        self.find_existing_album_for_import_excluding(identities, &[])
+        self.find_existing_album_for_import_excluding(records, &[])
             .await
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn find_existing_album_for_import_excluding(
         &self,
-        identities: &[crate::import::ReleaseIdentity],
+        records: &[crate::import::ReleaseRecord],
         excluded_release_ids: &[String],
     ) -> Result<Option<String>, crate::import::ImportError> {
-        if identities.is_empty() {
+        if records.is_empty() {
             return Ok(None);
         }
 
-        // Per-pressing rejection: an Exact identity matching a `release_identities`
-        // row already in the library.
+        // Per-pressing rejection: a record matching one already in the
+        // library.
         if let Some(existing) = self
             .database
-            .find_album_by_identity_release_excluding(identities, excluded_release_ids)
+            .find_album_by_record_key_excluding(records, excluded_release_ids)
             .await
             .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))?
         {
@@ -107,10 +108,10 @@ impl LibraryManager {
             });
         }
 
-        // Cross-source merge: a group identity matching a row already there.
+        // Cross-catalog merge: a record's group matching a row already there.
         let album_id = self
             .database
-            .find_album_by_identity_group_excluding(identities, excluded_release_ids)
+            .find_album_by_record_group_excluding(records, excluded_release_ids)
             .await
             .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))?;
 
@@ -122,21 +123,20 @@ impl LibraryManager {
     /// Read-only — the editor populates its form from the result, and the user
     /// re-edits or saves through `apply_release_metadata_user_edit`.
     ///
-    /// - `MusicBrainz` / `Discogs` — re-project the archived provider documents
-    ///   under the same rules import uses, from the pressing the release's
-    ///   identity row names.
-    /// - `FileTags` — re-read the embedded tags from the release's local audio
-    ///   files. Errors if they aren't reachable on disk (cloud-only, no local copy).
+    /// - A record reads the draft — re-project the archived provider documents
+    ///   under the same rules import uses, from the pressing that record names.
+    /// - The draft came off the files' tags — re-read the embedded tags from the
+    ///   release's local audio files. Errors if they aren't reachable on disk
+    ///   (cloud-only, no local copy).
     ///
-    /// Identity rows and provenance are untouched: reset replays
-    /// from the stored seed rather than changing it. Identity changes go
-    /// through `set_identity`.
+    /// The records are untouched: reset replays from the stored seed rather
+    /// than changing it. Record changes go through `set_records`.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn reset_metadata_to_source(
         &self,
         release_id: &str,
     ) -> Result<crate::import::ReleaseUserEdit, LibraryError> {
-        use crate::import::{parsed_album_to_user_edit, MetadataProvenance};
+        use crate::import::parsed_album_to_user_edit;
 
         let release = self
             .database
@@ -144,36 +144,34 @@ impl LibraryManager {
             .await?
             .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
 
-        let parsed = match release.metadata_provenance.as_ref() {
-            Some(MetadataProvenance::ExternalRelease {
-                source,
-                release_id: source_release_id,
-                ..
-            }) => {
-                // The stored source release names which payload seeded this one, and
-                // the documents are keyed by exactly that — so what is read back
-                // cannot belong to a pressing the release was pointed away from.
-                let payloads = crate::import::payloads::load(
-                    &self.database,
-                    &crate::import::MetadataRef::new(source_release_id, *source),
-                )
-                .await?
-                .ok_or_else(|| {
-                    LibraryError::Import(format!(
-                        "no archived {} payload for release '{release_id}' (source release {source_release_id})",
-                        source.as_str()
-                    ))
-                })?;
+        let records = self.database.get_release_records(release_id).await?;
+        let draft_record = records.iter().find(|record| record.reads_draft);
+        let parsed = match (draft_record, release.draft_from_tags) {
+            (Some(record), _) => {
+                // The record names which archived document seeded this release,
+                // and the documents are keyed by exactly that — so what is read
+                // back cannot belong to a pressing the release was pointed away
+                // from.
+                let release_ref = record.release_ref();
+                let payloads = crate::import::payloads::load(&self.database, &release_ref)
+                    .await?
+                    .ok_or_else(|| {
+                        LibraryError::Import(format!(
+                            "no archived {} payload for release '{release_id}' (catalog release {})",
+                            record.catalog.as_str(),
+                            record.key
+                        ))
+                    })?;
                 let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
                 parsed_for_existing_release(
                     &payloads,
-                    *source,
+                    record.catalog,
                     &existing_tracks,
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?
             }
-            Some(MetadataProvenance::FileTags) => {
+            (None, true) => {
                 project_file_tags(
                     &self.database,
                     &release,
@@ -182,9 +180,9 @@ impl LibraryManager {
                 )
                 .await?
             }
-            None => {
+            (None, false) => {
                 return Err(LibraryError::Import(format!(
-                    "release '{release_id}' has no metadata provenance"
+                    "release '{release_id}' was read from nothing to reset to"
                 )))
             }
         };
@@ -193,23 +191,23 @@ impl LibraryManager {
     }
 
     /// Re-identify commit: translate the user's `ReleaseReseed` into a fully
-    /// cross-linked identity vec plus metadata provenance, then `set_identity`. Mirrors
-    /// the import commit pipeline, so a re-identified release lands with the same
-    /// identity-row shape an initial import would produce.
+    /// cross-linked records, then `set_records`. Mirrors the import commit
+    /// pipeline, so a re-identified release lands with the same records an
+    /// initial import would produce.
     ///
     /// - **Release** — resolve the picked release's documents through
     ///   `prepare_release` (which composes the MB↔Discogs cross-linking, fetching
-    ///   and storing when nothing has yet) and project the mapper's identity vec
-    ///   as it stands. Those documents are keyed by the picked
+    ///   and storing when nothing has yet) and read the records off those
+    ///   documents. They are keyed by the picked
     ///   release, which is what the new seed names, so reset-to-source replays
     ///   the same seed. The picked release's track count is checked against the existing
-    ///   track rows, and a mismatch errors before the identity write — a 12-track
+    ///   track rows, and a mismatch errors before the records are written — a 12-track
     ///   release can't replace a 10-track rip. Each partner the pick carries is
-    ///   prepared the same way and its own identity replaces whatever the
-    ///   picked document inferred about that source. Album/release/track row
-    ///   data is not touched: the identity rows and metadata provenance change;
-    ///   the rows stay as the user last had them.
-    /// - **File Tags** — empty identities and File Tags provenance; the release always
+    ///   prepared the same way and its own record replaces whatever the
+    ///   picked document inferred about that catalog. Album/release/track row
+    ///   data is not touched: the records change; the rows stay as the user
+    ///   last had them.
+    /// - **File Tags** — no records, and the draft reads the files' own tags; the release always
     ///   lands on a fresh album. The old source's album/release/track rows would
     ///   still show its metadata, so the same call reseeds them from the local file
     ///   tags, projecting through the new `FileTags` seed with
@@ -224,8 +222,7 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         use crate::import::ReleaseReseed;
 
-        let metadata_provenance = reseed.metadata_provenance();
-        let new_identities = match &reseed {
+        let new_records = match &reseed {
             ReleaseReseed::ExternalRelease {
                 release_ref,
                 partners,
@@ -237,9 +234,9 @@ impl LibraryManager {
                 )
                 .await?;
                 // Every partner the pick claims is archived too, so its own
-                // identity is readable here and by any later reset. One that
-                // will not prepare fails the re-identify before the identity
-                // rows are written.
+                // record is readable here and by any later reset. One that
+                // will not prepare fails the re-identify before the records
+                // are written.
                 crate::import::service::prepare_partners(
                     self,
                     release_ref,
@@ -250,14 +247,14 @@ impl LibraryManager {
                 let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
                 let parsed = parsed_for_existing_release(
                     &payloads,
-                    release_ref.source,
+                    release_ref.catalog,
                     &existing_tracks,
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?;
 
                 // The source pressing's track count must match the local
-                // release's row count. Re-identify only re-points the identity;
+                // release's row count. Re-identify only re-points the records;
                 // it never re-binds audio, so a source with a different number
                 // of tracks has nothing to re-point half the rows at. A folder
                 // import has no such constraint — it maps its own audio into
@@ -272,14 +269,17 @@ impl LibraryManager {
                     )));
                 }
 
-                crate::import::service::identities_with_partners(self, parsed.identities, partners)
-                    .await?
+                crate::import::service::records_for_commit(self, &payloads, partners).await?
             }
             ReleaseReseed::FileTags => Vec::new(),
         };
 
-        self.set_identity(release_id, new_identities, metadata_provenance)
-            .await?;
+        self.set_records(
+            release_id,
+            new_records,
+            matches!(reseed, ReleaseReseed::FileTags),
+        )
+        .await?;
 
         // File Tags changes the seed but leaves the old source's rows
         // in place, still showing the prior metadata. Reseed them here by projecting
@@ -387,7 +387,7 @@ impl LibraryManager {
     /// track's explicit assignments becomes the `position` column on the
     /// `album_artists` / `track_artists` rows.
     ///
-    /// archived provider documents, `release_identities`, and metadata provenance
+    /// archived provider documents, the release records, and where the draft was read
     /// are deliberately not touched. Identity is orthogonal to
     /// metadata; the cached source payload stays put.
     ///
@@ -791,7 +791,7 @@ impl LibraryManager {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn parsed_for_existing_release(
     payloads: &crate::import::payloads::ReleasePayloads,
-    source: crate::import::MetadataSource,
+    source: crate::import::Catalog,
     tracks: &[DbTrack],
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
@@ -801,8 +801,9 @@ fn parsed_for_existing_release(
     // whose files were never measured. A MusicBrainz document states its own
     // track times.
     let audio_durations = match source {
-        crate::import::MetadataSource::MusicBrainz => Vec::new(),
-        crate::import::MetadataSource::Discogs => stored_track_durations(tracks)?,
+        crate::import::Catalog::MusicBrainz => Vec::new(),
+        crate::import::Catalog::Discogs => stored_track_durations(tracks)?,
+        other => unreachable!("nothing fetches documents from {}", other.as_str()),
     };
     payloads
         .parsed(&audio_durations, clock, ids)

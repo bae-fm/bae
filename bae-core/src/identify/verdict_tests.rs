@@ -5,10 +5,10 @@ use crate::identify::state::{
 };
 use crate::identify::view::{BarcodeStepView, IdentifyStateView, LookupView};
 use crate::identify::{CatalogProgress, ProviderBarcodeLookup};
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 
 fn mk_result(release_id: &str) -> MetadataResult {
-    MetadataResult::for_test(MetadataSource::MusicBrainz, release_id, Some("group-1"))
+    MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("group-1"))
 }
 
 /// A bare context, standing in for whatever the reducer would have
@@ -95,14 +95,14 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
         "012345".to_string(),
         crate::signals::SignalOrigin::Artwork,
     )];
-    context.providers = vec![MetadataSource::MusicBrainz];
+    context.providers = vec![Catalog::MusicBrainz];
     let (settled, _) = step(
         IdentifyState::Triangulating {
             discid: DiscidProgress::Skipped { track_count: 9 },
             barcode: BarcodeProgress::Lookups {
                 codes: vec!["012345".to_string()],
                 providers: vec![ProviderBarcodeLookup {
-                    source: MetadataSource::MusicBrainz,
+                    source: Catalog::MusicBrainz,
                     state: crate::identify::BarcodeLookupState::Trying { index: 0 },
                 }],
             },
@@ -110,7 +110,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
             context,
         },
         IdentifyEvent::BarcodeLookupAnswered {
-            source: MetadataSource::MusicBrainz,
+            source: Catalog::MusicBrainz,
             for_barcode: "012345".to_string(),
             outcome: Ok(vec![(mk_result("rel-1"), LibraryStatus::absent("rel-1"))]),
         },
@@ -350,7 +350,7 @@ fn discid_failure_derives_to_failed() {
 fn barcode_failure_derives_to_failed() {
     let mut context = mk_context(7);
     context.barcode.failures = vec![SourceFailure {
-        source: MetadataSource::Discogs,
+        source: Catalog::Discogs,
         failure: crate::signals::LookupFailure::Timeout,
     }];
     let state = crate::identify::state::re_derive_for_tests(context);
@@ -363,7 +363,7 @@ fn barcode_failure_derives_to_failed() {
             track_count: 7,
             ..
         } if failures == vec![IdentifyFailure::Barcode(SourceFailure {
-            source: MetadataSource::Discogs,
+            source: Catalog::Discogs,
             failure: crate::signals::LookupFailure::Timeout,
         })]
     ));
@@ -378,7 +378,7 @@ fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
     context.barcode.had_source = true;
     context.barcode.results = vec![(mk_result("rel-mb"), LibraryStatus::absent("rel-mb"))];
     context.barcode.failures = vec![SourceFailure {
-        source: MetadataSource::Discogs,
+        source: Catalog::Discogs,
         failure: crate::signals::LookupFailure::Network,
     }];
     let state = crate::identify::state::re_derive_for_tests(context);
@@ -392,7 +392,7 @@ fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
     assert_eq!(
         failures,
         &vec![IdentifyFailure::Barcode(SourceFailure {
-            source: MetadataSource::Discogs,
+            source: Catalog::Discogs,
             failure: crate::signals::LookupFailure::Network,
         })]
     );
@@ -425,7 +425,7 @@ fn a_barcode_failure_with_no_results_carries_no_matches() {
     let mut context = mk_context(7);
     context.barcode.had_source = true;
     context.barcode.failures = vec![SourceFailure {
-        source: MetadataSource::Discogs,
+        source: Catalog::Discogs,
         failure: crate::signals::LookupFailure::Network,
     }];
     let IdentifyState::Failed { matches, .. } =
@@ -443,7 +443,7 @@ fn chosen_catalog_failure_derives_to_failed() {
         value: "CAT-7".to_string(),
         results: Vec::new(),
         failures: vec![SourceFailure {
-            source: MetadataSource::MusicBrainz,
+            source: Catalog::MusicBrainz,
             failure: crate::signals::LookupFailure::Network,
         }],
     }];
@@ -457,7 +457,7 @@ fn chosen_catalog_failure_derives_to_failed() {
             track_count: 7,
             ..
         } if failures == vec![IdentifyFailure::Catalog(SourceFailure {
-            source: MetadataSource::MusicBrainz,
+            source: Catalog::MusicBrainz,
             failure: crate::signals::LookupFailure::Network,
         })]
     ));

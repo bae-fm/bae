@@ -1,14 +1,14 @@
 use super::*;
 use crate::identify::IdentifyFailure;
-use crate::import::{LookupChoices, MetadataSource};
+use crate::import::{LookupChoices, Catalog};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
-    mk_result_from(MetadataSource::MusicBrainz, release_id, group_id)
+    mk_result_from(Catalog::MusicBrainz, release_id, group_id)
 }
 
 fn mk_result_from(
-    source: MetadataSource,
+    source: Catalog,
     release_id: &str,
     group_id: Option<&str>,
 ) -> MetadataResult {
@@ -22,13 +22,13 @@ fn pair(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibrarySta
 /// A Discogs result, for runs where both providers answer.
 fn discogs_pair(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
     (
-        mk_result_from(MetadataSource::Discogs, release_id, group_id),
+        mk_result_from(Catalog::Discogs, release_id, group_id),
         LibraryStatus::absent(release_id),
     )
 }
 
-const MB: MetadataSource = MetadataSource::MusicBrainz;
-const DG: MetadataSource = MetadataSource::Discogs;
+const MB: Catalog = Catalog::MusicBrainz;
+const DG: Catalog = Catalog::Discogs;
 
 /// Drive `Idle` → `Triangulating` via `Started` with MusicBrainz as the only
 /// provider (no effects yet — the reducer waits for `SignalsUpdated`).
@@ -38,7 +38,7 @@ fn started() -> IdentifyState {
 
 /// `Started` with the given providers in the run, and nothing chosen or
 /// excluded.
-fn started_with(providers: Vec<MetadataSource>) -> IdentifyState {
+fn started_with(providers: Vec<Catalog>) -> IdentifyState {
     let (state, effects) = started_with_choices(providers, LookupChoices::default());
     assert!(
         effects.is_empty(),
@@ -51,7 +51,7 @@ fn started_with(providers: Vec<MetadataSource>) -> IdentifyState {
 /// asks about. The chosen numbers' lookups go out with the run, so this hands
 /// back the effects too.
 fn started_with_choices(
-    providers: Vec<MetadataSource>,
+    providers: Vec<Catalog>,
     choices: LookupChoices,
 ) -> (IdentifyState, Vec<Effect>) {
     step(
@@ -103,7 +103,7 @@ fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>
 
 /// One provider matched `barcode`.
 fn barcode_matched(
-    source: MetadataSource,
+    source: Catalog,
     barcode: &str,
     results: Vec<(MetadataResult, LibraryStatus)>,
 ) -> IdentifyEvent {
@@ -115,12 +115,12 @@ fn barcode_matched(
 }
 
 /// One provider knew nothing about `barcode`.
-fn barcode_missed(source: MetadataSource, barcode: &str) -> IdentifyEvent {
+fn barcode_missed(source: Catalog, barcode: &str) -> IdentifyEvent {
     barcode_matched(source, barcode, Vec::new())
 }
 
 /// One provider's lookup of `barcode` failed.
-fn barcode_failed(source: MetadataSource, barcode: &str, failure: LookupFailure) -> IdentifyEvent {
+fn barcode_failed(source: Catalog, barcode: &str, failure: LookupFailure) -> IdentifyEvent {
     IdentifyEvent::BarcodeLookupAnswered {
         source,
         for_barcode: barcode.to_string(),
@@ -128,7 +128,7 @@ fn barcode_failed(source: MetadataSource, barcode: &str, failure: LookupFailure)
     }
 }
 
-fn lookup_barcode(source: MetadataSource, barcode: &str) -> Effect {
+fn lookup_barcode(source: Catalog, barcode: &str) -> Effect {
     Effect::LookupBarcode {
         source,
         barcode: barcode.to_string(),
@@ -216,7 +216,7 @@ fn barcode_walks(state: &IdentifyState) -> &[ProviderBarcodeLookup] {
     }
 }
 
-fn walk_of(state: &IdentifyState, source: MetadataSource) -> &BarcodeLookupState {
+fn walk_of(state: &IdentifyState, source: Catalog) -> &BarcodeLookupState {
     &barcode_walks(state)
         .iter()
         .find(|p| p.source == source)
@@ -869,7 +869,7 @@ fn cancellation_returns_to_idle() {
 /// it never asked rather than waiting on an answer that is not coming.
 #[test]
 fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
-    let state = started_with(vec![MetadataSource::Discogs]);
+    let state = started_with(vec![Catalog::Discogs]);
     let (next, effects) = update(state, disc_only(&[]));
 
     assert!(
@@ -879,5 +879,5 @@ fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
         "no source was asked about the disc ID: {effects:?}"
     );
     let context = next.context().expect("a started run carries its context");
-    assert_eq!(context.providers, vec![MetadataSource::Discogs]);
+    assert_eq!(context.providers, vec![Catalog::Discogs]);
 }

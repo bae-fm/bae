@@ -207,7 +207,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         release_name: None,
         pressing: bae_core::db::Pressing::blank(),
         disc_id: None,
-        metadata_provenance: Some(bae_core::import::MetadataProvenance::FileTags),
+        draft_from_tags: true,
         remote: false,
         source_folder_name: None,
         content_hash: None,
@@ -318,8 +318,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
             storage_mode: StorageMode::Local,
             pin: false,
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: discogs_key,
+                record: bae_core::import::MetadataRef::new(Catalog::Discogs, discogs_key),
                 partners: vec![],
             }),
             user_edit: None,

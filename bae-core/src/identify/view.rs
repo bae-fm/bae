@@ -33,7 +33,7 @@ use super::state::{
 use crate::db::LibraryStatus;
 use crate::import::release_group::{group_results, Judgements, ReleaseGroup};
 use crate::import::search::MetadataResult;
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
 use std::collections::HashSet;
 
@@ -76,7 +76,7 @@ pub struct ValueSource {
 /// One provider's cell of a value's row.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ProviderCell {
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub lookup: LookupView,
 }
 
@@ -111,7 +111,7 @@ pub struct DiscIdFile {
 }
 
 /// The disc ID: read off a LOG or CUE, then looked up on
-/// [`MetadataSource::DISC_ID_SOURCE`] — the one provider with a disc-ID
+/// [`Catalog::DISC_ID_CATALOG`] — the one provider with a disc-ID
 /// endpoint, so this step has one lookup and no cells. That one provider is
 /// also why the step, alone among them, has to say when it was not asked: the
 /// other steps say it by drawing no column for the source.
@@ -217,7 +217,7 @@ pub enum CatalogStepView {
 pub struct IdentifyRunView {
     /// The providers the run asks, in the order their cells are listed. Named
     /// up front so a surface can draw the columns before any row exists.
-    pub providers: Vec<MetadataSource>,
+    pub providers: Vec<Catalog>,
     pub disc_id: DiscIdStepView,
     pub barcode: BarcodeStepView,
     pub catalog: CatalogStepView,

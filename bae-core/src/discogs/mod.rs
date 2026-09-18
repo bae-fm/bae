@@ -1,7 +1,7 @@
 pub mod client;
 pub mod models;
 use crate::import::cover_art::RemoteCover;
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 pub use client::DiscogsClient;
 pub use models::*;
 use std::fmt::Display;
@@ -66,7 +66,7 @@ where
     Some(RemoteCover {
         url,
         thumbnail_url,
-        label: MetadataSource::Discogs.cover_source_label().to_string(),
-        source: MetadataSource::Discogs,
+        label: Catalog::Discogs.cover_source_label().to_string(),
+        source: Catalog::Discogs,
     })
 }

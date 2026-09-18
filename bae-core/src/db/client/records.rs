@@ -1,56 +1,57 @@
+//! Reading and writing a release's records — every catalog's description of
+//! it.
+
 use super::*;
 
 impl Database {
-    /// Insert one or more `release_identities` rows for an existing
-    /// release. Idempotent at the PK (release_id, source) — duplicates
-    /// surface as unique-violation errors. Used for setting identity
-    /// outside of the atomic import path.
-    pub async fn insert_release_identities(
+    /// Insert one or more record rows for an existing release.
+    /// Idempotent at the unique key (release_id, catalog) — duplicates surface
+    /// as unique-violation errors. Used for writing records outside of the
+    /// atomic import path.
+    pub async fn insert_release_records(
         &self,
         release_id: &str,
-        identities: &[crate::import::ReleaseIdentity],
+        records: &[crate::import::ReleaseRecord],
     ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
-        let identities = identities.to_vec();
+        let records = records.to_vec();
         let now = self.inner.clock.now().to_rfc3339();
         let ids = Arc::clone(&self.inner.ids);
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            for identity in &identities {
-                insert_release_identity_row(&sql, &release_id, identity, ids.new_id(), &reg, &now)?;
+            for record in &records {
+                insert_release_record_row(&sql, &release_id, record, ids.new_id(), &reg, &now)?;
             }
             Ok(())
         })
         .await
     }
 
-    /// All identity rows for a release. Empty if the release has no
-    /// `release_identities` rows (no external identity).
-    pub async fn get_release_identities(
+    /// Every record for a release. Empty if no catalog describes it.
+    pub async fn get_release_records(
         &self,
         release_id: &str,
-    ) -> Result<Vec<crate::import::ReleaseIdentity>, DbError> {
+    ) -> Result<Vec<crate::import::ReleaseRecord>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| get_release_identities_on(&sql, &release_id))
+        self.read(move |sql| get_release_records_on(&sql, &release_id))
             .await
     }
 
-    /// Look up an album by `release_identities` rows. Returns the
-    /// first album that has a release with an identity row matching any
-    /// of `identities` on `(source, source_release_id)`, ignoring rows
-    /// that belong to `exclude_release_ids`.
+    /// Look up an album by record rows. Returns the first album that
+    /// has a release with a record matching any of `records` on
+    /// `(catalog, key)`, ignoring rows that belong to `exclude_release_ids`.
     ///
-    /// Used for the per-pressing rejection step of import dedup: a
-    /// duplicate is a release whose identity points at a specific
-    /// pressing already in the library.
-    pub async fn find_album_by_identity_release_excluding(
+    /// Used for the per-pressing rejection step of import dedup: a duplicate is
+    /// a release whose record points at a specific pressing already in the
+    /// library.
+    pub async fn find_album_by_record_key_excluding(
         &self,
-        identities: &[crate::import::ReleaseIdentity],
+        records: &[crate::import::ReleaseRecord],
         exclude_release_ids: &[String],
     ) -> Result<Option<DbAlbum>, DbError> {
-        let pressing_pairs: Vec<(String, String)> = identities
+        let pressing_pairs: Vec<(String, String)> = records
             .iter()
-            .map(|id| (id.source.as_str().to_string(), id.source_release_id.clone()))
+            .map(|record| (record.catalog.as_str().to_string(), record.key.clone()))
             .collect();
         if pressing_pairs.is_empty() {
             return Ok(None);
@@ -58,7 +59,7 @@ impl Database {
         let exclude_release_ids = exclude_release_ids.to_vec();
 
         self.read(move |sql| {
-            find_album_by_identity_pairs(
+            find_album_by_record_pairs(
                 &sql,
                 r#"
                     SELECT
@@ -66,9 +67,9 @@ impl Database {
                         a.is_compilation, a.created_at
                     FROM albums a
                     JOIN releases r ON r.album_id = a.id
-                    JOIN release_identities ri ON ri.release_id = r.id
+                    JOIN release_records rr ON rr.release_id = r.id
                 "#,
-                "source_release_id",
+                "key",
                 &pressing_pairs,
                 &exclude_release_ids,
                 row_to_album,
@@ -77,37 +78,41 @@ impl Database {
         .await
     }
 
-    /// Look up an album by `release_identities` group rows. Returns the
-    /// first album that has a release with an identity row matching any
-    /// of `identities` on `(source, source_group_id)`, ignoring rows that
-    /// belong to `exclude_release_ids`. Used for the cross-source merge
-    /// step of import dedup (excluding the releases a re-import replaces)
-    /// and by `set_identity` (excluding the release whose about-to-be-
-    /// replaced identity rows must not match against themselves).
-    pub async fn find_album_by_identity_group_excluding(
+    /// Look up an album by records' group keys. Returns the first
+    /// album that has a release with a record matching any of `records` on
+    /// `(catalog, group)`, ignoring rows that belong to `exclude_release_ids`.
+    /// Used for the cross-catalog merge step of import dedup (excluding the
+    /// releases a re-import replaces) and by `set_records` (excluding the
+    /// release whose about-to-be-replaced records must not match against
+    /// themselves).
+    pub async fn find_album_by_record_group_excluding(
         &self,
-        identities: &[crate::import::ReleaseIdentity],
+        records: &[crate::import::ReleaseRecord],
         exclude_release_ids: &[String],
     ) -> Result<Option<String>, DbError> {
-        if identities.is_empty() {
+        if records.is_empty() {
             return Ok(None);
         }
-
-        let pairs: Vec<(String, String)> = identities
+        let pairs: Vec<(String, String)> = records
             .iter()
-            .map(|id| (id.source.as_str().to_string(), id.source_group_id.clone()))
+            .map(|record| {
+                (
+                    record.catalog.as_str().to_string(),
+                    record.group_key.clone(),
+                )
+            })
             .collect();
         let exclude_release_ids = exclude_release_ids.to_vec();
 
         self.read(move |sql| {
-            find_album_by_identity_pairs(
+            find_album_by_record_pairs(
                 &sql,
                 r#"
                     SELECT r.album_id
                     FROM releases r
-                    JOIN release_identities ri ON ri.release_id = r.id
+                    JOIN release_records rr ON rr.release_id = r.id
                 "#,
-                "source_group_id",
+                "group_key",
                 &pairs,
                 &exclude_release_ids,
                 |row| row.get::<_, String>("album_id"),
@@ -116,10 +121,9 @@ impl Database {
         .await
     }
 
-    /// Replace `release_identities` rows for `release_id`, update the
-    /// release's metadata provenance columns, and
-    /// move the release between albums when the target differs from the
-    /// source.
+    /// Replace a release's record rows, set whether its draft
+    /// was read off the files' own tags, and move the release between albums
+    /// when the target differs from the source.
     ///
     /// Everything below runs in one transaction:
     ///
@@ -127,8 +131,8 @@ impl Database {
     ///    plus copies of `current_album_id`'s `album_artists` rows
     ///    (so a fresh album lands fully populated, not a bare row that
     ///    drops the artist links the source already had).
-    /// 2. Replace `release_identities` for `release_id`.
-    /// 3. UPDATE the release's `album_id` and metadata-source columns.
+    /// 2. Replace the release's records.
+    /// 3. UPDATE the release's `album_id` and `draft_from_tags`.
     /// 4. If the release vacated `current_album_id` (the source), check
     ///    inside the transaction whether any releases remain. None →
     ///    delete the source album. Some → clear `primary_release_id`
@@ -146,22 +150,20 @@ impl Database {
     /// metadata.
     ///
     /// Nothing is done to the archived provider documents: they are keyed by
-    /// the *source* release, so re-pointing the provenance at a
-    /// different one already reads a different row. There is no stale payload
-    /// to wipe, and the rows this release used may be another candidate's.
-    ///
-    #[allow(clippy::too_many_arguments)]
-    pub async fn set_identity_atomic(
+    /// the *catalog's* release, so re-pointing the records at a different one
+    /// already reads a different row. There is no stale payload to wipe, and
+    /// the rows this release used may be another candidate's.
+    pub async fn set_records_atomic(
         &self,
         release_id: &str,
-        new_identities: &[crate::import::ReleaseIdentity],
-        new_metadata_provenance: Option<crate::import::MetadataProvenance>,
+        new_records: &[crate::import::ReleaseRecord],
+        draft_from_tags: bool,
         current_album_id: &str,
         target_album_id: &str,
         new_album: Option<&DbAlbum>,
     ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
-        let new_identities = new_identities.to_vec();
+        let new_records = new_records.to_vec();
         let current_album_id = current_album_id.to_string();
         let target_album_id = target_album_id.to_string();
         let new_album = new_album.cloned();
@@ -206,34 +208,25 @@ impl Database {
                 }
             }
 
-            // 2. Replace identity rows.
+            // 2. Replace the records.
             tx.execute(
-                "DELETE FROM release_identities WHERE release_id = ?",
+                "DELETE FROM release_records WHERE release_id = ?",
                 params![release_id],
             )?;
-            for identity in &new_identities {
-                insert_release_identity_row(tx, &release_id, identity, ids.new_id(), &reg, &now)?;
+            for record in &new_records {
+                insert_release_record_row(tx, &release_id, record, ids.new_id(), &reg, &now)?;
             }
 
-            // 3. Update release: album and metadata provenance.
-            let (new_metadata_source, new_metadata_source_release_id) =
-                metadata_provenance_columns(new_metadata_provenance.as_ref());
+            // 3. Update release: album and where its draft was read.
             tx.execute(
                 r#"
                     UPDATE releases SET
                         album_id = ?,
-                        metadata_source = ?,
-                        metadata_source_release_id = ?,
+                        draft_from_tags = ?,
                         _updated_at = ?
                     WHERE id = ?
                     "#,
-                params![
-                    target_album_id,
-                    new_metadata_source,
-                    new_metadata_source_release_id,
-                    reg,
-                    release_id,
-                ],
+                params![target_album_id, draft_from_tags, reg, release_id],
             )?;
 
             // 4. Source-album cleanup. Only runs when the release actually
@@ -255,13 +248,13 @@ impl Database {
     ///
     /// Per check:
     ///
-    /// - `release_in_library` is true when a `release_identities` row
-    ///   matches `(check.source, check.release_id)` — an identity at
+    /// - `release_in_library` is true when a record
+    ///   matches `(check.catalog, check.release_id)` — a record at
     ///   this specific pressing. The `ORDER BY` puts a pressing match
     ///   ahead of a group-only one.
-    /// - `album_in_library` is true when a `release_identities` row
-    ///   matches `(check.source, check.source_group_id)` — i.e. some
-    ///   release in the library shares the candidate's group identity.
+    /// - `album_in_library` is true when a record
+    ///   matches `(check.catalog, check.source_group_id)` — i.e. some
+    ///   release in the library shares the candidate's group.
     ///
     /// `album_title` / `album_id` carry the matched album's display
     /// info. When both flags are true, they describe the album holding
@@ -291,17 +284,17 @@ impl Database {
     }
 }
 
-/// The shared body of the two identity lookups above: match `pairs` against
-/// `(ri.source, ri.{id_column})`, skip identity rows belonging to
+/// The shared body of the two record lookups above: match `pairs` against
+/// `(rr.catalog, rr.{key_column})`, skip records belonging to
 /// `exclude_release_ids`, and map the first row the query produces.
 ///
 /// `select` is everything the callers differ by — the SELECT list and the
-/// tables joined ahead of `release_identities`, which this completes with the
-/// pair predicate the binds are supplied for.
-fn find_album_by_identity_pairs<T>(
+/// tables joined ahead of the records, which this completes with the pair
+/// predicate the binds are supplied for.
+fn find_album_by_record_pairs<T>(
     sql: &SqlReadContext<'_>,
     select: &str,
-    id_column: &str,
+    key_column: &str,
     pairs: &[(String, String)],
     exclude_release_ids: &[String],
     row_to: impl FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>,
@@ -315,7 +308,7 @@ fn find_album_by_identity_pairs<T>(
         String::new()
     } else {
         format!(
-            "AND ri.release_id NOT IN ({})",
+            "AND rr.release_id NOT IN ({})",
             exclude_release_ids
                 .iter()
                 .map(|_| "?")
@@ -325,14 +318,14 @@ fn find_album_by_identity_pairs<T>(
     };
     let query = format!(
         "{select}
-         WHERE (ri.source, ri.{id_column}) IN ({placeholders})
+         WHERE (rr.catalog, rr.{key_column}) IN ({placeholders})
            {exclude_predicate}
          LIMIT 1"
     );
     let mut binds: Vec<&str> = Vec::with_capacity(pairs.len() * 2 + exclude_release_ids.len());
-    for (source, source_id) in pairs {
-        binds.push(source);
-        binds.push(source_id);
+    for (catalog, key) in pairs {
+        binds.push(catalog);
+        binds.push(key);
     }
     for release_id in exclude_release_ids {
         binds.push(release_id);
@@ -353,7 +346,7 @@ pub(super) fn check_releases_in_library_on(
     let mut statuses = Vec::with_capacity(checks.len());
 
     for check in checks {
-        let source = check.source.as_str();
+        let catalog = check.source.as_str();
         let group_id = check.source_group_id.as_deref();
         let matched = sql
             .query_row(
@@ -361,21 +354,21 @@ pub(super) fn check_releases_in_library_on(
                             SELECT
                                 a.id AS album_id,
                                 a.title AS album_title,
-                                ri.source_release_id = ? AS release_match
+                                rr.key = ? AS release_match
                             FROM albums a
                             JOIN releases r ON r.album_id = a.id
-                            JOIN release_identities ri ON ri.release_id = r.id
-                            WHERE ri.source = ?
+                            JOIN release_records rr ON rr.release_id = r.id
+                            WHERE rr.catalog = ?
                               AND (
-                                  ri.source_release_id = ?
-                                  OR (? IS NOT NULL AND ri.source_group_id = ?)
+                                  rr.key = ?
+                                  OR (? IS NOT NULL AND rr.group_key = ?)
                               )
                             ORDER BY release_match DESC
                             LIMIT 1
                             "#,
                 params![
                     check.release_id,
-                    source,
+                    catalog,
                     check.release_id,
                     group_id,
                     group_id

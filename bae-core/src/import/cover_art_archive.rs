@@ -1,8 +1,7 @@
 //! Complete Cover Art Archive galleries, fetched only when a picker opens.
 
 use super::{
-    push_unique_cover, send_artwork_request, ImportError, MetadataSource, RemoteCover,
-    RETRY_BASE_DELAY,
+    push_unique_cover, send_artwork_request, Catalog, ImportError, RemoteCover, RETRY_BASE_DELAY,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -93,7 +92,7 @@ fn parse_gallery(bytes: &[u8]) -> Result<Vec<RemoteCover>, ImportError> {
                 url: image.image,
                 thumbnail_url,
                 label,
-                source: MetadataSource::MusicBrainz,
+                source: Catalog::MusicBrainz,
             },
         );
     }

@@ -5,7 +5,7 @@
 /// computed disc id for five tracks, no barcode and one catalog number on
 /// offer, with the disc-id lookup already answered by two releases of one
 /// group. Leaves the state `Found`, with "LBL 001" offered but not chosen.
-fn state_with_catalog_offered(providers: Vec<MetadataSource>) -> IdentifyState {
+fn state_with_catalog_offered(providers: Vec<Catalog>) -> IdentifyState {
     let (state, _) = update(
         started_with(providers),
         signals(disc("disc-hash", 5), BarcodeSignal::Absent, &["LBL 001"]),
@@ -22,7 +22,7 @@ fn state_with_catalog_offered(providers: Vec<MetadataSource>) -> IdentifyState {
 
 /// The same run, started with "LBL 001" chosen: its lookup goes out with the
 /// run, and the effects it dispatched come back with the state.
-fn run_with_catalog_chosen(providers: Vec<MetadataSource>) -> (IdentifyState, Vec<Effect>) {
+fn run_with_catalog_chosen(providers: Vec<Catalog>) -> (IdentifyState, Vec<Effect>) {
     let (state, chosen_effects) = started_with_choices(providers, choosing(&["LBL 001"]));
     let (state, _) = update(
         state,
@@ -267,7 +267,7 @@ fn toolbar_shows_failed_barcode_lookup() {
         detail: "provider lookup failed".to_string(),
     };
     let source_failure = SourceFailure {
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         failure: failure.clone(),
     };
     let (state, _) = step(
@@ -298,7 +298,7 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
         detail: "provider lookup failed".to_string(),
     };
     let source_failure = SourceFailure {
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         failure: failure.clone(),
     };
     let (state, _) = step(
@@ -424,7 +424,7 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
 
     let failure = LookupFailure::Provider { status: Some(500) };
     let source_failure = SourceFailure {
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         failure: failure.clone(),
     };
     let (state, _) = step(state, barcode_failed(MB, "BAR", failure.clone()));

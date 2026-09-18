@@ -394,37 +394,6 @@ fn pressing_reads_year_format_first_label_country_and_barcode() {
     assert_eq!(parsed.album.year, Some(1969));
 }
 
-#[test]
-fn extract_discogs_release_id_cases() {
-    // The leading numeric segment after `/release/` is the id: bare,
-    // trailing-slash, and slug-suffixed forms all yield it; a non-numeric
-    // segment, an empty path, or an unrelated host yield None.
-    let cases = [
-        ("https://www.discogs.com/release/12345", Some("12345")),
-        ("https://www.discogs.com/release/12345/", Some("12345")),
-        (
-            "https://www.discogs.com/release/12345-Album-Title",
-            Some("12345"),
-        ),
-        (
-            "https://www.discogs.com/release/12345-Album-Title/",
-            Some("12345"),
-        ),
-        ("https://www.discogs.com/release/abc", None),
-        ("https://www.discogs.com/release/", None),
-        ("https://example.com/something/abc", None),
-    ];
-    for (url, expected) in cases {
-        assert_eq!(
-            extract_discogs_release_id(url),
-            expected.map(str::to_string),
-            "url: {url}"
-        );
-    }
-}
-
-// ── identities (parsed.identities) ─────────────────────────────────
-
 fn discogs_release_with_master(master_id: Option<String>) -> crate::discogs::DiscogsRelease {
     crate::discogs::DiscogsRelease {
         id: "d-rel-99".to_string(),
@@ -443,23 +412,6 @@ fn discogs_release_with_master(master_id: Option<String>) -> crate::discogs::Dis
 }
 
 #[test]
-fn test_map_mb_no_cross_ref_yields_only_mb_identity() {
-    let response = make_response(vec![MbMedium {
-        discs: vec![],
-        format: Some("CD".to_string()),
-        tracks: vec![make_mb_track("1", "Track 1")],
-    }]);
-
-    let parsed = map(&response, None, None).unwrap();
-
-    assert_eq!(parsed.identities.len(), 1);
-    let mb = &parsed.identities[0];
-    assert_eq!(mb.source, MetadataSource::MusicBrainz);
-    assert_eq!(mb.source_group_id, "rg-test");
-    assert_eq!(mb.source_release_id, "test-release");
-}
-
-#[test]
 fn release_with_no_artist_credits_returns_err() {
     let mut response = make_response(vec![MbMedium {
         discs: vec![],
@@ -475,72 +427,6 @@ fn release_with_no_artist_credits_returns_err() {
         matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no artist credits")),
         "unexpected error message: {err}"
     );
-}
-
-#[test]
-fn release_with_no_release_group_returns_err() {
-    let mut response = make_response(vec![MbMedium {
-        discs: vec![],
-        format: Some("CD".to_string()),
-        tracks: vec![make_mb_track("1", "Track 1")],
-    }]);
-    response.release_group = None;
-
-    let err =
-        map(&response, None, None).expect_err("expected missing release group to return an error");
-
-    assert!(
-        matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("missing release_group")),
-        "unexpected error message: {err}"
-    );
-}
-
-#[test]
-fn test_map_mb_cross_ref_no_master_id_yields_discogs_release_as_its_own_group() {
-    // Cross-ref hit and the linked Discogs release has no master — it is its
-    // own group, so the Discogs row is still emitted.
-    let response = make_response(vec![MbMedium {
-        discs: vec![],
-        format: Some("CD".to_string()),
-        tracks: vec![make_mb_track("1", "Track 1")],
-    }]);
-    let discogs_release = discogs_release_with_master(None);
-
-    let parsed = map(&response, None, Some(discogs_release)).unwrap();
-
-    assert_eq!(parsed.identities.len(), 2);
-    assert_eq!(parsed.identities[0].source, MetadataSource::MusicBrainz);
-
-    let discogs = &parsed.identities[1];
-    assert_eq!(discogs.source, MetadataSource::Discogs);
-    assert_eq!(discogs.source_group_id, "d-rel-99");
-    assert_eq!(discogs.source_release_id, "d-rel-99");
-}
-
-#[test]
-fn test_map_mb_cross_ref_with_master_id_yields_two_identity_rows() {
-    // Cross-ref hit AND the linked Discogs release carries a master_id
-    // — two rows: MB + Discogs. Both Exact (release IDs present).
-    let response = make_response(vec![MbMedium {
-        discs: vec![],
-        format: Some("CD".to_string()),
-        tracks: vec![make_mb_track("1", "Track 1")],
-    }]);
-    let discogs_release = discogs_release_with_master(Some("d-master-123".to_string()));
-
-    let parsed = map(&response, None, Some(discogs_release)).unwrap();
-
-    assert_eq!(parsed.identities.len(), 2);
-
-    let mb = &parsed.identities[0];
-    assert_eq!(mb.source, MetadataSource::MusicBrainz);
-    assert_eq!(mb.source_group_id, "rg-test");
-    assert_eq!(mb.source_release_id, "test-release");
-
-    let discogs = &parsed.identities[1];
-    assert_eq!(discogs.source, MetadataSource::Discogs);
-    assert_eq!(discogs.source_group_id, "d-master-123");
-    assert_eq!(discogs.source_release_id, "d-rel-99");
 }
 
 fn credit(id: &str, name: &str) -> MbArtistCredit {

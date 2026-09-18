@@ -147,7 +147,7 @@ async fn create_local_release(
         release_name: None,
         pressing: Pressing::blank(),
         disc_id: None,
-        metadata_provenance: Some(bae_core::import::MetadataProvenance::FileTags),
+        draft_from_tags: true,
         remote: false,
         source_folder_name: None,
         content_hash: None,

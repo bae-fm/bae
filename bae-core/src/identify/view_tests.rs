@@ -7,13 +7,13 @@ use crate::identify::state::{
 use crate::identify::{IdentifyFailure, TerminalVerdict};
 use crate::import::release_group::unranked;
 use crate::import::search::MetadataResult;
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 use crate::signals::{SignalOrigin, SourcedValue, TextLine};
 
-const MB: MetadataSource = MetadataSource::MusicBrainz;
-const DG: MetadataSource = MetadataSource::Discogs;
+const MB: Catalog = Catalog::MusicBrainz;
+const DG: Catalog = Catalog::Discogs;
 
-fn result(source: MetadataSource, release_id: &str) -> (MetadataResult, LibraryStatus) {
+fn result(source: Catalog, release_id: &str) -> (MetadataResult, LibraryStatus) {
     (
         MetadataResult::for_test(source, release_id, Some("g")),
         LibraryStatus::absent(release_id),

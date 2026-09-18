@@ -11,7 +11,7 @@ fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
     }
 }
 
-/// File Tags commit reads embedded tags, writes zero `release_identities`
+/// File Tags commit reads embedded tags, writes zero `release_records`
 /// rows, stores File Tags provenance, and seeds the album / tracks
 /// from what's on disk. No external source consulted.
 #[tokio::test]
@@ -50,17 +50,14 @@ async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
     let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert_eq!(
-        release.metadata_provenance,
-        Some(MetadataProvenance::FileTags),
-    );
+    assert!(release.draft_from_tags);
     assert_eq!(release.pressing.year, Some(2003));
     assert_eq!(release.pressing.format, None);
 
-    let identities = f.db.get_release_identities(&release_id).await.unwrap();
+    let records = f.db.get_release_records(&release_id).await.unwrap();
     assert!(
-        identities.is_empty(),
-        "File Tags imports must write zero external identity rows, got {identities:?}",
+        records.is_empty(),
+        "a draft read off the files names no catalog, got {records:?}",
     );
 
     let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
@@ -418,15 +415,12 @@ async fn file_tags_import_with_user_edit_overlay() {
     assert_eq!(release.pressing.catalog_number.as_deref(), Some("EDIT-1"));
     assert_eq!(release.pressing.country.as_deref(), Some("JP"));
     assert_eq!(release.pressing.barcode.as_deref(), Some("4943674000000"));
-    assert_eq!(
-        release.metadata_provenance,
-        Some(MetadataProvenance::FileTags),
-    );
+    assert!(release.draft_from_tags);
 
-    let identities = f.db.get_release_identities(&release_id).await.unwrap();
+    let records = f.db.get_release_records(&release_id).await.unwrap();
     assert!(
-        identities.is_empty(),
-        "user_edit must not introduce external identity rows for File Tags",
+        records.is_empty(),
+        "user_edit must not introduce records for a draft read off the files",
     );
 
     let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
@@ -498,10 +492,7 @@ async fn file_tags_import_with_no_tags_seeds_title_from_folder_name() {
         "untagged rip takes the folder name as its album title",
     );
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert_eq!(
-        release.metadata_provenance,
-        Some(MetadataProvenance::FileTags),
-    );
+    assert!(release.draft_from_tags);
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 2, "both untagged files import as tracks");
 }

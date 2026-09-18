@@ -22,11 +22,11 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
                 ('c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'Album With No Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, NULL, 0, 'stamp', '2026-01-01T00:00:00Z'),
                 ('82a53f44-1b76-435b-89f0-42749371ee15', 'Album With A Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, '2ffa8060-aa00-4147-8ad4-f373ef66c407', 0, 'stamp', '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+            INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
             VALUES
-                ('fcf4be32-159f-4790-87a1-697700a74462', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('2ffa8060-aa00-4147-8ad4-f373ef66c407', '82a53f44-1b76-435b-89f0-42749371ee15', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('ce596bd7-be97-4416-8b6d-47f315bae466', '82a53f44-1b76-435b-89f0-42749371ee15', 'file_tags', 1, 'stamp', '2026-01-01T00:00:01Z');
+                ('fcf4be32-159f-4790-87a1-697700a74462', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                ('2ffa8060-aa00-4147-8ad4-f373ef66c407', '82a53f44-1b76-435b-89f0-42749371ee15', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                ('ce596bd7-be97-4416-8b6d-47f315bae466', '82a53f44-1b76-435b-89f0-42749371ee15', 1, 'stamp', '2026-01-01T00:00:01Z');
 
             INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
             VALUES

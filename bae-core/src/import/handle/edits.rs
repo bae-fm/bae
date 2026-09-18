@@ -424,16 +424,13 @@ impl ImportServiceHandle {
         provenance: Option<&crate::import::MetadataProvenance>,
         active: &crate::import::RawReleaseEdit,
     ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {
-        let Some(crate::import::MetadataProvenance::ExternalRelease {
-            source, release_id, ..
-        }) = provenance
+        let Some(crate::import::MetadataProvenance::ExternalRelease { record, .. }) = provenance
         else {
             return Ok(Default::default());
         };
-        let release_ref = crate::import::MetadataRef::new(release_id.clone(), *source);
         let payloads = self
             .library_manager
-            .load_release_payloads(&release_ref)
+            .load_release_payloads(record)
             .await?
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key}'s selected release payloads are not prepared"),

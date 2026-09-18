@@ -337,7 +337,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 
     fixture
         .manager
-        .set_metadata_source_enabled(crate::import::MetadataSource::Discogs, false)
+        .set_metadata_source_enabled(crate::import::Catalog::Discogs, false)
         .expect("MusicBrainz is still asked, so Discogs can be switched off");
     fixture.sweep.rerun_for_explicit_lookup(key.clone());
     await_run_state(&mut events, &key, |run, _| run != asked_both).await;
@@ -350,7 +350,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
     };
     assert_eq!(
         matches.iter().map(|result| result.source).collect::<Vec<_>>(),
-        vec![crate::import::MetadataSource::MusicBrainz],
+        vec![crate::import::Catalog::MusicBrainz],
         "the run that stored the answer asked only the source still switched on"
     );
     assert_eq!(
@@ -507,7 +507,7 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
 fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerdict {
     TerminalVerdict::Found {
         matches: vec![MetadataResult {
-            source: crate::import::MetadataSource::MusicBrainz,
+            source: crate::import::Catalog::MusicBrainz,
             release_id: "mb-1".to_string(),
             title: "Album".to_string(),
             artist: None,

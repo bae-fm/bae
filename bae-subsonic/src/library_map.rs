@@ -6,7 +6,7 @@
 //! format, artists, and backing file each `Child` requires.
 
 use bae_core::db::{DbFile, DbRelease, DbTrack, LibraryImageType};
-use bae_core::import::{MetadataProvenance, MetadataSource};
+use bae_core::import::Catalog;
 use bae_core::library::{AppServices, LibraryError};
 
 use crate::error::SubError;
@@ -18,19 +18,19 @@ pub(crate) fn lib_err(error: LibraryError) -> SubError {
     SubError::generic(error.to_string())
 }
 
-/// The release's MusicBrainz id, when its metadata was seeded from MusicBrainz.
-/// Used as the `musicBrainzId` of both the album (a release MBID) and its songs.
-fn release_mb_id(release: &DbRelease) -> Option<String> {
-    match &release.metadata_provenance {
-        Some(MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-            release_id,
-            ..
-        }) => Some(release_id.clone()),
-        Some(MetadataProvenance::ExternalRelease { .. })
-        | Some(MetadataProvenance::FileTags)
-        | None => None,
-    }
+/// The release's MusicBrainz id, when MusicBrainz describes it. Used as the
+/// `musicBrainzId` of both the album (a release MBID) and its songs.
+async fn release_mb_id(
+    services: &AppServices,
+    release_id: &str,
+) -> Result<Option<String>, SubError> {
+    Ok(services
+        .get_release_records(release_id)
+        .await
+        .map_err(lib_err)?
+        .into_iter()
+        .find(|record| record.catalog == Catalog::MusicBrainz)
+        .map(|record| record.key))
 }
 
 /// Whether this release has stored cover art. Only then is a `coverArt` id
@@ -94,7 +94,7 @@ pub(crate) async fn release_album_id3_with(
         duration: total_duration_secs(&tracks),
         created: Some(release.created_at.to_rfc3339()),
         year: release.pressing.year.or(album.album.year),
-        music_brainz_id: release_mb_id(release),
+        music_brainz_id: release_mb_id(services, &release.id).await?,
     })
 }
 
@@ -205,7 +205,7 @@ pub(crate) async fn track_child(
         bit_depth: audio.bit_depth,
         sampling_rate: audio.sampling_rate,
         channel_count: audio.channel_count,
-        music_brainz_id: release_mb_id(release),
+        music_brainz_id: release_mb_id(services, &release.id).await?,
     })
 }
 
@@ -249,7 +249,7 @@ pub(crate) async fn search_track_child(
         bit_depth: audio.bit_depth,
         sampling_rate: audio.sampling_rate,
         channel_count: audio.channel_count,
-        music_brainz_id: release_mb_id(&release),
+        music_brainz_id: release_mb_id(services, &audio.release_id).await?,
     })
 }
 

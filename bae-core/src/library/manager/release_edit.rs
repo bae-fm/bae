@@ -29,7 +29,14 @@ impl LibraryManager {
             .ok_or_else(|| {
                 LibraryError::Import(format!("Album '{}' not found", release.album_id))
             })?;
-        let can_reset_to_source = release.metadata_provenance.is_some();
+        // There is something to reset to when the draft was read from
+        // somewhere: a catalog's document, or the files' own tags.
+        let can_reset_to_source = release.draft_from_tags
+            || context
+                .detail
+                .records
+                .iter()
+                .any(|record| record.reads_draft);
         let display = crate::album_detail::ReleaseEditDisplayContext::from_raw(&context.detail)?;
         let cover = cover_ref_for(&self.database, release_id).await?;
 

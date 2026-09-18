@@ -501,7 +501,7 @@ pub async fn lookup_release_id_by_discogs_url(
 /// Asks MB's URL endpoint for a release linking back to this Discogs release and,
 /// when there is one, fetches its release and release-group JSON. Returns the
 /// parsed `MbReleaseResponse` (the caller pulls the release and group IDs out for
-/// `release_identities`) plus the documents to store with it.
+/// the release's records) plus the documents to store with it.
 ///
 /// The release document is keyed by the *Discogs* release id it was found from:
 /// MusicBrainz's URL endpoint is what turned one into the other, and nothing in

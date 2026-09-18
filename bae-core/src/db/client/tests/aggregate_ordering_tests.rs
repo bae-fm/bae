@@ -25,11 +25,11 @@ async fn aggregate_db() -> (Database, tempfile::TempDir) {
                 ('2bd047a8-0ed8-4f71-851d-e168c16cbd36', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '863911c6-a6b6-40a7-8096-b85eb877f7c7', 1, 'stamp', '2026-01-01T00:00:00Z'),
                 ('1c2ab709-4221-4c38-8d0c-ff1d18107cce', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '7e7d8df5-8292-4287-80be-7abd24f5a992', 0, 'stamp', '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+            INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
             VALUES
-                ('8aa66d48-65a0-42e4-8c1d-e7481e8c1861', 'a67c03ad-425f-45e9-8279-0144c852aaa5', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('64e79a1f-404a-4c34-809a-a3cb44bf1942', 'a67c03ad-425f-45e9-8279-0144c852aaa5', 'file_tags', 1, 'stamp', '2026-01-01T00:00:01Z'),
-                ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', 'file_tags', 1, 'stamp', '2026-01-01T00:00:01Z');
+                ('8aa66d48-65a0-42e4-8c1d-e7481e8c1861', 'a67c03ad-425f-45e9-8279-0144c852aaa5', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                ('64e79a1f-404a-4c34-809a-a3cb44bf1942', 'a67c03ad-425f-45e9-8279-0144c852aaa5', 1, 'stamp', '2026-01-01T00:00:01Z'),
+                ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', 1, 'stamp', '2026-01-01T00:00:01Z');
 
             INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at)
             VALUES ('432c8996-8af0-43dc-868a-822a256f65c4', 'Work Title A', 'work', 'mb-work-a', 'stamp', '2026-01-01T00:00:00Z');
@@ -134,10 +134,10 @@ async fn album_and_storage_pages_allow_missing_primary_artist() {
                 ('c9966a2c-61b1-40dd-87ef-118587e57fe7', '049faa5b-52d9-4109-832b-f6853740c876', '863911c6-a6b6-40a7-8096-b85eb877f7c7', 1, 'stamp', '2026-01-01T00:00:00Z'),
                 ('4953a209-c6c7-4b0c-82dd-cc13e47af890', '049faa5b-52d9-4109-832b-f6853740c876', '7e7d8df5-8292-4287-80be-7abd24f5a992', 0, 'stamp', '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+            INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
             VALUES
-                ('7c3d0881-e6d0-4252-8075-709b2282bcc1', 'f6506bc5-0b41-44de-862f-1668e72c08c6', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('ba00ebe0-da50-428a-8ceb-2389d9a9f232', '049faa5b-52d9-4109-832b-f6853740c876', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z');
+                ('7c3d0881-e6d0-4252-8075-709b2282bcc1', 'f6506bc5-0b41-44de-862f-1668e72c08c6', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                ('ba00ebe0-da50-428a-8ceb-2389d9a9f232', '049faa5b-52d9-4109-832b-f6853740c876', 1, 'stamp', '2026-01-01T00:00:00Z');
             ",
         )
         .map(|_| ())

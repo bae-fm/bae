@@ -568,7 +568,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         &hash,
         &CoverSelection::Remote(
             "https://example.invalid/cover".to_string(),
-            MetadataSource::MusicBrainz,
+            Catalog::MusicBrainz,
         ),
     )
     .await

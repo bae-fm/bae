@@ -477,7 +477,7 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
 /// about MusicBrainz.
 #[tokio::test]
 async fn the_last_source_being_asked_cannot_be_switched_off() {
-    use crate::import::{MetadataSource, SourceAvailability};
+    use crate::import::{Catalog, SourceAvailability};
 
     let (manager, _temp_dir) = setup_test_manager().await;
 
@@ -485,18 +485,18 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
     let states: Vec<_> = manager
         .metadata_sources()
         .into_iter()
-        .map(|entry| (entry.source, entry.state))
+        .map(|entry| (entry.catalog, entry.state))
         .collect();
     assert_eq!(
         states,
         vec![
-            (MetadataSource::MusicBrainz, SourceAvailability::On),
-            (MetadataSource::Discogs, SourceAvailability::NotConfigured),
+            (Catalog::MusicBrainz, SourceAvailability::On),
+            (Catalog::Discogs, SourceAvailability::NotConfigured),
         ]
     );
 
     let refused = manager
-        .set_metadata_source_enabled(MetadataSource::MusicBrainz, false)
+        .set_metadata_source_enabled(Catalog::MusicBrainz, false)
         .expect_err("the only source being asked cannot be switched off");
     assert!(
         refused.to_string().contains("MusicBrainz"),
@@ -515,12 +515,12 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
 /// credential arrives.
 #[tokio::test]
 async fn an_unreachable_source_keeps_the_switch_underneath_it() {
-    use crate::import::{MetadataSource, SourceAvailability};
+    use crate::import::{Catalog, SourceAvailability};
 
     let (manager, _temp_dir) = setup_test_manager().await;
 
     manager
-        .set_metadata_source_enabled(MetadataSource::Discogs, false)
+        .set_metadata_source_enabled(Catalog::Discogs, false)
         .expect("switching off a source nothing is asking is allowed");
     assert_eq!(
         manager.metadata_sources()[1].state,
@@ -532,7 +532,7 @@ async fn an_unreachable_source_keeps_the_switch_underneath_it() {
             .get_config()
             .prefs
             .metadata_sources
-            .enabled(MetadataSource::Discogs),
+            .enabled(Catalog::Discogs),
         "the switch is kept where the person left it"
     );
 }

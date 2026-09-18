@@ -58,6 +58,7 @@ impl ImportService {
     pub(super) async fn reconcile_prepared_release(
         &self,
         parsed: crate::import::ParsedAlbum,
+        records: Vec<crate::import::ReleaseRecord>,
         user_edit: Option<crate::import::ReleaseUserEdit>,
         replacement_release_ids: &[String],
         prepared_artist_images: &[crate::import::PreparedArtistImage],
@@ -92,13 +93,12 @@ impl ImportService {
             work_graph,
             release_artist_roles,
             track_artist_roles,
-            identities,
         } = parsed;
 
         let album_title = db_album.title.clone();
 
         let existing_album_id = library_manager
-            .find_existing_album_for_import_excluding(&identities, replacement_release_ids)
+            .find_existing_album_for_import_excluding(&records, replacement_release_ids)
             .await?;
         if let Some(album_id) = &existing_album_id {
             db_release.album_id = album_id.clone();
@@ -249,7 +249,7 @@ impl ImportService {
             artists: artist_inserts,
             artist_external_id_updates,
             artist_images,
-            identities,
+            records,
             album_title,
         })
     }

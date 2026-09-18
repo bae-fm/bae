@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 use crate::signals::SignalOrigin;
 
 fn line(text: &str) -> TextLine {
@@ -16,7 +16,7 @@ fn text(lines: &[&str]) -> CandidateText {
 }
 
 fn result() -> MetadataResult {
-    MetadataResult::for_test(MetadataSource::MusicBrainz, "rel-1", None)
+    MetadataResult::for_test(Catalog::MusicBrainz, "rel-1", None)
 }
 
 const NO_LOOKUP: LookupProvenance = LookupProvenance {

@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 use serial_test::serial;
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -85,8 +85,8 @@ fn search_result_remote_cover_uses_thumb_as_cover_when_cover_image_is_absent() {
 
     assert_eq!(cover.url, "https://discogs.example/thumb.jpg");
     assert_eq!(cover.thumbnail_url, "https://discogs.example/thumb.jpg");
-    assert_eq!(cover.label, MetadataSource::Discogs.cover_source_label());
-    assert_eq!(cover.source, MetadataSource::Discogs);
+    assert_eq!(cover.label, Catalog::Discogs.cover_source_label());
+    assert_eq!(cover.source, Catalog::Discogs);
 }
 
 #[test]
@@ -97,8 +97,8 @@ fn search_result_remote_cover_uses_cover_as_thumbnail_when_thumb_is_absent() {
 
     assert_eq!(cover.url, "https://discogs.example/full.jpg");
     assert_eq!(cover.thumbnail_url, "https://discogs.example/full.jpg");
-    assert_eq!(cover.label, MetadataSource::Discogs.cover_source_label());
-    assert_eq!(cover.source, MetadataSource::Discogs);
+    assert_eq!(cover.label, Catalog::Discogs.cover_source_label());
+    assert_eq!(cover.source, Catalog::Discogs);
 }
 
 #[test]

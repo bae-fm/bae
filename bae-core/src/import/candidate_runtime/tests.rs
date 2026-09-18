@@ -3,7 +3,7 @@ use crate::db::LibraryStatus;
 use crate::import::candidate_search::{CandidateSearch, SourceSearch};
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate, InvalidReason};
 use crate::import::types::{
-    ImportPhase, ImportProgress, MetadataSource, MetadataSourceAvailability, PrepareStep,
+    ImportPhase, ImportProgress, Catalog, CatalogAvailability, PrepareStep,
     SourceAvailability,
 };
 use crate::util::rate_limiter::CallPriority;
@@ -663,13 +663,13 @@ fn every_field_yields_its_own_status_in_one_order() {
     );
 }
 
-/// A library that asks every source — what these tests search from unless
-/// they are about a source that is not asked.
-fn every_source_on() -> Vec<MetadataSourceAvailability> {
-    MetadataSource::ALL
+/// A library that asks every catalog it can — what these tests search from
+/// unless they are about a catalog that is not asked.
+fn every_source_on() -> Vec<CatalogAvailability> {
+    Catalog::LOOKUP
         .into_iter()
-        .map(|source| MetadataSourceAvailability {
-            source,
+        .map(|catalog| CatalogAvailability {
+            catalog,
             state: SourceAvailability::On,
         })
         .collect()
@@ -683,7 +683,7 @@ fn search_query() -> crate::import::search::SearchQuery {
 }
 
 fn search_result(
-    source: MetadataSource,
+    source: Catalog,
     release_id: &str,
 ) -> (crate::import::search::MetadataResult, LibraryStatus) {
     (
@@ -732,14 +732,14 @@ fn two_landings_on_one_run_both_stand() {
     assert!(runtime.land_search(
         key,
         run,
-        MetadataSource::MusicBrainz,
-        Ok(vec![search_result(MetadataSource::MusicBrainz, "mb-1")]),
+        Catalog::MusicBrainz,
+        Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
     ));
     assert!(runtime.land_search(
         key,
         run,
-        MetadataSource::Discogs,
-        Ok(vec![search_result(MetadataSource::Discogs, "dg-1")]),
+        Catalog::Discogs,
+        Ok(vec![search_result(Catalog::Discogs, "dg-1")]),
     ));
 
     let landed = runtime
@@ -747,11 +747,11 @@ fn two_landings_on_one_run_both_stand() {
         .and_then(|runtime| runtime.search)
         .expect("the search is what is in flight for the key");
     assert!(matches!(
-        landed.source(MetadataSource::MusicBrainz),
+        landed.source(Catalog::MusicBrainz),
         Some(SourceSearch::Done { .. })
     ));
     assert!(matches!(
-        landed.source(MetadataSource::Discogs),
+        landed.source(Catalog::Discogs),
         Some(SourceSearch::Done { .. })
     ));
     assert_eq!(landed.library_statuses.len(), 2);
@@ -777,8 +777,8 @@ fn a_superseded_run_cannot_land() {
     assert!(!runtime.land_search(
         key,
         first,
-        MetadataSource::MusicBrainz,
-        Ok(vec![search_result(MetadataSource::MusicBrainz, "mb-1")]),
+        Catalog::MusicBrainz,
+        Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
     ));
     assert!(published_search(&mut changes).is_empty());
     assert!(matches!(
@@ -786,7 +786,7 @@ fn a_superseded_run_cannot_land() {
             .get(key)
             .and_then(|runtime| runtime.search)
             .expect("the second run stands")
-            .source(MetadataSource::MusicBrainz),
+            .source(Catalog::MusicBrainz),
         Some(SourceSearch::Searching)
     ));
 }
@@ -805,8 +805,8 @@ fn a_cleared_search_cannot_land() {
     assert!(!runtime.land_search(
         key,
         run,
-        MetadataSource::MusicBrainz,
-        Ok(vec![search_result(MetadataSource::MusicBrainz, "mb-1")]),
+        Catalog::MusicBrainz,
+        Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
     ));
     assert!(runtime.get(key).is_none());
 }
@@ -821,19 +821,19 @@ fn a_retry_re_asks_only_the_failed_sources_on_a_new_run() {
     assert!(runtime.land_search(
         key,
         run,
-        MetadataSource::MusicBrainz,
-        Ok(vec![search_result(MetadataSource::MusicBrainz, "mb-1")]),
+        Catalog::MusicBrainz,
+        Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
     ));
     assert!(runtime.land_search(
         key,
         run,
-        MetadataSource::Discogs,
+        Catalog::Discogs,
         Err(crate::signals::LookupFailure::Network),
     ));
 
     let (query, sources, retried) = runtime.retry_search(key).expect("Discogs failed");
     assert_eq!(query, search_query());
-    assert_eq!(sources, vec![MetadataSource::Discogs]);
+    assert_eq!(sources, vec![Catalog::Discogs]);
     assert!(runtime.search_run_is_current(key, retried));
     assert!(!runtime.search_run_is_current(key, run));
     let search = runtime
@@ -841,19 +841,19 @@ fn a_retry_re_asks_only_the_failed_sources_on_a_new_run() {
         .and_then(|runtime| runtime.search)
         .expect("the retried search is in flight");
     assert!(matches!(
-        search.source(MetadataSource::MusicBrainz),
+        search.source(Catalog::MusicBrainz),
         Some(SourceSearch::Done { .. })
     ));
     assert_eq!(
-        search.source(MetadataSource::Discogs),
+        search.source(Catalog::Discogs),
         Some(&SourceSearch::Searching)
     );
 
     assert!(runtime.land_search(
         key,
         retried,
-        MetadataSource::Discogs,
-        Ok(vec![search_result(MetadataSource::Discogs, "dg-1")]),
+        Catalog::Discogs,
+        Ok(vec![search_result(Catalog::Discogs, "dg-1")]),
     ));
     assert!(
         runtime.retry_search(key).is_none(),
@@ -896,18 +896,18 @@ fn switching_a_source_off_closes_its_part_of_every_live_search() {
     runtime.claim_for_import(importing);
     let mut changes = runtime.subscribe();
 
-    runtime.switch_source_off(MetadataSource::MusicBrainz);
+    runtime.switch_source_off(Catalog::MusicBrainz);
 
     let search = runtime
         .get(searching)
         .and_then(|state| state.search)
         .expect("the search is still what is in flight for the key");
     assert_eq!(
-        search.source(MetadataSource::MusicBrainz),
+        search.source(Catalog::MusicBrainz),
         Some(&SourceSearch::Off)
     );
     assert_eq!(
-        search.source(MetadataSource::Discogs),
+        search.source(Catalog::Discogs),
         Some(&SourceSearch::Searching),
         "the source still being asked is untouched"
     );
@@ -933,13 +933,13 @@ fn a_landing_for_a_switched_off_source_goes_nowhere() {
         CandidateSearch::started(search_query(), &every_source_on()),
     );
 
-    runtime.switch_source_off(MetadataSource::MusicBrainz);
+    runtime.switch_source_off(Catalog::MusicBrainz);
     assert!(
         runtime.land_search(
             key,
             run,
-            MetadataSource::MusicBrainz,
-            Ok(vec![search_result(MetadataSource::MusicBrainz, "mb-1")]),
+            Catalog::MusicBrainz,
+            Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
         ),
         "the run is current, so the landing reaches the search"
     );
@@ -949,7 +949,7 @@ fn a_landing_for_a_switched_off_source_goes_nowhere() {
         .and_then(|state| state.search)
         .expect("the search is what is in flight for the key");
     assert_eq!(
-        search.source(MetadataSource::MusicBrainz),
+        search.source(Catalog::MusicBrainz),
         Some(&SourceSearch::Off),
         "a part that is not looking takes no answer"
     );

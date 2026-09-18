@@ -12,7 +12,7 @@
 //! is what the bridge and event payloads carry. (`crate::queue::QueueItem` is
 //! built directly by `db::get_queue_items` — it has no raw counterpart here.)
 
-use crate::import::{MetadataProvenance, MetadataSource};
+use crate::import::Catalog;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 
@@ -114,7 +114,7 @@ pub struct DbWorkArtist {
     pub work_id: String,
     pub artist_id: String,
     pub position: i32,
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub created_at: DateTime<Utc>,
 }
 
@@ -124,7 +124,7 @@ pub struct DbWorkPart {
     pub parent_work_id: String,
     pub child_work_id: String,
     pub position: i32,
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub created_at: DateTime<Utc>,
 }
 
@@ -134,7 +134,7 @@ pub struct DbTrackWork {
     pub track_id: String,
     pub work_id: String,
     pub position: i32,
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub created_at: DateTime<Utc>,
 }
 
@@ -144,7 +144,7 @@ pub struct DbReleaseArtistRole {
     pub release_id: String,
     pub artist_id: String,
     pub position: i32,
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub source_credit: Option<String>,
     pub created_at: DateTime<Utc>,
 }
@@ -155,7 +155,7 @@ pub struct DbTrackArtistRole {
     pub track_id: String,
     pub artist_id: String,
     pub position: i32,
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub source_credit: Option<String>,
     pub created_at: DateTime<Utc>,
 }
@@ -163,9 +163,10 @@ pub struct DbTrackArtistRole {
 /// of it ("1973 Original", "2016 Remaster", …). The releases themselves, and
 /// their import status, live in the `releases` table.
 ///
-/// Albums carry no per-source identity of their own — identity lives per release
-/// in the `release_identities` side table, and cross-source equivalences surface
-/// implicitly when an album's releases hold rows in several sources. Releases
+/// Albums carry no records of their own — a record is a catalog's description
+/// of one release, kept in a side table, and cross-catalog
+/// equivalences surface implicitly when an album's releases hold rows in
+/// several catalogs. Releases
 /// attach to albums loosely (title/artist match), so album-level identity
 /// columns would claim a certainty the attach rule doesn't have.
 #[derive(Debug, Clone, PartialEq)]
@@ -213,8 +214,8 @@ pub struct DbAlbumSummary {
 }
 
 /// Probe whether a search-result candidate is already in the library: as the
-/// same pressing (a `release_identities` row on this `source` whose
-/// `source_release_id` is `release_id`), or as the same album (any release with
+/// same pressing (a record on this `source` whose key is
+/// `release_id`), or as the same album (any release with
 /// this `source` + `source_group_id`). Fields are the source's own IDs, not
 /// bae's; the `LibraryStatus` result is correlated back via `release_id`.
 ///
@@ -224,7 +225,7 @@ pub struct DbAlbumSummary {
 #[derive(Debug, Clone)]
 pub struct LibraryCheck {
     pub release_id: String,
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub source_group_id: Option<String>,
 }
 
@@ -300,9 +301,11 @@ pub struct DbRelease {
     /// what editorial says, so it stays independent of the identified MB/Discogs
     /// row. A signal at re-identify time, and shown for confidence.
     pub disc_id: Option<String>,
-    /// Where the current metadata began. `None` means direct entry; identity
-    /// remains separate in `release_identities`.
-    pub metadata_provenance: Option<MetadataProvenance>,
+    /// Whether the draft's facts were read off the files' own tags. The other
+    /// two answers are records: the one carrying `reads_draft` names the
+    /// document a draft was read from, and a release with neither started
+    /// blank.
+    pub draft_from_tags: bool,
     /// Shared, synced fact (the coven gate column): is this release's audio in
     /// the cloud home (remote) or local to one device (local). A local release's
     /// in-place files are registered with coven as the user's own external
@@ -588,7 +591,7 @@ impl DbWorkArtist {
         work_id: &str,
         artist_id: &str,
         position: i32,
-        source: MetadataSource,
+        source: Catalog,
         id: String,
         now: DateTime<Utc>,
     ) -> Self {
@@ -608,7 +611,7 @@ impl DbWorkPart {
         parent_work_id: &str,
         child_work_id: &str,
         position: i32,
-        source: MetadataSource,
+        source: Catalog,
         id: String,
         now: DateTime<Utc>,
     ) -> Self {
@@ -628,7 +631,7 @@ impl DbTrackWork {
         track_id: &str,
         work_id: &str,
         position: i32,
-        source: MetadataSource,
+        source: Catalog,
         id: String,
         now: DateTime<Utc>,
     ) -> Self {
@@ -648,7 +651,7 @@ impl DbReleaseArtistRole {
         release_id: &str,
         artist_id: &str,
         position: i32,
-        source: MetadataSource,
+        source: Catalog,
         source_credit: Option<String>,
         id: String,
         now: DateTime<Utc>,
@@ -670,7 +673,7 @@ impl DbTrackArtistRole {
         track_id: &str,
         artist_id: &str,
         position: i32,
-        source: MetadataSource,
+        source: Catalog,
         source_credit: Option<String>,
         id: String,
         now: DateTime<Utc>,
@@ -723,7 +726,7 @@ impl DbRelease {
             release_name: None,
             pressing: Pressing::blank(),
             disc_id: None,
-            metadata_provenance: None,
+            draft_from_tags: false,
             remote: false,
             source_folder_name: None,
             content_hash: None,

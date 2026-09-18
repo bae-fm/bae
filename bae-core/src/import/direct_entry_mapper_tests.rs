@@ -25,8 +25,7 @@ fn direct_entry_uses_the_physical_track_layout_without_provenance() {
     assert_eq!(parsed.album.title, "");
     assert_eq!(parsed.artists.len(), 1);
     assert_eq!(parsed.artists[0].name, "");
-    assert_eq!(parsed.release.metadata_provenance, None);
-    assert!(parsed.identities.is_empty());
+    assert!(!parsed.release.draft_from_tags);
     assert_eq!(parsed.tracks.len(), 2);
     assert!(parsed.tracks.iter().all(|track| track.title.is_empty()));
     assert_eq!(

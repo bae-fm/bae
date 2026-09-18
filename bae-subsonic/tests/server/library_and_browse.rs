@@ -9,7 +9,7 @@ use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::release_candidate::CandidateSource;
 use bae_core::import::{
-    ImportCommand, MetadataProvenance, MetadataSource, ReleaseFileScope, StorageMode,
+    ImportCommand, MetadataProvenance, Catalog, ReleaseFileScope, StorageMode,
 };
 use bae_core::library::{AppServices, LibraryManager};
 use bae_test_support as support;
@@ -245,8 +245,7 @@ async fn seed_library() -> Library {
             storage_mode: StorageMode::Local,
             pin: false,
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::Discogs,
-                release_id: discogs_key,
+                record: bae_core::import::MetadataRef::new(Catalog::Discogs, discogs_key),
                 partners: vec![],
             }),
             user_edit: None,

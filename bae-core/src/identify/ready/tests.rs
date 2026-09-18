@@ -4,11 +4,11 @@
 use super::*;
 use crate::identify::LookupProvenance;
 use crate::import::search::SourceTracks;
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 
 fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResult {
     MetadataResult {
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         release_id: release_id.to_string(),
         title: "Album".to_string(),
         artist: None,
@@ -57,7 +57,7 @@ fn barcoded(mut result: MetadataResult, barcode: &str) -> MetadataResult {
 /// MusicBrainz row. A Discogs search result never carries a tracklist.
 fn discogs(release_id: &str, barcode: &str) -> MetadataResult {
     MetadataResult {
-        source: MetadataSource::Discogs,
+        source: Catalog::Discogs,
         source_group_id: None,
         ..barcoded(result(release_id, None), barcode)
     }

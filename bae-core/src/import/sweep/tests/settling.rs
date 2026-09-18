@@ -209,14 +209,17 @@ async fn explicit_lookup_stores_a_metadata_projection_failure() {
         &[probed, 0],
     ))
     .unwrap();
-    incomplete
-        .as_object_mut()
-        .unwrap()
-        .remove("release-group");
+    // No artist credits: the tracklist still reads, and the mapper refuses a
+    // release with nobody credited. The release group goes too — not because
+    // its absence fails anything, but because a document that names one sends
+    // the fetch after it, and this run has no group route to answer with.
+    let incomplete = incomplete.as_object_mut().unwrap();
+    incomplete.remove("artist-credit");
+    incomplete.remove("release-group");
     fixture.provider.route(
         "/release/mb-projection-1?",
         200,
-        incomplete.to_string(),
+        serde_json::Value::Object(incomplete.clone()).to_string(),
     );
     fixture.scan(1).await;
 
@@ -260,8 +263,7 @@ async fn a_settled_candidate_uses_archived_metadata_and_prepares_its_cover() {
         .select_candidate_metadata_provenance(
             dir.to_string_lossy().into_owned(),
             crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-offline-1".to_string(),
+                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-offline-1".to_string()),
                 partners: vec![],
             },
         )
@@ -316,8 +318,7 @@ async fn a_settled_lead_with_no_documents_fails_loud() {
         .select_candidate_metadata_provenance(
             dir.to_string_lossy().into_owned(),
             crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-missing-1".to_string(),
+                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-missing-1".to_string()),
                 partners: vec![],
             },
         )
@@ -353,8 +354,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     );
 
     let pick = || crate::import::MetadataProvenance::ExternalRelease {
-        source: crate::import::MetadataSource::MusicBrainz,
-        release_id: "mb-manual-1".to_string(),
+        record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-manual-1".to_string()),
         partners: vec![],
     };
     fixture
@@ -452,12 +452,8 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     assert_eq!(
         row.metadata_provenance,
         Some(crate::import::MetadataProvenance::ExternalRelease {
-            source: crate::import::MetadataSource::MusicBrainz,
-            release_id: "mb-paired-1".to_string(),
-            partners: vec![crate::import::MetadataRef::new(
-                "70000101",
-                crate::import::MetadataSource::Discogs,
-            )],
+            record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-paired-1".to_string()),
+            partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000101")],
         }),
         "the stored pick claims the Discogs record of the same pressing"
     );
@@ -551,12 +547,8 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     assert_eq!(
         row.metadata_provenance,
         Some(crate::import::MetadataProvenance::ExternalRelease {
-            source: crate::import::MetadataSource::MusicBrainz,
-            release_id: "mb-paired-2".to_string(),
-            partners: vec![crate::import::MetadataRef::new(
-                "70000102",
-                crate::import::MetadataSource::Discogs,
-            )],
+            record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-paired-2".to_string()),
+            partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000102")],
         }),
         "the stored pick claims the Discogs record the barcode alone found"
     );
@@ -624,7 +616,7 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     };
     assert_eq!(
         matches[0].source,
-        crate::import::MetadataSource::Discogs,
+        crate::import::Catalog::Discogs,
         "the folder agrees with the Discogs record about more: {matches:?}"
     );
     assert!(
@@ -634,12 +626,8 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     assert_eq!(
         row.metadata_provenance,
         Some(crate::import::MetadataProvenance::ExternalRelease {
-            source: crate::import::MetadataSource::Discogs,
-            release_id: "70000103".to_string(),
-            partners: vec![crate::import::MetadataRef::new(
-                "mb-paired-3",
-                crate::import::MetadataSource::MusicBrainz,
-            )],
+            record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000103".to_string()),
+            partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-paired-3")],
         }),
         "so the pick names it primary and the MusicBrainz record its partner"
     );

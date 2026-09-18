@@ -21,7 +21,7 @@
 
 use super::folder_scanner::{FolderReleaseDecisionKey, ResolvedFolderReleaseBoundary};
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
-use super::types::{MetadataProvenance, MetadataRef, MetadataSource};
+use super::types::{Catalog, MetadataProvenance};
 use super::{CandidateRuntimeSnapshot, ImportedRelease};
 use crate::identify::{LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
 
@@ -218,39 +218,41 @@ mod tests {
         );
     }
 
-    /// A pick pairs one source's release with another's into one pressing and
+    /// A pick pairs one catalog's release with another's into one pressing and
     /// claims both, so the row names both — in the order surfaces list
-    /// sources, whichever of them the draft was read from.
+    /// catalogs, whichever of them the draft was read from.
     #[test]
-    fn a_pick_names_every_source_it_claims_in_the_fixed_order() {
+    fn a_pick_names_every_catalog_it_claims_in_the_fixed_order() {
         let led_by_partner = MetadataProvenance::ExternalRelease {
-            source: MetadataSource::Discogs,
-            release_id: "discogs-1".to_string(),
-            partners: vec![MetadataRef::new(
+            record: crate::import::MetadataRef::new(Catalog::Discogs, "discogs-1".to_string()),
+            partners: vec![crate::import::MetadataRef::new(
+                Catalog::MusicBrainz,
                 "mb-1".to_string(),
-                MetadataSource::MusicBrainz,
             )],
         };
-        let TriageReading::Identified { sources } =
+        let TriageReading::Identified { records } =
             TriageReading::of(Some(&a_draft()), Some(&led_by_partner))
         else {
             panic!("a pick reads as identified");
         };
         assert_eq!(
-            sources
+            records
                 .iter()
-                .map(|source| (source.source, source.release_id.as_str()))
+                .map(|record| (record.catalog, record.key.as_str(), record.reads_draft))
                 .collect::<Vec<_>>(),
             vec![
-                (MetadataSource::MusicBrainz, "mb-1"),
-                (MetadataSource::Discogs, "discogs-1"),
+                (Catalog::MusicBrainz, "mb-1", false),
+                (Catalog::Discogs, "discogs-1", true),
             ]
         );
-        assert_eq!(sources[0].url, "https://musicbrainz.org/release/mb-1");
-        assert_eq!(sources[1].url, "https://www.discogs.com/release/discogs-1");
+        assert_eq!(records[0].url, "https://musicbrainz.org/release/mb-1");
+        assert_eq!(records[1].url, "https://www.discogs.com/release/discogs-1");
         assert!(
-            sources.iter().all(|source| source.label.is_none() && source.year.is_none()),
-            "the facts arrive with whoever reads the archived documents"
+            records
+                .iter()
+                .all(|record| record.group_key == record.key),
+            "until the archived documents are read, each release stands as its \
+             own group"
         );
     }
 }

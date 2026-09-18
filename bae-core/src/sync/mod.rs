@@ -122,7 +122,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("albums", RowIdentity::IndependentUuid).gated_by_descendants(),
         SyncedTable::new("album_artists", RowIdentity::IndependentUuid).gated_through("album_id"),
         SyncedTable::new("releases", RowIdentity::IndependentUuid).gated_by("remote"),
-        SyncedTable::new("release_identities", RowIdentity::IndependentUuid)
+        SyncedTable::new("release_records", RowIdentity::IndependentUuid)
             .gated_through("release_id"),
         SyncedTable::new("tracks", RowIdentity::IndependentUuid).gated_through("release_id"),
         SyncedTable::new("track_artists", RowIdentity::IndependentUuid).gated_through("track_id"),
@@ -267,10 +267,36 @@ mod tests {
                     _ => {}
                 }
             }
-            out.push((name, sql[open + 1..close].to_string()));
+            out.push((name, open, sql[open + 1..close].to_string()));
             cursor = close;
         }
-        out
+
+        // A rung that drops a table takes it out of the schema — unless a later
+        // one creates it again, which is how a table rebuild reads here.
+        let mut dropped: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
+        let drop_marker = "DROP TABLE ";
+        let mut cursor = 0;
+        while let Some(rel) = sql[cursor..].find(drop_marker) {
+            let mut after = cursor + rel + drop_marker.len();
+            if sql[after..].starts_with("IF EXISTS ") {
+                after += "IF EXISTS ".len();
+            }
+            let name: String = sql[after..]
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            dropped
+                .entry(name)
+                .and_modify(|at| *at = after)
+                .or_insert(after);
+            cursor = after;
+        }
+
+        out.into_iter()
+            .filter(|(name, at, _)| dropped.get(name).is_none_or(|dropped_at| at > dropped_at))
+            .map(|(name, _, body)| (name, body))
+            .collect()
     }
 
     fn has_lww_clock(body: &str) -> bool {
@@ -369,7 +395,7 @@ mod tests {
                 ("covers", "id"),
                 ("release_artist_roles", "release_id"),
                 ("release_files", "release_id"),
-                ("release_identities", "release_id"),
+                ("release_records", "release_id"),
                 ("track_artist_roles", "track_id"),
                 ("track_artists", "track_id"),
                 ("track_works", "track_id"),

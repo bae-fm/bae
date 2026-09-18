@@ -13,7 +13,7 @@
 use super::{Effect, SignalState, SignalsContext};
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 use crate::signals::{DiscIdSignal, LookupFailure};
 
 /// What one lookup produced: each match paired with its library status.
@@ -71,7 +71,7 @@ impl DiscidProgress {
 /// chosen catalog number.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProviderLookup {
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub state: LookupState,
 }
 
@@ -93,7 +93,7 @@ impl LookupState {
 /// leaves it failed where it was.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProviderBarcodeLookup {
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub state: BarcodeLookupState,
 }
 
@@ -478,7 +478,7 @@ pub(super) fn found_or_no_match(count: u32) -> SignalState {
 pub(super) fn start_discid_progress(
     signal: &DiscIdSignal,
     excluded: bool,
-    providers: &[MetadataSource],
+    providers: &[Catalog],
     effects: &mut Vec<Effect>,
 ) -> DiscidProgress {
     match signal {
@@ -487,11 +487,11 @@ pub(super) fn start_discid_progress(
             track_count,
             ..
         } => {
-            // One source answers disc IDs. A run that is not asking it — or
+            // One catalog answers disc IDs. A run that is not asking it — or
             // that the person took the disc ID out of — has no disc-ID lookup
             // to dispatch, and says so rather than waiting on an answer that
             // is never coming.
-            if excluded || !providers.contains(&MetadataSource::DISC_ID_SOURCE) {
+            if excluded || !providers.contains(&Catalog::DISC_ID_CATALOG) {
                 return DiscidProgress::NotAsked {
                     track_count: *track_count,
                 };
@@ -528,7 +528,7 @@ pub(super) fn start_barcode_progress(
     excluded: &[String],
     had_source: bool,
     scan_failure: Option<&LookupFailure>,
-    providers: &[MetadataSource],
+    providers: &[Catalog],
     effects: &mut Vec<Effect>,
 ) -> BarcodeProgress {
     if let Some(failure) = scan_failure {
@@ -579,7 +579,7 @@ pub(super) fn start_barcode_progress(
 /// Ask every provider about one chosen catalog number.
 pub(super) fn start_catalog_lookup(
     catalog: &str,
-    providers: &[MetadataSource],
+    providers: &[Catalog],
     effects: &mut Vec<Effect>,
 ) -> CatalogLookup {
     CatalogLookup {
@@ -603,7 +603,7 @@ pub(super) fn start_catalog_lookup(
 /// Ask every provider about every chosen catalog number.
 pub(super) fn start_catalog_progress(
     chosen: &[String],
-    providers: &[MetadataSource],
+    providers: &[Catalog],
     effects: &mut Vec<Effect>,
 ) -> CatalogProgress {
     if chosen.is_empty() {

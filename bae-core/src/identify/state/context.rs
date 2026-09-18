@@ -23,7 +23,7 @@ use super::{
 };
 use crate::identify::agreements::CandidateText;
 use crate::identify::IdentifyFailure;
-use crate::import::{LookupChoices, MetadataSource};
+use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
     ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal,
 };
@@ -330,7 +330,7 @@ pub struct SignalsContext {
     /// The providers this run asks — MusicBrainz, and Discogs when it is
     /// configured. Fixed when the run starts, so a lookup that starts later,
     /// like a chosen catalog number's, asks the same ones.
-    pub providers: Vec<MetadataSource>,
+    pub providers: Vec<Catalog>,
     /// Where the artwork pass has got to, from the latest snapshot. Progress
     /// a surface shows, not an input the lookups read; a context stood up
     /// from a stored verdict never saw a pass and reads `Absent`.
@@ -378,7 +378,7 @@ impl SignalsContext {
     /// `choices` is what the person decided it asks about: the exclusions are
     /// set and every chosen catalog number is chosen, with nothing found for
     /// any of them yet.
-    pub(super) fn started(providers: Vec<MetadataSource>, choices: LookupChoices) -> Self {
+    pub(super) fn started(providers: Vec<Catalog>, choices: LookupChoices) -> Self {
         Self {
             providers,
             disc: DiscIdEvidence {

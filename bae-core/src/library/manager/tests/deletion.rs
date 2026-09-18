@@ -79,7 +79,7 @@ async fn work_detail_release_rows_are_display_ready() {
         &track.id,
         &work.id,
         0,
-        MetadataSource::MusicBrainz,
+        Catalog::MusicBrainz,
         TRACK_WORK_A.to_string(),
         now,
     );

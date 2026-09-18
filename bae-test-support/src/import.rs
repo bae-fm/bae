@@ -79,12 +79,14 @@ pub async fn try_wait_for_import_complete(
 }
 
 /// The provenance of an import identified by a Discogs release, with no
-/// partner source alongside it — what a [`seed_discogs_test_release`] fixture
+/// partner catalog alongside it — what a [`seed_discogs_test_release`] fixture
 /// is imported under.
 pub fn discogs_release(release_id: impl Into<String>) -> bae_core::import::MetadataProvenance {
     bae_core::import::MetadataProvenance::ExternalRelease {
-        source: bae_core::import::MetadataSource::Discogs,
-        release_id: release_id.into(),
+        record: bae_core::import::MetadataRef::new(
+            bae_core::import::Catalog::Discogs,
+            release_id.into(),
+        ),
         partners: vec![],
     }
 }

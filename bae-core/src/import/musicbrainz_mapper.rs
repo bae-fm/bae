@@ -1,12 +1,12 @@
 //! MusicBrainz release → `ParsedAlbum` mapping, plus the cross-link the response
-//! carries. Identity rows are emitted onto `ParsedAlbum::identities`; the actual
-//! `release_identities` writes happen at commit.
+//! carries. The records a pick commits are read off the archived documents by
+//! `ReleasePayloads::records`, not built here.
 //!
 //! MB → Discogs cross-link: MB releases carry url-rels that routinely include a
-//! Discogs release URL. Parsing it out here lets a single MB import emit both an
-//! MB and a Discogs identity row. The reverse (Discogs → MB) is less reliable —
-//! the Discogs API exposes no MBID field — so it is resolved through MB's URL
-//! endpoint instead.
+//! Discogs release URL, which is what the Discogs document alongside an MB one
+//! was fetched from. The reverse (Discogs → MB) is less reliable — the Discogs
+//! API exposes no MBID field — so it is resolved through MB's URL endpoint
+//! instead.
 
 use super::assemble::{
     assemble_parsed_album, AlbumArtistScope, ArtistRef, PartDirection, ReleaseIr, TrackEvent,
@@ -14,8 +14,7 @@ use super::assemble::{
 };
 use super::ParsedAlbum;
 use crate::db::{is_various_artists, Pressing};
-use crate::import::types::ReleaseIdentity;
-use crate::import::{ImportError, MetadataSource};
+use crate::import::{Catalog, ImportError, MetadataRef};
 use crate::musicbrainz::{
     label_and_catno, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse, MbTrack, MbWork,
 };
@@ -23,21 +22,6 @@ use coven::Clock;
 use coven::IdProvider;
 use std::collections::HashSet;
 use tracing::{debug, warn};
-
-/// Extract the leading numeric Discogs release ID from a Discogs release URL.
-///
-/// MB editors store these URLs in three shapes:
-///   - bare numeric: `https://www.discogs.com/release/12345`
-///   - trailing slash: `https://www.discogs.com/release/12345/`
-///   - slug suffix: `https://www.discogs.com/release/12345-Album-Title`
-///
-/// Returns `None` if the last path segment doesn't start with digits.
-pub(crate) fn extract_discogs_release_id(url: &str) -> Option<String> {
-    let trimmed = url.trim_end_matches('/');
-    let last = trimmed.rsplit('/').next()?;
-    let id: String = last.chars().take_while(|c| c.is_ascii_digit()).collect();
-    (!id.is_empty()).then_some(id)
-}
 
 fn mb_relation_is(relation: &MbRelation, target_type: &str, relation_type: &str) -> bool {
     relation.target_type.as_deref() == Some(target_type)
@@ -174,7 +158,7 @@ pub(crate) fn track_title(release_id: &str, track: &MbTrack) -> Result<String, I
         .or(track.title.as_deref())
         .filter(|title| !title.trim().is_empty())
         .ok_or_else(|| ImportError::SourceData {
-            metadata_source: MetadataSource::MusicBrainz,
+            catalog: Catalog::MusicBrainz,
             detail: format!(
                 "MusicBrainz release {} track {:?} has no track title",
                 release_id, track.number
@@ -211,7 +195,7 @@ pub(crate) fn medium_sides(
 ) -> Result<MediumSides, ImportError> {
     if medium.tracks.is_empty() {
         return Err(ImportError::SourceData {
-            metadata_source: MetadataSource::MusicBrainz,
+            catalog: Catalog::MusicBrainz,
             detail: format!(
                 "MusicBrainz release {} has a medium with no tracks",
                 release_id
@@ -250,7 +234,7 @@ pub(crate) fn medium_sides(
             .and_then(|n| n.chars().next())
             .filter(|c| c.is_ascii_alphabetic())
             .ok_or_else(|| ImportError::SourceData {
-                metadata_source: MetadataSource::MusicBrainz,
+                catalog: Catalog::MusicBrainz,
                 detail: format!(
                     "MusicBrainz multi-side medium track has no side letter: \
                      number={:?}, title={:?}",
@@ -273,9 +257,8 @@ pub(crate) fn medium_sides(
 /// Map a typed MusicBrainz release response into database models (pure, no I/O).
 ///
 /// `discogs_release` is the Discogs release MB's url-rels cross-linked to, when
-/// one resolved. It contributes a second `ReleaseIdentity` row (when the Discogs
-/// release names a master) and stamps `discogs_artist_id` onto every release
-/// artist whose name matches a Discogs artist, case-insensitively.
+/// one resolved. It stamps `discogs_artist_id` onto every release artist whose
+/// name matches a Discogs artist, case-insensitively.
 pub fn map_mb_response_to_db(
     response: &MbReleaseResponse,
     master_year: Option<u32>,
@@ -288,7 +271,7 @@ pub fn map_mb_response_to_db(
         if let Some(artist_obj) = &credit.artist {
             let artist_name = mb_artist_name(artist_obj, Some(&credit.name)).ok_or_else(|| {
                 ImportError::SourceData {
-                    metadata_source: MetadataSource::MusicBrainz,
+                    catalog: Catalog::MusicBrainz,
                     detail: format!(
                         "MusicBrainz release {} artist credit {:?} has no artist name",
                         response.id, artist_obj.id
@@ -314,7 +297,7 @@ pub fn map_mb_response_to_db(
             .artist_credit
             .first()
             .ok_or_else(|| ImportError::SourceData {
-                metadata_source: MetadataSource::MusicBrainz,
+                catalog: Catalog::MusicBrainz,
                 detail: format!("MusicBrainz release {} has no artist credits", response.id),
             })?
             .name
@@ -325,28 +308,6 @@ pub fn map_mb_response_to_db(
             musicbrainz_artist_id: None,
             discogs_artist_id: None,
         });
-    }
-
-    // Always one MB identity row — every MB release belongs to a release group,
-    // so absence is a broken response, not a runtime case. A Discogs release
-    // resolved from url-rels contributes a second row (`discogs_identity` picks
-    // its group), so future Discogs imports of the same release attach to this
-    // album. Both are Exact.
-    let mb_release_group =
-        response
-            .release_group
-            .as_ref()
-            .ok_or_else(|| ImportError::SourceData {
-                metadata_source: MetadataSource::MusicBrainz,
-                detail: format!("MusicBrainz release {} missing release_group", response.id),
-            })?;
-    let mut identities = vec![ReleaseIdentity {
-        source: MetadataSource::MusicBrainz,
-        source_group_id: mb_release_group.id.clone(),
-        source_release_id: response.id.clone(),
-    }];
-    if let Some(dr) = discogs_release.as_ref() {
-        identities.push(super::discogs_mapper::discogs_identity(dr));
     }
 
     // Album year: release-group first-release-date, then the release date,
@@ -417,7 +378,7 @@ pub fn map_mb_response_to_db(
                         };
                         events.push(TrackEvent::Work {
                             position: relation_pos as i32,
-                            source: MetadataSource::MusicBrainz,
+                            source: Catalog::MusicBrainz,
                             work: mb_work_ref(work, &mut converted_works),
                         });
                     } else if relation.target_type.as_deref() == Some("artist") {
@@ -443,7 +404,7 @@ pub fn map_mb_response_to_db(
                             events.push(TrackEvent::Role {
                                 position: relation_pos as i32,
                                 artist: mb_artist_ref(name, artist_ref),
-                                source: MetadataSource::MusicBrainz,
+                                source: Catalog::MusicBrainz,
                                 source_credit: relation.relation_type.clone(),
                             });
                         } else {
@@ -480,15 +441,13 @@ pub fn map_mb_response_to_db(
         is_compilation,
         pressing,
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-            release_id: response.id.clone(),
+            record: MetadataRef::new(Catalog::MusicBrainz, response.id.clone()),
             // As in `discogs_mapper`: one document's own claim.
             partners: Vec::new(),
         }),
         album_artist_scope: AlbumArtistScope::ReleaseCredits,
         release_roles: Vec::new(),
         tracks,
-        identities,
     };
 
     Ok(assemble_parsed_album(ir, clock, ids))

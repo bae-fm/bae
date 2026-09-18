@@ -7,8 +7,7 @@ mod metadata_provenance_tests {
     #[test]
     fn a_metadata_provenance_round_trips_without_an_identity_proxy() {
         let provenance = MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-            release_id: "release-a".to_string(),
+            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "release-a".to_string()),
             partners: vec![],
         };
         let stored = serde_json::to_string(&provenance).expect("metadata provenance encodes");
@@ -274,65 +273,5 @@ mod edit_shaping_tests {
         assert_eq!(raw.pressing.label, "");
 
         assert_eq!(raw.shape().expect("re-shapes"), original);
-    }
-}
-
-#[cfg(test)]
-mod metadata_source_tests {
-    use super::*;
-    use std::str::FromStr;
-
-    #[test]
-    fn from_str_round_trips_known_sources() {
-        assert_eq!(
-            MetadataSource::from_str("musicbrainz"),
-            Ok(MetadataSource::MusicBrainz)
-        );
-        assert_eq!(
-            MetadataSource::from_str("discogs"),
-            Ok(MetadataSource::Discogs)
-        );
-        // as_str is the inverse of from_str.
-        assert_eq!(
-            MetadataSource::from_str(MetadataSource::MusicBrainz.as_str()),
-            Ok(MetadataSource::MusicBrainz)
-        );
-    }
-
-    #[test]
-    fn from_str_rejects_unknown_source() {
-        let err = MetadataSource::from_str("bandcamp").expect_err("unknown source should error");
-        assert!(
-            err.contains("unknown metadata source") && err.contains("bandcamp"),
-            "unexpected error: {err}"
-        );
-        // The match is exact — casing isn't accepted.
-        assert!(MetadataSource::from_str("MusicBrainz").is_err());
-    }
-
-    /// Both desktop UIs used to build these; the address a source uses for one
-    /// of its releases is core's answer and crosses as a field.
-    #[test]
-    fn each_source_addresses_its_own_release_page() {
-        assert_eq!(
-            MetadataSource::MusicBrainz.release_url("d9f2a1c0"),
-            "https://musicbrainz.org/release/d9f2a1c0"
-        );
-        assert_eq!(
-            MetadataSource::Discogs.release_url("1234567"),
-            "https://www.discogs.com/release/1234567"
-        );
-    }
-
-    #[test]
-    fn group_urls_are_source_specific() {
-        assert_eq!(
-            MetadataSource::MusicBrainz.group_url("rg-1"),
-            "https://musicbrainz.org/release-group/rg-1"
-        );
-        assert_eq!(
-            MetadataSource::Discogs.group_url("master-7"),
-            "https://www.discogs.com/master/master-7"
-        );
     }
 }

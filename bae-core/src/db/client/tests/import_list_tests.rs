@@ -34,7 +34,7 @@ async fn scanned(db: &Database, root: &str, name: &str) -> FolderCandidate {
 fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -> TerminalVerdict {
     TerminalVerdict::Found {
         matches: vec![MetadataResult {
-            source: MetadataSource::MusicBrainz,
+            source: Catalog::MusicBrainz,
             release_id: release_id.to_string(),
             title: "Verdict Album".to_string(),
             artist: Some("Verdict Artist".to_string()),
@@ -188,8 +188,10 @@ async fn a_picked_row_leads_with_the_archived_document() {
             &candidate.path.to_string_lossy(),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: "mb-picked".to_string(),
+                record: crate::import::MetadataRef::new(
+                    Catalog::MusicBrainz,
+                    "mb-picked".to_string(),
+                ),
                 partners: vec![],
             }),
         )
@@ -227,8 +229,10 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
             &candidate.path.to_string_lossy(),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: "mb-never-fetched".to_string(),
+                record: crate::import::MetadataRef::new(
+                    Catalog::MusicBrainz,
+                    "mb-never-fetched".to_string(),
+                ),
                 partners: vec![],
             }),
         )
@@ -342,7 +346,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     let ledger = crate::identify::IdentifyRunView {
-        providers: vec![MetadataSource::MusicBrainz],
+        providers: vec![Catalog::MusicBrainz],
         disc_id: crate::identify::DiscIdStepView::Read {
             disc_id: "disc-1".to_string(),
             source: Some(crate::identify::DiscIdFile {
@@ -353,7 +357,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
                 count: 1,
                 groups: crate::import::release_group::group_results(
                     crate::import::release_group::unranked(vec![MetadataResult::for_test(
-                        MetadataSource::MusicBrainz,
+                        Catalog::MusicBrainz,
                         "mb-verdict",
                         Some("group-1"),
                     )]),
@@ -377,7 +381,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         panic!("a stored Found resumes with the ledger its run recorded");
     };
     assert_eq!(run, ledger);
-    assert_eq!(run.providers, vec![MetadataSource::MusicBrainz]);
+    assert_eq!(run.providers, vec![Catalog::MusicBrainz]);
     let crate::identify::DiscIdStepView::Read {
         disc_id,
         source,

@@ -60,12 +60,12 @@ async fn search_library_treats_like_metacharacters_as_literals() {
                 ('2dd55a3f-3208-4faf-8737-453f474074cb', 'A_B Album Title', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '07d51116-f6e3-4b4c-8ae2-601d5a972bf9', 0, 'stamp', '2026-01-01T00:00:00Z'),
                 ('e00e6a4d-b8c9-4dce-8b2a-9a4c69553abc', 'ACB Album Title', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 0, 'stamp', '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+            INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
             VALUES
-                ('94d062dd-9dc8-4e59-8c13-e5731b702157', '7e9948c4-f2d0-4a73-8e5c-a885eda086ff', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('7a4de476-4ce8-4e2f-805a-d4c23dffaf8e', '531c76e6-3ed8-45cd-8ee8-63366ef42031', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('07d51116-f6e3-4b4c-8ae2-601d5a972bf9', '2dd55a3f-3208-4faf-8737-453f474074cb', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 'e00e6a4d-b8c9-4dce-8b2a-9a4c69553abc', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z');
+                ('94d062dd-9dc8-4e59-8c13-e5731b702157', '7e9948c4-f2d0-4a73-8e5c-a885eda086ff', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                ('7a4de476-4ce8-4e2f-805a-d4c23dffaf8e', '531c76e6-3ed8-45cd-8ee8-63366ef42031', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                ('07d51116-f6e3-4b4c-8ae2-601d5a972bf9', '2dd55a3f-3208-4faf-8737-453f474074cb', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                ('3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 'e00e6a4d-b8c9-4dce-8b2a-9a4c69553abc', 1, 'stamp', '2026-01-01T00:00:00Z');
 
             INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
             VALUES

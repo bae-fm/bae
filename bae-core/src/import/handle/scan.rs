@@ -403,12 +403,8 @@ impl ImportServiceHandle {
                     )
                     .await?);
             }
-            crate::import::MetadataProvenance::ExternalRelease {
-                source,
-                release_id,
-                partners,
-            } => {
-                let primary = crate::import::MetadataRef::new(release_id.clone(), *source);
+            crate::import::MetadataProvenance::ExternalRelease { record, partners } => {
+                let primary = record.clone();
                 let payloads = self
                     .payloads_for_provenance(&candidate_key, &primary)
                     .await?;
@@ -859,7 +855,7 @@ mod cover_fallback_tests {
     fn a_source_without_a_remote_cover_does_not_reuse_an_old_remote_selection() {
         let selected = crate::import::CoverSelection::Remote(
             "https://example.invalid/old".to_string(),
-            crate::import::MetadataSource::Discogs,
+            crate::import::Catalog::Discogs,
         );
 
         assert_eq!(local_or_embedded_cover(Some(&selected)), None);

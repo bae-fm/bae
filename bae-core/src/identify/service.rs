@@ -7,7 +7,7 @@ use super::code::{lookup_code, PrintedCode};
 use super::discid::lookup_and_resolve;
 use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome};
 use crate::import::search::SourceLookup;
-use crate::import::{ImportEvent, LookupChoices, MetadataSource};
+use crate::import::{Catalog, ImportEvent, LookupChoices};
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionWatch, SignalsSnapshot};
 use crate::util::rate_limiter::CallPriority;
@@ -40,7 +40,7 @@ fn broadcast_state_change(tx: &broadcast::Sender<ImportEvent>, event: ImportEven
 /// reach. A projection of `metadata_sources()`, read once when the run starts,
 /// so a key added or a source switched on since joins the next run rather than
 /// this one.
-fn run_providers(library_manager: &LibraryManager) -> Vec<MetadataSource> {
+fn run_providers(library_manager: &LibraryManager) -> Vec<Catalog> {
     crate::import::asked_sources(&library_manager.metadata_sources())
 }
 

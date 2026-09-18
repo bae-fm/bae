@@ -180,6 +180,19 @@ impl MbReleaseResponse {
         self.cover_art_archive.front && !self.cover_art_archive.darkened
     }
 
+    /// Every address this release's url-rels state, its inline release group's
+    /// included — one per catalog page an editor linked.
+    pub fn related_urls(&self) -> impl Iterator<Item = &str> {
+        relation_urls(&self.relations).chain(
+            self.release_group
+                .as_ref()
+                .and_then(|rg| rg.relations.as_deref())
+                .map(relation_urls)
+                .into_iter()
+                .flatten(),
+        )
+    }
+
     /// The Discogs release URL from this release's url-rels, falling back to
     /// the inline release-group relations when the release-level ones carry
     /// none.
@@ -232,9 +245,14 @@ pub struct SearchRelease {
 
 /// Release group response (for separate fetch with url-rels)
 #[derive(Debug, Clone, Deserialize)]
-pub(super) struct ReleaseGroupResponse {
+pub struct ReleaseGroupResponse {
     #[serde(default)]
-    pub(super) relations: Vec<MbRelation>,
+    pub relations: Vec<MbRelation>,
+}
+
+/// One archived release-group document, parsed.
+pub fn parse_release_group(json: &str) -> Result<ReleaseGroupResponse, serde_json::Error> {
+    serde_json::from_str(json)
 }
 
 /// Response from the MB URL lookup endpoint (used for Discogs -> MB cross-reference)
@@ -256,11 +274,25 @@ pub(super) struct UrlLookupRelease {
     pub(super) id: Option<String>,
 }
 
-/// The first Discogs release URL among a set of MB relations, if any.
-pub(super) fn first_discogs_release_url(relations: &[MbRelation]) -> Option<String> {
+/// Every address a set of relations states, in relation order. A relation that
+/// names an artist, a work or a recording rather than a URL states none.
+pub fn relation_urls(relations: &[MbRelation]) -> impl Iterator<Item = &str> {
     relations
         .iter()
         .filter_map(|r| r.url.as_ref()?.resource.as_deref())
-        .find(|resource| resource.contains("discogs.com/release/"))
+}
+
+/// The first Discogs release address among a set of MB relations, if any.
+pub(super) fn first_discogs_release_url(relations: &[MbRelation]) -> Option<String> {
+    relation_urls(relations)
+        .find(|resource| {
+            matches!(
+                crate::import::parse_catalog_url(resource),
+                Some(crate::import::CatalogPage::Release {
+                    catalog: crate::import::Catalog::Discogs,
+                    ..
+                })
+            )
+        })
         .map(str::to_string)
 }

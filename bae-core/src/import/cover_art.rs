@@ -1,4 +1,4 @@
-use crate::import::{ImportError, MetadataSource};
+use crate::import::{Catalog, ImportError};
 use crate::retry::{exponential_backoff, is_transient_status, retry_classified, ClassifiedAttempt};
 use crate::util::content_type::ContentType;
 use crate::util::test_base_url::TestBaseUrl;
@@ -66,7 +66,7 @@ pub struct RemoteCover {
     pub url: String,
     pub thumbnail_url: String,
     pub label: String,
-    pub source: MetadataSource,
+    pub source: Catalog,
 }
 
 impl RemoteCover {
@@ -90,8 +90,8 @@ impl RemoteCover {
         Self {
             url: format!("{base}/{entity}/{id}/front"),
             thumbnail_url: format!("{base}/{entity}/{id}/front-250"),
-            label: label(MetadataSource::MusicBrainz.cover_source_label()),
-            source: MetadataSource::MusicBrainz,
+            label: label(Catalog::MusicBrainz.cover_source_label()),
+            source: Catalog::MusicBrainz,
         }
     }
 }

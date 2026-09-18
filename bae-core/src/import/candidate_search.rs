@@ -14,7 +14,7 @@
 use crate::db::LibraryStatus;
 use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::{MetadataResult, SearchQuery};
-use crate::import::types::{MetadataSource, MetadataSourceAvailability, SourceAvailability};
+use crate::import::types::{Catalog, CatalogAvailability, SourceAvailability};
 use crate::signals::LookupFailure;
 use tracing::debug;
 
@@ -88,10 +88,10 @@ pub enum SearchStatus {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateSearch {
     pub query: SearchQuery,
-    /// Each source's part of this search, one entry per
-    /// [`MetadataSource`], in [`MetadataSource::ALL`] order. No source is the
-    /// main one: a surface iterates this and every method below folds over it.
-    pub sources: Vec<(MetadataSource, SourceSearch)>,
+    /// Each catalog's part of this search, one entry per
+    /// [`Catalog::LOOKUP`] member, in that order. Neither is the main one: a
+    /// surface iterates this and every method below folds over it.
+    pub sources: Vec<(Catalog, SourceSearch)>,
     /// Every settled source's results, folded into album cards — re-derived
     /// whenever a source lands, so a card gains a second source's rows the
     /// moment that source answers.
@@ -105,12 +105,12 @@ impl CandidateSearch {
     /// A search just submitted: every source this library asks is looking, and
     /// each source it does not ask says which reason it is rather than
     /// pretending to look.
-    pub fn started(query: SearchQuery, sources: &[MetadataSourceAvailability]) -> Self {
+    pub fn started(query: SearchQuery, sources: &[CatalogAvailability]) -> Self {
         Self {
             query,
             sources: sources
                 .iter()
-                .map(|entry| (entry.source, SourceSearch::starting(entry.state)))
+                .map(|entry| (entry.catalog, SourceSearch::starting(entry.state)))
                 .collect(),
             groups: Vec::new(),
             library_statuses: Vec::new(),
@@ -119,7 +119,7 @@ impl CandidateSearch {
 
     /// This source's part of the search, or `None` for a source the search was
     /// not started with.
-    pub fn source(&self, source: MetadataSource) -> Option<&SourceSearch> {
+    pub fn source(&self, source: Catalog) -> Option<&SourceSearch> {
         self.sources
             .iter()
             .find(|(candidate, _)| *candidate == source)
@@ -136,7 +136,7 @@ impl CandidateSearch {
     /// reopening a part that is settled.
     pub fn record(
         &mut self,
-        source: MetadataSource,
+        source: Catalog,
         outcome: Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure>,
     ) {
         let settled = match outcome {
@@ -170,7 +170,7 @@ impl CandidateSearch {
     ///
     /// A lookup already out for it still lands here and is dropped, because a
     /// part that is not looking takes no answer.
-    pub fn switch_off(&mut self, source: MetadataSource) {
+    pub fn switch_off(&mut self, source: Catalog) {
         let Some(entry) = self
             .sources
             .iter_mut()
@@ -199,7 +199,7 @@ impl CandidateSearch {
 
     /// The sources with a lookup to run — every asked source of a just-started
     /// search, and the re-asked ones after a Retry.
-    pub fn searching_sources(&self) -> Vec<MetadataSource> {
+    pub fn searching_sources(&self) -> Vec<Catalog> {
         self.sources_matching(|state| matches!(state, SourceSearch::Searching))
     }
 
@@ -221,7 +221,7 @@ impl CandidateSearch {
     }
 
     /// The sources whose part satisfies `predicate`, in source order.
-    fn sources_matching(&self, predicate: impl Fn(&SourceSearch) -> bool) -> Vec<MetadataSource> {
+    fn sources_matching(&self, predicate: impl Fn(&SourceSearch) -> bool) -> Vec<Catalog> {
         self.sources
             .iter()
             .filter(|(_, state)| predicate(state))
@@ -244,7 +244,7 @@ impl CandidateSearch {
 
     /// The sources that failed, for the lines that name them and the Retry
     /// that re-asks them.
-    pub fn failed_sources(&self) -> Vec<MetadataSource> {
+    pub fn failed_sources(&self) -> Vec<Catalog> {
         self.sources_matching(|state| matches!(state, SourceSearch::Failed(_)))
     }
 
@@ -272,27 +272,27 @@ mod tests {
     use super::*;
 
     /// A library that asks every source.
-    fn all_on() -> Vec<MetadataSourceAvailability> {
+    fn all_on() -> Vec<CatalogAvailability> {
         availability(&[
-            (MetadataSource::MusicBrainz, SourceAvailability::On),
-            (MetadataSource::Discogs, SourceAvailability::On),
+            (Catalog::MusicBrainz, SourceAvailability::On),
+            (Catalog::Discogs, SourceAvailability::On),
         ])
     }
 
     /// A library with no Discogs key: it is listed, and it is not asked.
-    fn discogs_unconfigured() -> Vec<MetadataSourceAvailability> {
+    fn discogs_unconfigured() -> Vec<CatalogAvailability> {
         availability(&[
-            (MetadataSource::MusicBrainz, SourceAvailability::On),
-            (MetadataSource::Discogs, SourceAvailability::NotConfigured),
+            (Catalog::MusicBrainz, SourceAvailability::On),
+            (Catalog::Discogs, SourceAvailability::NotConfigured),
         ])
     }
 
     fn availability(
-        states: &[(MetadataSource, SourceAvailability)],
-    ) -> Vec<MetadataSourceAvailability> {
+        states: &[(Catalog, SourceAvailability)],
+    ) -> Vec<CatalogAvailability> {
         states
             .iter()
-            .map(|&(source, state)| MetadataSourceAvailability { source, state })
+            .map(|&(catalog, state)| CatalogAvailability { catalog, state })
             .collect()
     }
 
@@ -303,7 +303,7 @@ mod tests {
         }
     }
 
-    fn result(source: MetadataSource, release_id: &str, group_id: &str) -> MetadataResult {
+    fn result(source: Catalog, release_id: &str, group_id: &str) -> MetadataResult {
         MetadataResult {
             source,
             release_id: release_id.to_string(),
@@ -322,7 +322,7 @@ mod tests {
     }
 
     fn answer(
-        source: MetadataSource,
+        source: Catalog,
         release_id: &str,
         group_id: &str,
     ) -> Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure> {
@@ -337,13 +337,13 @@ mod tests {
         let mut search = CandidateSearch::started(query(), &discogs_unconfigured());
         assert!(!search.has_no_matches());
         assert_eq!(search.status(), SearchStatus::Searching);
-        search.record(MetadataSource::MusicBrainz, Err(LookupFailure::Network));
+        search.record(Catalog::MusicBrainz, Err(LookupFailure::Network));
         assert!(!search.has_no_matches());
         assert_eq!(search.status(), SearchStatus::Failed);
         search.restart_failed();
         assert!(!search.has_no_matches());
         assert_eq!(search.status(), SearchStatus::Searching);
-        search.record(MetadataSource::MusicBrainz, Ok(Vec::new()));
+        search.record(Catalog::MusicBrainz, Ok(Vec::new()));
         assert!(search.has_no_matches());
         assert_eq!(search.status(), SearchStatus::NoMatches);
     }
@@ -354,16 +354,16 @@ mod tests {
     fn a_failed_source_heads_the_search_even_beside_matches() {
         let mut search = CandidateSearch::started(query(), &all_on());
         search.record(
-            MetadataSource::MusicBrainz,
-            answer(MetadataSource::MusicBrainz, "mb-1", "group-x"),
+            Catalog::MusicBrainz,
+            answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
         assert_eq!(search.status(), SearchStatus::Searching);
-        search.record(MetadataSource::Discogs, Err(LookupFailure::Timeout));
+        search.record(Catalog::Discogs, Err(LookupFailure::Timeout));
         assert_eq!(search.status(), SearchStatus::Failed);
         search.restart_failed();
         search.record(
-            MetadataSource::Discogs,
-            answer(MetadataSource::Discogs, "dg-1", "master-7"),
+            Catalog::Discogs,
+            answer(Catalog::Discogs, "dg-1", "master-7"),
         );
         assert_eq!(search.status(), SearchStatus::Found);
     }
@@ -374,13 +374,13 @@ mod tests {
         assert_eq!(
             search.sources,
             vec![
-                (MetadataSource::MusicBrainz, SourceSearch::Searching),
-                (MetadataSource::Discogs, SourceSearch::Searching),
+                (Catalog::MusicBrainz, SourceSearch::Searching),
+                (Catalog::Discogs, SourceSearch::Searching),
             ]
         );
         assert_eq!(
             search.searching_sources(),
-            vec![MetadataSource::MusicBrainz, MetadataSource::Discogs]
+            vec![Catalog::MusicBrainz, Catalog::Discogs]
         );
         assert!(!search.is_settled());
         assert!(search.groups.is_empty());
@@ -390,18 +390,18 @@ mod tests {
     fn an_unconfigured_discogs_is_never_asked() {
         let mut search = CandidateSearch::started(query(), &discogs_unconfigured());
         assert_eq!(
-            search.source(MetadataSource::Discogs),
+            search.source(Catalog::Discogs),
             Some(&SourceSearch::NotConfigured)
         );
         assert_eq!(
             search.searching_sources(),
-            vec![MetadataSource::MusicBrainz]
+            vec![Catalog::MusicBrainz]
         );
         assert!(!search.is_settled(), "MusicBrainz is still looking");
 
         search.record(
-            MetadataSource::MusicBrainz,
-            answer(MetadataSource::MusicBrainz, "mb-1", "group-x"),
+            Catalog::MusicBrainz,
+            answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
         assert!(search.is_settled());
         assert!(search.searching_sources().is_empty());
@@ -415,19 +415,19 @@ mod tests {
         let search = CandidateSearch::started(
             query(),
             &availability(&[
-                (MetadataSource::MusicBrainz, SourceAvailability::Off),
-                (MetadataSource::Discogs, SourceAvailability::On),
+                (Catalog::MusicBrainz, SourceAvailability::Off),
+                (Catalog::Discogs, SourceAvailability::On),
             ]),
         );
 
         assert_eq!(
             search.sources,
             vec![
-                (MetadataSource::MusicBrainz, SourceSearch::Off),
-                (MetadataSource::Discogs, SourceSearch::Searching),
+                (Catalog::MusicBrainz, SourceSearch::Off),
+                (Catalog::Discogs, SourceSearch::Searching),
             ]
         );
-        assert_eq!(search.searching_sources(), vec![MetadataSource::Discogs]);
+        assert_eq!(search.searching_sources(), vec![Catalog::Discogs]);
         assert!(!search.is_settled(), "Discogs is still looking");
     }
 
@@ -438,14 +438,14 @@ mod tests {
     fn an_answer_from_a_source_the_search_never_asked_is_dropped() {
         let mut search = CandidateSearch::started(
             query(),
-            &availability(&[(MetadataSource::Discogs, SourceAvailability::On)]),
+            &availability(&[(Catalog::Discogs, SourceAvailability::On)]),
         );
         search.record(
-            MetadataSource::MusicBrainz,
-            answer(MetadataSource::MusicBrainz, "mb-1", "group-x"),
+            Catalog::MusicBrainz,
+            answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
 
-        assert!(search.source(MetadataSource::MusicBrainz).is_none());
+        assert!(search.source(Catalog::MusicBrainz).is_none());
         assert!(search.groups.is_empty());
         assert!(!search.is_settled(), "the asked source is still looking");
     }
@@ -457,8 +457,8 @@ mod tests {
         let search = CandidateSearch::started(
             query(),
             &availability(&[
-                (MetadataSource::MusicBrainz, SourceAvailability::Off),
-                (MetadataSource::Discogs, SourceAvailability::NotConfigured),
+                (Catalog::MusicBrainz, SourceAvailability::Off),
+                (Catalog::Discogs, SourceAvailability::NotConfigured),
             ]),
         );
 
@@ -476,12 +476,12 @@ mod tests {
     fn the_first_source_to_land_draws_while_the_other_looks() {
         let mut search = CandidateSearch::started(query(), &all_on());
         search.record(
-            MetadataSource::MusicBrainz,
-            answer(MetadataSource::MusicBrainz, "mb-1", "group-x"),
+            Catalog::MusicBrainz,
+            answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
         assert!(!search.is_settled());
         assert_eq!(
-            search.source(MetadataSource::Discogs),
+            search.source(Catalog::Discogs),
             Some(&SourceSearch::Searching)
         );
         assert_eq!(search.groups.len(), 1);
@@ -495,12 +495,12 @@ mod tests {
     fn a_later_source_merges_into_the_groups_already_drawn() {
         let mut search = CandidateSearch::started(query(), &all_on());
         search.record(
-            MetadataSource::MusicBrainz,
-            answer(MetadataSource::MusicBrainz, "mb-1", "group-x"),
+            Catalog::MusicBrainz,
+            answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
         search.record(
-            MetadataSource::Discogs,
-            answer(MetadataSource::Discogs, "dg-1", "master-7"),
+            Catalog::Discogs,
+            answer(Catalog::Discogs, "dg-1", "master-7"),
         );
         assert!(search.is_settled());
         assert_eq!(search.groups.len(), 1);
@@ -520,12 +520,12 @@ mod tests {
     fn a_failed_source_keeps_the_other_source_s_groups() {
         let mut search = CandidateSearch::started(query(), &all_on());
         search.record(
-            MetadataSource::MusicBrainz,
-            answer(MetadataSource::MusicBrainz, "mb-1", "group-x"),
+            Catalog::MusicBrainz,
+            answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
-        search.record(MetadataSource::Discogs, Err(LookupFailure::Network));
+        search.record(Catalog::Discogs, Err(LookupFailure::Network));
         assert!(search.is_settled());
-        assert_eq!(search.failed_sources(), vec![MetadataSource::Discogs]);
+        assert_eq!(search.failed_sources(), vec![Catalog::Discogs]);
         assert_eq!(search.groups.len(), 1);
     }
 
@@ -534,19 +534,19 @@ mod tests {
     fn retry_restarts_only_the_failed_sources() {
         let mut search = CandidateSearch::started(query(), &all_on());
         search.record(
-            MetadataSource::MusicBrainz,
-            answer(MetadataSource::MusicBrainz, "mb-1", "group-x"),
+            Catalog::MusicBrainz,
+            answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
-        search.record(MetadataSource::Discogs, Err(LookupFailure::Timeout));
+        search.record(Catalog::Discogs, Err(LookupFailure::Timeout));
 
         search.restart_failed();
-        assert_eq!(search.searching_sources(), vec![MetadataSource::Discogs]);
+        assert_eq!(search.searching_sources(), vec![Catalog::Discogs]);
         assert_eq!(
-            search.source(MetadataSource::Discogs),
+            search.source(Catalog::Discogs),
             Some(&SourceSearch::Searching)
         );
         assert!(matches!(
-            search.source(MetadataSource::MusicBrainz),
+            search.source(Catalog::MusicBrainz),
             Some(SourceSearch::Done { .. })
         ));
         assert_eq!(search.groups.len(), 1, "the MusicBrainz card still draws");
@@ -559,8 +559,8 @@ mod tests {
     #[test]
     fn both_sources_answering_with_nothing_settles_empty() {
         let mut search = CandidateSearch::started(query(), &all_on());
-        search.record(MetadataSource::MusicBrainz, Ok(Vec::new()));
-        search.record(MetadataSource::Discogs, Ok(Vec::new()));
+        search.record(Catalog::MusicBrainz, Ok(Vec::new()));
+        search.record(Catalog::Discogs, Ok(Vec::new()));
         assert!(search.is_settled());
         assert!(search.groups.is_empty());
         assert!(search.failed_sources().is_empty());
@@ -574,12 +574,12 @@ mod tests {
     fn a_source_that_has_settled_takes_no_second_answer() {
         let mut search = CandidateSearch::started(query(), &all_on());
         search.record(
-            MetadataSource::Discogs,
-            answer(MetadataSource::Discogs, "dg-1", "master-7"),
+            Catalog::Discogs,
+            answer(Catalog::Discogs, "dg-1", "master-7"),
         );
         search.record(
-            MetadataSource::Discogs,
-            answer(MetadataSource::Discogs, "dg-2", "master-8"),
+            Catalog::Discogs,
+            answer(Catalog::Discogs, "dg-2", "master-8"),
         );
         assert_eq!(search.groups.len(), 1);
         assert_eq!(search.groups[0].pressings[0].lead().release_id, "dg-1");
@@ -590,11 +590,11 @@ mod tests {
     #[test]
     fn a_retried_source_lands_its_new_answer() {
         let mut search = CandidateSearch::started(query(), &all_on());
-        search.record(MetadataSource::Discogs, Err(LookupFailure::Timeout));
+        search.record(Catalog::Discogs, Err(LookupFailure::Timeout));
         search.restart_failed();
         search.record(
-            MetadataSource::Discogs,
-            answer(MetadataSource::Discogs, "dg-2", "master-8"),
+            Catalog::Discogs,
+            answer(Catalog::Discogs, "dg-2", "master-8"),
         );
         assert_eq!(search.groups.len(), 1);
         assert_eq!(search.groups[0].pressings[0].lead().release_id, "dg-2");
@@ -607,18 +607,18 @@ mod tests {
     fn switching_a_source_off_drops_its_results_and_its_late_answer() {
         let mut search = CandidateSearch::started(query(), &all_on());
         search.record(
-            MetadataSource::MusicBrainz,
-            answer(MetadataSource::MusicBrainz, "mb-1", "group-x"),
+            Catalog::MusicBrainz,
+            answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
         search.record(
-            MetadataSource::Discogs,
-            answer(MetadataSource::Discogs, "dg-1", "master-7"),
+            Catalog::Discogs,
+            answer(Catalog::Discogs, "dg-1", "master-7"),
         );
         assert_eq!(search.groups[0].sources.len(), 2);
 
-        search.switch_off(MetadataSource::MusicBrainz);
+        search.switch_off(Catalog::MusicBrainz);
         assert_eq!(
-            search.source(MetadataSource::MusicBrainz),
+            search.source(Catalog::MusicBrainz),
             Some(&SourceSearch::Off)
         );
         assert_eq!(search.groups.len(), 1);
@@ -628,17 +628,17 @@ mod tests {
                 .iter()
                 .map(|carrier| carrier.source)
                 .collect::<Vec<_>>(),
-            vec![MetadataSource::Discogs]
+            vec![Catalog::Discogs]
         );
         assert_eq!(search.library_statuses.len(), 1);
 
         // The lookup that was in flight for it when the switch went off.
         search.record(
-            MetadataSource::MusicBrainz,
-            answer(MetadataSource::MusicBrainz, "mb-2", "group-y"),
+            Catalog::MusicBrainz,
+            answer(Catalog::MusicBrainz, "mb-2", "group-y"),
         );
         assert_eq!(
-            search.source(MetadataSource::MusicBrainz),
+            search.source(Catalog::MusicBrainz),
             Some(&SourceSearch::Off)
         );
         assert_eq!(search.groups.len(), 1);
@@ -649,9 +649,9 @@ mod tests {
     #[test]
     fn switching_off_the_last_looking_source_settles_the_search() {
         let mut search = CandidateSearch::started(query(), &all_on());
-        search.record(MetadataSource::Discogs, Ok(Vec::new()));
+        search.record(Catalog::Discogs, Ok(Vec::new()));
         assert!(!search.is_settled());
-        search.switch_off(MetadataSource::MusicBrainz);
+        search.switch_off(Catalog::MusicBrainz);
         assert!(search.is_settled());
         assert!(search.searching_sources().is_empty());
         assert_eq!(search.status(), SearchStatus::NoMatches);

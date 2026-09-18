@@ -5,9 +5,7 @@ use super::assemble::{
 use super::ParsedAlbum;
 use crate::db::{is_various_artists, Pressing};
 use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist};
-use crate::import::types::ReleaseIdentity;
-use crate::import::{ImportError, MetadataSource};
-use crate::musicbrainz::MbReleaseResponse;
+use crate::import::{Catalog, ImportError, MetadataRef};
 use coven::Clock;
 use coven::IdProvider;
 use std::collections::HashSet;
@@ -60,42 +58,16 @@ fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistRef {
     discogs_artist_ref(credit.name.clone(), Some(credit.id.clone()))
 }
 
-/// The identity a Discogs release states about itself.
-///
-/// The group is the release's master when Discogs filed it under one, and the
-/// release's own id when it did not — a master-less release is its own group,
-/// the same reading `ReleaseGroup::id` in `release_group.rs` gives a lone
-/// release. Cross-source album merging matches on `(source, group)`, so a
-/// release standing as its own group merges only with itself, which is what a
-/// release Discogs never grouped should do. Emitting no row instead would drop
-/// the claim the person made when they picked that release.
-pub(super) fn discogs_identity(release: &DiscogsRelease) -> ReleaseIdentity {
-    ReleaseIdentity {
-        source: MetadataSource::Discogs,
-        source_group_id: release
-            .master_id
-            .clone()
-            .unwrap_or_else(|| release.id.clone()),
-        source_release_id: release.id.clone(),
-    }
-}
-
 /// Map a Discogs release into database models (pure, no I/O).
 ///
 /// `master_year` is the original release year from the Discogs master; the album
 /// year falls back to the specific release's year when it's absent.
-///
-/// `mb_xref` is the MB release resolved through MB's URL endpoint
-/// (`crate::musicbrainz::fetch_mb_xref`), when one was. It contributes a second
-/// `ReleaseIdentity` row, so future MB-rooted imports of the same release group
-/// attach to this album.
 ///
 /// `audio_durations_ms` is what the folder's audio measures, which is how the
 /// tracklist's index/sub-track layout is chosen; `None` takes the leaf tracks.
 pub fn map_discogs_to_db(
     release: &DiscogsRelease,
     master_year: Option<u32>,
-    mb_xref: Option<&MbReleaseResponse>,
     audio_durations_ms: Option<&[u64]>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
@@ -108,7 +80,7 @@ pub fn map_discogs_to_db(
         let artist_name = crate::discogs::split_title(&release.title)
             .and_then(|(artist, _)| artist)
             .ok_or_else(|| ImportError::SourceData {
-                metadata_source: MetadataSource::Discogs,
+                catalog: Catalog::Discogs,
                 detail: format!(
                     "Discogs release {} has no release artist in artists list or title",
                     release.id
@@ -161,7 +133,7 @@ pub fn map_discogs_to_db(
                 release_roles.push(ReleaseRole {
                     position: position as i32,
                     artist: discogs_role_artist_ref(credit),
-                    source: MetadataSource::Discogs,
+                    source: Catalog::Discogs,
                     source_credit: Some(credit.role.clone()),
                 });
             } else {
@@ -180,26 +152,6 @@ pub fn map_discogs_to_db(
         .map(|pt| discogs_track_ir(release, pt))
         .collect();
 
-    // Always a Discogs row: the release states its own identity whether or not
-    // Discogs filed it under a master. An `mb_xref` means MB back-links to this
-    // Discogs release, contributing a second row so future MB-rooted imports of
-    // the same release group attach to this album. Both rows are Exact.
-    let mut identities: Vec<ReleaseIdentity> = vec![discogs_identity(release)];
-    if let Some(mb) = mb_xref {
-        let rg = mb
-            .release_group
-            .as_ref()
-            .ok_or_else(|| ImportError::SourceData {
-                metadata_source: MetadataSource::MusicBrainz,
-                detail: format!("MusicBrainz release {} missing release_group", mb.id),
-            })?;
-        identities.push(ReleaseIdentity {
-            source: MetadataSource::MusicBrainz,
-            source_group_id: rg.id.clone(),
-            source_release_id: mb.id.clone(),
-        });
-    }
-
     let ir = ReleaseIr {
         album_title: release.title.clone(),
         primary_artist,
@@ -208,16 +160,14 @@ pub fn map_discogs_to_db(
         is_compilation,
         pressing,
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
-            source: MetadataSource::Discogs,
-            release_id: release.id.clone(),
+            record: MetadataRef::new(Catalog::Discogs, release.id.clone()),
             // The mapper reads one document; what else the pick claimed is
-            // the picker's to say, and reaches the library as identity rows.
+            // the picker's to say, and reaches the library as records.
             partners: Vec::new(),
         }),
         album_artist_scope: AlbumArtistScope::ReleaseCredits,
         release_roles,
         tracks,
-        identities,
     };
 
     Ok(assemble_parsed_album(ir, clock, ids))
@@ -240,7 +190,7 @@ fn discogs_track_ir(release: &DiscogsRelease, pt: &ProcessedTrack) -> TrackIr {
                         events.push(TrackEvent::Role {
                             position: role_position as i32,
                             artist: discogs_role_artist_ref(credit),
-                            source: MetadataSource::Discogs,
+                            source: Catalog::Discogs,
                             source_credit: Some(credit.role.clone()),
                         });
                     } else {

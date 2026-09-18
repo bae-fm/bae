@@ -1,5 +1,5 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use super::MetadataSource;
+use super::Catalog;
 
 /// The storage state the user picks for an import. Every import FIRST lands
 /// `Local` (files in place, playable immediately); a `Remote` import then
@@ -24,7 +24,7 @@ pub enum StorageMode {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CoverSelection {
     /// Remote cover to download (URL + source for attribution)
-    Remote(String, MetadataSource),
+    Remote(String, Catalog),
     /// Local file in the album folder (relative path from album root)
     Local(String),
     /// Artwork embedded in one audio file, identified by that file's relative

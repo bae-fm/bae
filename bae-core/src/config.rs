@@ -109,41 +109,44 @@ pub enum ReplayGainMode {
     Album,
 }
 
-/// Which metadata sources this library asks. One flag per
-/// [`MetadataSource`](crate::import::MetadataSource), all on by default.
+/// Which catalogs this library asks. One flag per
+/// [`Catalog::LOOKUP`](crate::import::Catalog::LOOKUP) member, all on by
+/// default.
 ///
-/// The YAML mapping needs a name per source, so the fields are named — but
+/// The YAML mapping needs a name per catalog, so the fields are named — but
 /// nothing reads them by name: [`Self::enabled`] and [`Self::set`] are total
-/// over `MetadataSource`, so adding a source fails the build here rather than
-/// silently defaulting. No source is the main one; a source switched off is
-/// not asked by anything that asks the sources together.
+/// over the asked catalogs, so adding one fails the build here rather than
+/// silently defaulting. Neither is the main one; a catalog switched off is not
+/// asked by anything that asks the catalogs together.
 ///
 /// A flag stays as the person set it while the source is unreachable for
 /// another reason (Discogs without a key), so supplying the key restores their
 /// choice rather than turning the source on behind them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MetadataSourcePreferences {
+pub struct LookupCatalogPreferences {
     pub musicbrainz: bool,
     pub discogs: bool,
 }
 
-impl MetadataSourcePreferences {
-    pub fn enabled(&self, source: crate::import::MetadataSource) -> bool {
-        match source {
-            crate::import::MetadataSource::MusicBrainz => self.musicbrainz,
-            crate::import::MetadataSource::Discogs => self.discogs,
+impl LookupCatalogPreferences {
+    pub fn enabled(&self, catalog: crate::import::Catalog) -> bool {
+        match catalog {
+            crate::import::Catalog::MusicBrainz => self.musicbrainz,
+            crate::import::Catalog::Discogs => self.discogs,
+            other => unreachable!("{} answers no lookups", other.as_str()),
         }
     }
 
-    pub fn set(&mut self, source: crate::import::MetadataSource, enabled: bool) {
-        match source {
-            crate::import::MetadataSource::MusicBrainz => self.musicbrainz = enabled,
-            crate::import::MetadataSource::Discogs => self.discogs = enabled,
+    pub fn set(&mut self, catalog: crate::import::Catalog, enabled: bool) {
+        match catalog {
+            crate::import::Catalog::MusicBrainz => self.musicbrainz = enabled,
+            crate::import::Catalog::Discogs => self.discogs = enabled,
+            other => unreachable!("{} answers no lookups", other.as_str()),
         }
     }
 }
 
-impl Default for MetadataSourcePreferences {
+impl Default for LookupCatalogPreferences {
     fn default() -> Self {
         Self {
             musicbrainz: true,
@@ -188,7 +191,7 @@ impl Config {
     }
 
     /// Which metadata sources this library asks, one entry per
-    /// [`MetadataSource`](crate::import::MetadataSource).
+    /// [`Catalog`](crate::import::Catalog).
     ///
     /// The one answer every place that asks the sources together reads — a
     /// run's provider list, a typed search's per-source parts, the switches a
@@ -201,14 +204,14 @@ impl Config {
     /// A fact about the stored config and nothing else, which is why it lives
     /// here: the bridge builds the list a surface renders out of the same
     /// value it reads every other setting off.
-    pub fn metadata_sources(&self) -> Vec<crate::import::MetadataSourceAvailability> {
-        crate::import::MetadataSource::ALL
+    pub fn metadata_sources(&self) -> Vec<crate::import::CatalogAvailability> {
+        crate::import::Catalog::LOOKUP
             .into_iter()
-            .map(|source| crate::import::MetadataSourceAvailability {
-                source,
-                state: if !self.source_is_configured(source) {
+            .map(|catalog| crate::import::CatalogAvailability {
+                catalog,
+                state: if !self.source_is_configured(catalog) {
                     crate::import::SourceAvailability::NotConfigured
-                } else if !self.prefs.metadata_sources.enabled(source) {
+                } else if !self.prefs.metadata_sources.enabled(catalog) {
                     crate::import::SourceAvailability::Off
                 } else {
                     crate::import::SourceAvailability::On
@@ -217,13 +220,15 @@ impl Config {
             .collect()
     }
 
-    /// Whether this library holds the credentials `source` needs. MusicBrainz's
-    /// API is open, so it needs none; Discogs needs a key it has not rejected.
-    /// Total over the sources, so a new one has to state what it needs.
-    fn source_is_configured(&self, source: crate::import::MetadataSource) -> bool {
-        match source {
-            crate::import::MetadataSource::MusicBrainz => true,
-            crate::import::MetadataSource::Discogs => self.discogs_token_status().is_usable(),
+    /// Whether this library holds the credentials `catalog` needs.
+    /// MusicBrainz's API is open, so it needs none; Discogs needs a key it has
+    /// not rejected. Total over the asked catalogs, so a new one has to state
+    /// what it needs.
+    fn source_is_configured(&self, catalog: crate::import::Catalog) -> bool {
+        match catalog {
+            crate::import::Catalog::MusicBrainz => true,
+            crate::import::Catalog::Discogs => self.discogs_token_status().is_usable(),
+            other => unreachable!("{} answers no lookups", other.as_str()),
         }
     }
 
@@ -365,7 +370,7 @@ pub struct Preferences {
     pub prefill_with_tags: bool,
     /// Which metadata sources Find online asks — the automatic run, the typed
     /// search, and every retry. All on by default.
-    pub metadata_sources: MetadataSourcePreferences,
+    pub metadata_sources: LookupCatalogPreferences,
     /// Whether casting to a network receiver (Cast, UPnP, AirPlay) is available.
     /// Defaults to `false`: casting browses the local network and serves audio
     /// off this machine, so it stays off until the user asks for it. While off,
@@ -395,7 +400,7 @@ impl Default for Preferences {
             verify_decode_on_import: true,
             identify_automatically: true,
             prefill_with_tags: true,
-            metadata_sources: MetadataSourcePreferences::default(),
+            metadata_sources: LookupCatalogPreferences::default(),
             cast_enabled: false,
             mcp: McpConfig::disabled_default(),
             subsonic: SubsonicConfig::disabled_default(),

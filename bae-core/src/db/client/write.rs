@@ -128,19 +128,17 @@ pub(super) fn insert_release_row(
         )
         .map_err(|e| DbError::Message(e.to_string()))?;
     }
-    let (metadata_source, metadata_source_release_id) =
-        metadata_provenance_columns(release.metadata_provenance.as_ref());
     conn.execute(
         r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
-            disc_id, metadata_source, metadata_source_release_id,
+            disc_id, draft_from_tags,
             format, label, catalog_number, country, barcode,
             remote,
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
             _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             release.id,
@@ -148,8 +146,7 @@ pub(super) fn insert_release_row(
             release.release_name,
             release.pressing.year,
             release.disc_id,
-            metadata_source,
-            metadata_source_release_id,
+            release.draft_from_tags,
             release.pressing.format,
             release.pressing.label,
             release.pressing.catalog_number,
@@ -166,18 +163,6 @@ pub(super) fn insert_release_row(
     )
     .map(|_| ())
     .map_err(DbError::from)
-}
-
-pub(super) fn metadata_provenance_columns(
-    provenance: Option<&crate::import::MetadataProvenance>,
-) -> (&str, Option<&str>) {
-    match provenance {
-        Some(crate::import::MetadataProvenance::ExternalRelease {
-            source, release_id, ..
-        }) => (source.as_str(), Some(release_id.as_str())),
-        Some(crate::import::MetadataProvenance::FileTags) => ("file_tags", None),
-        None => ("none", None),
-    }
 }
 
 pub(super) fn insert_track_row(
@@ -725,30 +710,32 @@ pub(super) fn resolve_artist_cloud_path(
     crate::storage::readable_path::artist_cloud_path(artist_id, blob_id, content_type)
 }
 
-/// Insert one row into `release_identities`. Shared by the atomic import path
-/// (`finalize_import_atomic` / `set_identity_atomic`, inside a transaction) and
-/// `insert_release_identities` (on the connection directly).
-pub(super) fn insert_release_identity_row(
+/// Insert one record row. Shared by the atomic import path
+/// (`finalize_import_atomic` / `set_records_atomic`, inside a transaction) and
+/// `insert_release_records` (on the connection directly).
+pub(super) fn insert_release_record_row(
     conn: &SqlContext<'_, '_>,
     release_id: &str,
-    identity: &crate::import::ReleaseIdentity,
+    record: &crate::import::ReleaseRecord,
     id: String,
     reg: &str,
     now: &str,
 ) -> Result<(), DbError> {
     conn.execute(
         r#"
-        INSERT INTO release_identities (
-            id, release_id, source, source_group_id, source_release_id,
-            _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO release_records (
+            id, release_id, catalog, key, group_key,
+            url, reads_draft, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             id,
             release_id,
-            identity.source.as_str(),
-            identity.source_group_id,
-            identity.source_release_id,
+            record.catalog.as_str(),
+            record.key,
+            record.group_key,
+            record.url,
+            record.reads_draft,
             reg,
             now,
         ],

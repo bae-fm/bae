@@ -230,8 +230,9 @@ pub struct DbReleaseDetail {
     /// depth, channels. The file-backed windows live in `audio_segments`.
     pub audio_formats: Vec<DbAudioFormat>,
     pub audio_segments: Vec<DbAudioSegment>,
-    /// All external identity rows for this release. Empty for File Tags and direct entry.
-    pub identities: Vec<crate::import::ReleaseIdentity>,
+    /// Every catalog's description of this release, in the order surfaces list
+    /// catalogs. Empty when no catalog describes it.
+    pub records: Vec<crate::import::ReleaseRecord>,
 }
 
 /// A track row with its resolved artist rows (many-to-many join from the DB).

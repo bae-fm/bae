@@ -5,7 +5,7 @@
 
 use crate::discogs::client::DiscogsSearchParams;
 use crate::import::search::{import_error_to_lookup_failure, search_mb, SourceLookup};
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 use crate::library::LibraryManager;
 use crate::musicbrainz::ReleaseSearchParams;
 use crate::util::rate_limiter::CallPriority;
@@ -23,14 +23,14 @@ pub enum PrintedCode {
 /// Ask one provider about one printed code. Each provider is asked on its own,
 /// so its answer lands the moment it arrives and its failure names only itself.
 pub async fn lookup_code(
-    source: MetadataSource,
+    source: Catalog,
     kind: PrintedCode,
     code: &str,
     library_manager: &LibraryManager,
     priority: CallPriority,
 ) -> SourceLookup {
     match source {
-        MetadataSource::MusicBrainz => {
+        Catalog::MusicBrainz => {
             let params = match kind {
                 PrintedCode::Barcode => ReleaseSearchParams {
                     barcode: Some(code.to_string()),
@@ -45,7 +45,7 @@ pub async fn lookup_code(
                 .await
                 .map_err(|error| import_error_to_lookup_failure(&error))
         }
-        MetadataSource::Discogs => {
+        Catalog::Discogs => {
             let params = match kind {
                 PrintedCode::Barcode => DiscogsSearchParams {
                     barcode: Some(code.to_string()),
@@ -61,5 +61,6 @@ pub async fn lookup_code(
                 .await
                 .map_err(|error| import_error_to_lookup_failure(&error))
         }
+        other => unreachable!("{} answers no code lookups", other.as_str()),
     }
 }

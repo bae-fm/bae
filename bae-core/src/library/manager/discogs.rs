@@ -209,9 +209,9 @@ impl LibraryManager {
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
         match DiscogsSession::open(&self.config_handle, &self.database) {
             Ok(session) => session.fetch_payloads(release, priority).await,
-            Err(error) if release.source == crate::import::MetadataSource::MusicBrainz => {
+            Err(error) if release.catalog == crate::import::Catalog::MusicBrainz => {
                 warn!(
-                    release_id = %release.id,
+                    release_id = %release.key,
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
                 );
                 crate::import::payloads::fetch(None, release, priority).await
@@ -306,7 +306,7 @@ impl LibraryManager {
                 file_size: image.bytes.len() as i64,
                 width: None,
                 height: None,
-                source: crate::import::MetadataSource::Discogs.as_str().to_string(),
+                source: crate::import::Catalog::Discogs.as_str().to_string(),
                 source_url: Some(source_url.clone()),
                 cloud_path: None,
                 content_hash: crate::util::fs::hash_bytes(&image.bytes),

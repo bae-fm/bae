@@ -837,8 +837,7 @@ fn a_metadata_provenance_answers_whatever_the_verdict_asked() {
         assert_eq!(
             row.metadata_provenance,
             Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: "mb-picked".to_string(),
+                record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked".to_string()),
                 partners: vec![],
             }),
             "{name}: the row carries what a bulk import would commit"

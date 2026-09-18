@@ -9,7 +9,7 @@ use super::*;
 use crate::identify::{IdentifyFailure, IdentifyRunView, LookupProvenance, TerminalVerdict};
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 use std::str::FromStr;
 
 /// What a stored column holds that no writer here produces.
@@ -17,8 +17,8 @@ pub(super) fn unreadable(column: &str, stored: &str) -> DbError {
     DbError::Message(format!("import candidate column {column} holds {stored:?}"))
 }
 
-fn source_of(stored: &str) -> Result<MetadataSource, DbError> {
-    MetadataSource::from_str(stored).map_err(DbError::Message)
+fn source_of(stored: &str) -> Result<Catalog, DbError> {
+    Catalog::from_str(stored).map_err(DbError::Message)
 }
 
 /// Clear whatever verdict stands under `content_hash`. The match rows go with

@@ -5,18 +5,14 @@ use coven::SequentialIdProvider;
 
 /// Run the mapper with deterministic fakes. Exercises the real
 /// `map_discogs_to_db`; only the clock/id inputs are faked.
-fn map(
-    release: &DiscogsRelease,
-    master_year: Option<u32>,
-    mb_xref: Option<&MbReleaseResponse>,
-) -> Result<ParsedAlbum, ImportError> {
+fn map(release: &DiscogsRelease, master_year: Option<u32>) -> Result<ParsedAlbum, ImportError> {
     let clock = FixedClock(
         chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("d");
-    map_discogs_to_db(release, master_year, mb_xref, None, &clock, &ids)
+    map_discogs_to_db(release, master_year, None, &clock, &ids)
 }
 
 fn map_for_audio(
@@ -30,14 +26,7 @@ fn map_for_audio(
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("d");
-    map_discogs_to_db(
-        release,
-        master_year,
-        None,
-        Some(audio_durations_ms),
-        &clock,
-        &ids,
-    )
+    map_discogs_to_db(release, master_year, Some(audio_durations_ms), &clock, &ids)
 }
 
 #[test]
@@ -113,7 +102,7 @@ fn release_without_artists_errors_when_title_yields_no_artist() {
         release.artists = vec![];
         release.title = title.to_string();
 
-        let err = map(&release, Some(2024), None)
+        let err = map(&release, Some(2024))
             .expect_err(&format!("expected error for unattributed title {title:?}"));
 
         assert!(
@@ -131,7 +120,7 @@ fn release_without_artists_derives_release_artist_from_title() {
     release.artists = vec![];
     release.title = "Artist Name A - Album Title".to_string();
 
-    let parsed = map(&release, Some(2024), None).unwrap();
+    let parsed = map(&release, Some(2024)).unwrap();
 
     assert_eq!(parsed.artists.len(), 1);
     assert_eq!(parsed.artists[0].name, "Artist Name A");
@@ -170,7 +159,7 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
         },
     ]);
 
-    let parsed = map(&release, Some(2024), None).unwrap();
+    let parsed = map(&release, Some(2024)).unwrap();
 
     assert!(parsed.work_graph.works.is_empty());
     assert!(parsed.work_graph.work_artists.is_empty());
@@ -218,7 +207,7 @@ fn test_cd_multi_disc() {
         make_track("2-2", "Disc 2 Track 2"),
     ]);
 
-    let parsed = map(&release, Some(2024), None).unwrap();
+    let parsed = map(&release, Some(2024)).unwrap();
     let tracks = &parsed.tracks;
     assert_eq!(tracks.len(), 5);
 
@@ -248,7 +237,7 @@ fn test_vinyl_sides() {
         make_track("D1", "Side D Track 1"),
     ]);
 
-    let parsed = map(&release, Some(2024), None).unwrap();
+    let parsed = map(&release, Some(2024)).unwrap();
     let tracks = &parsed.tracks;
     assert_eq!(tracks.len(), 6);
 
@@ -375,7 +364,7 @@ fn test_single_disc() {
         make_track("3", "Track 3"),
     ]);
 
-    let parsed = map(&release, Some(2024), None).unwrap();
+    let parsed = map(&release, Some(2024)).unwrap();
     let tracks = &parsed.tracks;
     assert_eq!(tracks.len(), 3);
 
@@ -448,125 +437,6 @@ fn test_collapsed_sub_tracks_preserve_per_track_artists() {
     let linked_artist_id = &linked_artists[0].artist_id;
     let linked_artist = artists.iter().find(|a| &a.id == linked_artist_id).unwrap();
     assert_eq!(linked_artist.name, "Sub Artist");
-}
-
-// ── identities (parsed.identities) ─────────────────────────────────
-
-#[test]
-fn test_no_master_id_yields_release_as_its_own_group() {
-    // Discogs filed this release under no master, so it is its own group: the
-    // row still records the claim, and matching on (source, group) merges it
-    // only with itself.
-    let mut release = make_release(vec![make_track("1", "Track 1")]);
-    release.master_id = None;
-
-    let parsed = map(&release, None, None).unwrap();
-
-    assert_eq!(parsed.identities.len(), 1);
-    let identity = &parsed.identities[0];
-    assert_eq!(identity.source, MetadataSource::Discogs);
-    assert_eq!(identity.source_group_id, "test-123");
-    assert_eq!(identity.source_release_id, "test-123");
-}
-
-#[test]
-fn test_master_id_yields_one_discogs_identity_row() {
-    let mut release = make_release(vec![make_track("1", "Track 1")]);
-    release.master_id = Some("d-master-42".to_string());
-
-    let parsed = map(&release, None, None).unwrap();
-
-    assert_eq!(parsed.identities.len(), 1);
-    let identity = &parsed.identities[0];
-    assert_eq!(identity.source, MetadataSource::Discogs);
-    assert_eq!(identity.source_group_id, "d-master-42");
-    assert_eq!(identity.source_release_id, "test-123");
-}
-
-fn mb_xref_with_group(release_id: &str, group_id: &str) -> MbReleaseResponse {
-    MbReleaseResponse {
-        id: release_id.to_string(),
-        title: "Album Title A".to_string(),
-        date: None,
-        country: None,
-        barcode: None,
-        artist_credit: vec![],
-        release_group: Some(crate::musicbrainz::MbReleaseGroupRef {
-            id: group_id.to_string(),
-            first_release_date: None,
-            relations: None,
-        }),
-        label_info: vec![],
-        media: vec![],
-        relations: vec![],
-        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
-            front: false,
-            darkened: false,
-        },
-    }
-}
-
-#[test]
-fn test_master_id_with_mb_xref_yields_two_identity_rows() {
-    // Cross-ref hit AND the linked MB release carries a release
-    // group — two rows: Discogs + MB. Both Exact (release IDs
-    // present).
-    let mut release = make_release(vec![make_track("1", "Track 1")]);
-    release.master_id = Some("d-master-99".to_string());
-    let mb_xref = mb_xref_with_group("mb-rel-7", "mb-group-7");
-
-    let parsed = map(&release, None, Some(&mb_xref)).unwrap();
-
-    assert_eq!(parsed.identities.len(), 2);
-
-    let discogs = &parsed.identities[0];
-    assert_eq!(discogs.source, MetadataSource::Discogs);
-    assert_eq!(discogs.source_group_id, "d-master-99");
-    assert_eq!(discogs.source_release_id, "test-123");
-
-    let mb = &parsed.identities[1];
-    assert_eq!(mb.source, MetadataSource::MusicBrainz);
-    assert_eq!(mb.source_group_id, "mb-group-7");
-    assert_eq!(mb.source_release_id, "mb-rel-7");
-}
-
-#[test]
-fn mb_xref_without_release_group_returns_err() {
-    let mut release = make_release(vec![make_track("1", "Track 1")]);
-    release.master_id = Some("d-master-99".to_string());
-    let mut mb_xref = mb_xref_with_group("mb-rel-7", "mb-group-7");
-    mb_xref.release_group = None;
-
-    let err = map(&release, None, Some(&mb_xref))
-        .expect_err("expected missing MB release group to return an error");
-
-    assert!(
-        matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("missing release_group")),
-        "unexpected error message: {err}"
-    );
-}
-
-#[test]
-fn test_no_master_id_with_mb_xref_yields_two_identity_rows() {
-    // The Discogs release has no master, so it is its own group; MB's
-    // back-link adds its own row. Two rows, one per source.
-    let mut release = make_release(vec![make_track("1", "Track 1")]);
-    release.master_id = None;
-    let mb_xref = mb_xref_with_group("mb-rel-only", "mb-group-only");
-
-    let parsed = map(&release, None, Some(&mb_xref)).unwrap();
-
-    assert_eq!(parsed.identities.len(), 2);
-
-    let discogs = &parsed.identities[0];
-    assert_eq!(discogs.source, MetadataSource::Discogs);
-    assert_eq!(discogs.source_group_id, "test-123");
-    assert_eq!(discogs.source_release_id, "test-123");
-
-    let mb = &parsed.identities[1];
-    assert_eq!(mb.source, MetadataSource::MusicBrainz);
-    assert_eq!(mb.source_group_id, "mb-group-only");
-    assert_eq!(mb.source_release_id, "mb-rel-only");
 }
 
 #[test]
@@ -657,7 +527,7 @@ fn role_artist_without_credited_name_falls_back_to_canonical_name() {
 
     let mut parsed = None;
     let logs = crate::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&release, Some(2024), None).unwrap());
+        parsed = Some(map(&release, Some(2024)).unwrap());
     });
     let parsed = parsed.unwrap();
 
@@ -690,7 +560,7 @@ fn id_less_role_credit_reuses_release_artist_by_name() {
         credited_name: None,
     }]);
 
-    let parsed = map(&release, Some(2024), None).unwrap();
+    let parsed = map(&release, Some(2024)).unwrap();
 
     let matching: Vec<_> = parsed
         .artists
@@ -731,7 +601,7 @@ fn id_less_role_credits_dedup_on_credited_name() {
         },
     ]);
 
-    let parsed = map(&release, Some(2024), None).unwrap();
+    let parsed = map(&release, Some(2024)).unwrap();
 
     let matching: Vec<_> = parsed
         .artists

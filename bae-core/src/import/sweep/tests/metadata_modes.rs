@@ -96,8 +96,7 @@ async fn a_pick_stores_the_result_and_the_sweep_leaves_it_alone() {
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-chosen".to_string(),
+                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-chosen".to_string()),
                 partners: Vec::new(),
             },
         )
@@ -137,8 +136,7 @@ async fn a_pick_stores_the_result_and_the_sweep_leaves_it_alone() {
             .expect("the candidate is still stored")
             .metadata_provenance,
         Some(crate::import::MetadataProvenance::ExternalRelease {
-            source: crate::import::MetadataSource::MusicBrainz,
-            release_id: "mb-chosen".to_string(),
+            record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-chosen".to_string()),
             partners: Vec::new(),
         })
     );

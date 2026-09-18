@@ -52,7 +52,6 @@ pub(crate) fn map_direct_entry_candidate_to_db(
             album_artist_scope: AlbumArtistScope::ReleaseCredits,
             release_roles: Vec::new(),
             tracks,
-            identities: Vec::new(),
         },
         clock,
         ids,

@@ -765,9 +765,12 @@ pub async fn fetch_discogs_xref(
     discogs_url: &str,
     priority: CallPriority,
 ) -> Option<(DiscogsRelease, Vec<crate::import::SourcePayload>)> {
-    let id = match crate::import::musicbrainz_mapper::extract_discogs_release_id(discogs_url) {
-        Some(id) => id,
-        None => {
+    let id = match crate::import::parse_catalog_url(discogs_url) {
+        Some(crate::import::CatalogPage::Release {
+            catalog: crate::import::Catalog::Discogs,
+            key,
+        }) => key,
+        _ => {
             tracing::warn!(
                 "Could not extract Discogs release ID from URL: {}",
                 discogs_url

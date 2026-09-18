@@ -49,8 +49,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
     assert_eq!(
         picked,
         crate::import::MetadataProvenance::ExternalRelease {
-            source: crate::import::MetadataSource::MusicBrainz,
-            release_id: "mb-answer-1".to_string(),
+            record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-answer-1".to_string()),
             partners: vec![],
         }
     );
@@ -135,8 +134,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
                 .select_candidate_metadata_provenance(
                     key,
                     crate::import::MetadataProvenance::ExternalRelease {
-                        source: crate::import::MetadataSource::MusicBrainz,
-                        release_id: "mb-picked-1".to_string(),
+                        record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-picked-1".to_string()),
                         partners: vec![],
                     },
                 )
@@ -211,8 +209,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
         .await;
 
     let pick = crate::import::MetadataProvenance::ExternalRelease {
-        source: crate::import::MetadataSource::MusicBrainz,
-        release_id: "mb-answer-1".to_string(),
+        record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-answer-1".to_string()),
         partners: vec![],
     };
     fixture
@@ -573,39 +570,38 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-stated-1".to_string(),
-                partners: vec![crate::import::MetadataRef::new(
-                    "70000301",
-                    crate::import::MetadataSource::Discogs,
-                )],
+                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-stated-1".to_string()),
+                partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000301")],
             },
         )
         .await
         .expect("picking a paired pressing succeeds");
 
     let reading = queue_row(&fixture, &key).await.reading;
-    let crate::import::triage::TriageReading::Identified { sources } = reading else {
+    let crate::import::triage::TriageReading::Identified { records } = reading else {
         panic!("a picked row reads as identified, got {reading:?}");
     };
     assert_eq!(
-        sources,
+        records
+            .iter()
+            .map(|record| (record.catalog, record.key.as_str(), record.url.as_str()))
+            .collect::<Vec<_>>(),
         vec![
-            crate::import::triage::IdentifiedSource {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: "mb-stated-1".to_string(),
-                url: "https://musicbrainz.org/release/mb-stated-1".to_string(),
-                label: Some("Label Name".to_string()),
-                year: Some(1976),
-            },
-            crate::import::triage::IdentifiedSource {
-                source: crate::import::MetadataSource::Discogs,
-                release_id: "70000301".to_string(),
-                url: "https://www.discogs.com/release/70000301".to_string(),
-                label: Some("Other Label".to_string()),
-                year: Some(1988),
-            },
+            (
+                crate::import::Catalog::MusicBrainz,
+                "mb-stated-1",
+                "https://musicbrainz.org/release/mb-stated-1",
+            ),
+            (
+                crate::import::Catalog::Discogs,
+                "70000301",
+                "https://www.discogs.com/release/70000301",
+            ),
         ],
-        "each line states its own source's document, not the draft they merged into"
+        "the row names every catalog the pick claims, each with its own page"
+    );
+    assert!(
+        records[0].reads_draft && !records[1].reads_draft,
+        "only the release the draft was read from reads it"
     );
 }

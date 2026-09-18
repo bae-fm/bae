@@ -15,7 +15,7 @@ use super::verdict::TerminalVerdict;
 use crate::db::LibraryStatus;
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
-use crate::import::MetadataSource;
+use crate::import::Catalog;
 
 /// How much the candidate's probed total may differ from the source's own
 /// total and still count as agreement.
@@ -110,7 +110,7 @@ pub enum VerdictKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LeadMatch {
     pub release_id: String,
-    pub source: MetadataSource,
+    pub source: Catalog,
     pub source_group_id: Option<String>,
     pub title: String,
     pub artist: Option<String>,

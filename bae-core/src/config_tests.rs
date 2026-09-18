@@ -461,18 +461,18 @@ fn config_yaml_allows_missing_device_id() {
 }
 
 /// The YAML mapping names its fields, but nothing reads them by name: the
-/// accessors are total over `MetadataSource`, so every source has an answer
-/// and a new one cannot be silently forgotten.
+/// accessors are total over the catalogs bae asks, so each has an answer and a
+/// new one cannot be silently forgotten.
 #[test]
-fn metadata_source_preferences_are_total_over_the_sources() {
-    let mut prefs = MetadataSourcePreferences::default();
-    for source in crate::import::MetadataSource::ALL {
-        assert!(prefs.enabled(source), "every source starts asked");
+fn lookup_catalog_preferences_are_total_over_the_asked_catalogs() {
+    let mut prefs = LookupCatalogPreferences::default();
+    for catalog in crate::import::Catalog::LOOKUP {
+        assert!(prefs.enabled(catalog), "every asked catalog starts asked");
     }
 
-    prefs.set(crate::import::MetadataSource::Discogs, false);
-    assert!(prefs.enabled(crate::import::MetadataSource::MusicBrainz));
-    assert!(!prefs.enabled(crate::import::MetadataSource::Discogs));
+    prefs.set(crate::import::Catalog::Discogs, false);
+    assert!(prefs.enabled(crate::import::Catalog::MusicBrainz));
+    assert!(!prefs.enabled(crate::import::Catalog::Discogs));
 }
 
 /// The availability list folds two questions that are not the same — whether
@@ -482,27 +482,24 @@ fn metadata_source_preferences_are_total_over_the_sources() {
 /// which of the two to fix while the person's switch waits underneath it.
 #[test]
 fn metadata_sources_fold_the_credential_and_the_switch() {
-    use crate::import::{MetadataSource, SourceAvailability};
+    use crate::import::{Catalog, SourceAvailability};
 
     let mut config = make_test_config("abc-123", PathBuf::from("unused"));
     assert_eq!(
         config
             .metadata_sources()
             .into_iter()
-            .map(|entry| (entry.source, entry.state))
+            .map(|entry| (entry.catalog, entry.state))
             .collect::<Vec<_>>(),
         vec![
-            (MetadataSource::MusicBrainz, SourceAvailability::On),
-            (MetadataSource::Discogs, SourceAvailability::NotConfigured),
+            (Catalog::MusicBrainz, SourceAvailability::On),
+            (Catalog::Discogs, SourceAvailability::NotConfigured),
         ],
         "a fresh library has no Discogs key, so it cannot ask Discogs"
     );
 
     config.prefs.discogs = Some(DiscogsValidation::Valid);
-    config
-        .prefs
-        .metadata_sources
-        .set(MetadataSource::Discogs, false);
+    config.prefs.metadata_sources.set(Catalog::Discogs, false);
     assert_eq!(
         config.metadata_sources()[1].state,
         SourceAvailability::Off,
@@ -521,24 +518,21 @@ fn metadata_sources_fold_the_credential_and_the_switch() {
 /// off the only source still being asked would leave nothing to ask.
 #[test]
 fn the_only_asked_source_is_the_one_that_cannot_be_switched_off() {
-    use crate::import::{is_the_only_asked_source, MetadataSource};
+    use crate::import::{is_the_only_asked_source, Catalog};
 
     let mut config = make_test_config("abc-123", PathBuf::from("unused"));
     let sources = config.metadata_sources();
-    assert!(is_the_only_asked_source(
-        &sources,
-        MetadataSource::MusicBrainz
-    ));
+    assert!(is_the_only_asked_source(&sources, Catalog::MusicBrainz));
     assert!(
-        !is_the_only_asked_source(&sources, MetadataSource::Discogs),
+        !is_the_only_asked_source(&sources, Catalog::Discogs),
         "a source nothing is asking is not the last one asked"
     );
 
     config.prefs.discogs = Some(DiscogsValidation::Valid);
     let sources = config.metadata_sources();
-    for source in MetadataSource::ALL {
+    for catalog in Catalog::LOOKUP {
         assert!(
-            !is_the_only_asked_source(&sources, source),
+            !is_the_only_asked_source(&sources, catalog),
             "with both asked, neither is the last"
         );
     }

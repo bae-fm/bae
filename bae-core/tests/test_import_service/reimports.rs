@@ -119,7 +119,7 @@ async fn an_imported_folder_is_refused_a_second_import() {
         (
             Some(CoverSelection::Remote(
                 "http://127.0.0.1:9/cover.jpg".to_string(),
-                MetadataSource::MusicBrainz,
+                Catalog::MusicBrainz,
             )),
             StorageMode::Local,
         ),

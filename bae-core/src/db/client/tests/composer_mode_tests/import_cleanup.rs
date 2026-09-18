@@ -78,7 +78,7 @@ fn test_release(id: &str, album_id: &str, now: chrono::DateTime<chrono::Utc>) ->
             barcode: None,
         },
         disc_id: None,
-        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
+        draft_from_tags: true,
         remote: false,
         source_folder_name: None,
         content_hash: None,
@@ -331,8 +331,8 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
             INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
             VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '85f70840-aba5-4eb9-8e1a-0d319e53b798', 2026, '0252dedb-ee39-4547-8803-438dbeb57a64', 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, release_name, year, disc_id, metadata_source, metadata_source_release_id, format, label, catalog_number, country, barcode, remote, source_folder_name, content_hash, album_loudness_lufs, album_peak_linear, _updated_at, created_at)
-            VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, NULL, 'musicbrainz', 'mb-release-a', 'CD', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+            INSERT INTO releases (id, album_id, release_name, year, disc_id, format, label, catalog_number, country, barcode, remote, source_folder_name, content_hash, album_loudness_lufs, album_peak_linear, _updated_at, created_at)
+            VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, NULL, 'CD', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
             INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
             VALUES ('0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
@@ -378,11 +378,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
 
     let album = test_album(ALBUM_A, "Album Title A", &album_artist.id, now);
     let release = DbRelease {
-        metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
-            source: crate::import::MetadataSource::MusicBrainz,
-            release_id: "mb-release-a".to_string(),
-            partners: vec![],
-        }),
+        draft_from_tags: false,
         remote: true,
         ..test_release(RELEASE_A, &album.id, now)
     };
@@ -403,7 +399,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         WORK_A,
         &composer.id,
         0,
-        crate::import::MetadataSource::MusicBrainz,
+        crate::import::Catalog::MusicBrainz,
         WORK_ARTIST_A.to_string(),
         now,
     )];
@@ -411,7 +407,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         TRACK_A,
         WORK_A,
         0,
-        crate::import::MetadataSource::MusicBrainz,
+        crate::import::Catalog::MusicBrainz,
         TRACK_WORK_A.to_string(),
         now,
     )];
@@ -419,7 +415,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         &release.id,
         &composer.id,
         0,
-        crate::import::MetadataSource::Discogs,
+        crate::import::Catalog::Discogs,
         Some("Conducted By".to_string()),
         RELEASE_ROLE_A.to_string(),
         now,
@@ -428,7 +424,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         TRACK_A,
         &composer.id,
         0,
-        crate::import::MetadataSource::MusicBrainz,
+        crate::import::Catalog::MusicBrainz,
         Some("arranger".to_string()),
         TRACK_ROLE_A.to_string(),
         now,

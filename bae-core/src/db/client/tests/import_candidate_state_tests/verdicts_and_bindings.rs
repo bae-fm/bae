@@ -38,7 +38,7 @@ fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
 /// log, that named the release the verdict settled on.
 fn sample_ledger() -> IdentifyRunView {
     IdentifyRunView {
-        providers: vec![MetadataSource::MusicBrainz],
+        providers: vec![Catalog::MusicBrainz],
         disc_id: DiscIdStepView::Read {
             disc_id: "disc-1".to_string(),
             source: Some(DiscIdFile {
@@ -59,7 +59,7 @@ fn sample_ledger() -> IdentifyRunView {
 
 fn sample_match() -> MetadataResult {
     MetadataResult {
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         release_id: "rel-1".to_string(),
         title: "Album".to_string(),
         artist: Some("Artist".to_string()),
@@ -372,8 +372,7 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
 
 fn release_pick(release_id: &str) -> crate::import::MetadataProvenance {
     crate::import::MetadataProvenance::ExternalRelease {
-        source: crate::import::MetadataSource::MusicBrainz,
-        release_id: release_id.to_string(),
+        record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, release_id.to_string()),
         partners: vec![],
     }
 }
@@ -659,7 +658,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     let (state, _) = identify_step(
         IdentifyState::Idle,
         IdentifyEvent::Started {
-            providers: vec![crate::import::MetadataSource::MusicBrainz],
+            providers: vec![crate::import::Catalog::MusicBrainz],
             choices: crate::import::LookupChoices::default(),
         },
     );

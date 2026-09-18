@@ -162,8 +162,8 @@ fn discogs_search_result_carries_remote_cover_pair() {
         Some(RemoteCover {
             url: "https://discogs.example/full.jpg".to_string(),
             thumbnail_url: "https://discogs.example/thumb.jpg".to_string(),
-            label: MetadataSource::Discogs.cover_source_label().to_string(),
-            source: MetadataSource::Discogs,
+            label: Catalog::Discogs.cover_source_label().to_string(),
+            source: Catalog::Discogs,
         })
     );
 }
@@ -260,8 +260,8 @@ fn mb_detail_uses_supplied_cover_art_archive_candidates() {
     let cover_art = vec![RemoteCover {
         url: "https://caa.example/cover.jpg".to_string(),
         thumbnail_url: "https://caa.example/thumb.jpg".to_string(),
-        label: MetadataSource::MusicBrainz.cover_source_label().to_string(),
-        source: MetadataSource::MusicBrainz,
+        label: Catalog::MusicBrainz.cover_source_label().to_string(),
+        source: Catalog::MusicBrainz,
     }];
 
     let detail = build_mb_detail("mb-release-1", &response, cover_art.clone()).unwrap();

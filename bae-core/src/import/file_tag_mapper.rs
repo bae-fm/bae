@@ -5,9 +5,9 @@
 //! `map_mb_response_to_db` and `map_discogs_to_db` produce. The editable
 //! confirmation page lets the user correct anything the tags got wrong.
 //!
-//! `ParsedAlbum::identities` is always empty because file tags make no external
-//! identity claim. The release provenance is `FileTags`. Lookup signals
-//! such as OCR, DiscID, and barcode are not part of this path.
+//! File tags name no catalog, so a release seeded from them carries no
+//! records. The release provenance is `FileTags`. Lookup signals such as OCR,
+//! DiscID, and barcode are not part of this path.
 //!
 //! Year comes from any tag carrying a date. Source codecs are physical audio
 //! facts, not release media, so the pressing format stays blank.
@@ -214,9 +214,8 @@ fn file_tag_credit_events(artist: Option<&str>) -> Vec<TrackEvent> {
     }
 }
 
-/// The [`ReleaseIr`] shared by the file-tag and CUE-sheet seeders. `identities`
-/// is always empty (File Tags makes no external identity claim); provenance is
-/// `FileTags`; `album_artist_scope` is `FullPool` so a divergent per-track
+/// The [`ReleaseIr`] shared by the file-tag and CUE-sheet seeders. Provenance
+/// is `FileTags`; `album_artist_scope` is `FullPool` so a divergent per-track
 /// artist also becomes an album artist.
 fn file_tag_release_ir(
     album_title: String,
@@ -242,7 +241,6 @@ fn file_tag_release_ir(
         album_artist_scope: AlbumArtistScope::FullPool,
         release_roles: Vec::new(),
         tracks,
-        identities: Vec::new(),
     }
 }
 

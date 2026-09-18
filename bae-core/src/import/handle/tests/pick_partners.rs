@@ -16,8 +16,7 @@ async fn linked_cover_gallery_can_be_empty() {
     handle.select_candidate_metadata_provenance(
         key.clone(),
         crate::import::MetadataProvenance::ExternalRelease {
-            source: crate::import::MetadataSource::Discogs,
-            release_id: release_id.to_string(),
+            record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, release_id.to_string()),
             partners: vec![],
         },
     ).await.unwrap();
@@ -48,17 +47,13 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     seed_discogs_release(discogs_release_id);
     let mb_release_id = "partner-mb-rel-1";
     seed_mb_release(mb_release_id, "partner-mb-group-1");
-    let partner = crate::import::MetadataRef::new(
-        mb_release_id.to_string(),
-        crate::import::MetadataSource::MusicBrainz,
-    );
+    let partner = crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, mb_release_id.to_string());
 
     handle
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::Discogs,
-                release_id: discogs_release_id.to_string(),
+                record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, discogs_release_id.to_string()),
                 partners: vec![partner.clone()],
             },
         )
@@ -74,8 +69,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     assert_eq!(
         stored.metadata_provenance,
         Some(crate::import::MetadataProvenance::ExternalRelease {
-            source: crate::import::MetadataSource::Discogs,
-            release_id: discogs_release_id.to_string(),
+            record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, discogs_release_id.to_string()),
             partners: vec![partner.clone()],
         }),
         "the partner reads back with the pick that claimed it"
@@ -117,12 +111,8 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: mb_release_id.to_string(),
-                partners: vec![crate::import::MetadataRef::new(
-                    "70000002",
-                    crate::import::MetadataSource::Discogs,
-                )],
+                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, mb_release_id.to_string()),
+                partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000002")],
             },
         )
         .await
@@ -165,12 +155,8 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                source: crate::import::MetadataSource::MusicBrainz,
-                release_id: mb_release_id.to_string(),
-                partners: vec![crate::import::MetadataRef::new(
-                    "repeat-mb-rel-2",
-                    crate::import::MetadataSource::MusicBrainz,
-                )],
+                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, mb_release_id.to_string()),
+                partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "repeat-mb-rel-2")],
             },
         )
         .await

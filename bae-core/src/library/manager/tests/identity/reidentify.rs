@@ -54,11 +54,6 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
 
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
-        source: crate::import::MetadataSource::MusicBrainz,
-        release_id: "mb-rel-1".to_string(),
-        partners: vec![],
-    });
     release.remote = false;
 
     manager.database.insert_album(&album).await.unwrap();
@@ -84,7 +79,7 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
     }
     manager
         .database
-        .insert_release_identities(&release.id, &[mb_identity("g1", "mb-rel-1")])
+        .insert_release_records(&release.id, &[mb_identity("g1", "mb-rel-1")])
         .await
         .unwrap();
 
@@ -122,22 +117,19 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
     assert_ne!(new_album_id, album.id);
 
     // Identity rows are cleared and the metadata provenance becomes File Tags.
-    let identities = manager
+    let records = manager
         .database
-        .get_release_identities(&release.id)
+        .get_release_records(&release.id)
         .await
         .unwrap();
-    assert!(identities.is_empty());
+    assert!(records.is_empty());
     let updated = manager
         .database
         .find_release_by_id(&release.id)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(
-        updated.metadata_provenance,
-        Some(crate::import::MetadataProvenance::FileTags)
-    );
+    assert!(updated.draft_from_tags);
     // The archived document describes `mb-rel-1`, not this release, and is
     // shared with every candidate that matched it. Dropping the pointer is what
     // stops it being read here; nothing deletes it.
@@ -236,24 +228,19 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
 #[tokio::test]
 #[serial(musicbrainz)]
 async fn re_identify_release_exact_archives_the_picked_release() {
-    use crate::import::{ReleaseReseed, MetadataRef, MetadataSource};
+    use crate::import::{ReleaseReseed, MetadataRef, Catalog};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
-        source: crate::import::MetadataSource::MusicBrainz,
-        release_id: "mb-rel-old".to_string(),
-        partners: vec![],
-    });
+    let release = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
     manager
         .database
-        .insert_release_identities(&release.id, &[mb_identity("g-old", "mb-rel-old")])
+        .insert_release_records(&release.id, &[mb_identity("g-old", "mb-rel-old")])
         .await
         .unwrap();
     insert_n_tracks(&manager.database, &release.id, 3).await;
@@ -276,42 +263,32 @@ async fn re_identify_release_exact_archives_the_picked_release() {
         .re_identify_release(
             &release.id,
             ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef {
-                    source: MetadataSource::MusicBrainz,
-                    id: new_release_id.to_string(),
-                },
+                release_ref: MetadataRef::new(Catalog::MusicBrainz, new_release_id),
                 partners: vec![],
             },
         )
         .await
         .unwrap();
 
-    // Identity row updated to the new pressing.
-    let identities = manager
+    // The record now names the new pressing, and reads the draft.
+    let records = manager
         .database
-        .get_release_identities(&release.id)
+        .get_release_records(&release.id)
         .await
         .unwrap();
-    assert_eq!(identities.len(), 1);
-    assert_eq!(identities[0].source, MetadataSource::MusicBrainz);
-    assert_eq!(identities[0].source_group_id, new_group_id);
-    assert_eq!(identities[0].source_release_id, new_release_id);
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].catalog, Catalog::MusicBrainz);
+    assert_eq!(records[0].group_key, new_group_id);
+    assert_eq!(records[0].key, new_release_id);
+    assert!(records[0].reads_draft);
 
-    // Pointer columns flipped to the new source release.
     let updated = manager
         .database
         .find_release_by_id(&release.id)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(
-        updated.metadata_provenance,
-        Some(crate::import::MetadataProvenance::ExternalRelease {
-            source: crate::import::MetadataSource::MusicBrainz,
-            release_id: new_release_id.to_string(),
-            partners: vec![],
-        })
-    );
+    assert!(!updated.draft_from_tags);
 
     // The picked release's documents are archived under its own key, which is
     // what the new pointer names.
@@ -345,7 +322,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
     // point at: a 12-track release can't replace a 10-track rip. A folder
     // import maps its own audio into track slots instead, where a count
     // disagreement is a row to look at rather than a refusal.
-    use crate::import::{ReleaseReseed, MetadataRef, MetadataSource};
+    use crate::import::{ReleaseReseed, MetadataRef, Catalog};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
@@ -367,10 +344,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
         .re_identify_release(
             &release.id,
             ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef {
-                    source: MetadataSource::MusicBrainz,
-                    id: new_release_id.to_string(),
-                },
+                release_ref: MetadataRef::new(Catalog::MusicBrainz, new_release_id),
                 partners: vec![],
             },
         )
@@ -385,7 +359,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
     // No identity row written.
     let identities = manager
         .database
-        .get_release_identities(&release.id)
+        .get_release_records(&release.id)
         .await
         .unwrap();
     assert!(
@@ -401,14 +375,14 @@ async fn re_identify_release_followed_by_reset_succeeds() {
     // projects through the new pointer and reaches the documents that commit
     // archived. A regression here means re-identify pointed the release at a
     // source release whose documents it never wrote.
-    use crate::import::{ReleaseReseed, MetadataRef, MetadataSource};
+    use crate::import::{ReleaseReseed, MetadataRef, Catalog};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.metadata_provenance = Some(crate::import::MetadataProvenance::FileTags);
+    release.draft_from_tags = true;
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
@@ -428,10 +402,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
         .re_identify_release(
             &release.id,
             ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef {
-                    source: MetadataSource::MusicBrainz,
-                    id: new_release_id.to_string(),
-                },
+                release_ref: MetadataRef::new(Catalog::MusicBrainz, new_release_id),
                 partners: vec![],
             },
         )
@@ -489,20 +460,15 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
     let f2 = tag_file("02.flac", "Tagged Two");
 
     let album = create_test_album();
+    // The record inserted below is MusicBrainz's; the rows carry MB metadata.
     let mut release = create_test_release(&album.id);
-    // MusicBrainz-shaped pointer; the rows below carry MB metadata.
-    release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
-        source: crate::import::MetadataSource::MusicBrainz,
-        release_id: "mb-rel-1".to_string(),
-        partners: vec![],
-    });
     release.remote = false;
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
     manager
         .database
-        .insert_release_identities(&release.id, &[mb_identity("g1", "mb-rel-1")])
+        .insert_release_records(&release.id, &[mb_identity("g1", "mb-rel-1")])
         .await
         .unwrap();
 
@@ -556,10 +522,7 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(
-        updated.metadata_provenance,
-        Some(crate::import::MetadataProvenance::FileTags)
-    );
+    assert!(updated.draft_from_tags);
 
     // Album + track rows now reflect the embedded tags, not the MB seed.
     let landing_album_id = manager
@@ -598,7 +561,7 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
 #[tokio::test]
 #[serial(musicbrainz)]
 async fn re_identify_with_a_partner_writes_both_identity_rows() {
-    use crate::import::{MetadataRef, MetadataSource, ReleaseReseed};
+    use crate::import::{MetadataRef, Catalog, ReleaseReseed};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -610,18 +573,13 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
         .unwrap();
 
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
-        source: MetadataSource::MusicBrainz,
-        release_id: "partner-re-identify-mb-rel-old".to_string(),
-        partners: vec![],
-    });
+    let release = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
     manager
         .database
-        .insert_release_identities(
+        .insert_release_records(
             &release.id,
             &[mb_identity("g-old", "partner-re-identify-mb-rel-old")],
         )
@@ -670,8 +628,8 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
         .re_identify_release(
             &release.id,
             ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef::new(mb_release_id, MetadataSource::MusicBrainz),
-                partners: vec![MetadataRef::new(discogs_release_id, MetadataSource::Discogs)],
+                release_ref: MetadataRef::new(Catalog::MusicBrainz, mb_release_id),
+                partners: vec![MetadataRef::new(Catalog::Discogs, discogs_release_id)],
             },
         )
         .await
@@ -679,27 +637,27 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
 
     let identities = manager
         .database
-        .get_release_identities(&release.id)
+        .get_release_records(&release.id)
         .await
         .unwrap();
-    assert_eq!(identities.len(), 2, "one row per claimed source");
+    assert_eq!(identities.len(), 2, "one row per claimed catalog");
 
     let mb = identities
         .iter()
-        .find(|identity| identity.source == MetadataSource::MusicBrainz)
-        .expect("the MusicBrainz row");
-    assert_eq!(mb.source_group_id, mb_group_id);
-    assert_eq!(mb.source_release_id, mb_release_id);
+        .find(|record| record.catalog == Catalog::MusicBrainz)
+        .expect("the MusicBrainz record");
+    assert_eq!(mb.group_key, mb_group_id);
+    assert_eq!(mb.key, mb_release_id);
 
     let discogs = identities
         .iter()
-        .find(|identity| identity.source == MetadataSource::Discogs)
-        .expect("the Discogs row");
-    assert_eq!(discogs.source_group_id, discogs_master_id);
-    assert_eq!(discogs.source_release_id, discogs_release_id);
+        .find(|record| record.catalog == Catalog::Discogs)
+        .expect("the Discogs record");
+    assert_eq!(discogs.group_key, discogs_master_id);
+    assert_eq!(discogs.key, discogs_release_id);
 
     // The partner's documents are archived under its own key, so a later
-    // reset or read of that identity needs no network.
+    // reset or read of that record needs no network.
     assert!(
         archived_for(
             &manager,

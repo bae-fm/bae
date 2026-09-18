@@ -14,7 +14,7 @@ use {
     crate::import::folder_scanner::{ScanItem, ScannedFile},
     crate::import::track_slots::{audio_units, map_source_rows, resolve_track_files},
     crate::import::types::{
-        AudioFile, CoverSelection, ImportPhase, MetadataSource, PrepareStep, TrackFile,
+        AudioFile, CoverSelection, ImportPhase, Catalog, PrepareStep, TrackFile,
     },
     crate::import::ParsedWorkGraph,
     notify_debouncer_full::DebounceEventResult,
@@ -86,9 +86,10 @@ struct PreparedMetadata {
     artists: Vec<crate::db::DbArtist>,
     artist_external_id_updates: Vec<(String, crate::db::DbArtist)>,
     artist_images: Vec<(crate::db::DbLibraryImage, Vec<u8>)>,
-    /// Per-source external identity rows. Empty for File Tags and direct entry.
-    /// Commit writes one `release_identities` row per element.
-    identities: Vec<crate::import::types::ReleaseIdentity>,
+    /// Every catalog's description of this release. Empty for File Tags and
+    /// direct entry, which name no catalog. Commit writes one
+    /// record row per element.
+    records: Vec<crate::import::ReleaseRecord>,
     album_title: String,
 }
 
@@ -188,7 +189,7 @@ pub struct ImportService {
 fn downloaded_cover(
     image: crate::import::cover_art::RemoteImage,
     url: &str,
-    source: MetadataSource,
+    source: Catalog,
 ) -> Result<cover_image::CoverCandidate, crate::import::ImportError> {
     let crate::import::cover_art::RemoteImage {
         bytes,
@@ -762,12 +763,12 @@ pub(crate) async fn prepare_release(
     Ok(payloads)
 }
 
-/// Archive every partner a pick carried, so each one's own identity reads back
+/// Archive every partner a pick carried, so each one's own records read back
 /// offline later.
 ///
-/// A pick names one release per source: the primary is the document the draft
-/// is read from, and every partner is a different source's record of the same
-/// pressing. Two claims about one source are two answers to one question, so
+/// A pick names one release per catalog: the primary is the document the draft
+/// is read from, and every partner is a different catalog's release of the same
+/// pressing. Two claims about one catalog are two answers to one question, so
 /// this refuses them rather than picking one. Nothing is written before this
 /// returns, so a partner that will not prepare leaves the pick unmade.
 pub(crate) async fn prepare_partners(
@@ -776,36 +777,34 @@ pub(crate) async fn prepare_partners(
     partners: &[MetadataRef],
     priority: CallPriority,
 ) -> Result<(), crate::import::ImportError> {
-    let mut claimed = vec![primary.source];
+    let mut claimed = vec![primary.catalog];
     for partner in partners {
-        if claimed.contains(&partner.source) {
+        if claimed.contains(&partner.catalog) {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(
                     "a pick names two {} releases for one pressing",
-                    partner.source.as_str()
+                    partner.catalog.as_str()
                 ),
             });
         }
-        claimed.push(partner.source);
+        claimed.push(partner.catalog);
         prepare_release(library_manager, partner, priority).await?;
     }
     Ok(())
 }
 
-/// The identity rows a pick commits: what the primary document's mapping
-/// concluded, with each partner's source replaced by that partner's own
-/// identity.
+/// The records a pick commits, read off the documents every release it claims
+/// was archived with.
 ///
-/// `release_identities` holds one row per source, so this is a per-source
-/// override rather than a union — the person picked that Discogs release, and
-/// what an editor cross-linked from the MusicBrainz side does not outrank it.
 /// Every partner's documents were archived when the pick was applied, so this
-/// reads them and never fetches; nothing stored is a broken invariant.
-pub(crate) async fn identities_with_partners(
+/// reads them and never fetches; a partner with nothing stored is a broken
+/// invariant and fails the commit rather than committing a thinner claim.
+pub(crate) async fn records_for_commit(
     library_manager: &LibraryManager,
-    mut identities: Vec<crate::import::ReleaseIdentity>,
+    primary: &crate::import::payloads::ReleasePayloads,
     partners: &[MetadataRef],
-) -> Result<Vec<crate::import::ReleaseIdentity>, crate::import::ImportError> {
+) -> Result<Vec<crate::import::ReleaseRecord>, crate::import::ImportError> {
+    let mut claimed = vec![(primary.release().clone(), Some(primary.clone()))];
     for partner in partners {
         let payloads = library_manager
             .load_release_payloads(partner)
@@ -813,15 +812,13 @@ pub(crate) async fn identities_with_partners(
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!(
                     "picked {} release {} but nothing stored its lookups",
-                    partner.source.as_str(),
-                    partner.id
+                    partner.catalog.as_str(),
+                    partner.key
                 ),
             })?;
-        let identity = payloads.identity()?;
-        identities.retain(|existing| existing.source != identity.source);
-        identities.push(identity);
+        claimed.push((partner.clone(), Some(payloads)));
     }
-    Ok(identities)
+    crate::import::payloads::claimed_records(&claimed)
 }
 
 #[cfg(test)]

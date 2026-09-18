@@ -339,7 +339,7 @@ async fn test_new_artist_inserts() {
 // ── find_existing_album_for_import (identity-based dedup) ────────
 
 use crate::db::{DbAlbum, DbRelease, DbTrack};
-use crate::import::ReleaseIdentity;
+use crate::import::ReleaseRecord;
 
 /// Set up a manager with a single test artist that the helpers below
 /// reference for inserted albums.
@@ -385,7 +385,7 @@ fn make_release(album_id: &str) -> DbRelease {
             barcode: None,
         },
         disc_id: None,
-        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
+        draft_from_tags: true,
         remote: true,
         source_folder_name: None,
         content_hash: None,
@@ -409,20 +409,22 @@ fn make_track(release_id: &str, number: i32) -> DbTrack {
     }
 }
 
-fn mb_identity(group: &str, release: &str) -> ReleaseIdentity {
-    ReleaseIdentity {
-        source: MetadataSource::MusicBrainz,
-        source_group_id: group.to_string(),
-        source_release_id: release.to_string(),
-    }
+/// Exactly one record of a release reads its draft; these fixtures put that on
+/// MusicBrainz, so a release carrying both records still has one.
+fn mb_identity(group: &str, release: &str) -> ReleaseRecord {
+    ReleaseRecord::new(
+        &crate::import::MetadataRef::new(Catalog::MusicBrainz, release),
+        Some(group.to_string()),
+        true,
+    )
 }
 
-fn discogs_identity(master: &str, release: &str) -> ReleaseIdentity {
-    ReleaseIdentity {
-        source: MetadataSource::Discogs,
-        source_group_id: master.to_string(),
-        source_release_id: release.to_string(),
-    }
+fn discogs_identity(master: &str, release: &str) -> ReleaseRecord {
+    ReleaseRecord::new(
+        &crate::import::MetadataRef::new(Catalog::Discogs, release),
+        Some(master.to_string()),
+        false,
+    )
 }
 
 /// Insert an album + release with the supplied identity rows. Mirrors
@@ -432,7 +434,7 @@ async fn insert_with_identities(
     manager: &LibraryManager,
     album: &DbAlbum,
     release: &DbRelease,
-    identities: &[ReleaseIdentity],
+    identities: &[ReleaseRecord],
 ) {
     let track = make_track(&release.id, 1);
     manager
@@ -440,7 +442,7 @@ async fn insert_with_identities(
         .await
         .unwrap();
     manager
-        .insert_release_identities(&release.id, identities)
+        .insert_release_records(&release.id, identities)
         .await
         .unwrap();
 }
@@ -450,7 +452,7 @@ async fn insert_with_identities(
 /// database.
 async fn album_with(
     title: &str,
-    identities: &[ReleaseIdentity],
+    identities: &[ReleaseRecord],
 ) -> (LibraryManager, TempDir, DbAlbum, DbRelease) {
     let (manager, tmp) = setup_test_db_with_artist().await;
     let album = make_album(title);
@@ -463,7 +465,7 @@ async fn album_with(
 /// belongs to no album the library already holds.
 async fn album_for_import(
     manager: &LibraryManager,
-    identities: &[ReleaseIdentity],
+    identities: &[ReleaseRecord],
 ) -> Option<String> {
     manager
         .find_existing_album_for_import(identities)
@@ -623,7 +625,7 @@ async fn test_merge_release_into_existing_album() {
         .await
         .unwrap();
     manager
-        .insert_release_identities(&release2.id, &incoming)
+        .insert_release_records(&release2.id, &incoming)
         .await
         .unwrap();
 
@@ -643,7 +645,7 @@ async fn test_check_release_in_library_exact_match() {
 
     let checks = vec![crate::db::LibraryCheck {
         release_id: "mb-rel-1".to_string(),
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         source_group_id: Some("mb-rg-1".to_string()),
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
@@ -662,7 +664,7 @@ async fn test_check_album_in_library_group_only() {
     // Different release ID, same group → album_in_library only.
     let checks = vec![crate::db::LibraryCheck {
         release_id: "mb-rel-OTHER".to_string(),
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         source_group_id: Some("mb-rg-1".to_string()),
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
@@ -682,7 +684,7 @@ async fn test_check_album_in_library_other_pressing_of_the_group() {
 
     let checks = vec![crate::db::LibraryCheck {
         release_id: "mb-rel-1".to_string(),
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         source_group_id: Some("mb-rg-1".to_string()),
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
@@ -705,13 +707,13 @@ async fn test_check_pressing_match_wins_over_sibling_pressing_row() {
         .await
         .unwrap();
     manager
-        .insert_release_identities(&named.id, &[mb_identity("mb-rg-1", "mb-rel-1")])
+        .insert_release_records(&named.id, &[mb_identity("mb-rg-1", "mb-rel-1")])
         .await
         .unwrap();
 
     let checks = vec![crate::db::LibraryCheck {
         release_id: "mb-rel-1".to_string(),
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         source_group_id: Some("mb-rg-1".to_string()),
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
@@ -726,7 +728,7 @@ async fn test_check_release_not_in_library() {
 
     let checks = vec![crate::db::LibraryCheck {
         release_id: "mb-rel-NONE".to_string(),
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         source_group_id: Some("mb-rg-NONE".to_string()),
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
@@ -745,7 +747,7 @@ async fn test_check_cross_source_doesnt_leak() {
 
     let checks = vec![crate::db::LibraryCheck {
         release_id: "mb-rel-1".to_string(),
-        source: MetadataSource::MusicBrainz,
+        source: Catalog::MusicBrainz,
         source_group_id: Some("mb-rg-1".to_string()),
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
