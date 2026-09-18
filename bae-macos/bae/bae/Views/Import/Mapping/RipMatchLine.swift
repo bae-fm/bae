@@ -12,18 +12,19 @@ struct RipMatchLine: View {
 
     var body: some View {
         if let matchedCopies = verification.matchedCopies {
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 11))
+            HStack(alignment: .center, spacing: 7) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.green)
+                    .accessibilityLabel(coreString("core.identity.verified"))
                 Text(
                     coreString(
                         "core.verification.matches_other_rips",
                         Int(matchedCopies)
                     )
                 )
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 11.5))
+                .foregroundStyle(.primary)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("rip-match")

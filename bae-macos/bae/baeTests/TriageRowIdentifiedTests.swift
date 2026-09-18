@@ -130,7 +130,10 @@ struct TriageRowIdentifiedTests {
     }
 
     private static let rowSize = NSSize(width: 340, height: 80)
-    private static let popoverSize = NSSize(width: 300, height: 96)
+    private static let popoverSize = NSSize(
+        width: ReleaseFactsPopover.width,
+        height: 96
+    )
 
     @MainActor
     private func hostedRow(

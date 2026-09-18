@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
@@ -14,12 +16,18 @@ namespace Bae.Desktop;
 ///
 /// At rest the line reads as a line of facts. When the release carries names of
 /// its own, the rip databases confirmed its audio, or a catalog describes it,
-/// pointing at it fills it softly and shows a seal at its tail, and a click
-/// opens a flyout stating them. A release with none of the three has nothing
-/// behind the line, so it is not a trigger at all.
+/// pointing at it fills it softly and fades a seal in at its tail, and a click
+/// toggles a card under it stating them. A release with none of the three has
+/// nothing behind the line, so it is not a trigger at all.
+///
+/// The card hangs off the line's leading edge, a little below it, with no
+/// arrow: it is part of the expansion, not a window pointing back at the line.
 /// </summary>
 internal sealed class ReleaseFactsLine : ContentControl
 {
+    /// <summary>How far under the line the card's top sits.</summary>
+    private const double CardOffset = 8;
+
     private readonly TextBlock _facts = new()
     {
         FontSize = 12,
@@ -48,7 +56,8 @@ internal sealed class ReleaseFactsLine : ContentControl
     {
         _facts.Text = facts;
         IsVisible = facts.Length > 0;
-        Content = marks.Count == 0 && records.Count == 0 && verification is null
+        Content = marks.Count == 0 && records.Count == 0
+            && verification?.MatchedCopies is null
             ? _facts
             : Trigger(marks, verification, records);
     }
@@ -58,9 +67,21 @@ internal sealed class ReleaseFactsLine : ContentControl
         BridgeVerification? verification,
         IReadOnlyList<BridgeReleaseRecord> records)
     {
-        var seal = Icons.Glyph(Icons.Seal, 12, "BaeTextSecondaryBrush");
+        var seal = Icons.Glyph(Icons.Seal, 11, "BaeTextSecondaryBrush");
         seal.Opacity = 0;
         seal.VerticalAlignment = VerticalAlignment.Center;
+        Avalonia.Automation.AutomationProperties.SetName(
+            seal, Loc.Core("core.identity.identified"));
+        // The seal fades rather than snaps: it is a hint at the line's tail,
+        // not a control that appears.
+        seal.Transitions =
+        [
+            new DoubleTransition
+            {
+                Property = OpacityProperty,
+                Duration = TimeSpan.FromSeconds(0.15),
+            },
+        ];
         var row = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -70,13 +91,13 @@ internal sealed class ReleaseFactsLine : ContentControl
         var button = new Button
         {
             Content = row,
-            Padding = new Thickness(6, 3),
+            Padding = new Thickness(5, 2),
             BorderThickness = new Thickness(0),
-            CornerRadius = new CornerRadius(6),
+            CornerRadius = new CornerRadius(5),
             Background = Brushes.Transparent,
             // The fill bleeds outward from where the line already sat, so the
             // card reads the same at rest as it did before it became a trigger.
-            Margin = new Thickness(-6, -3),
+            Margin = new Thickness(-5, -2),
             Cursor = new Avalonia.Input.Cursor(
                 Avalonia.Input.StandardCursorType.Hand),
         };
@@ -93,7 +114,9 @@ internal sealed class ReleaseFactsLine : ContentControl
         };
         var flyout = new Flyout
         {
-            Placement = PlacementMode.Bottom,
+            Placement = PlacementMode.BottomEdgeAlignedLeft,
+            VerticalOffset = CardOffset,
+            ShowMode = FlyoutShowMode.Standard,
             Content = ReleaseFactsFlyout.Build(marks, verification, records),
         };
         button.Click += (_, _) =>

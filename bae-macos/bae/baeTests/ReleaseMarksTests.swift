@@ -81,7 +81,7 @@ struct ReleaseMarksTests {
             )
             .preferredColorScheme(.light)
             .background(.white),
-            size: NSSize(width: 300, height: 260)
+            size: NSSize(width: ReleaseFactsPopover.width, height: 260)
         )
         #expect(lines.carrying("0075678164521"))
         #expect(lines.carrying("MusicBrainz"))
@@ -106,7 +106,7 @@ struct ReleaseMarksTests {
             )
             .preferredColorScheme(.light)
             .background(.white),
-            size: NSSize(width: 300, height: 220)
+            size: NSSize(width: ReleaseFactsPopover.width, height: 220)
         )
 
         // A barcode fits the popover's width, so the line states it whole.
@@ -121,12 +121,9 @@ struct ReleaseMarksTests {
             let tag = coreString(bridgeSignalOriginKey(origin: origin))
             #expect(lines.carrying(tag), "\(tag) is missing from \(lines)")
         }
-        // A disc ID does not fit, and its middle is what gives way: both ends
-        // stay, because they are what tells two discs apart.
+        // A disc ID fits the card's width too, and is stated whole.
         let discId = try #require(release.marks.first { $0.kind == .discId })
-        #expect(!lines.carrying(discId.value))
-        #expect(lines.carrying(String(discId.value.prefix(8))))
-        #expect(lines.carrying(String(discId.value.suffix(8))))
+        #expect(lines.carrying(discId.value))
         for record in release.records {
             let name = bridgeCatalogName(catalog: record.catalog)
             #expect(lines.carrying(name), "\(name) is missing from \(lines)")

@@ -19,31 +19,33 @@ namespace Bae.Desktop;
 /// </summary>
 internal static class ReleaseRecordsRow
 {
-    internal static Control Build(IReadOnlyList<BridgeReleaseRecord> records)
+    internal static Control Build(
+        IReadOnlyList<BridgeReleaseRecord> records,
+        ReleaseFactsScale scale = ReleaseFactsScale.Pane)
     {
         var row = new WrapPanel
         {
             Orientation = Orientation.Horizontal,
-            ItemSpacing = 12,
-            LineSpacing = 6,
+            ItemSpacing = scale.RecordSpacing(),
+            LineSpacing = scale.RecordRowSpacing(),
         };
         Avalonia.Automation.AutomationProperties.SetAutomationId(row, "release-records");
         foreach (var record in records)
         {
-            row.Children.Add(Link(record));
+            row.Children.Add(Link(record, scale.RecordFontSize()));
         }
         return row;
     }
 
-    private static Control Link(BridgeReleaseRecord record)
+    private static Control Link(BridgeReleaseRecord record, double fontSize)
     {
         var name = new TextBlock
         {
             Text = BaeBridgeMethods.BridgeCatalogName(record.Catalog)
                 + " "
                 + ImportPaneUi.OutboundArrow,
-            FontSize = 11.5,
-            FontWeight = FontWeight.Medium,
+            FontSize = fontSize,
+            FontWeight = FontWeight.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
         };
         name[!TextBlock.ForegroundProperty] =

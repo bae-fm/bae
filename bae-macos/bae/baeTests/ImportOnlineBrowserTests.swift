@@ -25,6 +25,7 @@ struct ImportOnlineBrowserTests {
         var presentations: [CandidateMetadataPresentation] = []
         let view = ImportMetadataSourceSection(
             candidate: candidate,
+            actionable: true,
             runtime: nil,
             initialSection: .automatic,
             isReading: false,

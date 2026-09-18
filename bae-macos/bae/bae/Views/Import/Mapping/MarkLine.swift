@@ -10,17 +10,18 @@ struct MarkLine: View {
     let mark: BridgeReleaseMark
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(alignment: .center, spacing: 7) {
             Image(systemName: "seal")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-            Text(coreString(bridgeMarkKindKey(kind: mark.kind)))
                 .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(coreString("core.identity.identified"))
+            Text(coreString(bridgeMarkKindKey(kind: mark.kind)))
+                .font(.system(size: 11.5))
                 .foregroundStyle(.secondary)
             // A disc ID is longer than the line it sits on; its head and tail
             // are what identifies it, so the middle is what goes.
             Text(mark.value)
-                .font(.system(size: 12, design: .monospaced))
+                .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -38,12 +39,12 @@ private struct OriginTag: View {
 
     var body: some View {
         Text(coreString(bridgeSignalOriginKey(origin: origin)))
-            .font(.system(size: 10.5))
+            .font(.system(size: 9.5))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
             .background(
-                Color.secondary.opacity(0.15),
+                Color.primary.opacity(0.07),
                 in: RoundedRectangle(cornerRadius: 4)
             )
             .fixedSize()
@@ -54,9 +55,10 @@ private struct OriginTag: View {
 /// kinds. Draws nothing for an object nothing was read off.
 struct MarkLines: View {
     let marks: [BridgeReleaseMark]
+    var scale: ReleaseFactsScale = .pane
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: scale.lineSpacing) {
             ForEach(marks, id: \.self) { mark in
                 MarkLine(mark: mark)
             }

@@ -5,6 +5,10 @@ import SwiftUI
 /// page a person opens to identify it.
 struct ImportMetadataSourceSection: View {
     let candidate: Candidate
+    /// Whether the candidate can be edited and identified now. A candidate
+    /// that cannot still has its records: a link to a catalog page is not an
+    /// edit, so those stay live while everything else in the slot waits.
+    let actionable: Bool
     let runtime: BridgeCandidateRuntimeSnapshot?
     /// Which section the pane opens on, as the entry that opened it said.
     let initialSection: FindOnlineSection
@@ -38,6 +42,7 @@ struct ImportMetadataSourceSection: View {
                     endEditing: endEditing,
                     onBack: { onPresent(.draft) }
                 )
+                .disabled(!actionable)
             }
         }
     }
@@ -50,11 +55,13 @@ struct ImportMetadataSourceSection: View {
                     candidate: candidate,
                     editValues: edit
                 ),
+                actionable: actionable,
                 isReading: isReading,
                 coverContent: coverContent,
                 hasCoverOptions: hasCoverOptions,
                 editValues: edit,
                 editProvenance: candidate.fieldProvenance,
+                records: candidate.records,
                 editActions: editActions,
                 editingCommands: editingCommands,
                 commit: commit,

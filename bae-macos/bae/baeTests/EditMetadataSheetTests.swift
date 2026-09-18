@@ -103,7 +103,7 @@ struct EditMetadataSheetTests {
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 cover: { EmptyView() },
-                context: { EmptyView() },
+                audioFacts: { EmptyView() },
                 folderFacts: { EmptyView() }
             )
             .environment(Library.stub())

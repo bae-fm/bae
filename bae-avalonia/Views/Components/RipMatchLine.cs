@@ -27,12 +27,14 @@ internal static class RipMatchLine
         var row = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 6,
+            Spacing = 7,
         };
         Avalonia.Automation.AutomationProperties.SetAutomationId(row, "rip-match");
-        var seal = Icons.Glyph(Icons.CheckSeal, 11, "BaeSuccessBrush");
-        seal.VerticalAlignment = VerticalAlignment.Center;
-        row.Children.Add(seal);
+        var check = Icons.Glyph(Icons.Check, 12, "BaeSuccessBrush");
+        check.VerticalAlignment = VerticalAlignment.Center;
+        Avalonia.Automation.AutomationProperties.SetName(
+            check, Loc.Core("core.identity.verified"));
+        row.Children.Add(check);
 
         var text = new TextBlock
         {
@@ -40,11 +42,11 @@ internal static class RipMatchLine
                 "core.verification.matches_other_rips",
                 "count",
                 (long)matchedCopies),
-            FontSize = 12,
+            FontSize = 11.5,
             VerticalAlignment = VerticalAlignment.Center,
         };
         text[!TextBlock.ForegroundProperty] =
-            new DynamicResourceExtension("BaeTextSecondaryBrush");
+            new DynamicResourceExtension("BaeTextPrimaryBrush");
         row.Children.Add(text);
         return row;
     }
@@ -53,12 +55,13 @@ internal static class RipMatchLine
     /// its bits, stacked — the block three surfaces draw as one.</summary>
     internal static Control BuildWithMarks(
         IReadOnlyList<BridgeReleaseMark> marks,
-        BridgeVerification? verification)
+        BridgeVerification? verification,
+        ReleaseFactsScale scale = ReleaseFactsScale.Pane)
     {
-        var column = new StackPanel { Spacing = 4 };
+        var column = new StackPanel { Spacing = scale.LineSpacing() };
         if (marks.Count > 0)
         {
-            column.Children.Add(MarkLines.Build(marks));
+            column.Children.Add(MarkLines.Build(marks, scale));
         }
         if (Build(verification) is { } line)
         {

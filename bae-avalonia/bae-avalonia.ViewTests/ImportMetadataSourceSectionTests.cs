@@ -256,6 +256,7 @@ public sealed class ImportMetadataSourceSectionTests
             Title = title ?? "Album Title",
             Marks = [],
             Verification = null,
+            Records = [],
             Edit = edit ?? Edit(),
             MetaLine = "CD · 1996",
             SourceAudioLine = sourceAudioLine,

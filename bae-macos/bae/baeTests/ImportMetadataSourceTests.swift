@@ -284,11 +284,13 @@ struct ImportReleaseEntryTests {
                     candidate: PreviewData.mappingCandidate,
                     editValues: PreviewData.confirmEditValues
                 ),
+                actionable: true,
                 isReading: false,
                 coverContent: nil,
                 hasCoverOptions: true,
                 editValues: PreviewData.confirmEditValues,
                 editProvenance: PreviewData.fieldProvenance(),
+                records: [],
                 editActions: ReleaseFieldWriter { _, _ in },
                 editingCommands: EditingCommitCommands(),
                 commit: nil,
@@ -505,11 +507,13 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 candidate: candidate,
                 editValues: editValues
             ),
+            actionable: true,
             isReading: false,
             coverContent: nil,
             hasCoverOptions: false,
             editValues: editValues,
             editProvenance: PreviewData.fieldProvenance(),
+            records: [],
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
             commit: nil,
@@ -566,7 +570,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     }
 
     private func coverFrame(in host: NSView) throws -> NSRect {
-        let side = ImportReleaseHeader.coverSize
+        let side = ImportCoverWell.coverSize
         let frames = SnapshotTestSupport.descendants(of: host)
             .filter { $0.bounds.width == side && $0.bounds.height == side }
             .map { $0.convert($0.bounds, to: host) }

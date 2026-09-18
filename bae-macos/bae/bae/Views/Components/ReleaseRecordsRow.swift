@@ -9,11 +9,18 @@ import SwiftUI
 /// anything — it draws what the records say.
 struct ReleaseRecordsRow: View {
     let records: [BridgeReleaseRecord]
+    var scale: ReleaseFactsScale = .pane
 
     var body: some View {
-        FlowLayout(spacing: 12) {
+        FlowLayout(
+            spacing: scale.recordSpacing,
+            rowSpacing: scale.recordRowSpacing
+        ) {
             ForEach(records, id: \.catalog) { record in
-                ReleaseRecordLink(record: record)
+                ReleaseRecordLink(
+                    record: record,
+                    fontSize: scale.recordFontSize
+                )
             }
         }
         .accessibilityIdentifier("release-records")
@@ -23,6 +30,7 @@ struct ReleaseRecordsRow: View {
 /// One catalog's name and the way to its page for this release.
 private struct ReleaseRecordLink: View {
     let record: BridgeReleaseRecord
+    let fontSize: CGFloat
 
     var body: some View {
         if let url = URL(string: record.url) {
@@ -43,9 +51,9 @@ private struct ReleaseRecordLink: View {
     private var name: some View {
         HStack(spacing: 3) {
             Text(verbatim: bridgeCatalogName(catalog: record.catalog))
-                .font(.system(size: 11.5, weight: .medium))
+                .font(.system(size: fontSize, weight: .semibold))
             Image(systemName: "arrow.up.right")
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: fontSize - 2.5, weight: .semibold))
         }
         .fixedSize()
     }

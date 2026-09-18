@@ -213,60 +213,109 @@ struct AlbumExpansionContent: View {
 /// The release's facts, and the way into where they came from.
 ///
 /// At rest the line reads as it always has. When the release carries names of
-/// its own or a catalog describes it, hovering fills the line softly and fades
-/// a seal in at its tail, and a click toggles a popover under it stating both.
-/// A release with neither has nothing behind the line, so it is not a trigger
-/// at all.
+/// its own, the rip databases confirmed its audio, or a catalog describes it,
+/// hovering fills the line softly and fades a seal in at its tail, and a
+/// click toggles a card under it stating all three. A release with none of
+/// them has nothing behind the line, so it is not a trigger at all.
+///
+/// The card is drawn in the window, anchored to the line's leading edge and
+/// laid over whatever sits under it, rather than as a popover floating off
+/// the line with an arrow: it is part of the expansion, not a window of its
+/// own. That means nothing closes it for us, so the card carries the monitor
+/// that closes it on a click away or Escape.
 private struct ReleaseFactsLine: View {
     let facts: String
     let marks: [BridgeReleaseMark]
     let verification: BridgeVerification?
     let records: [BridgeReleaseRecord]
 
+    /// How far under the line the card's top sits.
+    private static let cardOffset: CGFloat = 8
+
     @State
     private var isHovering = false
     @State
-    private var isShowingPopover = false
+    private var isShowingCard = false
+    @State
+    private var trigger = OverlayAnchor()
+    /// The line's own height, which is where the card hangs from.
+    @State
+    private var lineHeight: CGFloat = 0
 
     var body: some View {
-        if marks.isEmpty, records.isEmpty, verification == nil {
+        if marks.isEmpty, records.isEmpty, verification?.matchedCopies == nil {
             factsText
         }
         else {
             Button {
-                isShowingPopover.toggle()
+                isShowingCard.toggle()
             } label: {
                 HStack(spacing: 6) {
                     factsText
                     Image(systemName: "seal")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
                         .opacity(isHovering ? 1 : 0)
+                        .animation(
+                            .easeInOut(duration: 0.15),
+                            value: isHovering
+                        )
+                        .accessibilityLabel(
+                            coreString("core.identity.identified")
+                        )
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
                 .background(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 5)
                         .fill(isHovering ? Theme.hover : Color.clear)
                 )
                 // The fill bleeds outward from where the line already sat, so
                 // the card reads the same at rest as it did before it became
                 // a trigger.
-                .padding(.horizontal, -6)
-                .padding(.vertical, -3)
+                .padding(.horizontal, -5)
+                .padding(.vertical, -2)
             }
             .buttonStyle(.plain)
+            .background { OverlayTrigger(anchor: trigger) }
             .onHover { isHovering = $0 }
             .accessibilityIdentifier("release-facts")
-            .popover(isPresented: $isShowingPopover, arrowEdge: .bottom) {
-                ReleaseFactsPopover(
-                    marks: marks,
-                    verification: verification,
-                    records: records
-                )
-                .background { PopoverBehavior() }
+            .onGeometryChange(for: CGFloat.self) { geometry in
+                geometry.size.height
+            } action: {
+                lineHeight = $0
+            }
+            .overlay(alignment: .topLeading) {
+                if isShowingCard {
+                    // Hung off the line's bottom edge: the card's top sits
+                    // the offset below it.
+                    card.offset(y: lineHeight + Self.cardOffset)
+                }
+            }
+            // Over the rows that follow the line, which the card lies across.
+            .zIndex(1)
+        }
+    }
+
+    private var card: some View {
+        ReleaseFactsPopover(
+            marks: marks,
+            verification: verification,
+            records: records
+        )
+        .background(Theme.tile, in: RoundedRectangle(cornerRadius: 9))
+        .overlay {
+            RoundedRectangle(cornerRadius: 9)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.5), radius: 14, y: 8)
+        .background {
+            OverlayDismissMonitor(trigger: trigger) {
+                isShowingCard = false
             }
         }
+        .fixedSize()
+        .accessibilityIdentifier("release-facts-card")
     }
 
     private var factsText: some View {

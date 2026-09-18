@@ -43,15 +43,28 @@ struct ReleaseFieldWriter {
     }
 }
 
-/// The shared editable release header: cover, album identity, source context,
-/// and pressing facts. Its callers supply the cover and context so candidate
-/// and persisted-release ownership never leaks into this component.
-struct ReleaseMetadataHeader<Cover: View, Context: View, FolderFacts: View>:
+/// The sizes the release header is laid out to, shared by the surfaces that
+/// draw it — the import pane's card and the library's edit sheet — and by
+/// the covers they hand it.
+enum ReleaseMetadataLayout {
+    /// The cover beside the album identity. Big enough to read the artwork
+    /// as artwork; the heading beside it is sized to match.
+    static let coverSize: CGFloat = 132
+    /// Between the cover and the identity column.
+    static let coverSpacing: CGFloat = 16
+    /// Between the header's blocks: the cover row, what the folder states,
+    /// the release facts, and whatever the surface stacks after them.
+    static let blockSpacing: CGFloat = 14
+}
+
+/// The shared editable release header: the cover beside the album identity,
+/// then what the folder itself states, then the release facts, each a block
+/// of its own the full width of the surface. Its callers supply the cover and
+/// the two folder slots so candidate and persisted-release ownership never
+/// leaks into this component.
+struct ReleaseMetadataHeader<Cover: View, AudioFacts: View, FolderFacts: View>:
     View
 {
-    static var coverSize: CGFloat { 200 }
-    static var coverSpacing: CGFloat { 24 }
-
     let values: BridgeRawReleaseEdit
     /// One entry per album-level field, as core reads them.
     let provenance: [BridgeFieldProvenance]
@@ -59,59 +72,65 @@ struct ReleaseMetadataHeader<Cover: View, Context: View, FolderFacts: View>:
     let editingCommands: EditingCommitCommands
     @ViewBuilder
     let cover: () -> Cover
+    /// What the audio behind the release is — its codec, rate and depth —
+    /// as the last line of the identity column, under the artist. Empty
+    /// where nothing has read the files.
     @ViewBuilder
-    let context: () -> Context
-    /// What was read off the folder itself: the audio its files hold, and the
-    /// names the object carries. Sits under the album identity and above the
-    /// pressing facts; empty where there is no folder behind the release.
+    let audioFacts: () -> AudioFacts
+    /// The names the object carries and what the rip databases said about
+    /// its bits: a block of its own under the cover row, above the release
+    /// facts. Empty where there is no folder behind the release.
     @ViewBuilder
     let folderFacts: () -> FolderFacts
 
     var body: some View {
-        HStack(alignment: .top, spacing: Self.coverSpacing) {
-            cover()
-                .frame(width: Self.coverSize, height: Self.coverSize)
-            VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
+        {
+            HStack(alignment: .top, spacing: ReleaseMetadataLayout.coverSpacing)
+            {
+                cover()
+                    .frame(
+                        width: ReleaseMetadataLayout.coverSize,
+                        height: ReleaseMetadataLayout.coverSize
+                    )
                 ReleaseAlbumIdentityEditor(
                     values: values,
                     provenance: provenance,
                     writer: writer,
                     editingCommands: editingCommands,
-                    context: context,
-                    folderFacts: folderFacts
-                )
-                ReleasePressingFieldsGrid(
-                    values: values,
-                    provenance: provenance,
-                    writer: writer,
-                    editingCommands: editingCommands
+                    audioFacts: audioFacts
                 )
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            folderFacts()
+            ReleasePressingFieldsGrid(
+                values: values,
+                provenance: provenance,
+                writer: writer,
+                editingCommands: editingCommands
+            )
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 /// Album identity rendered as a document heading that becomes editable on
-/// hover and focus.
-struct ReleaseAlbumIdentityEditor<Context: View, FolderFacts: View>: View {
+/// hover and focus: the title, the artist line, and the audio facts.
+struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
     let values: BridgeRawReleaseEdit
     let provenance: [BridgeFieldProvenance]
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     @ViewBuilder
-    let context: () -> Context
-    @ViewBuilder
-    let folderFacts: () -> FolderFacts
+    let audioFacts: () -> AudioFacts
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 CommittedTextField(
                     placeholder: String(localized: "Album title"),
                     value: values.albumTitle,
                     chrome: .inline,
-                    font: .system(size: 24, weight: .semibold),
+                    font: .system(size: 22, weight: .semibold),
                     editingCommands: editingCommands,
                     onCommit: { await writer.setField(.albumTitle, $0) },
                 )
@@ -146,9 +165,8 @@ struct ReleaseAlbumIdentityEditor<Context: View, FolderFacts: View>: View {
                 if let year = provenance.forField(.albumYear) {
                     FieldOriginDot(provenance: year)
                 }
-                context()
             }
-            folderFacts()
+            audioFacts()
                 .padding(.horizontal, FieldChrome.inlineHorizontalPadding)
         }
         .padding(.leading, -FieldChrome.inlineHorizontalPadding)
@@ -156,8 +174,8 @@ struct ReleaseAlbumIdentityEditor<Context: View, FolderFacts: View>: View {
     }
 }
 
-/// Editable pressing facts in the compact two-column grid used by Import and
-/// the persisted release editor.
+/// Editable release facts as one column of labelled fields under a ruled
+/// RELEASE header, used by Import and the persisted release editor.
 struct ReleasePressingFieldsGrid: View {
     let values: BridgeRawReleaseEdit
     let provenance: [BridgeFieldProvenance]
@@ -165,19 +183,24 @@ struct ReleasePressingFieldsGrid: View {
     let editingCommands: EditingCommitCommands
 
     static let labelWidth: CGFloat = 64
-    static let valueWidth: CGFloat = 150
-    static let columnGap: CGFloat = 20
-    static let labelGap: CGFloat = 12
-    static let rowSpacing: CGFloat = 10
+    static let labelGap: CGFloat = 14
+    /// Between one row's text and the next. The fields carry the inline
+    /// chrome's vertical padding inside their rows, so the grid's own
+    /// spacing is what is left of the gap once that padding is counted.
+    static let rowSpacing: CGFloat = 8
+    /// What an empty field is drawn at, so there is something to click into;
+    /// a filled field is as wide as its value.
+    static let emptyValueWidth: CGFloat = 96
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             FormSectionHeader(title: String(localized: "Release"), ruled: true)
             Grid(
                 alignment: .leadingFirstTextBaseline,
-                horizontalSpacing: Self.columnGap
+                horizontalSpacing: Self.labelGap
                     - FieldChrome.inlineHorizontalPadding,
                 verticalSpacing: Self.rowSpacing
+                    - 2 * FieldChrome.inlineVerticalPadding
             ) {
                 GridRow {
                     field(
@@ -185,6 +208,8 @@ struct ReleasePressingFieldsGrid: View {
                         label: String(localized: "Year"),
                         text: values.pressing.year
                     )
+                }
+                GridRow {
                     field(
                         .format,
                         label: coreString("core.release.media"),
@@ -197,6 +222,8 @@ struct ReleasePressingFieldsGrid: View {
                         label: String(localized: "Label"),
                         text: values.pressing.label
                     )
+                }
+                GridRow {
                     field(
                         .country,
                         label: String(localized: "Country"),
@@ -210,6 +237,8 @@ struct ReleasePressingFieldsGrid: View {
                         text: values.pressing.catalogNumber,
                         monospaced: true
                     )
+                }
+                GridRow {
                     field(
                         .barcode,
                         label: String(localized: "Barcode"),
@@ -221,21 +250,23 @@ struct ReleasePressingFieldsGrid: View {
         }
     }
 
+    /// One row: the label right-aligned in its column, the field as wide as
+    /// its value, and the dot right after the value where provenance marks
+    /// it. An empty field is drawn wider than its dash so there is something
+    /// to click into.
+    @ViewBuilder
     private func field(
         _ field: BridgeCandidateEditField,
         label: String,
         text: String,
         monospaced: Bool = false
     ) -> some View {
-        HStack(
-            alignment: .firstTextBaseline,
-            spacing: Self.labelGap - FieldChrome.inlineHorizontalPadding
-        ) {
-            Text(label)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .frame(width: Self.labelWidth, alignment: .trailing)
+        Text(label)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .frame(width: Self.labelWidth, alignment: .trailing)
+        HStack(alignment: .firstTextBaseline, spacing: 7) {
             CommittedTextField(
                 placeholder: "\u{2014}",
                 value: text,
@@ -246,7 +277,11 @@ struct ReleasePressingFieldsGrid: View {
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(field, $0) },
             )
-            .frame(width: Self.valueWidth)
+            .fixedSize(horizontal: true, vertical: false)
+            .frame(
+                minWidth: text.isEmpty ? Self.emptyValueWidth : nil,
+                alignment: .leading
+            )
             if let entry = provenance.forField(field) {
                 FieldOriginDot(provenance: entry)
             }
@@ -542,14 +577,17 @@ struct ArtistAssignmentsField: View {
             writer: .binding($form),
             editingCommands: EditingCommitCommands(),
             cover: {
-                ImageView(imageRef: nil, pointSize: 200)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                ImageView(
+                    imageRef: nil,
+                    pointSize: ReleaseMetadataLayout.coverSize
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             },
-            context: { EmptyView() },
+            audioFacts: { EmptyView() },
             folderFacts: { EmptyView() }
         )
         .padding(24)
-        .frame(width: 900, height: 360)
+        .frame(width: 900, height: 480)
         .background(Theme.background)
         .environment(PreviewData.artistAssignmentsLibrary())
         .environment(ImageStore.stub())
@@ -566,14 +604,17 @@ struct ArtistAssignmentsField: View {
             writer: .binding($form),
             editingCommands: EditingCommitCommands(),
             cover: {
-                ImageView(imageRef: nil, pointSize: 200)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                ImageView(
+                    imageRef: nil,
+                    pointSize: ReleaseMetadataLayout.coverSize
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             },
-            context: { EmptyView() },
+            audioFacts: { EmptyView() },
             folderFacts: { EmptyView() }
         )
         .padding(24)
-        .frame(width: 900, height: 360)
+        .frame(width: 900, height: 480)
         .background(Theme.background)
         .environment(PreviewData.artistAssignmentsLibrary())
         .environment(ImageStore.stub())

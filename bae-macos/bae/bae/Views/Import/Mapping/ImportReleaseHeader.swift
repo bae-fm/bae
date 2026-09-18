@@ -28,11 +28,17 @@ struct ImportReleaseSourceActions {
     let clearMetadata: () -> Void
 }
 
-/// The editable metadata draft card: where the draft's metadata comes from,
-/// then the cover beside the album heading and its release fields, then the
-/// commit row once there is something to commit.
+/// The editable metadata draft card, top to bottom: the action row, the cover
+/// beside the album heading, the names the folder states and what the rip
+/// databases said, the release facts, and — under a hairline of their own —
+/// the catalogs that describe the release. A block with nothing to state is
+/// absent rather than drawn empty.
 struct ImportReleaseHeader: View {
     let releaseSummary: ImportReleaseSummary
+    /// Whether the draft can be edited and identified now. The records row
+    /// is the one part of the card this does not touch: opening a catalog's
+    /// page changes nothing about the candidate.
+    let actionable: Bool
     /// Whether a read is in flight — the source controls wait for it rather
     /// than the card being replaced by a placeholder.
     let isReading: Bool
@@ -45,6 +51,9 @@ struct ImportReleaseHeader: View {
     let editValues: BridgeRawReleaseEdit?
     /// One entry per album-level field of that draft, as core reads them.
     let editProvenance: [BridgeFieldProvenance]
+    /// Every catalog that describes the release the draft was read from.
+    /// Empty for a draft read from the files' own tags, or typed in.
+    let records: [BridgeReleaseRecord]
     /// Where a typed field's value goes.
     let editActions: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
@@ -56,60 +65,56 @@ struct ImportReleaseHeader: View {
     let onEditCover: () -> Void
     let onSelectCover: (BridgeCoverSelection) -> Void
 
-    /// The cover the card leads with. Big enough to read the artwork as
-    /// artwork — the cover is the thing being confirmed, and the heading
-    /// beside it is sized to match.
-    static let coverSize = ReleaseMetadataHeader<
-        EmptyView, EmptyView, EmptyView
-    >
-    .coverSize
-
     @Environment(ConfigStore.self)
     private var configStore
     @State
     private var confirmsClear = false
     @State
     private var confirmsReset = false
-    @State
-    private var coverDropTargeted = false
-    @State
-    private var coverHovering = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
+        {
             actionRow
+                .disabled(!actionable)
             if let editValues {
                 ReleaseMetadataHeader(
                     values: editValues,
                     provenance: editProvenance,
                     writer: editActions,
                     editingCommands: editingCommands,
-                    cover: { cover },
-                    // Which catalogs describe the release is the pane's last
-                    // line, under its own hairline — not a caption on the
-                    // header's artist.
-                    context: { EmptyView() },
-                    // What the folder itself states: what its audio is, and
-                    // the names printed on the object it was copied from.
-                    folderFacts: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            if let sourceAudio = releaseSummary.sourceAudio {
-                                ImportSourceAudioSummaryView(
-                                    sourceAudio: sourceAudio
-                                )
-                            }
-                            if !releaseSummary.marks.isEmpty {
-                                MarkLines(marks: releaseSummary.marks)
-                            }
-                            if let verification = releaseSummary.verification {
-                                RipMatchLine(verification: verification)
-                            }
+                    cover: {
+                        ImportCoverWell(
+                            coverContent: coverContent,
+                            hasCoverOptions: hasCoverOptions,
+                            localCoverSelections: localCoverSelections,
+                            onEditCover: onEditCover,
+                            onSelectCover: onSelectCover
+                        )
+                    },
+                    audioFacts: {
+                        if let sourceAudio = releaseSummary.sourceAudio {
+                            ImportSourceAudioSummaryView(
+                                sourceAudio: sourceAudio
+                            )
                         }
-                    }
+                    },
+                    folderFacts: { folderFacts }
                 )
+                .disabled(!actionable)
+                // Which catalogs describe the release is the card's last
+                // line, under its own hairline — not a caption on the
+                // header's artist.
+                if !records.isEmpty {
+                    Rectangle()
+                        .fill(Theme.hover)
+                        .frame(height: 1)
+                    ReleaseRecordsRow(records: records, scale: .pane)
+                }
             }
         }
-        .padding(16)
+        .padding(.vertical, 16)
+        .padding(.horizontal, 20)
         .formGroupCard()
         .confirmationDialog(
             "Clear metadata?",
@@ -138,6 +143,26 @@ struct ImportReleaseHeader: View {
             Text(
                 "The draft is replaced by the files' tags. The candidate files and mapping choices will remain unchanged."
             )
+        }
+    }
+
+    /// The names printed on the object the folder was copied from, one line
+    /// each, and under them what the rip databases said about its audio.
+    /// Absent — not an empty block — for a folder nothing has read.
+    @ViewBuilder
+    private var folderFacts: some View {
+        if !releaseSummary.marks.isEmpty
+            || releaseSummary.verification?.matchedCopies != nil
+        {
+            VStack(
+                alignment: .leading,
+                spacing: ReleaseFactsScale.pane.lineSpacing
+            ) {
+                MarkLines(marks: releaseSummary.marks, scale: .pane)
+                if let verification = releaseSummary.verification {
+                    RipMatchLine(verification: verification)
+                }
+            }
         }
     }
 
@@ -229,11 +254,29 @@ struct ImportReleaseHeader: View {
         .menuIndicator(.hidden)
         .fixedSize()
     }
+}
 
-    /// The cover, or the well it goes in. The well invites the two ways a
-    /// cover arrives — dragging one of the folder's images onto it, or picking
-    /// from the release's and the folder's — and says when there is neither.
-    private var cover: some View {
+/// The cover the card leads with, or the well it goes in. The well invites
+/// the two ways a cover arrives — dragging one of the folder's images onto
+/// it, or picking from the release's and the folder's — and says when there
+/// is neither.
+struct ImportCoverWell: View {
+    let coverContent: ImageContent?
+    /// Whether there is any artwork to pick from — the release's images or the
+    /// folder's. Without one, the well says so instead of inviting a pick.
+    let hasCoverOptions: Bool
+    let localCoverSelections: [String: BridgeCoverSelection]
+    let onEditCover: () -> Void
+    let onSelectCover: (BridgeCoverSelection) -> Void
+
+    static let coverSize = ReleaseMetadataLayout.coverSize
+
+    @State
+    private var dropTargeted = false
+    @State
+    private var hovering = false
+
+    var body: some View {
         Group {
             if let coverContent {
                 ImageView(content: coverContent, pointSize: Self.coverSize)
@@ -261,12 +304,12 @@ struct ImportReleaseHeader: View {
                 onEditCover()
             }
         }
-        .onHover { coverHovering = $0 }
+        .onHover { hovering = $0 }
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(
                     Theme.accent,
-                    lineWidth: coverDropTargeted ? 3 : 0
+                    lineWidth: dropTargeted ? 3 : 0
                 )
         }
         .dropDestination(for: String.self) { fileIds, _ in
@@ -276,12 +319,12 @@ struct ImportReleaseHeader: View {
             onSelectCover(selection)
             return true
         } isTargeted: {
-            coverDropTargeted = $0
+            dropTargeted = $0
         }
     }
 
     private var artworkWell: some View {
-        let inviting = hasCoverOptions && coverHovering
+        let inviting = hasCoverOptions && hovering
         return VStack(spacing: 4) {
             if hasCoverOptions {
                 Text("Add artwork")
@@ -297,7 +340,8 @@ struct ImportReleaseHeader: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(16)
+        // The hint wraps to two lines in the width the cover leaves it.
+        .padding(10)
         .frame(width: Self.coverSize, height: Self.coverSize)
         .background(
             inviting ? Theme.accent.opacity(0.06) : Theme.hover
@@ -322,11 +366,13 @@ struct ImportReleaseHeader: View {
                 candidate: PreviewData.mappingCandidate,
                 editValues: PreviewData.confirmEditValues
             ),
+            actionable: true,
             isReading: false,
             coverContent: nil,
             hasCoverOptions: true,
             editValues: PreviewData.confirmEditValues,
             editProvenance: PreviewData.fieldProvenance(),
+            records: PreviewData.releaseRecordsPair,
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
             commit: nil,
@@ -341,7 +387,7 @@ struct ImportReleaseHeader: View {
             onSelectCover: { _ in },
         )
         .padding(24)
-        .frame(width: 900, height: 420)
+        .frame(width: 900, height: 620)
         .importPreviewEnvironment()
         .environment(Library.stub())
         .candidateReaderPreviewEnvironment()

@@ -99,6 +99,7 @@ public sealed class ReleaseMarksTests
             SourceAudioLine = "FLAC · 44.1 kHz",
             Marks = marks,
             Verification = null,
+            Records = [],
             FieldProvenance = ImportCandidateFixtures.FieldProvenance(),
             IsReading = false,
             LookupOptions = null,

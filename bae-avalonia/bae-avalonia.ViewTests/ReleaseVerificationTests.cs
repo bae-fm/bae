@@ -83,6 +83,7 @@ public sealed class ReleaseVerificationTests
             SourceAudioLine = "FLAC · 44.1 kHz",
             Marks = [],
             Verification = verification,
+            Records = [],
             FieldProvenance = ImportCandidateFixtures.FieldProvenance(),
             IsReading = false,
             LookupOptions = null,

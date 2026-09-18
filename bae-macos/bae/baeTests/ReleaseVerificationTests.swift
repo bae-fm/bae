@@ -88,7 +88,7 @@ struct ReleaseVerificationTests {
             )
             .preferredColorScheme(.light)
             .background(.white),
-            size: NSSize(width: 300, height: 300)
+            size: NSSize(width: ReleaseFactsPopover.width, height: 300)
         )
         #expect(
             lines.carrying(
@@ -115,7 +115,7 @@ struct ReleaseVerificationTests {
             )
             .preferredColorScheme(.light)
             .background(.white),
-            size: NSSize(width: 300, height: 260)
+            size: NSSize(width: ReleaseFactsPopover.width, height: 260)
         )
         let count = try #require(verification.matchedCopies)
         #expect(

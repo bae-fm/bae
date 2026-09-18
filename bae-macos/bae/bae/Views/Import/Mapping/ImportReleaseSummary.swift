@@ -205,7 +205,7 @@ struct ImportSourceAudioSummaryView: View {
 
     var body: some View {
         Text(sourceAudio.summary.text)
-            .font(.system(size: 11.5))
+            .font(.system(size: 11))
             .foregroundStyle(.tertiary)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)

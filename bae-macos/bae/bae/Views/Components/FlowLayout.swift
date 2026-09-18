@@ -3,7 +3,12 @@ import SwiftUI
 /// Wraps its subviews onto as many rows as they need, like text — the chip
 /// field, the add-token row and the records row all overflow a single line.
 struct FlowLayout: Layout {
+    /// The gap between two items on one row.
     var spacing: CGFloat = 5
+    /// The gap between two rows. The same as `spacing` unless the caller says
+    /// otherwise: a row of links sits closer to the next row than its links
+    /// sit to each other.
+    var rowSpacing: CGFloat?
 
     func sizeThatFits(
         proposal: ProposedViewSize,
@@ -38,6 +43,7 @@ struct FlowLayout: Layout {
         _ subviews: Subviews,
         in width: CGFloat
     ) -> (size: CGSize, positions: [CGPoint]) {
+        let rowSpacing = rowSpacing ?? spacing
         var positions: [CGPoint] = []
         var rowStart = 0
         var cursorX: CGFloat = 0
@@ -58,7 +64,7 @@ struct FlowLayout: Layout {
             if cursorX > 0, cursorX + size.width > width {
                 closeRow(endingBefore: index)
                 cursorX = 0
-                cursorY += rowHeight + spacing
+                cursorY += rowHeight + rowSpacing
                 rowHeight = 0
                 rowStart = index
             }

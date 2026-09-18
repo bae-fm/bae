@@ -23,9 +23,11 @@ internal static class MarkLines
     /// not, and its ends are what name it.</summary>
     private const int MarkValueChars = 20;
 
-    internal static Control Build(IReadOnlyList<BridgeReleaseMark> marks)
+    internal static Control Build(
+        IReadOnlyList<BridgeReleaseMark> marks,
+        ReleaseFactsScale scale = ReleaseFactsScale.Pane)
     {
-        var column = new StackPanel { Spacing = 4 };
+        var column = new StackPanel { Spacing = scale.LineSpacing() };
         Avalonia.Automation.AutomationProperties.SetAutomationId(column, "release-marks");
         foreach (var mark in marks)
         {
@@ -39,16 +41,18 @@ internal static class MarkLines
         var row = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 6,
+            Spacing = 7,
         };
-        var seal = Icons.Glyph(Icons.Seal, 11, "BaeTextSecondaryBrush");
+        var seal = Icons.Glyph(Icons.Seal, 12, "BaeTextSecondaryBrush");
         seal.VerticalAlignment = VerticalAlignment.Center;
+        Avalonia.Automation.AutomationProperties.SetName(
+            seal, Loc.Core("core.identity.identified"));
         row.Children.Add(seal);
 
         var kind = new TextBlock
         {
             Text = Loc.Core(BaeBridgeMethods.BridgeMarkKindKey(mark.Kind)),
-            FontSize = 12,
+            FontSize = 11.5,
             VerticalAlignment = VerticalAlignment.Center,
         };
         kind[!TextBlock.ForegroundProperty] =
@@ -62,7 +66,7 @@ internal static class MarkLines
         var value = new TextBlock
         {
             Text = TextTruncation.MiddleTruncate(mark.Value, MarkValueChars),
-            FontSize = 12,
+            FontSize = 11,
             FontFamily = new FontFamily("monospace"),
             MaxLines = 1,
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -84,7 +88,7 @@ internal static class MarkLines
         var text = new TextBlock
         {
             Text = Loc.Core(BaeBridgeMethods.BridgeSignalOriginKey(origin)),
-            FontSize = 10.5,
+            FontSize = 9.5,
             VerticalAlignment = VerticalAlignment.Center,
         };
         text[!TextBlock.ForegroundProperty] =

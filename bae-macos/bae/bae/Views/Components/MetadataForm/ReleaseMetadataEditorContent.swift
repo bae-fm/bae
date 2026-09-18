@@ -27,8 +27,10 @@ struct ReleaseMetadataEditorContent: View {
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 cover: { cover },
-                context: { EmptyView() },
-                folderFacts: { sourceAudio }
+                audioFacts: { sourceAudio },
+                // A library release has no folder behind it any more: the
+                // names it carries live on the expansion's facts line.
+                folderFacts: { EmptyView() }
             )
             trackTable
         }
@@ -41,10 +43,7 @@ struct ReleaseMetadataEditorContent: View {
         } label: {
             ImageView(
                 imageRef: session.cover,
-                pointSize: ReleaseMetadataHeader<
-                    EmptyView, EmptyView, EmptyView
-                >
-                .coverSize
+                pointSize: ReleaseMetadataLayout.coverSize
             )
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(alignment: .topTrailing) {
@@ -253,7 +252,7 @@ struct ReleaseSourceAudioSummaryView: View {
 
     var body: some View {
         Text(sourceAudio.text)
-            .font(.system(size: 11.5))
+            .font(.system(size: 11))
             .foregroundStyle(.tertiary)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)

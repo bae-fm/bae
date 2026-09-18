@@ -593,10 +593,10 @@ public sealed class ImportMappingPaneTests
 
     // ── Building the pane ────────────────────────────────────────────────────
 
-    // The pane draws the records once, at its end: which catalogs describe the
-    // release is one answer, and the card above them names none of its own.
+    // The pane draws the records once, last in the card: which catalogs
+    // describe the release is one answer, and the header names none of its own.
     [AvaloniaFact]
-    public void ThePaneNamesItsCatalogsOnceAtItsEnd()
+    public void ThePaneNamesItsCatalogsOnceInTheCard()
     {
         var (pane, _) = Show(Detail(
             new BridgeMetadataProvenance.ExternalRelease(

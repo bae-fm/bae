@@ -440,13 +440,6 @@ internal sealed partial class ImportMappingPane : UserControl
             // Both sections and their headings, as one block.
             sections.Children.Add(_table.Build());
         }
-        if (_candidate?.Records is { Count: > 0 } records)
-        {
-            // Which catalogs describe the release, last in the pane under a
-            // rule of their own.
-            sections.Children.Add(new Separator());
-            sections.Children.Add(ReleaseRecordsRow.Build(records));
-        }
 
         _content.Content = new ScrollViewer { Content = sections };
     }
@@ -548,6 +541,7 @@ internal sealed partial class ImportMappingPane : UserControl
         SourceAudioLine = SourceAudioLine(_candidate?.Files),
         Marks = _candidate?.Marks ?? [],
         Verification = _candidate?.Verification,
+        Records = _candidate?.Records ?? [],
         IsReading = PickInFlight() is not null,
         LookupOptions = _candidate?.MetadataPresentation
             == ImportMetadataPresentation.FindOnline

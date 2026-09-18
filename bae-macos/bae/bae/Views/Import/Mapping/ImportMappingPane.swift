@@ -65,7 +65,6 @@ struct ImportMappingPane: View {
                     }
                 )
                 metadataSourceSection
-                    .disabled(candidate.detail?.actionable != true)
                 banners
                 if candidate.detail != nil {
                     if !mapping.images.isEmpty {
@@ -81,26 +80,10 @@ struct ImportMappingPane: View {
                     )
                     .disabled(candidate.detail?.actionable != true)
                 }
-                releasedBy
             }
             .padding(.horizontal, 24)
             .padding(.top, 20)
             .padding(.bottom, 32)
-        }
-    }
-
-    /// Which catalogs describe the release this draft was read from, last in
-    /// the pane under a rule of their own. Absent for a draft no catalog
-    /// describes — a folder read as its own tags, or typed in.
-    @ViewBuilder
-    private var releasedBy: some View {
-        if !candidate.records.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Rectangle()
-                    .fill(Theme.hairline)
-                    .frame(height: 1)
-                ReleaseRecordsRow(records: candidate.records)
-            }
         }
     }
 
@@ -135,6 +118,7 @@ struct ImportMappingPane: View {
     private var metadataSourceSection: some View {
         ImportMetadataSourceSection(
             candidate: candidate,
+            actionable: candidate.detail?.actionable == true,
             runtime: runtime,
             initialSection: initialSection,
             isReading: isApplyingMetadata,
