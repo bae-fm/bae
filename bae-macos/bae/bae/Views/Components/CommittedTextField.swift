@@ -130,15 +130,38 @@ struct CommittedTextField: View {
             }
     }
 
-    @ViewBuilder
+    /// How far the text field's cell insets its text from each side of the
+    /// field. Measured at 3.5–3.8 points across the two sides for every font
+    /// the fields use, so two a side leaves nothing of the last glyph outside
+    /// the field's bounds.
+    private static let cellInset: CGFloat = 2
+
+    /// The field, sized by a hidden Text of the same font and content.
+    ///
+    /// The `NSTextField` behind a plain `TextField` clips to its own bounds,
+    /// and on a remount SwiftUI can hand it a height measured before `.font`
+    /// applied — the top of a 22-point title cut off after a round trip
+    /// through the metadata browsers. A Text measures from the font every
+    /// time, and its height is the field's exact single-line height for every
+    /// font the fields use, so the Text lays the field out and the field is
+    /// drawn over it. The width follows the text too: an inline field is as
+    /// wide as what it says, plus the cell's own inset.
     private var field: some View {
-        // The value takes the monospaced design; the prompt keeps `font` as
-        // given, so an empty mark is the same glyph in every field.
-        TextField(placeholder, text: $draft, prompt: prompt)
-            .textFieldStyle(.plain)
-            .font(monospaced ? font.monospaced() : font)
-            .focused($focused)
-            .onSubmit { startCommit(draft) }
+        Text(verbatim: draft.isEmpty ? placeholder : draft)
+            .font(draft.isEmpty || !monospaced ? font : font.monospaced())
+            .lineLimit(1)
+            .padding(.horizontal, Self.cellInset)
+            .hidden()
+            .overlay {
+                // The value takes the monospaced design; the prompt keeps
+                // `font` as given, so an empty mark is the same glyph in every
+                // field.
+                TextField(placeholder, text: $draft, prompt: prompt)
+                    .textFieldStyle(.plain)
+                    .font(monospaced ? font.monospaced() : font)
+                    .focused($focused)
+                    .onSubmit { startCommit(draft) }
+            }
     }
 
     /// What the field shows while empty, by the placeholder's role. `nil`

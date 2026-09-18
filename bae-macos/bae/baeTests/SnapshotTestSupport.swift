@@ -4,12 +4,6 @@ import Testing
 import Vision
 
 /// Shared AppKit hosting + snapshot helpers for the view tests.
-/// Whether a view has been hosted in this process before. The first
-/// hosting in a process lays text out a line taller than every later one,
-/// and the difference persists for that window, so the first view hosted is
-/// built, laid out, and discarded once before the caller's real one is built.
-nonisolated(unsafe) private var snapshotHostWarmedUp = false
-
 enum SnapshotTestSupport {
     /// Host `view` (sized to `size`) in a borderless key window. The caller keeps
     /// the returned window alive for the test's duration and uses the host to
@@ -19,13 +13,6 @@ enum SnapshotTestSupport {
         _ view: V,
         size: NSSize
     ) -> (window: NSWindow, host: NSHostingView<V>) {
-        if !snapshotHostWarmedUp {
-            snapshotHostWarmedUp = true
-            let (window, host) = hostInWindow(view, size: size)
-            host.layoutSubtreeIfNeeded()
-            window.contentView = nil
-            window.orderOut(nil)
-        }
         let bounds = NSRect(origin: .zero, size: size)
         let host = NSHostingView(rootView: view)
         host.frame = bounds
