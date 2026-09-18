@@ -66,7 +66,6 @@ public sealed class Settings
 
     public bool McpEnabled { get; set; }
     public ushort McpPort { get; set; }
-    internal BridgeMcpServerStatus McpStatus { get; set; } = new BridgeMcpServerStatus.Disabled();
 
     public bool SubsonicEnabled { get; set; }
     public ushort SubsonicPort { get; set; }
@@ -76,7 +75,6 @@ public sealed class Settings
     /// "0.0.0.0" opens it to other devices on the network. The UI presents this
     /// as a network-access toggle, not a raw address field.</summary>
     public string SubsonicBindAddress { get; set; } = "127.0.0.1";
-    internal BridgeSubsonicServerStatus SubsonicStatus { get; set; } = new BridgeSubsonicServerStatus.Disabled();
     public bool HasCloudHome => SyncProvider is not null;
 
     /// <summary>
@@ -157,9 +155,6 @@ public sealed class Settings
         _ => string.Empty,
     };
 
-    [JsonIgnore]
-    public string McpStatusText => McpStatusTextFor(McpStatus);
-
     internal static string McpStatusTextFor(BridgeMcpServerStatus status) => status switch
     {
         BridgeMcpServerStatus.Running running when !string.IsNullOrEmpty(running.Url) => Loc.Chrome(
@@ -182,9 +177,6 @@ public sealed class Settings
         };
         return string.IsNullOrEmpty(detail) ? summary : $"{summary}: {detail}";
     }
-
-    [JsonIgnore]
-    public string SubsonicStatusText => SubsonicStatusTextFor(SubsonicStatus);
 
     internal static string SubsonicStatusTextFor(BridgeSubsonicServerStatus status) => status switch
     {

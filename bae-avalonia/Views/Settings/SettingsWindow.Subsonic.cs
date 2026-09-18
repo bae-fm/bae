@@ -51,12 +51,13 @@ internal sealed partial class SettingsWindow
                 return;
             }
             _app.SettingsStore.Reload();
+            await RefreshStatus();
         }
 
         enabled.IsCheckedChanged += async (_, _) => await SetConfig(enabled.IsChecked == true);
         allowNetwork.IsCheckedChanged += async (_, _) => await SetConfig(enabled.IsChecked == true);
         save.Click += async (_, _) => await SetConfig(enabled.IsChecked == true);
-        refresh.Click += async (_, _) =>
+        async System.Threading.Tasks.Task RefreshStatus()
         {
             var (current, serverStatus) = await _app.Subsonic.ServerStatus();
             if (!current)
@@ -64,7 +65,9 @@ internal sealed partial class SettingsWindow
                 return;
             }
             status.Text = Settings.SubsonicStatusTextFor(serverStatus);
-        };
+        }
+        refresh.Click += async (_, _) => await RefreshStatus();
+        status.AttachedToVisualTree += async (_, _) => await RefreshStatus();
         savePassword.Click += async (_, _) =>
         {
             ClearSettingsError();
@@ -98,7 +101,6 @@ internal sealed partial class SettingsWindow
             portBox.Text = fresh.SubsonicPort.ToString(CultureInfo.InvariantCulture);
             usernameBox.Text = fresh.SubsonicUsername;
             allowNetwork.IsChecked = fresh.SubsonicBindAddress != "127.0.0.1";
-            status.Text = fresh.SubsonicStatusText;
             _refreshingSettings = false;
         });
     }

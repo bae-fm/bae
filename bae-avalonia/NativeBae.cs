@@ -566,19 +566,8 @@ internal static partial class NativeBae
     internal static string? CancelReleaseTransition(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(() => handle.CancelReleaseTransition(releaseId)));
 
-    internal static Settings GetSettings(AppHandle handle)
-    {
-        return Settings(
-            handle.GetConfig(),
-            Await(handle.GetMcpServerStatus),
-            Await(handle.GetSubsonicServerStatus));
-    }
-
-    internal static Settings SettingsFromConfig(AppHandle handle, BridgeConfig config) =>
-        Settings(
-            config,
-            Await(handle.GetMcpServerStatus),
-            Await(handle.GetSubsonicServerStatus));
+    internal static Settings GetSettings(AppHandle handle) =>
+        SettingsFromConfig(handle.GetConfig());
 
     internal static string? SetPauseBetweenSides(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetPauseBetweenSides(enabled));

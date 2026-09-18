@@ -26,7 +26,7 @@ internal sealed class ValueSubscriptions : IDisposable
         session.WithCurrentHandle(handle =>
         {
             _subscriptions.Add(handle.SubscribeConfig(new ConfigSink(config =>
-                dispatcher.Post(() => settings.ApplyConfig(NativeBae.SettingsFromConfig(handle, config))))));
+                dispatcher.Post(() => settings.ApplyConfig(NativeBae.SettingsFromConfig(config))))));
             _subscriptions.Add(handle.SubscribeSyncStatus(new SyncSink(value =>
                 dispatcher.Post(() =>
                 {
@@ -56,12 +56,13 @@ internal sealed class ValueSubscriptions : IDisposable
                 dispatcher.Post(() => cast.ApplyDevices(value)))));
             _subscriptions.Add(handle.SubscribeCandidateRuntime(new CandidateRuntimeSink(
                 change => dispatcher.Post(() => import.ApplyCandidateRuntime(change)))));
-            // The list is its own reconfigurable subscription, owned by the
-            // store's page source rather than by this bundle. Started here
-            // because this is where the open handle is known: without one the
-            // store keeps the closed list it was built with.
-            import.StartList();
         });
+        // The list owns its subscription and borrows the session handle itself;
+        // start it after releasing the borrow used for the value subscriptions.
+        if (session.CurrentHandleOrNull() is not null)
+        {
+            import.StartList();
+        }
     }
 
     private static void Show(BridgeException error, Action<string, string> showError)

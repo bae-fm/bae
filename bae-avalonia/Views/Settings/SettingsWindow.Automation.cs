@@ -48,11 +48,12 @@ internal sealed partial class SettingsWindow
                 return;
             }
             _app.SettingsStore.Reload();
+            await RefreshStatus();
         }
 
         enabled.IsCheckedChanged += async (_, _) => await SetConfig(enabled.IsChecked == true);
         save.Click += async (_, _) => await SetConfig(enabled.IsChecked == true);
-        refresh.Click += async (_, _) =>
+        async System.Threading.Tasks.Task RefreshStatus()
         {
             var (current, serverStatus) = await _app.Automation.ServerStatus();
             if (!current)
@@ -60,7 +61,9 @@ internal sealed partial class SettingsWindow
                 return;
             }
             status.Text = Settings.McpStatusTextFor(serverStatus);
-        };
+        }
+        refresh.Click += async (_, _) => await RefreshStatus();
+        status.AttachedToVisualTree += async (_, _) => await RefreshStatus();
         copyToken.Click += async (_, _) =>
         {
             ClearSettingsError();
@@ -115,7 +118,6 @@ internal sealed partial class SettingsWindow
             _refreshingSettings = true;
             enabled.IsChecked = fresh.McpEnabled;
             portBox.Text = fresh.McpPort.ToString(CultureInfo.InvariantCulture);
-            status.Text = fresh.McpStatusText;
             _refreshingSettings = false;
         });
     }

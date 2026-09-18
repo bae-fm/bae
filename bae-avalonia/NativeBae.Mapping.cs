@@ -142,10 +142,7 @@ internal static partial class NativeBae
         _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Unknown sort direction"),
     };
 
-    private static Settings Settings(
-        BridgeConfig config,
-        BridgeMcpServerStatus mcpStatus,
-        BridgeSubsonicServerStatus subsonicStatus) =>
+    internal static Settings SettingsFromConfig(BridgeConfig config) =>
         new()
         {
             LibraryName = config.LibraryName,
@@ -166,12 +163,10 @@ internal static partial class NativeBae
             CastEnabled = config.CastEnabled,
             McpEnabled = config.Mcp.Enabled,
             McpPort = config.Mcp.Port,
-            McpStatus = mcpStatus,
             SubsonicEnabled = config.Subsonic.Enabled,
             SubsonicPort = config.Subsonic.Port,
             SubsonicUsername = config.Subsonic.Username,
             SubsonicBindAddress = config.Subsonic.BindAddress,
-            SubsonicStatus = subsonicStatus,
         };
 
 
