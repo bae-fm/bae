@@ -22,7 +22,7 @@ pub(crate) use preparation_rows::{
     CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
 };
 pub(super) use rows::{load_matches_on, load_provenance_on, load_states_on};
-pub(super) use signal_rows::load_marks_on;
+pub(super) use signal_rows::load_signal_facts_on;
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, insert_signals};
 

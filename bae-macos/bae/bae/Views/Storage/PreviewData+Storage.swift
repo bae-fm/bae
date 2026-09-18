@@ -631,6 +631,7 @@
                 galleryItems: [],
                 records: [],
                 marks: [],
+                verification: nil,
                 totalDuration: nil,
                 fileCount: Int64(files.count),
                 totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },

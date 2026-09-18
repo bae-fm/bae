@@ -60,6 +60,7 @@ impl ImportService {
         parsed: crate::import::ParsedAlbum,
         records: Vec<crate::import::ReleaseRecord>,
         marks: Vec<crate::import::ReleaseMark>,
+        verification: Option<crate::import::Verification>,
         user_edit: Option<crate::import::ReleaseUserEdit>,
         replacement_release_ids: &[String],
         prepared_artist_images: &[crate::import::PreparedArtistImage],
@@ -252,6 +253,7 @@ impl ImportService {
             artist_images,
             records,
             marks,
+            verification,
             album_title,
         })
     }

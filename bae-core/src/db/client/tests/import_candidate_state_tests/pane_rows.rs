@@ -50,6 +50,7 @@ fn slice_unit(index: u32, duration_ms: u64) -> SourceDuration {
 fn signals_with(durations: SourceDurations) -> Signals {
     Signals {
         disc_id: DiscIdSignal::Absent { track_count: 2 },
+        verification: None,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled {
             catalogs: Vec::new(),
@@ -322,6 +323,7 @@ async fn every_settled_signal_shape_round_trips() {
         let (_, hash) = stored_pane_candidate(&db).await;
         let signals = Signals {
             disc_id,
+            verification: None,
             barcode,
             text,
             text_pool: Vec::new(),
@@ -357,6 +359,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
     for scanning in [
         Signals {
             disc_id: DiscIdSignal::Absent { track_count: 0 },
+            verification: None,
             barcode: BarcodeSignal::Scanning { codes: Vec::new() },
             text: TextSignal::Settled {
                 catalogs: Vec::new(),
@@ -367,6 +370,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
         },
         Signals {
             disc_id: DiscIdSignal::Absent { track_count: 0 },
+            verification: None,
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Scanning {
                 catalogs: Vec::new(),

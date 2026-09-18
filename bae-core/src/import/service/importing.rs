@@ -226,6 +226,9 @@ impl ImportService {
         // The names the folder itself states, whatever the draft was read
         // from: a File Tags import carries its barcode too.
         let marks = preparation.marks;
+        // What the rip databases said about this folder's audio, from the log
+        // the extraction pass already read.
+        let verification = preparation.verification;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
@@ -353,6 +356,7 @@ impl ImportService {
                 parsed,
                 records,
                 marks,
+                verification,
                 user_edit,
                 &replacement_release_ids,
                 &prepared_assets.artist_images,
@@ -526,6 +530,7 @@ impl ImportService {
             artist_images,
             records,
             marks,
+            verification,
             selected_cover,
             remote_cover_image,
             embedded_cover,
@@ -794,6 +799,7 @@ impl ImportService {
                     audio_segments: &built_audio.audio_segments,
                     records,
                     marks,
+                    verification: verification.as_ref(),
                 },
                 prepared_files,
                 library_image,

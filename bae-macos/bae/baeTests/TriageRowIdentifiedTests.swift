@@ -86,6 +86,7 @@ struct TriageRowIdentifiedTests {
         let hosted = SnapshotTestSupport.hostInWindow(
             IdentifiedFromPopover(
                 marks: [],
+                verification: nil,
                 records: PreviewData.identifiedFromBothCatalogs
             )
             .preferredColorScheme(.light)

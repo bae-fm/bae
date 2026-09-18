@@ -179,7 +179,8 @@ private func readyRow(
                     readsDraft: true
                 )
             ]),
-        marks: []
+        marks: [],
+        verification: nil
     )
 }
 
@@ -202,7 +203,8 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
         metadataProvenance: nil,
         reading: .unidentified,
-        marks: []
+        marks: [],
+        verification: nil
     )
 }
 
@@ -225,7 +227,8 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         importStatus: nil,
         metadataProvenance: nil,
         reading: .unidentified,
-        marks: []
+        marks: [],
+        verification: nil
     )
 }
 

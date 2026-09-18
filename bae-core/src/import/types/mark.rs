@@ -161,6 +161,7 @@ mod tests {
                 track_count: 11,
                 source_file: Some("Album.log".to_string()),
             },
+            verification: None,
             barcode: BarcodeSignal::Settled {
                 codes: vec![
                     SourcedValue::in_file(
@@ -298,6 +299,7 @@ mod tests {
     fn a_folder_that_stated_nothing_marks_nothing() {
         let silent = Signals {
             disc_id: DiscIdSignal::Absent { track_count: 0 },
+            verification: None,
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Settled {
                 catalogs: Vec::new(),

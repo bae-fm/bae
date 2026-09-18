@@ -250,6 +250,7 @@
                 // reads like.
                 records: PreviewData.releaseRecordsEveryCatalog,
                 marks: PreviewData.releaseMarks,
+                verification: PreviewData.releaseVerification,
                 totalDuration: .minutesOnly(minutes: 39),
                 fileCount: Int64(files.count),
                 totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },

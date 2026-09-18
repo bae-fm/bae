@@ -404,6 +404,35 @@ pub struct AutomationReleaseMark {
     pub origins: Vec<AutomationSignalOrigin>,
 }
 
+/// Where a release's verification came from. Mirrors
+/// `bae_core::import::VerificationSource`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationVerificationSource {
+    Log,
+}
+
+/// One track's agreement count from each rip database, and the CRC of the
+/// audio those counts are about. Mirrors
+/// `bae_core::import::TrackVerification`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct AutomationTrackVerification {
+    pub number: u32,
+    pub accuraterip_confidence: Option<u32>,
+    pub ctdb_confidence: Option<u32>,
+    pub crc: Option<u32>,
+}
+
+/// What the rip databases said about a release's audio.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AutomationVerification {
+    pub source: AutomationVerificationSource,
+    /// The weakest track's best database — `None` when a track no database
+    /// confirmed leaves the release unverified.
+    pub matched_copies: Option<u32>,
+    pub tracks: Vec<AutomationTrackVerification>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationReleaseReseed {

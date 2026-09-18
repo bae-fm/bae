@@ -236,6 +236,9 @@ pub struct DbReleaseDetail {
     /// Every name read off the object itself, one row per sighting. Empty when
     /// its folder stated none.
     pub marks: Vec<crate::import::ReleaseMark>,
+    /// What the rip databases said about this release's audio. `None` for a
+    /// release no source verified.
+    pub verification: Option<crate::import::Verification>,
 }
 
 /// A track row with its resolved artist rows (many-to-many join from the DB).

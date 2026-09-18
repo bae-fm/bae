@@ -78,6 +78,7 @@ pub(super) fn build_release_detail_on(
     let audio_segments = get_audio_segments_for_release_on(sql, &release.id)?;
     let records = get_release_records_on(sql, &release.id)?;
     let marks = get_release_marks_on(sql, &release.id)?;
+    let verification = get_release_verification_on(sql, &release.id)?;
 
     Ok(ReleaseDetailRows {
         release,
@@ -87,6 +88,7 @@ pub(super) fn build_release_detail_on(
         audio_segments,
         records,
         marks,
+        verification,
     })
 }
 
@@ -98,6 +100,7 @@ pub(super) struct ReleaseDetailRows {
     audio_segments: Vec<DbAudioSegment>,
     records: Vec<crate::import::ReleaseRecord>,
     marks: Vec<crate::import::ReleaseMark>,
+    verification: Option<crate::import::Verification>,
 }
 
 impl ReleaseDetailRows {
@@ -110,6 +113,7 @@ impl ReleaseDetailRows {
             audio_segments: self.audio_segments,
             records: self.records,
             marks: self.marks,
+            verification: self.verification,
         }
     }
 }
@@ -307,6 +311,68 @@ pub(super) fn get_release_marks_on(
         },
     )
     .map_err(DbError::from)
+}
+
+/// What the rip databases said about a release's audio, one row per track in
+/// track order. `None` for a release no source verified.
+pub(super) fn get_release_verification_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<Option<crate::import::Verification>, DbError> {
+    let rows: Vec<(
+        crate::import::VerificationSource,
+        crate::import::TrackVerification,
+    )> = sql
+        .query(
+            r#"
+            SELECT track, source, accuraterip_confidence, ctdb_confidence, crc
+            FROM release_verification
+            WHERE release_id = ?
+            ORDER BY track
+            "#,
+            params![release_id],
+            |row| {
+                Ok((
+                    parsed_column(row, "source")?,
+                    crate::import::TrackVerification {
+                        number: verification_count(row, "track")?
+                            .expect("a NOT NULL track column reads as a number"),
+                        accuraterip_confidence: verification_count(row, "accuraterip_confidence")?,
+                        ctdb_confidence: verification_count(row, "ctdb_confidence")?,
+                        crc: verification_count(row, "crc")?,
+                    },
+                ))
+            },
+        )
+        .map_err(DbError::from)?;
+    let Some((source, _)) = rows.first() else {
+        return Ok(None);
+    };
+    let source = *source;
+    let mut tracks = Vec::with_capacity(rows.len());
+    for (row_source, track) in rows {
+        if row_source != source {
+            return Err(DbError::Message(format!(
+                "release {release_id} states verification from both {source} and {row_source}"
+            )));
+        }
+        tracks.push(track);
+    }
+    Ok(Some(crate::import::Verification { source, tracks }))
+}
+
+/// A count column back as the `u32` the type holds it as. Every one of these
+/// is written from a `u32`, so a value outside that range is a row nothing
+/// here wrote.
+fn verification_count(row: &Row, column: &str) -> coven::rusqlite::Result<Option<u32>> {
+    let stored: Option<i64> = row.get(column)?;
+    stored
+        .map(|value| {
+            u32::try_from(value).map_err(|_| {
+                column_conversion_error(row, column, format!("{value} is out of range"))
+            })
+        })
+        .transpose()
 }
 
 /// The region a row stores, as the four columns every table that stores one

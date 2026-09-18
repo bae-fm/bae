@@ -76,7 +76,8 @@
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance,
                 reading: reading,
-                marks: []
+                marks: [],
+                verification: nil
             )
         }
 

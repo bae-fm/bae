@@ -500,6 +500,10 @@ pub struct BridgeTriageRow {
     /// Every name this candidate's folder states, one line per value and in
     /// the order surfaces list mark kinds. Empty until something has read it.
     pub marks: Vec<crate::types::BridgeReleaseMark>,
+    /// What the rip databases said about this candidate's audio. `None` until
+    /// something has read its log, and for a folder whose log states nothing
+    /// about its bits.
+    pub verification: Option<crate::types::BridgeVerification>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

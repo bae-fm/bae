@@ -81,6 +81,7 @@ async fn save_verdict_with_marks(db: &Database, candidate: &FolderCandidate, rel
             verdict: verdict(release_id, None),
             signals: crate::signals::Signals {
                 disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                verification: None,
                 barcode: crate::signals::BarcodeSignal::Settled {
                     codes: vec![
                         crate::signals::SourcedValue::in_file(
@@ -130,6 +131,7 @@ async fn save_verdict_with_ledger(
             verdict: verdict(release_id, ledger),
             signals: crate::signals::Signals {
                 disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                verification: None,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
                     catalogs: Vec::new(),

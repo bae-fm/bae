@@ -338,6 +338,10 @@ pub struct BridgeRelease {
     /// catalog numbers — one line per value, in the order surfaces list mark
     /// kinds. Empty when its folder stated none.
     pub marks: Vec<crate::types::BridgeReleaseMark>,
+    /// What the rip databases said about this release's audio — how many other
+    /// copies of each track agree with this one. `None` for a release no
+    /// source verified.
+    pub verification: Option<crate::types::BridgeVerification>,
     /// Total playing time across all tracks, as the words it reads in, or `None`
     /// when no track reports a length. The raw sum does not cross: with the
     /// milliseconds in hand a UI could name the total its own way, which is how

@@ -1,24 +1,31 @@
 //! Extraction inputs for the `Release` source (re-identify): resolve a library
-//! release's files into a disc ID + track count and the artwork paths for the OCR
-//! pass. The disc-ID calculation itself lives in `import::discid`.
+//! release's files into a disc ID + track count, what its rip log says about
+//! its audio, and the artwork paths for the OCR pass. Reading the rip
+//! artifacts themselves lives in `import::discid`.
 
 use std::path::PathBuf;
 use tracing::{debug, warn};
 
-/// Disc ID and track count for a release already in the library.
+/// What a release already in the library was copied from: the disc its rip
+/// artifacts identify, what the rip databases said about its audio, and how
+/// many tracks the library holds for it.
+pub(crate) struct ReleaseIdentity {
+    pub(crate) artifacts: crate::import::discid::RipArtifacts,
+    pub(crate) track_count: u32,
+}
+
+/// Resolve the release's local files, filter LOG / CUE / audio, and read them
+/// in the order folder imports use: LOG first (most accurate), then CUE+audio
+/// pairs. The track count comes from the DB's track rows, not the files —
+/// those rows are the user's truth.
 ///
-/// Resolves the release's local files, filters LOG / CUE / audio, and computes a
-/// disc ID in the order folder imports use: LOG first (most accurate), then
-/// CUE+audio pairs. The track count comes from the DB's track rows, not the
-/// files — those rows are the user's truth.
-///
-/// `(None, count)` when no LOG/CUE artifact is available — a cloud-only release
-/// with no local copy, or one with track files but no rip metadata. The caller
-/// turns that into `DiscIdSignal::Absent`.
+/// No disc ID when no LOG/CUE artifact is available — a cloud-only release with
+/// no local copy, or one with track files but no rip metadata. The caller turns
+/// that into `DiscIdSignal::Absent`.
 pub(crate) async fn resolve_release_identity(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
-) -> Result<(Option<String>, u32), String> {
+) -> Result<ReleaseIdentity, String> {
     library_manager
         .get_release_by_id(release_id)
         .await
@@ -69,13 +76,16 @@ pub(crate) async fn resolve_release_identity(
         }
     }
 
-    let disc_id = tokio::task::spawn_blocking(move || {
-        crate::import::discid::compute_discid_from_paths(&log_paths, &cue_paths, &audio_files)
+    let artifacts = tokio::task::spawn_blocking(move || {
+        crate::import::discid::read_rip_artifacts_from_paths(&log_paths, &cue_paths, &audio_files)
     })
     .await
-    .map_err(|e| format!("DiscID compute task failed: {e}"))?;
+    .map_err(|e| format!("rip artifact read task failed: {e}"))?;
 
-    Ok((disc_id, track_count))
+    Ok(ReleaseIdentity {
+        artifacts,
+        track_count,
+    })
 }
 
 /// The artwork the re-identify OCR pass reads: the release's cover, plus every
@@ -443,9 +453,10 @@ mod tests {
             database.insert_track(&track).await.unwrap();
         }
 
-        let (disc_id, track_count) = resolve_release_identity(&manager, &release.id)
+        let identity = resolve_release_identity(&manager, &release.id)
             .await
             .unwrap();
+        let (disc_id, track_count) = (identity.artifacts.disc_id, identity.track_count);
 
         assert!(
             disc_id.is_some(),

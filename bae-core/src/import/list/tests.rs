@@ -122,6 +122,7 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
         metadata_summary: None,
         selected_cover: None,
         marks: Vec::new(),
+        verification: None,
     }
 }
 
@@ -141,6 +142,7 @@ fn several_matches_state() -> CandidateStateListRow {
         metadata_summary: None,
         selected_cover: None,
         marks: Vec::new(),
+        verification: None,
     }
 }
 
@@ -160,6 +162,7 @@ fn not_found_state() -> CandidateStateListRow {
         metadata_summary: None,
         selected_cover: None,
         marks: Vec::new(),
+        verification: None,
     }
 }
 

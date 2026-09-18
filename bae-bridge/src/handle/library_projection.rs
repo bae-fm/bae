@@ -93,6 +93,7 @@ impl BridgeRelease {
             gallery_items,
             records,
             marks,
+            verification,
         } = rel;
         // Single-source the summary-derived fields through BridgeReleaseSummary,
         // then exhaustively destructure it into BridgeRelease's flat fields so the
@@ -144,6 +145,7 @@ impl BridgeRelease {
                 .into_iter()
                 .map(crate::types::BridgeReleaseMark::from_core)
                 .collect(),
+            verification: verification.map(crate::types::BridgeVerification::from_core),
             file_count,
             total_size,
             cover,

@@ -450,7 +450,8 @@ extension MappingFixtures {
         folderName: String = "Walkthrough",
         audioIdentity: String = "empty-audio-files",
         reading: BridgeTriageReading = .unidentified,
-        marks: [BridgeReleaseMark] = []
+        marks: [BridgeReleaseMark] = [],
+        verification: BridgeVerification? = nil
     ) -> BridgeImportCandidateDetail {
         let folder = sourceFolder(
             key: key,
@@ -466,7 +467,8 @@ extension MappingFixtures {
                 edit: edit,
                 metadataProvenance: metadataProvenance,
                 reading: reading,
-                marks: marks
+                marks: marks,
+                verification: verification
             ),
             release: {
                 if case .externalRelease = metadataProvenance {
@@ -506,7 +508,8 @@ extension MappingFixtures {
         edit: BridgeRawReleaseEdit,
         metadataProvenance: BridgeMetadataProvenance?,
         reading: BridgeTriageReading,
-        marks: [BridgeReleaseMark]
+        marks: [BridgeReleaseMark],
+        verification: BridgeVerification? = nil
     ) -> BridgeTriageRow {
         let undecided = metadataProvenance == nil && edit.albumTitle.isEmpty
         return BridgeTriageRow(
@@ -528,7 +531,8 @@ extension MappingFixtures {
             importStatus: nil,
             metadataProvenance: metadataProvenance,
             reading: reading,
-            marks: marks
+            marks: marks,
+            verification: verification
         )
     }
 
@@ -590,7 +594,8 @@ extension MappingFixtures {
         edit: BridgeRawReleaseEdit = albumEdit,
         presentation: BridgeMetadataPresentation = .draft,
         reading: BridgeTriageReading = .unidentified,
-        marks: [BridgeReleaseMark] = []
+        marks: [BridgeReleaseMark] = [],
+        verification: BridgeVerification? = nil
     ) -> ImportStore {
         let store = ImportStore()
         store.applyCandidateDetail(
@@ -601,7 +606,8 @@ extension MappingFixtures {
                 metadataProvenance: metadataProvenance,
                 presentation: presentation,
                 reading: reading,
-                marks: marks
+                marks: marks,
+                verification: verification
             )
         )
         return store

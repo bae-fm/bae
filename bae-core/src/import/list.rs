@@ -462,6 +462,9 @@ impl ImportCandidateDetailProjection {
                     )
                 })
                 .unwrap_or_default(),
+            verification: signals
+                .as_ref()
+                .and_then(|signals| signals.verification.clone()),
             metadata_summary,
             cover_thumbnail: None,
             placement,

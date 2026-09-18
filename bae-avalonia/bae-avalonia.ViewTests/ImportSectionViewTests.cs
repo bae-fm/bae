@@ -743,7 +743,8 @@ public sealed class ImportSectionViewTests
                             [])
                         : null),
                 Reading: reading ?? new BridgeTriageReading.Unidentified(),
-                Marks: []);
+                Marks: [],
+                Verification: null);
 
     private static BridgeImportQueueSummary MatchedSummary(
         BridgeTriagePlacement placement,

@@ -10,7 +10,7 @@ use bae_test_support as support;
 use bae_core::audio_codec::{decode_audio, probe_audio_from_path};
 use bae_core::cue_flac::parse_cue_sheet;
 use bae_core::discogs::models::DiscogsRelease;
-use bae_core::import::discid::compute_discid_from_categorized;
+use bae_core::import::discid::read_rip_artifacts;
 use bae_core::import::folder_scanner::{
     collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions,
     FolderReleaseDecisions, ScanItem, StoredCandidateEdits,
@@ -345,7 +345,7 @@ fn cue_alac_disc_id_is_stable() {
     )
     .expect("scan album dir");
     let track_count = categorized.track_count();
-    let disc_id = compute_discid_from_categorized(&categorized);
+    let disc_id = read_rip_artifacts(&categorized).disc_id;
 
     assert_eq!(track_count, 3, "three tracks in the CUE sheet");
     let computed = disc_id.expect("CUE+ALAC pair must produce a disc ID");
@@ -359,7 +359,10 @@ fn cue_alac_disc_id_is_stable() {
         "disc ID drifted — CUE parsing, probe duration, or disc ID math changed",
     );
     assert!(
-        computed.source_file.ends_with(".cue"),
+        computed
+            .source_file
+            .as_deref()
+            .is_some_and(|file| file.ends_with(".cue")),
         "the sheet it was carved from rides with it, got {:?}",
         computed.source_file
     );

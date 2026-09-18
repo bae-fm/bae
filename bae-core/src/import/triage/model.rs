@@ -394,6 +394,10 @@ pub struct TriageRow {
     /// catalog numbers — one line per value, in `MarkKind` order. Empty until
     /// something has extracted the folder's signals.
     pub marks: Vec<crate::import::ReleaseMarkLine>,
+    /// What the rip databases said about this candidate's audio, as its rip
+    /// log states it. `None` until something has extracted the folder's
+    /// signals, and for a folder whose log states nothing about its bits.
+    pub verification: Option<crate::import::Verification>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

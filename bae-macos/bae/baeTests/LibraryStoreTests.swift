@@ -64,6 +64,7 @@ private func makeBridgeRelease(
         galleryItems: [],
         records: [],
         marks: [],
+        verification: nil,
         totalDuration: totalDuration,
         fileCount: fileCount,
         totalSize: totalSize,

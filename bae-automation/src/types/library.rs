@@ -26,6 +26,9 @@ pub struct AutomationRelease {
     /// Every name read off the object itself, one line per value and in the
     /// order surfaces list mark kinds. Empty when its folder stated none.
     pub marks: Vec<AutomationReleaseMark>,
+    /// What the rip databases said about this release's audio. `None` for a
+    /// release no source verified.
+    pub verification: Option<AutomationVerification>,
 }
 
 #[derive(Debug, Clone, Serialize)]

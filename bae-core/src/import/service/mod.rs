@@ -94,6 +94,10 @@ struct PreparedMetadata {
     /// numbers and disc ID, each with where it was read. Empty for a candidate
     /// nothing extracted signals from. Commit writes one mark row per element.
     marks: Vec<crate::import::ReleaseMark>,
+    /// What the rip databases said about the candidate's audio, as its rip log
+    /// states it. `None` for a candidate whose log states nothing about its
+    /// bits. Commit writes one row per track.
+    verification: Option<crate::import::Verification>,
     album_title: String,
 }
 

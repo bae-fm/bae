@@ -429,6 +429,7 @@ fn place_row(
         ),
         metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
         marks: state.map(|state| state.marks.clone()).unwrap_or_default(),
+        verification: state.and_then(|state| state.verification.clone()),
         cover_thumbnail: None,
         placement,
         import_status,

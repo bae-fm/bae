@@ -62,6 +62,16 @@ desktop_only! {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Signals {
     pub disc_id: DiscIdSignal,
+    /// What the rip databases said about the candidate's audio, as its rip log
+    /// states it — how many other copies of each track agree with this one.
+    /// Not a lookup input: nothing is looked up from it and nothing is narrowed
+    /// by it. It is read here because the log is opened here, once, for the
+    /// disc ID, and it rides with the rest of what that read yielded until the
+    /// commit keeps it with the release.
+    ///
+    /// `None` when no log states it — a folder with no log, one whose log
+    /// never asked a database, and a library release with no local copy.
+    pub verification: Option<crate::import::Verification>,
     pub barcode: BarcodeSignal,
     pub text: TextSignal,
     /// The candidate's own text, every line of it, in the order the pass read

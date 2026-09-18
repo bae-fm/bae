@@ -13,6 +13,7 @@ mod live_results;
 mod marks;
 mod playback_values;
 mod storage_inspector;
+mod verification;
 
 pub use configuration::*;
 #[cfg(feature = "desktop")]
@@ -27,6 +28,7 @@ pub use live_results::*;
 pub use marks::*;
 pub use playback_values::*;
 pub use storage_inspector::*;
+pub use verification::*;
 
 #[cfg(test)]
 #[path = "types/device_pairing_progress_tests.rs"]

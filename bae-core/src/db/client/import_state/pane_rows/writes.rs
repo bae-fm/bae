@@ -36,6 +36,10 @@ impl Database {
                 source_discogs_artist_ids,
                 assets,
                 marks,
+                verification: state
+                    .signals
+                    .as_ref()
+                    .and_then(|signals| signals.verification.clone()),
             }))
         })
         .await

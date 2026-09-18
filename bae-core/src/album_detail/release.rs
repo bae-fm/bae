@@ -109,6 +109,10 @@ pub struct ReleaseDetail {
     /// Every name read off the object itself, one line per value and in
     /// `MarkKind` order. Empty when its folder stated none.
     pub marks: Vec<crate::import::ReleaseMarkLine>,
+    /// What the rip databases said about this release's audio — how many other
+    /// copies of each track agree with this one. `None` for a release no
+    /// source verified.
+    pub verification: Option<crate::import::Verification>,
 }
 
 /// One physical source file that supplies a persisted track. A track can span
@@ -397,6 +401,7 @@ impl ReleaseDetail {
             gallery_items: gallery,
             records: raw.records,
             marks: crate::import::ReleaseMarkLine::fold(&raw.marks),
+            verification: raw.verification,
         };
         (detail, audio_format_orphans)
     }
@@ -434,6 +439,7 @@ mod release_edit_display_tests {
             }],
             files: Vec::new(),
             marks: Vec::new(),
+            verification: None,
             audio_formats: vec![format.clone()],
             audio_segments: vec![crate::db::DbAudioSegment {
                 id: "segment-id".to_string(),

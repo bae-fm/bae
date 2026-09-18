@@ -296,6 +296,9 @@ async fn run_extraction(
                             failure: failure.clone(),
                             track_count: 0,
                         },
+                        // Nothing was read, so the folder states nothing about
+                        // its bits either.
+                        None,
                         failure,
                     );
                     return;
@@ -316,6 +319,7 @@ async fn run_extraction(
                 ExtractionInputs {
                     gathered: Gathered {
                         disc_id: fast.disc_id,
+                        verification: fast.verification,
                         barcodes: fast.cue_barcodes,
                         pool,
                         durations: fast.durations,
@@ -326,24 +330,34 @@ async fn run_extraction(
             .await;
         }
 
-        // Re-identify: disc ID and artwork come from the library, not a folder
-        // scan. No non-OCR text sources.
+        // Re-identify: the rip artifacts and artwork come from the library, not
+        // a folder scan. No non-OCR text sources.
         ExtractionSource::Release { release_id } => {
-            let disc_id = match resolve_release_identity(&inner.library_manager, &release_id).await
-            {
-                Ok((Some(id), track_count)) => DiscIdSignal::Computed {
-                    disc_id: id,
-                    track_count,
-                    // Derived from the library's stored tracks, not a file of a
-                    // scanned folder, so there is no row to point at.
-                    source_file: None,
-                },
-                Ok((None, track_count)) => DiscIdSignal::Absent { track_count },
-                Err(detail) => DiscIdSignal::Failed {
-                    failure: crate::signals::LookupFailure::Diagnostic { detail },
-                    track_count: 0,
-                },
-            };
+            let (disc_id, verification) =
+                match resolve_release_identity(&inner.library_manager, &release_id).await {
+                    Ok(identity) => {
+                        let track_count = identity.track_count;
+                        let disc_id = match identity.artifacts.disc_id {
+                            Some(computed) => DiscIdSignal::Computed {
+                                disc_id: computed.disc_id,
+                                track_count,
+                                // A library release's files are its own, not
+                                // files of a scanned folder, so there is no row
+                                // to point at.
+                                source_file: computed.source_file,
+                            },
+                            None => DiscIdSignal::Absent { track_count },
+                        };
+                        (disc_id, identity.artifacts.verification)
+                    }
+                    Err(detail) => (
+                        DiscIdSignal::Failed {
+                            failure: crate::signals::LookupFailure::Diagnostic { detail },
+                            track_count: 0,
+                        },
+                        None,
+                    ),
+                };
             if token.is_cancelled() {
                 return;
             }
@@ -380,6 +394,7 @@ async fn run_extraction(
                                 &inner,
                                 &extraction,
                                 disc_id,
+                                verification,
                                 LookupFailure::Diagnostic { detail: e },
                             );
                             return;
@@ -395,6 +410,7 @@ async fn run_extraction(
                 ExtractionInputs {
                     gathered: Gathered {
                         disc_id,
+                        verification,
                         barcodes: Vec::new(),
                         pool: Pool::default(),
                         // A library release has no candidate folder to walk, so
@@ -449,6 +465,10 @@ where
 /// track durations. Every snapshot the pass emits is built from this.
 struct Gathered {
     disc_id: DiscIdSignal,
+    /// What the rip databases said about the candidate's audio, read off its
+    /// log in the same pass the disc ID came from. `None` when no log states
+    /// it.
+    verification: Option<crate::import::Verification>,
     barcodes: Vec<SourcedValue>,
     pool: Pool,
     durations: crate::import::probe::SourceDurations,
@@ -627,6 +647,7 @@ async fn stream_extraction(
         &extraction,
         Signals {
             disc_id: gathered.disc_id,
+            verification: gathered.verification,
             barcode,
             text: TextSignal::Settled {
                 catalogs: classification.catalogs,
@@ -660,6 +681,7 @@ fn emit_failed_ocr_signals(
         extraction,
         Signals {
             disc_id: gathered.disc_id,
+            verification: gathered.verification,
             barcode,
             text: TextSignal::Failed {
                 failure,
@@ -681,6 +703,7 @@ fn emit_aborted_signals(
     inner: &ExtractionServiceInner,
     extraction: &RunningExtraction,
     disc_id: DiscIdSignal,
+    verification: Option<crate::import::Verification>,
     failure: LookupFailure,
 ) {
     emit_signals(
@@ -688,6 +711,7 @@ fn emit_aborted_signals(
         extraction,
         Signals {
             disc_id,
+            verification,
             barcode: BarcodeSignal::Failed {
                 failure: failure.clone(),
                 codes: Vec::new(),
@@ -719,6 +743,7 @@ fn scanning_signals(
     let text_pool = gathered.pool.text_lines();
     Signals {
         disc_id: gathered.disc_id.clone(),
+        verification: gathered.verification.clone(),
         barcode: BarcodeSignal::Scanning {
             codes: gathered.barcodes.clone(),
         },

@@ -162,6 +162,7 @@ fn signals_with_catalogs(
 ) -> Signals {
     Signals {
         disc_id,
+        verification: None,
         barcode,
         text: TextSignal::Settled {
             catalogs,
@@ -285,6 +286,7 @@ fn no_disc_no_barcode_is_manual_only() {
 fn nothing_to_run_waits_for_the_settled_text() {
     let scanning = Signals {
         disc_id: DiscIdSignal::Absent { track_count: 7 },
+        verification: None,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Scanning {
             catalogs: vec![],
@@ -328,6 +330,7 @@ fn an_aborted_extraction_settles_the_run_as_failed() {
             failure: failure.clone(),
             track_count: 0,
         },
+        verification: None,
         barcode: BarcodeSignal::Failed {
             failure: failure.clone(),
             codes: vec![],

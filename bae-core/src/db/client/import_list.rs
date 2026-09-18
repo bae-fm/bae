@@ -13,7 +13,7 @@
 mod window;
 
 use super::records::check_releases_in_library_on;
-use super::import_state::{load_marks_on, load_matches_on, load_provenance_on};
+use super::import_state::{load_matches_on, load_provenance_on, load_signal_facts_on};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_scanner::InvalidReason;
@@ -90,6 +90,10 @@ pub struct CandidateStateListRow {
     /// Every name the candidate's folder states, one line per value. Empty
     /// until something has extracted its signals.
     pub marks: Vec<crate::import::ReleaseMarkLine>,
+    /// What the rip databases said about the candidate's audio. `None` until
+    /// something has extracted its signals, and for a folder whose log states
+    /// nothing about its bits.
+    pub verification: Option<crate::import::Verification>,
 }
 
 /// Every column the queue is placed from, in one read.
@@ -439,7 +443,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     }
 
     let mut provenances = load_provenance_on(sql, None)?;
-    let mut marks = load_marks_on(sql, None)?;
+    let mut signal_facts = load_signal_facts_on(sql, None)?;
     let mut states = HashMap::new();
     for (content_hash, edit_revision) in sql.query(
         "SELECT content_hash, edit_revision FROM import_candidate_state",
@@ -460,7 +464,10 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         let metadata_summary =
             crate::import::TriageMetadataSummary::of(&release_edit, metadata_provenance.clone());
         let selected_cover = covers.remove(&content_hash);
-        let marks = marks.remove(&content_hash).unwrap_or_default();
+        let (marks, verification) = match signal_facts.remove(&content_hash) {
+            Some(facts) => (facts.marks, facts.verification),
+            None => (Vec::new(), None),
+        };
         states.insert(
             content_hash,
             CandidateStateListRow {
@@ -472,6 +479,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 metadata_summary,
                 selected_cover,
                 marks,
+                verification,
             },
         );
     }

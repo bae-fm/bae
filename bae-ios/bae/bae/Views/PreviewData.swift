@@ -118,6 +118,7 @@ enum PreviewData {
             galleryItems: [],
             records: [],
             marks: [],
+            verification: nil,
             totalDuration: .minutesOnly(minutes: 39),
             fileCount: 0,
             totalSize: 0,

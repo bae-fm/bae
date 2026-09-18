@@ -63,6 +63,7 @@ fn copy_fixture(source: &Path, target: &Path) {
 fn settled_signals(durations: crate::import::probe::SourceDurations) -> Signals {
     Signals {
         disc_id: DiscIdSignal::Absent { track_count: 0 },
+        verification: None,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled {
             catalogs: Vec::new(),
@@ -917,6 +918,7 @@ impl Fixture {
                             track_count: 2,
                             source_file: Some(SEEDED_DISC_ID_FILE.to_string()),
                         },
+                        verification: None,
                         ..settled_signals(crate::import::probe::SourceDurations::totalling(
                             probed_total_ms,
                         ))

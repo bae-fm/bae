@@ -216,7 +216,8 @@ pub use types::{
     FieldOrigins, FieldProvenance, FieldValues, MarkKind, MetadataProvenance, NewArtistSeed,
     PressingEdit, RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
     ReleaseFormReset, ReleaseMark, ReleaseMarkLine, ReleaseRecord, ReleaseUserEdit,
-    SourceAvailability, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit,
+    SourceAvailability, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit, TrackVerification,
+    Verification, VerificationSource,
 };
 desktop_only! {
     pub use types::{

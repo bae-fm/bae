@@ -95,6 +95,7 @@ fn sample_verdict() -> TerminalVerdict {
 fn sample_signals(probed_total_duration_ms: u64) -> crate::signals::Signals {
     crate::signals::Signals {
         disc_id: crate::signals::DiscIdSignal::Absent { track_count: 0 },
+        verification: None,
         barcode: crate::signals::BarcodeSignal::Absent,
         text: crate::signals::TextSignal::Settled {
             catalogs: Vec::new(),
@@ -671,6 +672,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                     track_count: 1,
                     source_file: None,
                 },
+                verification: None,
                 barcode: BarcodeSignal::Absent,
                 text: TextSignal::Settled {
                     catalogs: vec![],

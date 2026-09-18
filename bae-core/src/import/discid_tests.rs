@@ -9,6 +9,12 @@ fn fixture(rel: &str) -> PathBuf {
         .join(rel)
 }
 
+/// The disc ID one log file hashes to, decoded the way the extraction pass
+/// decodes it.
+fn discid_from_log_file(path: &Path) -> Result<String, std::io::Error> {
+    discid_from_log_text(&crate::text_encoding::read_text_file(path)?.text)
+}
+
 fn assert_invalid_data(result: Result<String, std::io::Error>) {
     let error = result.expect_err("out-of-range sector should return an error");
     assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
@@ -53,7 +59,7 @@ fn discid_rejects_leadout_sector_that_overflows_pregap_offset() {
 fn discid_from_log_rejects_end_sector_that_overflows_leadout_derivation() {
     let log_file = write_log_with_toc(i32::MAX);
 
-    assert_invalid_data(calculate_mb_discid_from_log(log_file.path()));
+    assert_invalid_data(discid_from_log_file(log_file.path()));
 }
 
 #[test]
@@ -79,8 +85,8 @@ fn test_extract_leadout_from_log() {
 }
 
 #[test]
-fn test_calculate_mb_discid_from_log() {
-    let discid = calculate_mb_discid_from_log(&fixture("logs/test_album.log"))
+fn test_discid_from_log_text() {
+    let discid = discid_from_log_file(&fixture("logs/test_album.log"))
         .expect("disc ID should compute from the LOG fixture");
     assert_eq!(discid.len(), 28, "DiscID should be 28 characters");
     assert!(
@@ -363,6 +369,65 @@ fn test_cue_duration_discid_empty_tracks_is_error() {
     assert!(result.is_err(), "empty track list must return an error");
 }
 
+/// One read of a folder's log yields both halves of what it states: the disc
+/// its table of contents hashes to, and how many other copies of the audio the
+/// rip databases held that agree with this one.
+#[test]
+fn one_read_of_a_log_yields_the_disc_and_what_the_databases_said() {
+    use tempfile::TempDir;
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path();
+    std::fs::copy(fixture("logs/test_album.log"), folder.join("Album.log")).unwrap();
+    let flac = fixture("flac");
+    for name in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
+        std::fs::copy(flac.join(name), folder.join(name)).unwrap();
+    }
+
+    let categorized = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        folder,
+        crate::import::ReleaseFileScope::Recursive,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+
+    let artifacts = read_rip_artifacts(&categorized);
+    let disc_id = artifacts.disc_id.expect("the log carves a disc");
+    assert_eq!(disc_id.source_file.as_deref(), Some("Album.log"));
+    let verification = artifacts
+        .verification
+        .expect("the log states what the databases answered");
+    assert_eq!(
+        verification.source,
+        crate::import::VerificationSource::Log,
+        "the log itself is what was read"
+    );
+    assert_eq!(verification.matched_copies(), Some(299));
+}
+
+/// A folder with no log states nothing about its bits, however it carves its
+/// disc.
+#[test]
+fn a_folder_with_no_log_states_nothing_about_its_bits() {
+    use tempfile::TempDir;
+    let fixture_dir = fixture("cue_ape");
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path();
+    for name in ["Test Album.ape", "Test Album.cue"] {
+        std::fs::copy(fixture_dir.join(name), folder.join(name)).unwrap();
+    }
+
+    let categorized = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        folder,
+        crate::import::ReleaseFileScope::Recursive,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+
+    let artifacts = read_rip_artifacts(&categorized);
+    assert!(artifacts.disc_id.is_some(), "the sheet still carves a disc");
+    assert!(artifacts.verification.is_none());
+}
+
 /// A single-FILE rip with `.cue` + `.ape` produces a disc ID — the
 /// dispatcher routes APE through the FFmpeg-probe path.
 #[test]
@@ -391,7 +456,7 @@ fn test_compute_discid_routes_cue_ape() {
     let audio_path = folder.join("Test Album.ape");
     let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
     let computed =
-        compute_discid_from_categorized(&categorized).expect("CUE+APE pair must compute a disc ID");
+        read_rip_artifacts(&categorized).disc_id.expect("CUE+APE pair must compute a disc ID");
     assert_eq!(
         crate::audio_codec::probe_opens_for(&audio_path),
         opens_before,
@@ -403,7 +468,10 @@ fn test_compute_discid_routes_cue_ape() {
         "MusicBrainz disc IDs are 28 chars"
     );
     assert!(
-        computed.source_file.ends_with(".cue"),
+        computed
+            .source_file
+            .as_deref()
+            .is_some_and(|file| file.ends_with(".cue")),
         "the sheet it was carved from rides with it, got {:?}",
         computed.source_file
     );
@@ -412,9 +480,9 @@ fn test_compute_discid_routes_cue_ape() {
 /// A single-FILE rip with `.cue` + `.mp3` produces a disc ID — the dispatcher
 /// routes MP3 through the FFmpeg-probe path.
 ///
-/// Drives `compute_discid_from_paths` with constructed paths rather than
-/// `compute_discid_from_categorized`, which would go through the folder
-/// scanner's CUE+audio pair detection — a separate concern for MP3.
+/// Drives `read_rip_artifacts_from_paths` with constructed paths rather than
+/// `read_rip_artifacts`, which would go through the folder scanner's CUE+audio
+/// pair detection — a separate concern for MP3.
 #[test]
 fn test_compute_discid_routes_cue_mp3() {
     use tempfile::TempDir;
@@ -444,9 +512,14 @@ fn test_compute_discid_routes_cue_mp3() {
     let cue_path = folder.join("Test Album.cue");
     std::fs::write(&cue_path, cue_body).unwrap();
 
-    let disc_id = compute_discid_from_paths(&[], &[cue_path], &[(mp3_path, 9_000)])
+    let disc_id = read_rip_artifacts_from_paths(&[], &[cue_path], &[(mp3_path, 9_000)])
+        .disc_id
         .expect("CUE+MP3 pair must compute a disc ID");
-    assert_eq!(disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");
+    assert_eq!(
+        disc_id.disc_id.len(),
+        28,
+        "MusicBrainz disc IDs are 28 chars"
+    );
 }
 
 #[test]

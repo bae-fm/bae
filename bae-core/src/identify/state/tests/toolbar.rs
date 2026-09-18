@@ -216,6 +216,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
                 disc_id: DiscIdSignal::Absent { track_count: 5 },
+                verification: None,
                 barcode: BarcodeSignal::Scanning { codes: Vec::new() },
                 text: TextSignal::Scanning {
                     catalogs: Vec::new(),

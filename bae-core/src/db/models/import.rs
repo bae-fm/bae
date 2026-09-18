@@ -137,6 +137,10 @@ pub struct DbCandidateImportPreparation {
     /// on. Empty for a candidate nothing has extracted signals from; commit
     /// keeps these with the release.
     pub marks: Vec<crate::import::ReleaseMark>,
+    /// What the rip databases said about the folder's audio, off the same
+    /// settled signals. `None` for a candidate whose log states nothing about
+    /// its bits; commit keeps this with the release.
+    pub verification: Option<crate::import::Verification>,
 }
 
 /// The exact candidate state a library import transaction is allowed to

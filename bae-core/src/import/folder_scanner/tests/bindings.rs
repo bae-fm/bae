@@ -63,7 +63,7 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
     );
     assert_eq!(files.bound_sheets()[0].audio_files[0].1.file_name, "cd.flac");
     assert!(
-        crate::import::discid::compute_discid_from_categorized(&files).is_some(),
+        crate::import::discid::read_rip_artifacts(&files).disc_id.is_some(),
         "the automatically bound sheet and audio yield a disc ID",
     );
 }

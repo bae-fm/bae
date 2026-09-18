@@ -79,6 +79,29 @@
             ]
         }
 
+        /// A rip whose weakest track thirty-seven other people's copies
+        /// agree with — two tracks, each confirmed by both databases.
+        static var releaseVerification: BridgeVerification {
+            BridgeVerification(
+                source: .log,
+                matchedCopies: 37,
+                tracks: [
+                    BridgeTrackVerification(
+                        number: 1,
+                        accurateripConfidence: 42,
+                        ctdbConfidence: 16,
+                        crc: 0xE94F_69D5
+                    ),
+                    BridgeTrackVerification(
+                        number: 2,
+                        accurateripConfidence: 37,
+                        ctdbConfidence: 16,
+                        crc: 0xBF12_B7A9
+                    ),
+                ]
+            )
+        }
+
         static func record(
             _ catalog: BridgeCatalog,
             _ key: String,

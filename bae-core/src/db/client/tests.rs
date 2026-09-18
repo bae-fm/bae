@@ -264,3 +264,6 @@ mod file_tag_snapshot_tests;
 
 #[cfg(test)]
 mod release_marks_tests;
+
+#[cfg(test)]
+mod release_verification_tests;
