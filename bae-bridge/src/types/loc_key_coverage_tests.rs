@@ -20,6 +20,10 @@ use super::*;
 /// by any `bridge_*_key` fn. Kept in sync with the catalog by
 /// `no_orphan_core_keys`.
 const DIRECT_KEYS: &[&str] = &[
+    // A field's origin crosses as `BridgeFieldOrigin`; the two origins that
+    // are not a catalog's name are resolved by the surface directly.
+    "core.field.origin.tags",
+    "core.field.origin.typed",
     // Storage queue summary (UI composes counts).
     "core.queue.uploading",
     "core.queue.downloading",
