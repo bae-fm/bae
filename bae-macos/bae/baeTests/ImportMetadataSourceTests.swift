@@ -384,7 +384,9 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         }
     }
 
-    func testBlankMetadataOpensEditableFieldsBesideTheCover()
+    /// A blank draft keeps its title and album year beside the cover and
+    /// all six release fields below it, ready to edit.
+    func testIdentityFieldsSitBesideTheCoverAndReleaseFieldsUnderIt()
         async throws
     {
         NSApplication.shared.finishLaunching()
@@ -397,22 +399,33 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             ),
             size: NSSize(width: 900, height: 900)
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        await SnapshotTestSupport.settle(host)
 
-        let editableFrames = SnapshotTestSupport.descendants(of: host)
-            .compactMap { view -> NSRect? in
-                guard let field = view as? NSTextField, field.isEditable else {
-                    return nil
-                }
-                return field.convert(field.bounds, to: host)
-            }
+        let fields = SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSTextField }
+            .filter(\.isEditable)
         let cover = try coverFrame(in: host)
-        XCTAssertFalse(editableFrames.isEmpty)
-        XCTAssertTrue(
-            editableFrames.allSatisfy { $0.minX >= cover.maxX }
-        )
+        XCTAssertEqual(fields.count, 8)
+        for placeholder in [
+            String(localized: "Album title"), String(localized: "Year"),
+        ] {
+            let field = try XCTUnwrap(
+                fields.first { $0.placeholderString == placeholder }
+            )
+            let frame = field.convert(field.bounds, to: host)
+            XCTAssertGreaterThanOrEqual(frame.minX, cover.maxX)
+            XCTAssertLessThan(frame.minY, cover.maxY)
+            XCTAssertGreaterThan(frame.maxY, cover.minY)
+        }
+        let releaseFields = fields.filter { $0.placeholderString == "\u{2014}" }
+        XCTAssertEqual(releaseFields.count, 6)
+        for field in releaseFields {
+            let frame = field.convert(field.bounds, to: host)
+            XCTAssertTrue(
+                host.isFlipped
+                    ? frame.minY >= cover.maxY : frame.maxY <= cover.minY
+            )
+        }
         window.contentView = nil
         window.orderOut(nil)
     }
