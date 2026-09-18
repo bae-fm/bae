@@ -742,7 +742,8 @@ public sealed class ImportSectionViewTests
                             new BridgeMetadataRef(BridgeCatalog.MusicBrainz, "rel-matched"),
                             [])
                         : null),
-                Reading: reading ?? new BridgeTriageReading.Unidentified());
+                Reading: reading ?? new BridgeTriageReading.Unidentified(),
+                Marks: []);
 
     private static BridgeImportQueueSummary MatchedSummary(
         BridgeTriagePlacement placement,

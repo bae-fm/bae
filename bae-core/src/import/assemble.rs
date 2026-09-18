@@ -446,7 +446,6 @@ pub(crate) fn assemble_parsed_album(
         album_id: album.id.clone(),
         release_name: None,
         pressing: ir.pressing,
-        disc_id: None,
         draft_from_tags: matches!(ir.metadata_provenance, Some(MetadataProvenance::FileTags)),
         // The draft the user committed states where each of its fields was
         // read; `apply_user_edit_to_seed` puts that on this row.

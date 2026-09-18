@@ -1,6 +1,7 @@
 //! Where a signal value came from — the provenance a signal badge labels
 //! itself with ("from Cover OCR", "from the folder name", …).
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use super::candidate_text::Source;
 
 /// The surface a signal value was harvested from — a coarse, UI-facing projection of
@@ -9,9 +10,7 @@ use super::candidate_text::Source;
 ///
 /// `Serialize`/`Deserialize`: carried on the ledger a run records, which
 /// `identify::TerminalVerdict` persists.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum SignalOrigin {
     /// The disc's table of contents (LOG/CUE).
     DiscToc,
@@ -27,6 +26,45 @@ pub enum SignalOrigin {
     TextFile,
 }
 
+impl SignalOrigin {
+    /// Every origin, for reading one back from the word it was stored as.
+    const ALL: [SignalOrigin; 6] = [
+        Self::DiscToc,
+        Self::CueSheet,
+        Self::Artwork,
+        Self::FolderName,
+        Self::Filename,
+        Self::TextFile,
+    ];
+
+    /// The stored `origin` column value — the same word on a candidate's
+    /// signal rows and on a release's mark rows.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::DiscToc => "disc_toc",
+            Self::CueSheet => "cue_sheet",
+            Self::Artwork => "artwork",
+            Self::FolderName => "folder_name",
+            Self::Filename => "filename",
+            Self::TextFile => "text_file",
+        }
+    }
+}
+
+impl std::str::FromStr for SignalOrigin {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::ALL
+            .into_iter()
+            .find(|origin| origin.as_str() == s)
+            .ok_or_else(|| format!("unknown signal origin: {s}"))
+    }
+}
+
+/// Reading a text source's origin belongs to the extraction pass, which is
+/// desktop-only; the origins themselves travel everywhere.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl SignalOrigin {
     /// The path payloads on `Artwork` / `FilenameGeneric` / `TextFile` are dropped
     /// here: a badge names the kind of surface, not the file. A value that has to

@@ -176,6 +176,7 @@
                 // linked all the way out reads like; the rest are the ordinary
                 // case of a library nobody has identified.
                 records: album.id == "a-01" ? releaseRecordsEveryCatalog : [],
+                marks: [],
                 totalDuration: groupDuration(tracks),
                 fileCount: 0,
                 totalSize: 0,

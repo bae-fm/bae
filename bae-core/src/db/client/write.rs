@@ -144,7 +144,7 @@ pub(super) fn insert_release_row(
         r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
-            disc_id, draft_from_tags,
+            draft_from_tags,
             format, label, catalog_number, country, barcode,
             album_title_origin, album_year_origin, year_origin, format_origin,
             label_origin, catalog_number_origin, country_origin, barcode_origin,
@@ -152,14 +152,13 @@ pub(super) fn insert_release_row(
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
             _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             release.id,
             release.album_id,
             release.release_name,
             release.pressing.year,
-            release.disc_id,
             release.draft_from_tags,
             release.pressing.format,
             release.pressing.label,
@@ -758,6 +757,46 @@ pub(super) fn insert_release_record_row(
             record.group_key,
             record.url,
             record.reads_draft,
+            reg,
+            now,
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+/// Insert one mark sighting. Shared by the atomic import path (inside its
+/// transaction) and `insert_release_marks` (on the connection directly).
+pub(super) fn insert_release_mark_row(
+    conn: &SqlContext<'_, '_>,
+    release_id: &str,
+    mark: &crate::import::ReleaseMark,
+    position: usize,
+    id: String,
+    reg: &str,
+    now: &str,
+) -> Result<(), DbError> {
+    let region = mark.sighting.region;
+    conn.execute(
+        r#"
+        INSERT INTO release_marks (
+            id, release_id, position, kind, value, origin, origin_path,
+            region_x, region_y, region_width, region_height,
+            _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        "#,
+        params![
+            id,
+            release_id,
+            position as i64,
+            mark.kind.as_str(),
+            mark.sighting.value,
+            mark.sighting.origin.as_str(),
+            mark.sighting.origin_path,
+            region.map(|region| f64::from(region.x)),
+            region.map(|region| f64::from(region.y)),
+            region.map(|region| f64::from(region.width)),
+            region.map(|region| f64::from(region.height)),
             reg,
             now,
         ],

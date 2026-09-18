@@ -630,6 +630,7 @@
                 imageFiles: [imageFile],
                 galleryItems: [],
                 records: [],
+                marks: [],
                 totalDuration: nil,
                 fileCount: Int64(files.count),
                 totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },

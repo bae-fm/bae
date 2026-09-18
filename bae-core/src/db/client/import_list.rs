@@ -13,7 +13,7 @@
 mod window;
 
 use super::records::check_releases_in_library_on;
-use super::import_state::{load_matches_on, load_provenance_on};
+use super::import_state::{load_marks_on, load_matches_on, load_provenance_on};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_scanner::InvalidReason;
@@ -87,6 +87,9 @@ pub struct CandidateStateListRow {
     pub metadata_draft_valid: bool,
     pub metadata_summary: Option<crate::import::TriageMetadataSummary>,
     pub selected_cover: Option<crate::import::CoverSelection>,
+    /// Every name the candidate's folder states, one line per value. Empty
+    /// until something has extracted its signals.
+    pub marks: Vec<crate::import::ReleaseMarkLine>,
 }
 
 /// Every column the queue is placed from, in one read.
@@ -436,6 +439,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     }
 
     let mut provenances = load_provenance_on(sql, None)?;
+    let mut marks = load_marks_on(sql, None)?;
     let mut states = HashMap::new();
     for (content_hash, edit_revision) in sql.query(
         "SELECT content_hash, edit_revision FROM import_candidate_state",
@@ -456,6 +460,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         let metadata_summary =
             crate::import::TriageMetadataSummary::of(&release_edit, metadata_provenance.clone());
         let selected_cover = covers.remove(&content_hash);
+        let marks = marks.remove(&content_hash).unwrap_or_default();
         states.insert(
             content_hash,
             CandidateStateListRow {
@@ -466,6 +471,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 metadata_draft_valid,
                 metadata_summary,
                 selected_cover,
+                marks,
             },
         );
     }

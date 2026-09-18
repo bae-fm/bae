@@ -152,7 +152,8 @@ internal static class PreviewData
                 Selectable: true,
                 ImportStatus: null,
                 MetadataProvenance: null,
-                Reading: new BridgeTriageReading.Prefilled()),
+                Reading: new BridgeTriageReading.Prefilled(),
+                Marks: []),
             IsGroupMember: true),
     };
 
@@ -212,6 +213,7 @@ internal static class PreviewData
             Selectable: true,
             ImportStatus: null,
             MetadataProvenance: null,
-            Reading: new BridgeTriageReading.Unidentified());
+            Reading: new BridgeTriageReading.Unidentified(),
+            Marks: []);
 }
 #endif

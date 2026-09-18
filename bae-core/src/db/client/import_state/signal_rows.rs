@@ -11,11 +11,12 @@
 //! waits for OCR — so a scanning signal reaching here is a defect and the
 //! write says so rather than storing a half-read one.
 
+use super::super::read::stored_region;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::signals::{
-    BarcodeSignal, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin, Signals, SourcedValue,
-    TextLine, TextSignal,
+    BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextLine,
+    TextSignal,
 };
 
 const SIGNALS_COLUMNS: &str = "content_hash, disc_id_state, disc_id, disc_id_source_file, \
@@ -102,27 +103,8 @@ fn failure_of(
     }))
 }
 
-fn origin_str(origin: SignalOrigin) -> &'static str {
-    match origin {
-        SignalOrigin::DiscToc => "disc_toc",
-        SignalOrigin::CueSheet => "cue_sheet",
-        SignalOrigin::Artwork => "artwork",
-        SignalOrigin::FolderName => "folder_name",
-        SignalOrigin::Filename => "filename",
-        SignalOrigin::TextFile => "text_file",
-    }
-}
-
 fn origin_of(stored: &str) -> Result<SignalOrigin, DbError> {
-    Ok(match stored {
-        "disc_toc" => SignalOrigin::DiscToc,
-        "cue_sheet" => SignalOrigin::CueSheet,
-        "artwork" => SignalOrigin::Artwork,
-        "folder_name" => SignalOrigin::FolderName,
-        "filename" => SignalOrigin::Filename,
-        "text_file" => SignalOrigin::TextFile,
-        other => return Err(unreadable("origin", other)),
-    })
+    stored.parse().map_err(DbError::Message)
 }
 
 /// Every signal row under `content_hash`. The values cascade from the header.
@@ -212,7 +194,7 @@ pub(super) fn insert_signals(
                     list,
                     position as i64,
                     value.value.clone(),
-                    Some(origin_str(value.origin)),
+                    Some(value.origin.as_str()),
                     value.origin_path.clone(),
                     value.region,
                 )
@@ -269,7 +251,7 @@ pub(super) fn insert_signals(
                 content_hash,
                 position as i64,
                 line.text,
-                origin_str(line.origin),
+                line.origin.as_str(),
                 line.file,
                 line.region.map(|r| f64::from(r.x)),
                 line.region.map(|r| f64::from(r.y)),
@@ -287,6 +269,26 @@ fn free_text(text: &TextSignal) -> &[String] {
         | TextSignal::Settled { free_text, .. }
         | TextSignal::Failed { free_text, .. } => free_text,
     }
+}
+
+/// The marks every candidate's settled signals state, or the one `only`
+/// names — one line per value, in `MarkKind` order.
+///
+/// Read through the signals themselves rather than off the value rows
+/// directly: which of a candidate's signals are names read off the object is
+/// [`crate::import::ReleaseMark::of_signals`]'s answer, and asking it twice is
+/// two answers to one question.
+pub(crate) fn load_marks_on(
+    sql: &SqlReadContext<'_>,
+    only: Option<&str>,
+) -> Result<HashMap<String, Vec<crate::import::ReleaseMarkLine>>, DbError> {
+    Ok(load_signals_on(sql, only)?()?
+        .into_iter()
+        .map(|(content_hash, signals)| {
+            let marks = crate::import::ReleaseMark::of_signals(&signals);
+            (content_hash, crate::import::ReleaseMarkLine::fold(&marks))
+        })
+        .collect())
 }
 
 /// Every candidate's settled signals, or the one `only` names.
@@ -509,23 +511,3 @@ fn sourced_value(
     .at(region))
 }
 
-/// The region a row stores, as the four columns it stores it in: all present
-/// and inside the image, or all absent. Anything else is a row nothing here
-/// wrote.
-fn stored_region(value: &str, columns: [Option<f64>; 4]) -> Result<Option<ImageRegion>, DbError> {
-    match columns {
-        [None, None, None, None] => Ok(None),
-        [Some(x), Some(y), Some(width), Some(height)] => {
-            ImageRegion::new(x as f32, y as f32, width as f32, height as f32)
-                .map(Some)
-                .ok_or_else(|| {
-                    DbError::Message(format!(
-                        "the stored value {value:?} states a region outside its image"
-                    ))
-                })
-        }
-        _ => Err(DbError::Message(format!(
-            "the stored value {value:?} states a partial region"
-        ))),
-    }
-}

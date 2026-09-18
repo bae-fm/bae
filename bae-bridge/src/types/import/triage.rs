@@ -497,6 +497,9 @@ pub struct BridgeTriageRow {
     /// How the row's text column reads: its folder, a draft, or a draft read
     /// from a catalog's release.
     pub reading: BridgeTriageReading,
+    /// Every name this candidate's folder states, one line per value and in
+    /// the order surfaces list mark kinds. Empty until something has read it.
+    pub marks: Vec<crate::types::BridgeReleaseMark>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

@@ -207,7 +207,6 @@ async fn musicbrainz_id_surfaces_when_present() {
         album_id: album.id.clone(),
         release_name: None,
         pressing: bae_core::db::Pressing::blank(),
-        disc_id: None,
         draft_from_tags: true,
         remote: false,
         source_folder_name: None,

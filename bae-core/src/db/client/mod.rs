@@ -1,4 +1,7 @@
 use crate::db::models::*;
+// The catalogs a record names belong to the import path, which the mobile
+// builds do not carry; the modules that read one are gated with it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::import::Catalog;
 use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
@@ -42,6 +45,7 @@ mod blobs;
 mod candidate_state_rows;
 mod coven_capabilities;
 mod database_read;
+mod marks;
 mod records;
 // Watched folders, folder scans and the import candidate queue. Read
 // `import::watched_folder` and `import::FolderScanStatus`, both desktop-only,

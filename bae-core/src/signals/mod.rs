@@ -25,6 +25,12 @@
 pub mod failure;
 pub use failure::LookupFailure;
 
+// Where a value was read is plain data with no platform machinery behind it,
+// and a release's marks carry it to every surface, mobile included — so it
+// stays out of the desktop-only extraction block below.
+pub mod origin;
+pub use origin::{ImageRegion, SignalOrigin, SourcedValue};
+
 desktop_only! {
     mod analyzer;
     pub mod artwork;
@@ -33,7 +39,6 @@ desktop_only! {
     pub(crate) mod candidate_text;
     pub mod disc_id;
     mod fast_pass;
-    pub mod origin;
     mod pool;
     mod release;
     pub mod service;
@@ -43,7 +48,6 @@ desktop_only! {
     pub use artwork::ArtworkScan;
     pub use barcode::{is_placeholder_code, BarcodeSignal};
     pub use disc_id::DiscIdSignal;
-    pub use origin::{ImageRegion, SignalOrigin, SourcedValue};
     pub use service::{
         ExtractionService, ExtractionServiceHandle, ExtractionSource, ExtractionWatch,
         SignalsSnapshot,

@@ -111,6 +111,7 @@ struct CoverPickerTests {
             imageFiles: [file],
             galleryItems: [],
             records: [],
+            marks: [],
             totalDuration: nil,
             fileCount: 1,
             totalSize: 100,

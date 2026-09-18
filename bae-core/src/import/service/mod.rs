@@ -90,6 +90,10 @@ struct PreparedMetadata {
     /// direct entry, which name no catalog. Commit writes one
     /// record row per element.
     records: Vec<crate::import::ReleaseRecord>,
+    /// Every name the candidate's own folder stated — its barcodes, catalog
+    /// numbers and disc ID, each with where it was read. Empty for a candidate
+    /// nothing extracted signals from. Commit writes one mark row per element.
+    marks: Vec<crate::import::ReleaseMark>,
     album_title: String,
 }
 

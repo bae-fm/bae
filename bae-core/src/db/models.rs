@@ -297,10 +297,6 @@ pub struct DbRelease {
     /// an album, not a specific pressing" (Approximate imports). The DB columns
     /// stay flat (`year`, `format`, `label`, …) — this grouping is Rust-side only.
     pub pressing: Pressing,
-    /// Disc ID computed from the rip's LOG/CUE artifacts — what we observed, not
-    /// what editorial says, so it stays independent of the identified MB/Discogs
-    /// row. A signal at re-identify time, and shown for confidence.
-    pub disc_id: Option<String>,
     /// Whether the draft's facts were read off the files' own tags. The other
     /// two answers are records: the one carrying `reads_draft` names the
     /// document a draft was read from, and a release with neither started
@@ -730,7 +726,6 @@ impl DbRelease {
             album_id: album_id.to_string(),
             release_name: None,
             pressing: Pressing::blank(),
-            disc_id: None,
             draft_from_tags: false,
             field_origins: Default::default(),
             remote: false,

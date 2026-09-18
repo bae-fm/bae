@@ -223,6 +223,9 @@ impl ImportService {
         let selected_cover = preparation.cover;
         let user_edit = Some(preparation.draft.release_edit().shape()?);
         let prepared_assets = preparation.assets;
+        // The names the folder itself states, whatever the draft was read
+        // from: a File Tags import carries its barcode too.
+        let marks = preparation.marks;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
@@ -349,6 +352,7 @@ impl ImportService {
             .reconcile_prepared_release(
                 parsed,
                 records,
+                marks,
                 user_edit,
                 &replacement_release_ids,
                 &prepared_assets.artist_images,
@@ -521,6 +525,7 @@ impl ImportService {
             artist_external_id_updates,
             artist_images,
             records,
+            marks,
             selected_cover,
             remote_cover_image,
             embedded_cover,
@@ -788,6 +793,7 @@ impl ImportService {
                     audio_formats: &built_audio.audio_formats,
                     audio_segments: &built_audio.audio_segments,
                     records,
+                    marks,
                 },
                 prepared_files,
                 library_image,

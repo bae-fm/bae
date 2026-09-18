@@ -744,3 +744,73 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
         "Person's title"
     );
 }
+
+/// The import reads the folder's own names off the signals identification
+/// settled on, so a commit keeps them whatever the draft was read from — a
+/// folder identified from its tags still states its barcode.
+#[tokio::test]
+async fn the_preparation_carries_the_names_the_folder_states() {
+    let (db, _tmp) = empty_db().await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    assert!(
+        db.load_import_candidate_preparation(&hash)
+            .await
+            .unwrap()
+            .expect("the scanned candidate is prepared")
+            .marks
+            .is_empty(),
+        "nothing has read the folder yet"
+    );
+
+    assert!(
+        store_verdict(
+            &db,
+            &hash,
+            Signals {
+                barcode: BarcodeSignal::Settled {
+                    codes: vec![SourcedValue::in_file(
+                        "0075678164521".to_string(),
+                        SignalOrigin::Artwork,
+                        "back.jpg".to_string(),
+                    )],
+                },
+                text: TextSignal::Settled {
+                    catalogs: vec![SourcedValue::new(
+                        "7559-60691-2".to_string(),
+                        SignalOrigin::FolderName,
+                    )],
+                    free_text: Vec::new(),
+                },
+                ..signals_with(SourceDurations::default())
+            },
+        )
+        .await
+    );
+
+    let marks = db
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .expect("the scanned candidate is prepared")
+        .marks;
+    assert_eq!(
+        marks,
+        vec![
+            crate::import::ReleaseMark {
+                kind: crate::import::MarkKind::Barcode,
+                sighting: SourcedValue::in_file(
+                    "0075678164521".to_string(),
+                    SignalOrigin::Artwork,
+                    "back.jpg".to_string(),
+                ),
+            },
+            crate::import::ReleaseMark {
+                kind: crate::import::MarkKind::CatalogNumber,
+                sighting: SourcedValue::new(
+                    "7559-60691-2".to_string(),
+                    SignalOrigin::FolderName,
+                ),
+            },
+        ],
+    );
+}

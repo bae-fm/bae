@@ -203,6 +203,7 @@ impl crate::types::BridgeTriageRow {
             import_status,
             metadata_provenance,
             reading,
+            marks,
         } = row;
         crate::types::BridgeTriageRow {
             candidate_key,
@@ -231,6 +232,10 @@ impl crate::types::BridgeTriageRow {
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             reading: crate::types::BridgeTriageReading::from_core(reading),
+            marks: marks
+                .into_iter()
+                .map(crate::types::BridgeReleaseMark::from_core)
+                .collect(),
         }
     }
 }

@@ -456,7 +456,8 @@
                 selectable: !edit.albumTitle.isEmpty,
                 importStatus: nil,
                 metadataProvenance: metadataProvenance,
-                reading: .unidentified
+                reading: .unidentified,
+                marks: []
             )
         }
 

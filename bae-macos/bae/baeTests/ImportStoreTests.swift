@@ -178,7 +178,8 @@ private func readyRow(
                     url: "https://musicbrainz.org/release/rel-\(key)",
                     readsDraft: true
                 )
-            ])
+            ]),
+        marks: []
     )
 }
 
@@ -200,7 +201,8 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         selectable: false,
         importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
         metadataProvenance: nil,
-        reading: .unidentified
+        reading: .unidentified,
+        marks: []
     )
 }
 
@@ -222,7 +224,8 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         selectable: false,
         importStatus: nil,
         metadataProvenance: nil,
-        reading: .unidentified
+        reading: .unidentified,
+        marks: []
     )
 }
 

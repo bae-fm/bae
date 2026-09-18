@@ -204,6 +204,22 @@ impl AutomationReleaseRecord {
 }
 
 mirror_enum! {
+    AutomationMarkKind = bae_core::import::MarkKind,
+    from_core: pub(crate) fn,
+    variants: { DiscId, Barcode, CatalogNumber },
+}
+
+mirror_struct! {
+    AutomationReleaseMark = bae_core::import::ReleaseMarkLine,
+    from_core: pub(crate) fn,
+    fields: {
+        kind: (AutomationMarkKind),
+        value,
+        origins: (each AutomationSignalOrigin),
+    },
+}
+
+mirror_enum! {
     AutomationMetadataProvenance = MetadataProvenance,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
@@ -696,6 +712,11 @@ impl AutomationRelease {
                 .records
                 .into_iter()
                 .map(AutomationReleaseRecord::from_core)
+                .collect(),
+            marks: release
+                .marks
+                .into_iter()
+                .map(AutomationReleaseMark::from_core)
                 .collect(),
         }
     }

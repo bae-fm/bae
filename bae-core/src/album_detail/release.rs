@@ -106,6 +106,9 @@ pub struct ReleaseDetail {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
+    /// Every name read off the object itself, one line per value and in
+    /// `MarkKind` order. Empty when its folder stated none.
+    pub marks: Vec<crate::import::ReleaseMarkLine>,
 }
 
 /// One physical source file that supplies a persisted track. A track can span
@@ -393,6 +396,7 @@ impl ReleaseDetail {
             image_files,
             gallery_items: gallery,
             records: raw.records,
+            marks: crate::import::ReleaseMarkLine::fold(&raw.marks),
         };
         (detail, audio_format_orphans)
     }
@@ -429,6 +433,7 @@ mod release_edit_display_tests {
                 artists: Vec::new(),
             }],
             files: Vec::new(),
+            marks: Vec::new(),
             audio_formats: vec![format.clone()],
             audio_segments: vec![crate::db::DbAudioSegment {
                 id: "segment-id".to_string(),

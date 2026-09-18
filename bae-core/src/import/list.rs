@@ -454,6 +454,14 @@ impl ImportCandidateDetailProjection {
             actions,
             matched: matched.filter(|_| actionable),
             reading: super::triage::TriageReading::of(metadata_summary.as_ref(), picked.as_ref()),
+            marks: signals
+                .as_ref()
+                .map(|signals| {
+                    crate::import::ReleaseMarkLine::fold(
+                        &crate::import::ReleaseMark::of_signals(signals),
+                    )
+                })
+                .unwrap_or_default(),
             metadata_summary,
             cover_thumbnail: None,
             placement,

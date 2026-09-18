@@ -168,6 +168,11 @@ pub fn all() -> Vec<coven::Migration> {
             "field_origins",
             include_str!("../migrations/032_field_origins.sql"),
         ),
+        coven::Migration::sql(
+            33,
+            "release_marks",
+            include_str!("../migrations/033_release_marks.sql"),
+        ),
     ]
 }
 

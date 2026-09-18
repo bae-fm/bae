@@ -265,7 +265,8 @@
                 selectable: true,
                 importStatus: nil,
                 metadataProvenance: nil,
-                reading: .unidentified
+                reading: .unidentified,
+                marks: []
             )
         }
 

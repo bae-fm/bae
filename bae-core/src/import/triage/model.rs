@@ -390,6 +390,10 @@ pub struct TriageRow {
     /// reads the picked release's archived documents, states each source's
     /// label and year.
     pub reading: TriageReading,
+    /// Every name this candidate's folder states — its disc ID, barcodes and
+    /// catalog numbers — one line per value, in `MarkKind` order. Empty until
+    /// something has extracted the folder's signals.
+    pub marks: Vec<crate::import::ReleaseMarkLine>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

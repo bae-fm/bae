@@ -388,26 +388,6 @@ mirror_struct! {
     },
 }
 
-/// Where a signal value was harvested from — what a badge shows on hover
-/// ("from Cover OCR", "from the folder name", …). Mirrors
-/// `bae_core::signals::SignalOrigin`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSignalOrigin {
-    DiscToc,
-    CueSheet,
-    Artwork,
-    FolderName,
-    Filename,
-    TextFile,
-}
-
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    BridgeSignalOrigin = bae_core::signals::SignalOrigin,
-    from_core: pub(crate) fn,
-    variants: { DiscToc, CueSheet, Artwork, FolderName, Filename, TextFile },
-}
-
 /// A signal value paired with its origin — a catalog candidate or a barcode
 /// code. Mirrors `bae_core::signals::SourcedValue`.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]

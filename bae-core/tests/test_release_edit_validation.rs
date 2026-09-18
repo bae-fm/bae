@@ -41,7 +41,6 @@ async fn seed(db: &Database) -> (String, String) {
         album_id: album.id.clone(),
         release_name: None,
         pressing: Pressing::blank(),
-        disc_id: None,
         draft_from_tags: true,
         remote: true,
         source_folder_name: None,

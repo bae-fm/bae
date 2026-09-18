@@ -213,10 +213,10 @@ pub use types::{
     asked_sources, is_the_only_asked_source, parse_catalog_url, ArtistAssignment, AudioFile,
     CandidateDraft, CandidateEditField, CandidateTrack, Catalog, CatalogAvailability, CatalogPage,
     EditValidationError, ExistingArtist, FieldClaim, FieldClaims, FieldDot, FieldOrigin,
-    FieldOrigins, FieldProvenance, FieldValues, MetadataProvenance, NewArtistSeed, PressingEdit,
-    RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
-    ReleaseFormReset, ReleaseRecord, ReleaseUserEdit, SourceAvailability, TrackArtistAssignments,
-    TrackFileAuthor, TrackUserEdit,
+    FieldOrigins, FieldProvenance, FieldValues, MarkKind, MetadataProvenance, NewArtistSeed,
+    PressingEdit, RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
+    ReleaseFormReset, ReleaseMark, ReleaseMarkLine, ReleaseRecord, ReleaseUserEdit,
+    SourceAvailability, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit,
 };
 desktop_only! {
     pub use types::{

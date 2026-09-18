@@ -75,7 +75,8 @@
                 selectable: actions.contains(.importReady),
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance,
-                reading: reading
+                reading: reading,
+                marks: []
             )
         }
 

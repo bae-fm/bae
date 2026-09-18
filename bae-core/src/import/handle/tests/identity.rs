@@ -385,7 +385,6 @@ fn make_release(album_id: &str) -> DbRelease {
             country: None,
             barcode: None,
         },
-        disc_id: None,
         draft_from_tags: true,
         remote: true,
         source_folder_name: None,

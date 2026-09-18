@@ -77,6 +77,7 @@ pub(super) fn build_release_detail_on(
     let audio_formats = get_audio_formats_for_release_on(sql, &release.id)?;
     let audio_segments = get_audio_segments_for_release_on(sql, &release.id)?;
     let records = get_release_records_on(sql, &release.id)?;
+    let marks = get_release_marks_on(sql, &release.id)?;
 
     Ok(ReleaseDetailRows {
         release,
@@ -85,6 +86,7 @@ pub(super) fn build_release_detail_on(
         audio_formats,
         audio_segments,
         records,
+        marks,
     })
 }
 
@@ -95,6 +97,7 @@ pub(super) struct ReleaseDetailRows {
     audio_formats: Vec<DbAudioFormat>,
     audio_segments: Vec<DbAudioSegment>,
     records: Vec<crate::import::ReleaseRecord>,
+    marks: Vec<crate::import::ReleaseMark>,
 }
 
 impl ReleaseDetailRows {
@@ -106,6 +109,7 @@ impl ReleaseDetailRows {
             audio_formats: self.audio_formats,
             audio_segments: self.audio_segments,
             records: self.records,
+            marks: self.marks,
         }
     }
 }
@@ -247,7 +251,7 @@ pub(super) fn get_release_records_on(
         params![release_id],
         |row| {
             Ok(crate::import::ReleaseRecord {
-                catalog: catalog_column(row, "catalog")?,
+                catalog: parsed_column(row, "catalog")?,
                 key: row.get("key")?,
                 group_key: row.get("group_key")?,
                 url: row.get("url")?,
@@ -262,6 +266,71 @@ pub(super) fn get_release_records_on(
             .expect("every stored catalog is one of the catalogs")
     });
     Ok(records)
+}
+
+/// Every name read off a release's own object, one row per sighting, in the
+/// order extraction read them.
+pub(super) fn get_release_marks_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<Vec<crate::import::ReleaseMark>, DbError> {
+    sql.query(
+        r#"
+            SELECT kind, value, origin, origin_path,
+                   region_x, region_y, region_width, region_height
+            FROM release_marks
+            WHERE release_id = ?
+            ORDER BY position
+            "#,
+        params![release_id],
+        |row| {
+            let value: String = row.get("value")?;
+            let region = stored_region(
+                &value,
+                [
+                    row.get("region_x")?,
+                    row.get("region_y")?,
+                    row.get("region_width")?,
+                    row.get("region_height")?,
+                ],
+            )
+            .map_err(|e| column_conversion_error(row, "region_x", e.to_string()))?;
+            Ok(crate::import::ReleaseMark {
+                kind: parsed_column(row, "kind")?,
+                sighting: crate::signals::SourcedValue {
+                    value,
+                    origin: parsed_column(row, "origin")?,
+                    origin_path: row.get("origin_path")?,
+                    region,
+                },
+            })
+        },
+    )
+    .map_err(DbError::from)
+}
+
+/// The region a row stores, as the four columns every table that stores one
+/// uses: all present and inside the image, or all absent. Anything else is a
+/// row nothing here wrote.
+pub(super) fn stored_region(
+    value: &str,
+    columns: [Option<f64>; 4],
+) -> Result<Option<crate::signals::ImageRegion>, DbError> {
+    match columns {
+        [None, None, None, None] => Ok(None),
+        [Some(x), Some(y), Some(width), Some(height)] => {
+            crate::signals::ImageRegion::new(x as f32, y as f32, width as f32, height as f32)
+                .map(Some)
+                .ok_or_else(|| {
+                    DbError::Message(format!(
+                        "the stored value {value:?} states a region outside its image"
+                    ))
+                })
+        }
+        _ => Err(DbError::Message(format!(
+            "the stored value {value:?} states a partial region"
+        ))),
+    }
 }
 
 /// Build a column-conversion error for a named column whose stored text the
@@ -299,9 +368,14 @@ pub(super) fn rfc3339_column(row: &Row, column: &str) -> coven::rusqlite::Result
         })
 }
 
-pub(super) fn catalog_column(row: &Row, column: &str) -> coven::rusqlite::Result<Catalog> {
+/// Read a named text column back into the type whose `FromStr` it was written
+/// from, surfacing a word no variant answers to as a column-conversion error.
+pub(super) fn parsed_column<T>(row: &Row, column: &str) -> coven::rusqlite::Result<T>
+where
+    T: std::str::FromStr<Err = String>,
+{
     let raw: String = row.get(column)?;
-    raw.parse::<Catalog>()
+    raw.parse::<T>()
         .map_err(|e| column_conversion_error(row, column, e))
 }
 
@@ -407,7 +481,6 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
             country: row.get("country")?,
             barcode: row.get("barcode")?,
         },
-        disc_id: row.get("disc_id")?,
         draft_from_tags: row.get("draft_from_tags")?,
         field_origins: row_to_field_origins(row)?,
         remote: row.get("remote")?,

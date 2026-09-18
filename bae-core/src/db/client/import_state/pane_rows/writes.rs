@@ -22,6 +22,11 @@ impl Database {
                 &content_hash,
                 rows.cover.as_ref(),
             )?;
+            let marks = state
+                .signals
+                .as_ref()
+                .map(crate::import::ReleaseMark::of_signals)
+                .unwrap_or_default();
             Ok(Some(crate::db::DbCandidateImportPreparation {
                 file_edit_revision: state.file_edits.revision,
                 metadata_revision: state.metadata_revision,
@@ -30,6 +35,7 @@ impl Database {
                 draft: rows.draft,
                 source_discogs_artist_ids,
                 assets,
+                marks,
             }))
         })
         .await

@@ -481,7 +481,8 @@ extension MappingFixtures {
                 selectable: !edit.albumTitle.isEmpty,
                 importStatus: nil,
                 metadataProvenance: metadataProvenance,
-                reading: reading
+                reading: reading,
+                marks: []
             ),
             release: {
                 if case .externalRelease = metadataProvenance {

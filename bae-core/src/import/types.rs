@@ -30,6 +30,8 @@ pub use field_origin::{
     CandidateEditField, FieldClaim, FieldClaims, FieldDot, FieldOrigin, FieldOrigins,
     FieldProvenance, FieldValues,
 };
+mod mark;
+pub use mark::{MarkKind, ReleaseMark, ReleaseMarkLine};
 mod raw_release_edit;
 pub use raw_release_edit::{
     CandidateDraft, CandidateTrack, EditValidationError, RawPressingEdit, RawReleaseEdit,

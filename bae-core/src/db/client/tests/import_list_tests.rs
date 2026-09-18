@@ -67,6 +67,50 @@ async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &s
     save_verdict_with_ledger(db, candidate, release_id, None).await;
 }
 
+/// Store a verdict whose extraction read a barcode off two of the folder's
+/// scans and a catalog number out of its name.
+async fn save_verdict_with_marks(db: &Database, candidate: &FolderCandidate, release_id: &str) {
+    assert!(crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&NewImportCandidateVerdict {
+            candidate: crate::import::CandidateAsRead {
+                content_hash: candidate.files.content_hash(),
+                file_edit_revision: 0,
+                metadata_revision: 0,
+            },
+            folder_path: candidate.path.to_string_lossy().into_owned(),
+            verdict: verdict(release_id, None),
+            signals: crate::signals::Signals {
+                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
+                barcode: crate::signals::BarcodeSignal::Settled {
+                    codes: vec![
+                        crate::signals::SourcedValue::in_file(
+                            "0075678164521".to_string(),
+                            crate::signals::SignalOrigin::Artwork,
+                            "back.jpg".to_string(),
+                        ),
+                        crate::signals::SourcedValue::in_file(
+                            "0075678164521".to_string(),
+                            crate::signals::SignalOrigin::CueSheet,
+                            "Album.cue".to_string(),
+                        ),
+                    ],
+                },
+                text: crate::signals::TextSignal::Settled {
+                    catalogs: vec![crate::signals::SourcedValue::new(
+                        "7559-60691-2".to_string(),
+                        crate::signals::SignalOrigin::FolderName,
+                    )],
+                    free_text: Vec::new(),
+                },
+                text_pool: Vec::new(),
+                durations: crate::import::probe::SourceDurations::totalling(1_000),
+            },
+            metadata: None,
+        })
+        .await
+        .unwrap());
+}
+
 /// Store a verdict and the ledger its run recorded, beside the signals
 /// extraction read — the group one write lands.
 async fn save_verdict_with_ledger(
@@ -764,4 +808,64 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     let pending = tab(&db, TriageTab::Pending).await;
     assert_eq!(pending.len(), 1, "queueing the next attempt puts it back");
     assert!(pending[0].import_status.is_none());
+}
+
+/// A row states the names its folder carries: one line per value, folded here
+/// so neither surface decides that two scans of one barcode are one line, and
+/// tagged with every surface the value was read from.
+#[tokio::test]
+async fn a_row_states_the_names_its_folder_carries() {
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    save_verdict_with_marks(&db, &candidate, "mb-verdict").await;
+
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    assert_eq!(
+        rows(&projection)[0].marks,
+        vec![
+            crate::import::ReleaseMarkLine {
+                kind: crate::import::MarkKind::Barcode,
+                value: "0075678164521".to_string(),
+                origins: vec![
+                    crate::signals::SignalOrigin::Artwork,
+                    crate::signals::SignalOrigin::CueSheet,
+                ],
+            },
+            crate::import::ReleaseMarkLine {
+                kind: crate::import::MarkKind::CatalogNumber,
+                value: "7559-60691-2".to_string(),
+                origins: vec![crate::signals::SignalOrigin::FolderName],
+            },
+        ],
+    );
+
+    let detail = db
+        .load_import_candidate(&candidate.path.to_string_lossy())
+        .await
+        .unwrap()
+        .expect("the scanned candidate has a pane")
+        .resolve(&crate::import::TriageRuntimeFacts::default());
+    assert_eq!(
+        detail.row.marks,
+        rows(&projection)[0].marks,
+        "the pane's row reads the same names the queue's does"
+    );
+}
+
+/// A candidate nothing has read states no names, and the row says so rather
+/// than drawing an empty line.
+#[tokio::test]
+async fn a_row_nothing_has_read_states_no_names() {
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    save_verdict(&db, &candidate, "mb-verdict").await;
+
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    assert!(rows(&projection)[0].marks.is_empty());
 }

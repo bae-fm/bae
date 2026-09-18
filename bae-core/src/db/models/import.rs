@@ -133,6 +133,10 @@ pub struct DbCandidateImportPreparation {
     pub draft: crate::import::CandidateDraft,
     pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
     pub assets: crate::import::CandidatePreparedAssets,
+    /// Every name the folder stated, read off the signals extraction settled
+    /// on. Empty for a candidate nothing has extracted signals from; commit
+    /// keeps these with the release.
+    pub marks: Vec<crate::import::ReleaseMark>,
 }
 
 /// The exact candidate state a library import transaction is allowed to
