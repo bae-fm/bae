@@ -54,6 +54,8 @@ internal sealed class ImportMetadataSourceSection
     internal required Action<BridgeCandidateEditField, string> OnEditField { get; init; }
     internal required Action<IReadOnlyList<BridgeArtistAssignment>> OnEditArtists { get; init; }
 
+    internal Action<BridgeEvidenceSelection>? OnOpenEvidence { get; init; }
+
     internal Control Build()
     {
         return Presentation switch
@@ -255,7 +257,7 @@ internal sealed class ImportMetadataSourceSection
         if (Marks.Count > 0 || Verification?.MatchedCopies is not null)
         {
             body.Children.Add(RipMatchLine.BuildWithMarks(
-                Marks, Verification, ReleaseFactsScale.Pane));
+                Marks, Verification, ReleaseFactsScale.Pane, OnOpenEvidence));
         }
         // Which catalogs describe the release, last in the card under a rule
         // of their own.

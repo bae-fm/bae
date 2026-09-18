@@ -174,7 +174,8 @@ internal static class AlbumExpansionView
             selectedRelease.IdentifiedBy,
             selectedRelease.Marks,
             selectedRelease.Verification,
-            selectedRelease.Records);
+            selectedRelease.Records,
+            selection => _ = dialogs.ShowEvidence(selectedRelease.ReleaseId, selection));
         RenderFacts();
 
         var totalDuration = new TextBlock { FontSize = 12, Opacity = 0.7 };

@@ -17,6 +17,21 @@ namespace Bae.Desktop.ViewTests;
 public sealed class ReleaseMarksTests
 {
     [AvaloniaFact]
+    public void EverySourceChipRequestsItsOwnMarkAndOrigin()
+    {
+        var requests = new List<BridgeEvidenceSelection>();
+        var lines = MarkLines.Build(Marks, openEvidence: requests.Add);
+        foreach (var chip in lines.GetLogicalDescendants().OfType<Button>())
+            chip.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+
+        Assert.Equal<BridgeEvidenceSelection>([
+            new BridgeEvidenceSelection.Mark(BridgeMarkKind.DiscId, DiscId, BridgeSignalOrigin.DiscToc),
+            new BridgeEvidenceSelection.Mark(BridgeMarkKind.Barcode, "0075678164521", BridgeSignalOrigin.Artwork),
+            new BridgeEvidenceSelection.Mark(BridgeMarkKind.Barcode, "0075678164521", BridgeSignalOrigin.CueSheet),
+        ], requests);
+    }
+
+    [AvaloniaFact]
     public void OnlyTheCorroboratedBarcodeHasASeal()
     {
         var lines = MarkLines.Build([

@@ -98,6 +98,8 @@ mod cloud_operations;
 mod collection_subscription;
 mod configuration;
 mod device_pairing;
+#[cfg(feature = "desktop")]
+mod evidence;
 pub use collection_subscription::{
     AlbumBrowseSubscription, BridgeAlbumBrowseSnapshot, BridgeAlbumBrowseWindow,
     BridgeComposerBrowseSnapshot, BridgeComposerBrowseWindow, ComposerBrowseSubscription,

@@ -1,3 +1,7 @@
+#[cfg(feature = "desktop")]
+mod evidence;
+#[cfg(feature = "desktop")]
+pub use evidence::*;
 mod configuration;
 #[cfg(feature = "desktop")]
 mod conversion;

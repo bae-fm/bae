@@ -53,21 +53,23 @@ internal sealed class ReleaseFactsLine : ContentControl
         BridgeMarkKind? identifiedBy,
         IReadOnlyList<BridgeReleaseMark> marks,
         BridgeVerification? verification,
-        IReadOnlyList<BridgeReleaseRecord> records)
+        IReadOnlyList<BridgeReleaseRecord> records,
+        Action<BridgeEvidenceSelection>? openEvidence = null)
     {
         _facts.Text = facts;
         IsVisible = facts.Length > 0;
         Content = marks.Count == 0 && records.Count == 0
             && verification?.MatchedCopies is null
             ? _facts
-            : Trigger(identifiedBy, marks, verification, records);
+            : Trigger(identifiedBy, marks, verification, records, openEvidence);
     }
 
     private Control Trigger(
         BridgeMarkKind? identifiedBy,
         IReadOnlyList<BridgeReleaseMark> marks,
         BridgeVerification? verification,
-        IReadOnlyList<BridgeReleaseRecord> records)
+        IReadOnlyList<BridgeReleaseRecord> records,
+        Action<BridgeEvidenceSelection>? openEvidence = null)
     {
         var seal = Icons.Glyph(Icons.Seal, 11, "BaeTextSecondaryBrush");
         seal.Opacity = 0;
@@ -124,7 +126,7 @@ internal sealed class ReleaseFactsLine : ContentControl
             Placement = PlacementMode.BottomEdgeAlignedLeft,
             VerticalOffset = CardOffset,
             ShowMode = FlyoutShowMode.Standard,
-            Content = ReleaseFactsFlyout.Build(marks, verification, records),
+            Content = ReleaseFactsFlyout.Build(marks, verification, records, openEvidence),
         };
         button.Click += (_, _) =>
         {

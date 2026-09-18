@@ -21,10 +21,14 @@ public sealed class ReleaseVerificationTests
     [AvaloniaFact]
     public void TheLineStatesHowManyOtherRipsMatch()
     {
-        var line = RipMatchLine.Build(Verified);
+        BridgeEvidenceSelection? requested = null;
+        var line = RipMatchLine.Build(Verified, selection => requested = selection);
 
         Assert.NotNull(line);
         Assert.Contains(Matches37, TextOf(line!));
+        var chip = Assert.Single(line!.GetLogicalDescendants().OfType<Button>());
+        chip.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Assert.IsType<BridgeEvidenceSelection.Verification>(requested);
     }
 
     // A release whose every track no database confirmed has no count, and a

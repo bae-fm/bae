@@ -255,7 +255,7 @@ internal sealed partial class ImportSectionView
 
     // The title takes the remaining width and trims; the identification seal
     // keeps its width so it stays visible.
-    private static Control TitleWithGlyphs(
+    private Control TitleWithGlyphs(
         Control? leading,
         TextBlock title,
         BridgeTriageRow row)
@@ -283,7 +283,7 @@ internal sealed partial class ImportSectionView
 
     // The seal identifies the chosen record. Rip verification is stated in
     // the details behind it and in the pane, without a check in the list.
-    private static Control IdentityGlyphs(BridgeTriageRow row)
+    private Control IdentityGlyphs(BridgeTriageRow row)
     {
         var glyphs = new StackPanel
         {
@@ -307,7 +307,8 @@ internal sealed partial class ImportSectionView
                 : [];
             HoverFlyout.Attach(
                 glyphs,
-                () => ReleaseFactsFlyout.Build(row.Marks, row.Verification, records));
+                () => ReleaseFactsFlyout.Build(row.Marks, row.Verification, records,
+                    selection => _ = _dialogs.ShowEvidence(_app, new BridgeEvidenceSubject.Candidate(row.CandidateKey), selection)));
         }
         return glyphs;
     }

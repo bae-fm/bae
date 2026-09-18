@@ -37,6 +37,9 @@ internal sealed class ImportDialogs
         _openAlbum = openAlbum;
     }
 
+    internal Task ShowEvidence(AppService app, BridgeEvidenceSubject subject, BridgeEvidenceSelection selection) =>
+        EvidenceDialog.Show(_host, app.Evidence, subject, selection, app.ShowError);
+
     /// <summary>Open an album in the library — the already-in-library banner's
     /// jump to the duplicate.</summary>
     internal Task OpenAlbum(string albumId) => _openAlbum(albumId);

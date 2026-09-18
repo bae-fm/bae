@@ -67,6 +67,8 @@ mod config;
 mod coven_blobs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod discogs;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod evidence;
 /// Desktop-only, under the same predicate as the rest of the export surface (the
 /// queue field below, and `library::export`). Exporting writes a directory tree
 /// next to the user's chosen folder — a hidden staging sibling, a marker file, a
@@ -76,6 +78,8 @@ mod discogs;
 /// a compile error rather than a release that sits `Queued` with nothing to run it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod export;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use evidence::{EvidenceContent, EvidenceSelection, EvidenceSubject};
 mod image;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;

@@ -227,3 +227,5 @@ include!("tests/output.rs");
 include!("tests/identity.rs");
 include!("tests/artist_resolution.rs");
 include!("tests/playback_and_sync.rs");
+
+include!("tests/evidence.rs");

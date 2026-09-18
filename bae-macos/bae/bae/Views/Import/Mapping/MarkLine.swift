@@ -29,28 +29,17 @@ struct MarkLine: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             ForEach(mark.origins, id: \.self) { origin in
-                OriginTag(origin: origin)
+                EvidenceChip(
+                    label: coreString(bridgeSignalOriginKey(origin: origin)),
+                    selection: .mark(
+                        kind: mark.kind,
+                        value: mark.value,
+                        origin: origin
+                    )
+                )
             }
         }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// Where one reading of a value happened, as the short tag the line ends with.
-private struct OriginTag: View {
-    let origin: BridgeSignalOrigin
-
-    var body: some View {
-        Text(coreString(bridgeSignalOriginKey(origin: origin)))
-            .font(.system(size: 9.5))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(
-                Color.primary.opacity(0.07),
-                in: RoundedRectangle(cornerRadius: 4)
-            )
-            .fixedSize()
+        .accessibilityElement(children: .contain)
     }
 }
 

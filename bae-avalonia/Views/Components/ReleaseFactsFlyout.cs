@@ -21,7 +21,8 @@ internal static class ReleaseFactsFlyout
     internal static Control Build(
         IReadOnlyList<BridgeReleaseMark> marks,
         BridgeVerification? verification,
-        IReadOnlyList<BridgeReleaseRecord> records)
+        IReadOnlyList<BridgeReleaseRecord> records,
+        Action<BridgeEvidenceSelection>? openEvidence = null)
     {
         var padding = new Thickness(12, 10);
         var body = new StackPanel
@@ -33,7 +34,7 @@ internal static class ReleaseFactsFlyout
         if (statesNames)
         {
             body.Children.Add(
-                RipMatchLine.BuildWithMarks(marks, verification, ReleaseFactsScale.Card));
+                RipMatchLine.BuildWithMarks(marks, verification, ReleaseFactsScale.Card, openEvidence));
         }
         if (statesNames && records.Count > 0)
         {

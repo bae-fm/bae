@@ -25,8 +25,12 @@ struct RipMatchLine: View {
                 )
                 .font(.system(size: 11.5))
                 .foregroundStyle(.primary)
+                EvidenceChip(
+                    label: coreString(bridgeSignalOriginKey(origin: .discToc)),
+                    selection: .verification
+                )
             }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("rip-match")
         }
     }

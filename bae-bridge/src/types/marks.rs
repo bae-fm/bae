@@ -94,3 +94,17 @@ mirror_struct! {
         corroborated,
     },
 }
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeMarkKind = bae_core::import::MarkKind,
+    into_core: pub(crate) fn,
+    variants: { DiscId, Barcode, CatalogNumber },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeSignalOrigin = bae_core::signals::SignalOrigin,
+    into_core: pub(crate) fn,
+    variants: { DiscToc, CueSheet, Artwork, FolderName, Filename, TextFile },
+}

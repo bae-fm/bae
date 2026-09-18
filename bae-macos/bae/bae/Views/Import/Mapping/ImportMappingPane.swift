@@ -84,6 +84,10 @@ struct ImportMappingPane: View {
             .padding(.horizontal, 24)
             .padding(.top, 20)
             .padding(.bottom, 32)
+            .environment(
+                \.releaseEvidenceSubject,
+                .candidate(key: candidate.key)
+            )
         }
     }
 

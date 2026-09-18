@@ -24,7 +24,11 @@ struct ReleaseVerificationTests {
                 .frame(width: Self.lineSize.width)
                 .preferredColorScheme(.light)
                 .background(.white),
-            size: Self.lineSize
+            size: Self.lineSize,
+            scale: 3
+        )
+        #expect(
+            lines.carrying(coreString(bridgeSignalOriginKey(origin: .discToc)))
         )
         #expect(
             lines.carrying(

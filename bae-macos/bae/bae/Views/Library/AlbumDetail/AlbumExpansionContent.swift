@@ -76,6 +76,10 @@ struct AlbumExpansionContent: View {
                         verification: selectedRelease.verification,
                         records: selectedRelease.records
                     )
+                    .environment(
+                        \.releaseEvidenceSubject,
+                        .release(id: selectedRelease.id)
+                    )
                     HStack(spacing: 10) {
                         Button(action: onPlay) {
                             Label("Play", systemImage: "play.fill")

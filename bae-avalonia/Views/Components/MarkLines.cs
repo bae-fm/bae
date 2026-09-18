@@ -25,18 +25,19 @@ internal static class MarkLines
 
     internal static Control Build(
         IReadOnlyList<BridgeReleaseMark> marks,
-        ReleaseFactsScale scale = ReleaseFactsScale.Pane)
+        ReleaseFactsScale scale = ReleaseFactsScale.Pane,
+        Action<BridgeEvidenceSelection>? openEvidence = null)
     {
         var column = new StackPanel { Spacing = scale.LineSpacing() };
         Avalonia.Automation.AutomationProperties.SetAutomationId(column, "release-marks");
         foreach (var mark in marks)
         {
-            column.Children.Add(Line(mark));
+            column.Children.Add(Line(mark, openEvidence));
         }
         return column;
     }
 
-    private static Control Line(BridgeReleaseMark mark)
+    private static Control Line(BridgeReleaseMark mark, Action<BridgeEvidenceSelection>? openEvidence)
     {
         var row = new StackPanel
         {
@@ -84,29 +85,11 @@ internal static class MarkLines
 
         foreach (var origin in mark.Origins)
         {
-            row.Children.Add(OriginTag(origin));
+            row.Children.Add(EvidenceChip.Build(
+                Loc.Core(BaeBridgeMethods.BridgeSignalOriginKey(origin)),
+                new BridgeEvidenceSelection.Mark(mark.Kind, mark.Value, origin), openEvidence));
         }
         return row;
     }
 
-    private static Control OriginTag(BridgeSignalOrigin origin)
-    {
-        var text = new TextBlock
-        {
-            Text = Loc.Core(BaeBridgeMethods.BridgeSignalOriginKey(origin)),
-            FontSize = 9.5,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        text[!TextBlock.ForegroundProperty] =
-            new DynamicResourceExtension("BaeTextSecondaryBrush");
-        var tag = new Border
-        {
-            Padding = new Thickness(5, 1),
-            CornerRadius = new CornerRadius(4),
-            Child = text,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        tag[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeHoverBrush");
-        return tag;
-    }
 }

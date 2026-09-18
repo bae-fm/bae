@@ -18,7 +18,7 @@ namespace Bae.Desktop;
 internal static class RipMatchLine
 {
     /// <summary>The line, or <c>null</c> where there is no count to state.</summary>
-    internal static Control? Build(BridgeVerification? verification)
+    internal static Control? Build(BridgeVerification? verification, Action<BridgeEvidenceSelection>? openEvidence = null)
     {
         if (verification?.MatchedCopies is not { } matchedCopies)
         {
@@ -48,6 +48,9 @@ internal static class RipMatchLine
         text[!TextBlock.ForegroundProperty] =
             new DynamicResourceExtension("BaeTextPrimaryBrush");
         row.Children.Add(text);
+        row.Children.Add(EvidenceChip.Build(
+            Loc.Core(BaeBridgeMethods.BridgeSignalOriginKey(BridgeSignalOrigin.DiscToc)),
+            new BridgeEvidenceSelection.Verification(), openEvidence));
         return row;
     }
 
@@ -56,14 +59,15 @@ internal static class RipMatchLine
     internal static Control BuildWithMarks(
         IReadOnlyList<BridgeReleaseMark> marks,
         BridgeVerification? verification,
-        ReleaseFactsScale scale = ReleaseFactsScale.Pane)
+        ReleaseFactsScale scale = ReleaseFactsScale.Pane,
+        Action<BridgeEvidenceSelection>? openEvidence = null)
     {
         var column = new StackPanel { Spacing = scale.LineSpacing() };
         if (marks.Count > 0)
         {
-            column.Children.Add(MarkLines.Build(marks, scale));
+            column.Children.Add(MarkLines.Build(marks, scale, openEvidence));
         }
-        if (Build(verification) is { } line)
+        if (Build(verification, openEvidence) is { } line)
         {
             column.Children.Add(line);
         }

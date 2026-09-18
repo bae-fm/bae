@@ -183,6 +183,10 @@ struct TriageRowView: View {
             verification: row.verification,
             records: records
         )
+        .environment(
+            \.releaseEvidenceSubject,
+            .candidate(key: row.candidateKey)
+        )
     }
 
     /// Every catalog that describes the release the draft was read from —
