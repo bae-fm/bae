@@ -43,7 +43,7 @@ internal sealed class ReleaseEditorService
     /// <summary>Discard in-progress edits and re-seed the form from the release's
     /// stored metadata source (its original identity), without writing. Async — it
     /// re-projects from the source.</summary>
-    public Func<string, Task<(bool Current, (BridgeRawReleaseEdit? Edit, string? Error) Result)>> ResetReleaseEditToSource { get; init; }
+    public Func<string, Task<(bool Current, (BridgeReleaseFormReset? Reset, string? Error) Result)>> ResetReleaseEditToSource { get; init; }
         = _ => throw new InvalidOperationException("ReleaseEditorService stub: ResetReleaseEditToSource not wired");
 
     /// <summary>Commit a re-identify: point the release at a chosen source

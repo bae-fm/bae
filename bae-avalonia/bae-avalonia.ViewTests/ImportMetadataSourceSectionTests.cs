@@ -214,7 +214,8 @@ public sealed class ImportMetadataSourceSectionTests
         },
         "1991",
         new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
-        Array.Empty<BridgeRawTrackEdit>());
+        Array.Empty<BridgeRawTrackEdit>(),
+        ImportCandidateFixtures.BlankOrigins);
 
     private static BridgeRawReleaseEdit BlankEdit() => new(
         string.Empty,
@@ -227,7 +228,12 @@ public sealed class ImportMetadataSourceSectionTests
             string.Empty,
             string.Empty,
             string.Empty),
-        Array.Empty<BridgeRawTrackEdit>());
+        Array.Empty<BridgeRawTrackEdit>(),
+        ImportCandidateFixtures.BlankOrigins);
+
+    /// <summary>The section as the pane builds it, for a test in another file
+    /// that draws the same draft.</summary>
+    internal static Control BuildSection() => Build();
 
     private static Control Build(
         ImportMetadataPresentation presentation = ImportMetadataPresentation.Draft,
@@ -246,6 +252,7 @@ public sealed class ImportMetadataSourceSectionTests
         {
             Presentation = presentation,
             DraftIsBlank = draftIsBlank,
+            FieldProvenance = ImportCandidateFixtures.FieldProvenance(),
             Title = title ?? "Album Title",
             Edit = edit ?? Edit(),
             MetaLine = "CD · 1996",

@@ -542,6 +542,8 @@ internal sealed partial class ImportMappingPane : UserControl
         CommitRow = DraftIsBlank() ? null : BuildCommitRow(),
         Title = MetadataTitle(),
         Edit = _candidate?.Edit,
+        FieldProvenance = _candidate?.FieldProvenance
+            ?? Array.Empty<BridgeFieldProvenance>(),
         MetaLine = MetaLine(),
         SourceAudioLine = SourceAudioLine(_candidate?.Files),
         IsReading = PickInFlight() is not null,

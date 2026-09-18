@@ -57,6 +57,12 @@ public sealed class ImportCandidate
     /// <summary>The candidate's one editable metadata draft.</summary>
     internal BridgeRawReleaseEdit? Edit => Detail?.MetadataDraft;
 
+    /// <summary>One entry per album-level field of that draft: where its value
+    /// came from, what every catalog claiming the pick says about it, and what
+    /// its dot says.</summary>
+    internal IReadOnlyList<BridgeFieldProvenance> FieldProvenance =>
+        Detail?.FieldProvenance ?? Array.Empty<BridgeFieldProvenance>();
+
     /// <summary>Every source unit the folder offers with the track committing
     /// makes of it. An empty table until the first read answers.</summary>
     internal BridgeMappingTable Mapping =>

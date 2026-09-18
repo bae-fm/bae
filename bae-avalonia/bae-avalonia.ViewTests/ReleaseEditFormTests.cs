@@ -13,10 +13,13 @@ public sealed class ReleaseEditFormTests
     {
         var form = new ReleaseEditForm(
             Edit("First Artist"),
+            ImportCandidateFixtures.FieldProvenance(),
             500,
             new LibraryService());
 
-        form.Seed(Edit("Replacement Artist"));
+        form.Seed(
+            Edit("Replacement Artist"),
+            ImportCandidateFixtures.FieldProvenance());
 
         var assignment = Assert.Single(form.ReadBack().AlbumArtistAssignments);
         Assert.Equal(
@@ -34,5 +37,6 @@ public sealed class ReleaseEditFormTests
         "1991",
         new BridgeRawPressingEdit(
             "1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
-        Array.Empty<BridgeRawTrackEdit>());
+        Array.Empty<BridgeRawTrackEdit>(),
+        ImportCandidateFixtures.BlankOrigins);
 }

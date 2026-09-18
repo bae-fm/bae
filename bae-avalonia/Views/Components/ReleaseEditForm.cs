@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -38,18 +39,26 @@ internal sealed class ReleaseEditForm
     private readonly LibraryService _library;
 
     private BridgeRawReleaseEdit _edit;
+    /// One entry per album-level field, as core reads them. The dots hang off
+    /// the boxes, so a reseed replaces them with the form's values.
+    private IReadOnlyList<BridgeFieldProvenance> _provenance;
 
     internal ReleaseEditForm(
         BridgeRawReleaseEdit seed,
+        IReadOnlyList<BridgeFieldProvenance> provenance,
         double width,
         LibraryService library)
     {
         _library = library;
         _edit = seed;
+        _provenance = provenance;
         ErrorText = DialogUi.Danger();
 
         Panel = new StackPanel { Spacing = 8, Width = width };
-        Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.album_title"), out _titleBox));
+        Panel.Children.Add(Field(
+            Loc.Chrome("edit.field.album_title"),
+            BridgeCandidateEditField.AlbumTitle,
+            out _titleBox));
         _artistField = new ArtistAssignmentsField(
             seed.AlbumArtistAssignments,
             library,
@@ -57,13 +66,34 @@ internal sealed class ReleaseEditForm
         Panel.Children.Add(LabeledControl(
             Loc.Chrome("edit.field.album_artists"),
             _artistField));
-        Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.year"), out _albumYearBox));
-        Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.year"), out _yearBox));
-        Panel.Children.Add(DialogUi.Field(Loc.Core("core.release.media"), out _formatBox));
-        Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.label"), out _labelBox));
-        Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.catalog_number"), out _catalogBox));
-        Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.country"), out _countryBox));
-        Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.barcode"), out _barcodeBox));
+        Panel.Children.Add(Field(
+            Loc.Chrome("edit.field.year"),
+            BridgeCandidateEditField.AlbumYear,
+            out _albumYearBox));
+        Panel.Children.Add(Field(
+            Loc.Chrome("edit.field.year"),
+            BridgeCandidateEditField.PressingYear,
+            out _yearBox));
+        Panel.Children.Add(Field(
+            Loc.Core("core.release.media"),
+            BridgeCandidateEditField.Format,
+            out _formatBox));
+        Panel.Children.Add(Field(
+            Loc.Chrome("edit.field.label"),
+            BridgeCandidateEditField.Label,
+            out _labelBox));
+        Panel.Children.Add(Field(
+            Loc.Chrome("edit.field.catalog_number"),
+            BridgeCandidateEditField.CatalogNumber,
+            out _catalogBox));
+        Panel.Children.Add(Field(
+            Loc.Chrome("edit.field.country"),
+            BridgeCandidateEditField.Country,
+            out _countryBox));
+        Panel.Children.Add(Field(
+            Loc.Chrome("edit.field.barcode"),
+            BridgeCandidateEditField.Barcode,
+            out _barcodeBox));
 
         var tracksHeader = new TextBlock
         {
@@ -86,7 +116,35 @@ internal sealed class ReleaseEditForm
         // or the error line.
         Panel.Children.Add(ErrorText);
 
-        Seed(seed);
+        Seed(seed, provenance);
+    }
+
+    /// One labelled box with the dot core marked its field with, where it
+    /// marked one. The dot sits after the value, the way the grid reads.
+    private Control Field(
+        string label,
+        BridgeCandidateEditField field,
+        out TextBox box)
+    {
+        var control = DialogUi.Field(label, out box);
+        var entry = _provenance.FirstOrDefault(item => item.Field == field);
+        if (entry is null || FieldOriginDot.For(entry) is not { } dot)
+        {
+            return control;
+        }
+        var row = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+        };
+        var stack = (StackPanel)control;
+        var value = stack.Children[1];
+        stack.Children.RemoveAt(1);
+        Grid.SetColumn(value, 0);
+        Grid.SetColumn(dot, 1);
+        row.Children.Add(value);
+        row.Children.Add(dot);
+        stack.Children.Add(row);
+        return stack;
     }
 
     private static Grid TrackGrid() => new()
@@ -106,9 +164,12 @@ internal sealed class ReleaseEditForm
     // Populate the album/pressing fields and rebuild the track table from a freshly
     // loaded edit, replacing the bound edit. Used for the initial seed and for reset
     // to source.
-    internal void Seed(BridgeRawReleaseEdit edit)
+    internal void Seed(
+        BridgeRawReleaseEdit edit,
+        IReadOnlyList<BridgeFieldProvenance> provenance)
     {
         _edit = edit;
+        _provenance = provenance;
         _titleBox.Text = edit.AlbumTitle;
         _artistField.SetAssignments(edit.AlbumArtistAssignments);
         _albumYearBox.Text = edit.AlbumYear;
@@ -190,7 +251,8 @@ internal sealed class ReleaseEditForm
                 _catalogBox.Text ?? string.Empty,
                 _countryBox.Text ?? string.Empty,
                 _barcodeBox.Text ?? string.Empty),
-            tracks.ToArray());
+            tracks.ToArray(),
+            _edit.Origins);
         return _edit;
     }
 

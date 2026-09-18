@@ -732,7 +732,7 @@ internal static partial class NativeBae
     internal static (BridgeReleaseEditSeed? Seed, string? Error) ReleaseEditSeed(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() => Await(() => handle.SeedReleaseEdit(releaseId)));
 
-    internal static (BridgeRawReleaseEdit? Edit, string? Error) ResetReleaseEditToSource(
+    internal static (BridgeReleaseFormReset? Reset, string? Error) ResetReleaseEditToSource(
         AppHandle handle,
         string releaseId) =>
         CaptureBridgeValue(() => Await(() => handle.ResetReleaseEditToSource(releaseId)));
@@ -831,7 +831,7 @@ internal static partial class NativeBae
     internal static string? RefreshMetadataFromSource(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(async () => await handle.UpdateReleaseMetadataUserEdit(
             releaseId,
-            ReleaseUserEdit(await handle.ResetReleaseEditToSource(releaseId)))));
+            ReleaseUserEdit((await handle.ResetReleaseEditToSource(releaseId)).Edit))));
 
     /// <summary>Record what this candidate's identification asks about, whole,
     /// and start the run that reads it.</summary>

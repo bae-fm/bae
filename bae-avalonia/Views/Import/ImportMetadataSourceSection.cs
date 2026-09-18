@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -17,6 +18,10 @@ internal sealed class ImportMetadataSourceSection
     internal required bool DraftIsBlank { get; init; }
     internal required string Title { get; init; }
     internal required BridgeRawReleaseEdit? Edit { get; init; }
+    /// <summary>One entry per album-level field of that draft, as core reads
+    /// them: where the value came from, what every catalog claiming the pick
+    /// says about it, and what its dot says.</summary>
+    internal required IReadOnlyList<BridgeFieldProvenance> FieldProvenance { get; init; }
     internal required string MetaLine { get; init; }
     internal required string SourceAudioLine { get; init; }
     internal required bool IsReading { get; init; }
@@ -388,6 +393,21 @@ internal sealed class ImportMetadataSourceSection
         var control = DialogUi.Field(label, out var box);
         box.FontSize = 12;
         box.Commits(value, typed => OnEditField(field, typed));
+        var entry = FieldProvenance.FirstOrDefault(item => item.Field == field);
+        if (entry is not null && FieldOriginDot.For(entry) is { } dot)
+        {
+            var stack = (StackPanel)control;
+            stack.Children.RemoveAt(1);
+            var valueRow = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            };
+            Grid.SetColumn(box, 0);
+            Grid.SetColumn(dot, 1);
+            valueRow.Children.Add(box);
+            valueRow.Children.Add(dot);
+            stack.Children.Add(valueRow);
+        }
         Grid.SetColumn(control, column);
         Grid.SetRow(control, row);
         grid.Children.Add(control);
