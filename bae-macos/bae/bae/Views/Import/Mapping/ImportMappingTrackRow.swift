@@ -24,10 +24,6 @@ struct ImportMappingTrackRow: View {
     /// other row.
     var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
-    var artistFillCoordinateSpace: String?
-    /// Whether the pointer is on this row — where the table shows the artist
-    /// fill handle.
-    var onArtistFillHover: (Bool) -> Void = { _ in }
 
     @State
     private var hovering = false
@@ -63,8 +59,7 @@ struct ImportMappingTrackRow: View {
                     durationDiverges: lengthsDiverge,
                     columns: columns,
                     editingCommands: editingCommands,
-                    onChange: { actions.editTrack($0) },
-                    artistFillCoordinateSpace: artistFillCoordinateSpace
+                    onChange: { actions.editTrack($0) }
                 )
             }
             else {
@@ -79,7 +74,6 @@ struct ImportMappingTrackRow: View {
         .contentShape(Rectangle())
         .onHover {
             hovering = $0
-            onArtistFillHover($0)
         }
         .contextMenu {
             if let track, !audioChoices.isEmpty {

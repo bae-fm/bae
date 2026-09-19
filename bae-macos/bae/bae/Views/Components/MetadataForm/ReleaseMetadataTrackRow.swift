@@ -10,7 +10,6 @@ struct ReleaseMetadataTrackRow: View {
     let columns: ReleaseMetadataTrackColumns
     let editingCommands: EditingCommitCommands
     let onChange: @MainActor (BridgeRawTrackEdit) async -> Void
-    var artistFillCoordinateSpace: String?
 
     var body: some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
@@ -20,6 +19,7 @@ struct ReleaseMetadataTrackRow: View {
                 placeholder: coreString("ui.import.slots.untitled"),
                 value: track.title,
                 chrome: .inline,
+                fillsWidth: true,
                 editingCommands: editingCommands,
                 onCommit: { value in
                     var edited = track
@@ -65,20 +65,6 @@ struct ReleaseMetadataTrackRow: View {
         )
         .modifier(FieldChrome(focused: false, style: .inline))
         .frame(width: columns.artist)
-        .background {
-            if let artistFillCoordinateSpace {
-                GeometryReader { geometry in
-                    Color.clear.preference(
-                        key: ArtistCellFramePreferenceKey.self,
-                        value: [
-                            track.id: geometry.frame(
-                                in: .named(artistFillCoordinateSpace)
-                            )
-                        ]
-                    )
-                }
-            }
-        }
     }
 
     private var trackNumberBinding: Binding<Int32?> {

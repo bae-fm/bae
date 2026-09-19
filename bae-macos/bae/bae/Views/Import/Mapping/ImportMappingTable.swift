@@ -30,16 +30,6 @@ struct ImportMappingTable: View {
     @State
     private var paneWidth: CGFloat = ReleaseMetadataTrackColumns
         .minimumTableWidth
-    @State
-    var artistFillSelection: ArtistFillSelection?
-    @State
-    var artistCellFrames: [String: CGRect] = [:]
-    /// The track row under the pointer — where the artist fill handle shows.
-    @State
-    var hoveredFillTrackId: String?
-
-    let artistFillCoordinateSpace = "ImportMappingTable.artistFill"
-
     private var tableWidth: CGFloat {
         max(paneWidth, ReleaseMetadataTrackColumns.minimumTableWidth)
     }
@@ -91,19 +81,6 @@ struct ImportMappingTable: View {
         .frame(width: tableWidth, alignment: .leading)
     }
 
-    private func artistFillRows<Rows: View>(
-        @ViewBuilder _ rows: () -> Rows
-    ) -> some View {
-        rowStack(rows)
-            .coordinateSpace(name: artistFillCoordinateSpace)
-            .onPreferenceChange(ArtistCellFramePreferenceKey.self) {
-                artistCellFrames = $0
-            }
-            .overlay(alignment: .topLeading) {
-                artistFillOverlay
-            }
-    }
-
     // MARK: - Tracks
 
     /// Core supplies one section per side or disc. Each section contains either
@@ -111,7 +88,7 @@ struct ImportMappingTable: View {
     /// renders that shape.
     private var tracksSection: some View {
         ScrollView(.horizontal) {
-            artistFillRows {
+            rowStack {
                 if table.trackSections.isEmpty {
                     trackHeaderRow
                 }
@@ -190,16 +167,6 @@ struct ImportMappingTable: View {
             editingCommands: editingCommands,
             evidence: evidenceFor(mapping),
             actions: actions,
-            artistFillCoordinateSpace: artistFillCoordinateSpace,
-            onArtistFillHover: { hovering in
-                guard let trackId = mapping.track?.id else { return }
-                if hovering {
-                    hoveredFillTrackId = trackId
-                }
-                else if hoveredFillTrackId == trackId {
-                    hoveredFillTrackId = nil
-                }
-            },
         )
         .rowChrome(
             background: mapping.source.previewTarget == previewingTarget

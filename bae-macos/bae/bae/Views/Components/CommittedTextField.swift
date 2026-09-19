@@ -62,6 +62,7 @@ struct CommittedTextField: View {
     let value: String
     var monospaced: Bool = false
     var chrome: FieldChrome.Style = .boxed
+    var fillsWidth = false
     var font: Font = .system(size: 13)
     var placeholderRole: PlaceholderRole = .hint
     /// Present on surfaces that can replace the stored value while this field
@@ -144,14 +145,15 @@ struct CommittedTextField: View {
     /// through the metadata browsers. A Text measures from the font every
     /// time, and its height is the field's exact single-line height for every
     /// font the fields use, so the Text lays the field out and the field is
-    /// drawn over it. The width follows the text too: an inline field is as
-    /// wide as what it says, plus the cell's own inset.
+    /// drawn over it. The width follows the text unless the caller asks the
+    /// editor to fill its column.
     private var field: some View {
         Text(verbatim: draft.isEmpty ? placeholder : draft)
             .font(draft.isEmpty || !monospaced ? font : font.monospaced())
             .lineLimit(1)
             .padding(.horizontal, Self.cellInset)
             .hidden()
+            .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
             .overlay {
                 // The value takes the monospaced design; the prompt keeps
                 // `font` as given, so an empty mark is the same glyph in every

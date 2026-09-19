@@ -7,18 +7,58 @@ import Testing
 
 @Suite("Import mapping Tracks layout")
 struct ImportMappingTracksLayoutTests {
-    @Test("artist fill follows the selected row downward")
-    func artistFillFollowsOrderedRows() {
-        let ordered = ["track-1", "track-2", "track-3", "track-4"]
-        var selection = ArtistFillSelection(sourceTrackId: "track-2")
-
-        selection.extend(to: "track-4", in: ordered)
-
-        #expect(
-            selection.trackIds(in: ordered) == [
-                "track-2", "track-3", "track-4",
-            ]
+    @MainActor
+    @Test(
+        "title editor fills its column and starts at the leading edge",
+        arguments: [
+            ReleaseMetadataTrackColumns.minimumTableWidth,
+            ReleaseMetadataTrackColumns.idealTableWidth,
+        ] as [CGFloat]
+    )
+    func titleEditorFillsColumn(tableWidth: CGFloat) async throws {
+        let columns = ReleaseMetadataTrackColumns.resolved(
+            tableWidth: tableWidth
         )
+        let size = NSSize(width: tableWidth, height: 40)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ImportMappingTrackRow(
+                mapping: pairedMapping,
+                columns: columns,
+                audioChoices: [],
+                previewingTarget: nil,
+                editingCommands: EditingCommitCommands(),
+                evidence: [],
+                actions: actions(recording: MappingTrackActionRecorder())
+            )
+            .padding(.horizontal, ImportMappingColumns.rowPadding)
+            .frame(width: tableWidth, height: size.height, alignment: .leading)
+            .environment(Library.stub())
+            .environment(UiStore()),
+            size: size
+        )
+        await SnapshotTestSupport.settle(host)
+        let field = try #require(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+                .first { $0.stringValue == "Track Title" }
+        )
+        let frame = field.convert(
+            field.alignmentRect(forFrame: field.bounds),
+            to: host
+        )
+        let leading =
+            ImportMappingColumns.rowPadding + columns.source
+            + ReleaseMetadataTrackColumns.track + 2
+            * ImportMappingColumns.spacing
+            + FieldChrome.inlineHorizontalPadding
+        #expect(abs(frame.minX - leading) < 1)
+        #expect(
+            abs(
+                frame.width
+                    - (columns.title - 2 * FieldChrome.inlineHorizontalPadding)
+            ) < 1
+        )
+        withExtendedLifetime(window) {}
     }
 
     @MainActor
@@ -570,7 +610,6 @@ extension ImportMappingTracksLayoutTests {
                 MainActor.assumeIsolated { recorder.stops += 1 }
             },
             editTrack: { _ in },
-            setTrackArtists: { _, _ in },
             chooseFile: { _, _ in },
             drop: { _ in },
             exclude: { _ in }
