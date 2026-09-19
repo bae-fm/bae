@@ -378,6 +378,16 @@ class UiStore: @unchecked Sendable {
         modalBuilder = { AnyView(content()) }
     }
 
+    func presentDocument(name: String, text: String) {
+        presentModal {
+            DocumentViewerView(
+                name: name,
+                text: text,
+                onClose: self.dismissModal
+            )
+        }
+    }
+
     func presentLightbox(items: [LightboxItem], preferring id: String? = nil) {
         lightbox = Cursor(items: items, preferring: id)
     }

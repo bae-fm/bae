@@ -520,6 +520,11 @@ extension TriageRowView {
         .frame(width: 340)
         .environment(PreviewData.artImageStore())
         .candidateReaderPreviewEnvironment()
+        .releaseEvidencePreviewEnvironment(
+            subject: .candidate(
+                key: PreviewData.triageRowIdentifiedOnline.candidateKey
+            )
+        )
         .windowBackground()
     }
 
@@ -562,6 +567,11 @@ extension TriageRowView {
         .frame(width: 340)
         .environment(PreviewData.artImageStore())
         .candidateReaderPreviewEnvironment()
+        .releaseEvidencePreviewEnvironment(
+            subject: .candidate(
+                key: PreviewData.triageRowIdentifiedOnline.candidateKey
+            )
+        )
         .windowBackground()
     }
 #endif

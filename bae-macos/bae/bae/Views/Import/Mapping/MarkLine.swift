@@ -68,6 +68,9 @@ struct MarkLines: View {
             .padding()
             .frame(width: 420)
             .background(Theme.surfaceElevated)
+            .releaseEvidencePreviewEnvironment(
+                subject: .candidate(key: PreviewData.mappingCandidate.key)
+            )
     }
 
     #Preview("One barcode, two surfaces") {
@@ -75,5 +78,8 @@ struct MarkLines: View {
             .padding()
             .frame(width: 420)
             .background(Theme.surfaceElevated)
+            .releaseEvidencePreviewEnvironment(
+                subject: .candidate(key: PreviewData.mappingCandidate.key)
+            )
     }
 #endif

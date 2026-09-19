@@ -30,17 +30,21 @@ final class ReleaseEvidenceAction {
             do {
                 let contents = try await read(subject, selection)
                 try Task.checkCancellation()
-                if contents.count == 1, case .reveal(let path) = contents[0] {
-                    NSWorkspace.shared.activateFileViewerSelecting([
-                        URL(fileURLWithPath: path)
-                    ])
-                    return
+                precondition(
+                    !contents.isEmpty,
+                    "Evidence read returned no files"
+                )
+                if contents.count == 1 {
+                    present(contents[0])
                 }
-                uiStore.presentModal {
-                    EvidenceViewer(
-                        contents: contents,
-                        onClose: self.uiStore.dismissModal
-                    )
+                else {
+                    uiStore.presentModal {
+                        EvidenceFilePicker(
+                            contents: contents,
+                            onSelect: self.present,
+                            onClose: self.uiStore.dismissModal
+                        )
+                    }
                 }
             }
             catch is CancellationError {
@@ -51,6 +55,26 @@ final class ReleaseEvidenceAction {
             }
         }
     }
+
+    private func present(_ content: BridgeEvidenceContent) {
+        uiStore.dismissModal()
+        switch content {
+        case .document(let name, let text):
+            uiStore.presentDocument(name: name, text: text)
+        case .image(let name, let bytes):
+            uiStore.presentLightbox(items: [
+                LightboxItem(
+                    id: name,
+                    label: name,
+                    previewContent: .bytes(Data(bytes))
+                )
+            ])
+        case .reveal(let path):
+            NSWorkspace.shared.activateFileViewerSelecting([
+                URL(fileURLWithPath: path)
+            ])
+        }
+    }
 }
 
 extension EnvironmentValues {
@@ -59,3 +83,22 @@ extension EnvironmentValues {
     @Entry
     var releaseEvidenceSubject: BridgeEvidenceSubject?
 }
+
+#if DEBUG
+    extension View {
+        /// Supplies the chip dependencies without reading the person's files.
+        func releaseEvidencePreviewEnvironment(
+            subject: BridgeEvidenceSubject
+        ) -> some View {
+            self
+                .environment(\.releaseEvidenceSubject, subject)
+                .environment(
+                    \.openReleaseEvidence,
+                    ReleaseEvidenceAction(
+                        read: { _, _ in throw CancellationError() },
+                        uiStore: UiStore()
+                    )
+                )
+        }
+    }
+#endif

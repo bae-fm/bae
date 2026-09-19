@@ -15,11 +15,24 @@ protocol LightboxImage: Identifiable, Equatable {
 }
 
 struct LightboxItem: LightboxImage {
-    var id: String { path }
+    let id: String
     let label: String
-    let path: String
+    let previewContent: ImageContent
 
-    var previewContent: ImageContent { .localFile(path: path) }
+    init(label: String, path: String) {
+        self.init(
+            id: path,
+            label: label,
+            previewContent: .localFile(path: path)
+        )
+    }
+
+    init(id: String, label: String, previewContent: ImageContent) {
+        self.id = id
+        self.label = label
+        self.previewContent = previewContent
+    }
+
     var thumbnailContent: ImageContent { previewContent }
     var sourceLabel: String { String(localized: "Release Files") }
 }

@@ -5,7 +5,7 @@ import SwiftUI
 
 extension ImportView {
     /// The services the pane's controls drive, with errors landing on the
-    /// app's alert and documents and images landing on this view's overlays.
+    /// app's alert and documents and images landing on the window's overlays.
     var mappingServices: ImportMappingServices {
         ImportMappingServices(
             importer: importer,
@@ -55,7 +55,7 @@ extension ImportView {
     private func openDocument(name: String, at path: String) {
         do {
             let text = try readTextFile(path: path)
-            documentContent = (name: name, text: text)
+            uiStore.presentDocument(name: name, text: text)
         }
         catch {
             // No line means a cancellation, which raises no alert.

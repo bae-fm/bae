@@ -276,6 +276,11 @@
         @MainActor
         func albumDetailPreviewEnvironment(store: LibraryStore) -> some View {
             self
+                .releaseEvidencePreviewEnvironment(
+                    subject: .release(
+                        id: PreviewData.releaseDetail(albumId: "a-01").id
+                    )
+                )
                 .environment(MediaPaths.stub())
                 .environment(ImageStore.stub())
                 .environment(Playback.stub())

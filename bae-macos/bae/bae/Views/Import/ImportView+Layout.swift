@@ -63,24 +63,6 @@ extension ImportView {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-
-    @ViewBuilder
-    var documentOverlay: some View {
-        if let doc = documentContent {
-            Color.black.opacity(0.5)
-                .ignoresSafeArea()
-                .onTapGesture { documentContent = nil }
-            DocumentViewerView(
-                name: doc.name,
-                text: doc.text,
-                onClose: { documentContent = nil }
-            )
-            .frame(width: 750, height: 600)
-            .background(Theme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .shadow(radius: 20)
-        }
-    }
 }
 
 /// The pane for a selected candidate whose read has not been delivered yet.

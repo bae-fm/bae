@@ -30,8 +30,6 @@ struct ImportView: View {
     @AppStorage(StoragePinPreference.userDefaultsKey)
     var storagePinned: Bool = true
 
-    @State
-    var documentContent: (name: String, text: String)?
     /// Event-driven candidate writes keyed by candidate, so a repeated command
     /// cancels the operation it replaces and leaving the import view cancels
     /// every command the view started.
@@ -86,8 +84,6 @@ struct ImportView: View {
                 else {
                     splitContent
                 }
-
-                documentOverlay
             }
             .onChange(of: uiStore.selectedFolderCandidates) { _, _ in
                 uiStore.lightbox = nil
