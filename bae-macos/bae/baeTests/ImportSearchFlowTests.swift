@@ -268,7 +268,6 @@ final class MetadataApplicationEditingTests: XCTestCase {
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ReleaseMetadataHeader(
                 values: model.edit,
-                provenance: PreviewData.fieldProvenance(),
                 writer: ReleaseFieldWriter(
                     setField: { field, value in
                         model.commit(field: field, value: value)

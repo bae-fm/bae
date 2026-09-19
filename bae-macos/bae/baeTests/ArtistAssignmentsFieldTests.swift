@@ -184,7 +184,6 @@ struct ArtistAssignmentsFieldTests {
         SnapshotTestSupport.hostInWindow(
             ReleaseMetadataHeader(
                 values: values,
-                provenance: PreviewData.fieldProvenance(),
                 writer: ReleaseFieldWriter(setField: { _, _ in }),
                 editingCommands: EditingCommitCommands(),
                 cover: { Color.clear },

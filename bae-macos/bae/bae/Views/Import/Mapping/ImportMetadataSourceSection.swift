@@ -60,7 +60,6 @@ struct ImportMetadataSourceSection: View {
                 coverContent: coverContent,
                 hasCoverOptions: hasCoverOptions,
                 editValues: edit,
-                editProvenance: candidate.fieldProvenance,
                 records: candidate.records,
                 editActions: editActions,
                 editingCommands: editingCommands,

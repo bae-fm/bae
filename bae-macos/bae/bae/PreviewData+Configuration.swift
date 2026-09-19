@@ -185,9 +185,7 @@
             return draft
         }
 
-        /// A label the person typed over what the files' tags said, and a
-        /// catalog number the two catalogs describing the release disagree
-        /// about — the two things a field's dot has to say.
+        /// A label the person typed over what the files' tags said.
         static let typedLabel = BridgeFieldProvenance(
             field: .label,
             origin: .typed,
@@ -198,6 +196,7 @@
             dot: .typed
         )
 
+        /// A catalog number the two catalogs describing the release disagree about.
         static let disagreeingCatalogNumber = BridgeFieldProvenance(
             field: .catalogNumber,
             origin: .record(catalog: .musicBrainz),

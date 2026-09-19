@@ -19,10 +19,8 @@ final class ReleaseMetadataEditSession {
     let editingCommands = EditingCommitCommands()
 
     private(set) var form: BridgeRawReleaseEdit
-    /// One entry per album-level field. The form lives here until it is saved,
-    /// so a field a person types is marked as theirs the moment they leave it
-    /// rather than when core next reads the release.
-    private(set) var fieldProvenance: [BridgeFieldProvenance]
+    /// Core supplies the origin to persist when a field is edited.
+    private var fieldProvenance: [BridgeFieldProvenance]
     private var operation: Operation?
     private(set) var failureMessage: String?
     private(set) var hasChanges = false

@@ -82,7 +82,6 @@ struct InlineFieldHeightTests {
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ReleaseMetadataHeader(
                 values: session.form,
-                provenance: session.fieldProvenance,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 cover: { EmptyView() },

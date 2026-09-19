@@ -419,13 +419,6 @@ struct Candidate: Equatable, Identifiable {
         detail?.metadataDraft
     }
 
-    /// One entry per album-level field of that draft: where its value came
-    /// from, what every catalog claiming the pick says about it, and what its
-    /// dot says.
-    var fieldProvenance: [BridgeFieldProvenance] {
-        detail?.fieldProvenance ?? []
-    }
-
     /// Every source unit the folder offers with the track committing makes of
     /// it. An empty table until the first read answers; the pane's own shape
     /// does not change for it.

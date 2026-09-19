@@ -49,8 +49,6 @@ struct ImportReleaseHeader: View {
     let hasCoverOptions: Bool
     /// `nil` when there is no release to edit.
     let editValues: BridgeRawReleaseEdit?
-    /// One entry per album-level field of that draft, as core reads them.
-    let editProvenance: [BridgeFieldProvenance]
     /// Every catalog that describes the release the draft was read from.
     /// Empty for a draft read from the files' own tags, or typed in.
     let records: [BridgeReleaseRecord]
@@ -80,7 +78,6 @@ struct ImportReleaseHeader: View {
             if let editValues {
                 ReleaseMetadataHeader(
                     values: editValues,
-                    provenance: editProvenance,
                     writer: editActions,
                     editingCommands: editingCommands,
                     cover: {
@@ -371,7 +368,6 @@ struct ImportCoverWell: View {
             coverContent: nil,
             hasCoverOptions: true,
             editValues: PreviewData.confirmEditValues,
-            editProvenance: PreviewData.fieldProvenance(),
             records: PreviewData.releaseRecordsPair,
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
