@@ -223,7 +223,7 @@ desktop_only! {
     pub use types::{
         CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, ImportPhase,
         ImportProgress, ImportStep, MetadataRef, PayloadSource, PrepareStep, PreparedArtistImage,
-        ReleaseReseed, SourcePayload, StorageMode, TrackFile,
+        ReleaseReseed, SourcePayload, StorageMode, TrackAudio, TrackFile,
     };
     pub use watched_folder::WatchedFolder;
 }

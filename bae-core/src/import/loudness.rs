@@ -354,7 +354,7 @@ pub(super) async fn measure_loudness(
                 })
                 .or_else(|| {
                     track_file
-                        .db_track()
+                        .db_track
                         .duration_ms
                         .filter(|&ms| ms > 0 && sample_rate > 0)
                         .map(|ms| ms as u64 * sample_rate / 1000)
@@ -503,7 +503,7 @@ pub(super) async fn measure_loudness(
                     );
                     broken_tracks.push(format!(
                         "{} (track {}): {reason}",
-                        tf.db_track().title,
+                        tf.db_track.title,
                         idx + 1
                     ));
                 }
@@ -731,18 +731,20 @@ mod tests {
     }
 
     fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
-        TrackFile::Standalone {
+        TrackFile {
             db_track: crate::db::DbTrack::new_test("release-id", track_id, "Track Title", Some(1)),
-            file_path: path.to_path_buf(),
-            source_audio: crate::import::folder_scanner::ScannedAudio {
-                content_type: crate::util::content_type::ContentType::Flac,
-                duration_ms: 1_000,
-                format: crate::album_detail::AudioFormat {
-                    codec: "FLAC".to_string(),
-                    sample_rate_hz: 44_100,
-                    bits_per_sample: Some(16),
-                    bitrate_kbps: None,
-                    channels: 2,
+            audio: crate::import::TrackAudio::Standalone {
+                file_path: path.to_path_buf(),
+                source_audio: crate::import::folder_scanner::ScannedAudio {
+                    content_type: crate::util::content_type::ContentType::Flac,
+                    duration_ms: 1_000,
+                    format: crate::album_detail::AudioFormat {
+                        codec: "FLAC".to_string(),
+                        sample_rate_hz: 44_100,
+                        bits_per_sample: Some(16),
+                        bitrate_kbps: None,
+                        channels: 2,
+                    },
                 },
             },
         }

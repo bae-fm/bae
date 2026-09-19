@@ -39,7 +39,7 @@ pub use raw_release_edit::{
 };
 mod verification;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use std::{path::Path, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 pub use verification::{TrackVerification, Verification, VerificationSource};
 
 /// Whether a source is asked when the sources are asked together, and when it
@@ -709,44 +709,30 @@ impl TrackArtistAssignments {
     }
 }
 
-/// Maps a logical track to the audio file that contains its samples.
-///
-/// Each variant owns its `DbTrack` by value — a `TrackFile` IS the track's
-/// representation during import, so there is no parallel `Vec<DbTrack>`.
-///
-/// Standalone tracks own their file outright ("01.flac", "02.flac"). CUE-backed
-/// tracks share one container file and identify themselves by their position
-/// inside the CUE sheet; every CUE-backed track from one container references
-/// the same `CueFlacAnalysis`.
+/// One import track's metadata and the audio that supplies its samples.
+/// The metadata has the same shape whether the audio is a whole file or a
+/// track described by a CUE sheet.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
-pub enum TrackFile {
+pub struct TrackFile {
+    pub db_track: DbTrack,
+    pub audio: TrackAudio,
+}
+
+/// The resolved audio source for an import track. CUE sources share their
+/// sheet's analysis and identify the playable track within it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone)]
+pub enum TrackAudio {
     Standalone {
-        db_track: DbTrack,
         file_path: PathBuf,
         source_audio: crate::import::folder_scanner::ScannedAudio,
     },
     CueBacked {
-        db_track: DbTrack,
         file_path: PathBuf,
         cue_pair: Arc<CueFlacAnalysis>,
         cue_index: usize,
     },
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl TrackFile {
-    pub fn db_track(&self) -> &DbTrack {
-        match self {
-            Self::Standalone { db_track, .. } | Self::CueBacked { db_track, .. } => db_track,
-        }
-    }
-
-    pub fn file_path(&self) -> &Path {
-        match self {
-            Self::Standalone { file_path, .. } | Self::CueBacked { file_path, .. } => file_path,
-        }
-    }
 }
 
 /// Parsed CUE sheet plus probed container analysis, shared across all tracks

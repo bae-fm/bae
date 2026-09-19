@@ -27,18 +27,20 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
     let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
-    let track = TrackFile::Standalone {
+    let track = TrackFile {
         db_track: crate::db::DbTrack::new_test("release-id", "track-id", "Track Title", Some(1)),
-        file_path: temp.path().to_path_buf(),
-        source_audio: crate::import::folder_scanner::ScannedAudio {
-            content_type: probe.content_type.clone(),
-            duration_ms: probe.duration.as_millis() as u64,
-            format: crate::album_detail::AudioFormat {
-                codec: "MP3".to_string(),
-                sample_rate_hz: i64::from(probe.sample_rate),
-                bits_per_sample: probe.bits_per_sample.map(i64::from),
-                bitrate_kbps: Some(128),
-                channels: i64::from(probe.channels),
+        audio: crate::import::TrackAudio::Standalone {
+            file_path: temp.path().to_path_buf(),
+            source_audio: crate::import::folder_scanner::ScannedAudio {
+                content_type: probe.content_type.clone(),
+                duration_ms: probe.duration.as_millis() as u64,
+                format: crate::album_detail::AudioFormat {
+                    codec: "MP3".to_string(),
+                    sample_rate_hz: i64::from(probe.sample_rate),
+                    bits_per_sample: probe.bits_per_sample.map(i64::from),
+                    bitrate_kbps: Some(128),
+                    channels: i64::from(probe.channels),
+                },
             },
         },
     };

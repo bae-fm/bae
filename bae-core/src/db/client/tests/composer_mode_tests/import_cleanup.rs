@@ -131,10 +131,12 @@ async fn standalone_track_file(
     );
     let file = prepare_release_file(row, &file_path).await;
     (
-        vec![crate::import::TrackFile::Standalone {
+        vec![crate::import::TrackFile {
             db_track: track,
-            file_path,
-            source_audio: scanned_flac(),
+            audio: crate::import::TrackAudio::Standalone {
+                file_path,
+                source_audio: scanned_flac(),
+            },
         }],
         file,
     )
@@ -384,10 +386,12 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         remote: true,
         ..test_release(RELEASE_A, &album.id, now)
     };
-    let track_files = vec![crate::import::TrackFile::Standalone {
+    let track_files = vec![crate::import::TrackFile {
         db_track: test_track(TRACK_A, &release.id, "Track Title A", now),
-        file_path: tmp.path().join("Track.flac"),
-        source_audio: scanned_flac(),
+        audio: crate::import::TrackAudio::Standalone {
+            file_path: tmp.path().join("Track.flac"),
+            source_audio: scanned_flac(),
+        },
     }];
     let works = vec![DbWork {
         id: WORK_A.to_string(),

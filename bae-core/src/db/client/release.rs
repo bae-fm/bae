@@ -436,7 +436,7 @@ impl Database {
         let release = release.clone();
         let tracks: Vec<DbTrack> = tracks_to_files
             .iter()
-            .map(|tf| tf.db_track().clone())
+            .map(|tf| tf.db_track.clone())
             .collect();
         let track_artists = rows.track_artists.to_vec();
         let album_artists = rows.album_artists.to_vec();

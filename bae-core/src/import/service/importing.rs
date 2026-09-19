@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::types::TrackAudio;
 use crate::util::worker_thread::WorkerThread;
 
 impl ImportService {
@@ -397,7 +398,7 @@ impl ImportService {
 
         let discovered_files = crate::import::handle::flatten_categorized_files(&categorized);
 
-        // Each DbTrack moves into its TrackFile variant, bound to the audio its
+        // Each DbTrack moves into a TrackFile, bound to the audio its
         // slot named and carrying the `duration_ms` that audio yields. Past here
         // the DbTracks live in `tracks_to_files`.
         let tracks_to_files = resolve_track_files(
@@ -558,12 +559,12 @@ impl ImportService {
         let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
         let mut source_audio_layouts = HashMap::new();
         for track_file in tracks_to_files {
-            let (file_paths, layout): (Vec<&Path>, _) = match track_file {
-                TrackFile::Standalone { file_path, .. } => (
+            let (file_paths, layout): (Vec<&Path>, _) = match &track_file.audio {
+                TrackAudio::Standalone { file_path, .. } => (
                     vec![file_path.as_path()],
                     crate::album_detail::SourceAudioLayout::File,
                 ),
-                TrackFile::CueBacked { cue_pair, .. } => (
+                TrackAudio::CueBacked { cue_pair, .. } => (
                     cue_pair
                         .audio_files
                         .iter()

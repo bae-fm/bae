@@ -19,7 +19,7 @@
 use crate::db::DbTrack;
 use crate::import::folder_scanner::{BoundTrackSheet, CategorizedFiles, ScannedFile};
 use crate::import::probe::{sheet_analysis, SourceDurations};
-use crate::import::types::{AudioFile, CueFlacAnalysis, TrackFile};
+use crate::import::types::{AudioFile, CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::import::{ImportError, TrackUserEdit};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -554,7 +554,7 @@ fn span_at(units: &[AudioFile], index: usize) -> SlotSpan {
 ///
 /// `rows` is the mapping the commit settled: one `(track, audio)` pair per row
 /// that will be written, in track order. Every `DbTrack` moves into a
-/// `TrackFile` variant with its `duration_ms` filled in — from the sheet's own
+/// `TrackFile` with its `duration_ms` filled in — from the sheet's own
 /// timing for a slice, from a probe for a standalone file — and every slice of
 /// one sheet shares that sheet's single parsed analysis.
 ///
@@ -579,7 +579,7 @@ pub(crate) fn resolve_track_files(
         if db_track.title.trim().is_empty() {
             db_track.title = file_title(file);
         }
-        match &audio {
+        let (audio, duration_ms) = match &audio {
             AudioFile::Standalone { .. } => {
                 let source_audio =
                     file.source_audio
@@ -588,20 +588,13 @@ pub(crate) fn resolve_track_files(
                             detail: format!("{} has no scanned audio facts", file.relative_path),
                         })?;
                 let duration_ms = source_audio.duration_ms;
-                db_track.duration_ms =
-                    Some(
-                        i64::try_from(duration_ms).map_err(|_| ImportError::UnusableFile {
-                            detail: format!(
-                                "{} is too long to represent in milliseconds",
-                                file.relative_path
-                            ),
-                        })?,
-                    );
-                track_files.push(TrackFile::Standalone {
-                    db_track,
-                    file_path: file.path.clone(),
-                    source_audio,
-                });
+                (
+                    TrackAudio::Standalone {
+                        file_path: file.path.clone(),
+                        source_audio,
+                    },
+                    duration_ms,
+                )
             }
             AudioFile::SheetSlice {
                 sheet_id, index, ..
@@ -617,23 +610,26 @@ pub(crate) fn resolve_track_files(
                 let cue_index = *index as usize;
                 let duration_ms =
                     crate::import::probe::sheet_track_duration_ms(&analysis, cue_index, sheet_id)?;
-                db_track.duration_ms =
-                    Some(
-                        i64::try_from(duration_ms).map_err(|_| ImportError::UnusableFile {
-                            detail: format!(
-                                "{sheet_id} track {} is too long to represent in milliseconds",
-                                cue_index + 1
-                            ),
-                        })?,
-                    );
-                track_files.push(TrackFile::CueBacked {
-                    db_track,
-                    file_path: file.path.clone(),
-                    cue_pair: analysis,
-                    cue_index,
-                });
+                (
+                    TrackAudio::CueBacked {
+                        file_path: file.path.clone(),
+                        cue_pair: analysis,
+                        cue_index,
+                    },
+                    duration_ms,
+                )
             }
-        }
+        };
+        db_track.duration_ms =
+            Some(
+                i64::try_from(duration_ms).map_err(|_| ImportError::UnusableFile {
+                    detail: format!(
+                        "{} is too long to represent in milliseconds",
+                        file.relative_path
+                    ),
+                })?,
+            );
+        track_files.push(TrackFile { db_track, audio });
     }
     Ok(track_files)
 }

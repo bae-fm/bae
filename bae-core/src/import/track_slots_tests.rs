@@ -451,10 +451,12 @@ fn a_corrected_pairing_is_what_gets_bound() {
     let bound: Vec<(&str, String)> = track_files
         .iter()
         .map(|track_file| {
+            let TrackAudio::Standalone { file_path, .. } = &track_file.audio else {
+                panic!("expected standalone audio");
+            };
             (
-                track_file.db_track().id.as_str(),
-                track_file
-                    .file_path()
+                track_file.db_track.id.as_str(),
+                file_path
                     .file_name()
                     .expect("file name")
                     .to_string_lossy()
@@ -501,7 +503,7 @@ fn an_unnamed_slot_is_titled_after_its_file() {
     )
     .expect("binding succeeds");
 
-    assert_eq!(track_files[0].db_track().title, "hidden track");
+    assert_eq!(track_files[0].db_track.title, "hidden track");
 }
 
 /// Every slice of a disc image binds to the container, carries its own
@@ -545,19 +547,18 @@ fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
 
     let mut analyses = Vec::new();
     for (position, track_file) in track_files.iter().enumerate() {
-        match track_file {
-            TrackFile::CueBacked {
+        assert!(
+            track_file.db_track.duration_ms.is_some(),
+            "every slice gets a duration",
+        );
+        match &track_file.audio {
+            TrackAudio::CueBacked {
                 cue_index,
                 cue_pair,
                 file_path,
-                db_track,
             } => {
                 assert_eq!(*cue_index, position);
                 assert_eq!(file_path.file_name().unwrap(), "CDImage.flac");
-                assert!(
-                    db_track.duration_ms.is_some(),
-                    "every slice gets a duration",
-                );
                 analyses.push(Arc::as_ptr(cue_pair));
             }
             other => panic!("expected a CueBacked track file, got {other:?}"),

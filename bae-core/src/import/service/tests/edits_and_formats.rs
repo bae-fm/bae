@@ -593,7 +593,7 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
 
 // ── build_audio_formats: CUE track byte windows ────────────────────
 
-/// Build the `TrackFile::CueBacked` list for a single-file CUE album, reusing
+/// Build the CUE-backed track list for a single-file CUE album, reusing
 /// the same codec probe the scanner stores on the candidate.
 fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
     let audio_path = PathBuf::from(format!("{dir}/Test Album.ape"));
@@ -612,7 +612,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
         }],
     });
     (0..cue_pair.cue_sheet.tracks.len())
-        .map(|index| TrackFile::CueBacked {
+        .map(|index| TrackFile {
             db_track: DbTrack {
                 id: format!("track-{index}"),
                 release_id: "rel".to_string(),
@@ -623,9 +623,11 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 discogs_position: None,
                 created_at: test_clock().0,
             },
-            file_path: audio_path.clone(),
-            cue_pair: Arc::clone(&cue_pair),
-            cue_index: index,
+            audio: crate::import::TrackAudio::CueBacked {
+                file_path: audio_path.clone(),
+                cue_pair: Arc::clone(&cue_pair),
+                cue_index: index,
+            },
         })
         .collect()
 }

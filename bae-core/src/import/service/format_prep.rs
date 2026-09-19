@@ -11,7 +11,7 @@ use tracing::warn;
 
 use crate::audio_codec::ProbeResult;
 use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
-use crate::import::types::{CueFlacAnalysis, TrackFile};
+use crate::import::types::{CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::import::ImportError;
 use crate::util::content_type::ContentType;
 use crate::util::content_type_hint::ContentTypeHint;
@@ -463,9 +463,9 @@ impl ImportService {
         let mut cue_landings_by_file: HashMap<PathBuf, Option<HashMap<u64, u64>>> = HashMap::new();
 
         for track_file in tracks_to_files {
-            let built = match track_file {
-                TrackFile::CueBacked {
-                    db_track,
+            let db_track = &track_file.db_track;
+            let built = match &track_file.audio {
+                TrackAudio::CueBacked {
                     cue_pair,
                     cue_index,
                     ..
@@ -496,8 +496,7 @@ impl ImportService {
                         segments,
                     }
                 }
-                TrackFile::Standalone {
-                    db_track,
+                TrackAudio::Standalone {
                     file_path,
                     source_audio,
                 } => {

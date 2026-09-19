@@ -201,16 +201,18 @@ INDEX 01 01:00:00
         .cue_sheet
         .playable_tracks()
         .enumerate()
-        .map(|(index, track)| TrackFile::CueBacked {
+        .map(|(index, track)| TrackFile {
             db_track: crate::db::DbTrack::new_test(
                 "release-id",
                 &format!("track-{index}"),
                 track.title.as_deref().unwrap_or("Track Title"),
                 Some(track.number as i32),
             ),
-            file_path: audio_path.clone(),
-            cue_pair: Arc::clone(&cue_pair),
-            cue_index: index,
+            audio: crate::import::TrackAudio::CueBacked {
+                file_path: audio_path.clone(),
+                cue_pair: Arc::clone(&cue_pair),
+                cue_index: index,
+            },
         })
         .collect();
     let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
@@ -296,10 +298,12 @@ fn build_audio_formats_uses_stored_standalone_facts() {
         env!("CARGO_MANIFEST_DIR"),
         "/tests/fixtures/flac/01 Test Track 1.flac"
     ));
-    let track = TrackFile::Standalone {
+    let track = TrackFile {
         db_track: crate::db::DbTrack::new_test("release-id", "track-0", "Track Title", Some(1)),
-        file_path: path.clone(),
-        source_audio: scanned_flac(),
+        audio: crate::import::TrackAudio::Standalone {
+            file_path: path.clone(),
+            source_audio: scanned_flac(),
+        },
     };
     let file_ids = HashMap::from([(path, "file-0".to_string())]);
     let ids = coven::SequentialIdProvider::new("af");
@@ -448,16 +452,18 @@ INDEX 01 11:01:30
         .cue_sheet
         .playable_tracks()
         .enumerate()
-        .map(|(index, track)| TrackFile::CueBacked {
+        .map(|(index, track)| TrackFile {
             db_track: crate::db::DbTrack::new_test(
                 "release-id",
                 &format!("track-{index}"),
                 track.title.as_deref().unwrap_or("Track Title"),
                 Some(track.number as i32),
             ),
-            file_path: audio_path.clone(),
-            cue_pair: Arc::clone(&cue_pair),
-            cue_index: index,
+            audio: crate::import::TrackAudio::CueBacked {
+                file_path: audio_path.clone(),
+                cue_pair: Arc::clone(&cue_pair),
+                cue_index: index,
+            },
         })
         .collect();
     let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
