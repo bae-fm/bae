@@ -42,6 +42,21 @@ identity; resetting a combined candidate must not silently separate its parts
 or change another candidate's file decisions. Trace combination initialization
 before extending the reset command to that source shape.
 
+The combination path in `client/import_combinations.rs` stores its own file
+snapshot and ordered `CombinationPart` records. Creation seeds
+`blank_source_for_tracks(combination.tracks)` and supplies the combination's
+name as the album title. `CandidateCombination::from_stored` assigns whole files
+to each part's first disc and numbers tracks within their assigned disc;
+`ReleaseCandidate::file_tag_edit` preserves that layout when projecting tags.
+Reuse these constructors for Reset's current-prefill choice. Preserve the
+combination key, member order, prefixes, and disc ranges. Do not rebuild it from
+live member candidates through `CandidateCombination::prepare`: that would read
+independent folder choices and could change the combined release's identity or
+disc layout. The combination's authoritative stored source snapshot remains its
+source; the existing admission checks must still reject a changed or unavailable
+source. Test a combined candidate with removed tracks and changed metadata under
+both prefill settings, and assert that member candidates remain unchanged.
+
 Prepare the replacement under the existing candidate commit coordination,
 revalidate editability and scanned identity at commit, and save the replacement
 with both revision expectations. Clear the previous identification answer and

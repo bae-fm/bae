@@ -134,3 +134,33 @@ Product work targets bae-macos; update shared canonical models and required call
 
 ## Queued successor
 After individual source restoration lands, execute [Reset import setup](reset-import-setup.md). Reset is a separate menu action restoring the whole candidate to its initial scanned setup, including source tracks, automatic CUE/file choices, cover, and preference-dependent initial metadata.
+
+## Concrete command and projection design
+
+Expose `add_candidate_track(candidate_key, audio, CandidateAsRead)`. The existing
+read record carries content hash plus file and metadata revisions; do not invent
+a partial revision type. The candidate detail SQL snapshot already has all three
+values. Pass that read into the draft pane/table projection and carry it beside
+the exact audio identity in each NotIncluded offer. The bridge mirrors those
+existing values, and the plus action sends the rendered offer without looking
+up a newer UI state to replace its revision.
+
+An actual insertion rejects a changed metadata revision through the existing
+CandidateAsRead contract. An already included source may return without writing
+only after the commit lock has verified editability and the viewed source hash
+and file revision. Prepare the complete source seed and required artist images
+before the final locked write; avoid holding the candidate commit lock across
+snapshot operations that acquire it themselves. Recheck source availability,
+editability, and revisions at commit, then atomically store the inserted row and
+its prepared asset set. No source reapplication, verdict reset, schema change,
+or removed-row history participates.
+
+The implementation ownership within this concern is disjoint: the core worker
+owns handle/edits.rs, preparations/pane_edits.rs, necessary constructor helpers,
+and actual command/persistence regressions. The coordinator owns mapping/table
+projection, canonical bridge callers, macOS controls/translations, and their
+projection/hosted tests. Both share one branch/index/build schedule. Add the
+handle tests beside metadata_edits using the existing stored_candidate,
+pane_fixture, rescan_into, track_rows, and shut_down fixtures. Establish the
+initial failure by removing an actual stored track and reading its missing
+source back through the production pane before implementing restoration.

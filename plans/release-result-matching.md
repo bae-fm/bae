@@ -123,6 +123,26 @@ unknown format or equate a mixed-medium release with whichever token matched
 first. Cover case variation and mixed/partially described formats in the
 production matching tests.
 
+The MusicBrainz conversion also loses medium evidence before matching sees it.
+`search.rs::mb_discid_release_to_metadata` puts only the disc-ID-matching
+medium's format in `MetadataResult.format`, while its track count and duration
+intentionally describe that matching medium. A CD inside a CD-plus-vinyl release
+therefore does not establish that the whole pressing is CD-only.
+`musicbrainz_mapper.rs::pressing` takes only the first medium's format, so
+substituting that helper's format is not a correction: it still discards other
+media and may name a medium unrelated to the matched disc ID.
+
+Carry pressing-medium evidence from all media supplied by the provider into
+the matching decision. Keep the matching medium's count and duration for disc-ID
+readiness; do not change them to the whole release's totals. Preserve incomplete
+evidence when any medium's format is absent rather than declaring the remaining
+known formats a complete description. Add a regression through the actual
+disc-ID response conversion with multiple media, then through the result matcher
+and pressing count. Include the matched medium after a different first medium,
+and verify that changing media order does not change pressing identity evidence.
+Ordinary MusicBrainz search conversion currently supplies no format; absent
+format remains unknown, not evidence of a digital release.
+
 `signals/barcode.rs::is_placeholder_code` only recognizes repeated-digit
 placeholders; it does not validate check digits or canonicalize UPC/EAN forms.
 The present grouping helper strips every non-digit, which can manufacture a
