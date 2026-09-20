@@ -2,7 +2,14 @@ import BaeKit
 import SwiftUI
 
 /// A track sheet's disc, document, and association summary, followed by one
-/// audio assignment control for each FILE reference.
+/// audio assignment control for each FILE reference that has no working
+/// audio.
+///
+/// A reference the scan bound is not listed: the summary already says how
+/// many files the sheet describes, or which one, and its menu is where a
+/// bound reference is changed. A reference with nothing bound — no file by
+/// that name, or one core refused — is the one thing left to do, so it gets
+/// its own row with its choices, and the row goes away once it is bound.
 struct ImportSheetCaptionRow: View {
     @Environment(\.sourceFileEditsAllowed)
     private var sourceFileEditsAllowed
@@ -16,11 +23,13 @@ struct ImportSheetCaptionRow: View {
 
     @State
     private var hoveringName = false
+    @State
+    private var hoveringBound = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             caption
-            ForEach(sheet.referenceOptions, id: \.fileReference) { reference in
+            ForEach(unbound, id: \.fileReference) { reference in
                 HStack(spacing: 8) {
                     Text(verbatim: reference.fileReference)
                         .font(.system(size: 11, design: .monospaced))
@@ -31,19 +40,30 @@ struct ImportSheetCaptionRow: View {
                         .foregroundStyle(.tertiary)
                     ImportSheetBindingMenu(
                         reference: reference,
-                        onBind: {
-                            actions.bindSheet(
-                                sheet.sheetId,
-                                reference.fileReference,
-                                $0
-                            )
-                        }
+                        onBind: { bind(reference, to: $0) }
                     )
                     .disabled(!sourceFileEditsAllowed)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
+    }
+
+    /// The references with no audio bound, in the sheet's order.
+    private var unbound: [BridgeSheetReferenceOptions] {
+        sheet.referenceOptions.filter { $0.fileId == nil }
+    }
+
+    /// The references with audio bound, in the sheet's order.
+    private var bound: [BridgeSheetReferenceOptions] {
+        sheet.referenceOptions.filter { $0.fileId != nil }
+    }
+
+    private func bind(
+        _ reference: BridgeSheetReferenceOptions,
+        to fileId: String?
+    ) {
+        actions.bindSheet(sheet.sheetId, reference.fileReference, fileId)
     }
 
     private var caption: some View {
@@ -61,12 +81,12 @@ struct ImportSheetCaptionRow: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
                 .fixedSize()
-            Text(sheet.bound.descriptionText)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .help(sheet.bound.descriptionText)
+            if bound.isEmpty {
+                boundText
+            }
+            else {
+                boundMenu
+            }
             ForEach(ImportEvidence.badges(evidence)) { badge in
                 ImportEvidenceChip(signal: badge.signal)
                     .fixedSize()
@@ -74,6 +94,62 @@ struct ImportSheetCaptionRow: View {
             }
             Spacer(minLength: 0)
         }
+    }
+
+    private var boundText: some View {
+        Text(sheet.bound.descriptionText)
+            .font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .help(sheet.bound.descriptionText)
+    }
+
+    /// The summary as a menu, where a bound reference's audio is changed: one
+    /// reference's choices directly, or a submenu per reference when the
+    /// sheet names several files.
+    private var boundMenu: some View {
+        Menu {
+            if bound.count == 1, let only = bound.first {
+                ImportSheetBindingItems(
+                    reference: only,
+                    onBind: { bind(only, to: $0) }
+                )
+            }
+            else {
+                ForEach(bound, id: \.fileReference) { reference in
+                    Menu {
+                        ImportSheetBindingItems(
+                            reference: reference,
+                            onBind: { bind(reference, to: $0) }
+                        )
+                    } label: {
+                        Text(verbatim: referenceTitle(reference))
+                    }
+                }
+            }
+        } label: {
+            boundText
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(
+                    Color.primary.opacity(hoveringBound ? 0.07 : 0),
+                    in: RoundedRectangle(cornerRadius: 4)
+                )
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .frame(minWidth: 24)
+        .disabled(!sourceFileEditsAllowed)
+        .onHover { hoveringBound = $0 }
+    }
+
+    /// A bound reference as its submenu names it: what the sheet asked for,
+    /// and the audio it has.
+    private func referenceTitle(
+        _ reference: BridgeSheetReferenceOptions
+    ) -> String {
+        "\(reference.fileReference) → \(reference.fileId ?? "")"
     }
 
     /// What kind of sheet this is. A format name, not a phrase, so it is not

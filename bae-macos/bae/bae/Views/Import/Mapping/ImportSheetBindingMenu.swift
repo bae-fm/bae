@@ -1,7 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// One CUE FILE reference's audio choices, already validated by core.
+/// One CUE FILE reference's audio choices, already validated by core, as a
+/// menu of its own — the control a reference with no working audio shows in
+/// its row.
 struct ImportSheetBindingMenu: View {
     let reference: BridgeSheetReferenceOptions
     let onBind: (String?) -> Void
@@ -11,18 +13,7 @@ struct ImportSheetBindingMenu: View {
 
     var body: some View {
         Menu {
-            ForEach(reference.options, id: \.fileId) { option in
-                bindButton(option)
-            }
-            Divider()
-            Button {
-                onBind(nil)
-            } label: {
-                checkable(
-                    coreString("ui.import.sheet.describes_nothing"),
-                    selected: reference.fileId == nil
-                )
-            }
+            ImportSheetBindingItems(reference: reference, onBind: onBind)
         } label: {
             Text(
                 reference.fileId
@@ -45,6 +36,29 @@ struct ImportSheetBindingMenu: View {
         .menuIndicator(.hidden)
         .frame(minWidth: 24)
         .onHover { hovering = $0 }
+    }
+}
+
+/// The items of one FILE reference's binding menu: each audio file core
+/// offers or refuses for it, and clearing the binding. The same items
+/// whether they make up a reference's own menu or a submenu of the sheet's.
+struct ImportSheetBindingItems: View {
+    let reference: BridgeSheetReferenceOptions
+    let onBind: (String?) -> Void
+
+    var body: some View {
+        ForEach(reference.options, id: \.fileId) { option in
+            bindButton(option)
+        }
+        Divider()
+        Button {
+            onBind(nil)
+        } label: {
+            checkable(
+                coreString("ui.import.sheet.describes_nothing"),
+                selected: reference.fileId == nil
+            )
+        }
     }
 
     /// One offered file, or a refused one shown disabled with core's reason —
