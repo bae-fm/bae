@@ -340,6 +340,7 @@ pub(crate) fn embedded_cover_selection(
     snapshot
         .embedded_cover
         .as_ref()
+        .filter(|cover| cover.content_type.is_supported_cover())
         .map(|cover| super::CoverSelection::Embedded(cover.source_relative_path.clone()))
 }
 
@@ -397,32 +398,22 @@ pub(crate) fn non_empty(value: Option<String>) -> Option<String> {
 }
 
 fn embedded_cover_from_tag(tag: &lofty::tag::Tag) -> Option<(Vec<u8>, ContentType)> {
-    let pictures = tag.pictures();
-    let picture = pictures
-        .iter()
-        .find(|picture| picture.pic_type() == lofty::picture::PictureType::CoverFront)
-        .or_else(|| pictures.first())?;
-    let content_type = picture.mime_type().and_then(image_content_type)?;
+    let mut pictures = tag.pictures().iter().filter_map(|picture| {
+        picture
+            .mime_type()
+            .and_then(image_content_type)
+            .map(|content_type| (picture, content_type))
+    });
+    let (picture, content_type) = pictures
+        .clone()
+        .find(|(picture, _)| picture.pic_type() == lofty::picture::PictureType::CoverFront)
+        .or_else(|| pictures.next())?;
     Some((picture.data().to_vec(), content_type))
 }
 
 pub(crate) fn image_content_type(mime: &lofty::picture::MimeType) -> Option<ContentType> {
-    use lofty::picture::MimeType;
-    match mime {
-        MimeType::Jpeg => Some(ContentType::Jpeg),
-        MimeType::Png => Some(ContentType::Png),
-        MimeType::Gif => Some(ContentType::Gif),
-        MimeType::Bmp => Some(ContentType::Bmp),
-        MimeType::Unknown(value) => match ContentType::from_mime(value) {
-            content_type @ (ContentType::Jpeg
-            | ContentType::Png
-            | ContentType::Gif
-            | ContentType::Bmp
-            | ContentType::Webp) => Some(content_type),
-            _ => None,
-        },
-        _ => None,
-    }
+    let content_type = ContentType::from_mime(mime.as_str());
+    content_type.is_supported_cover().then_some(content_type)
 }
 
 pub(crate) fn year_from_tag(tag: &lofty::tag::Tag) -> Option<u16> {
@@ -709,5 +700,19 @@ mod tests {
     #[test]
     fn missing_embedded_artwork_stores_no_file_tags_cover_selection() {
         assert_eq!(embedded_cover_selection(&snapshot(None)), None);
+    }
+
+    #[test]
+    fn unsupported_snapshot_artwork_is_not_selected_when_applying_file_tags() {
+        let snapshot = snapshot(Some(EmbeddedCoverFact {
+            source_relative_path: "01.flac".to_string(),
+            content_type: ContentType::Bmp,
+            data: b"BM".to_vec(),
+        }));
+        assert_eq!(embedded_cover_selection(&snapshot), None);
+        assert!(
+            snapshot.embedded_cover.is_some(),
+            "the stored observation is retained"
+        );
     }
 }

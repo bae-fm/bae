@@ -628,6 +628,7 @@
                     )
                 ),
                 imageFiles: [imageFile],
+                coverFiles: [imageFile],
                 galleryItems: [],
                 records: [],
                 marks: [],

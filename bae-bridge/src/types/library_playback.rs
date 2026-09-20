@@ -316,6 +316,8 @@ pub struct BridgeRelease {
     pub files: Vec<BridgeFile>,
     pub source_audio: Option<BridgeSourceAudioSummary>,
     pub image_files: Vec<BridgeFile>,
+    /// Core-selected cover inputs; the gallery still contains every image.
+    pub cover_files: Vec<BridgeFile>,
     /// Cover slot first (if the release has one), then every image file the
     /// release has. Each item's bytes are read through
     /// `fetch_release_image_bytes`, which takes the item's `source` and

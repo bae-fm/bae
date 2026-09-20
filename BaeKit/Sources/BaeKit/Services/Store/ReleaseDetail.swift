@@ -19,6 +19,7 @@ public struct ReleaseDetail: Identifiable {
     public var trackGroups: [TrackGroup]
     public var files: [BridgeFile]
     public var imageFiles: [BridgeFile]
+    public var coverFiles: [BridgeFile]
     public var galleryItems: [BridgeGalleryItem]
     /// Every catalog that describes this release, in the order core lists
     /// them. Empty when no catalog does.
@@ -62,6 +63,7 @@ public struct ReleaseDetail: Identifiable {
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))
         files = bridge.files
         imageFiles = bridge.imageFiles
+        coverFiles = bridge.coverFiles
         galleryItems = bridge.galleryItems
         records = bridge.records
         marks = bridge.marks

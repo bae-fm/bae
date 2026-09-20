@@ -176,6 +176,11 @@ impl ContentType {
         ) || matches!(self, Self::Other(s) if s.starts_with("image/"))
     }
 
+    /// Formats decoded and normalized when an image is used as cover artwork.
+    pub fn is_supported_cover(&self) -> bool {
+        matches!(self, Self::Jpeg | Self::Png | Self::Gif | Self::Webp)
+    }
+
     /// Short human-readable name for UI display (e.g., "FLAC", "JPEG").
     pub fn display_name(&self) -> &str {
         match self {

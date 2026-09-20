@@ -40,7 +40,7 @@ struct CoverPickerView: View {
             releaseItems: localArtwork.map { file in
                 guard let choice = file.coverChoice else {
                     preconditionFailure(
-                        "The artwork picker received a non-image file"
+                        "The artwork picker received a file without a cover choice"
                     )
                 }
                 return CoverItem(coverChoice: choice, label: file.file.name)
@@ -69,7 +69,7 @@ struct CoverPickerView: View {
     #Preview("Cover picker") {
         CoverPickerView(
             remoteCoverArts: PreviewData.remoteCovers,
-            localArtwork: PreviewData.bridgeCandidateFiles.images,
+            localArtwork: PreviewData.bridgeCandidateFiles.coverFiles,
             selectedCover: PreviewData.remoteCovers.first?.coverChoice,
             fetchRemoteCovers: { .linked(covers: PreviewData.remoteCovers) },
             onFindRelease: {},

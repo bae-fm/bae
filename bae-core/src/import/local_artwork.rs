@@ -19,7 +19,7 @@ pub(crate) fn default_local_cover_file<'a>(
 ) -> Option<&'a ScannedFile> {
     files
         .into_iter()
-        .filter(|file| ContentTypeHint::path_is_raster_image(&file.path))
+        .filter(|file| ContentTypeHint::path_is_supported_cover(&file.path))
         .min_by(|left, right| artwork_order(left, right))
 }
 
@@ -144,5 +144,17 @@ mod tests {
             default_local_cover_file(&files).map(|file| file.relative_path.as_str()),
             Some("A/scan.png")
         );
+    }
+
+    #[test]
+    fn unsupported_cover_format_does_not_hide_supported_artwork() {
+        for name in ["scan.gif", "scan.webp", "scan.png", "scan.jpg"] {
+            let files = [artwork("cover.bmp", 1), artwork(name, 500)];
+            assert_eq!(
+                default_local_cover_file(&files).map(|file| file.relative_path.as_str()),
+                Some(name)
+            );
+        }
+        assert!(default_local_cover_file(&[artwork("cover.bmp", 1)]).is_none());
     }
 }

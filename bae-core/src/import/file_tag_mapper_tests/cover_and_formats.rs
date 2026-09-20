@@ -300,6 +300,57 @@ fn read_embedded_cover_none_for_unsupported_mime() {
 }
 
 #[test]
+fn unsupported_front_picture_does_not_hide_supported_embedded_cover() {
+    use lofty::config::WriteOptions;
+    use lofty::picture::{MimeType, Picture, PictureType};
+
+    for (mime, bytes, expected_type) in [
+        (
+            MimeType::Gif,
+            include_bytes!("../../../test-fixtures/cover-art/solid.gif").as_slice(),
+            ContentType::Gif,
+        ),
+        (
+            MimeType::Unknown("image/webp".to_string()),
+            include_bytes!("../../../test-fixtures/cover-art/solid.webp").as_slice(),
+            ContentType::Webp,
+        ),
+    ] {
+        let temp = TempDir::new().unwrap();
+        let dest = copy_with_picture(
+            temp.path(),
+            "01.flac",
+            PictureType::CoverFront,
+            MimeType::Bmp,
+            b"BM",
+        );
+        let mut tagged = lofty::read_from_path(&dest).unwrap();
+        let tag = tagged.primary_tag_mut().unwrap();
+        tag.push_picture(
+            Picture::unchecked(bytes.to_vec())
+                .pic_type(PictureType::CoverBack)
+                .mime_type(mime)
+                .build(),
+        );
+        tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
+
+        let expected = Some((bytes.to_vec(), expected_type));
+        assert_eq!(
+            read_embedded_cover(std::slice::from_ref(&dest)).unwrap(),
+            expected
+        );
+        use crate::import::file_tag_snapshot::FileTagReader;
+        assert_eq!(
+            crate::import::file_tag_snapshot::LoftyFileTagReader
+                .read(&dest)
+                .unwrap()
+                .embedded_cover,
+            expected
+        );
+    }
+}
+
+#[test]
 fn read_embedded_cover_returns_err_when_audio_file_cannot_open() {
     let temp = TempDir::new().unwrap();
     let missing = temp.path().join("missing.flac");
@@ -402,7 +453,7 @@ fn image_content_type_maps_known_and_rejects_non_images() {
     assert_eq!(image_content_type(&MimeType::Jpeg), Some(ContentType::Jpeg));
     assert_eq!(image_content_type(&MimeType::Png), Some(ContentType::Png));
     assert_eq!(image_content_type(&MimeType::Gif), Some(ContentType::Gif));
-    assert_eq!(image_content_type(&MimeType::Bmp), Some(ContentType::Bmp));
+    assert_eq!(image_content_type(&MimeType::Bmp), None);
     // WebP reaches us only as Unknown — lofty has no WebP variant.
     assert_eq!(
         image_content_type(&MimeType::Unknown("image/webp".to_string())),
@@ -430,11 +481,7 @@ fn file_tag_import_leaves_media_blank_for_every_source_codec() {
     ] {
         let parsed = map_tags_with_folder(&[fixture_dir.join(name)], Some("Album Title"))
             .unwrap_or_else(|e| panic!("{name}: {e}"));
-        assert_eq!(
-            parsed.release.pressing.format,
-            None,
-            "{name}"
-        );
+        assert_eq!(parsed.release.pressing.format, None, "{name}");
     }
 }
 

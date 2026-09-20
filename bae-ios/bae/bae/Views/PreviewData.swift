@@ -115,6 +115,7 @@ enum PreviewData {
             files: [],
             sourceAudio: nil,
             imageFiles: [],
+            coverFiles: [],
             galleryItems: [],
             records: [],
             marks: [],

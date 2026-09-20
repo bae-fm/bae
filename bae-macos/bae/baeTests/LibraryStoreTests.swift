@@ -61,6 +61,7 @@ private func makeBridgeRelease(
         files: [],
         sourceAudio: nil,
         imageFiles: [],
+        coverFiles: [],
         galleryItems: [],
         records: [],
         marks: [],

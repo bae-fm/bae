@@ -433,7 +433,9 @@ impl ImportService {
                         ),
                     })
                 }
-                (None, Some(cover)) => Some((cover.data.clone(), cover.content_type.clone())),
+                (None, Some(cover)) if cover.content_type.is_supported_cover() => {
+                    Some((cover.data.clone(), cover.content_type.clone()))
+                }
                 _ => None,
             }
         } else {

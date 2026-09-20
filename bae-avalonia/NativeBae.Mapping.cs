@@ -1,5 +1,4 @@
 ﻿using System.Linq;
-using System.Text.Json;
 using uniffi.bae_bridge;
 
 
@@ -171,29 +170,11 @@ internal static partial class NativeBae
 
 
     private static List<LocalArtwork> LocalArtwork(BridgeCandidateFiles files) =>
-        files.Files.Select(LocalArtwork).OfType<LocalArtwork>().ToList();
-
-    // The candidate's images, as cover choices. A file that is not an image has
-    // no choice to offer, so it drops out.
-    private static LocalArtwork? LocalArtwork(BridgeCandidateFile file)
-    {
-        var choice = file.Role switch
+        files.CoverFiles.Select(file => new LocalArtwork
         {
-            BridgeFileRole.Artwork artwork => artwork.Choice,
-            _ => null,
-        };
-        if (choice is null)
-        {
-            return null;
-        }
-        var releaseImage = choice.Selection as BridgeCoverSelection.ReleaseImage
-            ?? throw new JsonException("local artwork did not carry a release-image selection");
-        return new LocalArtwork
-        {
-            FileId = releaseImage.FileId,
+            FileId = file.File.Name,
             Path = file.File.LocalPath,
-        };
-    }
+        }).ToList();
 
     /// <summary>One candidate as its tables describe it: the folder, where its
     /// import stands, and the identity its stored verdict stands back up as.

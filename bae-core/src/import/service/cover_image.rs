@@ -29,17 +29,22 @@ impl ImportService {
         use crate::import::ImportError;
 
         let selected_cover = if let Some(selected_path) = selected_cover_path {
-            Some(discovered_files.iter().find(|file| {
-                file.relative_path == selected_path
-                    && crate::util::content_type_hint::ContentTypeHint::path_is_raster_image(
+            Some(
+                discovered_files
+                    .iter()
+                    .find(|file| {
+                        file.relative_path == selected_path
+                    && crate::util::content_type_hint::ContentTypeHint::path_is_supported_cover(
                         &file.path,
                     )
-            }).ok_or_else(|| ImportError::LocalCover {
-                detail: format!(
-                    "Selected cover {} not found among discovered images",
-                    selected_path
-                ),
-            })?)
+                    })
+                    .ok_or_else(|| ImportError::LocalCover {
+                        detail: format!(
+                            "Selected cover {} not found among discovered images",
+                            selected_path
+                        ),
+                    })?,
+            )
         } else {
             crate::import::local_artwork::default_local_cover_file(discovered_files)
         };

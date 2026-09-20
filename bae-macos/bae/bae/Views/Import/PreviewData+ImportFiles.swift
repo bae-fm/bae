@@ -157,6 +157,7 @@
                 supplementalVideo,
             ]
                 + previewLogDocuments,
+            coverFiles: [backImage, coverImage, scanImage],
             sourceAudio: BridgeCandidateSourceAudio(
                 summary: .uniform(
                     descriptor: BridgeSourceAudioDescriptor(
@@ -234,6 +235,7 @@
                         role: .trackSheet(trackCount: 9)
                     ),
                 ],
+            coverFiles: [coverImage],
             sourceAudio: BridgeCandidateSourceAudio(
                 summary: .uniform(
                     descriptor: BridgeSourceAudioDescriptor(

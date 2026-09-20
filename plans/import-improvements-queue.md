@@ -185,7 +185,38 @@ that main or CI has passed.
   while Retry remained functional. A stale test member access was found and
   corrected during the build. Parent manual review found no remaining issue in
   the inspected paths. Mobile conditional compilation was read-audited, but no
-  mobile cross-build was run for this change. Normal hooks and integration are
-  recorded with the focused commit; CI remains an end-of-queue check.
+  mobile cross-build was run for this change. Normal hooks passed; commit
+  `f09c20bd3` was reviewed, fast-forwarded, and pushed to main. The final
+  post-lint test selection repeated all 13 flow and copy tests successfully.
+  CI remains an end-of-queue check.
+- Cover image formats: implemented on `cover-image-formats`. Production baselines
+  reproduced rejected GIF/WebP inputs, the compact-image heuristic, unsupported
+  automatic BMP choices, and the hosted picker offering BMP. Shared bounded
+  decoding now handles JPEG/PNG/GIF/WebP, first frames, and static JPEG output;
+  attachment galleries retain wider previews. Automatic retained BMP observations
+  are skipped while explicit saved choices fail visibly. Tests passed 125 cover,
+  34 mapper, seven import cover, 15 snapshot, targeted retained-import and
+  transparency cases, 69 desktop bridge, and 262 Avalonia view tests. Native
+  generation and the final macOS selection passed 14 tests in three suites:
+  CoverPickerTests, LibraryArtworkBrowserTests, and InternReleaseDetailTests.
+  Allocation-limit sabotage reproduced the expected failure before restoring the
+  cap. The Avalonia native test copy needed its FFmpeg runtime path; native
+  relinking also needed idle compiler output reclaimed after disk exhaustion.
+  Parent manual requirement review accepted the final automatic-selection and
+  transparency corrections. Mobile canonical callers were updated; mobile
+  cross-builds remain unexecuted locally. Normal hooks and coordinated landing
+  follow this record; CI remains an end-of-queue gate.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.
+
+## End-of-queue CI evidence
+
+At `f09c20bd3`, Build 35522350486 reports Android/iOS Clippy E0433 in
+`bae-core/src/db/client/read.rs:257`: `MetadataRef` is not accessible through its
+current conditional re-export. Jobs 106108553203 and 106108553234 retain the
+compiler evidence. The macOS build passed, then the 487-test/130-suite run failed
+only the multiline diagnostic Retry OCR assertion at
+`ReleaseSelectionFailureTests.swift:193` (recognized text `KeLl`); job
+106108553114 retains that failure. macOS capture passed; mobile capture failures
+still need their exact causes inspected. These are required final CI repairs,
+not gates between the queued implementation tasks.

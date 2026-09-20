@@ -313,7 +313,10 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
         "MP3",
         Some(320),
     );
-    for (name, facts) in [("01-disc.flac", flac.clone()), ("02-bonus.mp3", mp3.clone())] {
+    for (name, facts) in [
+        ("01-disc.flac", flac.clone()),
+        ("02-bonus.mp3", mp3.clone()),
+    ] {
         let mut file = DbFile::new(
             &release.id,
             name,
@@ -335,10 +338,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
     assert_eq!(
         detail.source_audio,
         Some(crate::album_detail::SourceAudioSummary::Mixed {
-            descriptors: vec![
-                flac.descriptor().unwrap(),
-                mp3.descriptor().unwrap(),
-            ],
+            descriptors: vec![flac.descriptor().unwrap(), mp3.descriptor().unwrap(),],
         })
     );
 }
@@ -469,11 +469,114 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
     );
 }
 
+#[tokio::test]
+async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files() {
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
+    let mut eligible = Vec::new();
+    let mut all_images = Vec::new();
+    for (name, content_type, supports_cover) in [
+        ("front.jpg", ContentType::Jpeg, true),
+        ("back.png", ContentType::Png, true),
+        ("scan.gif", ContentType::Gif, true),
+        ("scan.webp", ContentType::Webp, true),
+        ("booklet.bmp", ContentType::Bmp, false),
+        ("drawing.svg", ContentType::Svg, false),
+    ] {
+        let file = DbFile::new(
+            &release.id,
+            name,
+            100,
+            content_type,
+            Uuid::new_v4().to_string(),
+            Utc::now(),
+        );
+        manager.add_file(&file).await.unwrap();
+        if supports_cover {
+            eligible.push(file.id.clone());
+        }
+        all_images.push(file.id);
+    }
+    let detail = manager
+        .find_release_detail(&release.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let mut cover_ids: Vec<_> = detail
+        .cover_files
+        .iter()
+        .map(|file| file.id.clone())
+        .collect();
+    let mut image_ids: Vec<_> = detail
+        .image_files
+        .iter()
+        .map(|file| file.id.clone())
+        .collect();
+    let mut gallery_ids: Vec<_> = detail
+        .gallery_items
+        .iter()
+        .map(|item| item.id.clone())
+        .collect();
+    eligible.sort();
+    all_images.sort();
+    cover_ids.sort();
+    image_ids.sort();
+    gallery_ids.sort();
+    assert_eq!(cover_ids, eligible);
+    assert_eq!(image_ids, all_images);
+    assert_eq!(gallery_ids, all_images);
+}
+
 /// `change_cover` resizes whatever the user picks to a ≤600 JPEG thumbnail
 /// before storing it: a 900×300 PNG release image lands as a 600×200 JPEG blob
 /// (downscaled to fit 600, aspect kept), and the `covers` row records JPEG.
 #[tokio::test]
 async fn change_cover_stores_a_resized_jpeg_thumbnail() {
+    let image = ::image::RgbImage::from_pixel(900, 300, ::image::Rgb([20, 160, 90]));
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    ::image::DynamicImage::ImageRgb8(image)
+        .write_to(&mut bytes, ::image::ImageFormat::Png)
+        .unwrap();
+    assert_changed_cover("art.png", &bytes.into_inner(), ContentType::Png, (600, 200)).await;
+}
+
+#[tokio::test]
+async fn change_cover_stores_gif_and_webp_as_jpeg_without_replacing_source() {
+    for (name, bytes, content_type, dimensions) in [
+        (
+            "solid.gif",
+            include_bytes!("../../../../test-fixtures/cover-art/solid.gif").as_slice(),
+            ContentType::Gif,
+            (16, 8),
+        ),
+        (
+            "solid.webp",
+            include_bytes!("../../../../test-fixtures/cover-art/solid.webp").as_slice(),
+            ContentType::Webp,
+            (16, 8),
+        ),
+        (
+            "animated.gif",
+            include_bytes!("../../../../test-fixtures/cover-art/animated.gif").as_slice(),
+            ContentType::Gif,
+            (600, 300),
+        ),
+        (
+            "animated.webp",
+            include_bytes!("../../../../test-fixtures/cover-art/animated.webp").as_slice(),
+            ContentType::Webp,
+            (600, 300),
+        ),
+    ] {
+        assert_changed_cover(name, bytes, content_type, dimensions).await;
+    }
+}
+
+async fn assert_changed_cover(
+    filename: &str,
+    cover_bytes: &[u8],
+    content_type: ContentType,
+    dimensions: (u32, u32),
+) {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
@@ -481,24 +584,14 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
-    // An oversized non-JPEG release image on disk, registered as the release's
-    // user-provided file so `change_cover` reads it back through coven.
     let source_dir = TempDir::new().unwrap();
-    let cover_bytes = {
-        let img = ::image::RgbImage::from_pixel(900, 300, ::image::Rgb([20, 160, 90]));
-        let mut buf = std::io::Cursor::new(Vec::new());
-        ::image::DynamicImage::ImageRgb8(img)
-            .write_to(&mut buf, ::image::ImageFormat::Png)
-            .unwrap();
-        buf.into_inner()
-    };
-    let source_path = source_dir.path().join("art.png");
-    std::fs::write(&source_path, &cover_bytes).unwrap();
+    let source_path = source_dir.path().join(filename);
+    std::fs::write(&source_path, cover_bytes).unwrap();
     let file = DbFile::new(
         &release.id,
-        "art.png",
+        filename,
         cover_bytes.len() as i64,
-        ContentType::Png,
+        content_type,
         Uuid::new_v4().to_string(),
         Utc::now(),
     );
@@ -517,7 +610,7 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
         .await
         .unwrap();
 
-    // The stored blob decodes as a ≤600 JPEG, not the 900×300 PNG source.
+    // The cover is a normalized JPEG; the release file retains its original bytes.
     let stored = manager
         .read_cover_image_blob(&release.id)
         .await
@@ -528,7 +621,8 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
         ::image::ImageFormat::Jpeg
     );
     let decoded = ::image::load_from_memory(&stored).unwrap();
-    assert_eq!((decoded.width(), decoded.height()), (600, 200));
+    assert_eq!((decoded.width(), decoded.height()), dimensions);
+    assert_eq!(std::fs::read(&source_path).unwrap(), cover_bytes);
 
     // The row describes the stored thumbnail: JPEG, and its size matches.
     let row = manager
@@ -735,8 +829,12 @@ async fn replacing_a_cover_on_a_browsable_home_writes_a_distinct_cloud_key() {
 
     // The two keys really are distinct objects, so writing the second never
     // overwrites the first.
-    let old_stored = first_stored.stored().expect("first cover reached the cloud");
-    let new_stored = second_stored.stored().expect("second cover reached the cloud");
+    let old_stored = first_stored
+        .stored()
+        .expect("first cover reached the cloud");
+    let new_stored = second_stored
+        .stored()
+        .expect("second cover reached the cloud");
     assert_ne!(
         old_stored.object().slot().logical_key(),
         new_stored.object().slot().logical_key()
@@ -880,6 +978,5 @@ async fn find_release_detail_returns_none_for_unknown_id() {
     let detail = manager.find_release_detail("nonexistent-id").await.unwrap();
     assert!(detail.is_none());
 }
-
 
 // ── Storage page tests ───────────────────────────────────────────

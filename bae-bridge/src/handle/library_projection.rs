@@ -90,6 +90,7 @@ impl BridgeRelease {
             files,
             source_audio,
             image_files,
+            cover_files,
             gallery_items,
             records,
             marks,
@@ -133,6 +134,7 @@ impl BridgeRelease {
                 .map(BridgeTrackGroup::from_core)
                 .collect(),
             image_files: image_files.into_iter().map(BridgeFile::from_core).collect(),
+            cover_files: cover_files.into_iter().map(BridgeFile::from_core).collect(),
             files: files.into_iter().map(BridgeFile::from_core).collect(),
             source_audio: source_audio.map(crate::types::BridgeSourceAudioSummary::from_core),
             gallery_items: gallery_items

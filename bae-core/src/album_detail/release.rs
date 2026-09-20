@@ -100,6 +100,8 @@ pub struct ReleaseDetail {
     pub files: Vec<FileDetail>,
     pub source_audio: Option<SourceAudioSummary>,
     pub image_files: Vec<FileDetail>,
+    /// Image files eligible for cover normalization; previews use `image_files`.
+    pub cover_files: Vec<FileDetail>,
     /// The cover, then every image file the release has — including cloud-only ones,
     /// which the lightbox fetches on demand.
     pub gallery_items: Vec<GalleryItem>,
@@ -323,16 +325,24 @@ impl ReleaseDetail {
 
         let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
 
+        let mut cover_files = Vec::new();
         let files: Vec<FileDetail> = raw
             .files
             .into_iter()
-            .map(|f| FileDetail {
-                is_image: f.content_type.is_image(),
-                content_type: f.content_type.to_string(),
-                source_audio: f.source_audio,
-                id: f.id,
-                original_filename: f.original_filename,
-                file_size: f.file_size,
+            .map(|f| {
+                let supports_cover = f.content_type.is_supported_cover();
+                let file = FileDetail {
+                    is_image: f.content_type.is_image(),
+                    content_type: f.content_type.to_string(),
+                    source_audio: f.source_audio,
+                    id: f.id,
+                    original_filename: f.original_filename,
+                    file_size: f.file_size,
+                };
+                if supports_cover {
+                    cover_files.push(file.clone());
+                }
+                file
             })
             .collect();
         let image_files: Vec<FileDetail> = files.iter().filter(|f| f.is_image).cloned().collect();
@@ -405,6 +415,7 @@ impl ReleaseDetail {
             files,
             source_audio,
             image_files,
+            cover_files,
             gallery_items: gallery,
             records: raw.records,
             marks: crate::import::ReleaseMarkLine::fold(&raw.marks),

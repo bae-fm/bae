@@ -247,11 +247,11 @@ async fn concurrent_reads_of_one_url_share_the_download() {
 }
 
 #[tokio::test]
-async fn download_rejects_too_small_response() {
+async fn download_rejects_short_non_image_response() {
     let url = start_mock(vec![(200, vec![0u8; 50])]).await;
     let error = RemoteImageCache::for_test().fetch(&url).await.unwrap_err();
     assert!(
-        matches!(&error, ImportError::CoverArt { detail } if detail.contains("too small")),
+        matches!(&error, ImportError::CoverArt { detail } if detail.contains("valid image")),
         "got: {error}"
     );
 }
@@ -403,4 +403,87 @@ async fn artwork_invalid_request_is_an_internal_failure() {
         error.to_string().contains("RelativeUrlWithoutBase"),
         "{error}"
     );
+}
+
+#[tokio::test]
+async fn supported_cover_formats_keep_original_remote_bytes_and_type() {
+    assert!(include_bytes!("../../test-fixtures/cover-art/solid.gif").len() < 100);
+    assert!(include_bytes!("../../test-fixtures/cover-art/solid.webp").len() < 100);
+    for (bytes, content_type) in [
+        (
+            include_bytes!("../../test-fixtures/cover-art/solid.gif").as_slice(),
+            ContentType::Gif,
+        ),
+        (
+            include_bytes!("../../test-fixtures/cover-art/solid.webp").as_slice(),
+            ContentType::Webp,
+        ),
+        (
+            include_bytes!("../../test-fixtures/cover-art/animated.gif").as_slice(),
+            ContentType::Gif,
+        ),
+        (
+            include_bytes!("../../test-fixtures/cover-art/animated.webp").as_slice(),
+            ContentType::Webp,
+        ),
+    ] {
+        let (host, url) = start_counting_host(200, bytes.to_vec()).await;
+        let cache = RemoteImageCache::for_test();
+        for _ in 0..2 {
+            let image = cache.fetch_required(&url).await.unwrap();
+            assert_eq!(image.bytes, bytes);
+            assert_eq!(image.content_type, content_type);
+        }
+        assert_eq!(host.hits(), 1);
+    }
+}
+
+#[tokio::test]
+async fn remote_cover_dimensions_are_bounded() {
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::new_rgb8(8193, 1)
+        .write_to(&mut bytes, image::ImageFormat::Png)
+        .unwrap();
+    let url = start_mock(vec![(200, bytes.into_inner())]).await;
+    let error = RemoteImageCache::for_test()
+        .fetch_required(&url)
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(&error, ImportError::CoverArt { detail } if detail.contains("limit")),
+        "{error}"
+    );
+}
+
+#[tokio::test]
+async fn remote_cover_decode_allocation_is_bounded() {
+    let mut bytes = include_bytes!("../../test-fixtures/cover-art/solid.gif").to_vec();
+    bytes[6..8].copy_from_slice(&6000u16.to_le_bytes());
+    bytes[8..10].copy_from_slice(&6000u16.to_le_bytes());
+    let url = start_mock(vec![(200, bytes)]).await;
+    let error = RemoteImageCache::for_test()
+        .fetch_required(&url)
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(&error, ImportError::CoverArt { detail } if detail.contains("Memory limit")),
+        "{error}"
+    );
+}
+
+#[tokio::test]
+async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
+    for bytes in [
+        include_bytes!("../../test-fixtures/cover-art/solid.gif").as_slice(),
+        include_bytes!("../../test-fixtures/cover-art/solid.webp").as_slice(),
+    ] {
+        let truncated = &bytes[..20];
+        assert!(crate::util::cover::resize_cover(truncated).is_err());
+        let url = start_mock(vec![(200, truncated.to_vec())]).await;
+        let error = RemoteImageCache::for_test()
+            .fetch_required(&url)
+            .await
+            .unwrap_err();
+        assert!(matches!(error, ImportError::CoverArt { .. }));
+    }
 }

@@ -86,6 +86,7 @@ object BridgeFixtures {
             files = files,
             sourceAudio = sourceAudio,
             imageFiles = emptyList(),
+            coverFiles = emptyList(),
             galleryItems = galleryItems,
             records = emptyList(),
             marks = emptyList(),

@@ -58,6 +58,9 @@ struct CoverPickerTests {
         }
         #expect(await recorder.reads.contains("release-test/library-image-id"))
         await SnapshotTestSupport.settle(host)
+        #expect(
+            !(await recorder.reads).contains("release-test/bitmap-image-id")
+        )
         let enter = try #require(
             NSEvent.keyEvent(
                 with: .keyDown,
@@ -91,6 +94,14 @@ struct CoverPickerTests {
             isImage: true,
             audioFormat: nil
         )
+        let bitmap = BridgeFile(
+            id: "bitmap-image-id",
+            originalFilename: "scans/booklet.bmp",
+            fileSize: 120,
+            contentType: "image/bmp",
+            isImage: true,
+            audioFormat: nil
+        )
         return BridgeRelease(
             id: "release-test",
             albumId: "album-test",
@@ -106,9 +117,10 @@ struct CoverPickerTests {
             transferAction: nil,
             tracks: [],
             trackGroups: [],
-            files: [file],
+            files: [file, bitmap],
             sourceAudio: nil,
-            imageFiles: [file],
+            imageFiles: [file, bitmap],
+            coverFiles: [file],
             galleryItems: [],
             records: [],
             marks: [],
@@ -116,8 +128,8 @@ struct CoverPickerTests {
             identifiedBy: nil,
             verified: false,
             totalDuration: nil,
-            fileCount: 1,
-            totalSize: 100,
+            fileCount: 2,
+            totalSize: 220,
             cover: nil
         )
     }
@@ -151,7 +163,7 @@ struct CoverPickerTests {
         let (window, host) = SnapshotTestSupport.hostInWindow(
             CoverPickerView(
                 remoteCoverArts: PreviewData.remoteCovers,
-                localArtwork: PreviewData.bridgeCandidateFiles.images,
+                localArtwork: PreviewData.bridgeCandidateFiles.coverFiles,
                 selectedCover: nil,
                 fetchRemoteCovers: {
                     .linked(covers: PreviewData.remoteCovers)

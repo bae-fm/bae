@@ -735,30 +735,10 @@ async fn read_image_response(
     let bytes = crate::util::http::read_body_capped(response, crate::util::http::MAX_IMAGE_BYTES)
         .await
         .map_err(|error| artwork_body_error(error, "Failed to read image response"))?;
-    if bytes.len() < 100 {
-        return Err(ImportError::CoverArt {
-            detail: "Downloaded file too small to be a valid image".to_string(),
-        });
-    }
-
-    let format = image::guess_format(&bytes).map_err(|error| ImportError::CoverArt {
-        detail: format!("Downloaded file is not a valid image: {error}"),
-    })?;
-    image::load_from_memory_with_format(&bytes, format).map_err(|error| ImportError::CoverArt {
-        detail: format!("Downloaded file is not a valid image: {error}"),
-    })?;
-    let content_type = match format {
-        image::ImageFormat::Jpeg => ContentType::Jpeg,
-        image::ImageFormat::Png => ContentType::Png,
-        image::ImageFormat::Gif => ContentType::Gif,
-        image::ImageFormat::WebP => ContentType::Webp,
-        image::ImageFormat::Bmp => ContentType::Bmp,
-        other => {
-            return Err(ImportError::CoverArt {
-                detail: format!("Downloaded image format {other:?} is not supported"),
-            })
-        }
-    };
+    let (_, content_type) =
+        crate::util::cover::decode_cover(&bytes).map_err(|error| ImportError::CoverArt {
+            detail: format!("Downloaded file is not a valid image: {error}"),
+        })?;
 
     debug!("Downloaded cover art ({} bytes)", bytes.len());
     Ok(ImageResponse::Body {

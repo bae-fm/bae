@@ -411,6 +411,7 @@ extension MappingFixtures {
     static let emptyFiles = BridgeCandidateFiles(
         fileTagsIdentity: "empty-audio-files",
         files: [],
+        coverFiles: [],
         sourceAudio: nil
     )
 
@@ -533,6 +534,7 @@ extension MappingFixtures {
             files: BridgeCandidateFiles(
                 fileTagsIdentity: audioIdentity,
                 files: emptyFiles.files,
+                coverFiles: emptyFiles.coverFiles,
                 sourceAudio: emptyFiles.sourceAudio
             ),
             trackCount: 13,

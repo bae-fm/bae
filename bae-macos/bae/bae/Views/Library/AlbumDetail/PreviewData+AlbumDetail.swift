@@ -182,6 +182,15 @@
             channels: 2
         )
 
+        private static let previewReleaseCoverFile = BridgeFile(
+            id: "f-cover",
+            originalFilename: "cover.jpg",
+            fileSize: 2_450_000,
+            contentType: "image/jpeg",
+            isImage: true,
+            audioFormat: nil
+        )
+
         /// Audio + cover files for the storage sheet's file table.
         static let previewReleaseFiles: [BridgeFile] = [
             BridgeFile(
@@ -200,14 +209,7 @@
                 isImage: false,
                 audioFormat: previewReleaseAudioFormat
             ),
-            BridgeFile(
-                id: "f-cover",
-                originalFilename: "cover.jpg",
-                fileSize: 2_450_000,
-                contentType: "Image",
-                isImage: true,
-                audioFormat: nil
-            ),
+            previewReleaseCoverFile,
         ]
 
         /// A `ReleaseDetail` in a chosen storage state, for the storage band and
@@ -218,9 +220,9 @@
         static func storageRelease(
             storageState: BridgeReleaseStorageState,
             pinned: Bool,
-            storageActions: [BridgeReleaseStorageAction],
-            files: [BridgeFile] = previewReleaseFiles
+            storageActions: [BridgeReleaseStorageAction]
         ) -> ReleaseDetail {
+            let files = previewReleaseFiles
             let bridge = BridgeRelease(
                 id: "rel-storage-preview",
                 albumId: "a-storage-preview",
@@ -243,7 +245,8 @@
                         format: previewReleaseAudioFormat
                     )
                 ),
-                imageFiles: [],
+                imageFiles: [previewReleaseCoverFile],
+                coverFiles: [previewReleaseCoverFile],
                 galleryItems: [],
                 // Every catalog, so the expansion's facts-line popover shows
                 // what a release a MusicBrainz pick linked all the way out

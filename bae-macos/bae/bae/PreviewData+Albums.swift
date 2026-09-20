@@ -170,6 +170,7 @@
                 files: [],
                 sourceAudio: nil,
                 imageFiles: [],
+                coverFiles: [],
                 galleryItems: [],
                 // Every catalog on the first album's first pressing, so the
                 // expansion preview shows what a release a MusicBrainz pick

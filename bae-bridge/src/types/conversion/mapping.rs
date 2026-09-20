@@ -43,25 +43,13 @@ impl BridgeCandidateFile {
             .map(BridgeFileRoleChoice::from_core)
             .collect();
         let role_choice = entry.role_choice().map(BridgeFileRoleChoice::from_core);
+        let cover_choice = entry.cover_choice().map(BridgeCoverChoice::from_core);
         let CandidateFile {
             file,
             role,
             proposed_audio: _,
         } = entry;
-        // Read the file id (relative path) and disk path back off `BridgeFileInfo`
-        // so the exhaustive `ScannedFile` destructure lives only in its `from_core`.
         let file = BridgeFileInfo::from_core(&file);
-        let image_choice = || BridgeCoverChoice {
-            selection: BridgeCoverSelection::ReleaseImage {
-                file_id: file.name.clone(),
-            },
-            preview_source: BridgeCoverImageSource::Local {
-                path: file.local_path.clone(),
-            },
-            thumbnail_source: BridgeCoverImageSource::Local {
-                path: file.local_path.clone(),
-            },
-        };
         let role = match role {
             FileRole::Audio => BridgeFileRole::Audio,
             // The disc assignment is the mapping table's to show, on the group
@@ -73,7 +61,7 @@ impl BridgeCandidateFile {
                 track_count: sheet.playable_track_count() as u32,
             },
             FileRole::Artwork => BridgeFileRole::Artwork {
-                choice: image_choice(),
+                choice: cover_choice,
             },
             FileRole::Document => BridgeFileRole::Document,
             FileRole::Other => BridgeFileRole::Other,
@@ -128,9 +116,19 @@ impl BridgeCandidateFiles {
             .source_audio()
             .map(BridgeCandidateSourceAudio::from_core);
         let file_tags_identity = files.file_tags_identity();
+        let cover_files = files
+            .cover_files()
+            .map(|entry| {
+                BridgeCandidateFile::from_core(
+                    entry.clone(),
+                    bae_core::import::folder_scanner::FileBecomes::NoSlots,
+                )
+            })
+            .collect();
         let bae_core::import::folder_scanner::CategorizedFiles { files } = files;
         BridgeCandidateFiles {
             file_tags_identity,
+            cover_files,
             files: files
                 .into_iter()
                 .zip(becomes)
@@ -481,4 +479,60 @@ mirror_struct! {
         files: (each BridgeMappingFileRow),
         reconciliation: (opt BridgeSlotReconciliation),
     },
+}
+
+#[cfg(test)]
+mod cover_projection_tests {
+    use super::*;
+    use bae_core::import::folder_scanner::{
+        CandidateFile, CategorizedFiles, FileRole, ScannedFile,
+    };
+
+    #[test]
+    fn unsupported_cover_formats_remain_artwork_without_a_cover_action() {
+        let names = [
+            "front.jpg",
+            "back.png",
+            "scan.gif",
+            "scan.webp",
+            "booklet.bmp",
+            "drawing.svg",
+        ];
+        let files = CategorizedFiles {
+            files: names
+                .iter()
+                .map(|name| CandidateFile {
+                    file: ScannedFile::new(
+                        std::path::Path::new("/synthetic").join(name),
+                        (*name).to_string(),
+                        100,
+                        1,
+                    ),
+                    role: FileRole::Artwork,
+                    proposed_audio: false,
+                })
+                .collect(),
+        };
+        let projected = BridgeCandidateFiles::from_core(files);
+        assert_eq!(projected.files.len(), names.len());
+        assert_eq!(
+            projected
+                .cover_files
+                .iter()
+                .map(|entry| entry.file.name.as_str())
+                .collect::<Vec<_>>(),
+            &names[..4]
+        );
+        for (index, entry) in projected.files.iter().enumerate() {
+            let BridgeFileRole::Artwork { choice } = &entry.role else {
+                panic!("previewable artwork lost its role");
+            };
+            assert_eq!(choice.is_some(), index < 4);
+            if let Some(choice) = choice {
+                assert!(
+                    matches!(&choice.selection, BridgeCoverSelection::ReleaseImage { file_id } if file_id == names[index])
+                );
+            }
+        }
+    }
 }

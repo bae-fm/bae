@@ -52,6 +52,7 @@ internal static class ImportCandidateFixtures
                 Files: new BridgeCandidateFiles(
                     audioIdentity,
                     Array.Empty<BridgeCandidateFile>(),
+                    Array.Empty<BridgeCandidateFile>(),
                     new BridgeCandidateSourceAudio(
                         new BridgeSourceAudioSummary.Uniform(
                             new BridgeSourceAudioDescriptor(

@@ -16,7 +16,7 @@ extension BridgeFileRole {
         return false
     }
 
-    /// Artwork — everything the gallery and the cover picker show.
+    /// Artwork shown in the gallery, including images unavailable as covers.
     var isImage: Bool {
         if case .artwork = self { return true }
         return false
@@ -29,7 +29,7 @@ extension BridgeFileRole {
 }
 
 extension BridgeCandidateFile {
-    /// The cover choice this file offers the picker; nil when it isn't an image.
+    /// Core's cover action; nil for files the cover decoder does not support.
     var coverChoice: BridgeCoverChoice? {
         switch role {
         case .artwork(let choice): return choice
@@ -46,7 +46,7 @@ extension BridgeCandidateFiles {
         files.filter { $0.role.isTrackSheet }
     }
 
-    /// The artwork the cover picker and the lightbox show.
+    /// Every artwork attachment shown by the lightbox.
     var images: [BridgeCandidateFile] { files.filter { $0.role.isImage } }
 }
 

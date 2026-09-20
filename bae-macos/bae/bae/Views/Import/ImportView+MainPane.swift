@@ -207,7 +207,7 @@ extension ImportView {
     /// Whether the cover is worth opening a picker for: the picked release's
     /// remote art, or artwork found in the folder.
     private func hasCoverOptions(_ candidate: Candidate) -> Bool {
-        candidate.release != nil || !candidate.files.images.isEmpty
+        candidate.release != nil || !candidate.files.coverFiles.isEmpty
     }
 
     /// Every file the candidate holds, in one string — the identity the
@@ -222,7 +222,7 @@ extension ImportView {
             CoverPickerFrame {
                 CoverPickerView(
                     remoteCoverArts: candidate.release?.coverArt ?? [],
-                    localArtwork: candidate.files.images,
+                    localArtwork: candidate.files.coverFiles,
                     selectedCover: candidate.cover,
                     fetchRemoteCovers: {
                         try await releaseEditor.fetchRemoteCovers(

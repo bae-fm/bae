@@ -515,3 +515,81 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
 }
 
 // ── metadata draft + user edit at commit ───────────────────────────────────
+
+#[tokio::test]
+async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
+    for (name, bytes, dimensions) in [
+        (
+            "solid.gif",
+            include_bytes!("../../test-fixtures/cover-art/solid.gif").as_slice(),
+            (16, 8),
+        ),
+        (
+            "solid.webp",
+            include_bytes!("../../test-fixtures/cover-art/solid.webp").as_slice(),
+            (16, 8),
+        ),
+        (
+            "animated.gif",
+            include_bytes!("../../test-fixtures/cover-art/animated.gif").as_slice(),
+            (600, 300),
+        ),
+        (
+            "animated.webp",
+            include_bytes!("../../test-fixtures/cover-art/animated.webp").as_slice(),
+            (600, 300),
+        ),
+    ] {
+        let release = discogs_release("Cover Format Album", &["Track"]);
+        let release_id_key = seed_discogs_test_release(release);
+        let f = ImportFixture::new().await;
+        let album_dir = f.temp_path().join("album");
+        fs::create_dir_all(&album_dir).unwrap();
+        generate_album_files(&album_dir, &["01 Track.flac"]);
+        fs::write(album_dir.join(name), bytes).unwrap();
+        let import_id = f.ids.new_id();
+        f.handle
+            .send_command(ImportCommand {
+                selected_cover: Some(CoverSelection::Local(name.to_string())),
+                ..support::folder_import(
+                    &import_id,
+                    album_dir.clone(),
+                    support::discogs_release(release_id_key),
+                )
+            })
+            .await
+            .unwrap();
+        let mut progress_rx = f.handle.subscribe_import(import_id);
+        let (release_id, _) = support::try_wait_for_import_complete(&mut progress_rx)
+            .await
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        let cover =
+            f.db.find_library_image(&release_id, &LibraryImageType::Cover)
+                .await
+                .unwrap()
+                .unwrap();
+        assert_eq!(
+            cover.content_type,
+            bae_core::util::content_type::ContentType::Jpeg
+        );
+        let stored = support::read_cover_image_blob(&f.library_manager, &release_id)
+            .await
+            .unwrap();
+        assert_eq!(
+            image::guess_format(&stored).unwrap(),
+            image::ImageFormat::Jpeg
+        );
+        let decoded = image::load_from_memory(&stored).unwrap();
+        assert_eq!((decoded.width(), decoded.height()), dimensions);
+        let pixel = decoded.to_rgb8().get_pixel(0, 0).0;
+        for (actual, expected) in pixel.into_iter().zip([120u8, 40, 200]) {
+            assert!(actual.abs_diff(expected) <= 3, "{name}: {pixel:?}");
+        }
+        assert_eq!(
+            fs::read(album_dir.join(name)).unwrap(),
+            bytes,
+            "source artwork stays unchanged"
+        );
+        assert_cover_row_describes_stored_bytes(&f, &release_id).await;
+    }
+}

@@ -131,6 +131,7 @@ object PreviewData {
             files = emptyList(),
             sourceAudio = null,
             imageFiles = emptyList(),
+            coverFiles = emptyList(),
             galleryItems = emptyList(),
             records = emptyList(),
             marks = emptyList(),

@@ -114,7 +114,8 @@ pub enum BridgeFileRole {
         track_count: u32,
     },
     Artwork {
-        choice: BridgeCoverChoice,
+        /// Absent for previewable artwork the cover decoder does not support.
+        choice: Option<BridgeCoverChoice>,
     },
     Document,
     /// In the folder and carried with the release, unrecognized — a scene
@@ -250,6 +251,8 @@ pub struct BridgeCandidateFiles {
     /// Every file in the folder, each exactly once, in release-relative path
     /// order.
     pub files: Vec<BridgeCandidateFile>,
+    /// Artwork supported by the cover decoder, in source order.
+    pub cover_files: Vec<BridgeCandidateFile>,
     /// Core-derived aggregate and physical files for the effective source audio.
     pub source_audio: Option<BridgeCandidateSourceAudio>,
 }

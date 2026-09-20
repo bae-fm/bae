@@ -148,7 +148,7 @@ fn produced_keys() -> Vec<String> {
         BridgeFileRole::Audio,
         BridgeFileRole::TrackSheet { track_count: 0 },
         BridgeFileRole::Artwork {
-            choice: loc_cover_choice(),
+            choice: Some(loc_cover_choice()),
         },
         BridgeFileRole::Document,
         BridgeFileRole::Other,

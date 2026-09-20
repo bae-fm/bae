@@ -111,6 +111,18 @@ impl ContentTypeHint {
         self.is_image() && !matches!(self, Self::Svg)
     }
 
+    /// Whether this extension suggests a format accepted for cover artwork.
+    pub fn is_supported_cover(&self) -> bool {
+        self.image_content_type()
+            .is_some_and(|content_type| content_type.is_supported_cover())
+    }
+
+    pub fn path_is_supported_cover(path: &Path) -> bool {
+        path.extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| Self::from_extension(extension).is_supported_cover())
+    }
+
     /// Whether `path`'s extension classifies as a raster image. Returns `false`
     /// for paths with no extension, non-UTF-8 extensions, and SVG.
     pub fn path_is_raster_image(path: &Path) -> bool {

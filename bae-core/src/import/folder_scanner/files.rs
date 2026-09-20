@@ -380,6 +380,20 @@ pub struct CandidateFile {
 }
 
 impl CandidateFile {
+    /// A cover action exists only for artwork the cover decoder supports.
+    pub fn cover_choice(&self) -> Option<crate::import::CoverChoice> {
+        (matches!(self.role, FileRole::Artwork)
+            && crate::util::content_type_hint::ContentTypeHint::path_is_supported_cover(
+                &self.file.path,
+            ))
+        .then(|| {
+            crate::import::CoverChoice::local(
+                self.file.relative_path.clone(),
+                self.file.path.clone(),
+            )
+        })
+    }
+
     /// The roles this file can be put in, the one in force first, or empty
     /// when its role is nobody's decision to make.
     pub fn role_alternatives(&self) -> &'static [FileRoleChoice] {
@@ -555,6 +569,13 @@ impl CategorizedFiles {
             .iter()
             .filter(|entry| matches!(entry.role, FileRole::Artwork))
             .map(|entry| &entry.file)
+    }
+
+    /// Artwork offered by cover pickers; other images remain in `artwork`.
+    pub fn cover_files(&self) -> impl Iterator<Item = &CandidateFile> {
+        self.files
+            .iter()
+            .filter(|entry| entry.cover_choice().is_some())
     }
 
     /// The release's readable evidence files.

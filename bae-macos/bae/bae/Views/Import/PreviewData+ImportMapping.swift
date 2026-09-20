@@ -144,6 +144,7 @@
         static let moreTracksCandidateFiles = BridgeCandidateFiles(
             fileTagsIdentity: "more-tracks-audio",
             files: [moreTracksAudio],
+            coverFiles: [],
             sourceAudio: BridgeCandidateSourceAudio(
                 summary: .uniform(
                     descriptor: BridgeSourceAudioDescriptor(

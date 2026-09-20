@@ -42,7 +42,7 @@ struct CoverSheetView: View {
     var body: some View {
         CoverGalleryView(
             remoteItems: state.remoteItems,
-            releaseItems: release?.imageFiles
+            releaseItems: release?.coverFiles
                 .map {
                     CoverItem(releaseId: releaseId, file: $0)
                 } ?? [],

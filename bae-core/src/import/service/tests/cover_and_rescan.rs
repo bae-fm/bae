@@ -41,36 +41,167 @@ fn watcher_error_without_a_mapped_path_rescans_every_root() {
 }
 
 #[tokio::test]
-async fn explicit_bmp_cover_is_selected() {
+async fn explicit_bmp_cover_is_rejected() {
     let test = setup_import_service().await;
     let bmp = test.temp.path().join("cover.bmp");
     let jpg = test.temp.path().join("front.jpg");
     std::fs::write(&bmp, b"bmp bytes").unwrap();
     std::fs::write(&jpg, b"jpg bytes").unwrap();
     let discovered = vec![
-        ScannedFile::new(
-            bmp.clone(),
-            "cover.bmp".to_string(),
-            9,
-            1,
-        ),
-        ScannedFile::new(
-            jpg.clone(),
-            "front.jpg".to_string(),
-            9,
-            1,
-        ),
+        ScannedFile::new(bmp.clone(), "cover.bmp".to_string(), 9, 1),
+        ScannedFile::new(jpg.clone(), "front.jpg".to_string(), 9, 1),
     ];
 
-    let candidate = test
+    let error = test
         .service
         .pick_folder_cover(&discovered, Some("cover.bmp"))
-        .unwrap()
-        .expect("selected cover should be picked");
+        .unwrap_err();
+    assert!(matches!(
+        error,
+        crate::import::ImportError::LocalCover { .. }
+    ));
+}
 
-    assert_eq!(candidate.source, "local");
-    assert_eq!(candidate.source_url.as_deref(), Some("release://cover.bmp"));
-    assert_eq!(candidate.bytes, b"bmp bytes");
+/// A retained reading from a tag reader that accepted BMP artwork.
+struct UnsupportedEmbeddedArtworkReader;
+
+impl crate::import::file_tag_snapshot::FileTagReader for UnsupportedEmbeddedArtworkReader {
+    fn read(
+        &self,
+        path: &Path,
+    ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
+        let mut read = crate::import::file_tag_snapshot::LoftyFileTagReader.read(path)?;
+        read.embedded_cover = Some((b"BM".to_vec(), crate::util::content_type::ContentType::Bmp));
+        Ok(read)
+    }
+}
+
+#[tokio::test]
+async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_selected() {
+    for explicit in [false, true] {
+        let test = setup_import_service().await;
+        let root = test.temp.path().join("watched");
+        let folder = root.join("Album");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("01.flac"), flac()).unwrap();
+        write_test_jpeg(&folder.join("front.jpg"));
+        let root_text = root.to_string_lossy().into_owned();
+        let key = folder.to_string_lossy().into_owned();
+        test.service
+            .library_manager
+            .add_watched_import_folder(&root_text)
+            .await
+            .unwrap();
+        let (scan, _) = test.scan_with(
+            Arc::new(UnsupportedEmbeddedArtworkReader),
+            Arc::new(crate::import::folder_scanner::OsDirectoryReader),
+        );
+        scan.rescan(&root).await.unwrap();
+        let candidate = test
+            .service
+            .library_manager
+            .load_release_candidate(&key)
+            .await
+            .unwrap()
+            .unwrap();
+        let hash = candidate.files().content_hash();
+        let revision = prepare_named_candidate(
+            &test.service,
+            &test.preparations,
+            &hash,
+            &root_text,
+            &key,
+            "Cover Album",
+        )
+        .await;
+        let preparation = test
+            .service
+            .library_manager
+            .load_import_candidate_preparation(&hash)
+            .await
+            .unwrap()
+            .unwrap();
+        let revision = test
+            .preparations
+            .apply_source(
+                &root_text,
+                &crate::import::CandidateAsRead {
+                    content_hash: hash.clone(),
+                    file_edit_revision: candidate.file_edit_revision(),
+                    metadata_revision: revision,
+                },
+                &key,
+                &crate::import::CandidateMetadataDraft {
+                    draft: preparation.draft,
+                    source_discogs_artist_ids: preparation.source_discogs_artist_ids,
+                    provenance: preparation.metadata_provenance,
+                    cover: explicit.then(|| CoverSelection::Embedded("01.flac".to_string())),
+                    assets: preparation.assets,
+                },
+            )
+            .await
+            .unwrap();
+        let snapshot = test
+            .service
+            .library_manager
+            .load_candidate_file_tag_snapshot(&root_text, &key)
+            .await
+            .unwrap()
+            .unwrap()
+            .snapshot
+            .unwrap();
+        assert_eq!(
+            snapshot.embedded_cover.as_ref().unwrap().content_type,
+            crate::util::content_type::ContentType::Bmp
+        );
+        let mut events = test.service.event_tx.subscribe();
+        let result = test
+            .service
+            .prepare_and_run_folder_import(
+                test.service.ids.new_id(),
+                key,
+                candidate.source(),
+                super::ImportExpectation {
+                    candidate: crate::import::CandidateAsRead {
+                        content_hash: hash,
+                        file_edit_revision: candidate.file_edit_revision(),
+                        metadata_revision: revision,
+                    },
+                    file_tag_snapshot: Some(snapshot),
+                },
+                StorageMode::Local,
+                false,
+            )
+            .await;
+        if explicit {
+            let error = result.unwrap_err();
+            assert!(
+                matches!(&error, crate::import::ImportError::CoverArt { detail } if detail.contains("Bmp") && detail.contains("not supported")),
+                "{error}"
+            );
+        } else {
+            result.expect("automatic artwork should skip unsupported snapshot data");
+            let release_id = loop {
+                match events.try_recv() {
+                    Ok(crate::import::handle::ImportEvent::ImportProgress {
+                        progress: ImportProgress::Complete { id, .. },
+                        ..
+                    }) => break id,
+                    Ok(_) | Err(tokio::sync::broadcast::error::TryRecvError::Lagged(_)) => {}
+                    Err(error) => panic!("import completed without its completion event: {error}"),
+                }
+            };
+            let cover = test
+                .service
+                .library_manager
+                .get_library_image(&release_id, &crate::db::LibraryImageType::Cover)
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(cover.source, "local");
+            assert_eq!(cover.source_url.as_deref(), Some("release://front.jpg"));
+        }
+    }
 }
 
 #[tokio::test]
@@ -113,11 +244,18 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn selected_local_cover_path_must_match_discovered_file() {
-    let TestService { service, preparations, temp: tmp } = setup_import_service().await;
+    let TestService {
+        service,
+        preparations,
+        temp: tmp,
+    } = setup_import_service().await;
     // The import under test commits a draft it was handed, not one the folder's
     // tags wrote: the pre-fill would give the candidate a File Tags draft whose
     // stored reading this import is not carrying.
-    service.library_manager.set_prefill_with_tags(false).unwrap();
+    service
+        .library_manager
+        .set_prefill_with_tags(false)
+        .unwrap();
     let folder = tmp.path().join("release");
     std::fs::create_dir(&folder).unwrap();
     write_test_jpeg(&folder.join("front.jpg"));
@@ -179,7 +317,8 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         "Candidate",
     )
     .await;
-    preparations.set_prepared_cover(
+    preparations
+        .set_prepared_cover(
             &watched_folder_path,
             &folder.to_string_lossy(),
             &crate::import::CandidateAsRead {
@@ -244,7 +383,9 @@ async fn unreadable_selected_cover_is_an_error() {
         1,
     )];
 
-    let result = test.service.pick_folder_cover(&discovered, Some("cover.jpg"));
+    let result = test
+        .service
+        .pick_folder_cover(&discovered, Some("cover.jpg"));
 
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
     let err = result.unwrap_err();
@@ -418,11 +559,7 @@ fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
             .release_files()
             .find(|file| file.relative_path == name)
             .expect("fixture is present in the scan");
-        assert_eq!(
-            resolve_file_content_type(file).unwrap(),
-            expected,
-            "{name}"
-        );
+        assert_eq!(resolve_file_content_type(file).unwrap(), expected, "{name}");
     }
 }
 
