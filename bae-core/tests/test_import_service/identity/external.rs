@@ -51,15 +51,15 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
     assert!(!release.draft_from_tags);
     let records = f.db.get_release_records(&release.id).await.unwrap();
     assert_eq!(records.len(), 1);
-    assert_eq!(records[0].catalog, Catalog::Discogs);
-    assert!(records[0].reads_draft);
+    assert_eq!(records[0].catalog(), Catalog::Discogs);
+    assert!(records[0].reads_draft());
     assert_eq!(
-        records[0].group_key,
+        records[0].album_ref().expect("known parent album").key,
         support::discogs_fixture_id("master-exact")
     );
-    assert_eq!(records[0].key, release_id_key);
+    assert_eq!(records[0].key(), release_id_key);
     assert_eq!(
-        records[0].url,
+        records[0].url(),
         format!("https://www.discogs.com/release/{release_id_key}")
     );
 }
@@ -136,7 +136,7 @@ async fn a_user_edit_overlays_the_picked_release() {
     // which catalog release describes it.
     let records = f.db.get_release_records(&release.id).await.unwrap();
     assert_eq!(records.len(), 1);
-    assert_eq!(records[0].key, release_id_key);
+    assert_eq!(records[0].key(), release_id_key);
 }
 
 // ── cross-catalog records ───────────────────────────────────────────────────
@@ -256,20 +256,23 @@ async fn a_cross_link_writes_both_catalogs_records() {
 
     let mb = records
         .iter()
-        .find(|record| record.catalog == Catalog::MusicBrainz)
+        .find(|record| record.catalog() == Catalog::MusicBrainz)
         .expect("MusicBrainz record missing");
-    assert_eq!(mb.group_key, "xref-mb-group-exact");
-    assert_eq!(mb.key, mb_id);
+    assert_eq!(
+        mb.album_ref().expect("known parent album").key,
+        "xref-mb-group-exact"
+    );
+    assert_eq!(mb.key(), mb_id);
 
     let discogs = records
         .iter()
-        .find(|record| record.catalog == Catalog::Discogs)
+        .find(|record| record.catalog() == Catalog::Discogs)
         .expect("Discogs record missing");
     assert_eq!(
-        discogs.group_key,
+        discogs.album_ref().expect("known parent album").key,
         support::discogs_fixture_id("xref-d-master-exact")
     );
-    assert_eq!(discogs.key, discogs_id);
+    assert_eq!(discogs.key(), discogs_id);
 }
 
 // ── a pick's partners ───────────────────────────────────────────────────────
@@ -318,22 +321,25 @@ async fn a_pick_with_a_partner_writes_both_records() {
 
     let mb = records
         .iter()
-        .find(|record| record.catalog == Catalog::MusicBrainz)
+        .find(|record| record.catalog() == Catalog::MusicBrainz)
         .expect("MusicBrainz record missing");
-    assert_eq!(mb.group_key, "partner-mb-group");
-    assert_eq!(mb.key, mb_id);
-    assert!(mb.reads_draft, "the draft was read from the primary");
+    assert_eq!(
+        mb.album_ref().expect("known parent album").key,
+        "partner-mb-group"
+    );
+    assert_eq!(mb.key(), mb_id);
+    assert!(mb.reads_draft(), "the draft was read from the primary");
 
     let discogs = records
         .iter()
-        .find(|record| record.catalog == Catalog::Discogs)
+        .find(|record| record.catalog() == Catalog::Discogs)
         .expect("Discogs record missing");
     assert_eq!(
-        discogs.group_key,
+        discogs.album_ref().expect("known parent album").key,
         support::discogs_fixture_id("partner-d-master")
     );
-    assert_eq!(discogs.key, discogs_id);
-    assert!(!discogs.reads_draft);
+    assert_eq!(discogs.key(), discogs_id);
+    assert!(!discogs.reads_draft());
 }
 
 /// The partner is what the person picked, so it replaces the Discogs record
@@ -381,15 +387,16 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
     let records = f.db.get_release_records(&release_id).await.unwrap();
     let discogs: Vec<_> = records
         .iter()
-        .filter(|record| record.catalog == Catalog::Discogs)
+        .filter(|record| record.catalog() == Catalog::Discogs)
         .collect();
     assert_eq!(discogs.len(), 1, "one row per catalog");
     assert_eq!(
-        discogs[0].key, picked_id,
+        discogs[0].key(),
+        picked_id,
         "the picked release outranks the cross-referenced one"
     );
     assert_eq!(
-        discogs[0].group_key,
+        discogs[0].album_ref().expect("known parent album").key,
         support::discogs_fixture_id("picked-d-master")
     );
 }

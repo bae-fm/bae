@@ -46,3 +46,7 @@ mod loc_key_coverage_tests;
 #[cfg(test)]
 #[path = "types_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "types/record_tests.rs"]
+mod record_tests;

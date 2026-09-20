@@ -333,6 +333,7 @@ impl ImportServiceHandle {
     pub(crate) async fn external_candidate_metadata(
         &self,
         payloads: &crate::import::payloads::ReleasePayloads,
+        partners: Vec<crate::import::payloads::ReleasePayloads>,
         durations: &crate::import::probe::SourceDurations,
         provenance: crate::import::MetadataProvenance,
         current: &crate::import::CandidateDraft,
@@ -370,6 +371,7 @@ impl ImportServiceHandle {
             assets: crate::import::CandidatePreparedAssets {
                 applied_source: Some(crate::import::payloads::AppliedSource {
                     payloads: payloads.clone(),
+                    partners,
                     audio_durations_ms: current.audio_durations(durations)?,
                 }),
                 remote_cover,
@@ -442,12 +444,9 @@ impl ImportServiceHandle {
                 let payloads = self
                     .payloads_for_provenance(&candidate_key, &primary)
                     .await?;
-                // Every source the pick claims has to read offline afterwards:
-                // import and re-identify both open the partner's own document
-                // for the identity it states. This runs before the provenance
-                // is written, so a partner that will not prepare leaves the
-                // candidate with the draft and pick it already had.
-                crate::import::service::prepare_partners(
+                // Retain every claimed source's exact answer in this metadata
+                // revision. A failed partner leaves the previous pick unchanged.
+                let prepared_partners = crate::import::service::prepare_partners(
                     &self.library_manager,
                     &primary,
                     partners,
@@ -457,6 +456,7 @@ impl ImportServiceHandle {
                 let metadata = self
                     .external_candidate_metadata(
                         &payloads,
+                        prepared_partners,
                         &durations,
                         provenance.clone(),
                         &current.draft,

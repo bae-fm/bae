@@ -26,10 +26,8 @@ impl ImportServiceHandle {
     /// A search already running for this key is superseded — one search per
     /// candidate at a time, because the pane shows one result area.
     pub fn start_candidate_search(&self, candidate_key: String, query: SearchQuery) {
-        let search = CandidateSearch::started(
-            query.clone(),
-            &self.library_manager.metadata_sources(),
-        );
+        let search =
+            CandidateSearch::started(query.clone(), &self.library_manager.metadata_sources());
         let sources = search.searching_sources();
         let run = self.runtime.start_search(&candidate_key, search);
         for source in sources {
@@ -225,59 +223,59 @@ impl ImportServiceHandle {
 
         let mut covers = Vec::new();
 
-        // Only the catalogs bae asks serve artwork; the rest are pages a record
-        // links out to.
-        for record in records.iter().filter(|record| {
-            crate::import::Catalog::LOOKUP.contains(&record.catalog)
-        }) {
-            match record.catalog {
-                Catalog::MusicBrainz => {
-                    let gallery = crate::import::cover_art::musicbrainz_gallery(
-                        &record.key,
-                        Some(record.group_key.as_str()),
-                    )
-                    .await?;
-                    for cover in gallery {
-                        crate::import::cover_art::push_unique_cover(&mut covers, cover);
+        for record in records
+            .iter()
+            .filter(|record| Catalog::LOOKUP.contains(&record.catalog()))
+        {
+            let gallery = match record {
+                crate::import::ReleaseRecord::Pressing {
+                    release, album_key, ..
+                } => match release.catalog {
+                    Catalog::MusicBrainz => {
+                        crate::import::cover_art::musicbrainz_gallery(
+                            &release.key,
+                            album_key.as_deref(),
+                        )
+                        .await?
                     }
-                }
-                Catalog::Discogs => {
-                    let found = self
-                        .library_manager
-                        .fetch_discogs_release_covers(&record.key, CallPriority::Interactive)
-                        .await?;
-                    for cover in found {
-                        crate::import::cover_art::push_unique_cover(&mut covers, cover);
+                    Catalog::Discogs => {
+                        self.library_manager
+                            .fetch_discogs_release_covers(&release.key, CallPriority::Interactive)
+                            .await?
                     }
-                }
-                other => unreachable!("{} serves no artwork", other.as_str()),
+                    other => unreachable!("{} serves no artwork", other.as_str()),
+                },
+                crate::import::ReleaseRecord::Album { album } => match album.catalog {
+                    Catalog::MusicBrainz => {
+                        crate::import::cover_art::musicbrainz_group_gallery(&album.key).await?
+                    }
+                    Catalog::Discogs => {
+                        self.library_manager
+                            .fetch_discogs_master_covers(&album.key, CallPriority::Interactive)
+                            .await?
+                    }
+                    other => unreachable!("{} serves no artwork", other.as_str()),
+                },
+            };
+            for cover in gallery {
+                crate::import::cover_art::push_unique_cover(&mut covers, cover);
             }
         }
 
         Ok(RemoteCoverGallery::Linked(covers))
     }
 
-    /// The documents behind external-release provenance, and where they come from.
-    ///
-    /// Provenance matching the candidate's settled lead **reads** them: identification
-    /// stored them before it stored the verdict that named this release, so they
-    /// are there, and a miss is a broken invariant rather than a cold cache.
-    /// Re-fetching on a miss would serve the pane and hide the break, so it
-    /// fails instead.
-    ///
-    /// Every other external release — another pressing in a list, an explicit
-    /// search result, a release being re-identified — is one identification
-    /// never fetched. It goes through [`crate::import::service::prepare_release`],
-    /// which reads whatever is archived and pays for the rest, so opening it a
-    /// second time is local too.
+    /// Prepare documents for an explicit metadata application. A settled lead
+    /// must already have its anchor archived; missing it is a broken invariant.
+    /// Preparation follows any related documents the archive does not yet hold.
+    /// Ordinary pane reads and applied snapshots never call this path.
     pub(super) async fn payloads_for_provenance(
         &self,
         candidate_key: &str,
         release: &crate::import::MetadataRef,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
         if self.is_settled_lead(candidate_key, release).await? {
-            return self
-                .library_manager
+            self.library_manager
                 .load_release_payloads(release)
                 .await?
                 .ok_or_else(|| crate::import::ImportError::Internal {
@@ -286,7 +284,7 @@ impl ImportServiceHandle {
                         release.catalog.as_str(),
                         release.key
                     ),
-                });
+                })?;
         }
         crate::import::service::prepare_release(
             &self.library_manager,

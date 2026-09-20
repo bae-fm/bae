@@ -222,14 +222,10 @@ public sealed class ImportSectionViewTests
     [
         new BridgeReleaseRecord(
             BridgeCatalog.MusicBrainz,
-            "rel-paired",
-            "https://musicbrainz.org/release/rel-paired",
-            true),
+            "https://musicbrainz.org/release/rel-paired"),
         new BridgeReleaseRecord(
             BridgeCatalog.Discogs,
-            "discogs-paired",
-            "https://www.discogs.com/release/discogs-paired",
-            false),
+            "https://www.discogs.com/release/discogs-paired"),
     ];
 
     // A row with no draft is the folder it came from: the glyph, the folder

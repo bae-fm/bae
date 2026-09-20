@@ -53,45 +53,19 @@ fn discogs_role_artist_ref(credit: &DiscogsRoleArtist) -> ArtistRef {
 }
 
 /// An [`ArtistRef`] for a Discogs display credit, keyed on its canonical name.
-fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistRef {
+pub(crate) fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistRef {
     discogs_artist_ref(credit.name.clone(), Some(credit.id.clone()))
 }
 
-/// Map a Discogs release into database models (pure, no I/O).
-///
-/// `master_year` is the original release year from the Discogs master; the album
-/// year falls back to the specific release's year when it's absent.
-///
-/// `audio_durations_ms` is what the folder's audio measures, which is how the
-/// tracklist's index/sub-track layout is chosen; `None` takes the leaf tracks.
-pub fn map_discogs_to_db(
-    release: &DiscogsRelease,
-    master_year: Option<u32>,
-    audio_durations_ms: Option<&[u64]>,
-    clock: &dyn Clock,
-    ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, ImportError> {
-    let processed = process_tracklist(&release.tracklist, audio_durations_ms);
-    let processed = &processed[..];
+/// Album and pressing facts from this release, independently of its tracklist.
+pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::ReleaseMetadata {
     // With no artists list, fall back to the artist half of the "Artist - Album"
     // title split.
-    let mut release_refs: Vec<ArtistRef> = if release.artists.is_empty() {
-        let artist_name = crate::discogs::split_title(&release.title)
-            .and_then(|(artist, _)| artist)
-            .ok_or_else(|| ImportError::SourceData {
-                catalog: Catalog::Discogs,
-                detail: format!(
-                    "Discogs release {} has no release artist in artists list or title",
-                    release.id
-                ),
-            })?
-            .to_string();
-        vec![ArtistRef {
-            name: artist_name.clone(),
-            sort_name: Some(artist_name),
-            musicbrainz_artist_id: None,
-            discogs_artist_id: None,
-        }]
+    let release_refs: Vec<ArtistRef> = if release.artists.is_empty() {
+        match crate::discogs::split_title(&release.title).and_then(|(artist, _)| artist) {
+            Some(name) => vec![discogs_artist_ref(name.to_owned(), None)],
+            None => Vec::new(),
+        }
     } else {
         release
             .artists
@@ -99,29 +73,57 @@ pub fn map_discogs_to_db(
             .map(discogs_track_artist_ref)
             .collect()
     };
-    let primary_artist = release_refs.remove(0);
 
-    let album_year = master_year
-        .map(|y| y as i32)
-        .or(release.year.map(|y| y as i32));
-    let is_compilation = release
-        .artists
-        .first()
-        .map(|a| is_various_artists(&a.name))
-        .unwrap_or(false);
+    super::release_metadata::ReleaseMetadata {
+        album: super::release_metadata::AlbumMetadata {
+            title: release.title.clone(),
+            artists: release_refs,
+            year: None,
+        },
+        pressing: pressing(release),
+    }
+}
+
+/// The pressing fields shared by detail and imported metadata.
+pub(crate) fn pressing(release: &DiscogsRelease) -> Pressing {
     let format = if release.format.is_empty() {
         None
     } else {
         Some(release.format.join(", "))
     };
-    let pressing = Pressing {
+    Pressing {
         year: release.year.map(|y| y as i32),
         format,
         label: release.label.first().cloned(),
         catalog_number: release.catno.clone(),
         country: release.country.clone(),
-        barcode: None,
-    };
+        barcode: release.barcode.clone(),
+    }
+}
+
+#[cfg(test)]
+pub fn map_discogs_to_db(
+    release: &DiscogsRelease,
+    master_year: Option<u32>,
+    audio_durations_ms: Option<&[u64]>,
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, ImportError> {
+    let mut metadata = metadata(release);
+    metadata.album.year = master_year.or(release.year).map(|year| year as i32);
+    map_with_metadata(release, metadata, audio_durations_ms, clock, ids)
+}
+
+pub(crate) fn map_with_metadata(
+    release: &DiscogsRelease,
+    mut metadata: super::release_metadata::ReleaseMetadata,
+    audio_durations_ms: Option<&[u64]>,
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, ImportError> {
+    let processed = process_tracklist(&release.tracklist, audio_durations_ms);
+    let primary_artist = metadata.album.take_primary(Catalog::Discogs, &release.id)?;
+    let is_compilation = is_various_artists(&primary_artist.name);
 
     // Positions come from source order, and non-composer roles are skipped — so
     // the positions keep holes.
@@ -152,12 +154,12 @@ pub fn map_discogs_to_db(
         .collect();
 
     let ir = ReleaseIr {
-        album_title: release.title.clone(),
+        album_title: metadata.album.title,
         primary_artist,
-        additional_artists: release_refs,
-        album_year,
+        additional_artists: metadata.album.artists,
+        album_year: metadata.album.year,
         is_compilation,
-        pressing,
+        pressing: metadata.pressing,
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             record: MetadataRef::new(Catalog::Discogs, release.id.clone()),
             // The mapper reads one document; what else the pick claimed is

@@ -285,10 +285,13 @@ async fn re_identify_release_exact_archives_the_picked_release() {
         .await
         .unwrap();
     assert_eq!(records.len(), 1);
-    assert_eq!(records[0].catalog, Catalog::MusicBrainz);
-    assert_eq!(records[0].group_key, new_group_id);
-    assert_eq!(records[0].key, new_release_id);
-    assert!(records[0].reads_draft);
+    assert_eq!(records[0].catalog(), Catalog::MusicBrainz);
+    assert_eq!(
+        records[0].album_ref().expect("known parent album").key,
+        new_group_id
+    );
+    assert_eq!(records[0].key(), new_release_id);
+    assert!(records[0].reads_draft());
 
     let updated = manager
         .database
@@ -750,17 +753,20 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
 
     let mb = identities
         .iter()
-        .find(|record| record.catalog == Catalog::MusicBrainz)
+        .find(|record| record.catalog() == Catalog::MusicBrainz)
         .expect("the MusicBrainz record");
-    assert_eq!(mb.group_key, mb_group_id);
-    assert_eq!(mb.key, mb_release_id);
+    assert_eq!(mb.album_ref().expect("known parent album").key, mb_group_id);
+    assert_eq!(mb.key(), mb_release_id);
 
     let discogs = identities
         .iter()
-        .find(|record| record.catalog == Catalog::Discogs)
+        .find(|record| record.catalog() == Catalog::Discogs)
         .expect("the Discogs record");
-    assert_eq!(discogs.group_key, discogs_master_id);
-    assert_eq!(discogs.key, discogs_release_id);
+    assert_eq!(
+        discogs.album_ref().expect("known parent album").key,
+        discogs_master_id
+    );
+    assert_eq!(discogs.key(), discogs_release_id);
 
     // The partner's documents are archived under its own key, so a later
     // reset or read of that record needs no network.

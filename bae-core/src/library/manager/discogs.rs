@@ -72,9 +72,15 @@ impl DiscogsSession {
     async fn fetch_payloads(
         &self,
         release: &crate::import::MetadataRef,
+        stored: Option<&crate::import::payloads::ReleasePayloads>,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        crate::import::payloads::fetch(self.client.as_ref(), release, priority).await
+        match stored {
+            Some(stored) => {
+                crate::import::payloads::enrich(self.client.as_ref(), stored, priority).await
+            }
+            None => crate::import::payloads::fetch(self.client.as_ref(), release, priority).await,
+        }
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -95,6 +101,20 @@ impl DiscogsSession {
             }
         }
         Ok(covers)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    async fn master_covers(
+        &self,
+        master_id: &str,
+        priority: CallPriority,
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+        let client = self
+            .client
+            .as_ref()
+            .ok_or(crate::import::ImportError::DiscogsNotConfigured)?;
+        let (master, _) = client.get_master(master_id, priority).await?;
+        Ok(master.covers)
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -205,16 +225,20 @@ impl LibraryManager {
     pub(crate) async fn fetch_release_payloads(
         &self,
         release: &crate::import::MetadataRef,
+        stored: Option<&crate::import::payloads::ReleasePayloads>,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
         match DiscogsSession::open(&self.config_handle, &self.database) {
-            Ok(session) => session.fetch_payloads(release, priority).await,
+            Ok(session) => session.fetch_payloads(release, stored, priority).await,
             Err(error) if release.catalog == crate::import::Catalog::MusicBrainz => {
                 warn!(
                     release_id = %release.key,
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
                 );
-                crate::import::payloads::fetch(None, release, priority).await
+                match stored {
+                    Some(stored) => crate::import::payloads::enrich(None, stored, priority).await,
+                    None => crate::import::payloads::fetch(None, release, priority).await,
+                }
             }
             Err(error) => Err(error.into()),
         }
@@ -228,6 +252,17 @@ impl LibraryManager {
     ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
         DiscogsSession::open(&self.config_handle, &self.database)?
             .release_covers(release_id, priority)
+            .await
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn fetch_discogs_master_covers(
+        &self,
+        master_id: &str,
+        priority: CallPriority,
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+        DiscogsSession::open(&self.config_handle, &self.database)?
+            .master_covers(master_id, priority)
             .await
     }
 

@@ -87,13 +87,58 @@ impl Database {
                 );
                 Vec::new()
             };
-            let applied = crate::import::payloads::AppliedSource {
-                payloads,
-                audio_durations_ms,
-            };
+            // This migration writes its historical snapshot shape. Later
+            // migrations extend stored snapshots without reloading the anchor.
+            let applied = serde_json::json!({
+                "payloads": payloads,
+                "audio_durations_ms": audio_durations_ms,
+            });
             let json = serde_json::to_string(&applied)
                 .map_err(|error| DbError::Message(error.to_string()))?;
             sql.execute("INSERT INTO import_candidate_applied_source (content_hash, snapshot) VALUES (?, ?)", params![hash, json])?;
+        }
+        Ok(())
+    }
+
+    /// Extend each stored application with the partner documents it previously
+    /// read from the archive, preserving the already frozen primary document.
+    pub(crate) fn migrate_applied_source_partners(
+        sql: &coven::MigrationContext<'_>,
+    ) -> Result<(), DbError> {
+        let snapshots = sql.query(
+            "SELECT content_hash, snapshot FROM import_candidate_applied_source ORDER BY content_hash",
+            [],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )?;
+        for (hash, snapshot) in snapshots {
+            let mut snapshot: serde_json::Value = serde_json::from_str(&snapshot)
+                .map_err(|error| DbError::Message(error.to_string()))?;
+            let object = snapshot.as_object_mut().ok_or_else(|| {
+                DbError::Message(format!("candidate {hash} has a non-object source snapshot"))
+            })?;
+            let refs = sql.query(
+                "SELECT source, release_id FROM import_candidate_provenance_partner WHERE content_hash = ? ORDER BY source",
+                [&hash],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )?;
+            let mut partners = Vec::with_capacity(refs.len());
+            for (catalog, key) in refs {
+                let record = MetadataRef::new(catalog.parse().map_err(DbError::Message)?, key);
+                let partner = load_release_payloads_on(sql, &record)
+                    .map_err(|error| DbError::Message(error.to_string()))?
+                    .ok_or_else(|| DbError::Message(format!(
+                        "candidate {hash} has no archived source document for partner {record:?}"
+                    )))?;
+                partners.push(partner);
+            }
+            object.insert("partners".into(), serde_json::to_value(partners)
+                .map_err(|error| DbError::Message(error.to_string()))?);
+            let json = serde_json::to_string(&snapshot)
+                .map_err(|error| DbError::Message(error.to_string()))?;
+            sql.execute(
+                "UPDATE import_candidate_applied_source SET snapshot = ? WHERE content_hash = ?",
+                params![json, hash],
+            )?;
         }
         Ok(())
     }
@@ -117,8 +162,32 @@ impl Database {
         &self,
         payloads: &[DbSourceReleasePayload],
     ) -> Result<(), DbError> {
+        self.write_source_release_payloads(payloads, &[]).await
+    }
+
+    /// Replace a lookup's documents atomically, clearing previously stored
+    /// answers for related entities absent from the successful lookup set.
+    /// Offline replay must not resurrect stale supporting metadata.
+    pub(crate) async fn replace_release_payloads(
+        &self,
+        payloads: &[DbSourceReleasePayload],
+        invalidated: &[(PayloadSource, String)],
+    ) -> Result<(), DbError> {
+        self.write_source_release_payloads(payloads, invalidated)
+            .await
+    }
+
+    async fn write_source_release_payloads(
+        &self,
+        payloads: &[DbSourceReleasePayload],
+        invalidated: &[(PayloadSource, String)],
+    ) -> Result<(), DbError> {
         let payloads = payloads.to_vec();
+        let invalidated = invalidated.to_vec();
         self.call(move |sql| {
+            for (source, key) in &invalidated {
+                sql.execute("DELETE FROM source_release_payloads WHERE source = ? AND source_release_id = ?", params![source.as_str(), key])?;
+            }
             for payload in &payloads {
                 sql.execute(
                     "INSERT INTO source_release_payloads \

@@ -30,6 +30,15 @@ pub async fn musicbrainz_gallery(
     fetch_gallery_set(&base, release_id, group_id).await
 }
 
+/// A known album identity requests only its release-group gallery.
+pub async fn musicbrainz_group_gallery(group_id: &str) -> Result<Vec<RemoteCover>, ImportError> {
+    fetch_gallery(&format!(
+        "{}/release-group/{group_id}/",
+        super::ARCHIVE.get()
+    ))
+    .await
+}
+
 async fn fetch_gallery_set(
     base: &str,
     release_id: &str,

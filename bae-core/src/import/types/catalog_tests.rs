@@ -104,18 +104,23 @@ fn a_parsed_page_rebuilds_the_address_it_was_read_from() {
         ),
     ] {
         let page = parse_catalog_url(url).unwrap_or_else(|| panic!("{url} names a catalog page"));
-        assert_eq!(
-            page,
+        let expected = if Catalog::LOOKUP.contains(&catalog) {
             CatalogPage::Release {
                 catalog,
-                key: key.to_string()
+                key: key.to_string(),
             }
-        );
-        assert_eq!(
-            catalog.release_url(key),
-            url,
-            "{url} is rebuilt from its key"
-        );
+        } else {
+            CatalogPage::Group {
+                catalog,
+                key: key.to_string(),
+            }
+        };
+        assert_eq!(page, expected);
+        let rebuilt = match page {
+            CatalogPage::Release { catalog, key } => catalog.release_url(&key),
+            CatalogPage::Group { catalog, key } => catalog.album_url(&key),
+        };
+        assert_eq!(rebuilt, url, "{url} is rebuilt from its key");
     }
 }
 
@@ -148,14 +153,14 @@ fn an_address_is_read_past_what_does_not_name_the_page() {
         ),
         (
             "https://music.apple.com/us/album/album-title/424242?i=989898",
-            CatalogPage::Release {
+            CatalogPage::Group {
                 catalog: Catalog::AppleMusic,
                 key: "424242".to_string(),
             },
         ),
         (
             "https://www.deezer.com/en/album/424242",
-            CatalogPage::Release {
+            CatalogPage::Group {
                 catalog: Catalog::Deezer,
                 key: "424242".to_string(),
             },

@@ -605,14 +605,10 @@ public sealed class ImportMappingPaneTests
             reading: new BridgeTriageReading.Identified([
                 new BridgeReleaseRecord(
                     BridgeCatalog.MusicBrainz,
-                    "rel-1",
-                    "https://musicbrainz.org/release/rel-1",
-                    true),
+                    "https://musicbrainz.org/release/rel-1"),
                 new BridgeReleaseRecord(
                     BridgeCatalog.Discogs,
-                    "4242",
-                    "https://www.discogs.com/release/4242",
-                    false),
+                    "https://www.discogs.com/release/4242"),
             ])));
 
         var rows = pane

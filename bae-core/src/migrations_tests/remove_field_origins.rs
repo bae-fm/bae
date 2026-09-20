@@ -127,7 +127,12 @@ async fn removing_field_origins_preserves_values_sources_and_audio() {
         .expect("capture values before removing origins");
     drop(handle);
 
-    let handle = open(store_dir, "remove-field-origins", all()).expect("remove field origins");
+    let handle = open(
+        store_dir,
+        "remove-field-origins",
+        all().into_iter().take(41).collect(),
+    )
+    .expect("remove field origins");
     handle
         .read(move |sql| {
             for (table, expected) in TABLES
@@ -157,4 +162,62 @@ async fn removing_field_origins_preserves_values_sources_and_audio() {
         })
         .await
         .expect("verify data survives without field origins");
+}
+
+#[tokio::test]
+#[serial]
+async fn historical_release_operations_match_image_migration_after_origins_are_removed() {
+    use coven::rusqlite::session::Session;
+
+    for version in 38..=40 {
+        for (name, operation, restore) in [
+        (
+            "insert",
+            "INSERT INTO releases (id, album_id, remote, year, year_origin, _updated_at, created_at) VALUES ('44444444-4444-4444-8444-444444444444', '22222222-2222-4222-8222-222222222222', 0, 1998, 'typed', '1700000000001-0000-record-history', '2026-01-01T00:00:00Z')",
+            "DELETE FROM releases WHERE id = '44444444-4444-4444-8444-444444444444'",
+        ),
+        (
+            "update",
+            "UPDATE releases SET year = 1998, year_origin = 'typed', _updated_at = '1700000000001-0000-record-history' WHERE id = '33333333-3333-4333-8333-333333333333'",
+            "UPDATE releases SET year = NULL, year_origin = NULL, _updated_at = '1700000000000-0000-record-history' WHERE id = '33333333-3333-4333-8333-333333333333'",
+        ),
+        (
+            "delete",
+            "DELETE FROM releases WHERE id = '33333333-3333-4333-8333-333333333333'",
+            "INSERT INTO releases (id, album_id, remote, _updated_at, created_at) VALUES ('33333333-3333-4333-8333-333333333333', '22222222-2222-4222-8222-222222222222', 0, '1700000000000-0000-record-history', '2026-01-01T00:00:00Z')",
+        ),
+    ] {
+        let temp = tempfile::tempdir().expect("historical release store");
+        let directory = StoreDir::new_ephemeral(temp.path());
+        let connection = super::record_kinds::open_record_history_fixture(&directory, version);
+        let mut session = Session::new(&connection).expect("capture release operation");
+        session.attach(Some("releases")).unwrap();
+        connection.execute_batch(operation).unwrap();
+        let mut changeset = Vec::new();
+        session.changeset_strm(&mut changeset).unwrap();
+        drop(session);
+        connection.execute_batch(restore).unwrap();
+        drop(connection);
+        let connection = super::record_kinds::migrate_record_history_fixture(&directory);
+        let result = coven::resolve_and_apply_historical_changeset(
+            &connection, &directory, all(), version as u32, &changeset,
+            &crate::sync::synced_tables(), 1_700_000_000_002,
+        ).expect("apply historical release row through schema migration");
+        assert!(result.constraint_conflict_tables.is_empty(), "{name}");
+        assert!(!result.had_fk_violations, "{name}");
+
+        let image_temp = tempfile::tempdir().unwrap();
+        let image_directory = StoreDir::new_ephemeral(image_temp.path());
+        let image = super::record_kinds::open_record_history_fixture(&image_directory, version);
+        image.execute_batch(operation).unwrap();
+        drop(image);
+        let image = super::record_kinds::migrate_record_history_fixture(&image_directory);
+        let values = |connection: &coven::rusqlite::Connection| {
+            connection.prepare("SELECT id, year, _updated_at, created_at FROM releases ORDER BY id").unwrap()
+                .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<i64>>(1)?, row.get::<_, String>(2)?, row.get::<_, String>(3)?)))
+                .unwrap().collect::<Result<Vec<_>, _>>().unwrap()
+        };
+        assert_eq!(values(&connection), values(&image), "{name}: image and history migration agree");
+    }
+    }
 }

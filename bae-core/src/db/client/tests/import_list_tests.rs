@@ -189,6 +189,7 @@ fn musicbrainz_release_linked_out(release_id: &str, group_id: &str) -> serde_jso
 
 fn release_group_linked_out() -> serde_json::Value {
     serde_json::json!({
+        "id": "mb-group",
         "relations": [
             { "url": { "resource": "https://www.allmusic.com/album/mw0000424242" } },
             { "url": { "resource": "https://www.wikidata.org/wiki/Q424242" } }

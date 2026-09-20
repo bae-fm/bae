@@ -79,7 +79,7 @@ impl LibraryManager {
     ///    is a duplicate import. Surface that album's title so the user sees what
     ///    they already have.
     /// 2. **Cross-catalog merge.** A release carrying a record matching one of
-    ///    the new release's `(catalog, group_key)` pairs gives up its `album_id`,
+    ///    the new release's `(catalog, album key)` pairs gives up its `album_id`,
     ///    so the new release attaches to the same album. Records pair across
     ///    catalogs, so an MB-rooted import that carried a cross-linked Discogs
     ///    record is reachable from a later Discogs-rooted import of the same
@@ -156,27 +156,29 @@ impl LibraryManager {
             .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
 
         let records = self.database.get_release_records(release_id).await?;
-        let draft_record = records.iter().find(|record| record.reads_draft);
+        let draft_record = records.iter().find(|record| record.reads_draft());
         let parsed = match (draft_record, release.draft_from_tags) {
             (Some(record), _) => {
                 // The record names which archived document seeded this release,
                 // and the documents are keyed by exactly that — so what is read
                 // back cannot belong to a pressing the release was pointed away
                 // from.
-                let release_ref = record.release_ref();
-                let payloads = crate::import::payloads::load(&self.database, &release_ref)
+                let release_ref = record
+                    .release_ref()
+                    .expect("only a pressing reads the draft");
+                let payloads = crate::import::payloads::load(&self.database, release_ref)
                     .await?
                     .ok_or_else(|| {
                         LibraryError::Import(format!(
                             "no archived {} payload for release '{release_id}' (catalog release {})",
-                            record.catalog.as_str(),
-                            record.key
+                            record.catalog().as_str(),
+                            record.key()
                         ))
                     })?;
                 let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
                 parsed_for_existing_release(
                     &payloads,
-                    record.catalog,
+                    record.catalog(),
                     &existing_tracks,
                     self.clock.as_ref(),
                     self.ids.as_ref(),
@@ -244,11 +246,9 @@ impl LibraryManager {
                     crate::util::rate_limiter::CallPriority::Interactive,
                 )
                 .await?;
-                // Every partner the pick claims is archived too, so its own
-                // record is readable here and by any later reset. One that
-                // will not prepare fails the re-identify before the records
-                // are written.
-                crate::import::service::prepare_partners(
+                // Keep the prepared partner answers through this operation;
+                // concurrent archive writes cannot change the selected identity.
+                let prepared_partners = crate::import::service::prepare_partners(
                     self,
                     release_ref,
                     partners,
@@ -264,13 +264,8 @@ impl LibraryManager {
                     self.ids.as_ref(),
                 )?;
 
-                // The source pressing's track count must match the local
-                // release's row count. Re-identify only re-points the records;
-                // it never re-binds audio, so a source with a different number
-                // of tracks has nothing to re-point half the rows at. A folder
-                // import has no such constraint — it maps its own audio into
-                // track slots and a count disagreement is a slot, not a
-                // refusal — so this check is re-identify's alone.
+                // Re-identify changes record associations without changing
+                // existing audio rows, so the source track count must match.
                 let existing_track_count = existing_tracks.len();
                 let new_track_count = parsed.tracks.len();
                 if existing_track_count != new_track_count {
@@ -280,7 +275,7 @@ impl LibraryManager {
                     )));
                 }
 
-                crate::import::service::records_for_commit(self, &payloads, partners).await?
+                crate::import::service::records_for_commit(&payloads, &prepared_partners)?
             }
             ReleaseReseed::FileTags => Vec::new(),
         };

@@ -53,12 +53,20 @@ pub struct MbArtistRef {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbLabelInfo {
     pub label: Option<MbLabel>,
-    #[serde(rename = "catalog-number")]
+    #[serde(
+        rename = "catalog-number",
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     pub catalog_number: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbLabel {
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     pub name: Option<String>,
 }
 
@@ -127,6 +135,10 @@ pub struct MbTrack {
 pub struct MbMedium {
     #[serde(default)]
     pub discs: Vec<MbDisc>,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     pub format: Option<String>,
     #[serde(default)]
     pub tracks: Vec<MbTrack>,
@@ -157,7 +169,15 @@ pub struct MbReleaseResponse {
     pub id: String,
     pub title: String,
     pub date: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     pub country: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     pub barcode: Option<String>,
     #[serde(rename = "artist-credit", default)]
     pub artist_credit: Vec<MbArtistCredit>,
@@ -178,31 +198,6 @@ impl MbReleaseResponse {
     /// is registered and the archive has not darkened the release's art.
     pub fn has_front_cover(&self) -> bool {
         self.cover_art_archive.front && !self.cover_art_archive.darkened
-    }
-
-    /// Every address this release's url-rels state, its inline release group's
-    /// included — one per catalog page an editor linked.
-    pub fn related_urls(&self) -> impl Iterator<Item = &str> {
-        relation_urls(&self.relations).chain(
-            self.release_group
-                .as_ref()
-                .and_then(|rg| rg.relations.as_deref())
-                .map(relation_urls)
-                .into_iter()
-                .flatten(),
-        )
-    }
-
-    /// The Discogs release URL from this release's url-rels, falling back to
-    /// the inline release-group relations when the release-level ones carry
-    /// none.
-    pub fn discogs_release_url(&self) -> Option<String> {
-        first_discogs_release_url(&self.relations).or_else(|| {
-            self.release_group
-                .as_ref()
-                .and_then(|rg| rg.relations.as_deref())
-                .and_then(first_discogs_release_url)
-        })
     }
 }
 
@@ -227,6 +222,10 @@ pub struct SearchRelease {
     pub id: String,
     pub title: String,
     pub date: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     pub country: Option<String>,
     /// `ws/2/release?query=` states the pressing's barcode. An empty string
     /// means the release carries none.
@@ -246,6 +245,20 @@ pub struct SearchRelease {
 /// Release group response (for separate fetch with url-rels)
 #[derive(Debug, Clone, Deserialize)]
 pub struct ReleaseGroupResponse {
+    pub id: String,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub title: Option<String>,
+    #[serde(
+        rename = "first-release-date",
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub first_release_date: Option<String>,
+    #[serde(rename = "artist-credit", default)]
+    pub artist_credit: Vec<MbArtistCredit>,
     #[serde(default)]
     pub relations: Vec<MbRelation>,
 }
@@ -257,21 +270,86 @@ pub fn parse_release_group(json: &str) -> Result<ReleaseGroupResponse, serde_jso
 
 /// Response from the MB URL lookup endpoint (used for Discogs -> MB cross-reference)
 #[derive(Debug, Deserialize)]
-pub(super) struct UrlLookupResponse {
-    #[serde(default)]
-    pub(super) relations: Vec<UrlLookupRelation>,
+struct UrlLookupResponse {
+    relations: Vec<UrlLookupRelation>,
 }
 
 #[derive(Debug, Deserialize)]
-pub(super) struct UrlLookupRelation {
+struct UrlLookupRelation {
     #[serde(rename = "type")]
-    pub(super) relation_type: Option<String>,
-    pub(super) release: Option<UrlLookupRelease>,
+    relation_type: Option<String>,
+    #[serde(flatten)]
+    target: UrlLookupTarget,
 }
 
 #[derive(Debug, Deserialize)]
-pub(super) struct UrlLookupRelease {
-    pub(super) id: Option<String>,
+#[serde(tag = "target-type")]
+enum UrlLookupTarget {
+    #[serde(rename = "release")]
+    Release { release: UrlLookupEntity },
+    #[serde(rename = "release-group")]
+    Group {
+        #[serde(rename = "release-group")]
+        release_group: UrlLookupEntity,
+    },
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Debug, Deserialize)]
+struct UrlLookupEntity {
+    id: String,
+}
+
+/// Release correspondences stated by a Discogs release URL's MusicBrainz document.
+pub fn parse_discogs_release_lookup(
+    json: &str,
+) -> Result<Vec<crate::import::CatalogPage>, serde_json::Error> {
+    parse_discogs_lookup(
+        json,
+        |target| match target {
+            UrlLookupTarget::Release { release } => Some(release.id),
+            _ => None,
+        },
+        |key| crate::import::CatalogPage::Release {
+            catalog: crate::import::Catalog::MusicBrainz,
+            key,
+        },
+    )
+}
+
+/// Album correspondences stated by a Discogs master URL's MusicBrainz document.
+pub fn parse_discogs_master_lookup(
+    json: &str,
+) -> Result<Vec<crate::import::CatalogPage>, serde_json::Error> {
+    parse_discogs_lookup(
+        json,
+        |target| match target {
+            UrlLookupTarget::Group { release_group } => Some(release_group.id),
+            _ => None,
+        },
+        |key| crate::import::CatalogPage::Group {
+            catalog: crate::import::Catalog::MusicBrainz,
+            key,
+        },
+    )
+}
+
+fn parse_discogs_lookup(
+    json: &str,
+    target_key: impl Fn(UrlLookupTarget) -> Option<String>,
+    page: impl Fn(String) -> crate::import::CatalogPage,
+) -> Result<Vec<crate::import::CatalogPage>, serde_json::Error> {
+    let response: UrlLookupResponse = serde_json::from_str(json)?;
+    let mut keys: Vec<_> = response
+        .relations
+        .into_iter()
+        .filter(|relation| relation.relation_type.as_deref() == Some("discogs"))
+        .filter_map(|relation| target_key(relation.target))
+        .collect();
+    keys.sort();
+    keys.dedup();
+    Ok(keys.into_iter().map(page).collect())
 }
 
 /// Every address a set of relations states, in relation order. A relation that
@@ -280,19 +358,4 @@ pub fn relation_urls(relations: &[MbRelation]) -> impl Iterator<Item = &str> {
     relations
         .iter()
         .filter_map(|r| r.url.as_ref()?.resource.as_deref())
-}
-
-/// The first Discogs release address among a set of MB relations, if any.
-pub(super) fn first_discogs_release_url(relations: &[MbRelation]) -> Option<String> {
-    relation_urls(relations)
-        .find(|resource| {
-            matches!(
-                crate::import::parse_catalog_url(resource),
-                Some(crate::import::CatalogPage::Release {
-                    catalog: crate::import::Catalog::Discogs,
-                    ..
-                })
-            )
-        })
-        .map(str::to_string)
 }

@@ -1,7 +1,7 @@
 use super::*;
 use serial_test::serial;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[test]
@@ -73,33 +73,6 @@ fn release_search_params_build_query_with_escaped_phrase() {
     assert_eq!(
         params.build_query(),
         r#"artist:"Artist Name" AND release:"Quoted \"Middle\" Phrase""#,
-    );
-}
-
-#[test]
-fn first_discogs_release_url_skips_master_urls_and_missing_urls() {
-    let relations = vec![
-        MbRelation {
-            url: Some(MbUrlResource {
-                resource: Some("https://www.discogs.com/master/12345".to_string()),
-            }),
-            ..Default::default()
-        },
-        MbRelation {
-            url: Some(MbUrlResource {
-                resource: Some("https://www.discogs.com/release/67890".to_string()),
-            }),
-            ..Default::default()
-        },
-        MbRelation {
-            url: None,
-            ..Default::default()
-        },
-    ];
-
-    assert_eq!(
-        first_discogs_release_url(&relations),
-        Some("https://www.discogs.com/release/67890".to_string())
     );
 }
 
@@ -211,7 +184,7 @@ fn a_darkened_release_serves_no_front_cover() {
     assert!(crate::import::cover_art::musicbrainz_covers(&response).is_empty());
 }
 
-// ── fetch_mb_xref ────────────────────────────────────────────────
+// ── Provider response fixtures ─────────────────────────────────────────────
 //
 // Seeded responses, so no test hits the network. A seeded answer is keyed by
 // the URL its request goes to, base address included, and that address is
@@ -251,102 +224,6 @@ fn mb_release_json(release: &MbReleaseResponse) -> String {
     serde_json::to_string(release).expect("the test release serializes")
 }
 
-#[test]
-fn release_group_fallback_error_is_logged_with_group_id() {
-    let mut result = None;
-
-    let logs = crate::test_logs::capture_warn_logs(|| {
-        result = Some(release_group_discogs_url(
-            "rg-error",
-            Err(MusicBrainzError::Other("transient fetch".to_string())),
-        ));
-    });
-
-    assert!(logs.contains("rg-error"));
-    assert!(logs.contains("transient fetch"));
-    assert!(result.expect("closure ran").is_none());
-}
-
-#[tokio::test]
-#[serial(musicbrainz)]
-async fn test_fetch_mb_xref_with_backlink_returns_response_and_metadata() {
-    let discogs_id = "fetch-mb-xref-hit-1";
-    let mb_release_id = "mb-release-hit-1";
-    let mb_group_id = "mb-group-hit-1";
-
-    seed_discogs_url_lookup(discogs_id, Some(mb_release_id.to_string()));
-    seed_release_cache(
-        mb_release_id,
-        mb_release_json(&mb_release(mb_release_id, Some(mb_group_id))),
-    );
-    seed_release_group_json_cache(mb_group_id, r#"{"id":"mb-group-hit-1"}"#.to_string());
-
-    let result = fetch_mb_xref(discogs_id, CallPriority::Interactive).await;
-
-    let (response, pairs) = result.expect("expected cross-link to be found");
-    assert_eq!(response.id, mb_release_id);
-    assert_eq!(
-        response.release_group.as_ref().map(|rg| rg.id.as_str()),
-        Some(mb_group_id)
-    );
-    // Two documents: the MB release, re-keyed under the Discogs release the
-    // lookup started from, and its release group under its own id.
-    assert_eq!(pairs.len(), 2);
-    assert_eq!(
-        pairs[0].source,
-        crate::import::PayloadSource::MusicBrainzDiscogsXref
-    );
-    assert_eq!(pairs[0].source_release_id, discogs_id);
-    assert_eq!(
-        pairs[1].source,
-        crate::import::PayloadSource::MusicBrainzReleaseGroup
-    );
-    assert_eq!(pairs[1].source_release_id, mb_group_id);
-}
-
-#[tokio::test]
-#[serial(musicbrainz)]
-async fn test_fetch_mb_xref_no_backlink_returns_none() {
-    let discogs_id = "fetch-mb-xref-miss-1";
-    seed_discogs_url_lookup(discogs_id, None);
-
-    let result = fetch_mb_xref(discogs_id, CallPriority::Interactive).await;
-
-    assert!(
-        result.is_none(),
-        "expected None when MB has no back-link, got Some"
-    );
-}
-
-#[tokio::test]
-#[serial(musicbrainz)]
-async fn test_fetch_mb_xref_release_without_group_still_returns_response() {
-    // A missing release group is not a fetch-time failure: `fetch_mb_xref`
-    // returns whatever MB gave it. The mapper is what gates on `release_group`,
-    // and only emits an MB identity row when one is present.
-    let discogs_id = "fetch-mb-xref-no-rg";
-    let mb_release_id = "mb-release-no-rg";
-
-    seed_discogs_url_lookup(discogs_id, Some(mb_release_id.to_string()));
-    seed_release_cache(
-        mb_release_id,
-        mb_release_json(&mb_release(mb_release_id, None)),
-    );
-
-    let result = fetch_mb_xref(discogs_id, CallPriority::Interactive).await;
-
-    let (response, pairs) = result.expect("expected response even without release_group");
-    assert_eq!(response.id, mb_release_id);
-    assert!(response.release_group.is_none());
-    // Only one document (no release-group JSON to fetch).
-    assert_eq!(pairs.len(), 1);
-    assert_eq!(
-        pairs[0].source,
-        crate::import::PayloadSource::MusicBrainzDiscogsXref
-    );
-    assert_eq!(pairs[0].source_release_id, discogs_id);
-}
-
 /// Only a failure a retry could fix is retried. A `NotFound` is the ordinary
 /// answer for a disc MusicBrainz doesn't have, and each extra attempt costs
 /// another round trip plus a 1s rate-limit wait; the "at least one search field"
@@ -374,66 +251,6 @@ fn only_transient_musicbrainz_failures_are_retried() {
     assert!(!should_retry_mb(&MusicBrainzError::Other(
         "At least one search field must be provided".into()
     )));
-}
-
-// ── fetch_release_with_metadata ─────────────────────────────────────────────
-
-/// The archival pairs every MB import path writes: the release under
-/// `musicbrainz`, its release-group under `musicbrainz_release_group`. Both the
-/// direct import and the Discogs cross-reference fetch through here, so a change
-/// to this shape reaches both.
-#[tokio::test]
-#[serial(musicbrainz)]
-async fn fetch_release_with_metadata_archives_release_and_group() {
-    let release_id = "fetch-with-metadata-rel";
-    let group_id = "fetch-with-metadata-group";
-    let mut release = mb_release(release_id, Some(group_id));
-    release.relations = vec![MbRelation {
-        url: Some(MbUrlResource {
-            resource: Some("https://www.discogs.com/release/1".to_string()),
-        }),
-        ..Default::default()
-    }];
-    let raw_json = mb_release_json(&release);
-    seed_release_cache(release_id, raw_json.clone());
-    seed_release_group_json_cache(group_id, r#"{"id":"group"}"#.to_string());
-
-    let fetched = fetch_release_with_metadata(release_id, CallPriority::Interactive)
-        .await
-        .unwrap();
-
-    assert_eq!(fetched.response.id, release_id);
-    assert_eq!(
-        fetched.discogs_url.as_deref(),
-        Some("https://www.discogs.com/release/1")
-    );
-    assert_eq!(fetched.raw_json, raw_json);
-    assert_eq!(
-        fetched.release_group,
-        Some(crate::import::SourcePayload::new(
-            crate::import::PayloadSource::MusicBrainzReleaseGroup,
-            group_id,
-            r#"{"id":"group"}"#.to_string()
-        ))
-    );
-}
-
-/// A release with no release group archives just its own JSON. The group is
-/// supplementary — its absence is not an import failure.
-#[tokio::test]
-#[serial(musicbrainz)]
-async fn fetch_release_with_metadata_without_group_archives_only_the_release() {
-    let release_id = "fetch-with-metadata-no-group";
-    let raw_json = mb_release_json(&mb_release(release_id, None));
-    seed_release_cache(release_id, raw_json.clone());
-
-    let fetched = fetch_release_with_metadata(release_id, CallPriority::Interactive)
-        .await
-        .unwrap();
-
-    assert_eq!(fetched.discogs_url, None);
-    assert_eq!(fetched.raw_json, raw_json);
-    assert_eq!(fetched.release_group, None);
 }
 
 // ── label_and_catno ────────────────────────────────────────────────────────
@@ -484,6 +301,13 @@ fn label_and_catno_reads_the_first_label_info() {
 /// so the client opens a fresh connection for its next request and the accept
 /// count is the request count.
 async fn mb_response_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUsize>) {
+    let (url, count, _) = mb_recording_server(responses).await;
+    (url, count)
+}
+
+async fn mb_recording_server(
+    responses: Vec<(u16, String)>,
+) -> (String, Arc<AtomicUsize>, Arc<Mutex<Vec<String>>>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("test listener should bind");
@@ -495,6 +319,8 @@ async fn mb_response_server(responses: Vec<(u16, String)>) -> (String, Arc<Atomi
     );
     let request_count = Arc::new(AtomicUsize::new(0));
     let counted_requests = request_count.clone();
+    let paths = Arc::new(Mutex::new(Vec::new()));
+    let captured = paths.clone();
     tokio::spawn(async move {
         let mut remaining = responses.into_iter();
         loop {
@@ -503,7 +329,15 @@ async fn mb_response_server(responses: Vec<(u16, String)>) -> (String, Arc<Atomi
             };
             counted_requests.fetch_add(1, Ordering::SeqCst);
             let mut buffer = [0; 4096];
-            let _ = stream.read(&mut buffer).await;
+            let count = stream.read(&mut buffer).await.expect("request is readable");
+            let request = std::str::from_utf8(&buffer[..count]).expect("request header is UTF-8");
+            captured.lock().unwrap().push(
+                request
+                    .lines()
+                    .next()
+                    .expect("request line exists")
+                    .to_string(),
+            );
             let (status, body) = remaining
                 .next()
                 .unwrap_or_else(|| (599, "unscripted request".to_string()));
@@ -515,7 +349,7 @@ async fn mb_response_server(responses: Vec<(u16, String)>) -> (String, Arc<Atomi
             let _ = stream.write_all(raw.as_bytes()).await;
         }
     });
-    (url, request_count)
+    (url, request_count, paths)
 }
 
 /// Points MusicBrainz at a local server and restores the live address when the
@@ -544,6 +378,216 @@ fn discid_body(release_id: &str) -> String {
             .expect("the test release serializes")],
     })
     .to_string()
+}
+
+#[tokio::test]
+#[serial(musicbrainz)]
+async fn release_lookup_fetches_only_the_requested_document() {
+    let raw = mb_release_json(&mb_release("release-only", Some("parent-group")));
+    let (url, requests) = mb_response_server(vec![(200, raw.clone())]).await;
+    let _base = TestBase::point_at(&url);
+
+    let (release, archived) = lookup_release_by_id("release-only", CallPriority::Interactive)
+        .await
+        .expect("the release fetch succeeds independently of its parent");
+
+    assert_eq!(release.id, "release-only");
+    assert_eq!(archived, raw);
+    assert_eq!(requests.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn discogs_url_answers_keep_all_matching_targets_and_their_entity_kind() {
+    let raw = serde_json::json!({"relations": [
+        {"type": "discogs", "target-type": "release", "release": {"id": "release-b"}},
+        {"type": "discogs", "target-type": "release-group", "release-group": {"id": "group-a"}},
+        {"type": "discogs", "target-type": "release", "release": {"id": "release-a"}},
+        {"type": "discogs", "target-type": "release", "release": {"id": "release-b"}},
+        {"type": "discogs", "target-type": "artist", "artist": {"id": "artist-a"}},
+        {"type": "other", "target-type": "release", "release": {"id": "unrelated"}}
+    ]})
+    .to_string();
+
+    assert_eq!(
+        parse_discogs_release_lookup(&raw).unwrap(),
+        vec![
+            crate::import::CatalogPage::Release {
+                catalog: crate::import::Catalog::MusicBrainz,
+                key: "release-a".into()
+            },
+            crate::import::CatalogPage::Release {
+                catalog: crate::import::Catalog::MusicBrainz,
+                key: "release-b".into()
+            },
+        ]
+    );
+    assert_eq!(
+        parse_discogs_master_lookup(&raw).unwrap(),
+        vec![crate::import::CatalogPage::Group {
+            catalog: crate::import::Catalog::MusicBrainz,
+            key: "group-a".into()
+        },]
+    );
+    assert!(parse_discogs_release_lookup(r#"{"relations":[]}"#)
+        .unwrap()
+        .is_empty());
+    assert!(parse_discogs_master_lookup(r#"{"relations":[]}"#)
+        .unwrap()
+        .is_empty());
+    assert!(parse_discogs_release_lookup("{}").is_err());
+    assert!(parse_discogs_master_lookup(
+        r#"{"relations":[{"type":"discogs","target-type":"release-group","release-group":{}}]}"#
+    )
+    .is_err());
+}
+
+#[tokio::test]
+#[serial(musicbrainz)]
+async fn reverse_release_and_master_lookups_preserve_raw_answers() {
+    for (master, target) in [(false, "release"), (true, "release-group")] {
+        let raw = serde_json::json!({"relations": [{
+            "type": "discogs", "target-type": target, target: {"id": "linked-id"}
+        }]})
+        .to_string();
+        let (url, requests, paths) = mb_recording_server(vec![(200, raw.clone())]).await;
+        let _base = TestBase::point_at(&url);
+        let result = if master {
+            lookup_groups_by_discogs_master("510001", CallPriority::Interactive).await
+        } else {
+            lookup_releases_by_discogs_release("510001", CallPriority::Interactive).await
+        }
+        .unwrap()
+        .expect("a URL document exists");
+        assert_eq!(result.1, raw);
+        assert_eq!(result.0.len(), 1);
+        assert_eq!(requests.load(Ordering::SeqCst), 1);
+        let request_line = paths.lock().unwrap()[0].clone();
+        let path = request_line
+            .split_whitespace()
+            .nth(1)
+            .expect("request names its URL");
+        let requested = reqwest::Url::parse(&format!("{url}{path}")).unwrap();
+        let query: std::collections::BTreeMap<_, _> =
+            requested.query_pairs().into_owned().collect();
+        assert_eq!(requested.path(), "/url");
+        assert_eq!(
+            query["resource"],
+            if master {
+                "https://www.discogs.com/master/510001"
+            } else {
+                "https://www.discogs.com/release/510001"
+            }
+        );
+        assert_eq!(
+            query["inc"],
+            if master {
+                "release-group-rels"
+            } else {
+                "release-rels"
+            }
+        );
+        assert_eq!(query["fmt"], "json");
+    }
+}
+
+#[tokio::test]
+#[serial(musicbrainz)]
+async fn reverse_lookup_distinguishes_absence_empty_answers_and_failures() {
+    for master in [false, true] {
+        for (status, body, expected) in [
+            (404, "", "missing"),
+            (200, r#"{"relations":[]}"#, "empty"),
+            (400, "bad request", "provider"),
+            (200, "broken JSON", "parse"),
+        ] {
+            let (url, requests) = mb_response_server(vec![(status, body.into())]).await;
+            let _base = TestBase::point_at(&url);
+            let result = if master {
+                lookup_groups_by_discogs_master("510002", CallPriority::Interactive).await
+            } else {
+                lookup_releases_by_discogs_release("510002", CallPriority::Interactive).await
+            };
+            match expected {
+                "missing" => assert!(result.unwrap().is_none()),
+                "empty" => assert_eq!(result.unwrap(), Some((Vec::new(), body.into()))),
+                "provider" => assert!(matches!(
+                    result,
+                    Err(MusicBrainzError::Provider { status: Some(400) })
+                )),
+                "parse" => assert!(matches!(result, Err(MusicBrainzError::Other(_)))),
+                _ => unreachable!(),
+            }
+            assert_eq!(requests.load(Ordering::SeqCst), 1);
+        }
+    }
+}
+
+#[tokio::test]
+#[serial(musicbrainz)]
+async fn reverse_lookup_retries_transient_failures_and_caches_the_answer() {
+    for master in [false, true] {
+        let (url, requests) = mb_response_server(vec![
+            (503, "unavailable".into()),
+            (200, r#"{"relations":[]}"#.into()),
+        ])
+        .await;
+        let _base = TestBase::point_at(&url);
+        for _ in 0..2 {
+            let answer = if master {
+                lookup_groups_by_discogs_master("510003", CallPriority::Interactive).await
+            } else {
+                lookup_releases_by_discogs_release("510003", CallPriority::Interactive).await
+            }
+            .unwrap()
+            .expect("the retry obtains the URL document");
+            assert!(answer.0.is_empty());
+        }
+        assert_eq!(requests.load(Ordering::SeqCst), 2);
+    }
+}
+
+#[test]
+fn release_group_keeps_album_metadata_and_optional_absence() {
+    let group = parse_release_group(
+        r#"{
+        "id":"group-one", "title":"Album Title", "first-release-date":"1982-04",
+        "artist-credit":[{"name":"Artist Name","artist":{"id":"artist-one"}}],
+        "relations":[{"url":{"resource":"https://www.discogs.com/master/42"}}]
+    }"#,
+    )
+    .unwrap();
+    assert_eq!(group.id, "group-one");
+    assert_eq!(group.title.as_deref(), Some("Album Title"));
+    assert_eq!(group.first_release_date.as_deref(), Some("1982-04"));
+    assert_eq!(group.artist_credit[0].name, "Artist Name");
+    assert_eq!(
+        relation_urls(&group.relations).collect::<Vec<_>>(),
+        ["https://www.discogs.com/master/42"]
+    );
+
+    let sparse =
+        parse_release_group(r#"{"id":"group-empty","title":"","first-release-date":""}"#).unwrap();
+    assert!(sparse.title.is_none());
+    assert!(sparse.first_release_date.is_none());
+    assert!(sparse.artist_credit.is_empty());
+}
+
+#[test]
+fn blank_pressing_fields_are_absent_in_musicbrainz_documents() {
+    for value in ["", " \t"] {
+        let raw = serde_json::json!({
+            "id":"release-empty", "title":"Album Title", "country":value, "barcode":value,
+            "media":[{"format":value}],
+            "label-info":[{"catalog-number":value,"label":{"name":value}}],
+            "cover-art-archive":{"front":false,"darkened":false}
+        })
+        .to_string();
+        let release: MbReleaseResponse = serde_json::from_str(&raw).unwrap();
+        assert!(release.country.is_none());
+        assert!(release.barcode.is_none());
+        assert!(release.media[0].format.is_none());
+        assert_eq!(label_and_catno(&release.label_info), (None, None));
+    }
 }
 
 #[tokio::test]

@@ -420,6 +420,7 @@ fn discogs_release_with_master(master_id: Option<String>) -> crate::discogs::Dis
         label: vec![],
         covers: vec![],
         catno: None,
+        barcode: None,
         artists: vec![],
         tracklist: vec![],
         extraartists: Some(vec![]),
@@ -440,7 +441,7 @@ fn release_with_no_artist_credits_returns_err() {
         map(&response, None, None).expect_err("expected missing artist credits to return an error");
 
     assert!(
-        matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no artist credits")),
+        matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no album artist")),
         "unexpected error message: {err}"
     );
 }

@@ -1,4 +1,6 @@
-use crate::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
+use crate::discogs::models::{
+    DiscogsArtist, DiscogsMaster, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack,
+};
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use crate::retry::retry_with_backoff_if;
@@ -178,6 +180,7 @@ pub struct DiscogsSearchResult {
         deserialize_with = "crate::serde_helpers::empty_string_as_none"
     )]
     pub thumb: Option<String>,
+    #[serde(default, deserialize_with = "optional_master_id")]
     pub master_id: Option<u64>,
     #[serde(rename = "type")]
     pub result_type: String,
@@ -222,17 +225,59 @@ struct ReleaseResponse {
     title: String,
     year: Option<u32>,
     formats: Option<Vec<Format>>,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     country: Option<String>,
     labels: Option<Vec<LabelResponse>>,
     images: Option<Vec<Image>>,
     artists: Option<Vec<ArtistCredit>>,
     extraartists: Option<Vec<ExtraArtistCredit>>,
     tracklist: Option<Vec<TrackResponse>>,
+    #[serde(default, deserialize_with = "optional_master_id")]
     master_id: Option<u64>,
+    identifiers: Option<Vec<Identifier>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Identifier {
+    #[serde(rename = "type")]
+    kind: String,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    value: Option<String>,
+}
+
+/// Discogs uses zero when a release has no master record.
+fn optional_master_id<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(Option::<u64>::deserialize(deserializer)?.filter(|id| *id != 0))
+}
+
+#[derive(Debug, Deserialize)]
+struct MasterResponse {
+    id: u64,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    title: Option<String>,
+    year: Option<u32>,
+    artists: Option<Vec<ArtistCredit>>,
+    images: Option<Vec<Image>>,
 }
 #[derive(Debug, Deserialize)]
 struct Format {
-    name: String,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    name: Option<String>,
 }
 #[derive(Debug, Deserialize)]
 struct Image {
@@ -271,13 +316,7 @@ fn image_covers(images: Option<Vec<Image>>, entity: &str, id: u64) -> Vec<Remote
 pub(crate) fn parse_discogs_master_covers(
     raw_json: &str,
 ) -> Result<Vec<RemoteCover>, DiscogsError> {
-    #[derive(Deserialize)]
-    struct MasterImages {
-        id: u64,
-        images: Option<Vec<Image>>,
-    }
-    let master: MasterImages = serde_json::from_str(raw_json)?;
-    Ok(image_covers(master.images, "m", master.id))
+    Ok(parse_discogs_master_json(raw_json)?.covers)
 }
 #[derive(Debug, Deserialize)]
 struct TrackResponse {
@@ -294,7 +333,15 @@ struct TrackResponse {
 }
 #[derive(Debug, Deserialize)]
 struct LabelResponse {
-    name: String,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    name: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     catno: Option<String>,
 }
 
@@ -372,19 +419,34 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
     let covers = image_covers(release.images, "r", release.id);
     let master_id = release.master_id.map(|id| id.to_string());
     let labels = release.labels.unwrap_or_default();
-    let label_names: Vec<String> = labels.iter().map(|l| l.name.clone()).collect();
+    let label_names: Vec<String> = labels
+        .iter()
+        .filter_map(|label| label.name.clone())
+        .collect();
     let catno = labels.first().and_then(|l| l.catno.clone());
     let formats = release.formats.unwrap_or_default();
+    // The draft has one barcode field. Keep the first supplied Barcode value
+    // in provider order, including its printed spaces and punctuation.
+    let barcode = release
+        .identifiers
+        .into_iter()
+        .flatten()
+        .filter(|identifier| identifier.kind == "Barcode")
+        .find_map(|identifier| identifier.value);
 
     Ok(DiscogsRelease {
         id: release.id.to_string(),
         title: release.title,
         // Discogs encodes an unknown year as zero.
         year: release.year.filter(|year| *year != 0),
-        format: formats.into_iter().map(|f| f.name).collect(),
+        format: formats
+            .into_iter()
+            .filter_map(|format| format.name)
+            .collect(),
         country: release.country,
         label: label_names,
         catno,
+        barcode,
         covers,
         artists,
         extraartists,
@@ -393,16 +455,23 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
     })
 }
 
-/// The original release year out of an archived Discogs master payload, which
-/// carries `{"year": …}` at the top level. Callers archive that JSON in
-/// `source_release_payloads` and call this to replay the year on reset.
-pub fn parse_discogs_master_year(raw_json: &str) -> Result<Option<u32>, DiscogsError> {
-    let parsed: serde_json::Value = serde_json::from_str(raw_json)?;
-    Ok(parsed
-        .get("year")
-        .and_then(|y| y.as_u64())
-        .map(|y| y as u32)
-        .filter(|year| *year != 0))
+/// Parse the master's own album metadata for both fresh fetches and archive replay.
+pub fn parse_discogs_master_json(raw_json: &str) -> Result<DiscogsMaster, DiscogsError> {
+    let master: MasterResponse = serde_json::from_str(raw_json)?;
+    Ok(DiscogsMaster {
+        title: master.title,
+        year: master.year.filter(|year| *year != 0),
+        artists: master
+            .artists
+            .into_iter()
+            .flatten()
+            .map(|artist| DiscogsArtist {
+                id: artist.id.to_string(),
+                name: artist.name,
+            })
+            .collect(),
+        covers: image_covers(master.images, "m", master.id),
+    })
 }
 
 #[derive(Clone)]
@@ -660,13 +729,12 @@ impl DiscogsClient {
         .await
     }
 
-    /// The master's year — the *original* release year, so 1967 for a 1985 reissue —
-    /// plus the raw JSON.
+    /// The master's album metadata and raw JSON, without fetching any pressing.
     pub async fn get_master(
         &self,
         master_id: &str,
         priority: CallPriority,
-    ) -> Result<(Option<u32>, String), DiscogsError> {
+    ) -> Result<(DiscogsMaster, String), DiscogsError> {
         self.observed(self.get_master_inner(master_id, priority))
             .await
     }
@@ -675,7 +743,7 @@ impl DiscogsClient {
         &self,
         master_id: &str,
         priority: CallPriority,
-    ) -> Result<(Option<u32>, String), DiscogsError> {
+    ) -> Result<(DiscogsMaster, String), DiscogsError> {
         let url = master_url(&self.base_url, master_id);
         retry_with_backoff_if(
             DISCOGS_RETRY_ATTEMPTS,
@@ -684,8 +752,8 @@ impl DiscogsClient {
             crate::retry::linear_backoff,
             || async {
                 let raw_json = self.get_cached(self.get(&url), priority).await?;
-                let year = parse_discogs_master_year(&raw_json)?;
-                Ok((year, raw_json))
+                let master = parse_discogs_master_json(&raw_json)?;
+                Ok((master, raw_json))
             },
         )
         .await
@@ -749,75 +817,6 @@ impl DiscogsClient {
 
         Ok(image_url)
     }
-}
-
-/// The Discogs cross-reference for an MB release: given the Discogs URL from MB's
-/// url-rels, fetch the linked release and, if it has one, its master. Returns the
-/// `DiscogsRelease` plus the documents to store, each keyed by its own entity —
-/// so the release a reader reaches through the MB document's url-rels is the same
-/// row a Discogs-seeded import would have written.
-///
-/// `None` when the URL holds no numeric release ID, or the release fetch fails — an
-/// auth failure included, which marks the stored key `Rejected` through the client's
-/// observer and surfaces in the UI rather than aborting the import. A successful
-/// release fetch with a failing master fetch still returns `Some` with just the
-/// release pair; the master is best-effort.
-pub async fn fetch_discogs_xref(
-    client: &DiscogsClient,
-    discogs_url: &str,
-    priority: CallPriority,
-) -> Option<(DiscogsRelease, Vec<crate::import::SourcePayload>)> {
-    let id = match crate::import::parse_catalog_url(discogs_url) {
-        Some(crate::import::CatalogPage::Release {
-            catalog: crate::import::Catalog::Discogs,
-            key,
-        }) => key,
-        _ => {
-            tracing::warn!(
-                "Could not extract Discogs release ID from URL: {}",
-                discogs_url
-            );
-            return None;
-        }
-    };
-
-    tracing::debug!(
-        "Found Discogs release URL: {}, fetching release {}",
-        discogs_url,
-        id
-    );
-    let mut payloads: Vec<crate::import::SourcePayload> = Vec::new();
-    let discogs_release = match client.get_release(&id, priority).await {
-        Ok((release, raw)) => {
-            payloads.push(crate::import::SourcePayload::new(
-                crate::import::PayloadSource::Discogs,
-                &id,
-                raw,
-            ));
-            release
-        }
-        Err(e) => {
-            tracing::warn!("Failed to fetch Discogs release {}: {}", id, e);
-            return None;
-        }
-    };
-
-    if let Some(ref master_id) = discogs_release.master_id {
-        match client.get_master(master_id, priority).await {
-            Ok((_year, master_json)) => {
-                payloads.push(crate::import::SourcePayload::new(
-                    crate::import::PayloadSource::DiscogsMaster,
-                    master_id,
-                    master_json,
-                ));
-            }
-            Err(e) => {
-                tracing::warn!("Failed to fetch Discogs master {}: {}", master_id, e);
-            }
-        }
-    }
-
-    Some((discogs_release, payloads))
 }
 
 #[cfg(test)]

@@ -360,3 +360,67 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     );
     shut_down(handle).await;
 }
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn applied_partner_identity_survives_archive_replacement() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    handle
+        .library_manager
+        .set_discogs_key(
+            "test-discogs-token",
+            crate::config::DiscogsValidation::Valid,
+        )
+        .unwrap();
+    let primary = "70000004";
+    let partner = "frozen-partner-release";
+    let group = "frozen-partner-group";
+    seed_discogs_release(primary);
+    seed_mb_release(partner, group);
+    let group_json = |allmusic: &str| {
+        serde_json::json!({"id":group,"relations":[{"url":{"resource":format!("https://www.allmusic.com/album/{allmusic}")}}]}).to_string()
+    };
+    crate::musicbrainz::seed_release_group_json_cache(group, group_json("mw111"));
+    handle
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, primary),
+                partners: vec![crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    partner,
+                )],
+            },
+        )
+        .await
+        .unwrap();
+    handle
+        .library_manager
+        .save_source_release_payloads_for_test(&[crate::db::DbSourceReleasePayload {
+            source: crate::import::PayloadSource::MusicBrainzReleaseGroup,
+            source_release_id: group.into(),
+            json: group_json("mw222"),
+            fetched_at: handle.clock.now(),
+        }])
+        .await
+        .unwrap();
+    let mut events = handle.subscribe_events();
+    let import_id = handle
+        .start_import(&key, crate::import::StorageMode::Local, false)
+        .await
+        .unwrap();
+    let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
+    let records = handle
+        .library_manager
+        .get_release_records(&release_id)
+        .await
+        .unwrap();
+    shut_down(handle).await;
+    assert_eq!(
+        records
+            .iter()
+            .find(|record| record.catalog() == crate::import::Catalog::AllMusic)
+            .map(|record| record.key()),
+        Some("mw111")
+    );
+}

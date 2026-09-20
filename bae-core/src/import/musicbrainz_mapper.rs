@@ -40,8 +40,8 @@ fn mb_relation_is_composer(relation: &MbRelation) -> bool {
 }
 
 /// An [`ArtistRef`] for a MusicBrainz artist: `name` is the resolved credit
-/// name; sort name and MB id come from the artist payload. No Discogs id — the
-/// release-level cross-ref stamps that inline, on the release credits only.
+/// name; sort name and MB id come from the artist payload. Linked album
+/// metadata may later supply another catalog identity for matching credits.
 fn mb_artist_ref(name: String, artist: &MbArtistRef) -> ArtistRef {
     ArtistRef {
         name,
@@ -241,11 +241,67 @@ pub(crate) fn medium_sides(
     Ok(MediumSides { offsets, side_span })
 }
 
-/// Map a typed MusicBrainz release response into database models (pure, no I/O).
-///
-/// `discogs_release` is the Discogs release MB's url-rels cross-linked to, when
-/// one resolved. It stamps `discogs_artist_id` onto every release artist whose
-/// name matches a Discogs artist, case-insensitively.
+/// Read source artist credits before linked documents fill absent album facts.
+pub(crate) fn artist_credits(
+    credits: &[crate::musicbrainz::MbArtistCredit],
+    entity_id: &str,
+) -> Result<Vec<ArtistRef>, ImportError> {
+    let mut release_refs: Vec<ArtistRef> = Vec::new();
+    for credit in credits {
+        if let Some(artist_obj) = &credit.artist {
+            let artist_name = mb_artist_name(artist_obj, Some(&credit.name)).ok_or_else(|| {
+                ImportError::SourceData {
+                    catalog: Catalog::MusicBrainz,
+                    detail: format!(
+                        "MusicBrainz release {} artist credit {:?} has no artist name",
+                        entity_id, artist_obj.id
+                    ),
+                }
+            })?;
+            release_refs.push(ArtistRef {
+                name: artist_name,
+                sort_name: artist_obj.sort_name.clone(),
+                musicbrainz_artist_id: artist_obj.id.clone(),
+                discogs_artist_id: None,
+            });
+        }
+    }
+    if release_refs.is_empty() {
+        if let Some(credit) = credits.first() {
+            if !credit.name.trim().is_empty() {
+                release_refs.push(ArtistRef {
+                    name: credit.name.clone(),
+                    sort_name: None,
+                    musicbrainz_artist_id: None,
+                    discogs_artist_id: None,
+                });
+            }
+        }
+    }
+    Ok(release_refs)
+}
+
+pub(crate) fn metadata(
+    response: &MbReleaseResponse,
+) -> Result<super::release_metadata::ReleaseMetadata, ImportError> {
+    let release_refs = artist_credits(&response.artist_credit, &response.id)?;
+    let album_year = super::parse_year(
+        response
+            .release_group
+            .as_ref()
+            .and_then(|group| group.first_release_date.as_deref()),
+    );
+    Ok(super::release_metadata::ReleaseMetadata {
+        album: super::release_metadata::AlbumMetadata {
+            title: response.title.clone(),
+            artists: release_refs,
+            year: album_year,
+        },
+        pressing: pressing(response),
+    })
+}
+
+#[cfg(test)]
 pub fn map_mb_response_to_db(
     response: &MbReleaseResponse,
     master_year: Option<u32>,
@@ -253,67 +309,30 @@ pub fn map_mb_response_to_db(
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
-    let mut release_refs: Vec<ArtistRef> = Vec::new();
-    for credit in &response.artist_credit {
-        if let Some(artist_obj) = &credit.artist {
-            let artist_name = mb_artist_name(artist_obj, Some(&credit.name)).ok_or_else(|| {
-                ImportError::SourceData {
-                    catalog: Catalog::MusicBrainz,
-                    detail: format!(
-                        "MusicBrainz release {} artist credit {:?} has no artist name",
-                        response.id, artist_obj.id
-                    ),
-                }
-            })?;
-            let discogs_artist_id = discogs_release.as_ref().and_then(|dr| {
-                dr.artists
-                    .iter()
-                    .find(|da| da.name.eq_ignore_ascii_case(&artist_name))
-                    .map(|da| da.id.clone())
-            });
-            release_refs.push(ArtistRef {
-                name: artist_name,
-                sort_name: artist_obj.sort_name.clone(),
-                musicbrainz_artist_id: artist_obj.id.clone(),
-                discogs_artist_id,
-            });
-        }
+    let mut metadata = metadata(response)?;
+    metadata.album.year = metadata
+        .album
+        .year
+        .or_else(|| super::parse_year(response.date.as_deref()))
+        .or(master_year.map(|year| year as i32));
+    if let Some(discogs) = discogs_release {
+        metadata
+            .album
+            .fill_missing(super::discogs_mapper::metadata(&discogs).album);
     }
-    if release_refs.is_empty() {
-        let artist_name = response
-            .artist_credit
-            .first()
-            .ok_or_else(|| ImportError::SourceData {
-                catalog: Catalog::MusicBrainz,
-                detail: format!("MusicBrainz release {} has no artist credits", response.id),
-            })?
-            .name
-            .clone();
-        release_refs.push(ArtistRef {
-            name: artist_name,
-            sort_name: None,
-            musicbrainz_artist_id: None,
-            discogs_artist_id: None,
-        });
-    }
+    map_with_metadata(response, metadata, clock, ids)
+}
 
-    // Album year: release-group first-release-date, then the release date,
-    // then the Discogs master year.
-    let album_year = super::parse_year(
-        response
-            .release_group
-            .as_ref()
-            .and_then(|rg| rg.first_release_date.as_deref()),
-    )
-    .or_else(|| super::parse_year(response.date.as_deref()))
-    .or(master_year.map(|y| y as i32));
-    let is_compilation = response
-        .artist_credit
-        .first()
-        .map(|ac| is_various_artists(&ac.name))
-        .unwrap_or(false);
-
-    let pressing = pressing(response);
+pub(crate) fn map_with_metadata(
+    response: &MbReleaseResponse,
+    mut metadata: super::release_metadata::ReleaseMetadata,
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, ImportError> {
+    let primary_artist = metadata
+        .album
+        .take_primary(Catalog::MusicBrainz, &response.id)?;
+    let is_compilation = is_various_artists(&primary_artist.name);
 
     // `side_base` advances per medium so side values never repeat across media.
     let mut tracks: Vec<TrackIr> = Vec::new();
@@ -422,14 +441,13 @@ pub fn map_mb_response_to_db(
         side_base += sides.side_span as i32;
     }
 
-    let primary_artist = release_refs.remove(0);
     let ir = ReleaseIr {
-        album_title: response.title.clone(),
+        album_title: metadata.album.title,
         primary_artist,
-        additional_artists: release_refs,
-        album_year,
+        additional_artists: metadata.album.artists,
+        album_year: metadata.album.year,
         is_compilation,
-        pressing,
+        pressing: metadata.pressing,
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             record: MetadataRef::new(Catalog::MusicBrainz, response.id.clone()),
             // As in `discogs_mapper`: one document's own claim.

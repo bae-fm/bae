@@ -24,10 +24,20 @@ pub struct DiscogsRelease {
     pub label: Vec<String>,
     pub covers: Vec<RemoteCover>,
     pub catno: Option<String>,
+    pub barcode: Option<String>,
     pub artists: Vec<DiscogsArtist>,
     pub extraartists: Option<Vec<DiscogsRoleArtist>>,
     pub tracklist: Vec<DiscogsTrack>,
     pub master_id: Option<String>,
+}
+
+/// Album metadata stated by a master, independent of any particular pressing.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DiscogsMaster {
+    pub title: Option<String>,
+    pub year: Option<u32>,
+    pub artists: Vec<DiscogsArtist>,
+    pub covers: Vec<RemoteCover>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

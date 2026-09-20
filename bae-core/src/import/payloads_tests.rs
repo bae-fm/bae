@@ -1,7 +1,7 @@
 use super::*;
 use crate::db::DbSourceReleasePayload;
-use serial_test::serial;
 use coven::{FixedClock, SequentialIdProvider};
+use serial_test::serial;
 use std::sync::Arc;
 
 #[test]
@@ -74,7 +74,8 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
     .to_string();
     let musicbrainz = serde_json::json!({
         "id": "mb-release", "title": "Album Title",
-        "artist-credit": [], "label-info": [], "media": [], "relations": [],
+        "artist-credit": [], "label-info": [], "media": [],
+        "relations": [{"url":{"resource":"https://www.discogs.com/release/123"}}],
         "release-group": { "id": "mb-group" },
         "cover-art-archive": { "front": true, "darkened": false }
     })
@@ -107,7 +108,14 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
         ),
     ] {
         let covers = ReleasePayloads {
-            release: MetadataRef::new(source, "source-release"),
+            release: MetadataRef::new(
+                source,
+                if source == Catalog::Discogs {
+                    "123"
+                } else {
+                    "mb-release"
+                },
+            ),
             anchor,
             supporting: vec![supporting, master.clone()],
         }
@@ -134,11 +142,7 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
     }
 }
 
-fn mb_release_with_relations(
-    id: &str,
-    group_id: &str,
-    urls: &[&str],
-) -> serde_json::Value {
+fn mb_release_with_relations(id: &str, group_id: &str, urls: &[&str]) -> serde_json::Value {
     serde_json::json!({
         "id": id,
         "title": "Album Title",
@@ -160,8 +164,9 @@ fn mb_release_with_relations(
 
 /// A release-group document whose url-rels name a Wikidata item, which is
 /// where MusicBrainz editors file the link.
-fn wikidata_linked_release_group(item: &str) -> String {
+fn wikidata_linked_release_group(group: &str, item: &str) -> String {
     serde_json::json!({
+        "id": group,
         "relations": [
             { "url": { "resource": format!("https://www.wikidata.org/wiki/{item}") } }
         ]
@@ -210,6 +215,7 @@ fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
             PayloadSource::MusicBrainzReleaseGroup,
             "mb-group",
             serde_json::json!({
+                "id": "mb-group",
                 "relations": [
                     { "url": { "resource": "https://www.allmusic.com/album/mw0000424242" } },
                     { "url": { "resource": "https://rateyourmusic.com/release/album/artist-name/album-title/" } },
@@ -221,15 +227,15 @@ fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
     };
 
     let records = payloads.records().expect("the stored documents read");
-    let described: Vec<(Catalog, &str, &str, &str, bool)> = records
+    let described: Vec<(Catalog, &str, Option<String>, String, bool)> = records
         .iter()
         .map(|record| {
             (
-                record.catalog,
-                record.key.as_str(),
-                record.group_key.as_str(),
-                record.url.as_str(),
-                record.reads_draft,
+                record.catalog(),
+                record.key(),
+                record.album_ref().map(|album| album.key),
+                record.url(),
+                record.reads_draft(),
             )
         })
         .collect();
@@ -239,43 +245,43 @@ fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
             (
                 Catalog::MusicBrainz,
                 "mb-release",
-                "mb-group",
-                "https://musicbrainz.org/release/mb-release",
+                Some("mb-group".to_owned()),
+                "https://musicbrainz.org/release/mb-release".to_owned(),
                 true,
             ),
             (
                 Catalog::Discogs,
                 "4242",
-                "4242",
-                "https://www.discogs.com/release/4242",
+                None,
+                "https://www.discogs.com/release/4242".to_owned(),
                 false,
             ),
             (
                 Catalog::AllMusic,
                 "mw0000424242",
-                "mw0000424242",
-                "https://www.allmusic.com/album/mw0000424242",
+                Some("mw0000424242".to_owned()),
+                "https://www.allmusic.com/album/mw0000424242".to_owned(),
                 false,
             ),
             (
                 Catalog::Bandcamp,
                 "artist-name.bandcamp.com/album/album-title",
-                "artist-name.bandcamp.com/album/album-title",
-                "https://artist-name.bandcamp.com/album/album-title",
+                Some("artist-name.bandcamp.com/album/album-title".to_owned()),
+                "https://artist-name.bandcamp.com/album/album-title".to_owned(),
                 false,
             ),
             (
                 Catalog::RateYourMusic,
                 "album/artist-name/album-title",
-                "album/artist-name/album-title",
-                "https://rateyourmusic.com/release/album/artist-name/album-title",
+                Some("album/artist-name/album-title".to_owned()),
+                "https://rateyourmusic.com/release/album/artist-name/album-title".to_owned(),
                 false,
             ),
             (
                 Catalog::Wikidata,
                 "Q424242",
-                "Q424242",
-                "https://www.wikidata.org/wiki/Q424242",
+                Some("Q424242".to_owned()),
+                "https://www.wikidata.org/wiki/Q424242".to_owned(),
                 false,
             ),
         ],
@@ -287,7 +293,7 @@ fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
 /// not group, which is what the rest of the catalogs say about every release
 /// they list: it stands as its own group.
 #[test]
-fn a_musicbrainz_release_with_no_release_group_stands_as_its_own_group() {
+fn a_musicbrainz_release_without_a_parent_keeps_it_unknown() {
     let mut anchor = mb_release_with_relations("mb-release", "mb-group", &[]);
     anchor["release-group"] = serde_json::Value::Null;
     let payloads = ReleasePayloads {
@@ -298,13 +304,13 @@ fn a_musicbrainz_release_with_no_release_group_stands_as_its_own_group() {
 
     let records = payloads.records().expect("the stored document reads");
     assert_eq!(records.len(), 1);
-    assert_eq!(records[0].group_key, "mb-release");
+    assert_eq!(records[0].album_ref(), None);
 }
 
 /// A master URL on the release names the group of a catalog that already
 /// has a record, not a record of its own: a record names a pressing.
 #[test]
-fn a_linked_group_page_fills_in_its_catalogs_group() {
+fn a_group_link_does_not_invent_a_pressings_parent() {
     let payloads = ReleasePayloads {
         release: MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
         anchor: mb_release_with_relations(
@@ -322,10 +328,10 @@ fn a_linked_group_page_fills_in_its_catalogs_group() {
     let records = payloads.records().expect("the stored document reads");
     let discogs = records
         .iter()
-        .find(|record| record.catalog == Catalog::Discogs)
+        .find(|record| record.catalog() == Catalog::Discogs)
         .expect("the linked Discogs release is a record");
-    assert_eq!(discogs.key, "4242");
-    assert_eq!(discogs.group_key, "909090");
+    assert_eq!(discogs.key(), "4242");
+    assert_eq!(discogs.album_ref(), None);
 }
 
 /// A url-rel names a release page and nothing above it. The cross-linked
@@ -354,10 +360,13 @@ fn the_archived_cross_reference_names_the_discogs_master() {
     let records = payloads.records().expect("the stored documents read");
     let discogs = records
         .iter()
-        .find(|record| record.catalog == Catalog::Discogs)
+        .find(|record| record.catalog() == Catalog::Discogs)
         .expect("the linked Discogs release is a record");
-    assert_eq!(discogs.key, "4242");
-    assert_eq!(discogs.group_key, "909090");
+    assert_eq!(discogs.key(), "4242");
+    assert_eq!(
+        discogs.album_ref().map(|album| album.key),
+        Some("909090".to_owned())
+    );
 }
 
 /// Wikidata's item for the album is the hub the catalogs MusicBrainz editors
@@ -377,21 +386,21 @@ fn an_archived_wikidata_item_records_the_catalogs_it_identifies() {
             SourcePayload::new(
                 PayloadSource::MusicBrainzReleaseGroup,
                 "mb-group",
-                wikidata_linked_release_group("Q424242"),
+                wikidata_linked_release_group("mb-group", "Q424242"),
             ),
             SourcePayload::new(PayloadSource::Wikidata, "Q424242", wikidata_item("Q424242")),
         ],
     };
 
     let records = payloads.records().expect("the stored documents read");
-    let described: Vec<(Catalog, &str, &str, &str)> = records
+    let described: Vec<(Catalog, &str, Option<String>, String)> = records
         .iter()
         .map(|record| {
             (
-                record.catalog,
-                record.key.as_str(),
-                record.group_key.as_str(),
-                record.url.as_str(),
+                record.catalog(),
+                record.key(),
+                record.album_ref().map(|album| album.key),
+                record.url(),
             )
         })
         .collect();
@@ -401,32 +410,32 @@ fn an_archived_wikidata_item_records_the_catalogs_it_identifies() {
             (
                 Catalog::MusicBrainz,
                 "mb-release",
-                "mb-group",
-                "https://musicbrainz.org/release/mb-release",
+                Some("mb-group".to_owned()),
+                "https://musicbrainz.org/release/mb-release".to_owned(),
             ),
             (
                 Catalog::Discogs,
                 "4242",
-                "909090",
-                "https://www.discogs.com/release/4242",
+                None,
+                "https://www.discogs.com/release/4242".to_owned(),
             ),
             (
                 Catalog::AllMusic,
                 "mw0000424242",
-                "mw0000424242",
-                "https://www.allmusic.com/album/mw0000424242",
+                Some("mw0000424242".to_owned()),
+                "https://www.allmusic.com/album/mw0000424242".to_owned(),
             ),
             (
                 Catalog::Spotify,
                 "4242424242424242424242",
-                "4242424242424242424242",
-                "https://open.spotify.com/album/4242424242424242424242",
+                Some("4242424242424242424242".to_owned()),
+                "https://open.spotify.com/album/4242424242424242424242".to_owned(),
             ),
             (
                 Catalog::Wikidata,
                 "Q424242",
-                "Q424242",
-                "https://www.wikidata.org/wiki/Q424242",
+                Some("Q424242".to_owned()),
+                "https://www.wikidata.org/wiki/Q424242".to_owned(),
             ),
         ]
     );
@@ -449,7 +458,7 @@ fn a_musicbrainz_link_outranks_the_item_on_the_same_catalog() {
             SourcePayload::new(
                 PayloadSource::MusicBrainzReleaseGroup,
                 "mb-group",
-                wikidata_linked_release_group("Q424242"),
+                wikidata_linked_release_group("mb-group", "Q424242"),
             ),
             SourcePayload::new(PayloadSource::Wikidata, "Q424242", wikidata_item("Q424242")),
         ],
@@ -458,9 +467,9 @@ fn a_musicbrainz_link_outranks_the_item_on_the_same_catalog() {
     let records = payloads.records().expect("the stored documents read");
     let spotify = records
         .iter()
-        .find(|record| record.catalog == Catalog::Spotify)
+        .find(|record| record.catalog() == Catalog::Spotify)
         .expect("the linked Spotify album is a record");
-    assert_eq!(spotify.key, "9090909090909090909090");
+    assert_eq!(spotify.key(), "9090909090909090909090");
 }
 
 /// A pick claims one release per catalog. What the primary's document says
@@ -495,15 +504,19 @@ fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
     .expect("the claimed documents read");
 
     assert_eq!(records.len(), 2);
-    assert_eq!(records[0].catalog, Catalog::MusicBrainz);
-    assert!(records[0].reads_draft);
-    assert_eq!(records[1].catalog, Catalog::Discogs);
+    assert_eq!(records[0].catalog(), Catalog::MusicBrainz);
+    assert!(records[0].reads_draft());
+    assert_eq!(records[1].catalog(), Catalog::Discogs);
     assert_eq!(
-        records[1].key, "2222",
+        records[1].key(),
+        "2222",
         "the picked Discogs release outranks the cross-linked one"
     );
-    assert_eq!(records[1].group_key, "909090");
-    assert!(!records[1].reads_draft);
+    assert_eq!(
+        records[1].album_ref().map(|album| album.key),
+        Some("909090".to_owned())
+    );
+    assert!(!records[1].reads_draft());
 }
 
 /// A claimed release nothing archived documents for still contributes its
@@ -513,12 +526,13 @@ fn a_claimed_release_with_no_documents_still_has_a_record() {
     let records = claimed_records(&[(MetadataRef::new(Catalog::Discogs, "4242"), None)])
         .expect("a claim with no documents reads");
     assert_eq!(records.len(), 1);
-    assert_eq!(records[0].catalog, Catalog::Discogs);
-    assert_eq!(records[0].url, "https://www.discogs.com/release/4242");
-    assert!(records[0].reads_draft);
+    assert_eq!(records[0].catalog(), Catalog::Discogs);
+    assert_eq!(records[0].url(), "https://www.discogs.com/release/4242");
+    assert!(records[0].reads_draft());
     assert_eq!(
-        records[0].group_key, "4242",
-        "a release its catalog did not group is its own group"
+        records[0].album_ref(),
+        None,
+        "a release without a known parent makes no album claim"
     );
 }
 
@@ -590,13 +604,10 @@ async fn a_discogs_release_reaches_its_master_through_the_anchor() {
     )
     .await;
 
-    let payloads = load(
-        &database,
-        &MetadataRef::new(Catalog::Discogs, "12345"),
-    )
-    .await
-    .expect("the stored set reads back")
-    .expect("the anchor is archived");
+    let payloads = load(&database, &MetadataRef::new(Catalog::Discogs, "12345"))
+        .await
+        .expect("the stored set reads back")
+        .expect("the anchor is archived");
 
     let parsed = payloads
         .parsed(&[], &FixedClock(now()), &SequentialIdProvider::new("album"))
@@ -641,8 +652,11 @@ async fn an_archived_item_reads_back_with_the_set_offline() {
             (
                 PayloadSource::MusicBrainzReleaseGroup,
                 "offline-mb-group",
-                serde_json::from_str(&wikidata_linked_release_group("Q424242"))
-                    .expect("the release group document parses"),
+                serde_json::from_str(&wikidata_linked_release_group(
+                    "offline-mb-group",
+                    "Q424242",
+                ))
+                .expect("the release group document parses"),
             ),
             (
                 PayloadSource::Wikidata,
@@ -666,12 +680,13 @@ async fn an_archived_item_reads_back_with_the_set_offline() {
         .records()
         .expect("the stored documents read")
         .iter()
-        .map(|record| record.catalog)
+        .map(|record| record.catalog())
         .collect();
     assert_eq!(
         catalogs,
         vec![
             Catalog::MusicBrainz,
+            Catalog::Discogs,
             Catalog::AllMusic,
             Catalog::Spotify,
             Catalog::Wikidata,
@@ -693,7 +708,7 @@ async fn identification_archives_the_item_musicbrainz_names() {
     );
     crate::musicbrainz::seed_release_group_json_cache(
         group_id,
-        wikidata_linked_release_group("Q424242"),
+        wikidata_linked_release_group(group_id, "Q424242"),
     );
     crate::wikidata::seed_entity_cache("Q424242", Some(wikidata_item("Q424242")));
 
@@ -722,7 +737,7 @@ async fn identification_archives_the_item_musicbrainz_names() {
         .records()
         .expect("the fetched documents read")
         .iter()
-        .any(|record| record.catalog == Catalog::Spotify));
+        .any(|record| record.catalog() == Catalog::Spotify));
 }
 
 /// Wikidata not answering is not an identification failure: the release keeps
@@ -739,7 +754,7 @@ async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
     );
     crate::musicbrainz::seed_release_group_json_cache(
         group_id,
-        wikidata_linked_release_group("Q909090"),
+        wikidata_linked_release_group(group_id, "Q909090"),
     );
     crate::wikidata::seed_entity_cache("Q909090", None);
 
@@ -762,7 +777,79 @@ async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
         .records()
         .expect("the fetched documents read")
         .iter()
-        .map(|record| record.catalog)
+        .map(|record| record.catalog())
         .collect();
     assert_eq!(catalogs, vec![Catalog::MusicBrainz, Catalog::Wikidata]);
+}
+
+#[test]
+fn discogs_master_cross_reference_retains_album_links_without_claiming_a_pressing() {
+    let mut payloads = ReleasePayloads {
+        release: MetadataRef::new(Catalog::Discogs, "7711"),
+        anchor: serde_json::json!({
+            "id": 7711, "master_id": 7722, "title": "Album Title",
+            "artists": [{"id": 7733, "name": "Artist Name"}],
+            "formats": [{"name": "Vinyl"}],
+            "tracklist": [
+                {"position": "A1", "title": "First Track", "type_": "track"},
+                {"position": "B1", "title": "Second Track", "type_": "track"}
+            ]
+        })
+        .to_string(),
+        supporting: vec![
+            SourcePayload::new(
+                PayloadSource::DiscogsMaster,
+                "7722",
+                serde_json::json!({
+                    "id": 7722, "year": 1966
+                })
+                .to_string(),
+            ),
+            SourcePayload::new(
+                PayloadSource::MusicBrainzReleaseGroup,
+                "linked-group",
+                serde_json::json!({
+                    "id": "linked-group", "first-release-date": "1965",
+                    "relations": [
+                        {"url": {"resource": "https://www.discogs.com/master/7722"}},
+                        {"url": {"resource": "https://www.allmusic.com/album/mw0000007711"}},
+                        {"url": {"resource": "https://www.wikidata.org/wiki/Q7711"}}
+                    ]
+                })
+                .to_string(),
+            ),
+        ],
+    };
+    payloads.supporting.push(SourcePayload::new(
+        PayloadSource::MusicBrainzDiscogsMasterXref,
+        "7722",
+        payloads.supporting[1].json.clone(),
+    ));
+    let records = payloads.records().expect("linked album documents project");
+    assert!(records
+        .iter()
+        .any(|record| record.url() == "https://musicbrainz.org/release-group/linked-group"));
+    assert!(records
+        .iter()
+        .any(|record| record.url() == "https://www.allmusic.com/album/mw0000007711"));
+    assert!(!records
+        .iter()
+        .any(|record| record.url().starts_with("https://musicbrainz.org/release/")));
+    let parsed = payloads
+        .parsed(
+            &[],
+            &FixedClock(now()),
+            &SequentialIdProvider::new("linked-album"),
+        )
+        .unwrap();
+    assert_eq!(parsed.album.year, Some(1966));
+    assert_eq!(parsed.release.pressing.year, None);
+    assert_eq!(
+        parsed
+            .tracks
+            .iter()
+            .map(|track| (track.title.as_str(), track.side))
+            .collect::<Vec<_>>(),
+        vec![("First Track", Some(1)), ("Second Track", Some(2))]
+    );
 }

@@ -173,19 +173,132 @@ fn release_year_distinguishes_unknown_from_known() {
 }
 
 #[test]
+fn release_without_master_has_no_album_identity() {
+    for (field, expected) in [
+        (None, None),
+        (Some(serde_json::Value::Null), None),
+        (Some(serde_json::json!(0)), None),
+        (Some(serde_json::json!(456)), Some("456")),
+    ] {
+        let mut document =
+            serde_json::json!({ "id": 123, "title": "Album Title", "type": "release" });
+        if let Some(value) = field {
+            document["master_id"] = value;
+        }
+        let release = parse_discogs_release_json(&document.to_string()).unwrap();
+        assert_eq!(release.master_id.as_deref(), expected, "{document}");
+        let search: DiscogsSearchResult = serde_json::from_value(document.clone()).unwrap();
+        assert_eq!(
+            search.master_id.map(|id| id.to_string()).as_deref(),
+            expected,
+            "search: {document}"
+        );
+    }
+}
+
+#[test]
+fn release_barcode_reaches_pressing_metadata() {
+    let release = parse_discogs_release_json(
+        r#"{"id":123,"title":"Album Title","identifiers":[
+            {"type":"Matrix / Runout","value":"MATRIX-7"},
+            {"type":"Barcode","value":" \t"},
+            {"type":"Barcode","value":"0 12345 67890 5","description":"Text"},
+            {"type":"Barcode","value":"012345678905","description":"Scanned"}
+        ]}"#,
+    )
+    .unwrap();
+    assert_eq!(release.barcode.as_deref(), Some("0 12345 67890 5"));
+    assert_eq!(
+        crate::import::search::build_discogs_detail(&release, Vec::new(), None).barcode,
+        release.barcode
+    );
+    assert_eq!(
+        crate::import::discogs_mapper::metadata(&release)
+            .pressing
+            .barcode
+            .as_deref(),
+        Some("0 12345 67890 5")
+    );
+}
+
+#[test]
+fn blank_pressing_fields_are_absent_in_discogs_documents() {
+    for value in ["", " \t"] {
+        let raw = serde_json::json!({
+            "id":123, "title":"Album Title", "country":value,
+            "formats":[{"name":value}], "labels":[{"name":value,"catno":value}],
+            "identifiers":[{"type":"Barcode","value":value}]
+        })
+        .to_string();
+        let release = parse_discogs_release_json(&raw).unwrap();
+        assert!(release.country.is_none());
+        assert!(release.format.is_empty());
+        assert!(release.label.is_empty());
+        assert!(release.catno.is_none());
+        assert!(release.barcode.is_none());
+    }
+}
+
+#[test]
 fn master_year_distinguishes_unknown_from_known() {
     for (document, expected) in [
-        (r#"{}"#, None),
-        (r#"{"year":null}"#, None),
-        (r#"{"year":0}"#, None),
-        (r#"{"year":1966}"#, Some(1966)),
+        (r#"{"id":456}"#, None),
+        (r#"{"id":456,"year":null}"#, None),
+        (r#"{"id":456,"year":0}"#, None),
+        (r#"{"id":456,"year":1966}"#, Some(1966)),
     ] {
         assert_eq!(
-            parse_discogs_master_year(document).unwrap(),
+            parse_discogs_master_json(document).unwrap().year,
             expected,
             "{document}"
         );
     }
+}
+
+#[test]
+fn master_parser_retains_album_metadata_without_pressing_or_track_defaults() {
+    let master = parse_discogs_master_json(
+        r#"{
+        "id":456, "title":"Album Title", "year":1982,
+        "artists":[{"id":12,"name":"Artist Name"}],
+        "main_release":123,
+        "images":[{"type":"primary","uri":"https://images.example/front.jpg"}]
+    }"#,
+    )
+    .unwrap();
+    assert_eq!(master.title.as_deref(), Some("Album Title"));
+    assert_eq!(master.year, Some(1982));
+    assert_eq!(master.artists[0].id, "12");
+    assert_eq!(master.artists[0].name, "Artist Name");
+    assert_eq!(master.covers.len(), 1);
+    assert_eq!(master.covers[0].url, "https://images.example/front.jpg");
+
+    for raw in [r#"{"id":456}"#, r#"{"id":456,"title":"","year":0}"#] {
+        let master = parse_discogs_master_json(raw).unwrap();
+        assert!(master.title.is_none());
+        assert!(master.year.is_none());
+        assert!(master.artists.is_empty());
+        assert!(master.covers.is_empty());
+    }
+    assert!(parse_discogs_master_json(r#"{"id":456,"year":"broken"}"#).is_err());
+}
+
+#[tokio::test]
+#[serial(discogs_rate_limiter)]
+async fn master_fetch_returns_its_own_document_without_following_main_release() {
+    let _guard = discogs_test_guard().lock().await;
+    RATE_LIMITER.reset();
+    let raw =
+        r#"{"id":510005,"title":"Album Title","year":1982,"main_release":510006}"#.to_string();
+    let (url, requests) = scripted_server(vec![(200, raw.clone())]).await;
+    let (master, archived) = client_at(url)
+        .get_master("510005", CallPriority::Interactive)
+        .await
+        .unwrap();
+    assert_eq!(master.title.as_deref(), Some("Album Title"));
+    assert_eq!(master.year, Some(1982));
+    assert_eq!(archived, raw);
+    assert_eq!(requests.load(Ordering::SeqCst), 1);
 }
 
 #[test]

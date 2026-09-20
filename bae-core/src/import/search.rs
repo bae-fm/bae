@@ -579,11 +579,7 @@ pub(crate) fn build_discogs_detail(
 ) -> ImportSearchReleaseDetail {
     let processed =
         crate::import::discogs_mapper::process_tracklist(&release.tracklist, audio_durations_ms);
-    let format_string = if release.format.is_empty() {
-        None
-    } else {
-        Some(release.format.join(", "))
-    };
+    let pressing = crate::import::discogs_mapper::pressing(release);
 
     let tracks: Vec<ReleaseTrack> = processed
         .iter()
@@ -604,7 +600,6 @@ pub(crate) fn build_discogs_detail(
         })
         .collect();
 
-    let year = release.year.map(|y| y as i32);
     let artist = release
         .artists
         .iter()
@@ -623,14 +618,12 @@ pub(crate) fn build_discogs_detail(
         source_group_id: release.master_id.clone(),
         title: release.title.clone(),
         artist,
-        year,
-        format: format_string,
-        label: release.label.first().cloned(),
-        catalog_number: release.catno.clone(),
-        country: release.country.clone(),
-        // The `DiscogsRelease` model doesn't carry a barcode field, so
-        // the Discogs confirmation detail has no barcode to surface.
-        barcode: None,
+        year: pressing.year,
+        format: pressing.format,
+        label: pressing.label,
+        catalog_number: pressing.catalog_number,
+        country: pressing.country,
+        barcode: pressing.barcode,
         track_count: tracks.len() as u32,
         tracks,
         cover_art,

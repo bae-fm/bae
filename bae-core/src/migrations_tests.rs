@@ -1,4 +1,10 @@
 use super::*;
+
+#[path = "migrations_tests/applied_source_partners.rs"]
+mod applied_source_partners;
+
+#[path = "migrations_tests/record_kinds.rs"]
+mod record_kinds;
 use chrono::{TimeZone, Utc};
 use coven::{Coven, CovenError, FixedClock, MigrationError, StoreDir};
 use serial_test::serial;

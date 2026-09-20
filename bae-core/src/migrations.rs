@@ -212,6 +212,18 @@ pub fn all() -> Vec<coven::Migration> {
             41,
             "remove_field_origins",
             include_str!("../migrations/041_remove_field_origins.sql"),
+        )
+        .changesets(crate::migration_changesets::remove_field_origins()),
+        coven::Migration::sql(
+            42,
+            "record_kinds",
+            include_str!("../migrations/042_record_kinds.sql"),
+        )
+        .changesets(crate::migration_changesets::record_kinds()),
+        coven::Migration::run(
+            43,
+            "applied_source_partners",
+            migrate_applied_source_partners,
         ),
     ]
 }
@@ -368,5 +380,13 @@ fn migrate_applied_source_documents(
     ))?;
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     crate::db::Database::migrate_applied_sources(sql)?;
+    Ok(())
+}
+
+fn migrate_applied_source_partners(
+    _sql: &coven::MigrationContext<'_>,
+) -> Result<(), coven::DbError> {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    crate::db::Database::migrate_applied_source_partners(_sql)?;
     Ok(())
 }

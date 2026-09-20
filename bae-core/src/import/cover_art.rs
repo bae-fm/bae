@@ -11,7 +11,7 @@ use tracing::{debug, warn};
 #[path = "cover_art_archive.rs"]
 mod archive;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use archive::musicbrainz_gallery;
+pub use archive::{musicbrainz_gallery, musicbrainz_group_gallery};
 
 /// The persisted owner whose external identities supply a cover gallery.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

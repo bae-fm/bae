@@ -55,8 +55,12 @@ async fn every_identity_becomes_a_record_and_the_draft_says_where_it_was_read() 
         .expect("seed version-thirty identities");
     drop(handle);
 
-    let handle = open(store_dir, "migration-release-records", all())
-        .expect("migrate the identities into records");
+    let handle = open(
+        store_dir,
+        "migration-release-records",
+        all().into_iter().take(31).collect(),
+    )
+    .expect("migrate the identities into records");
     handle
         .read(|sql| {
             let records = sql.query(

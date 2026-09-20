@@ -180,8 +180,11 @@ async fn set_records_replaces_rows_when_the_new_records_fit_the_current_album() 
         .await
         .unwrap();
     assert_eq!(identities.len(), 1);
-    assert_eq!(identities[0].group_key, "g1");
-    assert_eq!(identities[0].key, "mb-rel-99");
+    assert_eq!(
+        identities[0].album_ref().expect("known parent album").key,
+        "g1"
+    );
+    assert_eq!(identities[0].key(), "mb-rel-99");
 
     let updated = manager
         .database
@@ -631,4 +634,178 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
         .unwrap();
     assert_eq!(fresh_releases.len(), 1);
     assert_eq!(fresh_releases[0].id, release_alpha.id);
+}
+
+#[tokio::test]
+async fn album_records_merge_albums_but_never_match_pressings() {
+    use crate::import::{Catalog, MetadataRef, ReleaseRecord};
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    manager.database.insert_album(&album).await.unwrap();
+    let release = create_test_release(&album.id);
+    manager.database.insert_release(&release).await.unwrap();
+    let records = vec![
+        ReleaseRecord::album(&MetadataRef::new(Catalog::Discogs, "42")),
+        ReleaseRecord::album(&MetadataRef::new(Catalog::AllMusic, "mw42")),
+    ];
+    manager
+        .database
+        .insert_release_records(&release.id, &records)
+        .await
+        .unwrap();
+    assert_eq!(
+        manager
+            .database
+            .get_release_records(&release.id)
+            .await
+            .unwrap(),
+        records
+    );
+    assert!(manager
+        .database
+        .find_album_by_record_key_excluding(&records, &[])
+        .await
+        .unwrap()
+        .is_none());
+    // Numeric Discogs release and master identifiers can coincide; their kinds
+    // still denote different objects.
+    let pressing = ReleaseRecord::new(
+        &MetadataRef::new(Catalog::Discogs, "42"),
+        Some("42".into()),
+        true,
+    );
+    assert!(manager
+        .database
+        .find_album_by_record_key_excluding(std::slice::from_ref(&pressing), &[])
+        .await
+        .unwrap()
+        .is_none());
+    assert_eq!(
+        manager
+            .database
+            .find_album_by_record_group_excluding(std::slice::from_ref(&pressing), &[])
+            .await
+            .unwrap(),
+        Some(album.id.clone())
+    );
+    assert_eq!(
+        manager
+            .database
+            .find_album_by_record_group_excluding(&records, &[])
+            .await
+            .unwrap(),
+        Some(album.id.clone())
+    );
+    let checks = [
+        crate::db::LibraryCheck {
+            source: Catalog::Discogs,
+            release_id: "42".into(),
+            source_group_id: None,
+        },
+        crate::db::LibraryCheck {
+            source: Catalog::Discogs,
+            release_id: "42".into(),
+            source_group_id: Some("42".into()),
+        },
+    ];
+    let statuses = manager
+        .database
+        .check_releases_in_library(&checks)
+        .await
+        .unwrap();
+    assert!(!statuses[0].release_in_library && !statuses[0].album_in_library);
+    assert!(!statuses[1].release_in_library && statuses[1].album_in_library);
+
+    let another_album = create_test_album();
+    manager.database.insert_album(&another_album).await.unwrap();
+    let another_release = create_test_release(&another_album.id);
+    manager
+        .database
+        .insert_release(&another_release)
+        .await
+        .unwrap();
+    manager
+        .set_records(&another_release.id, vec![pressing.clone()], false, None)
+        .await
+        .unwrap();
+    assert_eq!(
+        manager
+            .database
+            .find_album_id_for_release(&another_release.id)
+            .await
+            .unwrap(),
+        Some(album.id.clone())
+    );
+    assert_eq!(
+        manager
+            .database
+            .find_album_by_record_key_excluding(&[pressing], &[])
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        album.id
+    );
+    assert!(manager
+        .database
+        .find_album_by_record_key_excluding(&records, &[])
+        .await
+        .unwrap()
+        .is_none());
+}
+
+#[tokio::test]
+async fn ungrouped_pressings_do_not_invent_album_matches() {
+    use crate::import::{Catalog, MetadataRef, ReleaseRecord};
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    manager.database.insert_album(&album).await.unwrap();
+    let release = create_test_release(&album.id);
+    manager.database.insert_release(&release).await.unwrap();
+    let records = [ReleaseRecord::new(
+        &MetadataRef::new(Catalog::Discogs, "42"),
+        None,
+        true,
+    )];
+    manager
+        .database
+        .insert_release_records(&release.id, &records)
+        .await
+        .unwrap();
+    assert_eq!(
+        manager
+            .database
+            .get_release_records(&release.id)
+            .await
+            .unwrap(),
+        records
+    );
+    assert!(manager
+        .database
+        .find_album_by_record_group_excluding(&records, &[])
+        .await
+        .unwrap()
+        .is_none());
+    assert!(manager
+        .database
+        .find_album_by_record_group_excluding(
+            &[ReleaseRecord::album(&MetadataRef::new(
+                Catalog::Discogs,
+                "42"
+            ))],
+            &[]
+        )
+        .await
+        .unwrap()
+        .is_none());
+    assert_eq!(
+        manager
+            .database
+            .find_album_by_record_key_excluding(&records, &[])
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        album.id
+    );
 }

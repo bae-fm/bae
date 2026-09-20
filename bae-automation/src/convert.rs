@@ -191,14 +191,24 @@ mirror_struct! {
 }
 
 impl AutomationReleaseRecord {
-    /// Not a copy: the group a record's release belongs to in its catalog is
-    /// what import dedup matches on, and nothing outside core reads it.
+    /// Core supplies each page URL in addition to the catalog identity.
     pub(crate) fn from_core(record: bae_core::import::ReleaseRecord) -> Self {
-        Self {
-            catalog: record.catalog.into(),
-            key: record.key,
-            url: record.url,
-            reads_draft: record.reads_draft,
+        let url = record.url();
+        match record {
+            bae_core::import::ReleaseRecord::Pressing {
+                release,
+                album_key,
+                reads_draft,
+            } => Self::Pressing {
+                release: AutomationMetadataRef::from_core(release),
+                album_key,
+                reads_draft,
+                url,
+            },
+            bae_core::import::ReleaseRecord::Album { album } => Self::Album {
+                album: AutomationMetadataRef::from_core(album),
+                url,
+            },
         }
     }
 }
@@ -417,9 +427,7 @@ mirror_struct! {
     fields: { year, format, label, catalog_number, country, barcode },
 }
 
-/// Not a mirror: core's `origins` say where each value was read, which an edit
-/// built field for field cannot answer. It states nothing, and the write reads
-/// every field the edit changes as typed.
+/// Converts editable values and their artist assignments across the automation boundary.
 impl AutomationReleaseUserEdit {
     pub(crate) fn from_core(edit: bae_core::import::ReleaseUserEdit) -> Self {
         Self {
@@ -923,5 +931,47 @@ impl AutomationTrackSearchResult {
             album_title: track.album_title,
             artist_name: track.artist_name,
         }
+    }
+}
+
+#[cfg(test)]
+mod record_tests {
+    use super::*;
+
+    #[test]
+    fn album_identity_is_exposed_without_a_pressing_or_draft_claim() {
+        let record = bae_core::import::ReleaseRecord::album(&MetadataRef::new(
+            Catalog::MusicBrainz,
+            "group-1",
+        ));
+        let value = serde_json::to_value(AutomationReleaseRecord::from_core(record)).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "kind": "album",
+                "album": { "catalog": "music_brainz", "key": "group-1" },
+                "url": "https://musicbrainz.org/release-group/group-1"
+            })
+        );
+    }
+
+    #[test]
+    fn pressing_identity_keeps_its_known_parent_and_draft_source() {
+        let record = bae_core::import::ReleaseRecord::new(
+            &MetadataRef::new(Catalog::Discogs, "42"),
+            Some("73".into()),
+            true,
+        );
+        let value = serde_json::to_value(AutomationReleaseRecord::from_core(record)).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "kind": "pressing",
+                "release": { "catalog": "discogs", "key": "42" },
+                "album_key": "73",
+                "reads_draft": true,
+                "url": "https://www.discogs.com/release/42"
+            })
+        );
     }
 }

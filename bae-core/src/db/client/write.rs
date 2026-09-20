@@ -723,21 +723,28 @@ pub(super) fn insert_release_record_row(
     reg: &str,
     now: &str,
 ) -> Result<(), DbError> {
+    let (kind, album_key) = match record {
+        crate::import::ReleaseRecord::Pressing { album_key, .. } => {
+            ("pressing", album_key.as_deref())
+        }
+        crate::import::ReleaseRecord::Album { .. } => ("album", None),
+    };
     conn.execute(
         r#"
         INSERT INTO release_records (
-            id, release_id, catalog, key, group_key,
+            id, release_id, catalog, kind, key, album_key,
             url, reads_draft, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             id,
             release_id,
-            record.catalog.as_str(),
-            record.key,
-            record.group_key,
-            record.url,
-            record.reads_draft,
+            record.catalog().as_str(),
+            kind,
+            record.key(),
+            album_key,
+            record.url(),
+            record.reads_draft(),
             reg,
             now,
         ],

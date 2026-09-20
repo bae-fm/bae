@@ -223,31 +223,12 @@ async fn fetch_entity_once(item: &str, priority: CallPriority) -> Result<String,
     Ok(raw_json)
 }
 
-/// Which of a catalog's two kinds of page a property's values name.
-#[derive(Clone, Copy)]
-enum PageKind {
-    /// One pressing.
-    Release,
-    /// The group a pressing belongs to — a MusicBrainz release group, a
-    /// Discogs master.
-    Group,
-}
-
-impl PageKind {
-    fn page(self, catalog: Catalog, key: String) -> CatalogPage {
-        match self {
-            Self::Release => CatalogPage::Release { catalog, key },
-            Self::Group => CatalogPage::Group { catalog, key },
-        }
-    }
-}
-
 /// The Wikidata properties whose values are another catalog's key for the same
 /// album, and which of that catalog's pages the value names.
 ///
 /// Each id was read off its own property page on wikidata.org, where the
-/// formatter URL agrees with the address [`Catalog::release_url`] and
-/// [`Catalog::group_url`] build from the same key:
+/// formatter URL agrees with the address [`Catalog::album_url`] builds from
+/// the same key:
 ///
 /// - `P436` MusicBrainz release group ID — `https://musicbrainz.org/release-group/$1`
 /// - `P1954` Discogs master ID — `https://www.discogs.com/en/master/$1`
@@ -267,15 +248,15 @@ impl PageKind {
 /// (`P9965`) and no album one; Bandcamp release ID (`P11354`) is the numeric
 /// id of an embedded player widget, not the artist-subdomain album address.
 /// Both catalogs still arrive through MusicBrainz's own url-rels.
-const CATALOG_PROPERTIES: &[(&str, Catalog, PageKind)] = &[
-    ("P436", Catalog::MusicBrainz, PageKind::Group),
-    ("P1954", Catalog::Discogs, PageKind::Group),
-    ("P1729", Catalog::AllMusic, PageKind::Release),
-    ("P8392", Catalog::RateYourMusic, PageKind::Release),
-    ("P6217", Catalog::Genius, PageKind::Release),
-    ("P2205", Catalog::Spotify, PageKind::Release),
-    ("P2281", Catalog::AppleMusic, PageKind::Release),
-    ("P2723", Catalog::Deezer, PageKind::Release),
+const CATALOG_PROPERTIES: &[(&str, Catalog)] = &[
+    ("P436", Catalog::MusicBrainz),
+    ("P1954", Catalog::Discogs),
+    ("P1729", Catalog::AllMusic),
+    ("P8392", Catalog::RateYourMusic),
+    ("P6217", Catalog::Genius),
+    ("P2205", Catalog::Spotify),
+    ("P2281", Catalog::AppleMusic),
+    ("P2723", Catalog::Deezer),
 ];
 
 /// One Wikidata item, reduced to what bae reads from it: the item's own id and
@@ -299,19 +280,18 @@ impl WikidataEntity {
     /// dozens, most of them about the album rather than about where to read
     /// more of it.
     pub fn catalog_pages(&self) -> Vec<CatalogPage> {
-        let mut pages = vec![CatalogPage::Release {
+        let mut pages = vec![CatalogPage::Group {
             catalog: Catalog::Wikidata,
             key: self.item.clone(),
         }];
-        for (property, catalog, kind) in CATALOG_PROPERTIES {
+        for (property, catalog) in CATALOG_PROPERTIES {
             let Some(values) = self.claims.get(*property) else {
                 continue;
             };
-            pages.extend(
-                values
-                    .iter()
-                    .map(|value| kind.page(*catalog, value.clone())),
-            );
+            pages.extend(values.iter().map(|value| CatalogPage::Group {
+                catalog: *catalog,
+                key: value.clone(),
+            }));
         }
         pages
     }

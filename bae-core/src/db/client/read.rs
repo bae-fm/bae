@@ -248,25 +248,35 @@ pub(super) fn get_release_records_on(
 ) -> Result<Vec<crate::import::ReleaseRecord>, DbError> {
     let mut records = sql.query(
         r#"
-            SELECT catalog, key, group_key, url, reads_draft
+            SELECT catalog, kind, key, album_key, reads_draft
             FROM release_records
             WHERE release_id = ?
             "#,
         params![release_id],
         |row| {
-            Ok(crate::import::ReleaseRecord {
-                catalog: parsed_column(row, "catalog")?,
-                key: row.get("key")?,
-                group_key: row.get("group_key")?,
-                url: row.get("url")?,
-                reads_draft: row.get("reads_draft")?,
-            })
+            let identity = crate::import::MetadataRef::new(
+                parsed_column(row, "catalog")?,
+                row.get::<_, String>("key")?,
+            );
+            match row.get::<_, String>("kind")?.as_str() {
+                "pressing" => Ok(crate::import::ReleaseRecord::new(
+                    &identity,
+                    row.get("album_key")?,
+                    row.get("reads_draft")?,
+                )),
+                "album" => Ok(crate::import::ReleaseRecord::album(&identity)),
+                kind => Err(coven::rusqlite::Error::FromSqlConversionFailure(
+                    row.as_ref().column_index("kind")?,
+                    coven::rusqlite::types::Type::Text,
+                    format!("unknown record kind: {kind}").into(),
+                )),
+            }
         },
     )?;
     records.sort_by_key(|record| {
         crate::import::Catalog::ALL
             .iter()
-            .position(|catalog| *catalog == record.catalog)
+            .position(|catalog| *catalog == record.catalog())
             .expect("every stored catalog is one of the catalogs")
     });
     Ok(records)

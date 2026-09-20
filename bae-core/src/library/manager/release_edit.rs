@@ -39,7 +39,7 @@ impl LibraryManager {
                 .detail
                 .records
                 .iter()
-                .any(|record| record.reads_draft);
+                .any(|record| record.reads_draft());
         let display = crate::album_detail::ReleaseEditDisplayContext::from_raw(&context.detail)?;
         let cover = cover_ref_for(&self.database, release_id).await?;
 

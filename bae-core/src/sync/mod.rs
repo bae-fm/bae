@@ -78,7 +78,7 @@ pub const CACHE_BUDGETS: [(&str, u64); 3] = [
 /// resolves conflicts last-writer-wins on `_updated_at`. So a table syncs only
 /// if it has both an `id TEXT PRIMARY KEY` at column 0 and an
 /// `_updated_at TEXT NOT NULL`. Every table below has both (the tests here check
-/// that against `bae-core/migrations/001_initial.sql`).
+/// that against the fully migrated SQLite schema).
 ///
 /// ## The `releases.remote` gate
 ///
@@ -225,133 +225,60 @@ mod tests {
 
     use super::synced_tables;
 
-    /// `(table_name, column_body)` for every `CREATE TABLE` in the migrations. The
-    /// body is delimited by depth-matched parens, so a nested `CHECK (...)` doesn't
-    /// truncate it.
-    fn migration_tables() -> Vec<(String, String)> {
-        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/migrations");
-        let mut paths: Vec<_> = std::fs::read_dir(dir)
-            .expect("migrations dir")
-            .filter_map(|e| e.ok().map(|e| e.path()))
-            .filter(|p| p.extension().is_some_and(|x| x == "sql"))
-            .collect();
-        paths.sort();
-        let sql = paths
-            .iter()
-            .map(|p| std::fs::read_to_string(p).expect("read migration"))
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        let marker = "CREATE TABLE ";
-        let mut out = Vec::new();
-        let mut cursor = 0;
-        while let Some(rel) = sql[cursor..].find(marker) {
-            let mut after = cursor + rel + marker.len();
-            if sql[after..].starts_with("IF NOT EXISTS ") {
-                after += "IF NOT EXISTS ".len();
-            }
-            let name: String = sql[after..]
-                .chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '_')
-                .collect();
-            let open = after + sql[after..].find('(').expect("table has a column list");
-            let mut depth = 0usize;
-            let mut close = open;
-            for (k, ch) in sql[open..].char_indices() {
-                match ch {
-                    '(' => depth += 1,
-                    ')' => {
-                        depth -= 1;
-                        if depth == 0 {
-                            close = open + k;
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            out.push((name, open, sql[open + 1..close].to_string()));
-            cursor = close;
-        }
-
-        // A rung that drops a table takes it out of the schema — unless a later
-        // one creates it again, which is how a table rebuild reads here.
-        let mut dropped: std::collections::HashMap<String, usize> =
-            std::collections::HashMap::new();
-        let drop_marker = "DROP TABLE ";
-        let mut cursor = 0;
-        while let Some(rel) = sql[cursor..].find(drop_marker) {
-            let mut after = cursor + rel + drop_marker.len();
-            if sql[after..].starts_with("IF EXISTS ") {
-                after += "IF EXISTS ".len();
-            }
-            let name: String = sql[after..]
-                .chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '_')
-                .collect();
-            dropped
-                .entry(name)
-                .and_modify(|at| *at = after)
-                .or_insert(after);
-            cursor = after;
-        }
-
-        out.into_iter()
-            .filter(|(name, at, _)| dropped.get(name).is_none_or(|dropped_at| at > dropped_at))
-            .map(|(name, _, body)| (name, body))
-            .collect()
-    }
-
-    fn has_lww_clock(body: &str) -> bool {
-        body.lines()
-            .any(|l| l.trim_start().starts_with("_updated_at"))
-    }
-
-    fn id_pk_at_column_0(body: &str) -> bool {
-        let first = body
-            .lines()
-            .map(str::trim)
-            .find(|l| !l.is_empty() && !l.starts_with("--"))
-            .unwrap_or("")
-            .to_ascii_lowercase();
-        first.starts_with("id ") && first.contains("primary key")
-    }
-
     /// The synced set must be exactly the tables carrying an `_updated_at` clock —
     /// no more, no fewer. A device-local table (`playback_state`) that grew an
     /// `_updated_at` would start leaking per-device state across devices; a new
     /// synced table left off the registration would silently never propagate.
     /// Either drift breaks this test.
-    #[test]
-    fn synced_tables_equal_the_lww_clock_set() {
-        let tables = migration_tables();
-        assert!(
-            tables.len() > 10,
-            "table parser under-counted: {}",
-            tables.len()
-        );
-
-        let with_clock: BTreeSet<&str> = tables
-            .iter()
-            .filter(|(_, body)| has_lww_clock(body))
-            .map(|(name, _)| name.as_str())
-            .collect();
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn synced_tables_equal_the_lww_clock_set() {
+        let directory = tempfile::tempdir().expect("temporary library");
+        crate::config::install_test_keyring();
+        let handle = coven::Coven::builder(
+            coven::StoreDir::new_ephemeral(directory.path()),
+            coven::Config::with_defaults(
+                "schema-test".to_string(),
+                "schema-device".to_string(),
+                "Schema Test".to_string(),
+            ),
+        )
+        .synced_tables(synced_tables())
+        .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
+        .clock(std::sync::Arc::new(coven::SystemClock))
+        .oauth_clients(crate::oauth::clients())
+        .migrations(crate::migrations::all())
+        .open()
+        .expect("open the migrated library with its real sync declarations");
+        let tables = handle
+            .read(|sql| {
+                Ok(sql.query(
+                    "SELECT schema.name, EXISTS (
+                         SELECT 1 FROM pragma_table_info(schema.name)
+                         WHERE cid = 0 AND name = 'id' AND pk = 1 AND upper(type) = 'TEXT'
+                     ) FROM sqlite_schema AS schema
+                     WHERE schema.type = 'table' AND EXISTS (
+                         SELECT 1 FROM pragma_table_info(schema.name)
+                         WHERE name = '_updated_at'
+                     ) ORDER BY schema.name",
+                    [],
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?)),
+                )?)
+            })
+            .await
+            .expect("inspect the final SQLite schema");
+        let with_clock: BTreeSet<&str> = tables.iter().map(|(name, _)| name.as_str()).collect();
         let synced = synced_tables();
-        let registered: BTreeSet<&str> = synced.iter().map(|t| t.name()).collect();
+        let registered: BTreeSet<&str> = synced.iter().map(|table| table.name()).collect();
         assert_eq!(
             registered, with_clock,
             "the synced set must equal the set of tables with an `_updated_at` clock"
         );
-
-        // coven keys changeset apply on the column-0 PK, so every synced table
-        // needs `id TEXT PRIMARY KEY` first.
-        for (name, body) in &tables {
-            if registered.contains(name.as_str()) {
-                assert!(
-                    id_pk_at_column_0(body),
-                    "synced table `{name}` must have `id` PRIMARY KEY at column 0"
-                );
-            }
+        for (name, has_identity) in tables {
+            assert!(
+                has_identity,
+                "synced table `{name}` must have `id TEXT PRIMARY KEY` at column 0"
+            );
         }
     }
 

@@ -73,7 +73,7 @@ mirror_enum! {
     },
 }
 
-/// One catalog's key for one release. Mirrors
+/// One catalog's key for an entity, whose kind is stated by its containing field. Mirrors
 /// `bae_core::import::MetadataRef`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMetadataRef {
@@ -81,30 +81,20 @@ pub struct BridgeMetadataRef {
     pub key: String,
 }
 
-/// One catalog's description of a release: which catalog, its key for the
-/// release, and the page it publishes. Mirrors
-/// `bae_core::import::ReleaseRecord`.
+/// A catalog link displayed by the native UI. Core resolves whether its page
+/// names a pressing or an album before projecting the URL.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeReleaseRecord {
     pub catalog: BridgeCatalog,
-    pub key: String,
-    /// The catalog's page for this release, built by core. No surface builds
-    /// one.
     pub url: String,
-    /// True for the one record the draft's facts were read from, and for no
-    /// other record of the same release.
-    pub reads_draft: bool,
 }
 
 impl BridgeReleaseRecord {
-    /// Not a copy: the group a record's release belongs to in its catalog is
-    /// what import dedup matches on, and no surface reads it.
+    /// Native surfaces render catalog links; identity matching remains in core.
     pub(crate) fn from_core(record: bae_core::import::ReleaseRecord) -> Self {
         Self {
-            catalog: BridgeCatalog::from_core(record.catalog),
-            key: record.key,
-            url: record.url,
-            reads_draft: record.reads_draft,
+            catalog: BridgeCatalog::from_core(record.catalog()),
+            url: record.url(),
         }
     }
 }

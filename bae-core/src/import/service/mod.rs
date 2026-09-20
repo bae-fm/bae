@@ -686,8 +686,8 @@ async fn load_existing_artist_assignments(
     Ok(out)
 }
 
-/// The archived documents for a release, fetching and storing them when nothing
-/// has yet. Takes the bare `LibraryManager` because the sweep and library
+/// Prepare a release by expanding its archived document set through known
+/// relationships. Takes the bare `LibraryManager` because the sweep and library
 /// re-identification do not hold an `ImportServiceHandle`.
 ///
 /// Every path that needs a release it may not have archived comes here: the
@@ -699,31 +699,29 @@ pub(crate) async fn prepare_release(
     release_ref: &MetadataRef,
     priority: CallPriority,
 ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-    if let Some(stored) = library_manager.load_release_payloads(release_ref).await? {
-        return Ok(stored);
-    }
+    let stored = library_manager.load_release_payloads(release_ref).await?;
     let payloads = library_manager
-        .fetch_release_payloads(release_ref, priority)
+        .fetch_release_payloads(release_ref, stored.as_ref(), priority)
         .await?;
     library_manager.store_release_payloads(&payloads).await?;
     Ok(payloads)
 }
 
-/// Archive every partner a pick carried, so each one's own records read back
-/// offline later.
+/// Prepare and retain every partner's exact documents for this selection.
 ///
 /// A pick names one release per catalog: the primary is the document the draft
 /// is read from, and every partner is a different catalog's release of the same
 /// pressing. Two claims about one catalog are two answers to one question, so
-/// this refuses them rather than picking one. Nothing is written before this
-/// returns, so a partner that will not prepare leaves the pick unmade.
+/// this refuses them rather than picking one. The candidate's provenance is
+/// written only after this returns, so a failed partner leaves the pick unmade.
 pub(crate) async fn prepare_partners(
     library_manager: &LibraryManager,
     primary: &MetadataRef,
     partners: &[MetadataRef],
     priority: CallPriority,
-) -> Result<(), crate::import::ImportError> {
+) -> Result<Vec<crate::import::payloads::ReleasePayloads>, crate::import::ImportError> {
     let mut claimed = vec![primary.catalog];
+    let mut prepared = Vec::with_capacity(partners.len());
     for partner in partners {
         if claimed.contains(&partner.catalog) {
             return Err(crate::import::ImportError::Internal {
@@ -734,36 +732,21 @@ pub(crate) async fn prepare_partners(
             });
         }
         claimed.push(partner.catalog);
-        prepare_release(library_manager, partner, priority).await?;
+        prepared.push(prepare_release(library_manager, partner, priority).await?);
     }
-    Ok(())
+    Ok(prepared)
 }
 
-/// The records a pick commits, read off the documents every release it claims
-/// was archived with.
-///
-/// Every partner's documents were archived when the pick was applied, so this
-/// reads them and never fetches; a partner with nothing stored is a broken
-/// invariant and fails the commit rather than committing a thinner claim.
-pub(crate) async fn records_for_commit(
-    library_manager: &LibraryManager,
+/// Derive committed identities from the exact documents prepared for a pick.
+/// No mutable archive is read after selection has captured these sets.
+pub(crate) fn records_for_commit(
     primary: &crate::import::payloads::ReleasePayloads,
-    partners: &[MetadataRef],
+    partners: &[crate::import::payloads::ReleasePayloads],
 ) -> Result<Vec<crate::import::ReleaseRecord>, crate::import::ImportError> {
-    let mut claimed = vec![(primary.release().clone(), Some(primary.clone()))];
-    for partner in partners {
-        let payloads = library_manager
-            .load_release_payloads(partner)
-            .await?
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!(
-                    "picked {} release {} but nothing stored its lookups",
-                    partner.catalog.as_str(),
-                    partner.key
-                ),
-            })?;
-        claimed.push((partner.clone(), Some(payloads)));
-    }
+    let claimed: Vec<_> = std::iter::once(primary)
+        .chain(partners)
+        .map(|payloads| (payloads.release().clone(), Some(payloads.clone())))
+        .collect();
     crate::import::payloads::claimed_records(&claimed)
 }
 

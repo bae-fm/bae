@@ -285,16 +285,24 @@ impl ImportService {
                         detail: format!("{candidate_key} has no applied source documents"),
                     }
                 })?;
-                if applied.payloads.release() != record {
+                if applied.payloads.release() != record
+                    || applied.partners.len() != partners.len()
+                    || partners.iter().any(|partner| {
+                        !applied
+                            .partners
+                            .iter()
+                            .any(|payloads| payloads.release() == partner)
+                    })
+                {
                     return Err(crate::import::ImportError::Internal {
                         detail: "applied source and draft provenance disagree".into(),
                     });
                 }
-                let payloads = &applied.payloads;
                 let parsed = applied.parsed(self.clock.as_ref(), self.ids.as_ref())?;
-                records =
-                    crate::import::service::records_for_commit(library_manager, payloads, partners)
-                        .await?;
+                records = crate::import::service::records_for_commit(
+                    &applied.payloads,
+                    &applied.partners,
+                )?;
                 parsed
             }
             Some(crate::import::MetadataProvenance::FileTags) => {

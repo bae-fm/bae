@@ -118,9 +118,7 @@ public sealed class ReleaseVerificationTests
     [
         new BridgeReleaseRecord(
             BridgeCatalog.MusicBrainz,
-            "rel-1",
-            "https://musicbrainz.org/release/rel-1",
-            true),
+            "https://musicbrainz.org/release/rel-1"),
     ];
 
     private static List<string> TextOf(Control root) =>

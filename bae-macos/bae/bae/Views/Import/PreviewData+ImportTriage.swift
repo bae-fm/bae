@@ -315,15 +315,11 @@
         static let identifiedFromBothCatalogs = [
             BridgeReleaseRecord(
                 catalog: .musicBrainz,
-                key: "rel-paired",
-                url: "https://musicbrainz.org/release/rel-paired",
-                readsDraft: true
+                url: "https://musicbrainz.org/release/rel-paired"
             ),
             BridgeReleaseRecord(
                 catalog: .discogs,
-                key: "discogs-paired",
-                url: "https://www.discogs.com/release/discogs-paired",
-                readsDraft: false
+                url: "https://www.discogs.com/release/discogs-paired"
             ),
         ]
 

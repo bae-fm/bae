@@ -11,7 +11,7 @@
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use crate::import::{PayloadSource, SourcePayload};
+use crate::import::CatalogPage;
 use crate::util::http::{is_cacheable, CachedResponse};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
@@ -62,7 +62,7 @@ fn release_url(release_id: &str) -> String {
 
 fn release_group_url(release_group_id: &str) -> String {
     ws2(&format!(
-        "release-group/{release_group_id}?inc=url-rels&fmt=json"
+        "release-group/{release_group_id}?inc=artist-credits+url-rels&fmt=json"
     ))
 }
 
@@ -72,13 +72,29 @@ fn discid_url(discid: &str) -> String {
     ))
 }
 
-/// The URL endpoint asked which MusicBrainz release links back to a Discogs
-/// release.
+/// MusicBrainz's URL document for a catalog page, with only the requested
+/// relationship kind included. Query encoding preserves the complete resource.
 fn discogs_url_lookup_url(discogs_release_id: &str) -> String {
-    let discogs_url = format!("https://www.discogs.com/release/{discogs_release_id}");
-    ws2(&format!(
-        "url?resource={discogs_url}&inc=release-rels&fmt=json"
-    ))
+    url_lookup_url(
+        &format!("https://www.discogs.com/release/{discogs_release_id}"),
+        "release-rels",
+    )
+}
+
+fn discogs_master_lookup_url(discogs_master_id: &str) -> String {
+    url_lookup_url(
+        &format!("https://www.discogs.com/master/{discogs_master_id}"),
+        "release-group-rels",
+    )
+}
+
+fn url_lookup_url(resource: &str, include: &str) -> String {
+    let mut url = reqwest::Url::parse(&ws2("url")).expect("MusicBrainz base URL is valid");
+    url.query_pairs_mut()
+        .append_pair("resource", resource)
+        .append_pair("inc", include)
+        .append_pair("fmt", "json");
+    url.to_string()
 }
 
 /// Retry only what a retry can fix. `NotFound` is MusicBrainz's answer, not a
@@ -190,7 +206,7 @@ pub fn seed_discogs_url_lookup(discogs_release_id: &str, mb_release_id: Option<S
             &url,
             200,
             serde_json::json!({
-                "relations": [{ "type": "discogs", "release": { "id": id } }],
+                "relations": [{ "type": "discogs", "target-type": "release", "release": { "id": id } }],
             })
             .to_string(),
         ),
@@ -198,7 +214,24 @@ pub fn seed_discogs_url_lookup(discogs_release_id: &str, mb_release_id: Option<S
     }
 }
 
-/// Pre-populate a release document, so a test can drive `fetch_mb_xref` without
+/// Seed the MusicBrainz URL answer for a Discogs master. `None` is an unknown URL.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn seed_discogs_master_url_lookup(master_id: &str, mb_group_id: Option<String>) {
+    let url = discogs_master_lookup_url(master_id);
+    match mb_group_id {
+        Some(id) => seed_response(
+            &url,
+            200,
+            serde_json::json!({"relations": [
+                {"type": "discogs", "target-type": "release-group", "release-group": {"id": id}}
+            ]})
+            .to_string(),
+        ),
+        None => seed_response(&url, 404, String::new()),
+    }
+}
+
+/// Pre-populate a release document, so a test can drive release lookup without
 /// an HTTP call. `raw_json` is the endpoint's own answer: it is what gets
 /// archived, what a later projection replays from, and what the client parses
 /// here, so those three cannot disagree.
@@ -307,107 +340,26 @@ async fn lookup_by_discid_once(
     Ok(releases)
 }
 
-/// Look up a release by MusicBrainz release ID.
-///
-/// Returns the parsed response, the Discogs release URL (if any), and the raw
-/// JSON that gets archived. The Discogs URL is derived from the two documents
-/// each time: the release's own url-rels, and — when those carry none — the
-/// release group's, which is a second request. Both documents are answered from
-/// the response cache, so re-deriving costs a parse, not a round trip.
+/// Look up only the requested release, returning its parsed and raw document.
+/// Its parent and linked documents are fetched independently by the caller.
 pub async fn lookup_release_by_id(
     release_id: &str,
     priority: CallPriority,
-) -> Result<(MbReleaseResponse, Option<String>, String), MusicBrainzError> {
-    mb_retry("MusicBrainz release fetch", || {
-        lookup_release_by_id_once(release_id, priority)
+) -> Result<(MbReleaseResponse, String), MusicBrainzError> {
+    mb_retry("MusicBrainz release fetch", || async {
+        let raw_json = match mb_get(http_client().get(release_url(release_id)), priority).await {
+            Ok(body) => body,
+            Err(MusicBrainzError::Provider { status: Some(404) }) => {
+                return Err(MusicBrainzError::NotFound(release_id.to_string()));
+            }
+            Err(error) => return Err(error),
+        };
+        let response: MbReleaseResponse = serde_json::from_str(&raw_json).map_err(|error| {
+            MusicBrainzError::Other(format!("Failed to parse release JSON: {error}"))
+        })?;
+        Ok((response, raw_json))
     })
     .await
-}
-
-async fn lookup_release_by_id_once(
-    release_id: &str,
-    priority: CallPriority,
-) -> Result<(MbReleaseResponse, Option<String>, String), MusicBrainzError> {
-    debug!("MusicBrainz: Looking up release ID '{}'", release_id);
-    let url = release_url(release_id);
-    debug!("MusicBrainz API request: {}", url);
-
-    let raw_json = match mb_get(http_client().get(&url), priority).await {
-        Ok(body) => body,
-        Err(MusicBrainzError::Provider { status: Some(404) }) => {
-            return Err(MusicBrainzError::NotFound(release_id.to_string()));
-        }
-        Err(error) => return Err(error),
-    };
-
-    let mb_response: MbReleaseResponse = serde_json::from_str(&raw_json)
-        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
-
-    let mut discogs_url = mb_response.discogs_release_url();
-
-    debug!(
-        "MusicBrainz release response: {} ({} relations), release_id: {}",
-        mb_response.title,
-        mb_response.relations.len(),
-        release_id
-    );
-
-    if let Some(resource) = &discogs_url {
-        debug!("Found Discogs release URL: {}", resource);
-    }
-
-    if discogs_url.is_none() {
-        let has_rg_relations = mb_response
-            .release_group
-            .as_ref()
-            .is_some_and(|rg| rg.relations.is_some());
-
-        if !has_rg_relations {
-            if let Some(rg_id) = mb_response.release_group.as_ref().map(|rg| rg.id.as_str()) {
-                debug!(
-                    "Release-group relations not found, fetching release-group {} separately",
-                    rg_id
-                );
-
-                discogs_url =
-                    release_group_discogs_url(rg_id, fetch_release_group(rg_id, priority).await);
-            }
-        }
-    }
-
-    Ok((mb_response, discogs_url, raw_json))
-}
-
-fn release_group_discogs_url(
-    rg_id: &str,
-    result: Result<ReleaseGroupResponse, MusicBrainzError>,
-) -> Option<String> {
-    match result {
-        Ok(rg_response) => {
-            let url = first_discogs_release_url(&rg_response.relations);
-            if let Some(resource) = &url {
-                debug!("Found Discogs release URL on release-group: {}", resource);
-            }
-            url
-        }
-        Err(e) => {
-            warn!("Failed to fetch MusicBrainz release-group {rg_id}: {e}");
-            None
-        }
-    }
-}
-
-/// The release-group, parsed. The same URL `fetch_release_group_json` asks for,
-/// so a release whose own url-rels carry no Discogs link and the later
-/// cross-reference archival of that same group cost one round trip between them
-/// rather than two.
-async fn fetch_release_group(
-    release_group_id: &str,
-    priority: CallPriority,
-) -> Result<ReleaseGroupResponse, MusicBrainzError> {
-    let json = fetch_release_group_json(release_group_id, priority).await?;
-    serde_json::from_str(&json)
-        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))
 }
 
 /// A release-group's raw JSON, for archival.
@@ -418,144 +370,62 @@ pub async fn fetch_release_group_json(
     let url = release_group_url(release_group_id);
     debug!("Fetching release-group JSON: {}", url);
 
-    mb_get(http_client().get(&url), priority).await
-}
-
-/// A release and everything the import pipeline archives with it.
-///
-/// `raw_json` is the release's own document — the anchor of its archived set —
-/// and `release_group` is the group's, keyed by the group. The group fetch is
-/// best-effort: a release that archives without its group is still a complete
-/// import, and failing the whole fetch over the group would turn a metadata
-/// nicety into an import failure.
-pub struct FetchedRelease {
-    pub response: MbReleaseResponse,
-    /// The Discogs release URL from the release's url-rels, if an editor linked
-    /// one.
-    pub discogs_url: Option<String>,
-    pub raw_json: String,
-    pub release_group: Option<SourcePayload>,
-}
-
-/// Fetch a release and its release-group. Both MB entry points (a direct import
-/// and a Discogs cross-reference) archive through here, so the rows they write
-/// cannot differ by which path ran.
-pub async fn fetch_release_with_metadata(
-    release_id: &str,
-    priority: CallPriority,
-) -> Result<FetchedRelease, MusicBrainzError> {
-    let (response, discogs_url, raw_json) = lookup_release_by_id(release_id, priority).await?;
-
-    let mut release_group = None;
-    if let Some(rg_id) = response.release_group.as_ref().map(|rg| rg.id.as_str()) {
-        match fetch_release_group_json(rg_id, priority).await {
-            Ok(rg_json) => {
-                release_group = Some(SourcePayload::new(
-                    PayloadSource::MusicBrainzReleaseGroup,
-                    rg_id,
-                    rg_json,
-                ))
-            }
-            Err(e) => warn!("Failed to fetch MB release-group: {e}"),
-        }
-    }
-
-    Ok(FetchedRelease {
-        response,
-        discogs_url,
-        raw_json,
-        release_group,
+    mb_retry("MusicBrainz release-group fetch", || async {
+        let json = mb_get(http_client().get(&url), priority).await?;
+        parse_release_group(&json).map_err(|error| {
+            MusicBrainzError::Other(format!("Failed to parse release-group JSON: {error}"))
+        })?;
+        Ok(json)
     })
+    .await
 }
 
-/// The MB release ID linked to a Discogs release, via MB's URL lookup endpoint;
-/// `None` when no MB editor has linked one.
-pub async fn lookup_release_id_by_discogs_url(
+/// Every MusicBrainz release explicitly related to this Discogs release URL.
+/// A missing URL resource is `None`; a found document retains its raw answer,
+/// including an empty or ambiguous set of matching targets.
+pub async fn lookup_releases_by_discogs_release(
     discogs_release_id: &str,
     priority: CallPriority,
-) -> Result<Option<String>, MusicBrainzError> {
-    let url = discogs_url_lookup_url(discogs_release_id);
-    debug!("MusicBrainz URL lookup: {}", url);
-
-    let body = match mb_get(http_client().get(&url), priority).await {
-        Ok(body) => body,
-        // MusicBrainz has never seen this URL, which is the same answer as
-        // seeing it with no release linked.
-        Err(MusicBrainzError::Provider { status: Some(404) }) => return Ok(None),
-        Err(error) => return Err(error),
-    };
-
-    let lookup: UrlLookupResponse = serde_json::from_str(&body)
-        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
-
-    Ok(lookup
-        .relations
-        .iter()
-        .filter(|r| r.relation_type.as_deref() == Some("discogs"))
-        .find_map(|r| r.release.as_ref().and_then(|rel| rel.id.clone())))
+) -> Result<Option<(Vec<CatalogPage>, String)>, MusicBrainzError> {
+    lookup_discogs_url(
+        discogs_url_lookup_url(discogs_release_id),
+        parse_discogs_release_lookup,
+        priority,
+    )
+    .await
 }
 
-/// The MB cross-reference for a Discogs release — the reverse of
-/// `crate::discogs::client::fetch_discogs_xref`.
-///
-/// Asks MB's URL endpoint for a release linking back to this Discogs release and,
-/// when there is one, fetches its release and release-group JSON. Returns the
-/// parsed `MbReleaseResponse` (the caller pulls the release and group IDs out for
-/// the release's records) plus the documents to store with it.
-///
-/// The release document is keyed by the *Discogs* release id it was found from:
-/// MusicBrainz's URL endpoint is what turned one into the other, and nothing in
-/// the Discogs document names the MusicBrainz release back, so the Discogs id is
-/// the only key a reader can start from.
-///
-/// `None` when MB has no linked release, or either lookup fails. A successful
-/// release fetch with a failing release-group fetch still returns `Some` with just
-/// the release payload — the release-group is best-effort.
-///
-/// Depends on an MB editor having linked the Discogs URL, as the forward
-/// direction does.
-pub async fn fetch_mb_xref(
-    discogs_release_id: &str,
+/// Every MusicBrainz release group explicitly related to this Discogs master URL.
+pub async fn lookup_groups_by_discogs_master(
+    discogs_master_id: &str,
     priority: CallPriority,
-) -> Option<(MbReleaseResponse, Vec<SourcePayload>)> {
-    let mb_release_id = match lookup_release_id_by_discogs_url(discogs_release_id, priority).await {
-        Ok(Some(id)) => {
-            debug!("Found linked MB release: {}", id);
-            id
-        }
-        Ok(None) => {
-            debug!(
-                "No MB release linked to Discogs release {}",
-                discogs_release_id
-            );
-            return None;
-        }
-        Err(e) => {
-            warn!(
-                "Failed to look up MB release for Discogs {}: {e}",
-                discogs_release_id
-            );
-            return None;
-        }
-    };
+) -> Result<Option<(Vec<CatalogPage>, String)>, MusicBrainzError> {
+    lookup_discogs_url(
+        discogs_master_lookup_url(discogs_master_id),
+        parse_discogs_master_lookup,
+        priority,
+    )
+    .await
+}
 
-    match fetch_release_with_metadata(&mb_release_id, priority).await {
-        Ok(fetched) => {
-            // The release document is keyed by the Discogs id the lookup started
-            // from; the release-group document keeps its own key.
-            let mut payloads = vec![SourcePayload::new(
-                PayloadSource::MusicBrainzDiscogsXref,
-                discogs_release_id,
-                fetched.raw_json,
-            )];
-            payloads.extend(fetched.release_group);
-            Some((fetched.response, payloads))
-        }
-        Err(e) => {
-            warn!("Failed to fetch linked MB release {}: {e}", mb_release_id);
-            None
-        }
-    }
+async fn lookup_discogs_url(
+    url: String,
+    parse: fn(&str) -> Result<Vec<CatalogPage>, serde_json::Error>,
+    priority: CallPriority,
+) -> Result<Option<(Vec<CatalogPage>, String)>, MusicBrainzError> {
+    mb_retry("MusicBrainz URL lookup", || async {
+        let body = match mb_get(http_client().get(&url), priority).await {
+            Ok(body) => body,
+            // The URL endpoint documents 404 as an unknown resource URL.
+            Err(MusicBrainzError::Provider { status: Some(404) }) => return Ok(None),
+            Err(error) => return Err(error),
+        };
+        let targets = parse(&body).map_err(|error| {
+            MusicBrainzError::Other(format!("Failed to parse URL lookup JSON: {error}"))
+        })?;
+        Ok(Some((targets, body)))
+    })
+    .await
 }
 
 // ============================================================================

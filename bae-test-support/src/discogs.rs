@@ -85,6 +85,7 @@ pub fn discogs_test_release(
         label: vec!["Test Label".to_string()],
         covers: vec![],
         catno: None,
+        barcode: None,
         artists: vec![discogs_artist("discogs-artist-1", "Artist Name")],
         extraartists: Some(vec![]),
         tracklist: tracks
@@ -185,6 +186,7 @@ pub fn seed_discogs_test_release(release: bae_core::discogs::DiscogsRelease) -> 
             &master_id.to_string(),
             master_json.to_string(),
         );
+        bae_core::musicbrainz::seed_discogs_master_url_lookup(&master_id.to_string(), None);
     }
 
     let raw_json = serde_json::json!({
@@ -193,6 +195,7 @@ pub fn seed_discogs_test_release(release: bae_core::discogs::DiscogsRelease) -> 
         "year": release.year,
         "country": release.country,
         "master_id": master_id,
+        "identifiers": release.barcode.iter().map(|value| serde_json::json!({ "type": "Barcode", "value": value })).collect::<Vec<_>>(),
         "formats": release.format.iter().map(|name| serde_json::json!({ "name": name })).collect::<Vec<_>>(),
         "labels": release.label.iter().enumerate().map(|(index, name)| serde_json::json!({
             "name": name,

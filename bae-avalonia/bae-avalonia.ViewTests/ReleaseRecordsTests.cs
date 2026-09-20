@@ -25,9 +25,7 @@ public sealed class ReleaseRecordsTests
             .BridgeCatalogs()
             .Select(catalog => new BridgeReleaseRecord(
                 catalog,
-                "key-1",
-                "https://example.test/key-1",
-                catalog == BridgeCatalog.MusicBrainz))
+                "https://example.test/key-1"))
             .ToList();
 
         var text = TextOf(ReleaseRecordsRow.Build(records));
@@ -57,14 +55,10 @@ public sealed class ReleaseRecordsTests
     [
         new BridgeReleaseRecord(
             BridgeCatalog.MusicBrainz,
-            "rel-1",
-            "https://musicbrainz.org/release/rel-1",
-            true),
+            "https://musicbrainz.org/release/rel-1"),
         new BridgeReleaseRecord(
             BridgeCatalog.Discogs,
-            "4242",
-            "https://www.discogs.com/release/4242",
-            false),
+            "https://www.discogs.com/release/4242"),
     ];
 
     private static List<string> TextOf(Control root) =>

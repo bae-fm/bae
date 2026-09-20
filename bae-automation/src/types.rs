@@ -369,16 +369,20 @@ impl From<Catalog> for AutomationCatalog {
     }
 }
 
-/// One catalog's description of a release: which catalog, its key for the
-/// release, and the page it publishes.
+/// A known pressing or album identity, with its catalog page built by core.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct AutomationReleaseRecord {
-    pub catalog: AutomationCatalog,
-    pub key: String,
-    /// The catalog's page for this release, built by core.
-    pub url: String,
-    /// True for the one record the draft's facts were read from.
-    pub reads_draft: bool,
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationReleaseRecord {
+    Pressing {
+        release: AutomationMetadataRef,
+        album_key: Option<String>,
+        reads_draft: bool,
+        url: String,
+    },
+    Album {
+        album: AutomationMetadataRef,
+        url: String,
+    },
 }
 
 /// Which name a mark is.
@@ -678,7 +682,7 @@ pub enum AutomationMetadataProvenance {
     FileTags,
 }
 
-/// One catalog's key for one release.
+/// One catalog's key for an entity, whose kind is stated by its containing field.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationMetadataRef {
     pub catalog: AutomationCatalog,

@@ -603,24 +603,24 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
     assert_eq!(
         records
             .iter()
-            .map(|record| (record.catalog, record.key.as_str(), record.url.as_str()))
+            .map(|record| (record.catalog(), record.key(), record.url()))
             .collect::<Vec<_>>(),
         vec![
             (
                 crate::import::Catalog::MusicBrainz,
                 "mb-stated-1",
-                "https://musicbrainz.org/release/mb-stated-1",
+                "https://musicbrainz.org/release/mb-stated-1".to_string(),
             ),
             (
                 crate::import::Catalog::Discogs,
                 "70000301",
-                "https://www.discogs.com/release/70000301",
+                "https://www.discogs.com/release/70000301".to_string(),
             ),
         ],
         "the row names every catalog the pick claims, each with its own page"
     );
     assert!(
-        records[0].reads_draft && !records[1].reads_draft,
+        records[0].reads_draft() && !records[1].reads_draft(),
         "only the release the draft was read from reads it"
     );
 }

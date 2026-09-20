@@ -30,7 +30,7 @@ impl LibraryManager {
     /// **Album side effects.** Empty `new_records` always moves the release to
     /// a fresh album holding only it. Otherwise a cross-catalog merge wins: if
     /// any *other* release in the library has a record matching one of
-    /// `new_records` on `(catalog, group_key)`, that release's album is the
+    /// `new_records` on `(catalog, album key)`, that release's album is the
     /// destination (per-catalog agreement makes the candidate unique). With no
     /// merge candidate the release stays put if no sibling disagrees on a
     /// shared catalog, and moves to a fresh album if one does. A vacated album
@@ -81,7 +81,7 @@ impl LibraryManager {
     /// `set_records`). In order:
     ///
     /// 1. **Cross-catalog merge.** If another release in the library carries a
-    ///    record matching one of `new_records` on `(catalog, group_key)`, its
+    ///    record matching one of `new_records` on `(catalog, album key)`, its
     ///    album is the target — per-catalog agreement makes that album unique.
     ///    It wins even when the current album would also fit, since two albums
     ///    cannot both legitimately claim one group.
@@ -194,12 +194,16 @@ fn records_fit_album(
     new_records: &[crate::import::ReleaseRecord],
     other_release_records: &[Vec<crate::import::ReleaseRecord>],
 ) -> bool {
-    for new_record in new_records {
+    for new_album in new_records
+        .iter()
+        .filter_map(crate::import::ReleaseRecord::album_ref)
+    {
         for other_release in other_release_records {
-            for existing in other_release {
-                if existing.catalog == new_record.catalog
-                    && existing.group_key != new_record.group_key
-                {
+            for existing in other_release
+                .iter()
+                .filter_map(crate::import::ReleaseRecord::album_ref)
+            {
+                if existing.catalog == new_album.catalog && existing.key != new_album.key {
                     return false;
                 }
             }

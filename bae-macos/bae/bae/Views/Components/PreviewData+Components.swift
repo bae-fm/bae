@@ -38,7 +38,7 @@
         /// paired a MusicBrainz release with a Discogs one commits.
         static var releaseRecordsPair: [BridgeReleaseRecord] {
             [
-                record(.musicBrainz, "mb-release-1", readsDraft: true),
+                record(.musicBrainz, "mb-release-1"),
                 record(.discogs, "424242"),
             ]
         }
@@ -50,8 +50,7 @@
                 .map { catalog in
                     record(
                         catalog,
-                        "key-1",
-                        readsDraft: catalog == .musicBrainz
+                        "key-1"
                     )
                 }
         }
@@ -107,14 +106,11 @@
 
         static func record(
             _ catalog: BridgeCatalog,
-            _ key: String,
-            readsDraft: Bool = false
+            _ key: String
         ) -> BridgeReleaseRecord {
             BridgeReleaseRecord(
                 catalog: catalog,
-                key: key,
-                url: "https://example.test/\(key)",
-                readsDraft: readsDraft
+                url: "https://example.test/\(key)"
             )
         }
     }

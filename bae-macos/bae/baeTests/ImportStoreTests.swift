@@ -174,9 +174,7 @@ private func readyRow(
             : .identified(records: [
                 BridgeReleaseRecord(
                     catalog: .musicBrainz,
-                    key: "rel-\(key)",
-                    url: "https://musicbrainz.org/release/rel-\(key)",
-                    readsDraft: true
+                    url: "https://musicbrainz.org/release/rel-\(key)"
                 )
             ]),
         marks: [],

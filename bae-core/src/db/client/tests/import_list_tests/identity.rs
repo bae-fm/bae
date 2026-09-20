@@ -291,7 +291,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
     assert_eq!(
         records
             .iter()
-            .map(|record| (record.catalog, record.key.as_str()))
+            .map(|record| (record.catalog(), record.key()))
             .collect::<Vec<_>>(),
         vec![
             (Catalog::MusicBrainz, "mb-linked"),

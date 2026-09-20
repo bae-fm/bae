@@ -234,19 +234,26 @@ async fn explicit_lookup_stores_a_metadata_projection_failure() {
     ));
 }
 
-/// Picking a candidate whose lead is settled reads its release document from
-/// the archive, then resolves the offered cover before storing the prepared
-/// candidate. The metadata provider is not consulted again.
+/// Explicitly applying a settled release keeps its archived pressing and fetches
+/// a missing parent. Opening the resulting candidate reads both documents offline.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_settled_candidate_uses_archived_metadata_and_prepares_its_cover() {
+async fn applying_a_settled_candidate_fetches_missing_parent_then_reads_offline() {
     let fixture = Fixture::new("offline-open").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
 
-    // Nothing is routed: the archived document is the only place this release
-    // exists, while the cover endpoint answers that no image is available.
+    // The pressing exists only in the archive; its parent can be fetched.
+    fixture.provider.route(
+        "/release-group/rg-offline-1?",
+        200,
+        serde_json::json!({
+            "id": "rg-offline-1", "title": "Album", "relations": [],
+            "first-release-date": "1981"
+        })
+        .to_string(),
+    );
     fixture
         .archive("mb-offline-1", "rg-offline-1", &[probed, 0])
         .await;
@@ -270,10 +277,28 @@ async fn a_settled_candidate_uses_archived_metadata_and_prepares_its_cover() {
         .await
         .expect("a settled candidate opens from what identification archived");
 
+    let after_apply = fixture.provider.requests().len();
+    assert!(
+        fixture
+            .manager
+            .source_release_payload_for_test(
+                crate::import::PayloadSource::MusicBrainzReleaseGroup,
+                "rg-offline-1"
+            )
+            .await
+            .unwrap()
+            .is_some(),
+        "the fetched parent is archived"
+    );
     let detail = fixture
         .pane(&dir)
         .await
         .expect("the picked candidate reads back");
+    assert_eq!(
+        fixture.provider.requests().len(),
+        after_apply,
+        "reading the candidate does not fetch metadata"
+    );
     let release = detail.release.expect("the pick names a release");
     assert_eq!(release.release_id, "mb-offline-1");
     assert_eq!(release.tracks.len(), 2);
@@ -294,8 +319,11 @@ async fn a_settled_candidate_uses_archived_metadata_and_prepares_its_cover() {
     );
     assert_eq!(
         &fixture.provider.requests()[before..],
-        &["/release-group/rg-offline-1/front".to_string()],
-        "selection resolves the offered cover without re-fetching metadata"
+        &[
+            "/release-group/rg-offline-1?inc=artist-credits+url-rels&fmt=json".to_string(),
+            "/release-group/rg-offline-1/front".to_string(),
+        ],
+        "selection fetches the missing parent and cover without re-fetching the pressing"
     );
 }
 

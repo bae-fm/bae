@@ -116,6 +116,8 @@ pub enum PayloadSource {
     /// direction's is: MusicBrainz's URL lookup endpoint found it, and nothing
     /// in the Discogs document names it back.
     MusicBrainzDiscogsXref,
+    /// A uniquely cross-linked MusicBrainz group, keyed by Discogs master id.
+    MusicBrainzDiscogsMasterXref,
     /// A Wikidata item, by item id — read out of the url-rels of the
     /// MusicBrainz release or release group that names it.
     Wikidata,
@@ -131,6 +133,7 @@ impl PayloadSource {
             Self::Discogs => "discogs",
             Self::DiscogsMaster => "discogs_master",
             Self::MusicBrainzDiscogsXref => "musicbrainz_discogs_xref",
+            Self::MusicBrainzDiscogsMasterXref => "musicbrainz_discogs_master_xref",
             Self::Wikidata => "wikidata",
         }
     }
@@ -157,6 +160,7 @@ impl std::str::FromStr for PayloadSource {
             "discogs" => Ok(Self::Discogs),
             "discogs_master" => Ok(Self::DiscogsMaster),
             "musicbrainz_discogs_xref" => Ok(Self::MusicBrainzDiscogsXref),
+            "musicbrainz_discogs_master_xref" => Ok(Self::MusicBrainzDiscogsMasterXref),
             "wikidata" => Ok(Self::Wikidata),
             _ => Err(format!("unknown payload source: {s}")),
         }
@@ -304,50 +308,82 @@ impl MetadataRef {
     }
 }
 
-/// One catalog's description of a release: which catalog, its key for this
-/// release, the group that release belongs to there, and the page it publishes.
-///
-/// A release carries a `Vec<ReleaseRecord>` — no rows means no catalog
-/// describes it, one row per catalog that does. Every row names a specific
-/// pressing: picking a release is a claim about that pressing, and there is no
-/// album-only claim to record.
-///
-/// At commit, each element becomes one record row.
+/// A known pressing or album in one catalog. Album links do not claim that
+/// any particular pressing was selected. At most one record per catalog is kept.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ReleaseRecord {
-    pub catalog: Catalog,
-    pub key: String,
-    /// The group this release belongs to in that catalog — a MusicBrainz
-    /// release group, a Discogs master. A release the catalog did not group
-    /// stands as its own group, which is what a catalog that groups nothing
-    /// says about every release it lists: cross-catalog album merging matches
-    /// on `(catalog, group)`, so such a release merges only with itself.
-    pub group_key: String,
-    /// The page the catalog publishes for this release. Built here, at the one
-    /// place that knows a catalog's address shapes, so no surface builds one.
-    pub url: String,
-    /// True for the one record the draft's facts were read from, and for no
-    /// other record of the same release.
-    pub reads_draft: bool,
+pub enum ReleaseRecord {
+    Pressing {
+        release: MetadataRef,
+        album_key: Option<String>,
+        reads_draft: bool,
+    },
+    Album {
+        album: MetadataRef,
+    },
 }
 
 impl ReleaseRecord {
-    /// The record for `release`, with its page built from the catalog's address
-    /// shape.
-    pub fn new(release: &MetadataRef, group_key: Option<String>, reads_draft: bool) -> Self {
-        Self {
-            catalog: release.catalog,
-            key: release.key.clone(),
-            // A release its catalog did not group is its own group.
-            group_key: group_key.unwrap_or_else(|| release.key.clone()),
-            url: release.catalog.release_url(&release.key),
+    pub fn new(release: &MetadataRef, album_key: Option<String>, reads_draft: bool) -> Self {
+        Self::Pressing {
+            release: release.clone(),
+            album_key,
             reads_draft,
         }
     }
 
-    /// This record's release, as the key into the archived documents.
-    pub fn release_ref(&self) -> MetadataRef {
-        MetadataRef::new(self.catalog, self.key.clone())
+    pub fn album(album: &MetadataRef) -> Self {
+        Self::Album {
+            album: album.clone(),
+        }
+    }
+
+    pub fn catalog(&self) -> Catalog {
+        match self {
+            Self::Pressing { release, .. } => release.catalog,
+            Self::Album { album } => album.catalog,
+        }
+    }
+
+    pub fn key(&self) -> &str {
+        match self {
+            Self::Pressing { release, .. } => &release.key,
+            Self::Album { album } => &album.key,
+        }
+    }
+
+    pub fn url(&self) -> String {
+        match self {
+            Self::Pressing { release, .. } => release.catalog.release_url(&release.key),
+            Self::Album { album } => album.catalog.album_url(&album.key),
+        }
+    }
+
+    pub fn reads_draft(&self) -> bool {
+        matches!(
+            self,
+            Self::Pressing {
+                reads_draft: true,
+                ..
+            }
+        )
+    }
+
+    pub fn release_ref(&self) -> Option<&MetadataRef> {
+        match self {
+            Self::Pressing { release, .. } => Some(release),
+            Self::Album { .. } => None,
+        }
+    }
+
+    pub fn album_ref(&self) -> Option<MetadataRef> {
+        match self {
+            Self::Pressing {
+                release, album_key, ..
+            } => album_key
+                .as_ref()
+                .map(|key| MetadataRef::new(release.catalog, key.clone())),
+            Self::Album { album } => Some(album.clone()),
+        }
     }
 }
 

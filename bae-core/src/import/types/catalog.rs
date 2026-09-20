@@ -2,8 +2,8 @@
 //!
 //! Two of them answer questions — a search, a disc ID, a barcode — and the
 //! rest are reached only by following a link one of those two states. Both
-//! kinds describe the same object, so both are catalogs; what separates them
-//! is [`Catalog::LOOKUP`], the list every "the sources we ask" surface reads.
+//! kinds publish metadata, but an album page does not name a particular
+//! pressing. [`Catalog::LOOKUP`] names the catalogs the application can query.
 
 use serde::{Deserialize, Serialize};
 
@@ -116,6 +116,15 @@ impl Catalog {
         Some(format!("{}{group_key}", self.group_url_prefix()?))
     }
 
+    /// The page for an album, independent of any particular pressing.
+    pub fn album_url(&self, key: &str) -> String {
+        let prefix = match self.group_url_prefix() {
+            Some(prefix) => prefix,
+            None => self.release_url_prefix(),
+        };
+        format!("{prefix}{key}")
+    }
+
     /// What a release key is appended to. A key is exactly the part of the
     /// page's address this prefix does not fix: an id where the catalog has
     /// one, the rest of the path where it does not.
@@ -168,14 +177,14 @@ impl std::fmt::Display for Catalog {
 pub enum CatalogPage {
     /// One release.
     Release { catalog: Catalog, key: String },
-    /// The group a release belongs to.
+    /// An album, including a MusicBrainz release group or Discogs master.
     Group { catalog: Catalog, key: String },
 }
 
 /// The catalog page `url` names, or `None` when no catalog bae knows publishes
 /// at that address.
 ///
-/// This is the inverse of [`Catalog::release_url`] and [`Catalog::group_url`]:
+/// This is the inverse of [`Catalog::release_url`] and [`Catalog::album_url`]:
 /// the key it reads back is the one those two rebuild the address from.
 pub fn parse_catalog_url(url: &str) -> Option<CatalogPage> {
     let rest = url
@@ -198,7 +207,7 @@ pub fn parse_catalog_url(url: &str) -> Option<CatalogPage> {
     // suffix and kept.
     if host.ends_with(".bandcamp.com") {
         return match segments.as_slice() {
-            ["album", slug] => Some(CatalogPage::Release {
+            ["album", slug] => Some(CatalogPage::Group {
                 catalog: Catalog::Bandcamp,
                 key: format!("{host}/album/{slug}"),
             }),
@@ -226,19 +235,19 @@ pub fn parse_catalog_url(url: &str) -> Option<CatalogPage> {
             catalog: Catalog::Discogs,
             key,
         }),
-        ("wikidata.org", ["wiki", key]) if key.starts_with('Q') => Some(CatalogPage::Release {
+        ("wikidata.org", ["wiki", key]) if key.starts_with('Q') => Some(CatalogPage::Group {
             catalog: Catalog::Wikidata,
             key: (*key).to_string(),
         }),
-        ("allmusic.com", ["album", key]) => Some(CatalogPage::Release {
+        ("allmusic.com", ["album", key]) => Some(CatalogPage::Group {
             catalog: Catalog::AllMusic,
             key: (*key).to_string(),
         }),
-        ("musik-sammler.de", ["album", key]) => Some(CatalogPage::Release {
+        ("musik-sammler.de", ["album", key]) => Some(CatalogPage::Group {
             catalog: Catalog::MusikSammler,
             key: (*key).to_string(),
         }),
-        ("open.spotify.com", ["album", key]) => Some(CatalogPage::Release {
+        ("open.spotify.com", ["album", key]) => Some(CatalogPage::Group {
             catalog: Catalog::Spotify,
             key: (*key).to_string(),
         }),
@@ -246,24 +255,24 @@ pub fn parse_catalog_url(url: &str) -> Option<CatalogPage> {
         // path, and both leave it off the canonical address. Apple also puts a
         // slug ahead of the id.
         ("music.apple.com", ["album", key]) | ("music.apple.com", [.., "album", _, key]) => {
-            Some(CatalogPage::Release {
+            Some(CatalogPage::Group {
                 catalog: Catalog::AppleMusic,
                 key: (*key).to_string(),
             })
         }
-        ("deezer.com", [.., "album", key]) => Some(CatalogPage::Release {
+        ("deezer.com", [.., "album", key]) => Some(CatalogPage::Group {
             catalog: Catalog::Deezer,
             key: (*key).to_string(),
         }),
         // Neither of these names a release with an id; what identifies the page
         // is the rest of its path.
         ("rateyourmusic.com", ["release", rest @ ..]) if !rest.is_empty() => {
-            Some(CatalogPage::Release {
+            Some(CatalogPage::Group {
                 catalog: Catalog::RateYourMusic,
                 key: rest.join("/"),
             })
         }
-        ("genius.com", ["albums", rest @ ..]) if !rest.is_empty() => Some(CatalogPage::Release {
+        ("genius.com", ["albums", rest @ ..]) if !rest.is_empty() => Some(CatalogPage::Group {
             catalog: Catalog::Genius,
             key: rest.join("/"),
         }),

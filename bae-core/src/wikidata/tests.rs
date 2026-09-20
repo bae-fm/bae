@@ -184,13 +184,6 @@ const ENTITY_DOCUMENT: &str = r#"{
   }
 }"#;
 
-fn release(catalog: Catalog, key: &str) -> CatalogPage {
-    CatalogPage::Release {
-        catalog,
-        key: key.to_string(),
-    }
-}
-
 fn group(catalog: Catalog, key: &str) -> CatalogPage {
     CatalogPage::Group {
         catalog,
@@ -199,9 +192,9 @@ fn group(catalog: Catalog, key: &str) -> CatalogPage {
 }
 
 /// An item's own page, then one page per identifier it states for a catalog
-/// bae knows — a release page for the catalogs that file pressings flat, a
-/// group page for the two that group them. A claim bae's catalogs have no
-/// property for, one whose value is an object rather than an identifier, and
+/// bae knows. Each page describes an album, without claiming a pressing.
+/// A claim bae's catalogs have no property for, one whose value is an object
+/// rather than an identifier, and
 /// one stating no value each name no page.
 #[test]
 fn an_item_names_one_page_per_catalog_it_identifies() {
@@ -210,15 +203,15 @@ fn an_item_names_one_page_per_catalog_it_identifies() {
     assert_eq!(
         entity.catalog_pages(),
         vec![
-            release(Catalog::Wikidata, "Q424242"),
+            group(Catalog::Wikidata, "Q424242"),
             group(Catalog::MusicBrainz, "mb-group"),
             group(Catalog::Discogs, "909090"),
-            release(Catalog::AllMusic, "mw0000424242"),
-            release(Catalog::RateYourMusic, "album/artist-name/album-title"),
-            release(Catalog::Genius, "Artist-name/Album-title"),
-            release(Catalog::Spotify, "4242424242424242424242"),
-            release(Catalog::AppleMusic, "424242424"),
-            release(Catalog::Deezer, "424242"),
+            group(Catalog::AllMusic, "mw0000424242"),
+            group(Catalog::RateYourMusic, "album/artist-name/album-title"),
+            group(Catalog::Genius, "Artist-name/Album-title"),
+            group(Catalog::Spotify, "4242424242424242424242"),
+            group(Catalog::AppleMusic, "424242424"),
+            group(Catalog::Deezer, "424242"),
         ]
     );
 }
@@ -235,9 +228,7 @@ fn every_identified_page_builds_its_catalogs_address() {
         .into_iter()
         .map(|page| match page {
             CatalogPage::Release { catalog, key } => catalog.release_url(&key),
-            CatalogPage::Group { catalog, key } => catalog
-                .group_url(&key)
-                .expect("only a catalog that groups releases names a group page"),
+            CatalogPage::Group { catalog, key } => catalog.album_url(&key),
         })
         .collect();
 
@@ -282,9 +273,9 @@ fn a_property_stated_twice_names_both_pages() {
     assert_eq!(
         entity.catalog_pages(),
         vec![
-            release(Catalog::Wikidata, "Q424242"),
-            release(Catalog::Spotify, "4242424242424242424242"),
-            release(Catalog::Spotify, "9090909090909090909090"),
+            group(Catalog::Wikidata, "Q424242"),
+            group(Catalog::Spotify, "4242424242424242424242"),
+            group(Catalog::Spotify, "9090909090909090909090"),
         ]
     );
 }

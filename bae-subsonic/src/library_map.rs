@@ -20,6 +20,7 @@ pub(crate) fn lib_err(error: LibraryError) -> SubError {
 
 /// The release's MusicBrainz id, when MusicBrainz describes it. Used as the
 /// `musicBrainzId` of both the album (a release MBID) and its songs.
+/// An album-only record identifies the group, not this pressing.
 async fn release_mb_id(
     services: &AppServices,
     release_id: &str,
@@ -28,9 +29,10 @@ async fn release_mb_id(
         .get_release_records(release_id)
         .await
         .map_err(lib_err)?
-        .into_iter()
-        .find(|record| record.catalog == Catalog::MusicBrainz)
-        .map(|record| record.key))
+        .iter()
+        .filter_map(bae_core::import::ReleaseRecord::release_ref)
+        .find(|release| release.catalog == Catalog::MusicBrainz)
+        .map(|release| release.key.clone()))
 }
 
 /// Whether this release has stored cover art. Only then is a `coverArt` id

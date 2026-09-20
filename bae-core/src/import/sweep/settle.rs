@@ -17,6 +17,7 @@ enum SettledLead {
     ExternalRelease {
         provenance: crate::import::MetadataProvenance,
         payloads: crate::import::payloads::ReleasePayloads,
+        partners: Vec<crate::import::payloads::ReleasePayloads>,
     },
 }
 
@@ -31,6 +32,7 @@ async fn metadata_for_settled_lead(
         SettledLead::ExternalRelease {
             provenance,
             payloads,
+            partners,
         } => {
             let current = context
                 .library_manager
@@ -44,6 +46,7 @@ async fn metadata_for_settled_lead(
                     .import
                     .external_candidate_metadata(
                         &payloads,
+                        partners,
                         durations,
                         provenance,
                         &current.draft,
@@ -296,14 +299,14 @@ async fn settle_lead(
         let payloads =
             crate::import::service::prepare_release(&context.library_manager, &primary, priority)
                 .await?;
-        crate::import::service::prepare_partners(
+        let prepared_partners = crate::import::service::prepare_partners(
             &context.library_manager,
             &primary,
             &partners,
             priority,
         )
         .await?;
-        Ok::<_, crate::import::ImportError>(payloads)
+        Ok::<_, crate::import::ImportError>((payloads, prepared_partners))
     };
     let payloads = tokio::select! {
         biased;
@@ -311,7 +314,7 @@ async fn settle_lead(
         _ = token.cancelled() => return Err(FinalizationError::Superseded),
         payloads = settle => payloads,
     };
-    let payloads = match payloads {
+    let (payloads, prepared_partners) = match payloads {
         Ok(payloads) => payloads,
         Err(error) => {
             debug!(
@@ -351,6 +354,7 @@ async fn settle_lead(
             Ok(SettledLead::ExternalRelease {
                 provenance: pressing.pick(),
                 payloads,
+                partners: prepared_partners,
             })
         }
         Err(error) => {

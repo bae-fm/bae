@@ -230,7 +230,9 @@ async fn musicbrainz_id_surfaces_when_present() {
         .await
         .unwrap();
 
-    let services = AppServices::for_test(manager).await.expect("app services");
+    let services = AppServices::for_test(manager.clone())
+        .await
+        .expect("app services");
     let router = bae_subsonic::router(services, credential());
 
     let artists = call(&router, "getArtists", &authed("f=json")).await;
@@ -250,6 +252,32 @@ async fn musicbrainz_id_surfaces_when_present() {
         "mbid-abc-123",
         "getArtist emits mbid"
     );
+
+    let group = bae_core::import::MetadataRef::new(Catalog::MusicBrainz, "mb-group");
+    let pressing = bae_core::import::MetadataRef::new(Catalog::MusicBrainz, "mb-pressing");
+    for (record, expected) in [
+        (bae_core::import::ReleaseRecord::album(&group), None),
+        (
+            bae_core::import::ReleaseRecord::new(&pressing, Some(group.key.clone()), false),
+            Some(pressing.key.as_str()),
+        ),
+    ] {
+        manager
+            .set_records(&release.id, vec![record], true, None)
+            .await
+            .unwrap();
+        let response = call(
+            &router,
+            "getAlbumList2",
+            &authed("f=json&type=alphabeticalByName"),
+        )
+        .await;
+        assert_eq!(
+            response.sub()["albumList2"]["album"][0]["musicBrainzId"].as_str(),
+            expected,
+            "a Subsonic album names only a known MusicBrainz pressing, never its group"
+        );
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

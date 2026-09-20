@@ -81,6 +81,7 @@ fn make_release(tracklist: Vec<DiscogsTrack>) -> DiscogsRelease {
         label: vec![],
         covers: vec![],
         catno: None,
+        barcode: None,
         artists: vec![DiscogsArtist {
             name: "Artist Name A".to_string(),
             id: "artist-1".to_string(),
@@ -106,7 +107,7 @@ fn release_without_artists_errors_when_title_yields_no_artist() {
             .expect_err(&format!("expected error for unattributed title {title:?}"));
 
         assert!(
-            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no release artist")),
+            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no album artist")),
             "unexpected error message for {title:?}: {err}"
         );
     }

@@ -51,7 +51,8 @@ impl Database {
     ) -> Result<Option<DbAlbum>, DbError> {
         let pressing_pairs: Vec<(String, String)> = records
             .iter()
-            .map(|record| (record.catalog.as_str().to_string(), record.key.clone()))
+            .filter_map(crate::import::ReleaseRecord::release_ref)
+            .map(|release| (release.catalog.as_str().to_string(), release.key.clone()))
             .collect();
         if pressing_pairs.is_empty() {
             return Ok(None);
@@ -69,7 +70,7 @@ impl Database {
                     JOIN releases r ON r.album_id = a.id
                     JOIN release_records rr ON rr.release_id = r.id
                 "#,
-                "key",
+                "CASE WHEN rr.kind = 'pressing' THEN rr.key END",
                 &pressing_pairs,
                 &exclude_release_ids,
                 row_to_album,
@@ -78,9 +79,9 @@ impl Database {
         .await
     }
 
-    /// Look up an album by records' group keys. Returns the first
-    /// album that has a release with a record matching any of `records` on
-    /// `(catalog, group)`, ignoring rows that belong to `exclude_release_ids`.
+    /// Look up an album by explicit album identities or known pressing parents.
+    /// Returns the first album matching `(catalog, album key)`, ignoring rows
+    /// that belong to `exclude_release_ids`.
     /// Used for the cross-catalog merge step of import dedup (excluding the
     /// releases a re-import replaces) and by `set_records` (excluding the
     /// release whose about-to-be-replaced records must not match against
@@ -90,18 +91,14 @@ impl Database {
         records: &[crate::import::ReleaseRecord],
         exclude_release_ids: &[String],
     ) -> Result<Option<String>, DbError> {
-        if records.is_empty() {
-            return Ok(None);
-        }
         let pairs: Vec<(String, String)> = records
             .iter()
-            .map(|record| {
-                (
-                    record.catalog.as_str().to_string(),
-                    record.group_key.clone(),
-                )
-            })
+            .filter_map(crate::import::ReleaseRecord::album_ref)
+            .map(|album| (album.catalog.as_str().to_string(), album.key))
             .collect();
+        if pairs.is_empty() {
+            return Ok(None);
+        }
         let exclude_release_ids = exclude_release_ids.to_vec();
 
         self.read(move |sql| {
@@ -112,7 +109,7 @@ impl Database {
                     FROM releases r
                     JOIN release_records rr ON rr.release_id = r.id
                 "#,
-                "group_key",
+                "CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END",
                 &pairs,
                 &exclude_release_ids,
                 |row| row.get::<_, String>("album_id"),
@@ -302,16 +299,15 @@ impl Database {
 }
 
 /// The shared body of the two record lookups above: match `pairs` against
-/// `(rr.catalog, rr.{key_column})`, skip records belonging to
+/// `(rr.catalog, {key_expression})`, skip records belonging to
 /// `exclude_release_ids`, and map the first row the query produces.
 ///
-/// `select` is everything the callers differ by — the SELECT list and the
-/// tables joined ahead of the records, which this completes with the pair
-/// predicate the binds are supplied for.
+/// `select` supplies the projection and joined tables; `key_expression` chooses
+/// the pressing or album identity. The pair predicate binds the requested keys.
 fn find_album_by_record_pairs<T>(
     sql: &SqlReadContext<'_>,
     select: &str,
-    key_column: &str,
+    key_expression: &str,
     pairs: &[(String, String)],
     exclude_release_ids: &[String],
     row_to: impl FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>,
@@ -335,7 +331,7 @@ fn find_album_by_record_pairs<T>(
     };
     let query = format!(
         "{select}
-         WHERE (rr.catalog, rr.{key_column}) IN ({placeholders})
+         WHERE (rr.catalog, {key_expression}) IN ({placeholders})
            {exclude_predicate}
          LIMIT 1"
     );
@@ -371,14 +367,14 @@ pub(super) fn check_releases_in_library_on(
                             SELECT
                                 a.id AS album_id,
                                 a.title AS album_title,
-                                rr.key = ? AS release_match
+                                (rr.kind = 'pressing' AND rr.key = ?) AS release_match
                             FROM albums a
                             JOIN releases r ON r.album_id = a.id
                             JOIN release_records rr ON rr.release_id = r.id
                             WHERE rr.catalog = ?
                               AND (
-                                  rr.key = ?
-                                  OR (? IS NOT NULL AND rr.group_key = ?)
+                                  (rr.kind = 'pressing' AND rr.key = ?)
+                                  OR (? IS NOT NULL AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = ?)
                               )
                             ORDER BY release_match DESC
                             LIMIT 1

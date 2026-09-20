@@ -27,8 +27,11 @@ use crate::import::{
 };
 use crate::musicbrainz::MbReleaseResponse;
 use crate::util::rate_limiter::CallPriority;
-use crate::wikidata::WikidataEntity;
 use tracing::warn;
+
+mod projection;
+mod relationships;
+mod traversal;
 
 /// The catalogs whose documents bae fetches and archives are exactly the ones
 /// it asks, so a set of payloads cannot exist for any other.
@@ -50,7 +53,29 @@ pub struct ReleasePayloads {
     release: MetadataRef,
     /// The release's own document, as its source returned it.
     anchor: String,
+    #[serde(deserialize_with = "deserialize_supporting_documents")]
     supporting: Vec<SourcePayload>,
+}
+
+/// Frozen applications use the same optional-document admission as fetched and
+/// archived sets. Every production constructor admits supporting documents once,
+/// so projection reads need not validate and log the same bytes repeatedly.
+fn deserialize_supporting_documents<'de, D>(deserializer: D) -> Result<Vec<SourcePayload>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    Ok(Vec::<SourcePayload>::deserialize(deserializer)?
+        .into_iter()
+        .filter(|document| {
+            traversal::supporting_document_edges(
+                document.source,
+                &document.source_release_id,
+                &document.json,
+            )
+            .is_some()
+        })
+        .collect())
 }
 
 /// The documents and measured track lengths used by one metadata application.
@@ -59,6 +84,8 @@ pub struct ReleasePayloads {
 pub struct AppliedSource {
     pub payloads: ReleasePayloads,
     pub audio_durations_ms: Vec<u64>,
+    /// Exact documents for the other releases explicitly claimed by this pick.
+    pub partners: Vec<ReleasePayloads>,
 }
 
 impl AppliedSource {
@@ -89,10 +116,10 @@ impl ReleasePayloads {
         .collect()
     }
 
-    fn document(&self, source: PayloadSource) -> Option<&str> {
+    fn document(&self, source: PayloadSource, key: &str) -> Option<&str> {
         self.supporting
             .iter()
-            .find(|d| d.source == source)
+            .find(|d| d.source == source && d.source_release_id == key)
             .map(|d| d.json.as_str())
     }
 
@@ -123,17 +150,21 @@ impl ReleasePayloads {
     /// Discogs key was configured when it was fetched — both of which the
     /// mapper takes as "no cross-reference".
     fn discogs_xref(&self) -> Result<Option<DiscogsRelease>, ImportError> {
-        let Some(json) = self.document(PayloadSource::Discogs) else {
+        let Some(counterpart) = self.counterpart()? else {
+            return Ok(None);
+        };
+        let Some(json) = self.document(PayloadSource::Discogs, &counterpart.key) else {
             return Ok(None);
         };
         crate::discogs::client::parse_discogs_release_json(json)
             .map(Some)
-            .map_err(|e| self.source_data(format!("stored Discogs release does not parse: {e}")))
+            .map_err(ImportError::from)
     }
 
     /// The MusicBrainz release cross-linked to a Discogs-seeded one.
     fn musicbrainz_xref(&self) -> Result<Option<MbReleaseResponse>, ImportError> {
-        let Some(json) = self.document(PayloadSource::MusicBrainzDiscogsXref) else {
+        let Some(json) = self.document(PayloadSource::MusicBrainzDiscogsXref, &self.release.key)
+        else {
             return Ok(None);
         };
         serde_json::from_str(json).map(Some).map_err(|e| {
@@ -143,146 +174,9 @@ impl ReleasePayloads {
         })
     }
 
-    /// The Wikidata item MusicBrainz's documents named for this release,
-    /// parsed. `None` when no editor linked one, and when the fetch that would
-    /// have archived it failed — either way the release describes itself with
-    /// the records its own catalogs' documents state, and the next
-    /// identification asks Wikidata again.
-    fn wikidata(&self) -> Result<Option<WikidataEntity>, ImportError> {
-        let Some(json) = self.document(PayloadSource::Wikidata) else {
-            return Ok(None);
-        };
-        crate::wikidata::parse_entity(json)
-            .map(Some)
-            .map_err(|e| self.source_data(format!("stored Wikidata item does not parse: {e}")))
-    }
-
-    /// The original release year the Discogs master states, falling back to the
-    /// release's own year when no master was archived — the same reading the
-    /// fetch path does.
-    fn discogs_master_year(&self, release: &DiscogsRelease) -> Result<Option<u32>, ImportError> {
-        match self.document(PayloadSource::DiscogsMaster) {
-            Some(json) => crate::discogs::client::parse_discogs_master_year(json).map_err(|e| {
-                self.source_data(format!("stored Discogs master does not parse: {e}"))
-            }),
-            None => Ok(release.year),
-        }
-    }
-
-    /// Every catalog these documents describe the release in: the anchor's own
-    /// record, plus one for every catalog page the anchor and its archived
-    /// supporting documents link out to.
-    ///
-    /// The anchor reads the draft — these are the documents its facts come
-    /// from. A set fetched for a partner of a pick says the same about its own
-    /// anchor, and `records_for_commit` is where that
-    /// is settled across the releases one pick claims.
-    ///
-    /// A link to a catalog the anchor already is, is not followed: the
-    /// document in hand outranks what another editor said about it. A group
-    /// page contributes its key to that catalog's record and never stands as
-    /// one itself — a record names a pressing.
+    /// Catalog identities explicitly known at pressing or album level.
     pub fn records(&self) -> Result<Vec<ReleaseRecord>, ImportError> {
-        let (anchor_group, linked) = match self.release.catalog {
-            Catalog::MusicBrainz => {
-                let response = self.musicbrainz_anchor()?;
-                let release_group = response
-                    .release_group
-                    .as_ref()
-                    .map(|group| group.id.clone());
-                let mut linked: Vec<CatalogPage> = response
-                    .related_urls()
-                    .filter_map(parse_catalog_url)
-                    .collect();
-                // The release group is fetched with its own url-rels, and an
-                // editor files a link on whichever of the two it describes.
-                if let Some(json) = self.document(PayloadSource::MusicBrainzReleaseGroup) {
-                    let group = crate::musicbrainz::parse_release_group(json).map_err(|e| {
-                        self.source_data(format!(
-                            "stored MusicBrainz release group does not parse: {e}"
-                        ))
-                    })?;
-                    linked.extend(
-                        crate::musicbrainz::relation_urls(&group.relations)
-                            .filter_map(parse_catalog_url),
-                    );
-                }
-                // A cross-linked Discogs release was fetched along with the
-                // anchor, and only that document names the master it belongs
-                // to — a url-rel states the release page and nothing above it.
-                if let Some(discogs) = self.discogs_xref()? {
-                    if let Some(master) = discogs.master_id {
-                        linked.push(CatalogPage::Group {
-                            catalog: Catalog::Discogs,
-                            key: master,
-                        });
-                    }
-                }
-                // Wikidata's item for the album carries identifiers for the
-                // catalogs MusicBrainz editors leave unlinked. It is read last,
-                // so what a document bae fetched itself says about a catalog
-                // stands over what the item says about the same one.
-                if let Some(item) = self.wikidata()? {
-                    linked.extend(item.catalog_pages());
-                }
-                (release_group, linked)
-            }
-            Catalog::Discogs => {
-                let release = self.discogs_anchor()?;
-                let mut linked = Vec::new();
-                // Nothing in a Discogs document names a MusicBrainz release;
-                // MusicBrainz's own URL endpoint is what found this one.
-                if let Some(mb) = self.musicbrainz_xref()? {
-                    linked.push(CatalogPage::Release {
-                        catalog: Catalog::MusicBrainz,
-                        key: mb.id.clone(),
-                    });
-                    if let Some(group) = mb.release_group.as_ref() {
-                        linked.push(CatalogPage::Group {
-                            catalog: Catalog::MusicBrainz,
-                            key: group.id.clone(),
-                        });
-                    }
-                }
-                (release.master_id.clone(), linked)
-            }
-            other => not_fetched(other),
-        };
-
-        let mut records = vec![ReleaseRecord::new(&self.release, anchor_group, true)];
-        // A group page contributes its key to the record of the catalog that
-        // published it; a record whose group is still its own release has not
-        // been told one yet.
-        let mut groups: Vec<(Catalog, String)> = Vec::new();
-        for page in linked {
-            match page {
-                CatalogPage::Release { catalog, key } => {
-                    if !records.iter().any(|record| record.catalog == catalog) {
-                        records.push(ReleaseRecord::new(
-                            &MetadataRef::new(catalog, key),
-                            None,
-                            false,
-                        ));
-                    }
-                }
-                CatalogPage::Group { catalog, key } => groups.push((catalog, key)),
-            }
-        }
-        for (catalog, key) in groups {
-            if let Some(record) = records
-                .iter_mut()
-                .find(|record| record.catalog == catalog && record.group_key == record.key)
-            {
-                record.group_key = key;
-            }
-        }
-        records.sort_by_key(|record| {
-            Catalog::ALL
-                .iter()
-                .position(|catalog| *catalog == record.catalog)
-                .expect("a record names one of the catalogs")
-        });
-        Ok(records)
+        self.projected_records()
     }
 
     /// What the source says about this release's own tracklist — the half of the
@@ -327,12 +221,14 @@ impl ReleasePayloads {
             }
             other => not_fetched(other),
         }
-        if let Some(json) = self.document(PayloadSource::DiscogsMaster) {
-            covers.extend(
-                crate::discogs::client::parse_discogs_master_covers(json).map_err(|e| {
-                    self.source_data(format!("stored Discogs master images do not parse: {e}"))
-                })?,
-            );
+        for (catalog, key, json) in self.album_documents()? {
+            match catalog {
+                Catalog::Discogs => {
+                    covers.extend(crate::discogs::client::parse_discogs_master_covers(json)?)
+                }
+                Catalog::MusicBrainz => covers.push(RemoteCover::musicbrainz_release_group(key)),
+                other => not_fetched(other),
+            }
         }
         let mut unique = Vec::new();
         for cover in covers {
@@ -352,6 +248,10 @@ impl ReleasePayloads {
             Catalog::Discogs => self.musicbrainz_xref()?,
             other => not_fetched(other),
         };
+        let covered_group = musicbrainz
+            .as_ref()
+            .and_then(|release| release.release_group.as_ref())
+            .map(|group| group.id.clone());
         if let Some(release) = musicbrainz {
             let mut gallery = crate::import::cover_art::musicbrainz_gallery(
                 &release.id,
@@ -368,6 +268,14 @@ impl ReleasePayloads {
                 }
                 Catalog::Discogs => covers.extend(gallery),
                 other => not_fetched(other),
+            }
+        }
+        for (catalog, key, _) in self.album_documents()? {
+            if catalog != Catalog::MusicBrainz || covered_group.as_deref() == Some(key) {
+                continue;
+            }
+            for cover in crate::import::cover_art::musicbrainz_group_gallery(key).await? {
+                crate::import::cover_art::push_unique_cover(&mut covers, cover);
             }
         }
         Ok(covers)
@@ -406,7 +314,7 @@ impl ReleasePayloads {
         audio_durations_ms: &[u64],
     ) -> Result<ImportSearchReleaseDetail, ImportError> {
         let covers = self.covers()?;
-        match self.release.catalog {
+        let mut detail = match self.release.catalog {
             Catalog::MusicBrainz => crate::import::search::build_mb_detail(
                 &self.release.key,
                 &self.musicbrainz_anchor()?,
@@ -418,7 +326,25 @@ impl ReleasePayloads {
                 Some(audio_durations_ms),
             )),
             other => not_fetched(other),
-        }
+        }?;
+        let metadata = self.projected_metadata()?;
+        detail.title = metadata.album.title;
+        detail.artist = (!metadata.album.artists.is_empty()).then(|| {
+            metadata
+                .album
+                .artists
+                .iter()
+                .map(|artist| artist.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        });
+        detail.year = metadata.pressing.year;
+        detail.format = metadata.pressing.format;
+        detail.label = metadata.pressing.label;
+        detail.catalog_number = metadata.pressing.catalog_number;
+        detail.country = metadata.pressing.country;
+        detail.barcode = metadata.pressing.barcode;
+        Ok(detail)
     }
 
     /// The DB-shape album the commit writes, and the editor's seed is projected
@@ -433,25 +359,21 @@ impl ReleasePayloads {
         clock: &dyn coven::Clock,
         ids: &dyn coven::IdProvider,
     ) -> Result<ParsedAlbum, ImportError> {
+        let metadata = self.projected_metadata()?;
         match self.release.catalog {
-            Catalog::MusicBrainz => crate::import::musicbrainz_mapper::map_mb_response_to_db(
+            Catalog::MusicBrainz => crate::import::musicbrainz_mapper::map_with_metadata(
                 &self.musicbrainz_anchor()?,
-                None,
-                self.discogs_xref()?,
+                metadata,
                 clock,
                 ids,
             ),
-            Catalog::Discogs => {
-                let release = self.discogs_anchor()?;
-                let master_year = self.discogs_master_year(&release)?;
-                crate::import::discogs_mapper::map_discogs_to_db(
-                    &release,
-                    master_year,
-                    Some(audio_durations_ms),
-                    clock,
-                    ids,
-                )
-            }
+            Catalog::Discogs => crate::import::discogs_mapper::map_with_metadata(
+                &self.discogs_anchor()?,
+                metadata,
+                Some(audio_durations_ms),
+                clock,
+                ids,
+            ),
             other => not_fetched(other),
         }
     }
@@ -479,11 +401,17 @@ pub fn claimed_records(
             None => vec![ReleaseRecord::new(release, None, reads_draft)],
         };
         for mut record in described {
-            record.reads_draft = reads_draft && record.catalog == release.catalog;
-            let claimed_by_the_person = record.catalog == release.catalog;
+            let claimed_by_the_person = record.catalog() == release.catalog;
+            if let ReleaseRecord::Pressing {
+                reads_draft: record_reads,
+                ..
+            } = &mut record
+            {
+                *record_reads = reads_draft && claimed_by_the_person;
+            }
             match records
                 .iter_mut()
-                .find(|existing| existing.catalog == record.catalog)
+                .find(|existing| existing.catalog() == record.catalog())
             {
                 Some(existing) if claimed_by_the_person => *existing = record,
                 Some(_) => {}
@@ -494,141 +422,29 @@ pub fn claimed_records(
     records.sort_by_key(|record| {
         Catalog::ALL
             .iter()
-            .position(|catalog| *catalog == record.catalog)
+            .position(|catalog| *catalog == record.catalog())
             .expect("a record names one of the catalogs")
     });
     Ok(records)
 }
 
-/// Fetch everything `release` needs to be opened, mapped, and committed, from
-/// the sources themselves.
-///
-/// Supporting documents are best-effort exactly where they were before: a
-/// release group that will not fetch, a cross-reference an editor never linked,
-/// a Discogs key that is not configured. The release's own document is not —
-/// without it there is nothing to describe.
+/// Fetch the selected release and its explicitly related metadata documents.
 pub async fn fetch(
     discogs_client: Option<&DiscogsClient>,
     release: &MetadataRef,
     priority: CallPriority,
 ) -> Result<ReleasePayloads, ImportError> {
-    let (anchor, supporting) = match release.catalog {
-        Catalog::MusicBrainz => fetch_musicbrainz(discogs_client, &release.key, priority).await?,
-        Catalog::Discogs => {
-            let client = discogs_client.ok_or(ImportError::DiscogsNotConfigured)?;
-            fetch_discogs(client, &release.key, priority).await?
-        }
-        other => not_fetched(other),
-    };
-    Ok(ReleasePayloads {
-        release: release.clone(),
-        anchor,
-        supporting,
-    })
+    traversal::fetch_documents(discogs_client, release, None, priority).await
 }
 
-/// The archived MusicBrainz release-group document among `documents`.
-fn archived_release_group(documents: &[SourcePayload]) -> Option<&str> {
-    documents
-        .iter()
-        .find(|d| d.source == PayloadSource::MusicBrainzReleaseGroup)
-        .map(|d| d.json.as_str())
-}
-
-/// The Wikidata item MusicBrainz names for this release, if an editor linked
-/// one.
-///
-/// An editor files the link on whichever of the release and its group they were
-/// looking at, so both documents state it — which is why the group's own
-/// document has to be in hand before the item's key is knowable. The fetch and
-/// the read-back agree on this reading, so a set reads back with exactly the
-/// item it was archived with.
-fn wikidata_item(
-    release: &MbReleaseResponse,
-    release_group_json: Option<&str>,
-) -> Result<Option<String>, ImportError> {
-    let group = release_group_json
-        .map(crate::musicbrainz::parse_release_group)
-        .transpose()
-        .map_err(|e| ImportError::SourceData {
-            catalog: Catalog::MusicBrainz,
-            detail: format!("stored MusicBrainz release group does not parse: {e}"),
-        })?;
-    let group_urls = group
-        .iter()
-        .flat_map(|group| crate::musicbrainz::relation_urls(&group.relations));
-    let item =
-        release
-            .related_urls()
-            .chain(group_urls)
-            .find_map(|url| match parse_catalog_url(url) {
-                Some(CatalogPage::Release {
-                    catalog: Catalog::Wikidata,
-                    key,
-                }) => Some(key),
-                _ => None,
-            });
-    Ok(item)
-}
-
-async fn fetch_musicbrainz(
+/// Expand an archived release when the user applies its metadata. Frozen
+/// applied snapshots and ordinary reads continue to use their archived set.
+pub async fn enrich(
     discogs_client: Option<&DiscogsClient>,
-    release_id: &str,
+    stored: &ReleasePayloads,
     priority: CallPriority,
-) -> Result<(String, Vec<SourcePayload>), ImportError> {
-    let fetched = crate::musicbrainz::fetch_release_with_metadata(release_id, priority).await?;
-    let mut supporting: Vec<SourcePayload> = fetched.release_group.into_iter().collect();
-
-    // The Wikidata item is best-effort like the release group: a release
-    // archived without it still describes itself in every catalog its own
-    // documents name, and the next identification asks for the item again.
-    if let Some(item) = wikidata_item(&fetched.response, archived_release_group(&supporting))? {
-        match crate::wikidata::fetch_entity(&item, priority).await {
-            Ok(json) => supporting.push(SourcePayload::new(PayloadSource::Wikidata, &item, json)),
-            Err(e) => warn!("Failed to fetch Wikidata item {item}: {e}"),
-        }
-    }
-
-    if let (Some(client), Some(url)) = (discogs_client, fetched.discogs_url.as_deref()) {
-        if let Some((_release, xref)) =
-            crate::discogs::client::fetch_discogs_xref(client, url, priority).await
-        {
-            supporting.extend(xref);
-        }
-    }
-
-    Ok((fetched.raw_json, supporting))
-}
-
-/// The Discogs release, the master it names, and the MusicBrainz release an
-/// editor cross-linked to it.
-///
-/// The master and the cross-reference are both best-effort: a release archived
-/// without either still describes itself. A missing master leaves the release's
-/// own year and artwork available.
-async fn fetch_discogs(
-    client: &DiscogsClient,
-    release_id: &str,
-    priority: CallPriority,
-) -> Result<(String, Vec<SourcePayload>), ImportError> {
-    let (release, raw_json) = client.get_release(release_id, priority).await?;
-    let mut documents = Vec::new();
-
-    if let Some(master_id) = &release.master_id {
-        match client.get_master(master_id, priority).await {
-            Ok((_year, master_json)) => documents.push(SourcePayload::new(
-                PayloadSource::DiscogsMaster,
-                master_id,
-                master_json,
-            )),
-            Err(e) => warn!("Failed to fetch Discogs master {master_id}: {e}"),
-        }
-    }
-
-    if let Some((_response, xref)) = crate::musicbrainz::fetch_mb_xref(release_id, priority).await {
-        documents.extend(xref);
-    }
-    Ok((raw_json, documents))
+) -> Result<ReleasePayloads, ImportError> {
+    traversal::fetch_documents(discogs_client, &stored.release, Some(stored), priority).await
 }
 
 /// Store a set, replacing whatever was under the same entities.
@@ -637,8 +453,17 @@ pub async fn store(
     payloads: &ReleasePayloads,
     now: DateTime<Utc>,
 ) -> Result<(), crate::library::LibraryError> {
+    let rows = payloads.rows(now);
+    let mut invalidated = std::collections::HashSet::new();
+    for row in &rows {
+        invalidated.extend(traversal::related_documents(
+            row.source,
+            &row.source_release_id,
+            &row.json,
+        )?);
+    }
     database
-        .save_source_release_payloads(&payloads.rows(now))
+        .replace_release_payloads(&rows, &invalidated.into_iter().collect::<Vec<_>>())
         .await?;
     Ok(())
 }
@@ -672,82 +497,21 @@ pub(crate) fn load_on(
     documents: &impl ArchivedDocuments,
     release: &MetadataRef,
 ) -> Result<Option<ReleasePayloads>, ImportError> {
-    let read = |keys: &[(PayloadSource, String)]| -> Result<Vec<SourcePayload>, ImportError> {
-        let mut found = Vec::with_capacity(keys.len());
-        for (source, id) in keys {
-            if let Some(json) = documents.document(*source, id)? {
-                found.push(SourcePayload::new(*source, id.clone(), json));
-            }
-        }
-        Ok(found)
-    };
-    let anchor_source = PayloadSource::release_of(release.catalog);
-    let Some(anchor) = documents.document(anchor_source, &release.key)? else {
-        return Ok(None);
-    };
-    // Everything else is keyed by an id read out of a document already in hand,
-    // so each round of reads is what makes the next one's keys knowable.
-    let (mut supporting, discogs_json) = match release.catalog {
-        Catalog::MusicBrainz => {
-            let response: MbReleaseResponse =
-                serde_json::from_str(&anchor).map_err(|e| ImportError::SourceData {
-                    catalog: Catalog::MusicBrainz,
-                    detail: format!("stored MusicBrainz release does not parse: {e}"),
-                })?;
-            let mut keys = Vec::new();
-            if let Some(rg) = response.release_group.as_ref() {
-                keys.push((PayloadSource::MusicBrainzReleaseGroup, rg.id.clone()));
-            }
-            if let Some(CatalogPage::Release {
-                catalog: Catalog::Discogs,
-                key,
-            }) = response
-                .discogs_release_url()
-                .as_deref()
-                .and_then(parse_catalog_url)
-            {
-                keys.push((PayloadSource::Discogs, key));
-            }
-            let mut supporting = read(&keys)?;
-            // The item is named by a url-rel on the release or on its group, so
-            // the group's document has to be read before its key is knowable.
-            if let Some(item) = wikidata_item(&response, archived_release_group(&supporting))? {
-                supporting.extend(read(&[(PayloadSource::Wikidata, item)])?);
-            }
-            // The master is named by the cross-referenced Discogs release.
-            let discogs_json = supporting
-                .iter()
-                .find(|d| d.source == PayloadSource::Discogs)
-                .map(|d| d.json.clone());
-            (supporting, discogs_json)
-        }
-        Catalog::Discogs => {
-            let supporting = read(&[(PayloadSource::MusicBrainzDiscogsXref, release.key.clone())])?;
-            // Here the anchor is the Discogs release, so it names the master.
-            (supporting, Some(anchor.clone()))
-        }
-        other => not_fetched(other),
-    };
-
-    if let Some(json) = discogs_json {
-        let master_id = crate::discogs::client::parse_discogs_release_json(&json)
-            .map_err(|e| ImportError::SourceData {
-                catalog: Catalog::Discogs,
-                detail: format!("stored Discogs release does not parse: {e}"),
-            })?
-            .master_id;
-        if let Some(master_id) = master_id {
-            supporting.extend(read(&[(PayloadSource::DiscogsMaster, master_id)])?);
-        }
-    }
-
-    Ok(Some(ReleasePayloads {
-        release: release.clone(),
-        anchor,
-        supporting,
-    }))
+    traversal::load_documents(documents, release)
 }
 
 #[cfg(test)]
 #[path = "payloads_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "payloads/enrichment_tests.rs"]
+mod enrichment_tests;
+
+#[cfg(test)]
+#[path = "payloads/supplemental_tests.rs"]
+mod supplemental_tests;
+
+#[cfg(test)]
+#[path = "payloads/ambiguity_tests.rs"]
+mod ambiguity_tests;
