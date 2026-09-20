@@ -72,7 +72,7 @@ fn nested_recording_work_imports_composer_work_graph() {
         tracks: vec![track_one, track_two],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     let work_graph = &parsed.work_graph;
     assert_eq!(work_graph.works.len(), 2);
@@ -153,7 +153,7 @@ fn recording_linking_the_same_work_twice_produces_one_track_work_link() {
         tracks: vec![track],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     let track_id = &parsed.tracks[0].id;
     let work_id = work_row_id(&parsed, "mb-work-a");
@@ -183,7 +183,7 @@ fn track_level_artist_credit_creates_and_links_a_new_artist() {
         tracks: vec![make_mb_track("1", "Track 1"), featured],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     let guest = parsed
         .artists
@@ -220,7 +220,7 @@ fn track_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
         tracks: vec![track],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     let artist = parsed
         .artists
@@ -245,7 +245,7 @@ fn track_level_artist_credit_dedupes_against_release_artist_by_mb_id() {
         tracks: vec![t],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     let matching: Vec<_> = parsed
         .artists
@@ -285,7 +285,7 @@ fn known_mb_artist_id_does_not_merge_into_same_name_artist_without_id() {
     }]);
     response.artist_credit[0].artist = None;
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     let release_artist = parsed
         .artists
@@ -330,7 +330,7 @@ fn id_less_track_credit_does_not_merge_into_id_bearing_release_artist() {
         tracks: vec![track],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     let matching: Vec<_> = parsed
         .artists
@@ -368,7 +368,7 @@ fn known_mb_artist_ids_keep_same_name_artists_separate() {
         tracks: vec![track],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     let matching: Vec<_> = parsed
         .artists
@@ -423,7 +423,7 @@ fn backward_work_parts_relation_treats_related_work_as_parent() {
         tracks: vec![track],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
     let parent_id = work_row_id(&parsed, "mb-work-parent-a");
     let child_id = work_row_id(&parsed, "mb-work-child-a");
     assert!(
@@ -440,45 +440,56 @@ fn backward_work_parts_relation_treats_related_work_as_parent() {
 /// Discogs release, matched on name case-insensitively.
 #[test]
 fn release_artist_gets_discogs_id_by_case_insensitive_name() {
-    let response = make_response(vec![MbMedium {
+    let mut response = make_response(vec![MbMedium {
         discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
-    let mut discogs_release = discogs_release_with_master(None);
-    discogs_release.artists = vec![crate::discogs::DiscogsArtist {
-        id: "d-artist-7".to_string(),
-        name: "ARTIST NAME A".to_string(),
-    }];
+    response.relations = vec![serde_json::from_value(serde_json::json!({
+        "type": "discogs", "target-type": "url",
+        "url": {"resource": "https://www.discogs.com/release/99"}
+    }))
+    .expect("Discogs relationship fixture parses")];
 
-    let parsed = map(&response, None, Some(discogs_release)).unwrap();
+    let parsed = map(&response, vec![discogs_artist_document("ARTIST NAME A")]).unwrap();
 
     let release_artist = parsed
         .artists
         .iter()
         .find(|a| a.musicbrainz_artist_id.as_deref() == Some("artist-1"))
         .expect("release artist mapped");
-    assert_eq!(
-        release_artist.discogs_artist_id.as_deref(),
-        Some("d-artist-7")
-    );
+    assert_eq!(release_artist.discogs_artist_id.as_deref(), Some("7"));
 }
 
-/// No Discogs artist name matches the release artist -> no cross-ref id.
+/// Supplemental data cannot assign identities without a source relationship.
 #[test]
-fn release_artist_discogs_id_is_none_when_no_name_matches() {
+fn unrelated_discogs_document_does_not_supply_an_artist_identity() {
     let response = make_response(vec![MbMedium {
         discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
-    let mut discogs_release = discogs_release_with_master(None);
-    discogs_release.artists = vec![crate::discogs::DiscogsArtist {
-        id: "d-artist-7".to_string(),
-        name: "Different Artist".to_string(),
-    }];
 
-    let parsed = map(&response, None, Some(discogs_release)).unwrap();
+    let parsed = map(&response, vec![discogs_artist_document("ARTIST NAME A")]).unwrap();
+
+    assert_eq!(parsed.artists[0].discogs_artist_id, None);
+}
+
+/// No Discogs artist name matches the release artist -> no cross-ref id.
+#[test]
+fn release_artist_discogs_id_is_none_when_no_name_matches() {
+    let mut response = make_response(vec![MbMedium {
+        discs: vec![],
+        format: Some("CD".to_string()),
+        tracks: vec![make_mb_track("1", "Track 1")],
+    }]);
+    response.relations = vec![serde_json::from_value(serde_json::json!({
+        "type": "discogs", "target-type": "url",
+        "url": {"resource": "https://www.discogs.com/release/99"}
+    }))
+    .expect("Discogs relationship fixture parses")];
+
+    let parsed = map(&response, vec![discogs_artist_document("Different Artist")]).unwrap();
 
     let release_artist = parsed
         .artists
@@ -519,7 +530,7 @@ fn work_composer_relation_without_artist_payload_is_logged_and_skipped() {
 
     let mut parsed = None;
     let logs = crate::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&response, Some(2024), None).unwrap());
+        parsed = Some(map(&response, vec![]).unwrap());
     });
     let parsed = parsed.unwrap();
 
@@ -570,7 +581,7 @@ fn work_referenced_by_two_tracks_logs_skip_once() {
 
     let mut parsed = None;
     let logs = crate::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&response, Some(2024), None).unwrap());
+        parsed = Some(map(&response, vec![]).unwrap());
     });
     let parsed = parsed.unwrap();
 
@@ -626,7 +637,7 @@ fn work_parts_relation_without_work_payload_is_logged_and_skipped() {
 
     let mut parsed = None;
     let logs = crate::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&response, Some(2024), None).unwrap());
+        parsed = Some(map(&response, vec![]).unwrap());
     });
     let parsed = parsed.unwrap();
 
@@ -659,7 +670,7 @@ fn track_artist_credit_without_resolvable_name_is_logged_and_skipped() {
 
     let mut parsed = None;
     let logs = crate::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&response, Some(2024), None).unwrap());
+        parsed = Some(map(&response, vec![]).unwrap());
     });
     let parsed = parsed.unwrap();
 

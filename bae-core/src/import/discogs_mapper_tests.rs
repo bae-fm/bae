@@ -3,21 +3,19 @@ use crate::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
 use coven::FixedClock;
 use coven::SequentialIdProvider;
 
-/// Run the mapper with deterministic fakes. Exercises the real
-/// `map_discogs_to_db`; only the clock/id inputs are faked.
-fn map(release: &DiscogsRelease, master_year: Option<u32>) -> Result<ParsedAlbum, ImportError> {
+/// Exercise track and credit mapping with the release's own metadata.
+fn map(release: &DiscogsRelease) -> Result<ParsedAlbum, ImportError> {
     let clock = FixedClock(
         chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("d");
-    map_discogs_to_db(release, master_year, None, &clock, &ids)
+    map_with_metadata(release, metadata(release), None, &clock, &ids)
 }
 
 fn map_for_audio(
     release: &DiscogsRelease,
-    master_year: Option<u32>,
     audio_durations_ms: &[u64],
 ) -> Result<ParsedAlbum, ImportError> {
     let clock = FixedClock(
@@ -26,7 +24,13 @@ fn map_for_audio(
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("d");
-    map_discogs_to_db(release, master_year, Some(audio_durations_ms), &clock, &ids)
+    map_with_metadata(
+        release,
+        metadata(release),
+        Some(audio_durations_ms),
+        &clock,
+        &ids,
+    )
 }
 
 #[test]
@@ -103,8 +107,8 @@ fn release_without_artists_errors_when_title_yields_no_artist() {
         release.artists = vec![];
         release.title = title.to_string();
 
-        let err = map(&release, Some(2024))
-            .expect_err(&format!("expected error for unattributed title {title:?}"));
+        let err =
+            map(&release).expect_err(&format!("expected error for unattributed title {title:?}"));
 
         assert!(
             matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no album artist")),
@@ -121,7 +125,7 @@ fn release_without_artists_derives_release_artist_from_title() {
     release.artists = vec![];
     release.title = "Artist Name A - Album Title".to_string();
 
-    let parsed = map(&release, Some(2024)).unwrap();
+    let parsed = map(&release).unwrap();
 
     assert_eq!(parsed.artists.len(), 1);
     assert_eq!(parsed.artists[0].name, "Artist Name A");
@@ -160,7 +164,7 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
         },
     ]);
 
-    let parsed = map(&release, Some(2024)).unwrap();
+    let parsed = map(&release).unwrap();
 
     assert!(parsed.work_graph.works.is_empty());
     assert!(parsed.work_graph.work_artists.is_empty());
@@ -208,7 +212,7 @@ fn test_cd_multi_disc() {
         make_track("2-2", "Disc 2 Track 2"),
     ]);
 
-    let parsed = map(&release, Some(2024)).unwrap();
+    let parsed = map(&release).unwrap();
     let tracks = &parsed.tracks;
     assert_eq!(tracks.len(), 5);
 
@@ -238,7 +242,7 @@ fn test_vinyl_sides() {
         make_track("D1", "Side D Track 1"),
     ]);
 
-    let parsed = map(&release, Some(2024)).unwrap();
+    let parsed = map(&release).unwrap();
     let tracks = &parsed.tracks;
     assert_eq!(tracks.len(), 6);
 
@@ -307,7 +311,7 @@ fn test_2lp_vinyl_with_headings() {
         make_track("D2", "Track Eight"),
     ]);
 
-    let parsed = map_for_audio(&release, Some(2004), &[1; 9]).unwrap();
+    let parsed = map_for_audio(&release, &[1; 9]).unwrap();
     let tracks = &parsed.tracks;
 
     // 9 tracks: 2 on A, 2 on B (heading collapsed + Track Three), 3 on C, 2 on D
@@ -366,7 +370,7 @@ fn test_single_disc() {
     ]);
 
     release.format = vec!["CD".into()];
-    let parsed = map(&release, Some(2024)).unwrap();
+    let parsed = map(&release).unwrap();
     let tracks = &parsed.tracks;
     assert_eq!(tracks.len(), 3);
 
@@ -408,7 +412,7 @@ fn test_collapsed_sub_tracks_preserve_per_track_artists() {
         },
     ]);
 
-    let parsed = map_for_audio(&release, Some(2024), &[1; 2]).unwrap();
+    let parsed = map_for_audio(&release, &[1; 2]).unwrap();
     let tracks = &parsed.tracks;
     let artists = &parsed.artists;
     let track_artists = &parsed.track_artists;
@@ -529,7 +533,7 @@ fn role_artist_without_credited_name_falls_back_to_canonical_name() {
 
     let mut parsed = None;
     let logs = crate::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&release, Some(2024)).unwrap());
+        parsed = Some(map(&release).unwrap());
     });
     let parsed = parsed.unwrap();
 
@@ -562,7 +566,7 @@ fn id_less_role_credit_reuses_release_artist_by_name() {
         credited_name: None,
     }]);
 
-    let parsed = map(&release, Some(2024)).unwrap();
+    let parsed = map(&release).unwrap();
 
     let matching: Vec<_> = parsed
         .artists
@@ -603,7 +607,7 @@ fn id_less_role_credits_dedup_on_credited_name() {
         },
     ]);
 
-    let parsed = map(&release, Some(2024)).unwrap();
+    let parsed = map(&release).unwrap();
 
     let matching: Vec<_> = parsed
         .artists

@@ -264,3 +264,15 @@ and let platform verification establish that rather than adding unused cases.
 
 ## Queued successor
 After this task lands, execute [Cover image formats](cover-image-formats.md) in the same worktree on its own branch. That contract adds Rust decoding for JPEG, PNG, GIF, and WebP consistently across remote, embedded, and local covers; it remains separate from generic unexpected-error diagnostics.
+
+## Repeated-row rendering decision
+
+The failed-result slot remains in the row tree and collapses when it has no
+failure. Let the existing `ErrorDetailDisclosure` accept an optional
+`DisplayError` so that slot can pass its actual absent state; do not manufacture
+an empty `DisplayError` to satisfy a required parameter. Existing nonoptional
+callers continue passing their actual error. The component renders the optional
+line and diagnostic content, while the result row continues controlling its
+height, opacity, hit testing, and accessibility for an absent failure. Keep the
+copy button beside the visible diagnostic summary whenever detail exists; the
+expansion control remains conditional on additional text.

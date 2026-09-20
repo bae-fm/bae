@@ -94,12 +94,14 @@ impl ReleasePayloads {
                 let mut incomplete = false;
                 for key in &keys {
                     let Some(json) = self.document(PayloadSource::Discogs, key) else {
+                        tracing::debug!(discogs_release = key, "Cannot infer album from an unavailable linked release");
                         incomplete = true;
                         continue;
                     };
                     let Some(parent) =
                         crate::discogs::client::parse_discogs_release_json(json)?.master_id
                     else {
+                        tracing::debug!(discogs_release = key, "Linked release has no known album parent");
                         incomplete = true;
                         continue;
                     };

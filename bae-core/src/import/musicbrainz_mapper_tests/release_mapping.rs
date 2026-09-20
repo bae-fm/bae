@@ -5,20 +5,26 @@ use crate::musicbrainz::{
 use coven::FixedClock;
 use coven::SequentialIdProvider;
 
-/// Run the mapper with deterministic fakes. Exercises the real
-/// `map_mb_response_to_db`; only the clock/id inputs are faked.
+/// Project archived source documents through the same metadata and mapping
+/// path as import, with only clock and ID generation replaced.
 fn map(
     response: &MbReleaseResponse,
-    master_year: Option<u32>,
-    discogs_release: Option<crate::discogs::DiscogsRelease>,
+    supporting: Vec<crate::import::SourcePayload>,
 ) -> Result<ParsedAlbum, ImportError> {
+    let payloads: crate::import::payloads::ReleasePayloads =
+        serde_json::from_value(serde_json::json!({
+            "release": MetadataRef::new(Catalog::MusicBrainz, &response.id),
+            "anchor": serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
+            "supporting": supporting,
+        }))
+        .expect("archived fixture deserializes");
     let clock = FixedClock(
         chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("mb");
-    map_mb_response_to_db(response, master_year, discogs_release, &clock, &ids)
+    payloads.parsed(&[], &clock, &ids)
 }
 
 /// The id of the `works` row the parsed release minted for a MusicBrainz
@@ -96,7 +102,7 @@ fn test_cd_two_media_each_one_side() {
         },
     ]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
     let tracks = &parsed.tracks;
 
     assert_eq!(tracks.len(), 4);
@@ -124,7 +130,7 @@ fn numeric_vinyl_tracks_are_usable_without_side_boundaries() {
             .collect(),
     }]);
     let parsed =
-        map(&response, None, None).expect("absent side information does not invalidate a release");
+        map(&response, vec![]).expect("absent side information does not invalidate a release");
     assert_eq!(parsed.tracks.len(), 12);
     assert!(parsed.tracks.iter().all(|track| track.side.is_none()));
     assert_eq!(
@@ -154,7 +160,7 @@ fn test_vinyl_one_medium_two_sides() {
         ],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
     let tracks = &parsed.tracks;
 
     assert_eq!(tracks.len(), 4);
@@ -199,7 +205,7 @@ fn test_vinyl_two_media_four_sides() {
         },
     ]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
     let tracks = &parsed.tracks;
 
     assert_eq!(tracks.len(), 8);
@@ -229,7 +235,7 @@ fn test_single_medium_cd_all_side_one() {
         ],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
     let tracks = &parsed.tracks;
 
     assert_eq!(tracks.len(), 3);
@@ -267,7 +273,7 @@ fn vinyl_track_without_a_number_keeps_its_side_unknown() {
         ],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
     assert_eq!(parsed.tracks[0].side, Some(1));
     assert_eq!(parsed.tracks[1].side, None);
 }
@@ -284,7 +290,7 @@ fn vinyl_numeric_track_keeps_its_side_unknown() {
         ],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
     assert_eq!(parsed.tracks[0].side, Some(1));
     assert_eq!(parsed.tracks[1].side, None);
 }
@@ -297,7 +303,7 @@ fn medium_with_no_tracks_returns_err() {
         tracks: vec![],
     }]);
 
-    let result = map(&response, Some(2024), None);
+    let result = map(&response, vec![]);
     assert!(matches!(
         result.unwrap_err(),
         ImportError::SourceData { detail, .. } if detail.contains("no tracks")
@@ -324,7 +330,7 @@ fn track_title_is_used_when_recording_title_is_missing() {
         }],
     }]);
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     assert_eq!(parsed.tracks[0].title, "Track Title From Track");
 }
@@ -349,7 +355,7 @@ fn track_without_recording_or_track_title_returns_err() {
         }],
     }]);
 
-    let err = map(&response, Some(2024), None)
+    let err = map(&response, vec![])
         .expect_err("expected missing MusicBrainz track title to return an error");
 
     assert!(
@@ -405,27 +411,22 @@ fn pressing_reads_year_format_first_label_country_and_barcode() {
     );
 
     // What the mapper commits is what the projection says.
-    let parsed = map(&response, None, None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
     assert_eq!(parsed.release.pressing, pressing);
     assert_eq!(parsed.album.year, Some(1969));
 }
 
-fn discogs_release_with_master(master_id: Option<String>) -> crate::discogs::DiscogsRelease {
-    crate::discogs::DiscogsRelease {
-        id: "d-rel-99".to_string(),
-        title: "Album Title A".to_string(),
-        year: Some(2024),
-        format: vec![],
-        country: None,
-        label: vec![],
-        covers: vec![],
-        catno: None,
-        barcode: None,
-        artists: vec![],
-        tracklist: vec![],
-        extraartists: Some(vec![]),
-        master_id,
-    }
+fn discogs_artist_document(name: &str) -> crate::import::SourcePayload {
+    crate::import::SourcePayload::new(
+        crate::import::PayloadSource::Discogs,
+        "99".to_string(),
+        serde_json::json!({
+            "id": 99,
+            "title": "Album Title A",
+            "artists": [{"id": 7, "name": name}],
+        })
+        .to_string(),
+    )
 }
 
 #[test]
@@ -438,7 +439,7 @@ fn release_with_no_artist_credits_returns_err() {
     response.artist_credit = vec![];
 
     let err =
-        map(&response, None, None).expect_err("expected missing artist credits to return an error");
+        map(&response, vec![]).expect_err("expected missing artist credits to return an error");
 
     assert!(
         matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no album artist")),
@@ -468,7 +469,7 @@ fn release_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
     name_only_credit.artist.as_mut().unwrap().name = None;
     response.artist_credit = vec![name_only_credit];
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     let artist = parsed
         .artists
@@ -501,7 +502,7 @@ fn missing_mb_sort_names_remain_absent() {
     }]);
     response.artist_credit[0].artist.as_mut().unwrap().sort_name = None;
 
-    let parsed = map(&response, Some(2024), None).unwrap();
+    let parsed = map(&response, vec![]).unwrap();
 
     let release_artist = parsed
         .artists

@@ -144,6 +144,49 @@ fn page_document(page: &CatalogPage, album_context: bool) -> Option<DocumentKey>
     }
 }
 
+/// Own the graph walk independently of how each document is retrieved.
+struct DocumentTraversal {
+    payloads: ReleasePayloads,
+    queue: VecDeque<DocumentKey>,
+    seen: HashSet<DocumentKey>,
+}
+
+impl DocumentTraversal {
+    fn new(release: &MetadataRef, anchor: String) -> Result<Self, ImportError> {
+        let source = PayloadSource::release_of(release.catalog);
+        let queue = related_documents(source, &release.key, &anchor)?.into();
+        Ok(Self {
+            payloads: ReleasePayloads {
+                release: release.clone(),
+                anchor,
+                supporting: Vec::new(),
+            },
+            queue,
+            seen: HashSet::from([(source, release.key.clone())]),
+        })
+    }
+
+    fn next(&mut self) -> Option<DocumentKey> {
+        while let Some(key) = self.queue.pop_front() {
+            if self.seen.insert(key.clone()) {
+                return Some(key);
+            }
+        }
+        None
+    }
+
+    fn accept(&mut self, document: SourcePayload) {
+        if let Some(edges) = supporting_document_edges(
+            document.source,
+            &document.source_release_id,
+            &document.json,
+        ) {
+            self.queue.extend(edges);
+            self.payloads.supporting.push(document);
+        }
+    }
+}
+
 struct FetchDocuments<'a> {
     discogs: Option<&'a DiscogsClient>,
     priority: CallPriority,
@@ -326,31 +369,19 @@ pub(super) async fn fetch_documents(
         .document(anchor_key.0, &anchor_key.1)
         .await?
         .ok_or(ImportError::DiscogsNotConfigured)?;
-    let mut supporting = Vec::new();
-    let mut seen = HashSet::from([anchor_key.clone()]);
-    let mut queue: VecDeque<_> = related_documents(anchor_key.0, &anchor_key.1, &anchor)?.into();
-    while let Some((source, key)) = queue.pop_front() {
-        if !seen.insert((source, key.clone())) {
-            continue;
-        }
-        let json = match fetcher.document(source, &key).await {
-            Ok(Some(json)) => json,
-            Ok(None) => continue,
+    let mut traversal = DocumentTraversal::new(release, anchor)?;
+    while let Some((source, key)) = traversal.next() {
+        match fetcher.document(source, &key).await {
+            Ok(Some(json)) => traversal.accept(SourcePayload::new(source, key, json)),
+            Ok(None) => {
+                tracing::debug!(?source, entity = key, "Supporting metadata document is unavailable");
+            }
             Err(error) => {
                 warn!(?source, entity = key, %error, "Supporting metadata could not be fetched");
-                continue;
             }
-        };
-        if let Some(edges) = supporting_document_edges(source, &key, &json) {
-            queue.extend(edges);
-            supporting.push(SourcePayload::new(source, key, json));
         }
     }
-    Ok(ReleasePayloads {
-        release: release.clone(),
-        anchor,
-        supporting,
-    })
+    Ok(traversal.payloads)
 }
 
 pub(super) fn load_documents(
@@ -361,25 +392,16 @@ pub(super) fn load_documents(
     let Some(anchor) = documents.document(source, &release.key)? else {
         return Ok(None);
     };
-    let mut seen = HashSet::from([(source, release.key.clone())]);
-    let mut queue: VecDeque<_> = related_documents(source, &release.key, &anchor)?.into();
-    let mut supporting = Vec::new();
-    while let Some((source, key)) = queue.pop_front() {
-        if !seen.insert((source, key.clone())) {
-            continue;
-        }
-        if let Some(json) = documents.document(source, &key)? {
-            if let Some(edges) = supporting_document_edges(source, &key, &json) {
-                queue.extend(edges);
-                supporting.push(SourcePayload::new(source, key, json));
+    let mut traversal = DocumentTraversal::new(release, anchor)?;
+    while let Some((source, key)) = traversal.next() {
+        match documents.document(source, &key)? {
+            Some(json) => traversal.accept(SourcePayload::new(source, key, json)),
+            None => {
+                tracing::debug!(?source, entity = key, "Supporting metadata document is absent from the archive");
             }
         }
     }
-    Ok(Some(ReleasePayloads {
-        release: release.clone(),
-        anchor,
-        supporting,
-    }))
+    Ok(Some(traversal.payloads))
 }
 
 #[cfg(test)]

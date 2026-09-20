@@ -355,10 +355,14 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     }];
 
     let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
-    let parsed = crate::import::musicbrainz_mapper::map_mb_response_to_db(
-        &response,
-        None,
-        None,
+    let parsed = serde_json::from_value::<crate::import::payloads::ReleasePayloads>(serde_json::json!({
+        "release": crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, &response.id),
+        "anchor": serde_json::to_string(&response).expect("MusicBrainz fixture serializes"),
+        "supporting": [],
+    }))
+    .expect("archived fixture deserializes")
+    .parsed(
+        &[],
         &test_clock(),
         &SequentialIdProvider::new("mb"),
     )
@@ -405,10 +409,14 @@ fn mb_detail_track_title_prefers_the_recording_title() {
     let titles: Vec<&str> = detail.tracks.iter().map(|t| t.title.as_str()).collect();
     assert_eq!(titles, vec!["Recording Title", "Only A Track Title"]);
 
-    let parsed = crate::import::musicbrainz_mapper::map_mb_response_to_db(
-        &response,
-        None,
-        None,
+    let parsed = serde_json::from_value::<crate::import::payloads::ReleasePayloads>(serde_json::json!({
+        "release": crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, &response.id),
+        "anchor": serde_json::to_string(&response).expect("MusicBrainz fixture serializes"),
+        "supporting": [],
+    }))
+    .expect("archived fixture deserializes")
+    .parsed(
+        &[],
         &test_clock(),
         &SequentialIdProvider::new("mb"),
     )

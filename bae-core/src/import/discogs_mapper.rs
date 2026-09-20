@@ -101,19 +101,6 @@ pub(crate) fn pressing(release: &DiscogsRelease) -> Pressing {
     }
 }
 
-#[cfg(test)]
-pub fn map_discogs_to_db(
-    release: &DiscogsRelease,
-    master_year: Option<u32>,
-    audio_durations_ms: Option<&[u64]>,
-    clock: &dyn Clock,
-    ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, ImportError> {
-    let mut metadata = metadata(release);
-    metadata.album.year = master_year.or(release.year).map(|year| year as i32);
-    map_with_metadata(release, metadata, audio_durations_ms, clock, ids)
-}
-
 pub(crate) fn map_with_metadata(
     release: &DiscogsRelease,
     mut metadata: super::release_metadata::ReleaseMetadata,

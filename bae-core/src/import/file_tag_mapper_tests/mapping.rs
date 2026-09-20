@@ -485,8 +485,8 @@ fn out_of_range_tag_numbers_do_not_wrap_negative() {
 /// Per-track artist different from album artist → adds an extra
 /// artist row, and every track ARTIST tag emits a junction row
 /// (the matching one points at the album artist; the divergent one
-/// at the per-track artist). Mirrors map_mb_response_to_db /
-/// map_discogs_to_db, which emit a junction for every credit.
+/// at the per-track artist). The external-source mappers likewise emit a
+/// junction for every credit.
 #[test]
 fn flac_per_track_artist_emits_junction_row() {
     let temp = TempDir::new().unwrap();

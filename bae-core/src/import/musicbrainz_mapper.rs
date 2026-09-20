@@ -301,28 +301,6 @@ pub(crate) fn metadata(
     })
 }
 
-#[cfg(test)]
-pub fn map_mb_response_to_db(
-    response: &MbReleaseResponse,
-    master_year: Option<u32>,
-    discogs_release: Option<crate::discogs::DiscogsRelease>,
-    clock: &dyn Clock,
-    ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, ImportError> {
-    let mut metadata = metadata(response)?;
-    metadata.album.year = metadata
-        .album
-        .year
-        .or_else(|| super::parse_year(response.date.as_deref()))
-        .or(master_year.map(|year| year as i32));
-    if let Some(discogs) = discogs_release {
-        metadata
-            .album
-            .fill_missing(super::discogs_mapper::metadata(&discogs).album);
-    }
-    map_with_metadata(response, metadata, clock, ids)
-}
-
 pub(crate) fn map_with_metadata(
     response: &MbReleaseResponse,
     mut metadata: super::release_metadata::ReleaseMetadata,

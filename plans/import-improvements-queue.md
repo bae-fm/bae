@@ -18,6 +18,12 @@ and continue the queue without waiting for CI. Record CI failures and resolve
 them after the queued implementation; the final outcome still requires passing
 CI. The parent owns the existing CI watcher and coordinates that final repair.
 
+The user also explicitly replaced the automated per-rule review matrix with one
+manual review by us. Stop existing matrix reviewers and do not start or rerun
+them. Keep confirmed source findings, make the necessary corrections, review
+the diff manually against its contract, and continue. This instruction overrides
+earlier matrix requirements in the linked task plans.
+
 Update this plan's execution record with commit and verification evidence as
 work advances. Preserve all queued plans in Git. Product UI scope is macOS;
 shared canonical model changes update required callers on all platforms. The
@@ -138,9 +144,29 @@ that main or CI has passed.
   in the native probe directory with the FFmpeg runtime path.
   The affected rules rerun approved the operation model and shared helpers;
   three unused-helper claims are false positives because the host's historical
-  migration tests use that facade API. One duplicated test transformation remains
-  under correction in Coven; it does not change production behavior. Dependency
-  landing and enrichment integration remain required, with CI handled at the end
-  under the user's revised execution contract.
+  migration tests use that facade API. The duplicated test transformation was
+  extracted in Coven `63294f5f`; publication and rebase tests and normal hooks
+  passed. Parent fast-forwarded Coven main to that revision while preserving its
+  existing uncommitted specification edit. The host retains the verified
+  production pin `f9a8e230`.
+  Enrichment source is committed and pushed as `b9ec6718e`. The user's replacement
+  of matrix review with one manual review is active. Manual review identified
+  duplicated online/archive traversal and test-only mapper reconstruction;
+  corrections share traversal state and remove the test-only metadata algorithms.
+  Shared traversal passes all 43 payload tests; all 81 mapper tests pass. The
+  unrelated Discogs-document identity regression failed against the removed test
+  wrapper and passes through the production projection. Existing provider module ownership remains unchanged; no new provider
+  singleton or alternate access path was introduced. Sparse changeset UPDATE
+  cells intentionally distinguish undefined from SQL NULL independently before
+  and after a change; clearing a transformed no-op does not imply a missing
+  domain record. Pressing parent keys intentionally share the pressing catalog,
+  rather than permit contradictory cross-catalog parents. Optional parent titles
+  contribute no value to the existing blank-aware album merge and never erase a
+  selected title. Historical missing-audio durations and their warning predate
+  this branch; the existing migration is not rewritten. An empty observed audio
+  list must not be described as equivalent to an unknown list, because Discogs
+  index selection distinguishes them.
+  Enrichment integration remains required, with CI handled at the end under the
+  user's revised execution contract.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.
