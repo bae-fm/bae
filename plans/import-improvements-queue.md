@@ -98,16 +98,35 @@ that main or CI has passed.
 - Avalonia prerequisite: `540ae9326`, pushed on `fix-avalonia-cue-file-bindings`;
   normal hooks passed and all 262 Avalonia view tests passed. Parent review and
   main integration remain required.
-- Enrichment: prior full-core verification passed 2,217 tests. Subsequent review
+- Enrichment: the latest full-core verification against dependency `8506256`
+  passed 2,237 tests; native bridge generation and building passed. A macOS
+  selection ran nine tests in two suites; the import-store suite identifier
+  needed correction, so that result does not cover the store tests. Earlier review
   found and fixed optional-document admission, ambiguous linked identity, and
   mutable partner-archive replay defects; focused verification passed 43 payload,
   10 partner, 76 sweep, 7 reidentify, and 2 partner-snapshot migration tests.
   The actual partner import failed before freezing and passes afterward.
   Persistence review also reproduced historical INSERT/UPDATE failures across
   the record-kind migration. Dependency and host work follows
-  [synced-schema-history.md](synced-schema-history.md); six converter and eleven
-  Circle bootstrap tests pass, while remote history, journal, discard, and host
-  integration verification remain in progress. Do not treat the earlier core
-  result as verification of these subsequent changes.
+  [synced-schema-history.md](synced-schema-history.md). The dependency passed
+  349 database tests, 1,008 replication tests, three documentation tests, and
+  workspace clippy; seven focused converter tests include the added immutable
+  identity/clock guards. Remote same-batch INSERT/UPDATE, rollback/retry,
+  original/rebased journal versions, recovery, and discard are exercised.
+  Host verification passes 57 migration tests, including historical schemas 38–41;
+  disabling the origin transformation reproduces the migration 41 replay failure.
+  Normal commit hooks found owner-boundary violations; the corrections pass the
+  owner checker, 40 database schema tests, 20 replication schema tests, and 16
+  migration tests. Dependency commit `8506256faf0859f913e3164ef3680e685caef477`
+  passed normal hooks and is pushed in Coven PR 221. Its first rules review
+  completed; CI was superseded by the correction push. Review identified six issues, corrected
+  together in `f9a8e2302493898d17baeaf94a17ff4c6c9f2ace`: operation-specific
+  historical cells and shared migration validation/recovery helpers. Its normal
+  hooks passed, as did 40 database schema, 20 replication schema, seven converter,
+  and 11 Circle tests. The host pins this corrected revision; focused historical
+  and caller checks, the corrected macOS test selection, and the affected rules
+  review are running. Dependency CI/landing and enrichment integration remain
+  required. Do not treat the earlier core result as verification of the later
+  adapter representation change.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.

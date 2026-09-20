@@ -46,6 +46,11 @@ Add failing coverage for the actual failure-to-visible/copyable-details flow bef
   `read_image_response` uses it for malformed or unsupported images. Cache task
   failure and HTTP client construction failure use it too. Optional artwork
   HTTP 404 returns `Ok(None)`; `fetch_required` turns that absence into an error.
+  It also represents expected local-file conditions: `service/cover_image.rs`
+  uses it when a selected cover disappeared or reading its file failed. A blanket
+  conversion of every `CoverArt` into an unexpected diagnostic is incorrect.
+  `cover_art_archive.rs::fetch_gallery` has a separate capped-body read that
+  also flattens transport failures into `CoverArt`.
 - The existing `LookupFailure` / `BridgeLookupFailure` pair already represents
   network, timeout, provider status, and diagnostic causes. The conversion in
   `import/search.rs` cannot be reused unchanged for manual selection: it maps
@@ -83,12 +88,16 @@ than using a catch-all that makes new domain errors unexpected automatically.
 
 Preserve artwork request classification at its producer by composing the
 existing `LookupFailure` in a request-failure variant of `ImportError`, separate
-from `CoverArt`'s unexpected content/decoder detail. Reuse typed network,
+from unexpected content/decoder detail. Separate those content failures from
+the expected missing/unreadable local-cover cases at their producers; do not
+infer the distinction from the existing detail string. Reuse typed network,
 timeout, and provider status cases; do not parse status codes from strings.
 Client construction, invalid request construction, malformed image bytes,
 unsupported decoder, and cache task panic remain diagnostic failures.
 `HttpBodyError::Read` retains its transport/timeout classification;
 `HttpBodyError::TooLarge` is a content failure with the actual limit retained.
+Apply this distinction to both `read_image_response` and the independent
+`cover_art_archive.rs::fetch_gallery` body read.
 
 Expected manual-selection cases are explicit:
 
@@ -109,6 +118,12 @@ The precise expected provider status presentation must continue using the
 existing lookup-status localizations wherever already present. This task does
 not replace expected-error UI with a new view. Classification changes must not
 alter request retry, provider-cache, draft-commit, or artwork fallback policy.
+Manual release selection currently renders provider failures through the generic
+`Import` category and contextual failed-load sentence; it has no typed status
+presentation. Preserve that generic expected-failure line without diagnostic
+detail. Search/identify surfaces already carrying `BridgeLookupFailure` retain
+their status-specific presentation. Adding `ImportData` does not itself create
+a status-bearing manual-selection category, and this task does not add one.
 
 ### Swift state and view
 
@@ -160,6 +175,92 @@ never the bounded summary or excerpt. Reuse the current icon, help text, and
 
 This contract is research for the queued branch; no error-path implementation
 is part of the release-enrichment change.
+
+## Confirmed implementation and test files
+
+The required macOS production changes are confined to the existing flow and
+its retained failure: `Views/Import/Search/ImportSearchFlow+Identity.swift`,
+`Services/ImportStore.swift`, `Services/Store/ReleaseSelectionFailure.swift`,
+`Views/Import/Search/ImportSearchResultRow.swift`, and
+`Views/Components/ErrorDetailDisclosure.swift` under `bae-macos/bae/bae/`.
+`ImportStore.metadataApplicationFailed` must continue sending only `error.line`
+to the existing string-valued file-tags pane error while retaining the complete
+`DisplayError` for external-release failures. `ReleaseGroupListView` and its
+intermediate views already carry `ReleaseSelectionFailure` unchanged.
+
+`BaeKit/Sources/BaeKit/Services/DisplayError.swift` already retains the original
+detail and supplies the 180-character first-line summary and 400-character
+excerpt. It needs no replacement or duplicate type. Its `addingContext` helper
+joins a prefix, so the flow should instead construct a `DisplayError` from the
+existing whole interpolated localized sentence plus the original detail.
+`SystemActions.swift` and `ErrorAlert.swift` already provide the clipboard
+operation and another working consumer; no new clipboard service is needed.
+
+Core producer changes belong in `bae-core/src/import/error.rs`,
+`cover_art.rs`, and `cover_art_archive.rs`. Audit all existing `CoverArt`
+constructors, including `service/cover_image.rs`, `service/importing.rs`, and
+`service/mod.rs`, before deciding which producers require a changed variant.
+Retain expected local-file cases rather than changing their classification to
+make a match exhaustive. Bridge conversion, category declaration, and key
+mapping belong in `bae-bridge/src/types/configuration/settings.rs`.
+Update `bae-core/src/import/search.rs::import_error_to_lookup_failure` to pass
+through the composed artwork request failure: its existing catch-all would
+otherwise turn the newly typed expected failure back into `Diagnostic` on an
+identify surface. Preserve the existing provider `NotFound` caller semantics
+instead of sharing the manual-selection classification indiscriminately.
+`ImportData` can be bridge-only like the existing metadata mismatch categories;
+do not add it to `UiErrorCategory` without an actual core event producer.
+
+The regression files are:
+
+- `bae-macos/bae/baeTests/ImportSearchFlowTests.swift`: use its injected
+  `Importer(applyCandidateExternalMetadata:)` closure and bounded completion
+  wait to exercise production `applyMetadata` with typed errors. Add distinct
+  replacement diagnostics and explicit cancellation coverage.
+- `bae-macos/bae/baeTests/ReleaseSelectionFailureTests.swift`: preserve the
+  existing hosted `ReleaseGroupListView` and Retry interaction; feed it the
+  failure produced by the flow, rather than constructing a second failure by
+  hand. Cover short and multiline diagnostics plus an expected failure with no
+  diagnostic controls.
+- `bae-macos/bae/baeTests/ImportStorePickTests.swift`: update the string-valued
+  fixture and retain deselection, reread, audio-change, and removal coverage.
+- `bae-macos/bae/baeTests/DisplayErrorTests.swift`: run the existing exact-detail,
+  excerpt, first-line, context, and cancellation checks; add assertions only for
+  changed behavior rather than repeating them in another model test.
+- `bae-core/src/import/cover_art_tests.rs`: reuse the local HTTP response and
+  request-count helpers through `RemoteImageCache::for_test()`. Assert actual
+  404, permanent status, exhausted transient status, malformed content, and
+  capped-body classifications, retaining cache and retry assertions.
+- `bae-core/src/import/cover_art_archive.rs` tests: extend the existing actual
+  gallery-fetch coverage to distinguish body transport failure from malformed
+  gallery data and retain ordinary 404 empty-gallery behavior.
+- `bae-bridge/src/types/configuration/settings_tests.rs`, a focused sibling
+  module of `settings.rs`: exercise `BridgeError::from`
+  for provider/domain versus data/internal/database causes. Register it in the
+  owning module and include the existing localization-key coverage gate.
+
+No current hosted test activates `ErrorDetailDisclosure`'s copy button.
+`SnapshotTestSupport.hostInWindow`, `settle`, `capturePNG`, and `recognizedText`
+already host and inspect the production view. The existing Retry test uses the
+recognized text position and a real native control click or window mouse
+events. That OCR path cannot identify the icon-only copy button. Give that
+production button an accessible label using the existing localized “Copy
+details” string and a stable accessibility identifier; locate the hosted
+accessibility element and invoke its real press action. Verify the returned
+action succeeds and `NSPasteboard.general.string(forType: .string)` equals the
+entire original detail, including text beyond the excerpt. Do not call
+`SystemActions.copyToPasteboard` directly from the test. Serialize the clipboard
+interaction tests because they use the process-wide pasteboard, and restore
+its previous contents after each test. Validate this hosted accessibility path
+in the failing regression before relying on it; native-control discovery is
+not yet demonstrated for this SwiftUI icon button.
+
+Reuse `Localizable.xcstrings`' existing “Copy details”, “Details”, and contextual
+failure sentences. If changing any wording, update every translation; otherwise
+the category reuses the existing core import-failure key without catalog churn.
+The current cross-platform source search found no exhaustive application-side
+`BridgeErrorCategory` switch needing a new arm; regenerate canonical bindings
+and let platform verification establish that rather than adding unused cases.
 
 ## Queued successor
 After this task lands, execute [Cover image formats](cover-image-formats.md) in the same worktree on its own branch. That contract adds Rust decoding for JPEG, PNG, GIF, and WebP consistently across remote, embedded, and local covers; it remains separate from generic unexpected-error diagnostics.

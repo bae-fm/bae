@@ -223,18 +223,18 @@ in the same worktree.
   tests passed. Mobile/other-platform CI has not been run for this commit yet.
 - Final full core suite: 2,217 passed. Normal commit hooks remain required.
 
-## Open migration review finding
+## Historical migration review finding and resolution
 
-Do not commit migration 42 in its present form. Reopening an existing database
-passes, but historical sync packages still contain the original nine-column
-release-record shape. Coven accepts older package schema versions and applies
+The initial migration 42 passed database reopening, but historical sync packages
+still contained the original nine-column release-record shape. The pinned Coven
+revision accepted older package schema versions and applied
 their SQLite changesets directly against the current schema: an old insert has
 no required kind value, and an old update can restore the self-parent sentinel
 into the new optional parent column. Keeping clock ordinals stable is necessary
 but does not solve historical replay.
 
-The checked-out Coven API has no versioned changeset transformation hook or
-implemented minimum-writer-schema protocol. Snapshot publication alone does not
+That Coven API had no versioned changeset transformation hook or implemented
+minimum-writer-schema protocol. Snapshot publication alone does not
 prevent subsequent older writes or account for unpublished local journals.
 Two regressions now use the real schema-41 Coven store, capture its SQLite
 Session changesets, migrate through the actual ladder, and apply the original
@@ -244,11 +244,23 @@ A further migration issue is that archived provider documents are an unsynced
 cache: using them to recover parent identity can give different devices different
 migrated values from the same synced input.
 
-Resolve this boundary before landing the persistence change; do not add nullable legacy kinds, arbitrary
-pressing defaults, or a fallback decoder to conceal the issue.
+The replacement dependency records local authoring versions, converts original
+historical cells through registered migration adapters, and preserves original
+package bytes. Both image and historical-row transformations now use canonical
+synced state only. The host's 57 migration tests pass, including schema 38–41
+replay and migration 41 origin removal. No nullable legacy kinds, arbitrary
+pressing defaults, or fallback decoder was added.
 
 The selected solution and complete history verification contract are in
 [synced-schema-history.md](synced-schema-history.md).
+
+Pinned-dependency verification at Coven `8506256` passed all 2,237 core tests,
+native bridge generation, and nine macOS catalog/source tests. The import-store
+suite selection was incorrect; its corrected identifiers are being verified
+against the final dependency pin. Rules
+review then required operation-specific adapter cell variants and shared
+validation helpers; those corrections and their final dependency pin require
+focused verification before landing.
 
 Parent review also found malformed optional documents escaped the optional-fetch
 error boundary. Three regressions failed first; all 34 payload tests now pass

@@ -32,6 +32,13 @@ indirect flag, changed-column masks, and row clocks. Unaffected tables pass
 through unchanged; no automatic inference of changed row meaning from a renamed
 column is allowed.
 
+The adapter's row operation is an enum carrying its actual cells: INSERT holds
+new values, DELETE holds old values, and UPDATE holds sparse before/after values.
+Column names and primary-key declarations use one generic column type shared
+by those variants. Do not expose a separate operation tag beside meaningless
+old-on-INSERT or new-on-DELETE fields. Reuse the existing migration-ladder
+validation when constructing historical layouts.
+
 Validate original packages against their recorded authoring schema during preliminary
 preparation. Compose adapters to the current schema inside ordered transactional
 materialization, before current-schema validation, audience checks, conflict
@@ -82,7 +89,7 @@ of a write describe that capture. Carry it through
 `PreparedStoreWrite` and `MergeReplayWriteEffect`; publication uses this value
 for both package contents and signed package references. Rebase retains the
 original version and bytes; only the application effect is converted. Retained
-journal manifests include the version so cache identity covers its interpretation.
+journal manifests include the version so consistency checks cover its interpretation.
 
 Add Coven bookkeeping migration 3, creating `store_write_schemas` with a required
 nonnegative `schema_version` while preserving write ordinal, status, prepared
@@ -149,3 +156,49 @@ frozen primary document strings. Missing required partner archive data fails and
 rolls back the upgrade; no default deserializer silently changes the snapshot
 contract. Regression coverage includes an earlier updated row followed by a
 missing partner, verifying the earlier update also rolls back.
+
+## Historical ladder audit
+
+The full application ladder changes synced row layouts at migrations5,31,32,33,
+34,35,36,38,41,and42. Migration5 appends nullable source-audio facts to
+`release_files`;31 replaces release identities with records and moves release
+routing/clock columns;32 appends field origins;33 adds marks and removes
+`releases.disc_id`, moving routing/clock columns;34 adds verification;35 appends
+nullable `identified_by`;36 appends `corroborated` with default0;38 moves
+`tracks.side` and adds its stored order. The other steps affect device-local
+import state or indexes/triggers without changing synced row meaning.
+
+The last already-existing routing boundary is migration38: `tracks._updated_at`
+moves from ordinal7 to6. Coven pins required routing column ordinals in the
+authenticated routing contract, so histories before that boundary did not share
+the current contract even before this work. A row transformer must not disguise
+that topology change or invent track order from an isolated row. No arbitrary
+minimum application version is introduced. Versions38–43 share the current
+routing shape;39,40,and43 do not alter synced cells, while41 and42 use the
+registered explicit adapters. Regression cases capture historical rows at38,39,
+40,and41 and pass them through current production migration/application.
+
+Earlier unchanged table rows remain independently interpretable under their
+recorded layouts; the adapter layer does not reject a version merely for age.
+Append-only changes in the older routing contracts remain part of the recorded
+ladder, but accepting those contracts is a separate routing protocol decision,
+not a license to reinterpret an incompatible authenticated package.
+
+Coven's host capture session attaches only registered synced tables and its
+internal audience table. The local partition contains locally gated rows from
+that captured set, not arbitrary unsynced host tables. Device-local import edits
+therefore have no retained changeset adapter: their ordinary image migrations
+remain the only transition. This includes import-source snapshots and CUE FILE
+associations.
+
+## Review of durable representations
+
+The queried retained-write manifest, prepared write, and replay effect are
+in-memory values. The manifest's function-local serialized input is hashed for
+operation consistency, not stored as another replay format. Accepted replay
+materialization input retains its unchanged canonical shape. The only newly
+required serialized journal field is the actual-effect version in rebased JSON;
+bookkeeping migration 3 updates it in both the live database and retained SQLite
+baseline images before open returns. A covered published commit's package may
+already have been retired while its journal effect remains, so recovery requires
+the same proof of unambiguous meaning when exact package evidence is absent.

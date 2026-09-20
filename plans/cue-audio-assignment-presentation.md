@@ -29,6 +29,35 @@ evidence chips, source audition, and editing permissions. Deleted included track
 do not mean their CUE FILE associations have become unassigned. Keep association
 status independent from whether a source currently contributes an included track.
 
+## Assignment display does not depend on picker loading
+
+The complete mapping projection and macOS caption controls expose a second
+failure alongside the misleading placeholder. `SheetBound::DescribesFiles`
+carries no container facts; `ImportSheetCaptionRow.hasBinding` finds neither a
+container name nor a refusal reason for it. When editable options have not
+loaded, or editing is unavailable, the entire association disappears. Loading
+picker options changes that missing association into the incorrect Choose audio
+label. Neither state reflects a change to the actual binding.
+
+Carry the resolved count and the per-FILE current assignments in the
+authoritative mapping projection. The caption and flat assignment rows must
+remain readable before editable options load and when editing is disabled.
+Options control which changes are offered; they must not be the only source of
+the current association. Reuse existing association types and identities rather
+than inferring bindings from the included track rows or adding persisted state.
+
+The existing `SheetReferenceOptions` already names the requested FILE reference,
+its assigned file ID, and allowed or refused choices. Its producer excludes an
+audio file assigned to another reference. Preserve these reference-specific
+constraints in the flat controls. A removed track does not clear that reference's
+assignment, and an ignored sheet still has associations that can be inspected.
+
+Test the caption and flat assignment list with editable options present, absent,
+and pending, plus a read-only candidate. The resolved association must be the
+same in each case; only interaction availability changes. Test partial bindings
+with the actual missing reference visible, without presenting the resolved
+references as unassigned.
+
 ## Verification
 
 Reproduce the resolved multi-file placeholder failure first. Test a single file,
