@@ -22,3 +22,6 @@ Audit selection, validation, and normalization together. Do not automatically of
 
 ## Delivery
 Use one focused change after the preceding queued tasks. Coordinate main fast-forward landing and push with the parent agent. Do not alter the live database or media files.
+
+## Queued successor
+After cover format support lands, execute [Restore unused audio sources](restore-unused-audio-sources.md) on its own branch. Unused whole files and selected CUE slices remain visible and can be added individually with a plus button and “Add track” hover text, without resetting other track metadata.
