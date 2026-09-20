@@ -59,7 +59,8 @@ struct ReleaseRecordsTests {
             .environment(store)
             .importPreviewEnvironment()
             .preferredColorScheme(.light),
-            size: Self.paneSize
+            size: Self.paneSize,
+            scale: 2
         )
         for catalog in ["MusicBrainz", "Discogs"] {
             #expect(
