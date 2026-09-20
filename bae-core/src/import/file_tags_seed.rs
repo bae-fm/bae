@@ -1,10 +1,10 @@
 //! What a folder's own file tags make of it.
 //!
-//! One projection, two callers: discovery seeds a new candidate's draft from
-//! it when the library pre-fills with tags, and "Reset to tags" replaces an
-//! existing draft with it. Both store the same four things — the draft, the
-//! reading it was projected from, the provenance naming those tags, and the
-//! cover the tags embed — so both build them here.
+//! Discovery and Reset initialize a candidate from this projection when tag
+//! prefill is enabled. Applying File Tags uses it to replace metadata while
+//! retaining the current audio rows; adding unused audio takes the new row
+//! from the same initializer. The projected draft, its source reading, and
+//! embedded cover are produced together.
 
 use crate::import::file_tag_snapshot::FileTagSnapshot;
 use crate::import::pane::file_tags_pane;

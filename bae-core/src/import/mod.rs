@@ -19,6 +19,7 @@ desktop_only! {
 mod error;
 desktop_only! {
     mod file_evidence;
+    mod file_identity;
     pub mod file_tag_mapper;
     pub(crate) mod file_tag_snapshot;
     pub(crate) mod file_tags_seed;

@@ -63,7 +63,7 @@ desktop_only! {
         ScanCandidateListRow,
     };
     pub(crate) use import_state::{
-        CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
+        CandidateLookupUpdate, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
     };
     mod payloads;
 }

@@ -38,6 +38,7 @@ struct ImportOnlineBrowserTests {
             onPresent: { presentations.append($0) },
             onIdentify: {},
             onSearchForRelease: {},
+            onReset: {},
             onResetToTags: {},
             onClearMetadata: {},
             onEditCover: {},

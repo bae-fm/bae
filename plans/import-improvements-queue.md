@@ -224,7 +224,29 @@ that main or CI has passed.
   sides; its regression failed, then all 18 mapping tests passed after keeping
   physical disc labels independent of selected pressing metadata. Add track is
   translated in all 28 macOS locales. Native correction rebuild and normal
-  hooks precede coordinated landing; CI remains an end-of-queue gate.
+  hooks passed; parent fast-forwarded and pushed `e02677786` to main. The
+  post-lint macOS selection passed 28 tests in two suites. CI remains an
+  end-of-queue gate.
+- Reset import setup: implemented on `reset-import-setup`. Reset restores the
+  initializer's source tracks, automatic folder decisions, artwork and metadata
+  under the current prefill preference. Combined sources retain their immutable
+  files, membership and disc layout. The transaction advances both revisions,
+  checks the captured scan generation and lookup choices, and clears obsolete
+  identification, lookup decisions and prepared provider assets. Real baselines
+  reproduced removed tracks remaining absent, stale snapshot writes escaping a
+  refused save, snapshot/file ordering failures, invalid snapshot acceptance,
+  and newer lookup choices being erased. Removing the generation comparison
+  reproduced a tag-free stale Reset being accepted; restoring it rejects that
+  write atomically. The full handle suite passed 120 tests, including 14 Reset
+  cases; the candidate-state suite passed 81 after correcting two fixtures that
+  previously supplied unavailable CUE slices after unbinding. Native generation
+  and the macOS focused selection passed: two hosted menu/confirmation tests
+  plus ten Swift Testing tests in three suites. All 28 locales contain the
+  Reset and reset-to-tags confirmation strings. Parent's single manual review
+  accepted the final transaction, choice guard, immutable combination behavior,
+  stale embedded-snapshot handling and UI. The final snapshot suite passed
+  ten tests; normal hooks run with this focused commit. The unrelated Core catalog
+  resource lookup remains recorded below for the end-of-queue repair.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.
 
@@ -239,3 +261,11 @@ only the multiline diagnostic Retry OCR assertion at
 106108553114 retains that failure. macOS capture passed; mobile capture failures
 still need their exact causes inspected. These are required final CI repairs,
 not gates between the queued implementation tasks.
+
+During Reset verification, the macOS metadata-card layout suite exposed the
+existing Core catalog lookup using `Bundle.main`, although `Core.xcstrings` is
+packaged in `BaeKit_BaeKit.bundle`. Two layout assertions see raw
+`core.audio.*` keys. Fix that resource-owner lookup as an end-of-queue CI
+concern and retain the tests' localized expectations; do not paper over it in
+Reset's tests. The native build and new Reset flow/menu tests passed before
+the separate confirmation harness correction.

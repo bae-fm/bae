@@ -117,6 +117,68 @@ fn generation_column(generation: u64) -> Result<i64, DbError> {
     })
 }
 
+/// Store one complete reading only under the source stamp it describes.
+pub(super) fn replace_candidate_file_tag_snapshot_on(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    candidate_path: &str,
+    snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
+) -> Result<bool, DbError> {
+    let expected_generation = generation_column(snapshot.scan_generation)?;
+    let expected_file_edit_revision = columns::to_i64(
+        snapshot.file_edit_revision,
+        "a file-tag snapshot's file edit revision",
+    )?;
+    let matched = sql.execute(
+        "UPDATE scan_candidate SET generation = generation \
+         WHERE watched_folder_path = ? AND path = ? \
+           AND generation = ? AND file_edit_revision = ?",
+        params![
+            watched_folder_path,
+            candidate_path,
+            expected_generation,
+            expected_file_edit_revision
+        ],
+    )?;
+    if matched == 0 {
+        return Ok(false);
+    }
+
+    let audio_files: Vec<(String, i64)> = sql.query(
+        "SELECT relative_path, size FROM scan_candidate_file \
+         WHERE watched_folder_path = ? AND candidate_path = ? AND role = 'audio' \
+         ORDER BY position",
+        params![watched_folder_path, candidate_path],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    if audio_files.len() != snapshot.files.len()
+        || audio_files
+            .iter()
+            .zip(&snapshot.files)
+            .any(|((relative_path, size), fact)| {
+                relative_path != &fact.observation.relative_path
+                    || u64::try_from(*size).ok() != Some(fact.observation.size)
+            })
+    {
+        return Err(DbError::Message(format!(
+            "file-tag snapshot for {candidate_path} does not cover its current audio files"
+        )));
+    }
+    if snapshot.embedded_cover.as_ref().is_some_and(|cover| {
+        !snapshot
+            .files
+            .iter()
+            .any(|fact| fact.observation.relative_path == cover.source_relative_path)
+    }) {
+        return Err(DbError::Message(format!(
+            "file-tag snapshot for {candidate_path} names an embedded cover outside its audio files"
+        )));
+    }
+
+    write::replace_candidate_file_tag_snapshot(sql, watched_folder_path, candidate_path, snapshot)?;
+    Ok(true)
+}
+
 impl Database {
     /// Load the candidate's current scan stamp and whatever complete file-tag
     /// snapshot is stored beneath it. The two stamps are deliberately not
@@ -148,63 +210,12 @@ impl Database {
         let candidate_path = candidate_path.to_string();
         let snapshot = snapshot.clone();
         self.call(move |sql| {
-            let expected_generation = generation_column(snapshot.scan_generation)?;
-            let expected_file_edit_revision = columns::to_i64(
-                snapshot.file_edit_revision,
-                "a file-tag snapshot's file edit revision",
-            )?;
-            let matched = sql.execute(
-                "UPDATE scan_candidate SET generation = generation \
-                 WHERE watched_folder_path = ? AND path = ? \
-                   AND generation = ? AND file_edit_revision = ?",
-                params![
-                    watched_folder_path,
-                    candidate_path,
-                    expected_generation,
-                    expected_file_edit_revision
-                ],
-            )?;
-            if matched == 0 {
-                return Ok(false);
-            }
-
-            let audio_files: Vec<(String, i64)> = sql.query(
-                "SELECT relative_path, size FROM scan_candidate_file \
-                 WHERE watched_folder_path = ? AND candidate_path = ? AND role = 'audio' \
-                 ORDER BY position",
-                params![watched_folder_path, candidate_path],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?;
-            if audio_files.len() != snapshot.files.len()
-                || audio_files.iter().zip(&snapshot.files).any(
-                    |((relative_path, size), fact)| {
-                        relative_path != &fact.observation.relative_path
-                            || u64::try_from(*size).ok() != Some(fact.observation.size)
-                    },
-                )
-            {
-                return Err(DbError::Message(format!(
-                    "file-tag snapshot for {candidate_path} does not cover its current audio files"
-                )));
-            }
-            if snapshot.embedded_cover.as_ref().is_some_and(|cover| {
-                !snapshot
-                    .files
-                    .iter()
-                    .any(|fact| fact.observation.relative_path == cover.source_relative_path)
-            }) {
-                return Err(DbError::Message(format!(
-                    "file-tag snapshot for {candidate_path} names an embedded cover outside its audio files"
-                )));
-            }
-
-            write::replace_candidate_file_tag_snapshot(
+            replace_candidate_file_tag_snapshot_on(
                 sql,
                 &watched_folder_path,
                 &candidate_path,
                 &snapshot,
-            )?;
-            Ok(true)
+            )
         })
         .await
     }
@@ -362,7 +373,13 @@ impl Database {
                     delete_entry(sql, &watched_folder_path, entry)?;
                 }
             }
-            write::insert_item(sql, &watched_folder_path, generation, &item, file_tags.as_ref())?;
+            write::insert_item(
+                sql,
+                &watched_folder_path,
+                generation,
+                &item,
+                file_tags.as_ref(),
+            )?;
             if let Some(snapshot) = carried {
                 write::replace_candidate_file_tag_snapshot(
                     sql,

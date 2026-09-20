@@ -121,16 +121,7 @@ extension ImportView {
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             mappingActions: mappingActions(for: candidate),
-            commitActions: ImportCommitActions(
-                confirmImport: { commitConfirmedImport(candidate: candidate) },
-                mergeArtists: {
-                    mergeArtistIdentityConflict(
-                        candidate: candidate,
-                        keeping: $0
-                    )
-                },
-                viewInLibrary: { uiStore.navigateToAlbum($0) },
-            ),
+            commitActions: commitActions(for: candidate),
             onPresentMetadata: {
                 presentMetadata($0, for: candidate)
             },
@@ -138,6 +129,12 @@ extension ImportView {
                 ?? .automatic,
             onIdentify: { identify(candidate) },
             onSearchForRelease: { searchForRelease(candidate) },
+            onReset: {
+                ImportMappingFlow.reset(
+                    key: candidate.key,
+                    services: mappingServices
+                )
+            },
             onResetToTags: {
                 ImportMappingFlow.resetToTags(
                     key: candidate.key,
@@ -165,6 +162,17 @@ extension ImportView {
         .task(id: candidate.key + fileNames(candidate)) {
             await loadSheetBindingOptions(for: candidate)
         }
+    }
+
+    private func commitActions(for candidate: Candidate) -> ImportCommitActions
+    {
+        ImportCommitActions(
+            confirmImport: { commitConfirmedImport(candidate: candidate) },
+            mergeArtists: {
+                mergeArtistIdentityConflict(candidate: candidate, keeping: $0)
+            },
+            viewInLibrary: { uiStore.navigateToAlbum($0) }
+        )
     }
 
     /// Where one album-level field's typed value goes: a row under this

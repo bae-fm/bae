@@ -31,6 +31,7 @@ impl AppServices {
     delegate_async!(import, import_revalidate_discogs_token => revalidate_discogs_token() -> Result<(), crate::import::ImportError>);
     delegate_sync!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_select_candidate_metadata_provenance => select_candidate_metadata_provenance(candidate_key: String, provenance: crate::import::MetadataProvenance) -> Result<u64, crate::import::ImportError>);
+    delegate_async!(import, import_reset_candidate_setup => reset_candidate_setup(candidate_key: &str) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_clear_candidate_metadata => clear_candidate_metadata(candidate_key: String) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_refresh_watched_folder => refresh_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_folder_release_decision => set_folder_release_decision(key: crate::import::FolderReleaseDecisionKey, decision: crate::import::FolderReleaseDecision) -> Result<(), crate::import::ImportError>);

@@ -9,7 +9,7 @@ fn as_read(detail: &crate::import::ImportCandidateDetail) -> CandidateAsRead {
     }
 }
 
-async fn preparation(
+pub(super) async fn preparation(
     handle: &ImportServiceHandle,
     hash: &str,
 ) -> crate::db::DbCandidateImportPreparation {
@@ -381,7 +381,7 @@ async fn restoration_uses_the_combined_candidate_disc_and_number() {
     }
 }
 
-async fn cue_candidate() -> StoredCandidate {
+pub(super) async fn cue_candidate() -> StoredCandidate {
     let mut fixture = stored_candidate().await;
     std::fs::write(
         fixture.candidate.path.join("Disc.cue"),

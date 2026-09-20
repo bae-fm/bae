@@ -244,6 +244,11 @@ forward! {
                 .await?)
         }
 
+        /// Restore the candidate's initial scanned setup using current preferences.
+        fn reset_candidate_setup(candidate_key: String) -> () {
+            Ok(this.services.import_reset_candidate_setup(&candidate_key).await?)
+        }
+
         /// Clear the candidate's draft metadata and source without changing any
         /// physical file or track decisions.
         fn clear_candidate_metadata(candidate_key: String) -> u64 {

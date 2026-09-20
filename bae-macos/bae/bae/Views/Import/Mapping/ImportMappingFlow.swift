@@ -69,15 +69,33 @@ enum ImportMappingFlow {
         )
     }
 
+    /// Restore the whole scanned setup through core's atomic reset operation.
+    @MainActor
+    static func reset(key: String, services: ImportMappingServices) {
+        replaceMetadata(services: services) {
+            try await services.importer.resetCandidateSetup(key)
+        }
+    }
+
     @MainActor
     static func clearMetadata(
         key: String,
         services: ImportMappingServices
     ) {
+        replaceMetadata(services: services) {
+            _ = try await services.importer.clearCandidateMetadata(key)
+        }
+    }
+
+    @MainActor
+    private static func replaceMetadata(
+        services: ImportMappingServices,
+        operation: @escaping @MainActor () async throws -> Void
+    ) {
         Task { @MainActor in
             await services.endEditing()
             do {
-                _ = try await services.importer.clearCandidateMetadata(key)
+                try await operation()
             }
             catch is CancellationError {}
             catch {

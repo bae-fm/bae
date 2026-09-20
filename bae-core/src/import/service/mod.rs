@@ -28,7 +28,6 @@ use tracing::{debug, error, info, warn};
 
 mod active_roots;
 mod cover_image;
-mod file_identity;
 mod folder_watcher;
 mod format_prep;
 mod importing;

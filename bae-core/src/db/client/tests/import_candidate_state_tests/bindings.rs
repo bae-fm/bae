@@ -66,7 +66,11 @@ async fn a_cleared_binding_survives_a_relaunch() {
         .apply_candidate_file_edits(&candidate_edits)
         .unwrap();
     let hash = scanned.content_hash();
-    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
+    let (metadata_revision, mut mapping_preparation) =
+        current_mapping_preparation(&db, &hash).await;
+    mapping_preparation.draft.tracks = crate::import::pane::blank_candidate_source(&settled)
+        .draft
+        .tracks;
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
@@ -183,7 +187,11 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
         })
         .unwrap();
     let folder_path = folder.path().to_string_lossy().into_owned();
-    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
+    let (metadata_revision, mut mapping_preparation) =
+        current_mapping_preparation(&db, &hash).await;
+    mapping_preparation.draft.tracks = crate::import::pane::blank_candidate_source(&settled)
+        .draft
+        .tracks;
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),

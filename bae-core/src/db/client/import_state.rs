@@ -13,17 +13,18 @@ mod signal_rows;
 mod verdict_rows;
 mod watched_folder_removal;
 
-use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
+use super::folder_scans::{delete_entry, stored_entries, StoredEntry};
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::load_failure_on;
 pub(super) use import_commit::require_import_commit_guard;
 pub(super) use pane_rows::{insert_draft, load_covers_on, load_drafts_on, load_pane_rows_on};
 pub(crate) use preparation_rows::{
-    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
+    CandidateLookupUpdate, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
+    CandidateScanExpectation, ScannedCandidateKey,
 };
 pub(super) use rows::{load_matches_on, load_provenance_on, load_states_on};
-pub(super) use signal_rows::load_signal_facts_on;
 use session_rows::load_session_on;
+pub(super) use signal_rows::load_signal_facts_on;
 use signal_rows::{delete_signals, insert_signals};
 
 use crate::import::folder_scanner::{
@@ -542,40 +543,58 @@ impl Database {
     }
 }
 
-/// Rewrite the file rows of every scanned candidate at `content_hash` and
-/// `expected_revision` to the shape the caller settled, and hand the settled
-/// candidates back.
-///
-/// The caller's set must cover exactly those candidates: it computed the
-/// settled files from the same read, so a candidate it did not settle is a
-/// scan that moved under it, and writing half the set would leave two rows of
-/// one release disagreeing about what its files are.
+/// Apply source decisions to every candidate sharing the preparation. Folder
+/// rows take settled files; combinations keep their immutable source snapshots.
+/// Every row must still have the revision the caller prepared against.
 pub(super) fn settle_scanned_candidates(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     expected_revision: i64,
     next_revision: i64,
     settled_by_key: &HashMap<String, crate::import::folder_scanner::CategorizedFiles>,
-) -> Result<Vec<crate::import::folder_scanner::FolderCandidate>, DbError> {
+) -> Result<Vec<crate::import::release_candidate::ReleaseCandidate>, DbError> {
     let scanned = sql.query(
-        "SELECT watched_folder_path, path FROM scan_candidate \
-         WHERE content_hash = ? AND file_edit_revision = ? ORDER BY watched_folder_path, path",
-        params![content_hash, expected_revision],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-    )?;
-    let mut updated_keys = HashSet::new();
-    let mut updated_candidates = Vec::with_capacity(scanned.len());
-    for (watched_folder_path, path) in scanned {
-        let settled = settled_by_key.get(&path).ok_or_else(|| {
-            DbError::Message(format!(
-                "persisted candidate {path} was missing from the settled file edit"
+        "SELECT watched_folder_path, path, source_kind, file_edit_revision FROM scan_candidate \
+         WHERE content_hash = ? ORDER BY watched_folder_path, path",
+        [content_hash],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
             ))
-        })?;
-        sql.execute(
-            "DELETE FROM scan_candidate_file WHERE watched_folder_path = ? AND candidate_path = ?",
-            params![watched_folder_path, path],
-        )?;
-        folder_scans::insert_candidate_files(sql, &watched_folder_path, &path, settled)?;
+        },
+    )?;
+    let mut updated_folders = HashSet::new();
+    let mut updated_candidates = Vec::with_capacity(scanned.len());
+    for (watched_folder_path, path, source_kind, revision) in scanned {
+        if revision != expected_revision {
+            return Err(DbError::Message(format!(
+                "candidate {path} changed before its source decisions were stored"
+            )));
+        }
+        match source_kind.as_str() {
+            "folder" => {
+                let settled = settled_by_key.get(&path).ok_or_else(|| {
+                    DbError::Message(format!(
+                        "persisted candidate {path} was missing from the settled file edit"
+                    ))
+                })?;
+                sql.execute(
+                    "DELETE FROM scan_candidate_file WHERE watched_folder_path = ? AND candidate_path = ?",
+                    params![watched_folder_path, path],
+                )?;
+                folder_scans::insert_candidate_files(sql, &watched_folder_path, &path, settled)?;
+                updated_folders.insert(path.clone());
+            }
+            "combination" => {}
+            other => {
+                return Err(DbError::Message(format!(
+                    "unknown candidate source {other}"
+                )))
+            }
+        }
         let changed = sql.execute(
             "UPDATE scan_candidate SET file_edit_revision = ? \
              WHERE watched_folder_path = ? AND path = ? AND file_edit_revision = ?",
@@ -587,21 +606,18 @@ pub(super) fn settle_scanned_candidates(
                  expected exactly one"
             )));
         }
-        let (Some(crate::import::folder_scanner::ScanItem::Discovered(candidate))
-        | Some(crate::import::folder_scanner::ScanItem::Valid(candidate))) =
-            load_scan_item_on(sql, &path)?
-        else {
-            return Err(DbError::Message(format!(
-                "the candidate at {path} is not a folder candidate after its file decision"
-            )));
-        };
-        updated_candidates.push(candidate);
-        updated_keys.insert(path);
+        let stored =
+            super::import_combinations::load_candidate_on(sql, &path)?.ok_or_else(|| {
+                DbError::Message(format!(
+                    "candidate {path} disappeared while its source decisions were stored"
+                ))
+            })?;
+        updated_candidates.push(stored.candidate);
     }
-    if updated_keys.len() != settled_by_key.len() {
+    if updated_folders.len() != settled_by_key.len() {
         let missing: Vec<_> = settled_by_key
             .keys()
-            .filter(|key| !updated_keys.contains(*key))
+            .filter(|key| !updated_folders.contains(*key))
             .cloned()
             .collect();
         return Err(DbError::Message(format!(

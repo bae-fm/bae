@@ -196,7 +196,7 @@ impl ImportService {
             .cloned()
             .collect::<Vec<_>>();
         let audio_observations = tokio::task::spawn_blocking(move || {
-            super::file_identity::validate_scanned_file_identities(&identity_files)
+            crate::import::file_identity::validate_scanned_file_identities(&identity_files)
         })
         .await
         .map_err(|error| crate::import::ImportError::Internal {

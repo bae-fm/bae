@@ -803,10 +803,7 @@ impl ImportServiceHandle {
             )
             .await?;
         for candidate in candidates {
-            send_event(
-                &self.event_tx,
-                ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }),
-            );
+            self.announce_source_candidate(candidate);
         }
         Ok(())
     }

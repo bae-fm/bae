@@ -381,3 +381,155 @@ async fn a_rescan_that_finds_other_audio_drops_the_reading_it_carried() {
 
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (0, 0));
 }
+
+fn save_expectation(
+    candidate: &FolderCandidate,
+    preparation: &crate::import::preparation::CandidatePreparation,
+) -> crate::db::CandidateSaveExpectation {
+    crate::db::CandidateSaveExpectation {
+        edit_revision: preparation.file_edits.revision,
+        metadata_revision: preparation.metadata_revision,
+        scanned: Some(crate::db::CandidateScanExpectation::Current(
+            crate::db::ScannedCandidateKey {
+                watched_folder_path: candidate.watched_folder_path.clone(),
+                candidate_path: candidate.path.to_string_lossy().into_owned(),
+            },
+        )),
+    }
+}
+
+#[tokio::test]
+async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
+    let (db, _tmp, root) = watched_root().await;
+    let (candidate, generation) = scanned_candidate(&db, &root).await;
+    let key = candidate.path.to_string_lossy().into_owned();
+    let hash = candidate.files.content_hash();
+    let reading = snapshot(generation, 0);
+    db.replace_candidate_file_tag_snapshot(&root, &key, &reading)
+        .await
+        .unwrap();
+    let mut stale = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    let expected = save_expectation(&candidate, &stale);
+    crate::import::CandidatePreparations::new(db.clone())
+        .set_field(
+            &hash,
+            crate::import::CandidateEditField::AlbumTitle,
+            "Newer album",
+        )
+        .await
+        .unwrap();
+    let before = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    stale.metadata_revision += 1;
+    let mut replacement = reading.clone();
+    replacement.files[0].title = Some("Stale title".into());
+    replacement.embedded_cover.as_mut().unwrap().data = vec![9, 8, 7];
+    let result = db
+        .save_candidate_preparation(
+            stale,
+            expected,
+            crate::db::CandidateSaveExtras {
+                file_tag_snapshot: Some(replacement),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert!(matches!(result, crate::db::CandidateSaved::Superseded));
+    assert_eq!(
+        db.load_candidate_preparation(&hash).await.unwrap().unwrap(),
+        before
+    );
+    assert_eq!(
+        db.load_candidate_file_tag_snapshot(&root, &key)
+            .await
+            .unwrap()
+            .unwrap()
+            .snapshot,
+        Some(reading)
+    );
+}
+
+#[tokio::test]
+async fn preparation_reshape_stores_complete_tags_after_their_file_rows() {
+    let (db, _tmp, root) = watched_root().await;
+    let (candidate, generation) = scanned_candidate(&db, &root).await;
+    let key = candidate.path.to_string_lossy().into_owned();
+    let hash = candidate.files.content_hash();
+    let mut prep = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+    let expected = save_expectation(&candidate, &prep);
+    prep.file_edits.revision += 1;
+    prep.metadata_revision += 1;
+    let reading = snapshot(generation, prep.file_edits.revision);
+    let result = db
+        .save_candidate_preparation(
+            prep,
+            expected,
+            crate::db::CandidateSaveExtras {
+                file_tag_snapshot: Some(reading.clone()),
+                reshaped_files: Some(vec![(key.clone(), candidate.files)]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert!(matches!(result, crate::db::CandidateSaved::Landed(_)));
+    let stored = db
+        .load_candidate_file_tag_snapshot(&root, &key)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(stored.candidate.file_edit_revision(), 1);
+    assert_eq!(stored.snapshot, Some(reading));
+    assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
+}
+
+#[tokio::test]
+async fn preparation_save_rejects_incomplete_or_unowned_tag_readings_atomically() {
+    for invalid_cover in [false, true] {
+        let (db, _tmp, root) = watched_root().await;
+        let (candidate, generation) = scanned_candidate(&db, &root).await;
+        let key = candidate.path.to_string_lossy().into_owned();
+        let hash = candidate.files.content_hash();
+        let original = snapshot(generation, 0);
+        db.replace_candidate_file_tag_snapshot(&root, &key, &original)
+            .await
+            .unwrap();
+        let before = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
+        let expected = save_expectation(&candidate, &before);
+        let mut prep = before.clone();
+        prep.metadata_revision += 1;
+        let mut invalid = original.clone();
+        if invalid_cover {
+            invalid
+                .embedded_cover
+                .as_mut()
+                .unwrap()
+                .source_relative_path = "unread.flac".into();
+        } else {
+            invalid.files.pop();
+        }
+        assert!(db
+            .save_candidate_preparation(
+                prep,
+                expected,
+                crate::db::CandidateSaveExtras {
+                    file_tag_snapshot: Some(invalid),
+                    ..Default::default()
+                }
+            )
+            .await
+            .is_err());
+        assert_eq!(
+            db.load_candidate_preparation(&hash).await.unwrap().unwrap(),
+            before
+        );
+        assert_eq!(
+            db.load_candidate_file_tag_snapshot(&root, &key)
+                .await
+                .unwrap()
+                .unwrap()
+                .snapshot,
+            Some(original)
+        );
+    }
+}

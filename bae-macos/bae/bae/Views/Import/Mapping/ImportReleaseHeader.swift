@@ -21,6 +21,8 @@ struct ImportReleaseSourceActions {
     let identifyAutomatically: () -> Void
     /// Open the same pane on its typed search, starting nothing.
     let searchForRelease: () -> Void
+    /// Restore the initial source tracks, audio assignments, cover, and metadata.
+    let reset: () -> Void
     /// Replace the draft with what the candidate's own files say. Not a
     /// surface to browse: the tags are read and applied, and the card redraws
     /// on the draft they wrote.
@@ -69,6 +71,8 @@ struct ImportReleaseHeader: View {
     private var confirmsClear = false
     @State
     private var confirmsReset = false
+    @State
+    private var confirmsResetToTags = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
@@ -129,7 +133,7 @@ struct ImportReleaseHeader: View {
         }
         .confirmationDialog(
             "Reset to tags?",
-            isPresented: $confirmsReset,
+            isPresented: $confirmsResetToTags,
             titleVisibility: .visible
         ) {
             Button("Reset to tags", role: .destructive) {
@@ -138,7 +142,21 @@ struct ImportReleaseHeader: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "The draft is replaced by the files' tags. The candidate files and mapping choices will remain unchanged."
+                "Replace metadata with the files’ tags. Tracks and audio assignments will remain unchanged."
+            )
+        }
+        .confirmationDialog(
+            "Reset?",
+            isPresented: $confirmsReset,
+            titleVisibility: .visible
+        ) {
+            Button("Reset", role: .destructive) {
+                sourceActions.reset()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed."
             )
         }
     }
@@ -168,10 +186,9 @@ struct ImportReleaseHeader: View {
     /// storage, the unanswered tally, and the Import action.
     ///
     /// The two entries differ in what they start, not in where they go: both
-    /// open the same pane, and only the first asks for a run. The two commands
-    /// that rewrite the draft from something already at hand — the files' own
-    /// tags, or nothing — sit behind the ellipsis, each behind its own
-    /// confirmation.
+    /// open the same pane, and only the first asks for a run. Commands that
+    /// replace metadata or restore the import setup sit behind the ellipsis,
+    /// each with its own confirmation.
     private var actionRow: some View {
         HStack(alignment: .center, spacing: 16) {
             HStack(spacing: 8) {
@@ -232,12 +249,14 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// The two commands that rewrite the draft in place. Both are destructive
-    /// — each replaces what the draft holds — and both ask first.
+    /// Commands that replace metadata or restore the whole import setup.
     private var candidateMenu: some View {
         Menu {
-            Button("Reset to tags", role: .destructive) {
+            Button("Reset", role: .destructive) {
                 confirmsReset = true
+            }
+            Button("Reset to tags", role: .destructive) {
+                confirmsResetToTags = true
             }
             Button("Clear metadata", role: .destructive) {
                 confirmsClear = true
@@ -375,6 +394,7 @@ struct ImportCoverWell: View {
             sourceActions: ImportReleaseSourceActions(
                 identifyAutomatically: {},
                 searchForRelease: {},
+                reset: {},
                 resetToTags: {},
                 clearMetadata: {}
             ),

@@ -8,9 +8,10 @@
 //! about when it may change.
 
 mod pane_edits;
+mod reset;
 
 use crate::db::{
-    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, Database,
+    CandidateLookupUpdate, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, Database,
     DbCandidateIdentifyResult, NewImportCandidateVerdict, ScannedCandidateKey,
 };
 use crate::import::folder_scanner::CandidateFileEdits;
@@ -85,7 +86,7 @@ impl CandidatePreparations {
         // A run that settled on a release is a pick, and confirms the number
         // that release carries the same way a person's pick does.
         let extras = CandidateSaveExtras {
-            confirms_pick: true,
+            lookup_update: CandidateLookupUpdate::ConfirmPick,
             ..CandidateSaveExtras::default()
         };
         Ok(matches!(
@@ -120,7 +121,7 @@ impl CandidatePreparations {
         edits: &CandidateFileEdits,
         settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
         mapping_preparation: &crate::import::CandidateMappingPreparation,
-    ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), LibraryError> {
+    ) -> Result<(u64, Vec<crate::import::release_candidate::ReleaseCandidate>), LibraryError> {
         let next_revision = read.file_edit_revision.checked_add(1).ok_or_else(|| {
             crate::library::LibraryError::Import(
                 "candidate edit revision exhausted the u64 range".to_string(),
@@ -180,7 +181,7 @@ impl CandidatePreparations {
         let extras = CandidateSaveExtras {
             file_tag_snapshot: None,
             reshaped_files: Some(settled_candidates.to_vec()),
-            confirms_pick: false,
+            lookup_update: CandidateLookupUpdate::Keep,
         };
         match self
             .database
@@ -351,7 +352,7 @@ impl CandidatePreparations {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned,
+            scanned: scanned.map(CandidateScanExpectation::Current),
         };
         prep.folder_path = folder_path.to_string();
         prep.author = match metadata.provenance {
@@ -365,7 +366,7 @@ impl CandidatePreparations {
         let extras = CandidateSaveExtras {
             file_tag_snapshot,
             reshaped_files: None,
-            confirms_pick: true,
+            lookup_update: CandidateLookupUpdate::ConfirmPick,
         };
         match self
             .database

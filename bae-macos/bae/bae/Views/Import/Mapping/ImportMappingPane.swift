@@ -42,6 +42,7 @@ struct ImportMappingPane: View {
     let initialSection: FindOnlineSection
     let onIdentify: () -> Void
     let onSearchForRelease: () -> Void
+    let onReset: () -> Void
     let onResetToTags: () -> Void
     let onClearMetadata: () -> Void
     let onEditCover: () -> Void
@@ -135,6 +136,7 @@ struct ImportMappingPane: View {
             onPresent: onPresentMetadata,
             onIdentify: onIdentify,
             onSearchForRelease: onSearchForRelease,
+            onReset: onReset,
             onResetToTags: onResetToTags,
             onClearMetadata: onClearMetadata,
             onEditCover: onEditCover,

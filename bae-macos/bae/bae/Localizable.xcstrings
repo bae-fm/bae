@@ -1,6 +1,698 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Reset": {
+      "comment": "Import menu: restore the complete initial import setup",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إعادة التعيين"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нулиране"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnovit"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nulstil"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurücksetzen"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επαναφορά"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palauta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réinitialiser"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "איפוס"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vrati"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visszaállítás"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripristina"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リセット"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재설정"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilbakestill"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terugzetten"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przywróć"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redefinir"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repor"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resetează"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnoviť"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Återställ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıfırla"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скинути"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重設"
+          }
+        }
+      }
+    },
+    "Reset?": {
+      "comment": "Import setup: reset confirmation title",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset?"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إعادة التعيين؟"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нулиране?"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnovit?"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nulstil?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurücksetzen?"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επαναφορά;"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Restablecer?"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palautetaanko?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réinitialiser ?"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לאפס?"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vratiti?"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visszaállítod?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripristinare?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リセットしますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재설정할까요?"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilbakestille?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terugzetten?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przywrócić?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redefinir?"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repor?"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resetezi?"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnoviť?"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Återställa?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıfırlansın mı?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скинути?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重設？"
+          }
+        }
+      }
+    },
+    "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed.": {
+      "comment": "Import setup: reset confirmation message",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استعادة جميع المقاطع وتعيينات الصوت التلقائية والصور والبيانات الوصفية الأولية. لن تتغير ملفاتك."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Възстановяване на всички песни, автоматичните аудио съпоставяния, изображенията и първоначалните метаданни. Файловете ви няма да бъдат променени."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnovit všechny skladby, automatická přiřazení zvuku, obrázky a počáteční metadata. Vaše soubory se nezmění."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gendan alle numre, automatiske lydtilknytninger, billeder og oprindelige metadata. Dine filer ændres ikke."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Titel, automatischen Audiozuordnungen, Bilder und ursprünglichen Metadaten wiederherstellen. Deine Dateien werden nicht verändert."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Επαναφορά όλων των κομματιών, των αυτόματων αντιστοιχίσεων ήχου, των εικόνων και των αρχικών μεταδεδομένων. Τα αρχεία σας δεν θα αλλάξουν."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar todas las pistas, las asignaciones automáticas de audio, las imágenes y los metadatos iniciales. Tus archivos no se modificarán."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palauta kaikki kappaleet, automaattiset äänikytkennät, kuvat ja alkuperäiset metatiedot. Tiedostojasi ei muuteta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurer toutes les pistes, les associations audio automatiques, les images et les métadonnées initiales. Vos fichiers ne seront pas modifiés."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שחזור כל הרצועות, שיוכי השמע האוטומטיים, התמונות והמטא־נתונים הראשוניים. הקבצים שלך לא ישתנו."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vrati sve pjesme, automatske dodjele zvuka, slike i početne metapodatke. Vaše datoteke neće biti promijenjene."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az összes szám, az automatikus hanghozzárendelések, a képek és a kezdeti metaadatok visszaállítása. A fájljaid nem módosulnak."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripristina tutte le tracce, le associazioni audio automatiche, le immagini e i metadati iniziali. I tuoi file non verranno modificati."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてのトラック、自動的な音声の割り当て、画像、初期メタデータを復元します。ファイルは変更されません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모든 트랙, 자동 오디오 할당, 이미지 및 초기 메타데이터를 복원합니다. 파일은 변경되지 않습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gjenopprett alle spor, automatiske lydkoblinger, bilder og opprinnelige metadata. Filene dine blir ikke endret."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herstel alle nummers, automatische audiotoewijzingen, afbeeldingen en oorspronkelijke metadata. Je bestanden worden niet gewijzigd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przywróć wszystkie utwory, automatyczne przypisania dźwięku, obrazy i początkowe metadane. Twoje pliki nie zostaną zmienione."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaure todas as faixas, as associações automáticas de áudio, as imagens e os metadados iniciais. Seus arquivos não serão alterados."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repor todas as faixas, as associações automáticas de áudio, as imagens e os metadados iniciais. Os seus ficheiros não serão alterados."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restabilește toate piesele, asocierile audio automate, imaginile și metadatele inițiale. Fișierele tale nu vor fi modificate."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnoviť všetky skladby, automatické priradenia zvuku, obrázky a počiatočné metadáta. Vaše súbory sa nezmenia."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Återställ alla spår, automatiska ljudkopplingar, bilder och ursprungliga metadata. Dina filer ändras inte."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm parçaları, otomatik ses atamalarını, görselleri ve ilk meta verileri geri yükle. Dosyalarınız değiştirilmeyecek."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відновити всі композиції, автоматичні зіставлення аудіо, зображення та початкові метадані. Ваші файли не буде змінено."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复所有曲目、自动音频分配、图片和初始元数据。你的文件不会被更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "還原所有曲目、自動音訊指派、圖片和初始中繼資料。你的檔案不會被更改。"
+          }
+        }
+      }
+    },
+    "Replace metadata with the files’ tags. Tracks and audio assignments will remain unchanged.": {
+      "comment": "Import metadata: reset-to-tags confirmation message",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace metadata with the files’ tags. Tracks and audio assignments will remain unchanged."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استبدال البيانات الوصفية بوسوم الملفات. ستبقى المقاطع وتعيينات الصوت دون تغيير."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Замяна на метаданните с етикетите на файловете. Песните и аудио съпоставянията ще останат непроменени."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nahradit metadata značkami souborů. Skladby a přiřazení zvuku zůstanou beze změny."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erstat metadata med filernes mærker. Numre og lydtilknytninger forbliver uændrede."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metadaten durch die Tags der Dateien ersetzen. Titel und Audiozuordnungen bleiben unverändert."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αντικατάσταση των μεταδεδομένων με τις ετικέτες των αρχείων. Τα κομμάτια και οι αντιστοιχίσεις ήχου θα παραμείνουν αμετάβλητα."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sustituir los metadatos por las etiquetas de los archivos. Las pistas y las asignaciones de audio no cambiarán."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korvaa metatiedot tiedostojen tunnisteilla. Kappaleet ja äänikytkennät säilyvät ennallaan."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remplacer les métadonnées par les tags des fichiers. Les pistes et les associations audio resteront inchangées."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "החלפת המטא־נתונים בתגיות הקבצים. הרצועות ושיוכי השמע יישארו ללא שינוי."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamijeni metapodatke oznakama datoteka. Pjesme i dodjele zvuka ostat će nepromijenjene."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A metaadatok cseréje a fájlok címkéire. A számok és a hanghozzárendelések változatlanok maradnak."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sostituisci i metadati con i tag dei file. Le tracce e le associazioni audio rimarranno invariate."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メタデータをファイルのタグに置き換えます。トラックと音声の割り当ては変更されません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메타데이터를 파일 태그로 대체합니다. 트랙과 오디오 할당은 변경되지 않습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erstatt metadata med filenes merkelapper. Spor og lydkoblinger forblir uendret."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vervang metadata door de tags van de bestanden. Nummers en audiotoewijzingen blijven ongewijzigd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zastąp metadane tagami plików. Utwory i przypisania dźwięku pozostaną bez zmian."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Substitua os metadados pelas tags dos arquivos. As faixas e as associações de áudio permanecerão inalteradas."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Substituir os metadados pelas etiquetas dos ficheiros. As faixas e as associações de áudio mantêm-se inalteradas."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Înlocuiește metadatele cu etichetele fișierelor. Piesele și asocierile audio rămân neschimbate."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nahradiť metadáta značkami súborov. Skladby a priradenia zvuku zostanú nezmenené."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ersätt metadata med filernas taggar. Spår och ljudkopplingar lämnas oförändrade."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meta verileri dosya etiketleriyle değiştir. Parçalar ve ses atamaları değişmeden kalır."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Замінити метадані тегами файлів. Композиції та зіставлення аудіо залишаться без змін."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用文件标签替换元数据。曲目和音频分配将保持不变。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以檔案標籤取代中繼資料。曲目和音訊指派將維持不變。"
+          }
+        }
+      }
+    },
     "Add track": {
       "comment": "Import source row: tooltip and accessibility label for including the available audio as a track",
       "localizations": {
@@ -102447,179 +103139,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重設為標籤？"
-          }
-        }
-      }
-    },
-    "The draft is replaced by the files' tags. The candidate files and mapping choices will remain unchanged." : {
-      "comment" : "Import metadata: what resetting to tags does",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ستحل وسوم الملفات محل المسودة. ستبقى ملفات العنصر المرشّح وخيارات المطابقة دون تغيير."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Черновата се заменя с етикетите на файловете. Файловете на кандидата и изборите за съпоставяне ще останат непроменени."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Koncept nahradí značky souborů. Soubory kandidáta a volby mapování zůstanou beze změny."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Udkastet erstattes af filernes mærker. Kandidatens filer og tilknytninger forbliver uændrede."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Entwurf wird durch die Tags der Dateien ersetzt. Die Dateien des Kandidaten und die Zuordnungen bleiben unverändert."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Το προσχέδιο αντικαθίσταται από τις ετικέτες των αρχείων. Τα αρχεία του υποψηφίου και οι αντιστοιχίσεις παραμένουν αμετάβλητα."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The draft is replaced by the files' tags. The candidate files and mapping choices will remain unchanged."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El borrador se sustituye por las etiquetas de los archivos. Los archivos del candidato y las opciones de asignación no cambiarán."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Luonnos korvataan tiedostojen tunnisteilla. Ehdokkaan tiedostot ja kytkennät säilyvät ennallaan."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le brouillon est remplacé par les tags des fichiers. Les fichiers du candidat et les choix de correspondance resteront inchangés."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הטיוטה תוחלף בתגיות הקבצים. קובצי המועמד ובחירות המיפוי יישארו ללא שינוי."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nacrt se zamjenjuje oznakama datoteka. Datoteke kandidata i odabiri mapiranja ostat će nepromijenjeni."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A piszkozat helyére a fájlok címkéi kerülnek. A jelölt fájljai és a hozzárendelések változatlanok maradnak."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La bozza viene sostituita dai tag dei file. I file del candidato e le scelte di associazione rimarranno invariati."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下書きはファイルのタグに置き換わります。 候補のファイルとマッピングの選択は変更されません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "초안이 파일 태그로 대체됩니다. 후보 파일과 매핑 선택은 변경되지 않습니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Utkastet erstattes av merkelappene til filene. Kandidatens filer og koblinger forblir uendret."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Het concept wordt vervangen door de tags van de bestanden. De bestanden en toewijzingen van de kandidaat blijven ongewijzigd."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Szkic zostanie zastąpiony tagami plików. Pliki kandydata i wybory mapowania pozostaną bez zmian."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O rascunho é substituído pelas tags dos arquivos. Os arquivos do candidato e as opções de mapeamento permanecerão inalterados."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O rascunho é substituído pelas etiquetas dos ficheiros. Os ficheiros do candidato e as opções de correspondência mantêm-se inalterados."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schița este înlocuită de etichetele fișierelor. Fișierele candidatului și alegerile de asociere rămân neschimbate."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Koncept nahradia značky súborov. Súbory kandidáta a priradenia zostanú nezmenené."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Utkastet ersätts av filernas taggar. Kandidatens filer och kopplingar lämnas oförändrade."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Taslak, dosyaların etiketleriyle değiştirilir. Adayın dosyaları ve eşleme seçimleri değişmeden kalır."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Чернетку буде замінено тегами файлів. Файли кандидата й вибрані зіставлення залишаться без змін."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "草稿将被文件标签替换。 候选项的文件和映射选择将保持不变。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "草稿將被檔案標籤取代。 候選項目的檔案和對應選擇將維持不變。"
           }
         }
       }

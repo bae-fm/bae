@@ -24,6 +24,7 @@ struct ImportMetadataSourceSection: View {
     let onIdentify: () -> Void
     /// Open the pane on its typed search, starting nothing.
     let onSearchForRelease: () -> Void
+    let onReset: () -> Void
     let onResetToTags: () -> Void
     let onClearMetadata: () -> Void
     let onEditCover: () -> Void
@@ -67,6 +68,7 @@ struct ImportMetadataSourceSection: View {
                 sourceActions: ImportReleaseSourceActions(
                     identifyAutomatically: onIdentify,
                     searchForRelease: onSearchForRelease,
+                    reset: onReset,
                     resetToTags: onResetToTags,
                     clearMetadata: onClearMetadata
                 ),

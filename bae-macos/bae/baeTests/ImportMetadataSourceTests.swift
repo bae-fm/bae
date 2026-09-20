@@ -15,6 +15,9 @@ private struct ExternalMetadataApplication: Equatable {
 private final class MetadataSourceRecorder {
     var externalApplications: [ExternalMetadataApplication] = []
     var fileTagApplications: [String] = []
+    var resetKeys: [String] = []
+    var resetError: (any Error)?
+    var events: [String] = []
     var clearedKeys: [String] = []
     var identifiedKeys: [String] = []
     var errors: [String] = []
@@ -38,6 +41,13 @@ private final class MetadataSourceRecorder {
                     return UInt64(fileTagApplications.count)
                 }
             },
+            resetCandidateSetup: { [self] key in
+                try await MainActor.run {
+                    events.append("reset")
+                    resetKeys.append(key)
+                    if let resetError { throw resetError }
+                }
+            },
             clearCandidateMetadata: { [self] key in
                 await MainActor.run { clearedKeys.append(key) }
                 return 1
@@ -55,7 +65,7 @@ private final class MetadataSourceRecorder {
         ImportMappingServices(
             importer: importer,
             importStore: store,
-            endEditing: {},
+            endEditing: { [self] in events.append("end editing") },
             previewAudio: PreviewAudio.stub(),
             openDocument: { _, _ in },
             openImages: { _, _ in },
@@ -67,6 +77,47 @@ private final class MetadataSourceRecorder {
 @MainActor
 @Suite("Import metadata sources")
 struct ImportMetadataSourceTests {}
+
+extension ImportMetadataSourceTests {
+    @Test("Reset finishes editing then resets the complete import setup")
+    func resetUsesTheCanonicalOperation() async {
+        let store = MappingFixtures.store(mapping: nil)
+        let recorder = MetadataSourceRecorder()
+        ImportMappingFlow.reset(
+            key: MappingFixtures.candidateKey,
+            services: recorder.services(store)
+        )
+        await waitUntil { !recorder.resetKeys.isEmpty }
+
+        #expect(recorder.resetKeys == [MappingFixtures.candidateKey])
+        #expect(recorder.events == ["end editing", "reset"])
+        #expect(recorder.fileTagApplications.isEmpty)
+        #expect(recorder.clearedKeys.isEmpty)
+        #expect(recorder.errors.isEmpty)
+    }
+
+    @Test("Reset failures reach the existing error presentation")
+    func resetReportsFailure() async {
+        let recorder = MetadataSourceRecorder()
+        recorder.resetError = NSError(
+            domain: "ResetTest",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Source changed"]
+        )
+        ImportMappingFlow.reset(
+            key: MappingFixtures.candidateKey,
+            services: recorder.services(MappingFixtures.store(mapping: nil))
+        )
+        await waitUntil { !recorder.errors.isEmpty }
+
+        #expect(
+            recorder.errors == ["Couldn't save that change: Source changed"]
+        )
+        #expect(recorder.fileTagApplications.isEmpty)
+        #expect(recorder.clearedKeys.isEmpty)
+    }
+
+}
 
 extension ImportMetadataSourceTests {
     /// Choosing a surface is written to core, not kept in the pane: the
@@ -296,6 +347,7 @@ struct ImportReleaseEntryTests {
                 sourceActions: ImportReleaseSourceActions(
                     identifyAutomatically: {},
                     searchForRelease: {},
+                    reset: {},
                     resetToTags: {},
                     clearMetadata: {}
                 ),
@@ -532,7 +584,8 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             sourceActions: ImportReleaseSourceActions(
                 identifyAutomatically: { recorder.identifyCount += 1 },
                 searchForRelease: { recorder.searchCount += 1 },
-                resetToTags: { recorder.resetCount += 1 },
+                reset: { recorder.resetCount += 1 },
+                resetToTags: { recorder.tagsCount += 1 },
                 clearMetadata: { recorder.clearCount += 1 }
             ),
             localCoverSelections: [:],
@@ -623,6 +676,87 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
 }
 
 extension ImportMetadataCardLayoutTests {
+    func testResetConfirmationAndCancellation() async throws {
+        let recorder = MetadataCardActionRecorder()
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            metadataHeader(
+                provenance: nil,
+                draftIsBlank: false,
+                recorder: recorder
+            ),
+            size: NSSize(width: 900, height: 620)
+        )
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        await SnapshotTestSupport.settle(host)
+        let menu = try sourceMenu(in: host)
+        let resetIndex = menu.indexOfItem(withTitle: "Reset")
+        XCTAssertGreaterThanOrEqual(resetIndex, 0)
+        guard resetIndex >= 0 else { return }
+        for confirmation in ["Cancel", "Reset"] {
+            menu.performActionForItem(at: resetIndex)
+            await SnapshotTestSupport.settle(host)
+            XCTAssertEqual(recorder.resetCount, 0)
+            let buttons = NSApplication.shared.windows
+                .filter(\.isVisible)
+                .flatMap { window in
+                    window.contentView.map {
+                        SnapshotTestSupport.descendants(of: $0)
+                            .compactMap { $0 as? NSButton }
+                    } ?? []
+                }
+            let button = try XCTUnwrap(
+                buttons.first { $0.title == confirmation },
+                "Confirmation buttons: \(buttons.map(\.title))"
+            )
+            button.performClick(nil)
+            await SnapshotTestSupport.settle(host)
+        }
+        XCTAssertEqual(recorder.resetCount, 1)
+        XCTAssertEqual(recorder.tagsCount, 0)
+        XCTAssertEqual(recorder.clearCount, 0)
+    }
+
+    func testMenuOffersFullResetAlongsideMetadataCommands() async throws {
+        let recorder = MetadataCardActionRecorder()
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            metadataHeader(
+                provenance: nil,
+                draftIsBlank: false,
+                recorder: recorder
+            ),
+            size: NSSize(width: 900, height: 620)
+        )
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        await SnapshotTestSupport.settle(host)
+        let menu = try sourceMenu(in: host)
+        for title in ["Reset", "Reset to tags", "Clear metadata"] {
+            XCTAssertNotNil(
+                menu.item(withTitle: title),
+                "Missing \(title); menu contains \(menu.items.map(\.title))"
+            )
+        }
+    }
+
+    private func sourceMenu(in host: NSView) throws -> NSMenu {
+        let button = try XCTUnwrap(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSPopUpButton }.first
+        )
+        let cancel = Timer(timeInterval: 0.1, repeats: false) { _ in
+            MainActor.assumeIsolated { button.menu?.cancelTracking() }
+        }
+        RunLoop.main.add(cancel, forMode: .common)
+        button.performClick(nil)
+        cancel.invalidate()
+        return try XCTUnwrap(button.menu)
+    }
+
     func testSourceAudioSummaryHasNoDisclosureControl() async throws {
         NSApplication.shared.finishLaunching()
         let sourceAudio = try XCTUnwrap(
@@ -743,6 +877,7 @@ private final class MetadataCardActionRecorder {
     var identifyCount = 0
     var searchCount = 0
     var resetCount = 0
+    var tagsCount = 0
     var clearCount = 0
 }
 

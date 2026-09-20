@@ -4,7 +4,7 @@
 
 use super::CandidatePreparations;
 use crate::db::{
-    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
+    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
 };
 use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::import::{CandidateDraft, TrackArtistAssignments};
@@ -332,7 +332,7 @@ impl CandidatePreparations {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned,
+            scanned: scanned.map(CandidateScanExpectation::Current),
         };
         change(&mut prep)?;
         prep.metadata_revision += 1;

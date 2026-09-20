@@ -64,6 +64,7 @@
                 initialSection: .automatic,
                 onIdentify: {},
                 onSearchForRelease: {},
+                onReset: {},
                 onResetToTags: {},
                 onClearMetadata: {},
                 onEditCover: {},

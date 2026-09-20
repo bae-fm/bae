@@ -15,6 +15,7 @@ mod combinations;
 mod edits;
 mod import;
 mod lookup_choices;
+mod reset;
 mod scan;
 mod search;
 mod session;
