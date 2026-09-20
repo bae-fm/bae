@@ -21,7 +21,7 @@ namespace Bae.Desktop.ViewTests;
 /// are bae-core's, and bae-core's own tests hold them. These are about what the
 /// pane draws over that answer.
 /// </summary>
-public sealed class ImportMappingTableTests
+public sealed partial class ImportMappingTableTests
 {
     private const string SheetId = "disc.cue";
     private const string ContainerPath = "/folder/disc.flac";
@@ -583,15 +583,17 @@ public sealed class ImportMappingTableTests
         System.Action<BridgePreviewTarget>? preview = null,
         BridgePreviewTarget? previewingTarget = null,
         System.Action? stopPreview = null,
-        BridgeFileEvidence[]? evidence = null) =>
+        BridgeFileEvidence[]? evidence = null,
+        List<BridgeSheetReferenceOptions>? bindingOptions = null,
+        Action<string, string, string?>? bindSheet = null) =>
         new ImportMappingTable(
             table,
-            _ => Task.FromResult(new List<ImportSheetBindingOption>()),
+            _ => Task.FromResult(bindingOptions ?? new List<BridgeSheetReferenceOptions>()),
             () => previewingTarget,
             new LibraryService(),
             new ImportMappingActions(
                 SetRole: (_, _) => { },
-                BindSheet: (_, _) => { },
+                BindSheet: bindSheet ?? ((_, _, _) => { }),
                 SetSheetDisc: setSheetDisc ?? ((_, _) => { }),
                 OpenDocument: openDocument ?? ((_, _) => { }),
                 OpenImages: (_, _) => { },

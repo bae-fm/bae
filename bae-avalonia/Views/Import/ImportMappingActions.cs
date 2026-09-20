@@ -12,9 +12,8 @@ namespace Bae.Desktop;
 /// <param name="SetRole">Put a file in a role, or put it back: the file's id,
 /// then the choice. Core persists it, and the table is re-read because a role
 /// change is a different set of rows.</param>
-/// <param name="BindSheet">Name the audio a track sheet describes: the sheet's
-/// file id, then the audio's, or null to leave the sheet describing
-/// nothing.</param>
+/// <param name="BindSheet">Associate one CUE FILE reference: the sheet ID,
+/// reference text, then the audio ID, or null to clear that reference.</param>
 /// <param name="SetSheetDisc">Say which disc of the release a track sheet's
 /// entries are, or take them out of the tracklist: the sheet's file id, then the
 /// assignment.</param>
@@ -36,7 +35,7 @@ namespace Bae.Desktop;
 /// is a fact about the folder, so it survives re-picking a release.</param>
 internal sealed record ImportMappingActions(
     Action<string, BridgeFileRoleChoice> SetRole,
-    Action<string, string?> BindSheet,
+    Action<string, string, string?> BindSheet,
     Action<string, BridgeSheetDisc> SetSheetDisc,
     Action<string, string> OpenDocument,
     Action<IReadOnlyList<BridgeMappingImage>, string> OpenImages,

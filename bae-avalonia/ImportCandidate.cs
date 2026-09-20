@@ -143,19 +143,6 @@ public sealed class ImportDocument
     public string Path { get; set; } = string.Empty;
 }
 
-/// <summary>One of a candidate's audio files, as a choice for a track sheet's
-/// binding. Core decides which are usable, so no UI reads a codec to work out
-/// what it may offer.</summary>
-public sealed class ImportSheetBindingOption
-{
-    /// <summary>The audio file's release-relative path.</summary>
-    public string FileId { get; set; } = string.Empty;
-
-    /// <summary>Why the sheet cannot use it, in the user's language. Null when
-    /// it can.</summary>
-    public string? RefusalReason { get; set; }
-}
-
 public sealed class ImportCandidateRowStatus
 {
     public string Kind { get; set; } = string.Empty;

@@ -94,17 +94,17 @@ internal sealed class ImportService
     public Func<string, bool, Task<(bool Current, string? Error)>> SetCandidateSkipped { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: SetCandidateSkipped not wired");
 
-    /// <summary>What a candidate's track sheet may be bound to: the folder's
-    /// audio, each already offered or refused with core's reason.</summary>
-    public Func<string, string, Task<(bool Current, (List<ImportSheetBindingOption>? Options, string? Error) Result)>> SheetBindingOptions { get; init; }
+    /// <summary>Each CUE FILE reference, its current association, and the
+    /// audio choices offered or refused by core.</summary>
+    public Func<string, string, Task<(bool Current, (List<BridgeSheetReferenceOptions>? Options, string? Error) Result)>> SheetBindingOptions { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: SheetBindingOptions not wired");
 
-    /// <summary>Name the audio a track sheet describes, or clear it with null.
+    /// <summary>Associate one CUE FILE reference with audio, or clear it with null.
     /// Core persists the decision and drops the candidate's stored identify
     /// verdict; the import-candidate stream carries both the new roles and a
     /// fresh identification.</summary>
-    public Func<string, string, string?, Task<(bool Current, string? Error)>> SetSheetBinding { get; init; }
-        = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetSheetBinding not wired");
+    public Func<string, string, string, string?, Task<(bool Current, string? Error)>> SetSheetBinding { get; init; }
+        = (_, _, _, _) => throw new InvalidOperationException("ImportService stub: SetSheetBinding not wired");
 
     /// <summary>Say which disc of the release a track sheet's entries are, or
     /// take them out of the tracklist. Cue filenames are arbitrary, so the
@@ -276,8 +276,8 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle => NativeBae.SetCandidateSkipped(handle, path, skipped)),
         SheetBindingOptions = (candidateKey, sheetFileId) =>
             session.RunForCurrentHandle(handle => NativeBae.SheetBindingOptions(handle, candidateKey, sheetFileId)),
-        SetSheetBinding = (candidateKey, sheetFileId, audioFileId) =>
-            session.RunForCurrentHandle(handle => NativeBae.SetSheetBinding(handle, candidateKey, sheetFileId, audioFileId)),
+        SetSheetBinding = (candidateKey, sheetFileId, fileReference, audioFileId) =>
+            session.RunForCurrentHandle(handle => NativeBae.SetSheetBinding(handle, candidateKey, sheetFileId, fileReference, audioFileId)),
         SetSheetDisc = (candidateKey, sheetFileId, disc) =>
             session.RunForCurrentHandle(handle => NativeBae.SetSheetDisc(handle, candidateKey, sheetFileId, disc)),
         SetFileRole = (candidateKey, fileId, choice) =>

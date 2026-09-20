@@ -733,27 +733,22 @@ internal static partial class NativeBae
     internal static string? ReidentifyRelease(AppHandle handle, string releaseId, BridgeReleaseReseed choice) =>
         CaptureError(() => Await(() => handle.ReIdentifyRelease(releaseId, choice)));
 
-    // What a candidate's track sheet may be bound to: the folder's audio, each
-    // already offered or refused with core's own reason. Core probes to decide,
-    // so this is asked for when the picker opens rather than carried on the row.
-    internal static (List<ImportSheetBindingOption>? Options, string? Error) SheetBindingOptions(
+    // Each CUE FILE reference with its current audio association and the
+    // choices core offered or refused for that reference.
+    internal static (List<BridgeSheetReferenceOptions>? Options, string? Error) SheetBindingOptions(
         AppHandle handle,
         string candidateKey,
         string sheetFileId) =>
         CaptureBridgeValue(() => Await(() => handle.SheetBindingOptions(candidateKey, sheetFileId))
-            .Select(option => new ImportSheetBindingOption
-            {
-                FileId = option.FileId,
-                RefusalReason = BridgeDisplay.RefusalLine(option.Offer),
-            })
             .ToList());
 
     internal static string? SetSheetBinding(
         AppHandle handle,
         string candidateKey,
         string sheetFileId,
+        string fileReference,
         string? audioFileId) =>
-        CaptureError(() => Await(() => handle.SetSheetBinding(candidateKey, sheetFileId, audioFileId)));
+        CaptureError(() => Await(() => handle.SetSheetBinding(candidateKey, sheetFileId, fileReference, audioFileId)));
 
     /// <summary>Say which disc of the release one of a candidate's track sheets
     /// holds, or take it out of the tracklist. Cue filenames are arbitrary, so

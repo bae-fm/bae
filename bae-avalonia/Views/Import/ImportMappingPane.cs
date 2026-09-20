@@ -703,7 +703,8 @@ internal sealed partial class ImportMappingPane : UserControl
 
     private ImportMappingActions MappingActions() => new(
         SetRole: (fileId, choice) => _ = SetRole(fileId, choice),
-        BindSheet: (sheetFileId, audioFileId) => _ = SetSheetBinding(sheetFileId, audioFileId),
+        BindSheet: (sheetFileId, fileReference, audioFileId) =>
+            _ = SetSheetBinding(sheetFileId, fileReference, audioFileId),
         SetSheetDisc: (sheetFileId, disc) => _ = SetSheetDisc(sheetFileId, disc),
         OpenDocument: (name, path) =>
             _ = _dialogs.ShowDocumentFile(new ImportDocument { Name = name, Path = path }),
@@ -728,14 +729,14 @@ internal sealed partial class ImportMappingPane : UserControl
         }
     }
 
-    // A sheet binding changes what the folder's audio *is*: one container
-    // becomes a dozen entries. The rows the person was editing are a different
-    // set afterwards, which is why core drops their row edits with the binding.
-    private async Task SetSheetBinding(string sheetFileId, string? audioFileId)
+    // Changing a CUE association replaces the affected audio rows. Core retains
+    // edits for unchanged audio and initializes replacement rows according to
+    // the tag-prefill setting.
+    private async Task SetSheetBinding(string sheetFileId, string fileReference, string? audioFileId)
     {
         if (_key is { } key)
         {
-            await _import.SetSheetBinding(key, sheetFileId, audioFileId);
+            await _import.SetSheetBinding(key, sheetFileId, fileReference, audioFileId);
         }
     }
 

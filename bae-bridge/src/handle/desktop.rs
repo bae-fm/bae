@@ -317,11 +317,10 @@ forward! {
                 .map_err(BridgeError::import)
         }
 
-        /// What the track sheet `sheet_file_id` on candidate `candidate_key` can be
-        /// bound to: the folder's audio, each file offered or refused with the
-        /// reason. Empty when the sheet names one file per track rather than one
-        /// for the disc — a single choice cannot express that layout — and when the
-        /// folder holds no audio.
+        /// Audio choices for each FILE reference in the candidate's track sheet.
+        /// Each reference carries its current association and the files core
+        /// offers or refuses with a reason. A reference remains present even
+        /// when it has no available audio.
         ///
         /// Core probes each file to decide, so ask for this when a picker opens
         /// rather than holding it alongside the candidate.
@@ -339,11 +338,11 @@ forward! {
                 .collect())
         }
 
-        /// Bind a candidate's track sheet to one of its audio files, or clear the
-        /// binding with `audio_file_id: None`.
+        /// Associate one FILE reference in a candidate's track sheet with audio,
+        /// or clear that reference with `audio_file_id: None`.
         ///
-        /// Clearing leaves the sheet describing nothing; it does not restore what
-        /// the scan proposed. `audio_file_id` must be one the matching
+        /// Clearing leaves that reference unassigned; it does not restore what
+        /// the scan proposed. `audio_file_id` must be one the matching reference's
         /// [`Self::sheet_binding_options`] call offered — a refused one is rejected
         /// here rather than at commit.
         ///

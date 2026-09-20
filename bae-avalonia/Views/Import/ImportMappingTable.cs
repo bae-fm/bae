@@ -27,7 +27,7 @@ namespace Bae.Desktop;
 internal sealed partial class ImportMappingTable
 {
     private readonly BridgeMappingTable _table;
-    private readonly Func<string, Task<List<ImportSheetBindingOption>>> _bindingOptions;
+    private readonly Func<string, Task<List<BridgeSheetReferenceOptions>>> _bindingOptions;
     private readonly Func<BridgePreviewTarget?> _previewingTarget;
     private readonly ImportMappingActions _actions;
     private readonly LibraryService _library;
@@ -57,7 +57,7 @@ internal sealed partial class ImportMappingTable
 
     internal ImportMappingTable(
         BridgeMappingTable table,
-        Func<string, Task<List<ImportSheetBindingOption>>> bindingOptions,
+        Func<string, Task<List<BridgeSheetReferenceOptions>>> bindingOptions,
         Func<BridgePreviewTarget?> previewingTarget,
         LibraryService library,
         ImportMappingActions actions,
@@ -844,85 +844,55 @@ internal sealed partial class ImportMappingTable
             nameof(assignment), assignment, "Unknown sheet disc"),
     };
 
-    // What a track sheet describes, and the picker that names it. The choices
-    // come from core already filtered to what the sheet can use, each refusal
-    // carrying its reason — offering a file the commit would reject is the
-    // failure the editable binding exists to remove.
+    // Core supplies each FILE reference with its own association and choices.
     private Control SheetBindingControl(BridgeSheetGroup sheet)
     {
-        var combo = new ComboBox
-        {
-            FontSize = 12,
-            MinWidth = 150,
-            PlaceholderText = Loc.Core("ui.import.sheet.choose_audio"),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        // Repopulating sets SelectedItem, which raises SelectionChanged; without
-        // this the initial fill would read as the user picking what is already
-        // bound and write it back.
-        var filling = false;
-        var bound = sheet.Bound.Container()?.FileId;
-        combo.SelectionChanged += (_, _) =>
-        {
-            if (filling || combo.SelectedItem is not ComboBoxItem { Tag: string[] tag })
-            {
-                return;
-            }
-            var audioFileId = tag.Length == 0 ? null : tag[0];
-            if (audioFileId == bound)
-            {
-                return;
-            }
-            _actions.BindSheet(sheet.SheetId, audioFileId);
-        };
-
-        // Core probes every audio file to answer, so the choices are read once,
-        // when the row is built.
-        _ = FillOptions(combo, sheet.SheetId, bound, () => filling = true, () => filling = false);
-        return combo;
+        var button = ImportPaneUi.RowButton(
+            sheet.Bound.Container()?.Name ?? Loc.Core("ui.import.sheet.choose_audio"));
+        var menu = new MenuFlyout();
+        button.Flyout = menu;
+        button.IsVisible = false;
+        _ = FillBindingMenu(button, menu, sheet.SheetId);
+        return button;
     }
 
-    private async Task FillOptions(
-        ComboBox combo, string sheetFileId, string? bound, Action startFilling, Action doneFilling)
+    private async Task FillBindingMenu(Button button, MenuFlyout menu, string sheetFileId)
     {
-        var options = await _bindingOptions(sheetFileId);
-        startFilling();
-        combo.Items.Clear();
-        ComboBoxItem? selected = null;
-        foreach (var option in options)
+        var references = await _bindingOptions(sheetFileId);
+        var entries = new List<MenuItem>();
+        foreach (var reference in references)
         {
-            var item = new ComboBoxItem
+            var choices = new List<Control>();
+            foreach (var option in reference.Options)
             {
-                Content = option.RefusalReason is null
-                    ? option.FileId
-                    : $"{option.FileId}  ·  {option.RefusalReason}",
-                // A file the sheet cannot use is shown, disabled, with core's
-                // reason — a folder whose only audio is unusable reads as "here
-                // is why" rather than as an empty list.
-                IsEnabled = option.RefusalReason is null,
-                Tag = new[] { option.FileId },
-            };
-            combo.Items.Add(item);
-            if (option.FileId == bound)
-            {
-                selected = item;
+                var refusal = BridgeDisplay.RefusalLine(option.Offer);
+                var item = new MenuItem
+                {
+                    Header = refusal is null ? option.FileId : $"{option.FileId}  ·  {refusal}",
+                    IsEnabled = refusal is null,
+                    Icon = reference.FileId == option.FileId ? new TextBlock { Text = "✓" } : null,
+                };
+                if (refusal is null)
+                {
+                    item.Click += (_, _) =>
+                        _actions.BindSheet(sheetFileId, reference.FileReference, option.FileId);
+                }
+                choices.Add(item);
             }
-        }
-        if (options.Count > 0)
-        {
-            var nothing = new ComboBoxItem
+            if (choices.Count > 0)
             {
-                Content = Loc.Core("ui.import.sheet.describes_nothing"),
-                Tag = Array.Empty<string>(),
+                choices.Add(new Separator());
+            }
+            var clear = new MenuItem
+            {
+                Header = Loc.Core("ui.import.sheet.describes_nothing"),
+                Icon = reference.FileId is null ? new TextBlock { Text = "✓" } : null,
             };
-            combo.Items.Add(nothing);
-            selected ??= bound is null ? nothing : null;
+            clear.Click += (_, _) => _actions.BindSheet(sheetFileId, reference.FileReference, null);
+            choices.Add(clear);
+            entries.Add(new MenuItem { Header = reference.FileReference, ItemsSource = choices });
         }
-        // Nothing to offer: a sheet naming one file per track, or a folder with
-        // no audio. There is no choice to present, so there is no control.
-        combo.IsVisible = options.Count > 0;
-        combo.SelectedItem = selected;
-        doneFilling();
+        menu.ItemsSource = entries;
+        button.IsVisible = entries.Count > 0;
     }
-
 }

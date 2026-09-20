@@ -595,32 +595,31 @@ internal sealed partial class ImportStore : IDisposable
         }
     }
 
-    // What a track sheet may be bound to. Empty when core has nothing to offer —
-    // a sheet naming one file per track, or a folder with no audio — and empty
-    // on failure, with the reason on the import banner.
-    public async Task<List<ImportSheetBindingOption>> SheetBindingOptions(string key, string sheetFileId)
+    // Each CUE FILE reference with its current audio and available choices.
+    // A failed read puts its reason on the import banner.
+    public async Task<List<BridgeSheetReferenceOptions>> SheetBindingOptions(string key, string sheetFileId)
     {
         var (current, result) = await _import.SheetBindingOptions(key, sheetFileId);
         if (!current)
         {
-            return new List<ImportSheetBindingOption>();
+            return new List<BridgeSheetReferenceOptions>();
         }
         var (options, error) = result;
         if (error is not null || options is null)
         {
             _showError(Loc.Chrome("import.error_title"), error ?? Loc.Chrome("import.failed"));
-            return new List<ImportSheetBindingOption>();
+            return new List<BridgeSheetReferenceOptions>();
         }
         return options;
     }
 
-    // Name the audio a track sheet describes, or clear it with null. Core
+    // Name the audio for one CUE FILE reference, or clear it with null. Core
     // persists the decision, clears the candidate's stored identify verdict, and
     // the list is re-read so the row's track count and format follow the shape
     // the folder now has. Returns whether the change landed.
-    public async Task<bool> SetSheetBinding(string key, string sheetFileId, string? audioFileId)
+    public async Task<bool> SetSheetBinding(string key, string sheetFileId, string fileReference, string? audioFileId)
     {
-        var (current, error) = await _import.SetSheetBinding(key, sheetFileId, audioFileId);
+        var (current, error) = await _import.SetSheetBinding(key, sheetFileId, fileReference, audioFileId);
         if (!current)
         {
             return false;
