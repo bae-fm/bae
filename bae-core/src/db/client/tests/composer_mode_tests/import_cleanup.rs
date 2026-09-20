@@ -100,7 +100,7 @@ fn test_track(
         id: id.to_string(),
         release_id: release_id.to_string(),
         title: title.to_string(),
-        side: 1,
+        side: Some(1),
         track_number: Some(1),
         duration_ms: Some(1000),
         discogs_position: None,
@@ -218,13 +218,14 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     .unwrap()
     .expect("the current scan accepts the candidate");
 
-    crate::import::CandidatePreparations::new(db.clone()).set_field(
-        &content_hash,
-        crate::import::CandidateEditField::PressingYear,
-        "2026",
-    )
-    .await
-    .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .set_field(
+            &content_hash,
+            crate::import::CandidateEditField::PressingYear,
+            "2026",
+        )
+        .await
+        .unwrap();
     let release = DbRelease::new_test("album-never-written", "release-never-written");
     let error = db
         .finalize_import_atomic(

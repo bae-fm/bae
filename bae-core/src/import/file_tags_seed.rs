@@ -44,7 +44,7 @@ impl FileTagsSeed {
             &candidate.clone().into(),
             snapshot,
             &durations,
-            &[],
+            None,
             clock,
             ids,
         )
@@ -62,23 +62,17 @@ impl FileTagsSeed {
         candidate: &ReleaseCandidate,
         snapshot: FileTagSnapshot,
         durations: &SourceDurations,
-        keeping: &[CandidateTrack],
+        keeping: Option<&[CandidateTrack]>,
         clock: &dyn coven::Clock,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ImportError> {
-        let pane = file_tags_pane(
-            candidate,
-            &snapshot,
-            durations,
-            &crate::import::CandidateEditOverlay::default(),
-            &[],
-            clock,
-            ids,
-        )?;
-        let mut draft = crate::import::pane::candidate_draft_from_source(pane)
+        let pane = file_tags_pane(candidate, &snapshot, durations, clock, ids)?;
+        let mut draft = crate::import::pane::candidate_draft_from_source(pane)?
             .draft
             .read_from(FieldOrigin::Tags);
-        draft.tracks = crate::import::edits::preserve_track_decisions(draft.tracks, keeping);
+        if let Some(keeping) = keeping {
+            draft.tracks = crate::import::pane::file_metadata_tracks(&draft.tracks, keeping);
+        }
         let cover = crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot);
         Ok(Self {
             snapshot,

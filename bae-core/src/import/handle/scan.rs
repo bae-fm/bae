@@ -87,7 +87,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: String,
         sheet_file_id: String,
-    ) -> Result<Vec<crate::import::folder_scanner::SheetBindingOption>, crate::import::ImportError>
+    ) -> Result<Vec<crate::import::folder_scanner::SheetReferenceOptions>, crate::import::ImportError>
     {
         let (files, _) = self.folder_files_for_binding(&candidate_key).await?;
         tokio::task::spawn_blocking(move || files.sheet_binding_options(&sheet_file_id))
@@ -118,97 +118,84 @@ impl ImportServiceHandle {
         &self,
         candidate_key: String,
         sheet_file_id: String,
+        file_reference: String,
         audio_file_id: Option<String>,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        self.committed(async move { this.set_sheet_binding_write(candidate_key, sheet_file_id, audio_file_id).await })
+        self.committed(async move {
+            this.set_sheet_binding_write(
+                candidate_key,
+                sheet_file_id,
+                file_reference,
+                audio_file_id,
+            )
             .await
+        })
+        .await
     }
 
     async fn set_sheet_binding_write(
         &self,
         candidate_key: String,
         sheet_file_id: String,
+        file_reference: String,
         audio_file_id: Option<String>,
     ) -> Result<(), crate::import::ImportError> {
         use crate::import::folder_scanner::{SheetBindingOffer, UserSheetBinding};
 
         let (files, offered_revision) = self.folder_files_for_binding(&candidate_key).await?;
-        let Some(binding) = files
-            .track_sheets()
-            .find(|sheet| sheet.file.relative_path == sheet_file_id)
-            .map(|sheet| sheet.binding)
-        else {
-            return Err(crate::import::ImportError::SheetBinding {
-                detail: format!("{candidate_key} has no track sheet {sheet_file_id}"),
-            });
-        };
-        // Same rule as `set_sheet_disc`: re-stating the binding in force
-        // decides nothing, and must not clear the verdict. A sheet already on
-        // exactly the one file asked for is in force whether the scan or the
-        // user put it there.
-        let already_in_force = match (binding.audio_files(), audio_file_id.as_deref()) {
-            (Some(named), Some(requested)) => {
-                matches!(named, [file] if file.file_id == requested)
-            }
-            (None, None) => true,
-            (Some(_), None) | (None, Some(_)) => false,
-        };
-        if already_in_force {
+        let reference = files
+            .sheet_binding_options(&sheet_file_id)
+            .into_iter()
+            .find(|reference| reference.file_reference == file_reference)
+            .ok_or_else(|| crate::import::ImportError::SheetBinding {
+                detail: format!("{sheet_file_id} has no FILE reference {file_reference}"),
+            })?;
+        if audio_file_id.is_some() && reference.file_id == audio_file_id {
             let _commit = self.folder_state_commit.lock().await;
             self.editable_candidate_for_commit(&candidate_key).await?;
-            debug!("{sheet_file_id} already binds {audio_file_id:?}; nothing to write");
             return Ok(());
         }
-
         let decision = match audio_file_id {
             None => UserSheetBinding::Cleared,
-            Some(audio_file_id) => {
-                let sheet = sheet_file_id.clone();
-                let audio = audio_file_id.clone();
-                let offered = files.clone();
-                let offer = tokio::task::spawn_blocking(move || {
-                    offered
-                        .sheet_binding_options(&sheet)
-                        .into_iter()
-                        .find(|option| option.file_id == audio)
-                        .map(|option| option.offer)
-                })
-                .await
-                .map_err(|e| crate::import::ImportError::Internal {
-                    detail: format!("sheet binding option task failed: {e}"),
-                })?;
-                match offer {
-                    Some(SheetBindingOffer::Offered) => {}
-                    Some(SheetBindingOffer::RefusedCodec { codec }) => {
-                        return Err(crate::import::ImportError::SheetBinding {
-                            detail: format!("{audio_file_id} is {codec}"),
-                        })
-                    }
-                    Some(SheetBindingOffer::RefusedTiming) => {
-                        return Err(crate::import::ImportError::SheetBinding {
-                            detail: format!("{sheet_file_id} has timings outside {audio_file_id}"),
-                        })
-                    }
-                    Some(SheetBindingOffer::RefusedUnreadable) => {
-                        return Err(crate::import::ImportError::SheetBinding {
-                            detail: format!("{audio_file_id} cannot be read"),
-                        })
-                    }
-                    None => {
-                        return Err(crate::import::ImportError::SheetBinding {
-                            detail: format!("{audio_file_id} is not this sheet's to name"),
-                        })
-                    }
+            Some(file_id) => {
+                let offer = reference
+                    .options
+                    .iter()
+                    .find(|option| option.file_id == file_id);
+                if !matches!(
+                    offer.map(|option| &option.offer),
+                    Some(SheetBindingOffer::Offered)
+                ) {
+                    return Err(crate::import::ImportError::SheetBinding {
+                        detail: format!(
+                            "{file_id} cannot supply {file_reference} in {sheet_file_id}"
+                        ),
+                    });
                 }
-                UserSheetBinding::Describes {
-                    file_id: audio_file_id,
+                let duplicate = files
+                    .track_sheets()
+                    .find(|sheet| sheet.file.relative_path == sheet_file_id)
+                    .and_then(|sheet| sheet.binding.audio_files())
+                    .is_some_and(|associated| {
+                        associated.iter().any(|file| {
+                            file.file_id == file_id && file.file_reference != file_reference
+                        })
+                    });
+                if duplicate {
+                    return Err(crate::import::ImportError::SheetBinding {
+                        detail: format!(
+                            "{file_id} already supplies another FILE reference in {sheet_file_id}"
+                        ),
+                    });
                 }
+                UserSheetBinding::Describes { file_id }
             }
         };
-
         self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
-            edits.sheet_bindings.set(sheet_file_id, decision);
+            edits
+                .sheet_bindings
+                .set_reference(sheet_file_id, file_reference, decision);
         })
         .await
     }
@@ -232,8 +219,11 @@ impl ImportServiceHandle {
         disc: crate::import::folder_scanner::SheetDisc,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        self.committed(async move { this.set_sheet_disc_write(candidate_key, sheet_file_id, disc).await })
-            .await
+        self.committed(async move {
+            this.set_sheet_disc_write(candidate_key, sheet_file_id, disc)
+                .await
+        })
+        .await
     }
 
     async fn set_sheet_disc_write(
@@ -244,16 +234,15 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         use crate::import::folder_scanner::SheetDisc;
 
-        if let SheetDisc::Disc { number: 0 } = disc {
+        if matches!(disc, SheetDisc::Disc { number } if number == 0 || number > i32::MAX as u32) {
             return Err(crate::import::ImportError::SheetBinding {
-                detail: format!("{sheet_file_id} cannot be disc zero; discs count from one"),
+                detail: format!("{sheet_file_id} has an invalid disc number"),
             });
         }
         let (files, offered_revision) = self.folder_files_for_binding(&candidate_key).await?;
-        let Some(in_force) = files
+        let Some(selected) = files
             .track_sheets()
             .find(|sheet| sheet.file.relative_path == sheet_file_id)
-            .map(|sheet| sheet.disc)
         else {
             return Err(crate::import::ImportError::SheetBinding {
                 detail: format!("{candidate_key} has no track sheet {sheet_file_id}"),
@@ -263,14 +252,43 @@ impl ImportServiceHandle {
         // menu fires on every selection, including of the current item — and
         // a write here would clear the stored verdict and re-identify a
         // folder whose shape did not change.
-        if in_force == disc {
+        if selected.disc == disc {
             let _commit = self.folder_state_commit.lock().await;
             self.editable_candidate_for_commit(&candidate_key).await?;
             debug!("{sheet_file_id} is already disc {disc:?}; nothing to write");
             return Ok(());
         }
 
+        let competing = if matches!(disc, SheetDisc::Disc { .. }) {
+            if !selected.binding.is_resolved() {
+                return Err(crate::import::ImportError::SheetBinding {
+                    detail: format!("{sheet_file_id} cannot be selected until every FILE reference has usable audio"),
+                });
+            }
+            let selected_audio = selected
+                .binding
+                .audio_files()
+                .expect("resolved sheet has audio");
+            files
+                .bound_sheets()
+                .into_iter()
+                .filter(|sheet| sheet.file.relative_path != sheet_file_id)
+                .filter(|sheet| {
+                    sheet.audio_files.iter().any(|(_, audio)| {
+                        selected_audio
+                            .iter()
+                            .any(|file| file.file_id == audio.relative_path)
+                    })
+                })
+                .map(|sheet| sheet.file.relative_path.clone())
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        };
         self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
+            for other in competing {
+                edits.sheet_discs.set(other, SheetDisc::Ignored);
+            }
             edits.sheet_discs.set(sheet_file_id, disc);
         })
         .await
@@ -283,24 +301,33 @@ impl ImportServiceHandle {
     pub(crate) fn external_candidate_draft(
         &self,
         payloads: &crate::import::payloads::ReleasePayloads,
-        files: &crate::import::folder_scanner::CategorizedFiles,
         durations: &crate::import::probe::SourceDurations,
+        current: &crate::import::CandidateDraft,
     ) -> Result<crate::import::pane::CandidateSourceDraft, crate::import::ImportError> {
-        let pane = crate::import::pane::release_pane(
-            payloads,
-            files,
-            durations,
-            &crate::import::CandidateEditOverlay::default(),
-            &[],
-            self.clock.as_ref(),
-            self.ids.as_ref(),
-        )?;
-        let mut source = crate::import::pane::candidate_draft_from_source(pane);
-        // Every field the document states was read from the catalog that
-        // published it; what it leaves blank was read from nowhere.
-        source.draft = source
-            .draft
-            .read_from(crate::import::FieldOrigin::Record(payloads.release().catalog));
+        let audio_durations = current.audio_durations(durations)?;
+        let parsed = payloads.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
+        let mut edit = crate::import::RawReleaseEdit::from_user_edit(
+            crate::import::parsed_album_to_user_edit(&parsed),
+            crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
+        );
+        if edit.tracks.len() != current.tracks.len() {
+            return Err(crate::import::ImportError::MetadataTrackCount {
+                metadata_tracks: edit.tracks.len(),
+                audio_tracks: current.tracks.len(),
+            });
+        }
+        for (metadata, track) in edit.tracks.iter_mut().zip(&current.tracks) {
+            metadata.file = Some(track.edit.file.clone());
+        }
+        let mut source = crate::import::pane::candidate_draft_from_edit(edit)?;
+        source.source_discogs_artist_ids = crate::import::pane::source_discogs_artist_ids(&parsed);
+        crate::import::pane::apply_metadata_tracks(&mut source.draft, current)?;
+        for (index, track) in source.draft.tracks.iter_mut().enumerate() {
+            track.source_index = Some(u32::try_from(index).expect("source track index fits u32"));
+        }
+        source.draft = source.draft.read_from(crate::import::FieldOrigin::Record(
+            payloads.release().catalog,
+        ));
         Ok(source)
     }
 
@@ -309,12 +336,12 @@ impl ImportServiceHandle {
     pub(crate) async fn external_candidate_metadata(
         &self,
         payloads: &crate::import::payloads::ReleasePayloads,
-        files: &crate::import::folder_scanner::CategorizedFiles,
         durations: &crate::import::probe::SourceDurations,
         provenance: crate::import::MetadataProvenance,
+        current: &crate::import::CandidateDraft,
         fallback_cover: Option<&crate::import::CoverSelection>,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
-        let source_draft = self.external_candidate_draft(payloads, files, durations)?;
+        let source_draft = self.external_candidate_draft(payloads, durations, current)?;
         let draft = source_draft.draft;
         let source_discogs_artist_ids = source_draft.source_discogs_artist_ids;
         let required_artist_ids = source_discogs_artist_ids
@@ -344,6 +371,10 @@ impl ImportServiceHandle {
             provenance: Some(provenance),
             cover,
             assets: crate::import::CandidatePreparedAssets {
+                applied_source: Some(crate::import::payloads::AppliedSource {
+                    payloads: payloads.clone(),
+                    audio_durations_ms: current.audio_durations(durations)?,
+                }),
                 remote_cover,
                 artist_images,
             },
@@ -389,7 +420,7 @@ impl ImportServiceHandle {
                     &snapshot_candidate,
                     snapshot,
                     &durations,
-                    &current.draft.tracks,
+                    Some(&current.draft.tracks),
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?;
@@ -426,19 +457,15 @@ impl ImportServiceHandle {
                     CallPriority::Interactive,
                 )
                 .await?;
-                let mut metadata = self
+                let metadata = self
                     .external_candidate_metadata(
                         &payloads,
-                        candidate.files(),
                         &durations,
                         provenance.clone(),
+                        &current.draft,
                         current.cover.as_ref(),
                     )
                     .await?;
-                crate::import::edits::preserve_user_decisions(
-                    &mut metadata.draft,
-                    &current.draft,
-                );
                 // A release the person chose answers the candidate. Where a run
                 // has already answered it, that run's own result is the record
                 // of what it found and stands; where none has, the choice is
@@ -517,7 +544,7 @@ impl ImportServiceHandle {
             })?;
         let mut draft = candidate.blank_source().draft;
         draft.tracks =
-            crate::import::edits::preserve_track_decisions(draft.tracks, &current.draft.tracks);
+            crate::import::pane::file_metadata_tracks(&draft.tracks, &current.draft.tracks);
         let _commit = self
             .commit_lock_for_revision(&candidate_key, &content_hash, current.file_edit_revision)
             .await?;
@@ -574,8 +601,11 @@ impl ImportServiceHandle {
         choice: crate::import::folder_scanner::FileRoleChoice,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        self.committed(async move { this.set_file_role_write(candidate_key, file_id, choice).await })
-            .await
+        self.committed(async move {
+            this.set_file_role_write(candidate_key, file_id, choice)
+                .await
+        })
+        .await
     }
 
     async fn set_file_role_write(
@@ -644,7 +674,7 @@ impl ImportServiceHandle {
                     .into(),
             });
         };
-        let current_files = current_candidate.files;
+        let current_files = &current_candidate.files;
         let expected_revision = current_candidate.file_edit_revision;
         if current_files.content_hash() != content_hash {
             return Err(crate::import::ImportError::FileRole {
@@ -704,34 +734,51 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("file decision produced no settled candidate for {candidate_key}"),
             })?;
-        // The draft is redrawn over the reshaped slots, not only re-paired
-        // with them: a slot the draft had no track for — a sheet bound over
-        // what was one loose file — becomes a blank track, so every mapping
-        // written below names a track the stored draft has.
-        let mut draft = crate::import::pane::redraw_draft_for_files(
-            settled_files,
-            &crate::import::probe::SourceDurations::default(),
+        let initialized = if self.library_manager.get_config().prefs.prefill_with_tags {
+            let stored = self
+                .library_manager
+                .load_candidate_file_tag_snapshot(
+                    &current_candidate.watched_folder_path,
+                    candidate_key,
+                )
+                .await?
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!("{candidate_key} has no scanned tag snapshot identity"),
+                })?;
+            let mut replacement = current_candidate.clone();
+            replacement.files = settled_files.clone();
+            let reader = self.file_tags.clone();
+            let clock = self.clock.clone();
+            let ids = self.ids.clone();
+            tokio::task::spawn_blocking(move || {
+                crate::import::file_tags_seed::FileTagsSeed::read(
+                    &replacement,
+                    stored.scan_generation,
+                    reader.as_ref(),
+                    clock.as_ref(),
+                    ids.as_ref(),
+                )
+                .map(|seed| seed.draft)
+            })
+            .await
+            .map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("replacement track metadata task failed: {error}"),
+            })??
+        } else {
+            crate::import::pane::blank_candidate_source(settled_files).draft
+        };
+        let draft = crate::import::pane::redraw_draft_for_files(
+            current_files,
+            initialized,
             &preparation.draft,
-            preparation.metadata_provenance.as_ref(),
-        )
-        .draft;
-        let available_files = crate::import::track_slots::units_of(
-            &crate::import::track_slots::audio_layout(settled_files),
-        )
-        .into_iter()
-        .collect();
-        draft.tracks = crate::import::edits::reconcile_track_decisions(
-            draft.tracks,
-            &preparation.draft.tracks,
-            &available_files,
+            self.ids.as_ref(),
         );
         let active = draft.release_edit();
         let (source_discogs_artist_ids, artist_images) = self
             .prepared_artist_images_for_active(
-                candidate_key,
-                settled_files,
-                preparation.metadata_provenance.as_ref(),
+                preparation.assets.applied_source.as_ref(),
                 &active,
+                &draft.tracks,
                 preparation.assets.artist_images,
             )
             .await?;

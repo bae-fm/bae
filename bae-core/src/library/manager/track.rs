@@ -314,13 +314,9 @@ pub(crate) async fn playback_info_from_track_release(
         (id, names)
     };
 
-    let side =
-        crate::util::format::physical_medium(release.pressing.format.as_deref()).map(|medium| {
-            crate::playback::PlaybackTrackSide {
-                medium,
-                number: track.side,
-            }
-        });
+    let side = crate::util::format::physical_medium(release.pressing.format.as_deref())
+        .zip(track.side)
+        .map(|(medium, number)| crate::playback::PlaybackTrackSide { medium, number });
 
     Ok(crate::playback::PlaybackTrackInfo {
         track_id: track.id.clone(),

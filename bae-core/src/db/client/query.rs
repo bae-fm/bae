@@ -106,6 +106,30 @@ impl QueryRows for SqlContext<'_, '_> {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl QueryOne for coven::MigrationContext<'_> {
+    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
+        &self,
+        sql: &str,
+        params: P,
+        f: F,
+    ) -> coven::rusqlite::Result<T> {
+        coven::MigrationContext::query_row(self, sql, params, f)
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl QueryRows for coven::MigrationContext<'_> {
+    fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
+        &self,
+        sql: &str,
+        params: P,
+        f: F,
+    ) -> coven::rusqlite::Result<Vec<T>> {
+        coven::MigrationContext::query(self, sql, params, f)
+    }
+}
+
 /// The table a host-provided image blob's row lives in. The image type IS the
 /// table (`covers` / `artist_images`), so there is no `type` column. A fixed
 /// match over the enum, so the interpolated name is always a trusted literal.
@@ -346,7 +370,7 @@ pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
                     FROM track_works tw_cover
                     JOIN tracks tr ON tr.id = tw_cover.track_id
                     WHERE tw_cover.work_id = w.id
-                    ORDER BY tr.side, tr.track_number, tr.release_id
+                    ORDER BY tr.position, tr.release_id
                     LIMIT 1
                 ) AS representative_release_id,
                 (

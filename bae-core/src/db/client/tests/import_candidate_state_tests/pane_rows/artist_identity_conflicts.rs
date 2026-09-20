@@ -165,8 +165,8 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         )?;
         sql.execute(
             "INSERT INTO import_candidate_track (content_hash, track_id, position, title, \
-                 artist_assignment_kind, side, named_by_source, dropped, file_author) \
-             VALUES (?, 'draft-track', 0, 'Track Title', 'explicit', 1, 1, 0, 'automatic')",
+                 artist_assignment_kind, side, track_number, file_kind, file_id) \
+             VALUES (?, 'draft-track', 0, 'Track Title', 'explicit', 1, 1, 'standalone', '01.flac')",
             [&seed_pending_hash],
         )?;
         for (position, artist_id) in [&seed_discogs_id, &seed_musicbrainz_id]
@@ -233,8 +233,8 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let absorbed_id = musicbrainz.id.clone();
     let survivor_id = discogs.id.clone();
     let pending_hash_for_read = pending_hash.clone();
-    let (absorbed_references, survivor_image_blob, pending_album_artists, pending_track_artists) = db
-        .read(move |sql| {
+    let (absorbed_references, survivor_image_blob, pending_album_artists, pending_track_artists) =
+        db.read(move |sql| {
             let mut absorbed_references = 0_i64;
             for table in [
                 "albums",
@@ -279,10 +279,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         .await
         .unwrap();
     assert_eq!(absorbed_references, 0);
-    assert_eq!(
-        survivor_image_blob,
-        "44444444-4444-4444-8444-444444444444"
-    );
+    assert_eq!(survivor_image_blob, "44444444-4444-4444-8444-444444444444");
     assert_eq!(pending_album_artists, 1);
     assert_eq!(pending_track_artists, 1);
     assert!(db
@@ -321,13 +318,9 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
     };
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
-    db.save_import_candidate_failure(
-        &hash,
-        0,
-        &artist_identity_failure(&discogs, &musicbrainz),
-    )
-    .await
-    .unwrap();
+    db.save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
+        .await
+        .unwrap();
 
     db.merge_import_artist_identity_conflict(&hash, &discogs.id)
         .await

@@ -336,23 +336,23 @@ pub(crate) fn direct_entry_track_rows(files: &CategorizedFiles) -> Vec<TrackUser
             )
         })
         .collect();
-    let mut next_number: HashMap<i32, i32> = HashMap::new();
 
     audio_units(files)
         .into_iter()
-        .map(|audio| {
+        .enumerate()
+        .map(|(index, audio)| {
             let side = match &audio {
-                AudioFile::Standalone { .. } => 1,
-                AudioFile::SheetSlice { sheet_id, .. } => *sheet_discs
-                    .get(sheet_id.as_str())
-                    .expect("a sheet slice belongs to a carving sheet"),
+                AudioFile::Standalone { .. } => None,
+                AudioFile::SheetSlice { sheet_id, .. } => Some(
+                    *sheet_discs
+                        .get(sheet_id.as_str())
+                        .expect("a sheet slice belongs to a carving sheet"),
+                ),
             };
-            let number = next_number.entry(side).or_insert(0);
-            *number += 1;
             TrackUserEdit {
                 title: String::new(),
                 side,
-                track_number: Some(*number),
+                track_number: Some(i32::try_from(index + 1).expect("track position fits i32")),
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: Some(audio),
             }
@@ -407,7 +407,7 @@ pub(crate) fn map_source_rows(
                 // blank and continues the numbering of the row above it.
                 let (side, track_number) = match rows.last() {
                     Some(previous) => (previous.side, previous.track_number.map(|n| n + 1)),
-                    None => (1, Some(1)),
+                    None => (None, Some(1)),
                 };
                 rows.push(TrackUserEdit {
                     title: String::new(),

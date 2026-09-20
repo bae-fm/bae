@@ -509,7 +509,7 @@ fn find_work_detail_on(
          JOIN releases r ON r.id = t.release_id
          JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
-         ORDER BY a.title, r.created_at, t.side, t.track_number, tw.position",
+         ORDER BY a.title, r.created_at, t.position, tw.position",
         params![work.work.id],
         |row| {
             Ok(DbWorkTrackSummary {
@@ -684,7 +684,7 @@ fn find_composer_detail_on(
          JOIN albums a ON a.id = r.album_id
          JOIN artists art ON art.id = tar.artist_id
          WHERE tar.artist_id = ? AND {}
-         ORDER BY a.title, r.created_at, t.side, t.track_number, tar.position",
+         ORDER BY a.title, r.created_at, t.position, tar.position",
         unlinked_track_composer_role_predicate("tar")
     );
     let unlinked_track_roles = sql.query(

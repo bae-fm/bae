@@ -8,7 +8,7 @@ use super::verdict_rows::{
     identification_of, read_match_row, read_verdict_row, unreadable, StoredMatches, VERDICT_COLUMNS,
 };
 use super::*;
-use crate::import::{MetadataAuthor, MetadataProvenance, MetadataRef, Catalog};
+use crate::import::{Catalog, MetadataAuthor, MetadataProvenance, MetadataRef};
 use std::str::FromStr;
 
 type CandidateProvenances = HashMap<String, (MetadataProvenance, MetadataAuthor)>;
@@ -232,8 +232,8 @@ const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, ye
      cover_label, cover_source, source_group_id, source_tracks_kind, source_tracks_count, \
      source_tracks_total_ms, by_disc_id, by_barcode, by_catalog, narrowed_out";
 
-const FILE_EDIT_COLUMNS: &str = "content_hash, relative_path, role_choice, sheet_binding, \
-     sheet_binding_file_id, sheet_disc, sheet_disc_number";
+const FILE_EDIT_COLUMNS: &str =
+    "content_hash, relative_path, role_choice, sheet_disc, sheet_disc_number";
 
 /// Every candidate's stored matches, keyed by content hash, or just the one
 /// `only` names.
@@ -376,12 +376,29 @@ fn load_edits_on(
         named_params! { ":only": only },
         |row| Ok(read_file_edit_row(row)),
     )?;
+    let references = sql.query(
+        "SELECT content_hash, sheet_id, file_reference, file_id FROM import_candidate_sheet_reference WHERE :only IS NULL OR content_hash = :only ORDER BY content_hash, sheet_id, file_reference",
+        named_params! { ":only": only },
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?, row.get::<_, Option<String>>(3)?)),
+    )?;
     Ok(move || {
         let mut edits: HashMap<String, CandidateFileEdits> = HashMap::new();
         for row in rows {
             let row = row?;
             let entry = edits.entry(row.content_hash.clone()).or_default();
             apply_file_edit_row(entry, row)?;
+        }
+        for (hash, sheet, reference, file) in references {
+            use crate::import::folder_scanner::UserSheetBinding;
+            let decision = match file {
+                Some(file_id) => UserSheetBinding::Describes { file_id },
+                None => UserSheetBinding::Cleared,
+            };
+            edits
+                .entry(hash)
+                .or_default()
+                .sheet_bindings
+                .set_reference(sheet, reference, decision);
         }
         Ok(edits)
     })

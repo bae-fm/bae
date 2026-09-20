@@ -80,8 +80,11 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
-        self.committed(async move { this.set_candidate_edit_field_write(&candidate_key, field, value).await })
-            .await
+        self.committed(async move {
+            this.set_candidate_edit_field_write(&candidate_key, field, value)
+                .await
+        })
+        .await
     }
 
     async fn set_candidate_edit_field_write(
@@ -118,8 +121,11 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
-        self.committed(async move { this.set_candidate_album_artists_write(&candidate_key, assignments).await })
-            .await
+        self.committed(async move {
+            this.set_candidate_album_artists_write(&candidate_key, assignments)
+                .await
+        })
+        .await
     }
 
     async fn set_candidate_album_artists_write(
@@ -165,8 +171,11 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
-        self.committed(async move { this.set_candidate_track_edit_write(&candidate_key, track).await })
-            .await
+        self.committed(async move {
+            this.set_candidate_track_edit_write(&candidate_key, track)
+                .await
+        })
+        .await
     }
 
     async fn set_candidate_track_edit_write(
@@ -238,8 +247,11 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
-        self.committed(async move { this.set_candidate_track_artists_write(&candidate_key, track_ids, assignments).await })
-            .await
+        self.committed(async move {
+            this.set_candidate_track_artists_write(&candidate_key, track_ids, assignments)
+                .await
+        })
+        .await
     }
 
     async fn set_candidate_track_artists_write(
@@ -289,8 +301,11 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
-        self.committed(async move { this.drop_candidate_track_write(&candidate_key, track_id).await })
-            .await
+        self.committed(async move {
+            this.drop_candidate_track_write(&candidate_key, track_id)
+                .await
+        })
+        .await
     }
 
     async fn drop_candidate_track_write(
@@ -362,10 +377,9 @@ impl ImportServiceHandle {
         decide(&mut active);
         let (source_discogs_artist_ids, assets) = self
             .prepared_artist_images_for_active(
-                candidate_key,
-                files,
-                preparation.metadata_provenance.as_ref(),
+                preparation.assets.applied_source.as_ref(),
                 &active,
+                &preparation.draft.tracks,
                 preparation.assets.artist_images,
             )
             .await?;
@@ -384,10 +398,9 @@ impl ImportServiceHandle {
 
     pub(super) async fn prepared_artist_images_for_active(
         &self,
-        candidate_key: &str,
-        files: &crate::import::folder_scanner::CategorizedFiles,
-        provenance: Option<&crate::import::MetadataProvenance>,
+        source: Option<&crate::import::payloads::AppliedSource>,
         active: &crate::import::RawReleaseEdit,
+        tracks: &[crate::import::CandidateTrack],
         current: Vec<crate::import::PreparedArtistImage>,
     ) -> Result<
         (
@@ -397,7 +410,7 @@ impl ImportServiceHandle {
         crate::import::ImportError,
     > {
         let source_discogs_artist_ids = self
-            .source_discogs_artist_ids_for_active_tracks(candidate_key, files, provenance, active)
+            .source_discogs_artist_ids_for_active_tracks(source, active, tracks)
             .await?;
         let required_discogs_artist_ids = source_discogs_artist_ids
             .union(&active.new_discogs_artist_ids_for_bound_tracks())
@@ -419,31 +432,29 @@ impl ImportServiceHandle {
 
     async fn source_discogs_artist_ids_for_active_tracks(
         &self,
-        candidate_key: &str,
-        files: &crate::import::folder_scanner::CategorizedFiles,
-        provenance: Option<&crate::import::MetadataProvenance>,
+        source: Option<&crate::import::payloads::AppliedSource>,
         active: &crate::import::RawReleaseEdit,
+        tracks: &[crate::import::CandidateTrack],
     ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {
-        let Some(crate::import::MetadataProvenance::ExternalRelease { record, .. }) = provenance
-        else {
+        let Some(source) = source else {
             return Ok(Default::default());
         };
-        let payloads = self
-            .library_manager
-            .load_release_payloads(record)
-            .await?
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!("{candidate_key}'s selected release payloads are not prepared"),
-            })?;
-        let durations = crate::import::probe::source_durations(files)?;
-        let audio_durations = crate::import::track_slots::audio_durations(files, &durations)?;
-        let mut parsed =
-            payloads.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
-        crate::import::pane::retain_mapped_source_track_metadata(
-            &mut parsed,
-            &active.tracks,
-            crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
-        );
+        let mut parsed = source.parsed(self.clock.as_ref(), self.ids.as_ref())?;
+        let retained = tracks
+            .iter()
+            .filter(|track| active.tracks.iter().any(|row| row.id == track.edit.id))
+            .filter_map(|track| track.source_index)
+            .map(|index| {
+                parsed
+                    .tracks
+                    .get(index as usize)
+                    .map(|track| track.id.clone())
+                    .ok_or_else(|| crate::import::ImportError::Internal {
+                        detail: format!("draft names unavailable source track {index}"),
+                    })
+            })
+            .collect::<Result<std::collections::HashSet<_>, _>>()?;
+        crate::import::service::retain_track_metadata(&mut parsed, &retained);
         Ok(crate::import::pane::source_discogs_artist_ids(&parsed))
     }
 }

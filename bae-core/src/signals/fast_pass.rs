@@ -329,11 +329,11 @@ mod tests {
                             date: None,
                             tracks: Vec::new(),
                         },
-                        binding: crate::import::folder_scanner::SheetBinding::Override {
-                            file: crate::import::folder_scanner::SheetAudioFile {
+                        binding: crate::import::folder_scanner::SheetBinding::Resolved {
+                            files: vec![crate::import::folder_scanner::SheetAudioFile {
                                 file_reference: "Album.wav".to_string(),
                                 file_id: "Album.flac".to_string(),
-                            },
+                            }],
                         },
                         disc: crate::import::folder_scanner::SheetDisc::Disc { number: 1 },
                     },

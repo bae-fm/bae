@@ -67,7 +67,11 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
 
     let import_id = uuid::Uuid::new_v4().to_string();
     handle
-        .send_command(support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags))
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            MetadataProvenance::FileTags,
+        ))
         .await
         .unwrap();
     let mut progress_rx = handle.subscribe_import(import_id);
@@ -283,122 +287,69 @@ async fn pick_release_for_folder(
     (candidate_key, pane)
 }
 
-/// The tracks the mapping commits, with each row's rendered position and
-/// whether the source's tracklist names it — the facts the assertions below
-/// read off a row.
-fn mapping_rows(
-    pane: &bae_core::import::ImportCandidateDetail,
-) -> Vec<(bae_core::import::RawTrackEdit, String, bool)> {
-    pane.mapping
-        .track_sections
-        .iter()
-        .flat_map(bae_core::import::MappingTrackSection::mappings)
-        .filter_map(|mapping| match &mapping.becomes {
-            bae_core::import::MappingBecomes::Track {
-                track,
-                position,
-                named_by_source,
-            } => Some((track.clone(), position.clone(), *named_by_source)),
-            _ => None,
-        })
-        .collect()
-}
-
-/// Thirteen files against a twelve-track source. The pick produces twelve
-/// paired slots and one `FileOnly`, and committing writes thirteen tracks — the
-/// thirteenth named after its file. This folder used to fail the commit
-/// outright.
+/// A source with fewer or more tracks cannot partially overwrite the draft.
 #[tokio::test]
-async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() {
+async fn incompatible_source_counts_preserve_every_audio_backed_track() {
     support::tracing_init();
-    let f = ImportFixture::new().await;
-    let mb_id = seed_mb_release_with_track_count("mb-rel-13v12", "mb-group-13v12", 12);
-
-    let collection = f.temp_path().join("collection-13v12");
-    let album_dir = collection.join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    let names: Vec<String> = (1..=13).map(|n| format!("{n:02} Track.flac")).collect();
-    generate_album_files(
-        &album_dir,
-        &names.iter().map(String::as_str).collect::<Vec<_>>(),
-    );
-
-    let (candidate_key, pane) =
-        pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
-
-    let rows = mapping_rows(&pane);
-    assert_eq!(rows.len(), 13);
-    // Twelve rows the source names, and one the folder offers that it does
-    // not — which still numbers itself by continuing the tracklist.
-    assert_eq!(rows.iter().filter(|(_, _, named)| *named).count(), 12);
-    assert!(!rows[12].2);
-    assert_eq!(rows[12].1, "13");
-
-    let import_id = f
-        .handle
-        .start_import(&candidate_key, StorageMode::Local, false)
-        .await
-        .unwrap();
-    let mut rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
-
-    let committed = committed_track_files(&f, &release_id).await;
-    assert_eq!(committed.len(), 13);
-    assert_eq!(
-        committed[0],
-        ("Source Track 1".to_string(), names[0].clone())
-    );
-    assert_eq!(
-        committed[11],
-        ("Source Track 12".to_string(), names[11].clone())
-    );
-    // Nobody named the thirteenth slot, so it commits under its file's name.
-    assert_eq!(committed[12], ("13 Track".to_string(), names[12].clone()));
-}
-
-/// Fourteen source tracks against thirteen files. The pick produces one
-/// `TrackOnly` slot; leaving it unanswered commits the thirteen tracks that
-/// have audio and nothing else.
-#[tokio::test]
-async fn a_track_with_no_audio_commits_as_the_user_left_it() {
-    support::tracing_init();
-    let f = ImportFixture::new().await;
-    let mb_id = seed_mb_release_with_track_count("mb-rel-14v13", "mb-group-14v13", 14);
-
-    let collection = f.temp_path().join("collection-14v13");
-    let album_dir = collection.join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    let names: Vec<String> = (1..=13).map(|n| format!("{n:02} Track.flac")).collect();
-    generate_album_files(
-        &album_dir,
-        &names.iter().map(String::as_str).collect::<Vec<_>>(),
-    );
-
-    let (candidate_key, pane) =
-        pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
-
-    let rows = mapping_rows(&pane);
-    assert_eq!(rows.len(), 14);
-    // The fourteenth track the source names has no audio behind it.
-    assert!(rows[13].2);
-    assert_eq!(rows[13].1, "14");
-    assert_eq!(rows[13].0.file, None);
-
-    let import_id = f
-        .handle
-        .start_import(&candidate_key, StorageMode::Local, false)
-        .await
-        .unwrap();
-    let mut rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
-
-    let committed = committed_track_files(&f, &release_id).await;
-    assert_eq!(committed.len(), 13);
-    let titles: Vec<&str> = committed.iter().map(|(title, _)| title.as_str()).collect();
-    assert!(
-        !titles.contains(&"Source Track 14"),
-        "the slot nobody gave audio to has nothing to write: {titles:?}",
-    );
+    for source_count in [12, 14] {
+        let f = ImportFixture::new().await;
+        let mb_id = seed_mb_release_with_track_count(
+            &format!("mb-rel-count-{source_count}"),
+            &format!("mb-group-count-{source_count}"),
+            source_count,
+        );
+        let collection = f.temp_path().join("collection");
+        let album_dir = collection.join("album");
+        fs::create_dir_all(&album_dir).unwrap();
+        let names: Vec<String> = (1..=13).map(|n| format!("{n:02} Track.flac")).collect();
+        generate_album_files(
+            &album_dir,
+            &names.iter().map(String::as_str).collect::<Vec<_>>(),
+        );
+        let candidate_key = album_dir.to_string_lossy().into_owned();
+        let mut scan_rx = f.handle.subscribe_folder_scan_events();
+        f.handle
+            .add_watched_folder(collection.to_string_lossy().into_owned())
+            .await
+            .unwrap();
+        wait_for_scan_event(&mut scan_rx, "the candidate", |event| {
+            matches!(event, ScanEvent::FolderCandidate { candidate, .. } if candidate.path == album_dir)
+        }).await;
+        let before = f
+            .handle
+            .candidate_pane(&candidate_key)
+            .await
+            .unwrap()
+            .unwrap();
+        let error = f
+            .handle
+            .select_candidate_metadata_provenance(
+                candidate_key.clone(),
+                MetadataProvenance::ExternalRelease {
+                    record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id),
+                    partners: vec![],
+                },
+            )
+            .await
+            .expect_err("different counts refuse metadata application");
+        assert!(
+            matches!(error, bae_core::import::ImportError::MetadataTrackCount {
+            metadata_tracks, audio_tracks: 13
+        } if metadata_tracks == source_count)
+        );
+        let after = f
+            .handle
+            .candidate_pane(&candidate_key)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(after.metadata_draft, before.metadata_draft);
+        assert_eq!(after.metadata_provenance, before.metadata_provenance);
+        assert_eq!(after.cover, before.cover);
+        let tracks = bae_core::import::mapping_tracks(&after.mapping);
+        assert_eq!(tracks.len(), 13);
+        assert!(tracks.iter().all(|track| track.file.is_some()));
+    }
 }
 
 /// A rip whose files are named in the wrong order. The user re-pairs two slots
@@ -416,8 +367,7 @@ async fn a_corrected_pairing_survives_the_commit() {
     let names = ["01 Track.flac", "02 Track.flac", "03 Track.flac"];
     generate_album_files(&album_dir, &names);
 
-    let (candidate_key, pane) =
-        pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
+    let (candidate_key, pane) = pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
 
     let mut tracks = bae_core::import::mapping_tracks(&pane.mapping);
     assert_eq!(tracks.len(), 3);

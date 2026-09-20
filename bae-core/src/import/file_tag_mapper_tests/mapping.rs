@@ -9,36 +9,89 @@ use tempfile::TempDir;
 
 #[test]
 fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
-    use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile, SheetAudioFile, SheetBinding, SheetDisc};
     use crate::import::file_tag_snapshot::{FileObservation, FileTagFact};
+    use crate::import::folder_scanner::{
+        CandidateFile, CategorizedFiles, FileRole, ScannedFile, SheetAudioFile, SheetBinding,
+        SheetDisc,
+    };
     let audio = |name: &str| CandidateFile {
-        file: ScannedFile::new(PathBuf::from("/source").join(name), name.into(), 123, 1).with_test_flac_audio(),
-        role: FileRole::Audio, proposed_audio: true,
+        file: ScannedFile::new(PathBuf::from("/source").join(name), name.into(), 123, 1)
+            .with_test_flac_audio(),
+        role: FileRole::Audio,
+        proposed_audio: true,
     };
-    let files = CategorizedFiles { files: vec![
-        audio("a.flac"), audio("image.flac"), audio("z.flac"),
-        CandidateFile {
-            file: ScannedFile::new(PathBuf::from("/source/album.cue"), "album.cue".into(), 123, 1),
-            role: FileRole::TrackSheet {
-                sheet: cue_sheet("Album", vec![cue_track(1, "Cue One"), cue_track(2, "Cue Two")]),
-                binding: SheetBinding::Resolved { files: vec![SheetAudioFile { file_reference: "image.flac".into(), file_id: "image.flac".into() }] },
-                disc: SheetDisc::Disc { number: 2 },
+    let files = CategorizedFiles {
+        files: vec![
+            audio("a.flac"),
+            audio("image.flac"),
+            audio("z.flac"),
+            CandidateFile {
+                file: ScannedFile::new(
+                    PathBuf::from("/source/album.cue"),
+                    "album.cue".into(),
+                    123,
+                    1,
+                ),
+                role: FileRole::TrackSheet {
+                    sheet: cue_sheet(
+                        "Album",
+                        vec![cue_track(1, "Cue One"), cue_track(2, "Cue Two")],
+                    ),
+                    binding: SheetBinding::Resolved {
+                        files: vec![SheetAudioFile {
+                            file_reference: "image.flac".into(),
+                            file_id: "image.flac".into(),
+                        }],
+                    },
+                    disc: SheetDisc::Disc { number: 2 },
+                },
+                proposed_audio: false,
             },
-            proposed_audio: false,
-        },
-    ] };
-    let snapshot = FileTagSnapshot {
-        scan_generation: 1, file_edit_revision: 0, embedded_cover: None,
-        files: files.audio().map(|file| FileTagFact {
-            observation: FileObservation { relative_path: file.relative_path.clone(), size: file.size, modified_at_ns: file.modified_at_ns },
-            title: Some(format!("Tags {}", file.relative_path)), track_artist: Some("Track Artist".into()),
-            album_title: Some("Tagged Album".into()), album_artist: Some("Album Artist".into()),
-            year: None, track_number: None, disc_number: None,
-        }).collect(),
+        ],
     };
-    let clock = FixedClock(chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z").unwrap().with_timezone(&chrono::Utc));
-    let parsed = map_file_tag_snapshot_to_db(&files, &snapshot, Some("Folder"), &clock, &SequentialIdProvider::new("mixed")).unwrap();
-    assert_eq!(parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(), ["Tags a.flac", "Cue One", "Cue Two", "Tags z.flac"]);
+    let snapshot = FileTagSnapshot {
+        scan_generation: 1,
+        file_edit_revision: 0,
+        embedded_cover: None,
+        files: files
+            .audio()
+            .map(|file| FileTagFact {
+                observation: FileObservation {
+                    relative_path: file.relative_path.clone(),
+                    size: file.size,
+                    modified_at_ns: file.modified_at_ns,
+                },
+                title: Some(format!("Tags {}", file.relative_path)),
+                track_artist: Some("Track Artist".into()),
+                album_title: Some("Tagged Album".into()),
+                album_artist: Some("Album Artist".into()),
+                year: None,
+                track_number: None,
+                disc_number: None,
+            })
+            .collect(),
+    };
+    let clock = FixedClock(
+        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc),
+    );
+    let parsed = map_file_tag_snapshot_to_db(
+        &files,
+        &snapshot,
+        Some("Folder"),
+        &clock,
+        &SequentialIdProvider::new("mixed"),
+    )
+    .unwrap();
+    assert_eq!(
+        parsed
+            .tracks
+            .iter()
+            .map(|track| track.title.as_str())
+            .collect::<Vec<_>>(),
+        ["Tags a.flac", "Cue One", "Cue Two", "Tags z.flac"]
+    );
     assert_eq!(files.track_count(), 4);
 }
 
@@ -74,13 +127,7 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
     let path = PathBuf::from("/source-does-not-exist/01.flac");
     let files = CategorizedFiles {
         files: vec![CandidateFile {
-            file: ScannedFile::new(
-                path,
-                "01.flac".to_string(),
-                123,
-                1,
-            )
-            .with_test_flac_audio(),
+            file: ScannedFile::new(path, "01.flac".to_string(), 123, 1).with_test_flac_audio(),
             role: FileRole::Audio,
             proposed_audio: true,
         }],
@@ -111,14 +158,8 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
     );
     let ids = SequentialIdProvider::new("snapshot");
 
-    let parsed = map_file_tag_snapshot_to_db(
-        &files,
-        &snapshot,
-        Some("Folder Alpha"),
-        &clock,
-        &ids,
-    )
-    .unwrap();
+    let parsed =
+        map_file_tag_snapshot_to_db(&files, &snapshot, Some("Folder Alpha"), &clock, &ids).unwrap();
 
     assert_eq!(parsed.album.title, "Album Alpha");
     assert_eq!(parsed.tracks[0].title, "Track Alpha");
@@ -164,7 +205,7 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
     assert_eq!(parsed.tracks[0].title, "Track One");
     assert_eq!(parsed.tracks[1].title, "Track Two");
     assert_eq!(parsed.tracks[2].title, "Track Three");
-    assert!(parsed.tracks.iter().all(|t| t.side == 1));
+    assert!(parsed.tracks.iter().all(|t| t.side == Some(1)));
     assert_eq!(
         parsed
             .tracks
@@ -225,17 +266,16 @@ fn cue_multi_sheet_assigns_side_per_disc() {
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("cue");
-    let parsed =
-        map_cue_sheets_to_db(&[&disc1, &disc2], Some("Folder"), &clock, &ids).unwrap();
+    let parsed = map_cue_sheets_to_db(&[&disc1, &disc2], Some("Folder"), &clock, &ids).unwrap();
 
     assert_eq!(parsed.tracks.len(), 4);
-    assert_eq!(parsed.tracks[0].side, 1);
+    assert_eq!(parsed.tracks[0].side, Some(1));
     assert_eq!(parsed.tracks[0].track_number, Some(1));
-    assert_eq!(parsed.tracks[1].side, 1);
+    assert_eq!(parsed.tracks[1].side, Some(1));
     assert_eq!(parsed.tracks[1].track_number, Some(2));
-    assert_eq!(parsed.tracks[2].side, 2);
+    assert_eq!(parsed.tracks[2].side, Some(2));
     assert_eq!(parsed.tracks[2].track_number, Some(1));
-    assert_eq!(parsed.tracks[3].side, 2);
+    assert_eq!(parsed.tracks[3].side, Some(2));
     assert_eq!(parsed.tracks[3].track_number, Some(2));
 }
 
@@ -356,7 +396,7 @@ fn flac_with_vorbis_comments_basic() {
 
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[0].title, "Track One");
-    assert_eq!(parsed.tracks[0].side, 1);
+    assert_eq!(parsed.tracks[0].side, None);
     assert_eq!(parsed.tracks[0].track_number, Some(1));
     assert_eq!(parsed.tracks[1].title, "Track Two");
     assert_eq!(parsed.tracks[1].track_number, Some(2));
@@ -374,7 +414,6 @@ fn flac_with_vorbis_comments_basic() {
         .track_artists
         .iter()
         .all(|ta| ta.artist_id == parsed.artists[0].id));
-
 }
 
 /// Multi-disc rip: DISCNUMBER + TRACKNUMBER produce side groupings.
@@ -408,13 +447,13 @@ fn flac_multi_disc_groups_by_discnumber() {
     let parsed = map_tags(&files).unwrap();
 
     assert_eq!(parsed.tracks.len(), 4);
-    assert_eq!(parsed.tracks[0].side, 1);
+    assert_eq!(parsed.tracks[0].side, Some(1));
     assert_eq!(parsed.tracks[0].track_number, Some(1));
-    assert_eq!(parsed.tracks[1].side, 1);
+    assert_eq!(parsed.tracks[1].side, Some(1));
     assert_eq!(parsed.tracks[1].track_number, Some(2));
-    assert_eq!(parsed.tracks[2].side, 2);
+    assert_eq!(parsed.tracks[2].side, Some(2));
     assert_eq!(parsed.tracks[2].track_number, Some(1));
-    assert_eq!(parsed.tracks[3].side, 2);
+    assert_eq!(parsed.tracks[3].side, Some(2));
     assert_eq!(parsed.tracks[3].track_number, Some(2));
 }
 
@@ -439,8 +478,8 @@ fn out_of_range_tag_numbers_do_not_wrap_negative() {
 
     let parsed = map_tags(&[file]).unwrap();
 
-    assert_eq!(parsed.tracks[0].side, i32::MAX);
-    assert_eq!(parsed.tracks[0].track_number, None);
+    assert_eq!(parsed.tracks[0].side, None);
+    assert_eq!(parsed.tracks[0].track_number, Some(1));
 }
 
 /// Per-track artist different from album artist → adds an extra
@@ -539,23 +578,20 @@ fn missing_optional_tags_yields_none_and_defaults() {
     let parsed = map_tags(&[f1, f2]).unwrap();
     assert_eq!(parsed.album.year, None);
     assert_eq!(parsed.release.pressing.year, None);
-    assert_eq!(parsed.tracks[0].side, 1);
-    assert_eq!(parsed.tracks[1].side, 1);
+    assert_eq!(parsed.tracks[0].side, None);
+    assert_eq!(parsed.tracks[1].side, None);
     assert_eq!(parsed.tracks[0].track_number, Some(1));
     assert_eq!(parsed.tracks[1].track_number, Some(2));
 }
 
-/// A side where some files carry TRACKNUMBER and some don't: the
-/// untagged files must NOT get a positional fallback (it would collide
-/// with the real tag values) — they stay `None` for the user to assign.
+/// Supplied numbers remain unchanged; absent numbers use ordered position.
 #[test]
-fn partial_tracknumber_side_leaves_untagged_none() {
+fn partial_track_numbers_default_to_order() {
     let temp = TempDir::new().unwrap();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
     let src2 = fixtures_dir().join("flac").join("02 Test Track 2.flac");
 
-    // First file untagged, second tagged TRACKNUMBER=1 — old positional
-    // fallback would assign the first file position 1 too, colliding.
+    // Duplicate displayed numbers do not determine track identity or order.
     let f1 = copy_and_tag(
         &src,
         temp.path(),
@@ -585,8 +621,9 @@ fn partial_tracknumber_side_leaves_untagged_none() {
 
     let parsed = map_tags(&[f1, f2]).unwrap();
     assert_eq!(
-        parsed.tracks[0].track_number, None,
-        "untagged file on a partially-tagged side stays None"
+        parsed.tracks[0].track_number,
+        Some(1),
+        "an untagged file uses its ordered position"
     );
     assert_eq!(parsed.tracks[1].track_number, Some(1));
 }
@@ -718,4 +755,60 @@ fn album_and_artist_fallback_ladder() {
         assert_eq!(parsed.album.artist_id, parsed.artists[0].id, "{}", row.name);
         assert_eq!(parsed.tracks[0].title, "Track Title", "{}", row.name);
     }
+}
+
+#[test]
+fn absent_numbers_use_order_across_known_discs() {
+    let temp = TempDir::new().unwrap();
+    let src = fixtures_dir().join("flac/01 Test Track 1.flac");
+    let files = (1..=2)
+        .map(|disc| {
+            copy_and_tag(
+                &src,
+                temp.path(),
+                &format!("disc{disc}.flac"),
+                TagType::VorbisComments,
+                Some("Track"),
+                Some("Artist"),
+                Some("Album"),
+                None,
+                None,
+                None,
+                Some(disc),
+            )
+        })
+        .collect::<Vec<_>>();
+    let parsed = map_tags(&files).unwrap();
+    assert_eq!(
+        parsed
+            .tracks
+            .iter()
+            .map(|track| track.track_number)
+            .collect::<Vec<_>>(),
+        [Some(1), Some(2)]
+    );
+}
+
+#[test]
+fn cue_numbers_are_preserved_instead_of_recreated() {
+    let sheet = cue_sheet(
+        "Album",
+        vec![cue_track(4, "Fourth"), cue_track(7, "Seventh")],
+    );
+    let clock = FixedClock("2026-01-01T00:00:00Z".parse().unwrap());
+    let parsed = map_cue_sheets_to_db(
+        &[&sheet],
+        None,
+        &clock,
+        &SequentialIdProvider::new("cue-numbers"),
+    )
+    .unwrap();
+    assert_eq!(
+        parsed
+            .tracks
+            .iter()
+            .map(|track| track.track_number)
+            .collect::<Vec<_>>(),
+        [Some(4), Some(7)]
+    );
 }

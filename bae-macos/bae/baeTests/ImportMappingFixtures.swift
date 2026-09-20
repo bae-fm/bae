@@ -64,14 +64,14 @@ extension MappingFixtures {
     static func trackEdit(
         _ index: Int,
         title: String,
-        file: BridgeAudioFile?
+        file: BridgeAudioFile
     ) -> BridgeRawTrackEdit {
         BridgeRawTrackEdit(
             id: "import-track-\(index)",
             title: title,
             artistAssignments: .albumArtists,
             side: 1,
-            trackNumber: nil,
+            trackNumber: Int32(index + 1),
             file: file
         )
     }
@@ -131,7 +131,7 @@ extension MappingFixtures {
                 )
             ],
             files: [],
-            reconciliation: .moreFiles(files: 13, tracks: 12)
+            reconciliation: nil
         )
     }
 
@@ -181,25 +181,7 @@ extension MappingFixtures {
         )
     }
 
-    /// A track the release names that the folder has nothing for.
-    static func missingRow(_ index: Int) -> BridgeTrackMapping {
-        BridgeTrackMapping(
-            source: .missing,
-            becomes: .track(
-                track: trackEdit(
-                    index,
-                    title: "Track \(index + 1)",
-                    file: nil
-                ),
-                position: "\(index + 1)",
-                namedBySource: true
-            ),
-            durationMs: UInt64(200_000 + index * 1000)
-        )
-    }
-
-    /// The container as one loose audio file taking the release's first track,
-    /// with the other eleven left with nothing behind them.
+    /// Ignoring the sheet exposes the entire container as one track.
     private static var looseContainerTrackSections: [BridgeMappingTrackSection]
     {
         [
@@ -210,15 +192,15 @@ extension MappingFixtures {
                         becomes: .track(
                             track: trackEdit(
                                 0,
-                                title: "Track 1",
+                                title: containerId,
                                 file: .standalone(fileId: containerId)
                             ),
                             position: "1",
                             namedBySource: true
                         ),
-                        durationMs: 201_000
+                        durationMs: containerFile.durationMs
                     )
-                ] + (1..<12).map(missingRow)
+                ]
             )
         ]
     }
@@ -231,11 +213,11 @@ extension MappingFixtures {
             .sheet(
                 sheet: sheetGroup(
                     container: nil,
-                    assignment: .disc(number: 1)
+                    assignment: .ignored
                 )
             )
         ],
-        reconciliation: .moreTracks(files: 1, tracks: 12)
+        reconciliation: nil
     )
 
     /// An ignored sheet speaks for nothing either, so its container is loose
@@ -248,7 +230,7 @@ extension MappingFixtures {
                 sheet: sheetGroup(container: container, assignment: .ignored)
             )
         ],
-        reconciliation: .moreTracks(files: 1, tracks: 12)
+        reconciliation: nil
     )
 
     /// One entry of the bound sheet, carved out of the container.

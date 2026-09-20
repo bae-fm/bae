@@ -31,15 +31,20 @@ pub(crate) struct ArtistRef {
     pub discogs_artist_id: Option<String>,
 }
 
-/// How a track's number is determined.
-pub(crate) enum TrackNumber {
-    /// 1-based position within the track's side, assigned by the assembler via
-    /// [`per_side_positions`] (MusicBrainz, Discogs, CUE, fully-untagged tag
-    /// sides).
-    PerSide,
-    /// The source supplied (or withheld) the number; written verbatim (file
-    /// tags: TRACKNUMBER, or `None` for the user to fill in).
-    Explicit(Option<i32>),
+/// Read a positive number from a provider position: 7, A7, or 2-7.
+pub(crate) fn position_number(position: &str) -> Option<i32> {
+    let number = match position.split_once('-') {
+        Some((disc, number)) if disc.bytes().all(|byte| byte.is_ascii_digit()) => number,
+        _ if position
+            .as_bytes()
+            .first()
+            .is_some_and(u8::is_ascii_alphabetic) =>
+        {
+            &position[1..]
+        }
+        _ => position,
+    };
+    number.parse::<i32>().ok().filter(|number| *number > 0)
 }
 
 pub(crate) enum PartDirection {
@@ -107,8 +112,8 @@ pub(crate) enum TrackEvent {
 
 pub(crate) struct TrackIr {
     pub title: String,
-    pub side: i32,
-    pub number: TrackNumber,
+    pub side: Option<i32>,
+    pub number: Option<i32>,
     /// Raw source position ("A1", "1-2", MusicBrainz track number); lands in
     /// `DbTrack.discogs_position`.
     pub source_position: Option<String>,
@@ -146,24 +151,6 @@ pub(crate) struct ReleaseIr {
     pub album_artist_scope: AlbumArtistScope,
     pub release_roles: Vec<ReleaseRole>,
     pub tracks: Vec<TrackIr>,
-}
-
-/// 1-based position of each element within its side, counting in input order
-/// (sides may interleave; the counter is per distinct side value). The one
-/// per-side numbering implementation: every source mapper numbers through it, so
-/// the numbers the editor is seeded with are the numbers the commit writes.
-pub(crate) fn per_side_positions<S: Copy + Eq + std::hash::Hash>(
-    sides: impl IntoIterator<Item = S>,
-) -> Vec<i32> {
-    let mut counts: std::collections::HashMap<S, i32> = std::collections::HashMap::new();
-    sides
-        .into_iter()
-        .map(|side| {
-            let count = counts.entry(side).or_insert(0);
-            *count += 1;
-            *count
-        })
-        .collect()
 }
 
 /// Mint a `DbArtist` from an [`ArtistRef`] and append it to the pool, returning
@@ -409,7 +396,7 @@ fn push_work_ref(
     }
 }
 
-/// The single place a [`ParsedAlbum`] is built. Owns artist dedup, per-side
+/// The single place a [`ParsedAlbum`] is built. Owns artist dedup, ordered default
 /// numbering, junction emission, and row construction. Infallible — all source
 /// validation happens in the source→IR mappers.
 pub(crate) fn assemble_parsed_album(
@@ -479,8 +466,6 @@ pub(crate) fn assemble_parsed_album(
         ));
     }
 
-    let positions = per_side_positions(ir.tracks.iter().map(|t| t.side));
-
     let mut tracks: Vec<DbTrack> = Vec::with_capacity(ir.tracks.len());
     let mut track_artists: Vec<DbTrackArtist> = Vec::new();
     let mut track_artist_roles: Vec<DbTrackArtistRole> = Vec::new();
@@ -492,10 +477,11 @@ pub(crate) fn assemble_parsed_album(
     let mut expanded_works: HashSet<String> = HashSet::new();
 
     for (index, track_ir) in ir.tracks.iter().enumerate() {
-        let track_number = match track_ir.number {
-            TrackNumber::PerSide => Some(positions[index]),
-            TrackNumber::Explicit(n) => n,
-        };
+        let track_number = Some(
+            track_ir
+                .number
+                .unwrap_or_else(|| i32::try_from(index + 1).expect("track position fits i32")),
+        );
 
         let db_track = DbTrack {
             id: ids.new_id(),
@@ -604,45 +590,5 @@ pub(crate) fn assemble_parsed_album(
         },
         release_artist_roles,
         track_artist_roles,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn per_side_positions_numbers_sequential_sides() {
-        // Two tracks on side 1, one on side 2.
-        assert_eq!(per_side_positions([1, 1, 2]), vec![1, 2, 1]);
-    }
-
-    #[test]
-    fn per_side_positions_resumes_counting_interleaved_sides() {
-        // Sides interleave; each side's counter resumes where it left off.
-        assert_eq!(per_side_positions([1, 2, 1, 2]), vec![1, 1, 2, 2]);
-    }
-
-    #[test]
-    fn per_side_positions_single_side() {
-        assert_eq!(per_side_positions([7, 7, 7]), vec![1, 2, 3]);
-    }
-
-    #[test]
-    fn per_side_positions_empty() {
-        assert_eq!(
-            per_side_positions(std::iter::empty::<i32>()),
-            Vec::<i32>::new()
-        );
-    }
-
-    #[test]
-    fn per_side_positions_works_over_u32_keys() {
-        // The editor-seed plane passes `u32` sides; the commit plane passes
-        // `i32`. Both must number identically.
-        let as_i32 = per_side_positions([1i32, 1, 2, 2, 1]);
-        let as_u32 = per_side_positions([1u32, 1, 2, 2, 1]);
-        assert_eq!(as_i32, as_u32);
-        assert_eq!(as_i32, vec![1, 2, 1, 2, 3]);
     }
 }

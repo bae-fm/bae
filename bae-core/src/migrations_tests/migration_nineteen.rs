@@ -59,7 +59,7 @@ async fn migration_nineteen_merges_each_track_with_its_decisions() {
         .expect("seed version-eighteen rows");
     drop(handle);
 
-    let handle = open(store_dir, "migration-candidate-track", all())
+    let handle = open(store_dir, "migration-candidate-track", version_nineteen())
         .expect("migrate to the merged track table");
     handle
         .read(|sql| {

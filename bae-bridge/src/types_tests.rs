@@ -329,7 +329,7 @@ mod conversion_roundtrip {
             },
             tracks: vec![bae_core::import::TrackUserEdit {
                 title: "Track Title".to_string(),
-                side: 1,
+                side: Some(1),
                 track_number: Some(1),
                 artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
                     bae_core::import::ArtistAssignment::new("Track Artist"),
@@ -372,7 +372,7 @@ mod conversion_roundtrip {
                 artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
                     bae_core::import::ArtistAssignment::new("Track Artist"),
                 ]),
-                side: 1,
+                side: Some(1),
                 track_number: Some(1),
                 // The audio binding is not a form field, so it has to survive
                 // the editor's round trip untouched or a corrected pairing is
@@ -408,7 +408,7 @@ mod conversion_roundtrip {
                 id: "track-id".to_string(),
                 title: "Track Title".to_string(),
                 artist_assignments: bae_core::import::TrackArtistAssignments::AlbumArtists,
-                side: 2,
+                side: Some(2),
                 track_number: Some(3),
                 file: None,
             }],
@@ -470,7 +470,7 @@ mod conversion_roundtrip {
                 artist: Some("Track Artist".to_string()),
                 duration_ms: Some(210_000),
                 position: "A1".to_string(),
-                side: 1,
+                side: Some(1),
             }],
             cover_art: vec![bae_core::import::cover_art::RemoteCover {
                 url: "https://example.test/cover.jpg".to_string(),

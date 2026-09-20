@@ -83,6 +83,14 @@ pub struct BridgeSheetBindingOption {
     pub offer: BridgeSheetBindingOffer,
 }
 
+/// One CUE FILE reference and the audio choices prepared by core.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSheetReferenceOptions {
+    pub file_reference: String,
+    pub file_id: Option<String>,
+    pub options: Vec<BridgeSheetBindingOption>,
+}
+
 /// Localization key for a refused sheet binding — resolved by the UI against the
 /// `Core` string table, with the codec interpolated. One key, so the reason a
 /// binding was refused reads the same on every surface.

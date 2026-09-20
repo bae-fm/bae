@@ -446,7 +446,7 @@ mod tests {
                 id: Uuid::new_v4().to_string(),
                 release_id: release.id.clone(),
                 title: format!("Track {n}"),
-                side: 1,
+                side: Some(1),
                 track_number: Some(n),
                 duration_ms: None,
                 discogs_position: None,

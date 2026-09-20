@@ -75,6 +75,7 @@ enum ImportMappingFlow {
         services: ImportMappingServices
     ) {
         Task { @MainActor in
+            await services.endEditing()
             do {
                 _ = try await services.importer.clearCandidateMetadata(key)
             }
@@ -128,16 +129,6 @@ extension ImportMappingFlow {
                     await drop(key: key, trackId: trackId, services: services)
                 }
             },
-            exclude: { fileId in
-                start {
-                    _ = await writeRole(
-                        key: key,
-                        fileId: fileId,
-                        choice: .notATrack,
-                        services: services
-                    )
-                }
-            },
         )
     }
 
@@ -173,12 +164,13 @@ extension ImportMappingFlow {
     private static func bindingAction(
         key: String,
         services: ImportMappingServices
-    ) -> (String, String?) -> Void {
-        { sheetFileId, audioFileId in
+    ) -> (String, String, String?) -> Void {
+        { sheetFileId, fileReference, audioFileId in
             start {
                 await bindSheet(
                     key: key,
                     sheetFileId: sheetFileId,
+                    fileReference: fileReference,
                     audioFileId: audioFileId,
                     services: services
                 )
@@ -229,13 +221,16 @@ extension ImportMappingFlow {
     static func bindSheet(
         key: String,
         sheetFileId: String,
+        fileReference: String,
         audioFileId: String?,
         services: ImportMappingServices
     ) async {
+        await services.endEditing()
         do {
             try await services.importer.setSheetBinding(
                 key,
                 sheetFileId,
+                fileReference,
                 audioFileId
             )
         }
@@ -266,6 +261,7 @@ extension ImportMappingFlow {
         disc: BridgeSheetDisc,
         services: ImportMappingServices
     ) async {
+        await services.endEditing()
         do {
             try await services.importer.setSheetDisc(key, sheetFileId, disc)
         }
@@ -293,6 +289,7 @@ extension ImportMappingFlow {
         choice: BridgeFileRoleChoice,
         services: ImportMappingServices
     ) async -> Bool {
+        await services.endEditing()
         do {
             try await services.importer.setFileRole(key, fileId, choice)
             return true

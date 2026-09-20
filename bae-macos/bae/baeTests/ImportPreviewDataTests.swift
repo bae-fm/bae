@@ -117,8 +117,8 @@ struct ImportPreviewDataTests {
     }
 
     @MainActor
-    @Test("track mismatch preview keeps backed and missing rows distinct")
-    func trackMismatchPreviewRepresentsTheSettledMapping() throws {
+    @Test("ignoring the cue preview shows the whole file")
+    func ignoredCuePreviewShowsWholeFile() throws {
         let candidate = PreviewData.moreTracksMappingCandidate
         let mapping = try #require(candidate.mapping)
         let mappings = mapping.trackMappings
@@ -136,11 +136,11 @@ struct ImportPreviewDataTests {
         #expect(candidate.files.files[0].file.name == fileSources.first?.fileId)
         #expect(candidate.release?.trackCount == 10)
         #expect(fileSources.count == 1)
-        #expect(missingSources == 9)
-        #expect(mapping.reconciliation == .moreTracks(files: 1, tracks: 10))
-        #expect(commitTracks.count == 10)
+        #expect(missingSources == 0)
+        #expect(mapping.reconciliation == nil)
+        #expect(commitTracks.count == 1)
         #expect(commitTracks.count { $0.file != nil } == 1)
-        #expect(commitTracks.count { $0.file == nil } == 9)
+        #expect(commitTracks[0].title == "Album Image.flac")
     }
 
     @MainActor

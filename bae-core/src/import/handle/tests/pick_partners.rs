@@ -8,23 +8,37 @@ use serial_test::serial;
 #[serial(musicbrainz)]
 async fn linked_cover_gallery_can_be_empty() {
     let (handle, _tmp, key, _) = pane_fixture().await;
-    handle.library_manager.set_discogs_key(
-        "test-discogs-token", crate::config::DiscogsValidation::Valid,
-    ).unwrap();
+    handle
+        .library_manager
+        .set_discogs_key(
+            "test-discogs-token",
+            crate::config::DiscogsValidation::Valid,
+        )
+        .unwrap();
     let release_id = "70000003";
     seed_discogs_release(release_id);
-    handle.select_candidate_metadata_provenance(
-        key.clone(),
-        crate::import::MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, release_id.to_string()),
-            partners: vec![],
-        },
-    ).await.unwrap();
-    let gallery = handle.fetch_remote_covers(
-        crate::import::cover_art::CoverTarget::Candidate(key),
-    ).await.unwrap();
+    handle
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::Discogs,
+                    release_id.to_string(),
+                ),
+                partners: vec![],
+            },
+        )
+        .await
+        .unwrap();
+    let gallery = handle
+        .fetch_remote_covers(crate::import::cover_art::CoverTarget::Candidate(key))
+        .await
+        .unwrap();
     shut_down(handle).await;
-    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Linked(vec![]));
+    assert_eq!(
+        gallery,
+        crate::import::cover_art::RemoteCoverGallery::Linked(vec![])
+    );
 }
 
 /// Picking a paired pressing claims both sources. The partner is stored beside
@@ -47,13 +61,19 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     seed_discogs_release(discogs_release_id);
     let mb_release_id = "partner-mb-rel-1";
     seed_mb_release(mb_release_id, "partner-mb-group-1");
-    let partner = crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, mb_release_id.to_string());
+    let partner = crate::import::MetadataRef::new(
+        crate::import::Catalog::MusicBrainz,
+        mb_release_id.to_string(),
+    );
 
     handle
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, discogs_release_id.to_string()),
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::Discogs,
+                    discogs_release_id.to_string(),
+                ),
                 partners: vec![partner.clone()],
             },
         )
@@ -69,7 +89,10 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     assert_eq!(
         stored.metadata_provenance,
         Some(crate::import::MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, discogs_release_id.to_string()),
+            record: crate::import::MetadataRef::new(
+                crate::import::Catalog::Discogs,
+                discogs_release_id.to_string()
+            ),
             partners: vec![partner.clone()],
         }),
         "the partner reads back with the pick that claimed it"
@@ -111,8 +134,14 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, mb_release_id.to_string()),
-                partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000002")],
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    mb_release_id.to_string(),
+                ),
+                partners: vec![crate::import::MetadataRef::new(
+                    crate::import::Catalog::Discogs,
+                    "70000002",
+                )],
             },
         )
         .await
@@ -155,8 +184,14 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, mb_release_id.to_string()),
-                partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "repeat-mb-rel-2")],
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    mb_release_id.to_string(),
+                ),
+                partners: vec![crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    "repeat-mb-rel-2",
+                )],
             },
         )
         .await
@@ -176,7 +211,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
     shut_down(handle).await;
 }
 
-/// A one-track Discogs release with no master, seeded into the release cache.
+/// A two-track Discogs release with no master, seeded into the release cache.
 fn seed_discogs_release(release_id: &str) {
     let raw_release = serde_json::json!({
         "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
@@ -190,6 +225,8 @@ fn seed_discogs_release(release_id: &str) {
             "duration": "0:01",
             "type_": "track",
             "artists": [],
+        }, {
+            "position": "2", "title": "Track Two", "duration": "0:01", "type_": "track", "artists": []
         }],
     })
     .to_string();
@@ -200,7 +237,7 @@ fn seed_discogs_release(release_id: &str) {
     crate::musicbrainz::seed_discogs_url_lookup(release_id, None);
 }
 
-/// A one-track MusicBrainz release, seeded into the caches the fetch path
+/// A two-track MusicBrainz release, seeded into the caches the fetch path
 /// reads, so a partner resolves without a network call.
 fn seed_mb_release(release_id: &str, release_group_id: &str) {
     let response = crate::musicbrainz::MbReleaseResponse {
@@ -226,19 +263,21 @@ fn seed_mb_release(release_id: &str, release_group_id: &str) {
         media: vec![crate::musicbrainz::MbMedium {
             discs: vec![],
             format: Some("CD".to_string()),
-            tracks: vec![crate::musicbrainz::MbTrack {
-                position: Some(1),
-                number: Some("1".to_string()),
-                title: None,
-                length: None,
-                recording: Some(crate::musicbrainz::MbRecording {
-                    id: None,
-                    title: Some("Track One".to_string()),
+            tracks: (1..=2)
+                .map(|number| crate::musicbrainz::MbTrack {
+                    position: Some(number),
+                    number: Some(number.to_string()),
+                    title: None,
+                    length: None,
+                    recording: Some(crate::musicbrainz::MbRecording {
+                        id: None,
+                        title: Some("Track One".to_string()),
+                        artist_credit: vec![],
+                        relations: vec![],
+                    }),
                     artist_credit: vec![],
-                    relations: vec![],
-                }),
-                artist_credit: vec![],
-            }],
+                })
+                .collect(),
         }],
         relations: vec![],
         cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
@@ -252,4 +291,72 @@ fn seed_mb_release(release_id: &str, release_group_id: &str) {
         release_group_id,
         serde_json::json!({ "id": release_group_id }).to_string(),
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
+    let (handle, _tmp, key, hash) = pane_fixture().await;
+    let release_id = "numeric-vinyl-release";
+    crate::musicbrainz::seed_release_cache(release_id, serde_json::json!({
+        "id": release_id, "title": "Numbered Record",
+        "artist-credit": [{ "name": "Record Artist", "artist": { "id": "record-artist", "name": "Record Artist" } }],
+        "media": [{ "format": "12\" Vinyl", "tracks": [
+            { "position": 1, "number": "9", "recording": { "title": "First Listed" } },
+            { "position": 2, "number": "3", "recording": { "title": "Second Listed" } }
+        ] }],
+        "cover-art-archive": { "front": false, "darkened": false }
+    }).to_string());
+    handle
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    release_id,
+                ),
+                partners: vec![],
+            },
+        )
+        .await
+        .unwrap();
+    let draft = handle
+        .library_manager
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft;
+    assert_eq!(draft.pressing.format, "12\" Vinyl");
+    assert!(draft.tracks.iter().all(|track| track.edit.side.is_none()));
+    assert_eq!(
+        draft
+            .tracks
+            .iter()
+            .map(|track| track.edit.track_number)
+            .collect::<Vec<_>>(),
+        [9, 3]
+    );
+    let mut events = handle.subscribe_events();
+    let import_id = handle
+        .start_import(&key, crate::import::StorageMode::Local, false)
+        .await
+        .unwrap();
+    let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
+    let tracks = handle
+        .library_manager
+        .get_tracks_for_release(&release_id)
+        .await
+        .unwrap();
+    assert_eq!(
+        tracks
+            .iter()
+            .map(|track| (track.title.as_str(), track.track_number, track.side))
+            .collect::<Vec<_>>(),
+        [
+            ("First Listed", Some(9), None),
+            ("Second Listed", Some(3), None)
+        ]
+    );
+    shut_down(handle).await;
 }

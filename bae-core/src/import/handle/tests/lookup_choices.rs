@@ -249,7 +249,7 @@ async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &str) {
         .unwrap();
 }
 
-/// A one-track MusicBrainz release carrying `catalog_number`, in no release
+/// A two-track MusicBrainz release carrying `catalog_number`, in no release
 /// group: a group would have the pick fetch its front cover from the archive,
 /// which no test serves.
 fn seed_mb_release_with_catalog(release_id: &str, catalog_number: &str) {
@@ -277,19 +277,21 @@ fn seed_mb_release_with_catalog(release_id: &str, catalog_number: &str) {
         media: vec![crate::musicbrainz::MbMedium {
             discs: vec![],
             format: Some("CD".to_string()),
-            tracks: vec![crate::musicbrainz::MbTrack {
-                position: Some(1),
-                number: Some("1".to_string()),
-                title: None,
-                length: None,
-                recording: Some(crate::musicbrainz::MbRecording {
-                    id: None,
-                    title: Some("Track One".to_string()),
+            tracks: (1..=2)
+                .map(|number| crate::musicbrainz::MbTrack {
+                    position: Some(number),
+                    number: Some(number.to_string()),
+                    title: None,
+                    length: None,
+                    recording: Some(crate::musicbrainz::MbRecording {
+                        id: None,
+                        title: Some("Track One".to_string()),
+                        artist_credit: vec![],
+                        relations: vec![],
+                    }),
                     artist_credit: vec![],
-                    relations: vec![],
-                }),
-                artist_credit: vec![],
-            }],
+                })
+                .collect(),
         }],
         relations: vec![],
         cover_art_archive: crate::musicbrainz::MbCoverArtArchive {

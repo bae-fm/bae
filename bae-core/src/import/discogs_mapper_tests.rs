@@ -32,19 +32,19 @@ fn map_for_audio(
 #[test]
 fn test_parse_side_from_position() {
     // CD format: disc number = side
-    assert_eq!(parse_side_from_position("1-1"), 1);
-    assert_eq!(parse_side_from_position("2-5"), 2);
-    assert_eq!(parse_side_from_position("3-12"), 3);
+    assert_eq!(parse_side_from_position("1-1"), Some(1));
+    assert_eq!(parse_side_from_position("2-5"), Some(2));
+    assert_eq!(parse_side_from_position("3-12"), Some(3));
 
     // Vinyl sides: each letter = one side
-    assert_eq!(parse_side_from_position("A1"), 1);
-    assert_eq!(parse_side_from_position("B3"), 2);
-    assert_eq!(parse_side_from_position("C1"), 3);
-    assert_eq!(parse_side_from_position("D2"), 4);
+    assert_eq!(parse_side_from_position("A1"), Some(1));
+    assert_eq!(parse_side_from_position("B3"), Some(2));
+    assert_eq!(parse_side_from_position("C1"), Some(3));
+    assert_eq!(parse_side_from_position("D2"), Some(4));
 
-    // Plain numbers: side 1
-    assert_eq!(parse_side_from_position("1"), 1);
-    assert_eq!(parse_side_from_position("12"), 1);
+    // Plain numbers alone do not specify a side.
+    assert_eq!(parse_side_from_position("1"), None);
+    assert_eq!(parse_side_from_position("12"), None);
 }
 
 fn make_track(position: &str, title: &str) -> DiscogsTrack {
@@ -212,17 +212,17 @@ fn test_cd_multi_disc() {
     assert_eq!(tracks.len(), 5);
 
     // Side 1 (disc 1) tracks
-    assert_eq!(tracks[0].side, 1);
+    assert_eq!(tracks[0].side, Some(1));
     assert_eq!(tracks[0].track_number, Some(1));
-    assert_eq!(tracks[1].side, 1);
+    assert_eq!(tracks[1].side, Some(1));
     assert_eq!(tracks[1].track_number, Some(2));
-    assert_eq!(tracks[2].side, 1);
+    assert_eq!(tracks[2].side, Some(1));
     assert_eq!(tracks[2].track_number, Some(3));
 
     // Side 2 (disc 2) tracks restart at 1
-    assert_eq!(tracks[3].side, 2);
+    assert_eq!(tracks[3].side, Some(2));
     assert_eq!(tracks[3].track_number, Some(1));
-    assert_eq!(tracks[4].side, 2);
+    assert_eq!(tracks[4].side, Some(2));
     assert_eq!(tracks[4].track_number, Some(2));
 }
 
@@ -242,23 +242,23 @@ fn test_vinyl_sides() {
     assert_eq!(tracks.len(), 6);
 
     // A = side 1
-    assert_eq!(tracks[0].side, 1);
+    assert_eq!(tracks[0].side, Some(1));
     assert_eq!(tracks[0].track_number, Some(1));
-    assert_eq!(tracks[1].side, 1);
+    assert_eq!(tracks[1].side, Some(1));
     assert_eq!(tracks[1].track_number, Some(2));
 
     // B = side 2
-    assert_eq!(tracks[2].side, 2);
+    assert_eq!(tracks[2].side, Some(2));
     assert_eq!(tracks[2].track_number, Some(1));
-    assert_eq!(tracks[3].side, 2);
+    assert_eq!(tracks[3].side, Some(2));
     assert_eq!(tracks[3].track_number, Some(2));
 
     // C = side 3
-    assert_eq!(tracks[4].side, 3);
+    assert_eq!(tracks[4].side, Some(3));
     assert_eq!(tracks[4].track_number, Some(1));
 
     // D = side 4
-    assert_eq!(tracks[5].side, 4);
+    assert_eq!(tracks[5].side, Some(4));
     assert_eq!(tracks[5].track_number, Some(1));
 }
 
@@ -313,66 +313,67 @@ fn test_2lp_vinyl_with_headings() {
     assert_eq!(tracks.len(), 9);
 
     // Side A (1)
-    assert_eq!(tracks[0].side, 1);
+    assert_eq!(tracks[0].side, Some(1));
     assert_eq!(tracks[0].track_number, Some(1));
     assert_eq!(tracks[0].title, "Track One");
 
-    assert_eq!(tracks[1].side, 1);
+    assert_eq!(tracks[1].side, Some(1));
     assert_eq!(tracks[1].track_number, Some(2));
     assert_eq!(tracks[1].title, "Track Two");
 
     // Side B (2) — heading collapsed sub-tracks into one
-    assert_eq!(tracks[2].side, 2);
+    assert_eq!(tracks[2].side, Some(2));
     assert_eq!(tracks[2].track_number, Some(1));
     assert_eq!(
         tracks[2].title,
         "Medley: Part I \u{2013} Part II \u{2013} Part III"
     );
 
-    assert_eq!(tracks[3].side, 2);
+    assert_eq!(tracks[3].side, Some(2));
     assert_eq!(tracks[3].track_number, Some(2));
     assert_eq!(tracks[3].title, "Track Three");
 
     // Side C (3)
-    assert_eq!(tracks[4].side, 3);
+    assert_eq!(tracks[4].side, Some(3));
     assert_eq!(tracks[4].track_number, Some(1));
     assert_eq!(tracks[4].title, "Track Four");
 
-    assert_eq!(tracks[5].side, 3);
+    assert_eq!(tracks[5].side, Some(3));
     assert_eq!(tracks[5].track_number, Some(2));
     assert_eq!(tracks[5].title, "Track Five");
 
-    assert_eq!(tracks[6].side, 3);
+    assert_eq!(tracks[6].side, Some(3));
     assert_eq!(tracks[6].track_number, Some(3));
     assert_eq!(tracks[6].title, "Track Six");
 
     // Side D (4)
-    assert_eq!(tracks[7].side, 4);
+    assert_eq!(tracks[7].side, Some(4));
     assert_eq!(tracks[7].track_number, Some(1));
     assert_eq!(tracks[7].title, "Track Seven");
 
-    assert_eq!(tracks[8].side, 4);
+    assert_eq!(tracks[8].side, Some(4));
     assert_eq!(tracks[8].track_number, Some(2));
     assert_eq!(tracks[8].title, "Track Eight");
 }
 
 #[test]
 fn test_single_disc() {
-    let release = make_release(vec![
+    let mut release = make_release(vec![
         make_track("1", "Track 1"),
         make_track("2", "Track 2"),
         make_track("3", "Track 3"),
     ]);
 
+    release.format = vec!["CD".into()];
     let parsed = map(&release, Some(2024)).unwrap();
     let tracks = &parsed.tracks;
     assert_eq!(tracks.len(), 3);
 
-    assert_eq!(tracks[0].side, 1);
+    assert_eq!(tracks[0].side, Some(1));
     assert_eq!(tracks[0].track_number, Some(1));
-    assert_eq!(tracks[1].side, 1);
+    assert_eq!(tracks[1].side, Some(1));
     assert_eq!(tracks[1].track_number, Some(2));
-    assert_eq!(tracks[2].side, 1);
+    assert_eq!(tracks[2].side, Some(1));
     assert_eq!(tracks[2].track_number, Some(3));
 }
 

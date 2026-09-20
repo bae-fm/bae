@@ -16,7 +16,7 @@ use crate::db::client::candidate_state_rows::COVER_COLUMNS;
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack,
     CoverSelection, ExistingArtist, FieldOrigin, FieldOrigins, NewArtistSeed, RawPressingEdit,
-    RawTrackEdit, TrackArtistAssignments, TrackFileAuthor,
+    RawTrackEdit, TrackArtistAssignments,
 };
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, format, \
@@ -39,7 +39,7 @@ const ORIGIN_COLUMNS: [&str; 8] = [
 ];
 
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
-     artist_assignment_kind, side, track_number, named_by_source, dropped, file_author, \
+     artist_assignment_kind, side, track_number, source_index, \
      file_kind, file_id, sheet_id, slice_index";
 
 pub(super) fn delete_cover(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
@@ -70,11 +70,17 @@ pub(crate) fn insert_draft(
     content_hash: &str,
     draft: &CandidateDraft,
 ) -> Result<(), DbError> {
-    let origins = CandidateEditField::ALL
-        .map(|field| draft.origins.get(field).map(|origin| origin.as_str().into_owned()));
+    let origins = CandidateEditField::ALL.map(|field| {
+        draft
+            .origins
+            .get(field)
+            .map(|origin| origin.as_str().into_owned())
+    });
     sql.execute(
-        &format!("INSERT INTO import_candidate_edit ({EDIT_COLUMNS}) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"),
+        &format!(
+            "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ),
         params![
             content_hash,
             draft.album_title,
@@ -97,12 +103,11 @@ pub(crate) fn insert_draft(
     )?;
     insert_album_artist_assignments(sql, content_hash, &draft.album_artist_assignments)?;
     for (position, track) in draft.tracks.iter().enumerate() {
-        let (file_kind, file_id, sheet_id, slice_index) =
-            mapping_file_columns(track.edit.file.as_ref());
+        let (file_kind, file_id, sheet_id, slice_index) = mapping_file_columns(&track.edit.file);
         sql.execute(
             &format!(
                 "INSERT INTO import_candidate_track ({TRACK_COLUMNS}) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             ),
             params![
                 content_hash,
@@ -112,9 +117,7 @@ pub(crate) fn insert_draft(
                 assignment_kind_column(&track.edit.artist_assignments),
                 track.edit.side,
                 track.edit.track_number,
-                track.named_by_source,
-                track.dropped,
-                file_author_column(track.file_author),
+                track.source_index,
                 file_kind,
                 file_id,
                 sheet_id,
@@ -135,28 +138,16 @@ fn assignment_kind_column(assignments: &TrackArtistAssignments) -> &'static str 
     }
 }
 
-fn file_author_column(author: TrackFileAuthor) -> &'static str {
-    match author {
-        TrackFileAuthor::Automatic => "automatic",
-        TrackFileAuthor::User => "user",
-    }
-}
-
-fn mapping_file_columns(
-    file: Option<&AudioFile>,
-) -> (Option<&str>, Option<&str>, Option<&str>, Option<i64>) {
+fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i64>) {
     match file {
-        None => (None, None, None, None),
-        Some(AudioFile::Standalone { file_id }) => {
-            (Some("standalone"), Some(file_id.as_str()), None, None)
-        }
-        Some(AudioFile::SheetSlice {
+        AudioFile::Standalone { file_id } => ("standalone", file_id.as_str(), None, None),
+        AudioFile::SheetSlice {
             file_id,
             sheet_id,
             index,
-        }) => (
-            Some("sheet_slice"),
-            Some(file_id.as_str()),
+        } => (
+            "sheet_slice",
+            file_id.as_str(),
             Some(sheet_id.as_str()),
             Some(i64::from(*index)),
         ),
@@ -251,9 +242,7 @@ pub(crate) fn load_drafts_on(
                 assignment_kind: row.get("artist_assignment_kind")?,
                 side: row.get("side")?,
                 track_number: row.get("track_number")?,
-                named_by_source: row.get::<_, i64>("named_by_source")? == 1,
-                dropped: row.get::<_, i64>("dropped")? == 1,
-                file_author: row.get("file_author")?,
+                source_index: row.get("source_index")?,
                 file_kind: row.get("file_kind")?,
                 file_id: row.get("file_id")?,
                 sheet_id: row.get("sheet_id")?,
@@ -279,23 +268,17 @@ pub(crate) fn load_drafts_on(
                 row.track_id
             ))
         };
-        let file = match row.file_kind.as_deref() {
-            None => None,
-            Some("standalone") => Some(AudioFile::Standalone {
-                file_id: row.file_id.clone().ok_or_else(|| missing("file"))?,
-            }),
-            Some("sheet_slice") => Some(AudioFile::SheetSlice {
-                file_id: row.file_id.clone().ok_or_else(|| missing("file"))?,
+        let file = match row.file_kind.as_str() {
+            "standalone" => AudioFile::Standalone {
+                file_id: row.file_id.clone(),
+            },
+            "sheet_slice" => AudioFile::SheetSlice {
+                file_id: row.file_id.clone(),
                 sheet_id: row.sheet_id.clone().ok_or_else(|| missing("sheet"))?,
                 index: u32::try_from(row.slice_index.ok_or_else(|| missing("slice"))?)
                     .map_err(|_| missing("a readable slice"))?,
-            }),
-            Some(other) => return Err(unreadable("file_kind", other)),
-        };
-        let file_author = match row.file_author.as_str() {
-            "automatic" => TrackFileAuthor::Automatic,
-            "user" => TrackFileAuthor::User,
-            other => return Err(unreadable("file_author", other)),
+            },
+            other => return Err(unreadable("file_kind", other)),
         };
         tracks
             .entry(row.content_hash)
@@ -309,9 +292,7 @@ pub(crate) fn load_drafts_on(
                     track_number: row.track_number,
                     file,
                 },
-                named_by_source: row.named_by_source,
-                dropped: row.dropped,
-                file_author,
+                source_index: row.source_index,
             });
     }
     let rows = sql.query(
@@ -394,13 +375,11 @@ struct StoredTrackRow {
     track_id: String,
     title: String,
     assignment_kind: String,
-    side: i32,
-    track_number: Option<i32>,
-    named_by_source: bool,
-    dropped: bool,
-    file_author: String,
-    file_kind: Option<String>,
-    file_id: Option<String>,
+    side: Option<i32>,
+    track_number: i32,
+    source_index: Option<u32>,
+    file_kind: String,
+    file_id: String,
     sheet_id: Option<String>,
     slice_index: Option<i64>,
 }

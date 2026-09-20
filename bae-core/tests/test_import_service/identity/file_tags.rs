@@ -42,7 +42,11 @@ async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags))
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            MetadataProvenance::FileTags,
+        ))
         .await
         .unwrap();
 
@@ -211,7 +215,11 @@ async fn file_tags_import_seeds_embedded_cover_when_no_folder_image() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags))
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            MetadataProvenance::FileTags,
+        ))
         .await
         .unwrap();
 
@@ -269,7 +277,11 @@ async fn file_tags_import_embedded_cover_wins_over_folder_image() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags))
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            MetadataProvenance::FileTags,
+        ))
         .await
         .unwrap();
 
@@ -399,10 +411,12 @@ async fn file_tags_import_with_user_edit_overlay() {
         },
         tracks: vec![TrackUserEdit {
             title: "Edited Track Title".to_string(),
-            side: 1,
+            side: Some(1),
             track_number: Some(1),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
-            file: None,
+            file: Some(bae_core::import::AudioFile::Standalone {
+                file_id: "01.flac".into(),
+            }),
         }],
     };
 
@@ -474,10 +488,7 @@ async fn file_tags_import_with_no_tags_seeds_title_from_folder_name() {
         .await
         .unwrap();
     f.handle
-        .select_candidate_metadata_provenance(
-            candidate_key.clone(),
-            MetadataProvenance::FileTags,
-        )
+        .select_candidate_metadata_provenance(candidate_key.clone(), MetadataProvenance::FileTags)
         .await
         .unwrap();
     let pane = f

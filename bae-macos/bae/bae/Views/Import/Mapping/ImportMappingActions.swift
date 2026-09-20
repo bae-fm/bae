@@ -9,9 +9,9 @@ struct ImportMappingActions {
     /// Core persists it, and the table is re-read because a role change is a
     /// different set of rows.
     let setRole: (String, BridgeFileRoleChoice) -> Void
-    /// Name the audio a track sheet describes: the sheet's file id, then the
-    /// audio's, or `nil` to leave the sheet describing nothing.
-    let bindSheet: (String, String?) -> Void
+    /// Associate a sheet's FILE reference with audio: sheet id, reference,
+    /// and audio id, or `nil` to clear that reference.
+    let bindSheet: (String, String, String?) -> Void
     /// Say which disc of the release a track sheet's entries are, or take them
     /// out of the tracklist: the sheet's file id, then the assignment.
     let setSheetDisc: (String, BridgeSheetDisc) -> Void
@@ -30,12 +30,8 @@ struct ImportMappingActions {
     /// Point a row at one of the folder's audio units: the row's track id,
     /// then the unit.
     let chooseFile: (String, BridgeAudioFile) -> Void
-    /// Remove a row from the import entirely — a track the release names that
-    /// this folder has nothing for.
+    /// Delete a draft track without changing the file on disk.
     let drop: (String) -> Void
-    /// Take a file out of the tracklist by id. Persisted: it is a fact about
-    /// the folder, so it survives re-picking a release.
-    let exclude: (String) -> Void
 }
 
 /// What the commit bar calls back into.

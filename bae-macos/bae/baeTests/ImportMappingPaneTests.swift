@@ -18,8 +18,14 @@ private final class Recorder {
         let choice: BridgeFileRoleChoice
     }
 
+    struct BindingCall {
+        let sheetFileId: String
+        let fileReference: String
+        let audioFileId: String?
+    }
+
     var roleCalls: [RoleCall] = []
-    var bindCalls: [(sheetFileId: String, audioFileId: String?)] = []
+    var bindCalls: [BindingCall] = []
     var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
     var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
     var droppedTracks: [(key: String, trackId: String)] = []
@@ -33,10 +39,15 @@ private final class Recorder {
 
     var importer: Importer {
         Importer(
-            setSheetBinding: { [self] _, sheetFileId, audioFileId in
+            setSheetBinding: {
+                [self] _, sheetFileId, fileReference, audioFileId in
                 await MainActor.run {
                     bindCalls.append(
-                        (sheetFileId: sheetFileId, audioFileId: audioFileId)
+                        BindingCall(
+                            sheetFileId: sheetFileId,
+                            fileReference: fileReference,
+                            audioFileId: audioFileId
+                        )
                     )
                 }
             },
@@ -243,13 +254,14 @@ struct ImportMappingPaneTests {
         #expect(MappingFixtures.mapping(of: store).willWriteCount == 1)
         #expect(
             MappingFixtures.mapping(of: store).reconciliation
-                == .moreTracks(files: 1, tracks: 12)
+                == nil
         )
 
         let recorder = Recorder()
         await ImportMappingFlow.bindSheet(
             key: MappingFixtures.candidateKey,
             sheetFileId: MappingFixtures.sheetId,
+            fileReference: MappingFixtures.containerId,
             audioFileId: MappingFixtures.containerId,
             services: recorder.services(store)
         )
@@ -283,7 +295,11 @@ struct ImportMappingPaneTests {
             )
             return
         }
-        #expect(sheet.bound.containerId == MappingFixtures.containerId)
+        guard case .describes(let container) = sheet.bound else {
+            Issue.record("expected the associated container")
+            return
+        }
+        #expect(container.fileId == MappingFixtures.containerId)
         #expect(entries.count == 12)
         #expect(after.willWriteCount == 12)
         #expect(after.reconciliation == .agrees(count: 12))
@@ -402,7 +418,7 @@ extension ImportMappingPaneTests {
             services: recorder.services(store)
         )
 
-        actions.exclude("13.flac")
+        actions.setRole("13.flac", .notATrack)
         try? await Task.sleep(for: .milliseconds(50))
 
         #expect(recorder.roleCalls.count == 1)
@@ -412,10 +428,7 @@ extension ImportMappingPaneTests {
         #expect(recorder.droppedTracks.isEmpty)
     }
 
-    // 4. Nothing in the pane disables the commit. A row nobody named and a
-    //    track with no audio behind it are both states core shapes into a
-    //    committable edit — the button that used to grey out has no condition
-    //    left to grey out on.
+    // Both standalone files and whole containers provide importable audio.
     @MainActor
     @Test("nothing disables the commit")
     func nothingDisablesTheCommit() {
@@ -428,7 +441,7 @@ extension ImportMappingPaneTests {
                 .count == 13
         )
 
-        // A release that names more tracks than the folder has anything for.
+        // An inactive CUE leaves one whole container track.
         let unbacked = MappingFixtures.store(
             mapping: MappingFixtures.unboundSheetTable
         )
@@ -436,7 +449,7 @@ extension ImportMappingPaneTests {
         #expect(MappingFixtures.mapping(of: unbacked).willWriteCount == 1)
         #expect(
             bridgeMappingTracks(table: MappingFixtures.mapping(of: unbacked))
-                .count == 12
+                .count == 1
         )
     }
 

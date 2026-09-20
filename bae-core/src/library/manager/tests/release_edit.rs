@@ -91,7 +91,7 @@ async fn release_edit_seed_uses_persisted_track_ids() {
 #[tokio::test]
 #[serial(musicbrainz)]
 async fn release_edit_reset_preserves_persisted_track_ids() {
-    use crate::import::{MetadataRef, Catalog, ReleaseReseed};
+    use crate::import::{Catalog, MetadataRef, ReleaseReseed};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
@@ -171,7 +171,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     release.pressing.format = Some("2xCD".to_string());
     let first = crate::db::DbTrack::new_test(&release.id, TRACK_1, "First Track", Some(1));
     let mut second = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Second Track", Some(1));
-    second.side = 2;
+    second.side = Some(2);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager.database.insert_track(&first).await.unwrap();
@@ -280,7 +280,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
                 },
                 tracks: vec![crate::import::TrackUserEdit {
                     title: "Edited Track".to_string(),
-                    side: 2,
+                    side: Some(2),
                     track_number: Some(3),
                     artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
                         crate::import::ArtistAssignment::new("Edited Track Artist"),
@@ -318,7 +318,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     assert_eq!(stored_after.release.album_id, album.id);
     assert_eq!(stored_after.release.pressing.year, Some(1991));
     assert_eq!(stored_after.tracks[0].track.title, "Edited Track");
-    assert_eq!(stored_after.tracks[0].track.side, 2);
+    assert_eq!(stored_after.tracks[0].track.side, Some(2));
     assert_eq!(stored_after.tracks[0].track.track_number, Some(3));
     assert_eq!(
         manager

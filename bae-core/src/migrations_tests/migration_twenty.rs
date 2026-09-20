@@ -136,8 +136,10 @@ async fn migration_twenty_splits_the_verdict_and_the_provenance_off_the_candidat
         .expect("seed version-nineteen rows");
     drop(handle);
 
-    let handle =
-        open(store_dir, "migration-candidate-verdict", all()).expect("migrate to the split rows");
+    let mut migrations = all();
+    migrations.truncate(20);
+    let handle = open(store_dir, "migration-candidate-verdict", migrations)
+        .expect("migrate to the split rows");
     handle
         .read(|sql| {
             let verdicts = sql.query(

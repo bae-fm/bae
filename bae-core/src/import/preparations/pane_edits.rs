@@ -332,37 +332,39 @@ fn require_prepared(prep: &CandidatePreparation) -> Result<(), LibraryError> {
     }
 }
 
-/// One row as the person left it, or dropped. A row edited back into the
-/// import is undropped by the edit. A file that changed hands is the
-/// person's choice from here on; one left alone keeps whoever chose it.
+/// Delete a row, or replace its metadata while retaining its audio identity.
 fn apply_track_edit(
     draft: &mut CandidateDraft,
     edit: &crate::import::CandidateTrackEdit,
 ) -> Result<(), LibraryError> {
+    if matches!(edit.state, crate::import::TrackEditState::Dropped) {
+        draft.tracks.retain(|track| track.edit.id != edit.track_id);
+        return Ok(());
+    }
     let track = draft
         .tracks
         .iter_mut()
         .find(|track| track.edit.id == edit.track_id)
         .ok_or_else(|| {
-            LibraryError::Import(format!(
-                "track decision edit names {}, which is not a row of this draft",
-                edit.track_id
-            ))
+            LibraryError::Import(format!("{} is not included in this draft", edit.track_id))
         })?;
-    let previous_file = track.edit.file.clone();
-    match &edit.state {
-        crate::import::TrackEditState::Dropped => {
-            track.dropped = true;
-            track.edit.file = None;
-        }
-        crate::import::TrackEditState::Edited(row) => {
-            track.dropped = false;
-            track.edit = row.clone();
-        }
+    let crate::import::TrackEditState::Edited(row) = &edit.state else {
+        unreachable!()
+    };
+    if row.track_number != Some(track.edit.track_number) {
+        return Err(LibraryError::Import(
+            "track metadata edits cannot change numbering".into(),
+        ));
     }
-    if track.edit.file != previous_file {
-        track.file_author = crate::import::TrackFileAuthor::User;
-    }
+    track.edit.file = row
+        .file
+        .clone()
+        .ok_or_else(|| LibraryError::Import("an included track requires audio".into()))?;
+    track.edit.title.clone_from(&row.title);
+    track
+        .edit
+        .artist_assignments
+        .clone_from(&row.artist_assignments);
     Ok(())
 }
 

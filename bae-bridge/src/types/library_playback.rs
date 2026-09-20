@@ -470,7 +470,7 @@ pub struct BridgeTrackGroup {
 pub struct BridgeTrack {
     pub id: String,
     pub title: String,
-    pub side: i32,
+    pub side: Option<i32>,
     pub track_number: Option<i32>,
     /// Raw track length in milliseconds; `None` when core reports none. Retained
     /// alongside `duration_clock` because a consumer needs the number itself —

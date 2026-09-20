@@ -76,7 +76,12 @@ extension ImportSearchFlow {
         _ error: Error,
         provenance: BridgeMetadataProvenance
     ) -> String? {
-        error.displayLine.map {
+        if case BridgeError.Diagnostic(let category, _) = error,
+            category == .metadataTrackCount || category == .metadataGrouping
+        {
+            return error.displayLine
+        }
+        return error.displayLine.map {
             switch provenance {
             case .externalRelease:
                 String(localized: "Failed to load release details: \($0)")

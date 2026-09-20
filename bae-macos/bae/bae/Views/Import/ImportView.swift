@@ -44,7 +44,7 @@ struct ImportView: View {
     /// change: core probes every audio file to answer, so this is not something
     /// a candidate can carry through the list.
     @State
-    var sheetBindingOptions: [String: [BridgeSheetBindingOption]] = [:]
+    var sheetBindingOptions: [String: [BridgeSheetReferenceOptions]] = [:]
     /// Which section the Find online page opens on for each candidate: the
     /// entry that opened it says, and the page keeps that until it is opened
     /// again. Session state of this view, not of the candidate.
@@ -150,7 +150,7 @@ struct ImportView: View {
             sheetBindingOptions = [:]
             return
         }
-        var options: [String: [BridgeSheetBindingOption]] = [:]
+        var options: [String: [BridgeSheetReferenceOptions]] = [:]
         for sheet in candidate.files.trackSheets {
             do {
                 options[sheet.file.name] =

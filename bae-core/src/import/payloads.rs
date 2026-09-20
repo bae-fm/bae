@@ -45,12 +45,30 @@ fn not_fetched(catalog: Catalog) -> ! {
 /// documents are each present or not on their own terms: a release with no
 /// group and a source with no cross-reference both read the same way they did
 /// at fetch time.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReleasePayloads {
     release: MetadataRef,
     /// The release's own document, as its source returned it.
     anchor: String,
     supporting: Vec<SourcePayload>,
+}
+
+/// The documents and measured track lengths used by one metadata application.
+/// Re-reading this value preserves Discogs' selected index/sub-track layout.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct AppliedSource {
+    pub payloads: ReleasePayloads,
+    pub audio_durations_ms: Vec<u64>,
+}
+
+impl AppliedSource {
+    pub fn parsed(
+        &self,
+        clock: &dyn coven::Clock,
+        ids: &dyn coven::IdProvider,
+    ) -> Result<ParsedAlbum, ImportError> {
+        self.payloads.parsed(&self.audio_durations_ms, clock, ids)
+    }
 }
 
 impl ReleasePayloads {
@@ -416,15 +434,13 @@ impl ReleasePayloads {
         ids: &dyn coven::IdProvider,
     ) -> Result<ParsedAlbum, ImportError> {
         match self.release.catalog {
-            Catalog::MusicBrainz => {
-                crate::import::musicbrainz_mapper::map_mb_response_to_db(
-                    &self.musicbrainz_anchor()?,
-                    None,
-                    self.discogs_xref()?,
-                    clock,
-                    ids,
-                )
-            }
+            Catalog::MusicBrainz => crate::import::musicbrainz_mapper::map_mb_response_to_db(
+                &self.musicbrainz_anchor()?,
+                None,
+                self.discogs_xref()?,
+                clock,
+                ids,
+            ),
             Catalog::Discogs => {
                 let release = self.discogs_anchor()?;
                 let master_year = self.discogs_master_year(&release)?;
@@ -555,9 +571,7 @@ pub async fn fetch(
     priority: CallPriority,
 ) -> Result<ReleasePayloads, ImportError> {
     let (anchor, supporting) = match release.catalog {
-        Catalog::MusicBrainz => {
-            fetch_musicbrainz(discogs_client, &release.key, priority).await?
-        }
+        Catalog::MusicBrainz => fetch_musicbrainz(discogs_client, &release.key, priority).await?,
         Catalog::Discogs => {
             let client = discogs_client.ok_or(ImportError::DiscogsNotConfigured)?;
             fetch_discogs(client, &release.key, priority).await?
@@ -601,16 +615,17 @@ fn wikidata_item(
     let group_urls = group
         .iter()
         .flat_map(|group| crate::musicbrainz::relation_urls(&group.relations));
-    let item = release
-        .related_urls()
-        .chain(group_urls)
-        .find_map(|url| match parse_catalog_url(url) {
-            Some(CatalogPage::Release {
-                catalog: Catalog::Wikidata,
-                key,
-            }) => Some(key),
-            _ => None,
-        });
+    let item =
+        release
+            .related_urls()
+            .chain(group_urls)
+            .find_map(|url| match parse_catalog_url(url) {
+                Some(CatalogPage::Release {
+                    catalog: Catalog::Wikidata,
+                    key,
+                }) => Some(key),
+                _ => None,
+            });
     Ok(item)
 }
 

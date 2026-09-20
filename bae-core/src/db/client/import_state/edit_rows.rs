@@ -17,6 +17,10 @@ pub(super) fn delete_file_edits(
     content_hash: &str,
 ) -> Result<(), DbError> {
     sql.execute(
+        "DELETE FROM import_candidate_sheet_reference WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    sql.execute(
         "DELETE FROM import_candidate_file_edit WHERE content_hash = ?",
         [content_hash],
     )?;
@@ -34,7 +38,6 @@ pub(super) fn insert_file_edits(
         .file_roles
         .iter()
         .map(|(file_id, _)| file_id)
-        .chain(edits.sheet_bindings.iter().map(|(file_id, _)| file_id))
         .chain(edits.sheet_discs.iter().map(|(file_id, _)| file_id))
         .collect();
     for relative_path in decided {
@@ -45,13 +48,6 @@ pub(super) fn insert_file_edits(
                 FileRoleChoice::Audio => "audio",
                 FileRoleChoice::NotATrack => "not_a_track",
             });
-        let (sheet_binding, sheet_binding_file_id) = match edits.sheet_bindings.get(relative_path) {
-            None => (None, None),
-            Some(UserSheetBinding::Cleared) => (Some("cleared"), None),
-            Some(UserSheetBinding::Describes { file_id }) => {
-                (Some("describes"), Some(file_id.as_str()))
-            }
-        };
         let (sheet_disc, sheet_disc_number) = match edits.sheet_discs.get(relative_path) {
             None => (None, None),
             Some(SheetDisc::Ignored) => (Some("ignored"), None),
@@ -59,19 +55,26 @@ pub(super) fn insert_file_edits(
         };
         sql.execute(
             "INSERT INTO import_candidate_file_edit \
-                 (content_hash, relative_path, role_choice, sheet_binding, \
-                  sheet_binding_file_id, sheet_disc, sheet_disc_number) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+                 (content_hash, relative_path, role_choice, sheet_disc, sheet_disc_number) \
+             VALUES (?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 relative_path,
                 role_choice,
-                sheet_binding,
-                sheet_binding_file_id,
                 sheet_disc,
                 sheet_disc_number,
             ],
         )?;
+    }
+    for (sheet_id, references) in edits.sheet_bindings.iter() {
+        for (reference, decision) in references.iter() {
+            let file_id = match decision {
+                UserSheetBinding::Describes { file_id } => Some(file_id.as_str()),
+                UserSheetBinding::Cleared => None,
+            };
+            sql.execute("INSERT INTO import_candidate_sheet_reference (content_hash, sheet_id, file_reference, file_id) VALUES (?, ?, ?, ?)",
+                params![content_hash, sheet_id, reference, file_id])?;
+        }
     }
     Ok(())
 }
@@ -80,8 +83,6 @@ pub(super) struct FileEditRow {
     pub(super) content_hash: String,
     relative_path: String,
     role_choice: Option<String>,
-    sheet_binding: Option<String>,
-    sheet_binding_file_id: Option<String>,
     sheet_disc: Option<String>,
     sheet_disc_number: Option<i64>,
 }
@@ -91,8 +92,6 @@ pub(super) fn read_file_edit_row(row: &Row<'_>) -> Result<FileEditRow, DbError> 
         content_hash: row.get("content_hash")?,
         relative_path: row.get("relative_path")?,
         role_choice: row.get("role_choice")?,
-        sheet_binding: row.get("sheet_binding")?,
-        sheet_binding_file_id: row.get("sheet_binding_file_id")?,
         sheet_disc: row.get("sheet_disc")?,
         sheet_disc_number: row.get("sheet_disc_number")?,
     })
@@ -110,21 +109,6 @@ pub(super) fn apply_file_edit_row(
             other => return Err(unreadable("role_choice", other)),
         };
         edits.file_roles.set(row.relative_path.clone(), choice);
-    }
-    if let Some(sheet_binding) = row.sheet_binding {
-        let binding = match sheet_binding.as_str() {
-            "cleared" => UserSheetBinding::Cleared,
-            "describes" => UserSheetBinding::Describes {
-                file_id: row.sheet_binding_file_id.ok_or_else(|| {
-                    DbError::Message(format!(
-                        "the binding stored for {} describes no file",
-                        row.relative_path
-                    ))
-                })?,
-            },
-            other => return Err(unreadable("sheet_binding", other)),
-        };
-        edits.sheet_bindings.set(row.relative_path.clone(), binding);
     }
     if let Some(sheet_disc) = row.sheet_disc {
         let disc = match sheet_disc.as_str() {

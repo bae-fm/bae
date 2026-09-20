@@ -34,6 +34,6 @@ fn direct_entry_uses_the_physical_track_layout_without_provenance() {
             .iter()
             .map(|track| (track.side, track.track_number))
             .collect::<Vec<_>>(),
-        [(1, Some(1)), (1, Some(2))]
+        [(None, Some(1)), (None, Some(2))]
     );
 }

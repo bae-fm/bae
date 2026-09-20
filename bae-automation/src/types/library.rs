@@ -106,7 +106,7 @@ pub struct AutomationImageRef {
 pub struct AutomationTrackDetail {
     pub id: String,
     pub title: String,
-    pub side: i32,
+    pub side: Option<i32>,
     pub track_number: Option<i32>,
     pub duration_ms: Option<i64>,
     pub artist_names: String,

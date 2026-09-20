@@ -88,7 +88,7 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
         .map(|index| SourceTrack {
             edit: TrackUserEdit {
                 title: format!("Track Title {}", index + 1),
-                side: 1,
+                side: Some(1),
                 track_number: Some(index as i32 + 1),
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
@@ -326,7 +326,7 @@ fn standalone_tracks_are_sectioned_by_release_side() {
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let mut tracks = source_tracks(4);
     for (track, (side, number)) in tracks.iter_mut().zip([(1, 1), (1, 2), (2, 1), (2, 2)]) {
-        track.edit.side = side;
+        track.edit.side = Some(side);
         track.edit.track_number = Some(number);
     }
     let slots = slot_table(&tracks, &files, &durations);
@@ -377,7 +377,7 @@ fn each_cue_is_one_section_on_its_assigned_disc() {
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let mut tracks = source_tracks(4);
     for (track, (side, number)) in tracks.iter_mut().zip([(1, 1), (1, 2), (2, 1), (2, 2)]) {
-        track.edit.side = side;
+        track.edit.side = Some(side);
         track.edit.track_number = Some(number);
     }
     let slots = slot_table(&tracks, &files, &durations);
@@ -576,98 +576,6 @@ fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
     ));
 }
 
-/// Editing a row writes the track back onto the row that commits it, found
-/// by the track's own id, and leaves every other row alone.
-#[test]
-fn with_track_writes_the_edited_row_back_by_its_id() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("01.flac"));
-    write_flac(&tmp.path().join("02.flac"));
-    fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
-
-    let files = scan(tmp.path());
-    let durations = source_durations(&files).expect("scanned fixture audio has durations");
-    let slots = slot_table(&source_tracks(2), &files, &durations);
-    let table = external_table(&files, &slots, &durations, None);
-
-    let mut edited = mapping_tracks(&table)[1].clone();
-    edited.title = "Renamed".to_string();
-    let table = mapping_with_track(table, edited);
-
-    let titles: Vec<String> = mapping_tracks(&table)
-        .into_iter()
-        .map(|track| track.title)
-        .collect();
-    assert_eq!(titles, vec!["Track Title 1", "Renamed"]);
-    assert_eq!(table.images[0].file_id, "cover.jpg");
-    assert_eq!(
-        table.reconciliation,
-        Some(SlotReconciliation::Agrees { count: 2 }),
-        "naming a row changes nothing about the tally",
-    );
-}
-
-/// Dropping a track the folder has nothing for takes its row out and
-/// restates the tally over what is left.
-#[test]
-fn without_track_drops_the_row_and_restates_the_tally() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("01.flac"));
-    write_flac(&tmp.path().join("02.flac"));
-    fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
-
-    let files = scan(tmp.path());
-    let durations = source_durations(&files).expect("scanned fixture audio has durations");
-    let slots = slot_table(&source_tracks(3), &files, &durations);
-    let table = external_table(&files, &slots, &durations, None);
-    assert_eq!(
-        table.reconciliation,
-        Some(SlotReconciliation::MoreTracks {
-            files: 2,
-            tracks: 3,
-        }),
-    );
-
-    let table = mapping_without_track(table, "import-track-2");
-
-    assert_eq!(table.track_sections.len(), 1);
-    assert_eq!(mapping_tracks(&table).len(), 2);
-    assert_eq!(table.images[0].file_id, "cover.jpg");
-    assert_eq!(
-        table.reconciliation,
-        Some(SlotReconciliation::Agrees { count: 2 }),
-    );
-}
-
-/// A table with no tally keeps none through an edit: the folder's own tags
-/// cannot disagree with the folder, however many rows are left.
-#[test]
-fn an_edit_to_a_table_with_no_tally_leaves_it_without_one() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("01.flac"));
-    write_flac(&tmp.path().join("02.flac"));
-
-    let files = scan(tmp.path());
-    let durations = source_durations(&files).expect("scanned fixture audio has durations");
-    let slots = slot_table(&source_tracks(2), &files, &durations);
-    let table = mapping_table(
-        &files,
-        Some(PickedTracklist {
-            slots: &slots,
-            track_id_prefix: "file-tag-track",
-            source: TracklistSource::CandidateFiles,
-            format: None,
-        }),
-        &durations,
-    );
-    assert!(table.reconciliation.is_none());
-
-    let table = mapping_without_track(table, "file-tag-track-0");
-
-    assert_eq!(mapping_tracks(&table).len(), 1);
-    assert!(table.reconciliation.is_none());
-}
-
 /// Projecting the table reads no audio at all. The lengths come from the
 /// measurements identification stored, so re-opening a candidate costs
 /// nothing on disk however often it happens — which is what lets the pane
@@ -710,4 +618,33 @@ fn projecting_the_table_opens_no_audio() {
 /// JPEG magic bytes — what the scan's image validation reads.
 fn fake_jpeg() -> Vec<u8> {
     vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]
+}
+
+#[test]
+fn invalid_cue_times_are_not_reported_as_missing_audio() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    write_flac(&tmp.path().join("disc.flac"));
+    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 7)).unwrap();
+    let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
+    let MappingFileRow::Sheet(sheet) = &table.files[0] else {
+        panic!("the refused CUE remains listed");
+    };
+    assert!(
+        !matches!(sheet.bound, SheetBound::Unresolved { .. }),
+        "the audio exists; its duration refuses the CUE"
+    );
+}
+
+#[test]
+fn a_sheet_disc_menu_keeps_the_assigned_disc_available() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    write_flac(&tmp.path().join("disc.flac"));
+    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 2)).unwrap();
+    let mut files = scan(tmp.path());
+    assign_discs(&mut files, &[("disc.cue", 2)]);
+    let table = mapping_table(&files, None, &SourceDurations::default());
+    let MappingTrackSectionContent::Sheet { sheet, .. } = &table.track_sections[0].content else {
+        panic!("the selected CUE groups its tracks");
+    };
+    assert!(sheet.disc_options.contains(&2));
 }

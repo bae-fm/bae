@@ -18,10 +18,10 @@ struct ImportSheetBindingMenu: View {
     let sheet: BridgeSheetGroup
     /// The audio this sheet may be bound to, each already offered or refused by
     /// core.
-    let options: [BridgeSheetBindingOption]
+    let options: [BridgeSheetReferenceOptions]
     /// Name the audio this sheet describes, or `nil` to leave it describing
     /// nothing.
-    let onBind: (String?) -> Void
+    let onBind: (String, String?) -> Void
 
     @State
     private var hovering = false
@@ -38,17 +38,23 @@ struct ImportSheetBindingMenu: View {
 
     private var menu: some View {
         Menu {
-            ForEach(options, id: \.fileId) { option in
-                bindButton(option)
-            }
-            Divider()
-            Button {
-                onBind(nil)
-            } label: {
-                checkable(
-                    coreString("ui.import.sheet.describes_nothing"),
-                    selected: sheet.bound.containerId == nil
-                )
+            ForEach(options, id: \.fileReference) { reference in
+                Menu {
+                    ForEach(reference.options, id: \.fileId) { option in
+                        bindButton(option, reference: reference)
+                    }
+                    Divider()
+                    Button {
+                        onBind(reference.fileReference, nil)
+                    } label: {
+                        checkable(
+                            coreString("ui.import.sheet.describes_nothing"),
+                            selected: reference.fileId == nil
+                        )
+                    }
+                } label: {
+                    Text(verbatim: reference.fileReference)
+                }
             }
         } label: {
             Text(
@@ -75,7 +81,10 @@ struct ImportSheetBindingMenu: View {
     /// visible rather than hidden, so a folder whose only audio the sheet can't
     /// use reads as "here is why" instead of an empty menu.
     @ViewBuilder
-    private func bindButton(_ option: BridgeSheetBindingOption) -> some View {
+    private func bindButton(
+        _ option: BridgeSheetBindingOption,
+        reference: BridgeSheetReferenceOptions
+    ) -> some View {
         if let refusal = option.refusalLine {
             Button {
             } label: {
@@ -87,11 +96,11 @@ struct ImportSheetBindingMenu: View {
         }
         else {
             Button {
-                onBind(option.fileId)
+                onBind(reference.fileReference, option.fileId)
             } label: {
                 checkable(
                     option.fileId,
-                    selected: sheet.bound.containerId == option.fileId
+                    selected: reference.fileId == option.fileId
                 )
             }
         }

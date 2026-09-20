@@ -188,6 +188,26 @@ pub fn all() -> Vec<coven::Migration> {
             "release_mark_corroboration",
             include_str!("../migrations/036_release_mark_corroboration.sql"),
         ),
+        coven::Migration::sql(
+            37,
+            "audio_backed_drafts",
+            include_str!("../migrations/037_audio_backed_drafts.sql"),
+        ),
+        coven::Migration::sql(
+            38,
+            "track_order_and_unknown_sides",
+            include_str!("../migrations/038_track_order_and_unknown_sides.sql"),
+        ),
+        coven::Migration::sql(
+            39,
+            "cue_reference_bindings",
+            include_str!("../migrations/039_cue_reference_bindings.sql"),
+        ),
+        coven::Migration::run(
+            40,
+            "applied_source_documents",
+            migrate_applied_source_documents,
+        ),
     ]
 }
 
@@ -334,3 +354,14 @@ fn parse_v1_artist_text(raw: &str) -> Vec<String> {
 #[cfg(test)]
 #[path = "migrations_tests.rs"]
 mod tests;
+
+fn migrate_applied_source_documents(
+    sql: &coven::MigrationContext<'_>,
+) -> Result<(), coven::DbError> {
+    sql.execute_batch(include_str!(
+        "../migrations/040_applied_source_documents.sql"
+    ))?;
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    crate::db::Database::migrate_applied_sources(sql)?;
+    Ok(())
+}

@@ -31,18 +31,27 @@ async fn metadata_for_settled_lead(
         SettledLead::ExternalRelease {
             provenance,
             payloads,
-        } => Ok(Some(
-            context
-                .import
-                .external_candidate_metadata(
-                    &payloads,
-                    candidate.files(),
-                    durations,
-                    provenance,
-                    None,
-                )
-                .await?,
-        )),
+        } => {
+            let current = context
+                .library_manager
+                .load_import_candidate_preparation(&candidate.files().content_hash())
+                .await?
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!("{} has no stored draft", candidate.key()),
+                })?;
+            Ok(Some(
+                context
+                    .import
+                    .external_candidate_metadata(
+                        &payloads,
+                        durations,
+                        provenance,
+                        &current.draft,
+                        None,
+                    )
+                    .await?,
+            ))
+        }
     }
 }
 
@@ -134,7 +143,7 @@ pub(super) async fn finish_candidate(
         }
     };
 
-    let mut metadata = metadata_or_failed_verdict(
+    let metadata = metadata_or_failed_verdict(
         context,
         candidate,
         &signals.durations,
@@ -142,12 +151,6 @@ pub(super) async fn finish_candidate(
         &mut verdict,
     )
     .await;
-    if let Err(error) = preserve_current_decisions(context, candidate, &mut metadata).await
-    {
-        return FinishCandidateOutcome::Failed {
-            error: error.to_string(),
-        };
-    }
     save(
         context,
         token,
@@ -164,28 +167,6 @@ pub(super) async fn finish_candidate(
         metadata,
     )
     .await
-}
-
-async fn preserve_current_decisions(
-    context: &SweepContext,
-    candidate: &ReleaseCandidate,
-    metadata: &mut Option<crate::import::CandidateMetadataDraft>,
-) -> Result<(), crate::library::LibraryError> {
-    let Some(metadata) = metadata.as_mut() else {
-        return Ok(());
-    };
-    let current = context
-        .library_manager
-        .load_import_candidate_preparation(&candidate.files().content_hash())
-        .await?
-        .ok_or_else(|| {
-            crate::library::LibraryError::Internal(format!(
-                "{} has no stored import preparation",
-                candidate.key()
-            ))
-        })?;
-    crate::import::edits::preserve_user_decisions(&mut metadata.draft, &current.draft);
-    Ok(())
 }
 
 /// Write one row. Cancellation is re-checked immediately before the write, not
@@ -205,7 +186,9 @@ pub(super) async fn save(
     metadata: Option<crate::import::CandidateMetadataDraft>,
 ) -> FinishCandidateOutcome {
     if token.is_cancelled() {
-        context.import.finish_identification_save(candidate_key, run);
+        context
+            .import
+            .finish_identification_save(candidate_key, run);
         return FinishCandidateOutcome::Superseded;
     }
     let row = NewImportCandidateVerdict {
@@ -478,7 +461,7 @@ pub(super) async fn record_explicit_lookup_verdict(
                         return;
                     }
                 };
-                let mut metadata = metadata_or_failed_verdict(
+                let metadata = metadata_or_failed_verdict(
                     context,
                     &entry.candidate,
                     &signals.durations,
@@ -486,15 +469,6 @@ pub(super) async fn record_explicit_lookup_verdict(
                     &mut verdict,
                 )
                 .await;
-                if let Err(error) =
-                    preserve_current_decisions(context, &entry.candidate, &mut metadata)
-                        .await
-                {
-                    context
-                        .import
-                        .fail_identification(&candidate_key, run, error.to_string());
-                    return;
-                }
                 match save(
                     context,
                     token,

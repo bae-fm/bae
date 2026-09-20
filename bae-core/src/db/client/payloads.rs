@@ -41,6 +41,63 @@ pub(super) fn load_release_payloads_on(
 }
 
 impl Database {
+    /// Freeze the interpretation that pending drafts used before source
+    /// documents belonged to each metadata application.
+    pub(crate) fn migrate_applied_sources(
+        sql: &coven::MigrationContext<'_>,
+    ) -> Result<(), DbError> {
+        let rows = sql.query(
+            "SELECT content_hash, source, release_id FROM import_candidate_draft_provenance WHERE kind = 'external_release'",
+            [], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?)),
+        )?;
+        for (hash, catalog, key) in rows {
+            let catalog = catalog.parse().map_err(DbError::Message)?;
+            let record = MetadataRef::new(catalog, key);
+            let Some(payloads) = load_release_payloads_on(sql, &record)
+                .map_err(|error| DbError::Message(error.to_string()))?
+            else {
+                // Such a draft already lacked the documents required to import.
+                tracing::warn!(
+                    content_hash = hash,
+                    "pending draft has no archived source document to preserve"
+                );
+                continue;
+            };
+            let scan: Option<(String, String)> = sql.query_row(
+                "SELECT watched_folder_path, path FROM scan_candidate WHERE content_hash = ? ORDER BY watched_folder_path, path LIMIT 1",
+                [&hash], |row| Ok((row.get(0)?, row.get(1)?)),
+            ).optional()?;
+            let audio_durations_ms = if let Some((root, path)) = scan {
+                let files = super::folder_scans::read::load_files(sql, &root, Some(&path))?
+                    .remove(&path)
+                    .ok_or_else(|| {
+                        DbError::Message(format!("candidate {path} has no scanned files"))
+                    })?;
+                let files = crate::import::folder_scanner::CategorizedFiles { files };
+                let durations = crate::import::probe::source_durations(&files)
+                    .map_err(|error| DbError::Message(error.to_string()))?;
+                crate::import::track_slots::audio_durations(&files, &durations)
+                    .map_err(|error| DbError::Message(error.to_string()))?
+            } else {
+                // An unscanned candidate cannot import. Preserve its document;
+                // no measured audio was available to choose an index layout.
+                tracing::warn!(
+                    content_hash = hash,
+                    "pending draft has no scanned audio for its preserved source"
+                );
+                Vec::new()
+            };
+            let applied = crate::import::payloads::AppliedSource {
+                payloads,
+                audio_durations_ms,
+            };
+            let json = serde_json::to_string(&applied)
+                .map_err(|error| DbError::Message(error.to_string()))?;
+            sql.execute("INSERT INTO import_candidate_applied_source (content_hash, snapshot) VALUES (?, ?)", params![hash, json])?;
+        }
+        Ok(())
+    }
+
     /// What every catalog describing `records` says about the album-level
     /// fields: the documents behind the records read in one snapshot, then
     /// projected once the connection is released.

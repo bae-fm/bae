@@ -145,7 +145,7 @@ pub(super) fn get_tracks_with_artists_for_release_on(
          LEFT JOIN track_artists ta ON ta.track_id = track.id
          LEFT JOIN artists artist ON artist.id = ta.artist_id
          WHERE track.release_id = ?
-         ORDER BY track.side, track.track_number, track.id, ta.position",
+         ORDER BY track.position, track.id, ta.position",
         params![release_id],
         |row| {
             let track = row_to_track_with_prefix(row, "track_")?;

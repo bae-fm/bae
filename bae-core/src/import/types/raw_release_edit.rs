@@ -6,6 +6,8 @@
 //! physical decision.
 
 use super::*;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use crate::import::ImportError;
 
 /// Edit-metadata form values exactly as the editor holds them — text the user
 /// typed, not yet normalized. Artist assignments retain their identity while
@@ -38,54 +40,69 @@ pub type RawReleaseEdit = RawReleaseEditOf<RawTrackEdit>;
 /// file binding" true by construction rather than by a check.
 pub type CandidateDraft = RawReleaseEditOf<CandidateTrack>;
 
-/// One stored row of a candidate draft: the editable track plus the decisions
-/// that survive the metadata being replaced — whether the source named it,
-/// whether it is out of the import, and who chose its file.
+/// A track included in the candidate. Its audio and number are required.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateTrack {
-    pub edit: RawTrackEdit,
-    /// Whether the source's tracklist contains this track — false exactly for
-    /// a row that exists only because audio was found for it.
-    pub named_by_source: bool,
-    /// The row is out of the import: the release commits without it.
-    pub dropped: bool,
-    /// Who put `edit.file` there. An automatic binding is recalculated when
-    /// the candidate's file shape changes; a person's survives while the
-    /// audio it names still exists.
-    pub file_author: TrackFileAuthor,
+    pub edit: RawTrackEdit<AudioFile, i32>,
+    /// The track in the applied source document that supplied supplemental
+    /// credits. Audio replacements have no corresponding source track.
+    pub source_index: Option<u32>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TrackFileAuthor {
-    Automatic,
-    User,
-}
-
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl CandidateTrack {
-    /// A row as a source projection first produced it: automatically bound,
-    /// in the import.
-    pub fn automatic(edit: RawTrackEdit, named_by_source: bool) -> Self {
-        Self {
-            edit,
-            named_by_source,
-            dropped: false,
-            file_author: TrackFileAuthor::Automatic,
-        }
+    pub fn from_edit(edit: RawTrackEdit, position: usize) -> Result<Self, ImportError> {
+        let file = edit.file.ok_or_else(|| ImportError::Internal {
+            detail: format!("draft track {} has no audio", edit.id),
+        })?;
+        Ok(Self {
+            edit: RawTrackEdit {
+                id: edit.id,
+                title: edit.title,
+                artist_assignments: edit.artist_assignments,
+                side: edit.side,
+                track_number: edit.track_number.unwrap_or_else(|| {
+                    i32::try_from(position + 1).expect("track position fits i32")
+                }),
+                file,
+            },
+            source_index: None,
+        })
     }
+}
 
-    /// The file a person chose for this row, when they chose one — `None`
-    /// when the binding is the projection's own.
-    pub fn user_file(&self) -> Option<&Option<AudioFile>> {
-        match self.file_author {
-            TrackFileAuthor::Automatic => None,
-            TrackFileAuthor::User => Some(&self.edit.file),
+impl RawTrackEdit<AudioFile, i32> {
+    /// Cross the editor boundary without weakening the stored draft's shape.
+    pub fn as_edit(&self) -> RawTrackEdit {
+        RawTrackEdit {
+            id: self.id.clone(),
+            title: self.title.clone(),
+            artist_assignments: self.artist_assignments.clone(),
+            side: self.side,
+            track_number: Some(self.track_number),
+            file: Some(self.file.clone()),
         }
     }
 }
 
 impl CandidateDraft {
-    /// The release this draft commits: every row still in the import, as the
-    /// editor holds it. The one projection from stored rows to the wire edit.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn audio_durations(
+        &self,
+        durations: &crate::import::probe::SourceDurations,
+    ) -> Result<Vec<u64>, ImportError> {
+        self.tracks
+            .iter()
+            .map(|track| {
+                durations
+                    .duration_of(&track.edit.file)
+                    .ok_or_else(|| ImportError::Internal {
+                        detail: format!("draft track {} has no measured audio", track.edit.id),
+                    })
+            })
+            .collect()
+    }
+
     pub fn release_edit(&self) -> RawReleaseEdit {
         RawReleaseEditOf {
             album_title: self.album_title.clone(),
@@ -95,22 +112,8 @@ impl CandidateDraft {
             tracks: self
                 .tracks
                 .iter()
-                .filter(|track| !track.dropped)
-                .map(|track| track.edit.clone())
+                .map(|track| track.edit.as_edit())
                 .collect(),
-            origins: self.origins.clone(),
-        }
-    }
-
-    /// Every row, dropped ones included, as editor rows — the form the pane
-    /// draws over the mapping table, which shows the drop as a row state.
-    pub fn edit_rows(&self) -> RawReleaseEdit {
-        RawReleaseEditOf {
-            album_title: self.album_title.clone(),
-            album_artist_assignments: self.album_artist_assignments.clone(),
-            album_year: self.album_year.clone(),
-            pressing: self.pressing.clone(),
-            tracks: self.tracks.iter().map(|track| track.edit.clone()).collect(),
             origins: self.origins.clone(),
         }
     }
@@ -182,16 +185,16 @@ pub struct RawPressingEdit {
 /// — used only to diff rows in the UI; shaping drops it because wire
 /// tracks zip positionally to existing track IDs.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct RawTrackEdit {
+pub struct RawTrackEdit<Audio = Option<AudioFile>, Number = Option<i32>> {
     pub id: String,
     pub title: String,
     pub artist_assignments: TrackArtistAssignments,
-    pub side: i32,
-    pub track_number: Option<i32>,
+    pub side: Option<i32>,
+    pub track_number: Number,
     /// The audio bound to this row, carried through editing untouched. This is
     /// what makes a pairing correctable: `shape` keeps it, so what the user
     /// left in the slot table is what the commit writes.
-    pub file: Option<AudioFile>,
+    pub file: Audio,
 }
 
 /// Why a [`RawReleaseEdit`] can't be shaped into a savable

@@ -75,8 +75,7 @@ extension BridgeMappingTable {
         trackMappings.count(where: \.isUnanswered)
     }
 
-    /// Every audio unit the table's rows carry, in table order — what a row
-    /// with nothing behind it is offered to point at.
+    /// Included audio units available for swapping between draft tracks.
     var audioChoices: [ImportAudioChoice] {
         trackMappings.compactMap(ImportAudioChoice.init(mapping:))
     }
@@ -118,11 +117,9 @@ extension BridgeSheetBound {
     private var container: BridgeMappingContainer? {
         switch self {
         case .describes(let container): container
-        case .describesFiles, .refusedCodec, .unresolved: nil
+        case .describesFiles, .refusedCodec, .refusedTiming, .unresolved: nil
         }
     }
-
-    var containerId: String? { container?.fileId }
 
     var containerName: String? { container?.name }
 
@@ -145,6 +142,8 @@ extension BridgeSheetBound {
             }
         case .refusedCodec(let codec):
             coreString(bridgeSheetRefusedCodecKey(), codec)
+        case .refusedTiming:
+            coreString("core.import.sheet.refused_timing")
         }
     }
 }

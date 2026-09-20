@@ -22,7 +22,7 @@ pub struct AutomationPressingEdit {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationTrackUserEdit {
     pub title: String,
-    pub side: i32,
+    pub side: Option<i32>,
     pub track_number: Option<i32>,
     pub artist_assignments: AutomationTrackArtistAssignments,
 }

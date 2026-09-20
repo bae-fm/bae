@@ -10,7 +10,7 @@
 
 use super::assemble::{
     assemble_parsed_album, AlbumArtistScope, ArtistRef, PartDirection, ReleaseIr, TrackEvent,
-    TrackIr, TrackNumber, WorkEvent, WorkGraphRef, WorkNode,
+    TrackIr, WorkEvent, WorkGraphRef, WorkNode,
 };
 use super::ParsedAlbum;
 use crate::db::{is_various_artists, Pressing};
@@ -172,7 +172,7 @@ pub(crate) fn track_title(release_id: &str, track: &MbTrack) -> Result<String, I
 pub(crate) struct MediumSides {
     /// Side offset (0-based, relative to the medium's lowest side letter) for
     /// each track, in track order.
-    pub offsets: Vec<u32>,
+    pub offsets: Vec<Option<u32>>,
     /// Number of sides this medium occupies; advances the running side base
     /// between media.
     pub side_span: u32,
@@ -186,9 +186,8 @@ pub(crate) struct MediumSides {
 /// lettered C/D yields offsets 0/1, not 2/3. Single-side media put every track
 /// on offset 0.
 ///
-/// Errors when the medium has no tracks, or when a multi-side track has no
-/// leading side letter: there is no correct side for it, and silently bucketing
-/// it onto side 0 would corrupt the numbering.
+/// Tracks without a side letter retain an unknown side. An empty medium has
+/// no playable tracks and is rejected.
 pub(crate) fn medium_sides(
     release_id: &str,
     medium: &MbMedium,
@@ -210,47 +209,35 @@ pub(crate) fn medium_sides(
 
     if !is_multi_side {
         return Ok(MediumSides {
-            offsets: vec![0; medium.tracks.len()],
+            offsets: vec![Some(0); medium.tracks.len()],
             side_span: 1,
         });
     }
 
-    // Offsets are relative to this medium's lowest side letter, so a second
-    // medium lettered C/D yields 0/1 rather than 2/3.
-    let base_letter = medium
+    let letters: Vec<_> = medium
         .tracks
         .iter()
-        .filter_map(|t| t.number.as_deref()?.chars().next())
-        .filter(|c| c.is_ascii_alphabetic())
-        .map(|c| c.to_ascii_uppercase() as u32)
-        .min()
-        .unwrap_or('A' as u32);
-
-    let mut offsets = Vec::with_capacity(medium.tracks.len());
-    for track in &medium.tracks {
-        let side_letter = track
-            .number
-            .as_deref()
-            .and_then(|n| n.chars().next())
-            .filter(|c| c.is_ascii_alphabetic())
-            .ok_or_else(|| ImportError::SourceData {
-                catalog: Catalog::MusicBrainz,
-                detail: format!(
-                    "MusicBrainz multi-side medium track has no side letter: \
-                     number={:?}, title={:?}",
-                    track.number,
-                    track.recording.as_ref().and_then(|r| r.title.as_ref()),
-                ),
-            })?;
-        offsets.push((side_letter.to_ascii_uppercase() as u32) - base_letter);
-    }
-
-    let side_span = offsets
-        .iter()
-        .copied()
-        .max()
-        .expect("non-empty medium has at least one offset")
-        + 1;
+        .map(|track| {
+            let position = track.number.as_deref()?;
+            position
+                .chars()
+                .next()
+                .filter(|letter| {
+                    letter.is_ascii_alphabetic()
+                        && position[1..].bytes().all(|byte| byte.is_ascii_digit())
+                })
+                .map(|letter| letter.to_ascii_uppercase() as u32)
+        })
+        .collect();
+    let base = letters.iter().flatten().copied().min();
+    let offsets: Vec<_> = letters
+        .into_iter()
+        .map(|letter| letter.zip(base).map(|(letter, base)| letter - base))
+        .collect();
+    let side_span = match offsets.iter().flatten().max() {
+        Some(last) => last + 1,
+        None => 0,
+    };
     Ok(MediumSides { offsets, side_span })
 }
 
@@ -340,7 +327,7 @@ pub fn map_mb_response_to_db(
         for (track, &side_offset) in medium.tracks.iter().zip(&sides.offsets) {
             let title = track_title(&response.id, track)?;
 
-            let side = side_base + side_offset as i32 + 1;
+            let side = side_offset.map(|offset| side_base + offset as i32 + 1);
 
             let mut events: Vec<TrackEvent> = Vec::new();
 
@@ -423,7 +410,10 @@ pub fn map_mb_response_to_db(
             tracks.push(TrackIr {
                 title,
                 side,
-                number: TrackNumber::PerSide,
+                number: track
+                    .number
+                    .as_deref()
+                    .and_then(super::assemble::position_number),
                 source_position: track.number.clone(),
                 events,
             });

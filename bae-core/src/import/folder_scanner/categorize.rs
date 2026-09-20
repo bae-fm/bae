@@ -49,9 +49,14 @@ pub(super) fn cue_pair_codec_label(audio: &ScannedFile) -> CueCodecLabel {
     }
 }
 
-pub(super) fn sheet_fits_single_audio(sheet: &CueSheet, audio: &ScannedFile) -> bool {
+pub(super) fn sheet_reference_fits_audio(
+    sheet: &CueSheet,
+    reference: &str,
+    audio: &ScannedFile,
+) -> bool {
     sheet
         .playable_tracks()
+        .filter(|track| track.file_reference == reference)
         .all(|track| track_fits_audio(track, audio))
 }
 
@@ -203,60 +208,54 @@ pub(super) fn settle_sheet_bindings(
             continue;
         };
         let sheet_id = entry.file.relative_path.as_str();
-        // The pairing to judge — each `FILE` reference with the audio it
-        // names — and whether the user chose it.
-        let resolved: Option<(Vec<(&str, &ScannedFile)>, bool)> = match edits.get(sheet_id) {
-            Some(UserSheetBinding::Describes { file_id }) => {
-                let Some(reference) = sheet.single_file() else {
-                    info!(
-                        "sheet {sheet_id} names one file per track, so a single binding \
-                         cannot describe it; it stays unbound"
-                    );
-                    settled.push((index, SheetBinding::Unresolved));
-                    continue;
-                };
-                let Some(named) = audio.get(file_id.as_str()).copied() else {
-                    info!(
-                        "sheet {sheet_id} was bound to {file_id}, which is not this folder's \
-                         audio; it stays unbound"
-                    );
-                    settled.push((index, SheetBinding::Unresolved));
-                    continue;
-                };
-                Some((vec![(reference, named)], true))
-            }
-            Some(UserSheetBinding::Cleared) => None,
-            None if sheet.audio_file_references().is_empty() => {
-                info!("sheet {sheet_id} names no audio file; it stays unbound");
-                None
-            }
-            None => {
-                let resolved = resolve_cue_audio_paths(&entry.file.path, sheet, &audio_paths);
-                if resolved.is_none() {
-                    info!("sheet {sheet_id} names audio that is not here; it stays unbound");
+        let references = sheet.audio_file_references();
+        let mut resolved = Vec::new();
+        let mut used = BTreeSet::new();
+        for reference in &references {
+            let named = match edits.get(sheet_id).and_then(|edits| edits.get(reference)) {
+                Some(UserSheetBinding::Describes { file_id }) => {
+                    audio.get(file_id.as_str()).copied()
                 }
-                resolved.map(|resolved| {
-                    (
-                        resolved
-                            .into_iter()
-                            .map(|(reference, path)| {
-                                (
-                                    reference,
-                                    *audio_by_path
-                                        .get(path.as_path())
-                                        .expect("resolved CUE audio came from this folder"),
-                                )
-                            })
-                            .collect(),
-                        false,
-                    )
-                })
+                Some(UserSheetBinding::Cleared) => None,
+                None => {
+                    resolve_cue_audio_path(&entry.file.path, reference, &audio_paths).map(|path| {
+                        *audio_by_path
+                            .get(path.as_path())
+                            .expect("resolved audio belongs to the candidate")
+                    })
+                }
+            };
+            if let Some(named) = named {
+                if used.insert(named.relative_path.as_str()) {
+                    resolved.push((*reference, named));
+                } else {
+                    info!(
+                        "sheet {sheet_id} associates several FILE references with {}",
+                        named.relative_path
+                    );
+                }
+            } else {
+                info!("sheet {sheet_id} has no audio for FILE {reference}");
             }
+        }
+        let named_files = || {
+            resolved
+                .iter()
+                .map(|(reference, audio)| SheetAudioFile {
+                    file_reference: reference.to_string(),
+                    file_id: audio.relative_path.clone(),
+                })
+                .collect::<Vec<_>>()
         };
-        let Some((resolved, chosen_by_user)) = resolved else {
-            settled.push((index, SheetBinding::Unresolved));
+        if references.is_empty() || resolved.len() != references.len() {
+            settled.push((
+                index,
+                SheetBinding::Unresolved {
+                    files: named_files(),
+                },
+            ));
             continue;
-        };
+        }
         let mut refused_codec = None;
         for (_, audio) in &resolved {
             match cue_pair_codec_label(audio) {
@@ -291,22 +290,12 @@ pub(super) fn settle_sheet_bindings(
                 "sheet {sheet_id} has boundaries outside {file_ids}; it stays unbound and \
                  the physical audio files import independently"
             );
-            SheetBinding::Unresolved
+            SheetBinding::Unresolved {
+                files: named_files(),
+            }
         } else {
-            let mut named = resolved.iter().map(|(reference, audio)| SheetAudioFile {
-                file_reference: reference.to_string(),
-                file_id: audio.relative_path.clone(),
-            });
-            if chosen_by_user {
-                SheetBinding::Override {
-                    file: named
-                        .next()
-                        .expect("a binding the user chose names one file"),
-                }
-            } else {
-                SheetBinding::Resolved {
-                    files: named.collect(),
-                }
+            SheetBinding::Resolved {
+                files: named_files(),
             }
         };
         settled.push((index, binding));
@@ -330,21 +319,46 @@ pub(super) fn settle_sheet_bindings(
 /// out is a position among the sheets that are *bound*. A sheet nobody bound
 /// carves nothing either way, so it takes disc one and says nothing by it.
 pub(super) fn settle_sheet_discs(files: &mut [CandidateFile], edits: &SheetDiscEdits) {
+    let mut owners: HashMap<&str, Vec<&str>> = HashMap::new();
+    for entry in files.iter() {
+        if let FileRole::TrackSheet {
+            binding: SheetBinding::Resolved { files: audio },
+            ..
+        } = &entry.role
+        {
+            if edits.get(&entry.file.relative_path) == Some(&SheetDisc::Ignored) {
+                continue;
+            }
+            for file in audio {
+                owners
+                    .entry(&file.file_id)
+                    .or_default()
+                    .push(&entry.file.relative_path);
+            }
+        }
+    }
+    let competing: BTreeSet<String> = owners
+        .values()
+        .filter(|sheets| sheets.len() > 1)
+        .flatten()
+        .map(|id| id.to_string())
+        .collect();
     let mut bound_so_far = 0u32;
     for entry in files.iter_mut() {
         let FileRole::TrackSheet { binding, disc, .. } = &mut entry.role else {
             continue;
         };
-        let position = if binding.is_resolved() {
-            bound_so_far += 1;
-            bound_so_far
-        } else {
-            1
-        };
+        if !binding.is_resolved() || competing.contains(&entry.file.relative_path) {
+            *disc = SheetDisc::Ignored;
+            continue;
+        }
+        bound_so_far += 1;
         *disc = edits
             .get(&entry.file.relative_path)
             .copied()
-            .unwrap_or(SheetDisc::Disc { number: position });
+            .unwrap_or(SheetDisc::Disc {
+                number: bound_so_far,
+            });
     }
 }
 
@@ -491,7 +505,7 @@ pub(super) fn categorize_files_from_tree(
                 // have landed; and a cue filename says nothing about which
                 // disc it holds, so `settle_sheet_discs` assigns every parsed
                 // sheet against the bindings that end up in force.
-                binding: SheetBinding::Unresolved,
+                binding: SheetBinding::Unresolved { files: Vec::new() },
                 disc: SheetDisc::Disc { number: 1 },
             },
             ProposedRole::Image => FileRole::Artwork,

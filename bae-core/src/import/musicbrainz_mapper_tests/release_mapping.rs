@@ -102,16 +102,43 @@ fn test_cd_two_media_each_one_side() {
     assert_eq!(tracks.len(), 4);
 
     // Medium 1 = side 1
-    assert_eq!(tracks[0].side, 1);
+    assert_eq!(tracks[0].side, Some(1));
     assert_eq!(tracks[0].track_number, Some(1));
-    assert_eq!(tracks[1].side, 1);
+    assert_eq!(tracks[1].side, Some(1));
     assert_eq!(tracks[1].track_number, Some(2));
 
     // Medium 2 = side 2
-    assert_eq!(tracks[2].side, 2);
+    assert_eq!(tracks[2].side, Some(2));
     assert_eq!(tracks[2].track_number, Some(1));
-    assert_eq!(tracks[3].side, 2);
+    assert_eq!(tracks[3].side, Some(2));
     assert_eq!(tracks[3].track_number, Some(2));
+}
+
+#[test]
+fn numeric_vinyl_tracks_are_usable_without_side_boundaries() {
+    let response = make_response(vec![MbMedium {
+        discs: vec![],
+        format: Some("12\" Vinyl".to_string()),
+        tracks: (1..=12)
+            .map(|number| make_mb_track(&number.to_string(), &format!("Track {number}")))
+            .collect(),
+    }]);
+    let parsed =
+        map(&response, None, None).expect("absent side information does not invalidate a release");
+    assert_eq!(parsed.tracks.len(), 12);
+    assert!(parsed.tracks.iter().all(|track| track.side.is_none()));
+    assert_eq!(
+        parsed.release.pressing.format.as_deref(),
+        Some("12\" Vinyl")
+    );
+    assert_eq!(
+        parsed
+            .tracks
+            .iter()
+            .map(|track| track.track_number)
+            .collect::<Vec<_>>(),
+        (1..=12).map(Some).collect::<Vec<_>>()
+    );
 }
 
 #[test]
@@ -133,15 +160,15 @@ fn test_vinyl_one_medium_two_sides() {
     assert_eq!(tracks.len(), 4);
 
     // A tracks = side 1
-    assert_eq!(tracks[0].side, 1);
+    assert_eq!(tracks[0].side, Some(1));
     assert_eq!(tracks[0].track_number, Some(1));
-    assert_eq!(tracks[1].side, 1);
+    assert_eq!(tracks[1].side, Some(1));
     assert_eq!(tracks[1].track_number, Some(2));
 
     // B tracks = side 2
-    assert_eq!(tracks[2].side, 2);
+    assert_eq!(tracks[2].side, Some(2));
     assert_eq!(tracks[2].track_number, Some(1));
-    assert_eq!(tracks[3].side, 2);
+    assert_eq!(tracks[3].side, Some(2));
     assert_eq!(tracks[3].track_number, Some(2));
 }
 
@@ -178,16 +205,16 @@ fn test_vinyl_two_media_four_sides() {
     assert_eq!(tracks.len(), 8);
 
     // Medium 1: A = side 1, B = side 2
-    assert_eq!(tracks[0].side, 1);
-    assert_eq!(tracks[1].side, 1);
-    assert_eq!(tracks[2].side, 2);
-    assert_eq!(tracks[3].side, 2);
+    assert_eq!(tracks[0].side, Some(1));
+    assert_eq!(tracks[1].side, Some(1));
+    assert_eq!(tracks[2].side, Some(2));
+    assert_eq!(tracks[3].side, Some(2));
 
     // Medium 2: C = side 3, D = side 4
-    assert_eq!(tracks[4].side, 3);
-    assert_eq!(tracks[5].side, 3);
-    assert_eq!(tracks[6].side, 4);
-    assert_eq!(tracks[7].side, 4);
+    assert_eq!(tracks[4].side, Some(3));
+    assert_eq!(tracks[5].side, Some(3));
+    assert_eq!(tracks[6].side, Some(4));
+    assert_eq!(tracks[7].side, Some(4));
 }
 
 #[test]
@@ -208,19 +235,17 @@ fn test_single_medium_cd_all_side_one() {
     assert_eq!(tracks.len(), 3);
 
     // All tracks on side 1
-    assert_eq!(tracks[0].side, 1);
+    assert_eq!(tracks[0].side, Some(1));
     assert_eq!(tracks[0].track_number, Some(1));
-    assert_eq!(tracks[1].side, 1);
+    assert_eq!(tracks[1].side, Some(1));
     assert_eq!(tracks[1].track_number, Some(2));
-    assert_eq!(tracks[2].side, 1);
+    assert_eq!(tracks[2].side, Some(1));
     assert_eq!(tracks[2].track_number, Some(3));
 }
 
-/// A vinyl medium track without a leading side letter is malformed MB data:
-/// there's no way to assign it to a side. Surface the error instead of
-/// silently bucketing it onto side 1.
+/// Known and unknown side assignments coexist without guessed boundaries.
 #[test]
-fn test_vinyl_track_missing_side_letter_errors() {
+fn vinyl_track_without_a_number_keeps_its_side_unknown() {
     let response = make_response(vec![MbMedium {
         discs: vec![],
         format: Some("12\" Vinyl".to_string()),
@@ -242,19 +267,14 @@ fn test_vinyl_track_missing_side_letter_errors() {
         ],
     }]);
 
-    let err = map(&response, Some(2024), None)
-        .expect_err("expected error for vinyl track without side letter");
-    assert!(
-        matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("no side letter")),
-        "unexpected error message: {}",
-        err
-    );
+    let parsed = map(&response, Some(2024), None).unwrap();
+    assert_eq!(parsed.tracks[0].side, Some(1));
+    assert_eq!(parsed.tracks[1].side, None);
 }
 
-/// A track number like "1" on a vinyl medium has no side letter to derive
-/// offset from. Same failure mode as a missing number.
+/// A printed number does not establish a vinyl side.
 #[test]
-fn test_vinyl_track_numeric_only_errors() {
+fn vinyl_numeric_track_keeps_its_side_unknown() {
     let response = make_response(vec![MbMedium {
         discs: vec![],
         format: Some("12\" Vinyl".to_string()),
@@ -264,13 +284,9 @@ fn test_vinyl_track_numeric_only_errors() {
         ],
     }]);
 
-    let err = map(&response, Some(2024), None)
-        .expect_err("expected error for vinyl track with numeric-only number");
-    assert!(
-        matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("no side letter")),
-        "unexpected error message: {}",
-        err
-    );
+    let parsed = map(&response, Some(2024), None).unwrap();
+    assert_eq!(parsed.tracks[0].side, Some(1));
+    assert_eq!(parsed.tracks[1].side, None);
 }
 
 #[test]

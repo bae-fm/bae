@@ -88,7 +88,7 @@ fn make_seed_album_release_track() -> (
         id: "track-1".to_string(),
         release_id: release.id.clone(),
         title: "Original Title".to_string(),
-        side: 1,
+        side: Some(1),
         track_number: Some(1),
         duration_ms: Some(180000),
         discogs_position: None,
@@ -117,7 +117,7 @@ fn user_edit_overrides_album_year_and_pressing_fields() {
         },
         tracks: vec![crate::import::TrackUserEdit {
             title: "Edited Track".to_string(),
-            side: 1,
+            side: Some(1),
             track_number: Some(1),
             artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
             file: None,
@@ -220,14 +220,14 @@ fn user_edit_track_count_mismatch_is_an_error() {
         tracks: vec![
             crate::import::TrackUserEdit {
                 title: "X".to_string(),
-                side: 1,
+                side: Some(1),
                 track_number: Some(1),
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
             },
             crate::import::TrackUserEdit {
                 title: "Y".to_string(),
-                side: 1,
+                side: Some(1),
                 track_number: Some(2),
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
@@ -301,7 +301,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         id: "track-1".to_string(),
         release_id: release.id.clone(),
         title: "Track Title".to_string(),
-        side: 1,
+        side: Some(1),
         track_number: Some(1),
         duration_ms: None,
         discogs_position: None,
@@ -424,7 +424,7 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
         id: "track-2".to_string(),
         release_id: release.id.clone(),
         title: "Second Track".to_string(),
-        side: 1,
+        side: Some(1),
         track_number: Some(2),
         duration_ms: None,
         discogs_position: None,
@@ -464,7 +464,12 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
         album_artists: Vec::new(),
         track_artists: Vec::new(),
         work_graph: crate::import::ParsedWorkGraph {
-            works: vec![work("kept"), work("kept-child"), work("dropped"), work("dropped-child")],
+            works: vec![
+                work("kept"),
+                work("kept-child"),
+                work("dropped"),
+                work("dropped-child"),
+            ],
             work_artists: vec![
                 crate::db::DbWorkArtist::new(
                     "kept-child",
@@ -523,7 +528,7 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
         release_artist_roles: Vec::new(),
         track_artist_roles: Vec::new(),
     };
-    let mut edit = Some(crate::import::ReleaseUserEdit {
+    let edit = Some(crate::import::ReleaseUserEdit {
         origins: Default::default(),
         album_title: "Album Title".into(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::new("Artist Name")],
@@ -532,7 +537,7 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
         tracks: vec![
             crate::import::TrackUserEdit {
                 title: "First Track".into(),
-                side: 1,
+                side: Some(1),
                 track_number: Some(1),
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: Some(crate::import::AudioFile::Standalone {
@@ -541,7 +546,7 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
             },
             crate::import::TrackUserEdit {
                 title: "Second Track".into(),
-                side: 1,
+                side: Some(1),
                 track_number: Some(2),
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
@@ -549,29 +554,23 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
         ],
     });
 
-    let mut prepared_projection = parsed.clone();
     let mapped = crate::import::RawReleaseEdit::from_user_edit(
         edit.clone().expect("the mapped edit is present"),
         crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
     );
-    crate::import::pane::retain_mapped_source_track_metadata(
-        &mut prepared_projection,
-        &mapped.tracks,
-        crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
-    );
-    assert_eq!(
-        crate::import::pane::source_discogs_artist_ids(&prepared_projection),
-        std::collections::BTreeSet::from(["discogs-kept-work".to_string()]),
-        "a source track without audio cannot require an artist asset"
-    );
-
+    let mut kept = mapped;
+    kept.tracks.retain(|track| track.file.is_some());
+    let mut draft = crate::import::pane::candidate_draft_from_edit(kept)
+        .unwrap()
+        .draft;
+    draft.tracks[0].source_index = Some(0);
     settle_track_rows(
         &mut parsed,
-        &mut edit,
-        &crate::import::folder_scanner::CategorizedFiles { files: Vec::new() },
+        &draft,
         &SequentialIdProvider::new("track"),
         now,
-    );
+    )
+    .unwrap();
 
     assert_eq!(
         parsed
@@ -583,12 +582,45 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
         vec!["kept", "kept-child"]
     );
     assert_eq!(parsed.work_graph.work_artists.len(), 1);
+    assert_eq!(
+        crate::import::pane::source_discogs_artist_ids(&parsed),
+        std::collections::BTreeSet::from(["discogs-kept-work".to_string()])
+    );
     assert_eq!(parsed.work_graph.work_parts.len(), 1);
     assert_eq!(parsed.work_graph.track_works.len(), 1);
     assert_eq!(
         crate::import::pane::source_discogs_artist_ids(&parsed),
         std::collections::BTreeSet::from(["discogs-kept-work".to_string()])
     );
+}
+
+#[test]
+fn deleting_the_first_track_keeps_the_second_tracks_source_identity() {
+    let (album, release, first, artist) = make_seed_album_release_track();
+    let mut second = first.clone();
+    second.id = "second-track".into();
+    second.title = "Second Track".into();
+    second.track_number = Some(2);
+    let mut parsed = seed_parsed(album, release, vec![first, second], vec![artist]);
+    let mut edit = crate::import::parsed_album_to_user_edit(&parsed);
+    edit.tracks.remove(0);
+    edit.tracks[0].file = Some(AudioFile::Standalone {
+        file_id: "second.flac".into(),
+    });
+    let edit = crate::import::RawReleaseEdit::from_user_edit(edit, "draft");
+    let mut draft = crate::import::pane::candidate_draft_from_edit(edit)
+        .unwrap()
+        .draft;
+    draft.tracks[0].source_index = Some(1);
+    settle_track_rows(
+        &mut parsed,
+        &draft,
+        &SequentialIdProvider::new("import"),
+        test_clock().0,
+    )
+    .unwrap();
+    assert_eq!(parsed.tracks.len(), 1);
+    assert_eq!(parsed.tracks[0].id, "second-track");
 }
 
 // ── build_audio_formats: CUE track byte windows ────────────────────
@@ -617,7 +649,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 id: format!("track-{index}"),
                 release_id: "rel".to_string(),
                 title: format!("Track {index}"),
-                side: 1,
+                side: Some(1),
                 track_number: Some(index as i32 + 1),
                 duration_ms: None,
                 discogs_position: None,

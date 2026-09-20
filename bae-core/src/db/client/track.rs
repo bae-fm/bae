@@ -33,7 +33,7 @@ impl Database {
         let release_id = release_id.to_string();
         self.read(move |sql| {
             sql.query(
-                "SELECT id FROM tracks WHERE release_id = ? ORDER BY side, track_number, id",
+                "SELECT id FROM tracks WHERE release_id = ? ORDER BY position, id",
                 params![release_id],
                 |row| row.get::<_, String>("id"),
             )
@@ -44,12 +44,12 @@ impl Database {
 
     /// Every track id in the library, in a deterministic base order (the same
     /// order across calls so a shuffle seed permutes a stable list). Ordered to
-    /// match the per-release order — by release, then side, track number, id — so
+    /// match the per-release order — by release, then stored position, id — so
     /// the library and a single release agree on what "source order" means.
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, DbError> {
         self.read(move |sql| {
             sql.query(
-                "SELECT id FROM tracks ORDER BY release_id, side, track_number, id",
+                "SELECT id FROM tracks ORDER BY release_id, position, id",
                 [],
                 |row| row.get::<_, String>("id"),
             )
@@ -84,12 +84,12 @@ impl Database {
         .await
     }
 
-    /// Ordered by side, track number, id.
+    /// Ordered by the release’s stored track positions.
     pub async fn get_tracks_for_release(&self, release_id: &str) -> Result<Vec<DbTrack>, DbError> {
         let release_id = release_id.to_string();
         self.read(move |sql| {
             sql.query(
-                "SELECT * FROM tracks WHERE release_id = ? ORDER BY side, track_number, id",
+                "SELECT * FROM tracks WHERE release_id = ? ORDER BY position, id",
                 params![release_id],
                 row_to_track,
             )

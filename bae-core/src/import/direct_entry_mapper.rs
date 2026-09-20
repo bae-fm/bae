@@ -1,8 +1,6 @@
 //! Direct-entry metadata over a candidate's physical audio layout.
 
-use super::assemble::{
-    assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackIr, TrackNumber,
-};
+use super::assemble::{assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackIr};
 use super::folder_scanner::CategorizedFiles;
 use super::track_slots::direct_entry_track_rows;
 use super::ParsedAlbum;
@@ -22,7 +20,7 @@ pub(crate) fn map_direct_entry_candidate_to_db(
         .map(|track| TrackIr {
             title: String::new(),
             side: track.side,
-            number: TrackNumber::Explicit(track.track_number),
+            number: track.track_number,
             source_position: None,
             events: Vec::new(),
         })

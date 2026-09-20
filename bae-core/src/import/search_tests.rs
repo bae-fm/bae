@@ -294,8 +294,8 @@ fn mb_detail_numbers_vinyl_sides_across_media() {
     ]);
 
     let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
-    let sides: Vec<u32> = detail.tracks.iter().map(|t| t.side).collect();
-    assert_eq!(sides, vec![1, 2, 3, 4]);
+    let sides: Vec<Option<u32>> = detail.tracks.iter().map(|t| t.side).collect();
+    assert_eq!(sides, vec![Some(1), Some(2), Some(3), Some(4)]);
 }
 
 #[test]
@@ -318,11 +318,9 @@ fn parse_duration_to_ms_handles_mm_ss_and_hh_mm_ss() {
     }
 }
 
-/// A multi-side medium track without a leading side letter is malformed MB
-/// data. The search detail path propagates the error rather than bucketing
-/// the track onto side 0.
+/// The search detail preserves both known and unknown side assignments.
 #[test]
-fn mb_detail_errors_on_multi_side_track_without_side_letter() {
+fn mb_detail_preserves_unknown_sides() {
     let response = response_with_media(vec![MbMedium {
         discs: vec![],
         format: Some("12\" Vinyl".to_string()),
@@ -332,13 +330,9 @@ fn mb_detail_errors_on_multi_side_track_without_side_letter() {
         ],
     }]);
 
-    let err = build_mb_detail("mb-release-1", &response, vec![])
-        .expect_err("expected error for vinyl track without side letter");
-    assert!(
-        matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("no side letter")),
-        "unexpected error: {}",
-        err
-    );
+    let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
+    assert_eq!(detail.tracks[0].side, Some(1));
+    assert_eq!(detail.tracks[1].side, None);
 }
 
 /// The picker's pressing fields are the pressing the commit stores: one

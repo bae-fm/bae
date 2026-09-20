@@ -55,7 +55,7 @@ fn combines_only_selected_files_without_changing_their_physical_paths() {
             .iter()
             .map(|track| track.side)
             .collect::<Vec<_>>(),
-        [1, 1, 2, 2]
+        [Some(1), Some(1), Some(2), Some(2)]
     );
     assert_eq!(
         super::super::track_slots::audio_units(&combined.files),
@@ -98,7 +98,12 @@ fn every_folder_becomes_its_own_disc_and_tracks_restart_on_each() {
             .iter()
             .map(|track| (track.side, track.track_number))
             .collect::<Vec<_>>(),
-        [(1, Some(1)), (1, Some(2)), (2, Some(1)), (2, Some(2))]
+        [
+            (Some(1), Some(1)),
+            (Some(1), Some(2)),
+            (Some(2), Some(1)),
+            (Some(2), Some(2))
+        ]
     );
 }
 
@@ -286,7 +291,7 @@ async fn stored_combination_is_one_release_and_separating_restores_sources() {
             .iter()
             .map(|track| track.side)
             .collect::<Vec<_>>(),
-        [1, 1, 2, 2]
+        [Some(1), Some(1), Some(2), Some(2)]
     );
     assert_eq!(
         db.load_import_list(Default::default())

@@ -61,9 +61,14 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
             }],
         },
     );
-    assert_eq!(files.bound_sheets()[0].audio_files[0].1.file_name, "cd.flac");
+    assert_eq!(
+        files.bound_sheets()[0].audio_files[0].1.file_name,
+        "cd.flac"
+    );
     assert!(
-        crate::import::discid::read_rip_artifacts(&files).disc_id.is_some(),
+        crate::import::discid::read_rip_artifacts(&files)
+            .disc_id
+            .is_some(),
         "the automatically bound sheet and audio yield a disc ID",
     );
 }
@@ -81,7 +86,7 @@ fn same_stem_audio_is_not_guessed_when_more_than_one_file_matches() {
 
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
-        &SheetBinding::Unresolved,
+        &SheetBinding::Unresolved { files: Vec::new() },
     );
     assert_eq!(files.track_count(), 2);
 }
@@ -101,7 +106,7 @@ fn same_stem_audio_outside_the_cue_directory_is_not_guessed() {
 
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
-        &SheetBinding::Unresolved,
+        &SheetBinding::Unresolved { files: Vec::new() },
     );
     assert_eq!(files.track_count(), 1);
 }
@@ -122,7 +127,12 @@ fn multi_file_cue_with_a_missing_reference_stays_unresolved() {
 
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
-        &SheetBinding::Unresolved,
+        &SheetBinding::Unresolved {
+            files: vec![SheetAudioFile {
+                file_reference: "track-01.flac".into(),
+                file_id: "track-01.flac".into()
+            }]
+        },
     );
     assert_eq!(files.track_count(), 1);
 }
@@ -167,7 +177,7 @@ fn audio_a_sheet_cannot_use_is_refused_at_offer_time_with_the_codec_named() {
     let options = files.sheet_binding_options("cd.cue");
 
     assert_eq!(
-        options,
+        options[0].options,
         vec![
             SheetBindingOption {
                 file_id: "cd.flac".to_string(),
@@ -203,11 +213,15 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
 
     assert_eq!(
         cleared.track_sheets().next().unwrap().binding,
-        &SheetBinding::Unresolved,
+        &SheetBinding::Unresolved { files: Vec::new() },
         "the sheet the user cleared describes nothing, proposal or not",
     );
     assert_eq!(cleared.track_count(), 1);
-    assert_uniform_source_audio(&cleared, crate::album_detail::SourceAudioLayout::File, "FLAC");
+    assert_uniform_source_audio(
+        &cleared,
+        crate::album_detail::SourceAudioLayout::File,
+        "FLAC",
+    );
     assert!(cleared.bound_sheets().is_empty());
 }
 
@@ -248,7 +262,7 @@ fn a_binding_whose_audio_disappears_is_not_kept() {
     .expect("scan");
     assert_eq!(
         after.track_sheets().next().unwrap().binding,
-        &SheetBinding::Unresolved,
+        &SheetBinding::Unresolved { files: Vec::new() },
         "the folder derives from what is on disk, with no memory of the removed pairing",
     );
     assert_eq!(
@@ -266,8 +280,16 @@ fn stored_binding(
     audio_file_id: Option<&str>,
 ) -> StoredCandidateEdits {
     let mut edits = SheetBindingEdits::default();
-    edits.set(
+    edits.set_reference(
         sheet_file_id.to_string(),
+        files
+            .track_sheets()
+            .find(|sheet| sheet.file.relative_path == sheet_file_id)
+            .unwrap()
+            .sheet
+            .single_file()
+            .unwrap()
+            .to_owned(),
         match audio_file_id {
             Some(file_id) => UserSheetBinding::Describes {
                 file_id: file_id.to_string(),
@@ -487,4 +509,30 @@ fn files_list_in_case_insensitive_natural_order() {
             "Track 10.flac",
         ]
     );
+}
+
+#[test]
+fn competing_cues_require_a_choice_before_carving_audio() {
+    let (_tmp, album) = cue_flac_album("cd.flac", "cd.flac", 3);
+    std::fs::write(
+        album.join("alternative.cue"),
+        make_cue_content_n_tracks("cd.flac", "Album Title", 2),
+    )
+    .unwrap();
+    let files = scan_files(&album);
+    assert_eq!(files.track_count(), 1);
+    assert!(files.carving_sheets().is_empty());
+    assert_eq!(files.bound_sheets().len(), 2);
+}
+
+#[test]
+fn multi_file_cue_offers_bindings_for_each_reference() {
+    let (_tmp, album) = album_dir();
+    copy_cue_flac(&album, "first.flac");
+    copy_cue_flac(&album, "second.flac");
+    std::fs::write(album.join("disc.cue"),
+        "FILE \"first.flac\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\nFILE \"missing.wav\" WAVE\n TRACK 02 AUDIO\n INDEX 01 00:00:00\n").unwrap();
+    let files = scan_files(&album);
+    assert_eq!(files.track_count(), 2);
+    assert!(!files.sheet_binding_options("disc.cue").is_empty());
 }

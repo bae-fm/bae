@@ -158,7 +158,9 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
         )
         .await
         .unwrap();
-    manager.preparations.set_album_artists(
+    manager
+        .preparations
+        .set_album_artists(
             &candidate_hash,
             &[crate::import::ArtistAssignment::existing(
                 artist.clone().into(),
@@ -166,7 +168,19 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
         )
         .await
         .unwrap();
-    manager.preparations.set_track_edit(
+    let audio = manager
+        .database
+        .load_import_candidate_pane_rows(&candidate_hash)
+        .await
+        .unwrap()
+        .draft
+        .tracks[0]
+        .edit
+        .file
+        .clone();
+    manager
+        .preparations
+        .set_track_edit(
             &candidate_hash,
             &crate::import::CandidateTrackEdit::edited(crate::import::RawTrackEdit {
                 id: candidate_track_id,
@@ -174,9 +188,9 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
                 artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
                     crate::import::ArtistAssignment::existing(artist.into()),
                 ]),
-                side: 1,
+                side: Some(1),
                 track_number: Some(1),
-                file: None,
+                file: Some(audio),
             }),
         )
         .await

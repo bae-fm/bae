@@ -53,11 +53,17 @@ pub fn is_digital_format(format: Option<&str>) -> bool {
 /// fills its domain fields. `side` is 1-indexed.
 pub fn compute_track_position(
     format: Option<&str>,
-    side: i32,
+    side: Option<i32>,
     track_number: Option<i32>,
     has_multiple_sides: bool,
 ) -> crate::album_detail::TrackPosition {
     use crate::album_detail::TrackPosition;
+    let Some(side) = side else {
+        return match track_number {
+            Some(number) => TrackPosition::Flat { number },
+            None => TrackPosition::Unnumbered,
+        };
+    };
     match detect_format(format) {
         FormatKind::Physical(PhysicalMedium::Vinyl | PhysicalMedium::Cassette) => {
             match track_number {
@@ -162,11 +168,11 @@ mod tests {
     #[test]
     fn test_vinyl_position() {
         assert_eq!(
-            compute_track_position(Some("2xLP, Vinyl"), 1, Some(2), true),
+            compute_track_position(Some("2xLP, Vinyl"), Some(1), Some(2), true),
             sided("A", 2)
         );
         assert_eq!(
-            compute_track_position(Some("Vinyl"), 3, Some(1), true),
+            compute_track_position(Some("Vinyl"), Some(3), Some(1), true),
             sided("C", 1)
         );
     }
@@ -189,7 +195,7 @@ mod tests {
     #[test]
     fn test_cassette_position() {
         assert_eq!(
-            compute_track_position(Some("Cassette"), 2, Some(3), true),
+            compute_track_position(Some("Cassette"), Some(2), Some(3), true),
             sided("B", 3)
         );
     }
@@ -197,7 +203,7 @@ mod tests {
     #[test]
     fn test_cd_single_disc() {
         assert_eq!(
-            compute_track_position(Some("CD"), 1, Some(5), false),
+            compute_track_position(Some("CD"), Some(1), Some(5), false),
             TrackPosition::Flat { number: 5 }
         );
     }
@@ -205,7 +211,7 @@ mod tests {
     #[test]
     fn test_cd_multi_disc() {
         assert_eq!(
-            compute_track_position(Some("2xCD"), 2, Some(3), true),
+            compute_track_position(Some("2xCD"), Some(2), Some(3), true),
             TrackPosition::Disc { disc: 2, number: 3 }
         );
     }
@@ -213,7 +219,7 @@ mod tests {
     #[test]
     fn test_no_format() {
         assert_eq!(
-            compute_track_position(None, 1, Some(1), false),
+            compute_track_position(None, Some(1), Some(1), false),
             TrackPosition::Flat { number: 1 }
         );
     }
@@ -221,17 +227,17 @@ mod tests {
     #[test]
     fn missing_track_number_is_explicit_position_state() {
         assert_eq!(
-            compute_track_position(Some("Vinyl"), 1, None, true),
+            compute_track_position(Some("Vinyl"), Some(1), None, true),
             TrackPosition::SidedUnnumbered {
                 side_letter: "A".to_string()
             }
         );
         assert_eq!(
-            compute_track_position(Some("2xCD"), 2, None, true),
+            compute_track_position(Some("2xCD"), Some(2), None, true),
             TrackPosition::DiscUnnumbered { disc: 2 }
         );
         assert_eq!(
-            compute_track_position(Some("CD"), 1, None, false),
+            compute_track_position(Some("CD"), Some(1), None, false),
             TrackPosition::Unnumbered
         );
     }
@@ -267,7 +273,7 @@ mod tests {
         TrackDetail {
             id: id.to_string(),
             title: String::new(),
-            side: 1,
+            side: Some(1),
             track_number: None,
             duration_ms: None,
             artist_names: String::new(),

@@ -120,12 +120,9 @@ pub enum SheetBinding {
     /// Every `FILE` reference resolved through the sheet itself, in the
     /// sheet's reference order. Never empty.
     Resolved { files: Vec<SheetAudioFile> },
-    /// A single-file sheet the user bound to audio of their choosing, whatever
-    /// its one `FILE` reference spells.
-    Override { file: SheetAudioFile },
     /// The directive named audio that is not in this folder, named several and
     /// only some resolved, or the sheet names none at all.
-    Unresolved,
+    Unresolved { files: Vec<SheetAudioFile> },
     /// The directive resolved, but bae can't carve tracks out of that
     /// audio: the codec doesn't back CUE playback. The physical audio files
     /// still import independently.
@@ -137,15 +134,14 @@ impl SheetBinding {
     /// sheet's order, or `None` when it describes nothing.
     pub fn audio_files(&self) -> Option<&[SheetAudioFile]> {
         match self {
-            Self::Resolved { files } => Some(files),
-            Self::Override { file } => Some(std::slice::from_ref(file)),
-            Self::Unresolved | Self::RefusedCodec { .. } => None,
+            Self::Resolved { files } | Self::Unresolved { files } => Some(files),
+            Self::RefusedCodec { .. } => None,
         }
     }
 
     /// Whether this sheet describes playable audio.
     pub fn is_resolved(&self) -> bool {
-        self.audio_files().is_some()
+        matches!(self, Self::Resolved { .. })
     }
 }
 
@@ -260,7 +256,18 @@ pub enum UserSheetBinding {
 /// A sheet *absent* from this is not a decision — it means nobody has touched
 /// that sheet and the scan's proposal stands. That is why clearing stores
 /// [`UserSheetBinding::Cleared`] rather than removing the entry.
-pub type SheetBindingEdits = Edits<UserSheetBinding>;
+pub type SheetBindingEdits = Edits<Edits<UserSheetBinding>>;
+
+impl SheetBindingEdits {
+    pub fn set_reference(
+        &mut self,
+        sheet_id: String,
+        reference: String,
+        decision: UserSheetBinding,
+    ) {
+        self.0.entry(sheet_id).or_default().set(reference, decision);
+    }
+}
 
 /// Everything the user has settled about one candidate's files: which audio
 /// each track sheet describes, which disc each sheet's entries become, and
@@ -346,6 +353,14 @@ pub struct SheetBindingOption {
     /// by (`ImportServiceHandle::set_sheet_binding`).
     pub file_id: String,
     pub offer: SheetBindingOffer,
+}
+
+/// One CUE FILE reference, its current association, and available choices.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SheetReferenceOptions {
+    pub file_reference: String,
+    pub file_id: Option<String>,
+    pub options: Vec<SheetBindingOption>,
 }
 
 /// A file the scan found, and the role in force for it — the scan's proposal,
@@ -597,6 +612,9 @@ impl CategorizedFiles {
     /// after any role changes — so a name that finds no audio here is a
     /// candidate written by something other than the scan.
     pub fn bound_sheet<'a>(&'a self, sheet: TrackSheetFile<'a>) -> Option<BoundTrackSheet<'a>> {
+        if !sheet.binding.is_resolved() {
+            return None;
+        }
         let audio_files = sheet
             .binding
             .audio_files()?
@@ -669,39 +687,62 @@ impl CategorizedFiles {
         content_hash_of(self.audio())
     }
 
-    /// What the sheet at `sheet_file_id` can be bound to: the folder's audio,
-    /// each file either offered or refused with the reason.
-    ///
-    /// The refusal is decided *here*, by probing, because offering a file the
-    /// commit would then reject is exactly the failure an editable binding
-    /// exists to remove. Probing is also why this is asked for when a picker
-    /// opens rather than carried on every candidate.
-    ///
-    /// Empty when the sheet names one audio file per track rather than one for
-    /// the whole disc: naming a single file cannot express that layout, so
-    /// there is nothing to offer. Empty too when the folder holds no audio, and
-    /// when `sheet_file_id` names no parsed sheet.
-    pub fn sheet_binding_options(&self, sheet_file_id: &str) -> Vec<SheetBindingOption> {
+    /// Every FILE reference with its association and the audio it can use.
+    pub fn sheet_binding_options(&self, sheet_file_id: &str) -> Vec<SheetReferenceOptions> {
         let Some(sheet) = self
             .track_sheets()
             .find(|sheet| sheet.file.relative_path == sheet_file_id)
         else {
             return Vec::new();
         };
-        if sheet.sheet.single_file().is_none() {
-            return Vec::new();
-        }
-        self.audio()
-            .map(|audio| SheetBindingOption {
-                file_id: audio.relative_path.clone(),
-                offer: match cue_pair_codec_label(audio) {
-                    CueCodecLabel::Supported if sheet_fits_single_audio(sheet.sheet, audio) => {
-                        SheetBindingOffer::Offered
-                    }
-                    CueCodecLabel::Supported => SheetBindingOffer::RefusedTiming,
-                    CueCodecLabel::Unsupported(codec) => SheetBindingOffer::RefusedCodec { codec },
-                    CueCodecLabel::Unprobeable => SheetBindingOffer::RefusedUnreadable,
-                },
+        sheet
+            .sheet
+            .audio_file_references()
+            .into_iter()
+            .map(|reference| {
+                let associated = sheet
+                    .binding
+                    .audio_files()
+                    .into_iter()
+                    .flatten()
+                    .find(|file| file.file_reference == reference);
+                SheetReferenceOptions {
+                    file_reference: reference.to_owned(),
+                    file_id: associated.map(|file| file.file_id.clone()),
+                    options: self
+                        .audio()
+                        .filter(|audio| {
+                            !sheet
+                                .binding
+                                .audio_files()
+                                .into_iter()
+                                .flatten()
+                                .any(|file| {
+                                    file.file_reference != reference
+                                        && file.file_id == audio.relative_path
+                                })
+                        })
+                        .map(|audio| SheetBindingOption {
+                            file_id: audio.relative_path.clone(),
+                            offer: match cue_pair_codec_label(audio) {
+                                CueCodecLabel::Supported
+                                    if sheet_reference_fits_audio(
+                                        sheet.sheet,
+                                        reference,
+                                        audio,
+                                    ) =>
+                                {
+                                    SheetBindingOffer::Offered
+                                }
+                                CueCodecLabel::Supported => SheetBindingOffer::RefusedTiming,
+                                CueCodecLabel::Unsupported(codec) => {
+                                    SheetBindingOffer::RefusedCodec { codec }
+                                }
+                                CueCodecLabel::Unprobeable => SheetBindingOffer::RefusedUnreadable,
+                            },
+                        })
+                        .collect(),
+                }
             })
             .collect()
     }

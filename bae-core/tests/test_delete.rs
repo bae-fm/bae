@@ -58,7 +58,7 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
         id: Uuid::new_v4().to_string(),
         release_id: release_id.to_string(),
         title: format!("Track {}", track_number),
-        side: 1,
+        side: Some(1),
         track_number: Some(track_number),
         duration_ms: Some(180000),
         discogs_position: None,

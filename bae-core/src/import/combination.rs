@@ -37,7 +37,7 @@ impl CandidateCombination {
         files: CategorizedFiles,
     ) -> Result<Self, ImportError> {
         let mut tracks = super::track_slots::direct_entry_track_rows(&files);
-        let mut numbers = BTreeMap::<i32, i32>::new();
+        let mut numbers = BTreeMap::<Option<i32>, i32>::new();
         for track in &mut tracks {
             let audio = track.file.as_ref().expect("physical tracks have audio");
             let part = parts
@@ -53,9 +53,12 @@ impl CandidateCombination {
             // into the combined range; a standalone file belongs to its
             // folder's first disc.
             if let AudioFile::Standalone { .. } = audio {
-                track.side = i32::try_from(part.first_disc).map_err(|_| ImportError::Internal {
-                    detail: "combined disc number exceeds the track range".into(),
-                })?;
+                track.side =
+                    Some(
+                        i32::try_from(part.first_disc).map_err(|_| ImportError::Internal {
+                            detail: "combined disc number exceeds the track range".into(),
+                        })?,
+                    );
             }
             let number = numbers.entry(track.side).or_default();
             *number = number.checked_add(1).ok_or_else(|| ImportError::Internal {
@@ -133,19 +136,16 @@ impl CandidateCombination {
                 });
                 if let FileRole::TrackSheet { binding, disc, .. } = &mut entry.role {
                     match binding {
-                        SheetBinding::Resolved { files } => {
+                        SheetBinding::Resolved { files } | SheetBinding::Unresolved { files } => {
                             for audio in files {
                                 audio.file_id = format!("{prefix}{}", audio.file_id);
                             }
                         }
-                        SheetBinding::Override { file } => {
-                            file.file_id = format!("{prefix}{}", file.file_id);
-                        }
-                        SheetBinding::Unresolved | SheetBinding::RefusedCodec { .. } => {}
+                        SheetBinding::RefusedCodec { .. } => {}
                     }
                     if let SheetDisc::Disc { number } = disc {
                         let original = i32::try_from(*number).map_err(|_| numbering_overflow())?;
-                        if let Some(assigned) = discs.get(&original) {
+                        if let Some(assigned) = discs.get(&Some(original)) {
                             *number = *assigned;
                         }
                     }

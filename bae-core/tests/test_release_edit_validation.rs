@@ -54,7 +54,7 @@ async fn seed(db: &Database) -> (String, String) {
         id: Uuid::new_v4().to_string(),
         release_id: release.id.clone(),
         title: "Original Track".to_string(),
-        side: 1,
+        side: Some(1),
         track_number: Some(1),
         duration_ms: None,
         discogs_position: None,
@@ -81,7 +81,7 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
         pressing: PressingEdit::blank(),
         tracks: vec![TrackUserEdit {
             title: "Original Track".to_string(),
-            side: 1,
+            side: Some(1),
             track_number: Some(1),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
             file: None,

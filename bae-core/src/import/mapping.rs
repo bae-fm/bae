@@ -79,13 +79,6 @@ impl MappingTrackSection {
             MappingTrackSectionContent::Sheet { entries, .. } => entries,
         }
     }
-
-    fn mappings_mut(&mut self) -> &mut [TrackMapping] {
-        match &mut self.content {
-            MappingTrackSectionContent::Tracks(mappings) => mappings,
-            MappingTrackSectionContent::Sheet { entries, .. } => entries,
-        }
-    }
 }
 
 /// One row in the files section of the mapping table.
@@ -248,6 +241,8 @@ pub enum SheetBound {
     /// The directive resolved, but bae cannot carve tracks out of that codec.
     /// The physical audio files import independently.
     RefusedCodec { codec: String },
+    /// All files are associated, but their lengths cannot contain the CUE boundaries.
+    RefusedTiming,
 }
 
 /// The audio a track sheet describes.
@@ -365,7 +360,11 @@ pub fn mapping_table(
                     },
                 ),
                 assignment: *disc,
-                disc_options: disc_options.clone(),
+                disc_options: if binding.is_resolved() {
+                    disc_options.clone()
+                } else {
+                    Vec::new()
+                },
             })),
             FileRole::Audio => match contributions.get(entry.file.relative_path.as_str()) {
                 Some(UnitContribution::Runs(sheets)) => {
@@ -443,6 +442,92 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
             MappingBecomes::AwaitingPick => None,
         })
         .collect()
+}
+
+/// Render the included tracks by audio identity and in the draft's order.
+pub(crate) fn draft_mapping_table(
+    files: &CategorizedFiles,
+    durations: &SourceDurations,
+    draft: &crate::import::CandidateDraft,
+) -> MappingTable {
+    let mut table = mapping_table(files, None, durations);
+    let mut sources = HashMap::new();
+    let mut sheets = HashMap::new();
+    for section in &table.track_sections {
+        if let MappingTrackSectionContent::Sheet { sheet, .. } = &section.content {
+            sheets.insert(sheet.sheet_id.clone(), sheet.clone());
+        }
+        for row in section.mappings() {
+            let audio = match &row.source {
+                MappingSource::File(file) => AudioFile::Standalone {
+                    file_id: file.file_id.clone(),
+                },
+                MappingSource::SheetEntry(entry) => AudioFile::SheetSlice {
+                    file_id: entry.container_id.clone(),
+                    sheet_id: entry.sheet_id.clone(),
+                    index: entry.index,
+                },
+                MappingSource::Missing => {
+                    unreachable!("an audio projection has no missing sources")
+                }
+            };
+            sources.insert(audio, row.clone());
+        }
+    }
+    table.track_sections.clear();
+    let multi_side = draft.tracks.first().is_some_and(|first| {
+        draft
+            .tracks
+            .iter()
+            .any(|track| track.edit.side != first.edit.side)
+    });
+    for track in &draft.tracks {
+        let mut row = sources
+            .get(&track.edit.file)
+            .expect("draft audio belongs to the candidate's selected audio")
+            .clone();
+        let position = crate::util::format::compute_track_position(
+            Some(&draft.pressing.format),
+            track.edit.side,
+            Some(track.edit.track_number),
+            multi_side,
+        );
+        let side = crate::util::format::track_side(&position);
+        row.becomes = MappingBecomes::Track {
+            track: track.edit.as_edit(),
+            position: crate::util::format::track_position_text(&position),
+            named_by_source: track.source_index.is_some(),
+        };
+        match &track.edit.file {
+            AudioFile::Standalone { .. } => push_track_mapping(
+                &mut table.track_sections,
+                PositionedTrackMapping { side, mapping: row },
+            ),
+            AudioFile::SheetSlice { sheet_id, .. } => {
+                if let Some(MappingTrackSection {
+                    side: existing_side,
+                    content: MappingTrackSectionContent::Sheet { sheet, entries },
+                }) = table.track_sections.last_mut()
+                {
+                    if sheet.sheet_id == *sheet_id && *existing_side == side {
+                        entries.push(row);
+                        continue;
+                    }
+                }
+                table.track_sections.push(MappingTrackSection {
+                    side,
+                    content: MappingTrackSectionContent::Sheet {
+                        sheet: sheets
+                            .get(sheet_id)
+                            .expect("selected slice has a sheet")
+                            .clone(),
+                        entries: vec![row],
+                    },
+                });
+            }
+        }
+    }
+    table
 }
 
 /// The running state of one projection: which tracklist it is pairing against,
@@ -644,7 +729,7 @@ impl RowBuilder<'_> {
         let side = i32::try_from(number).expect("a sheet disc number fits in i32");
         crate::util::format::track_side(&crate::util::format::compute_track_position(
             picked.format,
-            side,
+            Some(side),
             None,
             self.multi_side,
         ))
@@ -708,19 +793,28 @@ fn container(audio: &ScannedFile) -> MappingContainer {
 /// What a sheet describes, as its header states it.
 fn bound_of(files: &CategorizedFiles, sheet: TrackSheetFile<'_>) -> SheetBound {
     match sheet.binding {
-        SheetBinding::Resolved { .. } | SheetBinding::Override { .. } => bound_sheet(
+        SheetBinding::Resolved { .. } => bound_sheet(
             &files
                 .bound_sheet(sheet)
                 .expect("a resolved binding names audio"),
         ),
-        SheetBinding::Unresolved => SheetBound::Unresolved {
-            requested: sheet
-                .sheet
-                .audio_file_references()
-                .into_iter()
-                .map(str::to_string)
-                .collect(),
-        },
+        SheetBinding::Unresolved { files: associated } => {
+            let references = sheet.sheet.audio_file_references();
+            let requested = references
+                .iter()
+                .filter(|reference| {
+                    !associated
+                        .iter()
+                        .any(|file| file.file_reference == **reference)
+                })
+                .map(|reference| reference.to_string())
+                .collect::<Vec<_>>();
+            if !references.is_empty() && requested.is_empty() {
+                SheetBound::RefusedTiming
+            } else {
+                SheetBound::Unresolved { requested }
+            }
+        }
         SheetBinding::RefusedCodec { codec } => SheetBound::RefusedCodec {
             codec: codec.clone(),
         },
@@ -770,69 +864,6 @@ fn tally(sections: &[MappingTrackSection]) -> SlotReconciliation {
     }
 }
 
-/// Write an edited track row back onto the row that commits it, found by the
-/// track's own identity — which the projection makes unique across the table.
-///
-/// A row nothing matches leaves the table alone: an editor holding a row the
-/// table no longer has is editing something that has already left it.
-pub fn mapping_with_track(mut table: MappingTable, track: RawTrackEdit) -> MappingTable {
-    let mut wrote = false;
-    for mapping in table
-        .track_sections
-        .iter_mut()
-        .flat_map(MappingTrackSection::mappings_mut)
-    {
-        let MappingBecomes::Track {
-            track: existing, ..
-        } = &mut mapping.becomes
-        else {
-            continue;
-        };
-        if existing.id == track.id {
-            *existing = track.clone();
-            wrote = true;
-        }
-    }
-    if !wrote {
-        warn!("{} is not a row of this mapping table", track.id);
-    }
-    table
-}
-
-/// Drop the row that commits the track with `track_id` — a track the release
-/// names that this folder has nothing for, taken out of the import.
-///
-/// Nothing is persisted: the folder is unchanged, the release is simply
-/// committed without that track.
-pub fn mapping_without_track(table: MappingTable, track_id: &str) -> MappingTable {
-    remove(
-        table,
-        &|mapping| matches!(&mapping.becomes, MappingBecomes::Track { track, .. } if track.id == track_id),
-    )
-}
-
-/// Drop every mapping the predicate names, wherever it sits, and restate the tally
-/// over what is left. A table with no tally keeps none — the folder's own tags
-/// cannot disagree with the folder.
-fn remove(mut table: MappingTable, should_remove: &dyn Fn(&TrackMapping) -> bool) -> MappingTable {
-    table
-        .track_sections
-        .retain_mut(|section| match &mut section.content {
-            MappingTrackSectionContent::Tracks(mappings) => {
-                mappings.retain(|mapping| !should_remove(mapping));
-                !mappings.is_empty()
-            }
-            MappingTrackSectionContent::Sheet { entries, .. } => {
-                entries.retain(|entry| !should_remove(entry));
-                true
-            }
-        });
-    if table.reconciliation.is_some() {
-        table.reconciliation = Some(tally(&table.track_sections));
-    }
-    table
-}
-
 /// The left half of a file's row: what the folder holds, and the roles it may
 /// be put in.
 fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u64>) -> MappingFile {
@@ -873,7 +904,13 @@ fn disc_options(files: &CategorizedFiles, picked: Option<&PickedTracklist<'_>>) 
             .len()
     }) as u32;
     let bound = files.bound_sheets().len() as u32;
-    (1..=named.max(bound).max(1)).collect()
+    let assigned = files.track_sheets().filter_map(|sheet| match sheet.disc {
+        SheetDisc::Disc { number } => Some(number),
+        SheetDisc::Ignored => None,
+    });
+    let mut options = (1..=named.max(bound).max(1)).collect::<BTreeSet<_>>();
+    options.extend(assigned);
+    options.into_iter().collect()
 }
 
 #[cfg(test)]

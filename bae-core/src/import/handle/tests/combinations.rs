@@ -25,15 +25,17 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     ordered.sort();
     let leading = if ordered[0] == first_key {
         &first
-    }
-    else {
+    } else {
         &second
     };
     let key = handle
         .combine_candidates(vec![second_key.clone(), first_key.clone()])
         .await
         .unwrap();
-    assert_eq!(handle.candidate_source_folders(&key).await.unwrap(), ordered);
+    assert_eq!(
+        handle.candidate_source_folders(&key).await.unwrap(),
+        ordered
+    );
     assert!(matches!(
         handle.get_release_candidate(&key).await.unwrap(),
         Some(crate::import::release_candidate::ReleaseCandidate::Combined(_))
@@ -90,7 +92,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
             .iter()
             .map(|track| track.side)
             .collect::<Vec<_>>(),
-        [1, 1, 2, 2]
+        [Some(1), Some(1), Some(2), Some(2)]
     );
     let mut events = handle.subscribe_events();
     let import_id = handle
@@ -137,7 +139,12 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
             .iter()
             .map(|track| (track.side, track.track_number))
             .collect::<Vec<_>>(),
-        [(1, Some(1)), (1, Some(2)), (2, Some(1)), (2, Some(2))]
+        [
+            (Some(1), Some(1)),
+            (Some(1), Some(2)),
+            (Some(2), Some(1)),
+            (Some(2), Some(2))
+        ]
     );
     assert!(pane(&handle, &key).await.is_added);
     assert!(handle.separate_combined_candidate(&key).await.is_err());

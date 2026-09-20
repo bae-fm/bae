@@ -64,7 +64,7 @@ struct ImportMappingFileRowTests {
                 choice.fileId = $0
                 choice.choice = $1
             },
-            bindSheet: { _, _ in },
+            bindSheet: { _, _, _ in },
             setSheetDisc: { _, _ in },
             openDocument: { _, _ in },
             openImages: { _, _ in },
@@ -73,7 +73,6 @@ struct ImportMappingFileRowTests {
             editTrack: { _ in },
             chooseFile: { _, _ in },
             drop: { _ in },
-            exclude: { _ in },
         )
     }
 }

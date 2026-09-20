@@ -47,9 +47,9 @@ private struct ImportOperations: Sendable {
         ) async throws -> Void
     let setCandidateSkipped: @Sendable (String, Bool) async throws -> Void
     let sheetBindingOptions:
-        @Sendable (String, String) async throws -> [BridgeSheetBindingOption]
+        @Sendable (String, String) async throws -> [BridgeSheetReferenceOptions]
     let setSheetBinding:
-        @Sendable (String, String, String?) async throws -> Void
+        @Sendable (String, String, String, String?) async throws -> Void
     let applyCandidateExternalMetadata:
         @Sendable (String, BridgeMetadataProvenance) async throws -> UInt64
     let applyCandidateFileTags: @Sendable (String) async throws -> UInt64
@@ -138,7 +138,8 @@ extension ImportOperations {
                 try await handle.setSheetBinding(
                     candidateKey: $0,
                     sheetFileId: $1,
-                    audioFileId: $2
+                    fileReference: $2,
+                    audioFileId: $3
                 )
             },
             applyCandidateExternalMetadata: {
@@ -326,10 +327,11 @@ final class Importer: Sendable, Observable {
             },
         sheetBindingOptions:
             @escaping @Sendable (String, String) async throws ->
-            [BridgeSheetBindingOption] = { _, _ in [] },
+            [BridgeSheetReferenceOptions] = { _, _ in [] },
         setSheetBinding:
-            @escaping @Sendable (String, String, String?) async throws -> Void =
-            { _, _, _ in },
+            @escaping @Sendable (String, String, String, String?) async throws
+            -> Void =
+            { _, _, _, _ in },
         applyCandidateExternalMetadata:
             @escaping @Sendable (String, BridgeMetadataProvenance)
             async throws -> UInt64 = { _, _ in
@@ -509,7 +511,7 @@ extension Importer {
     }
 
     func sheetBindingOptions(_ candidateKey: String, _ sheetFileId: String)
-        async throws -> [BridgeSheetBindingOption]
+        async throws -> [BridgeSheetReferenceOptions]
     {
         try await operations.sheetBindingOptions(candidateKey, sheetFileId)
     }
@@ -517,11 +519,13 @@ extension Importer {
     func setSheetBinding(
         _ candidateKey: String,
         _ sheetFileId: String,
+        _ fileReference: String,
         _ audioFileId: String?
     ) async throws {
         try await operations.setSheetBinding(
             candidateKey,
             sheetFileId,
+            fileReference,
             audioFileId
         )
     }

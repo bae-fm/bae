@@ -202,17 +202,13 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
     fixture.start_explicit_lookup(&dir);
 
     tokio::time::timeout(Duration::from_secs(20), async {
-        while !fixture
-            .identified_for(&dir)
-            .await
-            .is_some_and(|result| {
-                matches!(
-                    &result.verdict,
-                    TerminalVerdict::Found { matches, .. }
-                        if matches.iter().any(|m| m.release_id == "mb-asked-again")
-                )
-            })
-        {
+        while !fixture.identified_for(&dir).await.is_some_and(|result| {
+            matches!(
+                &result.verdict,
+                TerminalVerdict::Found { matches, .. }
+                    if matches.iter().any(|m| m.release_id == "mb-asked-again")
+            )
+        }) {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
     })
@@ -301,8 +297,8 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
 
     let not_in_library =
         |result: &MetadataResult| crate::db::LibraryStatus::absent(&result.release_id);
-    let found =
-        multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1").resume_state(&not_in_library, Default::default());
+    let found = multi_match_verdict(&["mb-teardown-1"], "rg-teardown-1")
+        .resume_state(&not_in_library, Default::default());
     let changed = |run: u64, state: IdentifyState| ImportEvent::IdentifyStateChanged {
         candidate_key: key.clone(),
         run: crate::identify::IdentifyRunId::for_test(run),
@@ -370,7 +366,9 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
             track_count: 0,
         },
     };
-    fixture.import.emit_event_for_test(changed(2, triangulating));
+    fixture
+        .import
+        .emit_event_for_test(changed(2, triangulating));
     changes.recv().await.expect("runtime changes stay open");
     fixture
         .import
@@ -445,9 +443,7 @@ async fn restating_a_file_decision_changes_nothing() {
     let fixture = Fixture::new("edit-noop").await;
     let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
-    fixture
-        .archive("mb-noop-1", "rg-noop-1", &[500, 500])
-        .await;
+    fixture.archive("mb-noop-1", "rg-noop-1", &[500, 500]).await;
     fixture
         .store_settled_verdict(&dir, "mb-noop-1", "rg-noop-1", 1_000)
         .await;
@@ -479,6 +475,7 @@ async fn restating_a_file_decision_changes_nothing() {
         .set_sheet_binding(
             key.clone(),
             "Test Album.cue".to_string(),
+            "Test Album.flac".to_string(),
             Some("Test Album.flac".to_string()),
         )
         .await

@@ -12,9 +12,9 @@ use {
         DbTrackArtistRole,
     },
     crate::import::folder_scanner::{ScanItem, ScannedFile},
-    crate::import::track_slots::{audio_units, map_source_rows, resolve_track_files},
+    crate::import::track_slots::resolve_track_files,
     crate::import::types::{
-        AudioFile, CoverSelection, ImportPhase, Catalog, PrepareStep, TrackFile,
+        AudioFile, Catalog, CoverSelection, ImportPhase, PrepareStep, TrackFile,
     },
     crate::import::ParsedWorkGraph,
     notify_debouncer_full::DebounceEventResult,
@@ -401,111 +401,49 @@ fn spawn_root_scan(
     RootScanTask { cancellation, task }
 }
 
-/// Reconcile the release's track rows with the folder's audio, and report which
-/// audio each surviving track is bound to.
-///
-/// The command's edit carries the track slots the user saw, each row naming the
-/// audio bound to it — that is the mapping, and it wins. A command whose edit
-/// names no audio at all changed metadata without opening the slot table (an
-/// automation surface with no mapping pane), so the slots are
-/// computed here from this folder and this tracklist, exactly as picking the
-/// release computes them; whatever metadata that edit does carry still applies,
-/// row for row.
-///
-/// Rows the user left with no audio have no samples to write, so they do not
-/// become tracks, and the seeded track each stood for takes its artist, role and
-/// work rows with it. Rows past the end of the source's tracklist are audio the
-/// source does not account for and get a fresh track row.
-///
-/// The returned bindings are positionally aligned with `parsed.tracks` and with
-/// the edit's `tracks`, all three the same length.
+/// Select supplemental source credits by their stored source-track identity.
+/// The draft supplies the track order and every audio binding.
 fn settle_track_rows(
     parsed: &mut crate::import::ParsedAlbum,
-    user_edit: &mut Option<crate::import::ReleaseUserEdit>,
-    files: &crate::import::folder_scanner::CategorizedFiles,
+    draft: &crate::import::CandidateDraft,
     ids: &dyn coven::IdProvider,
     now: chrono::DateTime<chrono::Utc>,
-) -> Vec<AudioFile> {
-    use crate::import::TrackUserEdit;
-
-    let carries_mapping = user_edit
-        .as_ref()
-        .is_some_and(|edit| edit.tracks.iter().any(|track| track.file.is_some()));
-
-    let rows: Vec<TrackUserEdit> = if carries_mapping {
-        user_edit
-            .as_ref()
-            .expect("an edit that carries a mapping is present")
-            .tracks
-            .clone()
-    } else {
-        let source_rows: Vec<TrackUserEdit> = parsed
-            .tracks
-            .iter()
-            .map(|track| TrackUserEdit {
-                title: track.title.clone(),
-                side: track.side,
-                track_number: track.track_number,
-                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
-                file: None,
-            })
-            .collect();
-        map_source_rows(&source_rows, &audio_units(files))
-            .into_iter()
-            .enumerate()
-            .map(|(index, mut row)| {
-                // A metadata-only edit still speaks for the rows it has.
-                if let Some(edited) = user_edit.as_ref().and_then(|e| e.tracks.get(index)) {
-                    row.title = edited.title.clone();
-                    row.side = edited.side;
-                    row.track_number = edited.track_number;
-                    row.artist_assignments = edited.artist_assignments.clone();
-                }
-                row
-            })
-            .collect()
-    };
-
+) -> Result<Vec<AudioFile>, crate::import::ImportError> {
     let mut seeded: Vec<Option<crate::db::DbTrack>> = std::mem::take(&mut parsed.tracks)
         .into_iter()
         .map(Some)
         .collect();
-    let mut tracks = Vec::with_capacity(rows.len());
-    let mut bindings = Vec::with_capacity(rows.len());
-    let mut kept_rows = Vec::with_capacity(rows.len());
-
-    for (index, row) in rows.into_iter().enumerate() {
-        let Some(file) = row.file.clone() else {
-            continue;
-        };
-        let track = match seeded.get_mut(index).and_then(Option::take) {
-            Some(track) => track,
+    let mut tracks = Vec::with_capacity(draft.tracks.len());
+    let mut bindings = Vec::with_capacity(draft.tracks.len());
+    for row in &draft.tracks {
+        let track = match row.source_index {
+            Some(index) => seeded
+                .get_mut(index as usize)
+                .and_then(Option::take)
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!(
+                        "draft track {} names unavailable source track {index}",
+                        row.edit.id
+                    ),
+                })?,
             None => crate::db::DbTrack {
                 id: ids.new_id(),
                 release_id: parsed.release.id.clone(),
-                title: row.title.clone(),
-                side: row.side,
-                track_number: row.track_number,
+                title: row.edit.title.clone(),
+                side: row.edit.side,
+                track_number: Some(row.edit.track_number),
                 duration_ms: None,
-                // The source knows nothing about this track, so it has no
-                // position in the source's tracklist to record.
                 discogs_position: None,
                 created_at: now,
             },
         };
         tracks.push(track);
-        bindings.push(file);
-        kept_rows.push(row);
+        bindings.push(row.edit.file.clone());
     }
-
     let retained_track_ids = tracks.iter().map(|track| track.id.clone()).collect();
     retain_track_metadata(parsed, &retained_track_ids);
-
     parsed.tracks = tracks;
-    if let Some(edit) = user_edit.as_mut() {
-        edit.tracks = kept_rows;
-    }
-    bindings
+    Ok(bindings)
 }
 
 pub(crate) fn retain_track_metadata(

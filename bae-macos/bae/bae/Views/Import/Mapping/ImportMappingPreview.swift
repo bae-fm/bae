@@ -80,7 +80,7 @@
     func inertMappingActions() -> ImportMappingActions {
         ImportMappingActions(
             setRole: { _, _ in },
-            bindSheet: { _, _ in },
+            bindSheet: { _, _, _ in },
             setSheetDisc: { _, _ in },
             openDocument: { _, _ in },
             openImages: { _, _ in },
@@ -89,7 +89,6 @@
             editTrack: { _ in },
             chooseFile: { _, _ in },
             drop: { _ in },
-            exclude: { _ in },
         )
     }
 
@@ -240,10 +239,7 @@
         ImportMappingCuePreviewScene(width: 760)
     }
 
-    #Preview("Mapping pane — one file for ten tracks") {
-        @Previewable
-        @State
-        var values = PreviewData.moreTracksEditValues
+    #Preview("Mapping pane — CUE ignored") {
         @Previewable
         @State
         var storageCloud = true
@@ -259,10 +255,7 @@
         .importPreviewEnvironment()
     }
 
-    #Preview("Mapping pane — one file for ten tracks, narrow") {
-        @Previewable
-        @State
-        var values = PreviewData.moreTracksEditValues
+    #Preview("Mapping pane — CUE ignored, narrow") {
         @Previewable
         @State
         var storageCloud = true

@@ -5,9 +5,7 @@ import SwiftUI
 /// called, who it is by, and how long it runs.
 ///
 /// The title and artist are edited in place — this is the release being
-/// written, not a report of it. A row without audio shows its file picker in
-/// Source. Re-pairing a settled row remains available from its context menu
-/// without occupying the table.
+/// written. Every draft row has audio; its context menu can change that audio.
 struct ImportMappingTrackRow: View {
     @Environment(\.sourceFileEditsAllowed)
     private var sourceFileEditsAllowed
@@ -15,8 +13,7 @@ struct ImportMappingTrackRow: View {
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
     let columns: ReleaseMetadataTrackColumns
-    /// Every audio unit the folder offers — what a row with nothing behind it
-    /// is offered to point at.
+    /// Included audio units available for swapping between tracks.
     let audioChoices: [ImportAudioChoice]
     let previewingTarget: BridgePreviewTarget?
     let editingCommands: EditingCommitCommands
@@ -42,11 +39,9 @@ struct ImportMappingTrackRow: View {
         return nil
     }
 
-    /// A row with no file behind it is the one that has to be answered, so its
-    /// picker does not wait to be hovered.
-    private var needsAnswer: Bool {
-        if case .missing = mapping.source { return true }
-        return track?.file == nil
+    private var displayedPosition: String {
+        if case .track(_, let position, _) = mapping.becomes { return position }
+        return ""
     }
 
     var body: some View {
@@ -59,6 +54,7 @@ struct ImportMappingTrackRow: View {
                     durationDiverges: lengthsDiverge,
                     columns: columns,
                     editingCommands: editingCommands,
+                    displayedPosition: displayedPosition,
                     onChange: { actions.editTrack($0) }
                 )
             }
@@ -76,7 +72,7 @@ struct ImportMappingTrackRow: View {
             hovering = $0
         }
         .contextMenu {
-            if let track, !audioChoices.isEmpty {
+            if sourceFileEditsAllowed, let track, !audioChoices.isEmpty {
                 chooseFileButtons(track)
             }
         }
@@ -100,8 +96,7 @@ struct ImportMappingTrackRow: View {
             )
     }
 
-    /// What the folder offers for this track, and — while the row has nothing
-    /// — the picker that answers it.
+    /// The file or CUE slice that supplies this track's audio.
     private var sourceCell: some View {
         ImportMappingSourceCell(
             source: mapping.source,
@@ -123,26 +118,9 @@ struct ImportMappingTrackRow: View {
                     }
                 }
         )
-        .overlay(alignment: .trailing) {
-            if let track, needsAnswer {
-                chooseFileMenu(track)
-                    .padding(.leading, 8)
-                    .background(Theme.surfaceElevated.opacity(0.94))
-            }
-        }
     }
 
-    /// The one action that belongs to the row's own disagreement, at the far
-    /// right where a row is taken out of a list: Exclude for audio the release
-    /// does not name, Drop for a track this folder has nothing for. Offered
-    /// while the pointer is on the row; a settled row has nothing to offer and
-    /// keeps the slot empty so every row ends at the same edge.
-    ///
-    /// Re-pairing is the context menu, not a drag. A drag needs a second hit
-    /// target and a second interaction design per toolkit, has no keyboard or
-    /// accessibility path, and buys nothing over picking from the folder's
-    /// audio by name — which is what re-pointing a row and swapping two rows
-    /// both come down to.
+    /// Deleting a draft track leaves its physical file available.
     private var removalCell: some View {
         ZStack {
             if let track, let removal = removal(track) {
@@ -158,41 +136,15 @@ struct ImportMappingTrackRow: View {
         )
     }
 
-    /// What taking this row out means, where it means anything.
     private func removal(
         _ track: BridgeRawTrackEdit
     ) -> ImportMappingRowRemoval? {
-        if case .file(let file) = mapping.source, sourceFileEditsAllowed {
-            return ImportMappingRowRemoval(
-                label: coreString("ui.import.slots.exclude"),
-                help: coreString("ui.import.slots.exclude_help")
-            ) {
-                actions.exclude(file.fileId)
-            }
-        }
-        if track.file == nil {
-            return ImportMappingRowRemoval(
-                label: coreString("ui.import.slots.drop"),
-                help: coreString("ui.import.slots.drop_help")
-            ) {
-                actions.drop(track.id)
-            }
-        }
-        return nil
-    }
-
-    @ViewBuilder
-    private func chooseFileMenu(_ track: BridgeRawTrackEdit) -> some View {
-        if !audioChoices.isEmpty {
-            Menu {
-                chooseFileButtons(track)
-            } label: {
-                Text(coreString("ui.import.slots.choose_file"))
-                    .font(.system(size: 11.5))
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            .foregroundStyle(.secondary)
+        guard sourceFileEditsAllowed else { return nil }
+        return ImportMappingRowRemoval(
+            label: coreString("ui.import.slots.drop"),
+            help: coreString("ui.import.slots.remove_help")
+        ) {
+            actions.drop(track.id)
         }
     }
 

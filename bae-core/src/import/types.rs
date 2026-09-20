@@ -35,7 +35,7 @@ pub use mark::{MarkKind, ReleaseMark, ReleaseMarkLine};
 mod raw_release_edit;
 pub use raw_release_edit::{
     CandidateDraft, CandidateTrack, EditValidationError, RawPressingEdit, RawReleaseEdit,
-    RawReleaseEditOf, RawTrackEdit, TrackFileAuthor,
+    RawReleaseEditOf, RawTrackEdit,
 };
 mod verification;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -100,7 +100,7 @@ pub fn is_the_only_asked_source(sources: &[CatalogAvailability], source: Catalog
 /// master — and each is keyed by the entity it describes so two releases that
 /// share one never store it twice.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PayloadSource {
     /// A MusicBrainz release, by release id.
     MusicBrainz,
@@ -176,7 +176,7 @@ impl std::fmt::Display for PayloadSource {
 /// One document a metadata lookup returned, carrying the entity it describes so
 /// the store can key it without re-reading it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourcePayload {
     pub source: PayloadSource,
     pub source_release_id: String,
@@ -236,7 +236,7 @@ pub enum MetadataProvenance {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateMetadataDraft {
-    /// One row per candidate track, dropped and fileless rows included.
+    /// Ordered included tracks, each with audio and a required number.
     pub draft: CandidateDraft,
     /// Provider artists present in the selected release payload, including
     /// role and work credits that are not editable album/track assignments.
@@ -249,15 +249,12 @@ pub struct CandidateMetadataDraft {
 /// The portion of a prepared candidate that changes when file roles or sheet
 /// bindings reshape its physical track slots.
 ///
-/// The draft is part of it: a draft has one track per slot row, so a folder
-/// that gained slots — a sheet bound over a one-track image — gains a blank
-/// track for each.
+/// Replacing audio replaces its draft rows; unaffected tracks retain their
+/// identities and metadata.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct CandidateMappingPreparation {
-    /// The draft redrawn over the reshaped slots: the tracks it had, in
-    /// position and with their edits, plus a blank row for every slot the
-    /// folder now has past them.
+    /// Retained tracks and newly initialized tracks in audio order.
     pub draft: CandidateDraft,
     pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
     pub artist_images: Vec<PreparedArtistImage>,
@@ -268,6 +265,7 @@ pub(crate) struct CandidateMappingPreparation {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CandidatePreparedAssets {
+    pub applied_source: Option<crate::import::payloads::AppliedSource>,
     pub remote_cover: Option<crate::import::cover_art::RemoteImage>,
     pub artist_images: Vec<PreparedArtistImage>,
 }
@@ -453,9 +451,8 @@ pub enum TrackArtistAssignments {
 ///
 /// For a release already in the library, `tracks` MUST have the same length as
 /// the release's existing tracks; that editor cannot add or remove tracks
-/// (that's a re-import, not an edit). An import's `tracks` are its track slots
-/// instead, so they may outnumber the source's tracklist (audio it does not
-/// account for) or fall short of it (a track no audio backs).
+/// (that's a re-import, not an edit). An import's tracks are the included audio
+/// units, and metadata application must describe that same ordered list.
 ///
 /// `album_artist_assignments` is positional — element 0 is the primary album
 /// artist, later elements get progressively higher `album_artists.position`.
@@ -509,9 +506,9 @@ impl PressingEdit {
 ///
 /// The audio is named by its identity within the release
 /// ([`ScannedFile::relative_path`](crate::import::folder_scanner::ScannedFile::relative_path)),
-/// never by absolute path. A binding is decided when a release is picked and
-/// resolved against the persisted scan candidate at commit after its physical
-/// file identities have been validated.
+/// never by absolute path. The draft owns this choice independently of applied
+/// metadata. Import resolves it against the persisted scan after validating the
+/// physical file identities.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AudioFile {
@@ -542,17 +539,12 @@ impl AudioFile {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackUserEdit {
     pub title: String,
-    pub side: i32,
+    pub side: Option<i32>,
     pub track_number: Option<i32>,
     pub artist_assignments: TrackArtistAssignments,
-    /// Which audio holds this track's samples, when a slot bound one to it.
-    ///
-    /// An import's rows are the track slots the user saw, so a pairing they
-    /// corrected commits as they left it instead of being re-derived by
-    /// position; a row left with no audio has nothing to write and does not
-    /// become a track. The library's metadata editor never re-binds files, so
-    /// every row it produces carries `None` and the release's existing
-    /// bindings stand.
+    /// The audio chosen for an import track. Import drafts require it.
+    /// The library metadata editor uses `None` because it retains the stored
+    /// audio without changing it.
     pub file: Option<AudioFile>,
 }
 

@@ -90,10 +90,12 @@ async fn a_user_edit_overlays_the_picked_release() {
         },
         tracks: vec![TrackUserEdit {
             title: "Edited Track".to_string(),
-            side: 1,
+            side: Some(1),
             track_number: Some(1),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
-            file: None,
+            file: Some(bae_core::import::AudioFile::Standalone {
+                file_id: "01 Track One.flac".into(),
+            }),
         }],
     };
 
@@ -300,9 +302,10 @@ async fn a_pick_with_a_partner_writes_both_records() {
             album_dir,
             MetadataProvenance::ExternalRelease {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
-                partners: vec![
-                    bae_core::import::MetadataRef::new(Catalog::Discogs, discogs_id.clone()),
-                ],
+                partners: vec![bae_core::import::MetadataRef::new(
+                    Catalog::Discogs,
+                    discogs_id.clone(),
+                )],
             },
         ))
         .await
@@ -364,9 +367,10 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
             album_dir,
             MetadataProvenance::ExternalRelease {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
-                partners: vec![
-                    bae_core::import::MetadataRef::new(Catalog::Discogs, picked_id.clone()),
-                ],
+                partners: vec![bae_core::import::MetadataRef::new(
+                    Catalog::Discogs,
+                    picked_id.clone(),
+                )],
             },
         ))
         .await

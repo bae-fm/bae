@@ -93,11 +93,7 @@ impl MetadataResult {
     /// group it belongs to — the three things identify's tests vary. Every
     /// other field is the empty value, so a test that cares about one of them
     /// sets it with struct-update syntax.
-    pub fn for_test(
-        source: Catalog,
-        release_id: &str,
-        source_group_id: Option<&str>,
-    ) -> Self {
+    pub fn for_test(source: Catalog, release_id: &str, source_group_id: Option<&str>) -> Self {
         Self {
             source,
             release_id: release_id.to_string(),
@@ -186,7 +182,7 @@ pub struct ReleaseTrack {
     /// "1-2", or arbitrary prose like "Bonus"). The import preview shows it
     /// verbatim; it is not the structured library-display position.
     pub position: String,
-    pub side: u32,
+    pub side: Option<u32>,
 }
 
 /// Convert a Discogs search result to a MetadataResult.
@@ -536,7 +532,7 @@ pub(crate) fn build_mb_detail(
         let sides = crate::import::musicbrainz_mapper::medium_sides(release_id, medium)?;
 
         for (t, &side_offset) in medium.tracks.iter().zip(&sides.offsets) {
-            let side = side_base + side_offset + 1;
+            let side = side_offset.map(|offset| side_base + offset + 1);
 
             tracks.push(ReleaseTrack {
                 title: crate::import::musicbrainz_mapper::track_title(release_id, t)?,
@@ -602,7 +598,8 @@ pub(crate) fn build_discogs_detail(
                 artist,
                 duration_ms: pt.duration_ms,
                 position: pt.position.clone(),
-                side: pt.side as u32,
+                side: crate::import::discogs_mapper::release_track_side(release, pt)
+                    .map(|side| side as u32),
             }
         })
         .collect();

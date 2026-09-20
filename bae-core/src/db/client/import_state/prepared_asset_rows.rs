@@ -94,8 +94,6 @@ const REQUIRED_DISCOGS_ARTIST_IDS_SQL: &str =
      JOIN import_candidate_track track \
        ON track.content_hash = assignment.content_hash \
       AND track.track_id = assignment.track_id \
-      AND track.dropped = 0 \
-      AND track.file_kind IS NOT NULL \
      WHERE assignment.content_hash = ? \
        AND assignment.assignment_kind = 'new' \
        AND assignment.discogs_artist_id IS NOT NULL";
@@ -178,6 +176,18 @@ pub(super) fn replace_asset_rows(
     assets: &CandidatePreparedAssets,
     prepared: bool,
 ) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM import_candidate_applied_source WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    if let Some(source) = &assets.applied_source {
+        let json =
+            serde_json::to_string(source).map_err(|error| DbError::Message(error.to_string()))?;
+        sql.execute(
+            "INSERT INTO import_candidate_applied_source (content_hash, snapshot) VALUES (?, ?)",
+            params![content_hash, json],
+        )?;
+    }
     replace_source_artist_rows(sql, content_hash, source_discogs_artist_ids)?;
     sql.execute(
         "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
@@ -286,7 +296,21 @@ fn load_asset_rows_unmarked(
         };
         artist_images.push(asset);
     }
+    let snapshot: Option<String> = sql
+        .query_row(
+            "SELECT snapshot FROM import_candidate_applied_source WHERE content_hash = ?",
+            [content_hash],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let applied_source = snapshot
+        .map(|json| {
+            serde_json::from_str(&json)
+                .map_err(|error| DbError::Message(format!("invalid applied source: {error}")))
+        })
+        .transpose()?;
     Ok(CandidatePreparedAssets {
+        applied_source,
         remote_cover,
         artist_images,
     })

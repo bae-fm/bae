@@ -431,7 +431,9 @@ async fn a_settled_pick_states_the_number_the_folder_prints() {
                 durations: crate::import::probe::SourceDurations::totalling(1_000),
             },
             metadata: Some(crate::import::CandidateMetadataDraft {
-                draft: crate::import::pane::candidate_draft_from_edit(edit).draft,
+                draft: crate::import::pane::candidate_draft_from_edit(edit)
+                    .unwrap()
+                    .draft,
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
                     record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-verdict"),

@@ -564,7 +564,7 @@ pub struct AutomationReleaseTrack {
     pub artist: Option<String>,
     pub duration_ms: Option<u64>,
     pub position: String,
-    pub side: u32,
+    pub side: Option<u32>,
 }
 
 /// Start an import of a candidate. Nothing about the release rides in: the

@@ -204,7 +204,7 @@ async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) 
 
     let track = |release_id: &str, id: &str, side: i32, number: i32| {
         let t = DbTrack {
-            side,
+            side: Some(side),
             ..DbTrack::new_test(release_id, id, "Track Title", Some(number))
         };
         let database = &manager.database;

@@ -22,7 +22,9 @@ async fn a_pick_reads_back_as_the_same_answer() {
         .await;
 
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
-    let release = resumed.release.expect("a settled single match is a decision");
+    let release = resumed
+        .release
+        .expect("a settled single match is a decision");
     assert_eq!(release.release_id, "mb-answer-1");
     assert_eq!(release.tracks.len(), 2);
     assert_eq!(
@@ -49,7 +51,10 @@ async fn a_pick_reads_back_as_the_same_answer() {
     assert_eq!(
         picked,
         crate::import::MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-answer-1".to_string()),
+            record: crate::import::MetadataRef::new(
+                crate::import::Catalog::MusicBrainz,
+                "mb-answer-1".to_string()
+            ),
             partners: vec![],
         }
     );
@@ -58,11 +63,17 @@ async fn a_pick_reads_back_as_the_same_answer() {
     // folder's own files instead of a release.
     fixture
         .import
-        .select_candidate_metadata_provenance(key.clone(), crate::import::MetadataProvenance::FileTags)
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::FileTags,
+        )
         .await
         .expect("deciding File Tags succeeds");
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
-    assert!(resumed.release.is_none(), "File Tags names no external release");
+    assert!(
+        resumed.release.is_none(),
+        "File Tags names no external release"
+    );
     assert_eq!(
         resumed.metadata_author,
         crate::import::MetadataAuthor::User,
@@ -134,13 +145,17 @@ async fn a_picked_release_is_what_the_row_leads_with() {
                 .select_candidate_metadata_provenance(
                     key,
                     crate::import::MetadataProvenance::ExternalRelease {
-                        record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-picked-1".to_string()),
+                        record: crate::import::MetadataRef::new(
+                            crate::import::Catalog::MusicBrainz,
+                            "mb-picked-1".to_string(),
+                        ),
                         partners: vec![],
                     },
                 )
                 .await
         })
     };
+    tokio::time::timeout(Duration::from_secs(10), async {
     loop {
         let event = events.recv().await.expect("the pick raises an event");
         if matches!(
@@ -152,6 +167,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
             break;
         }
     }
+    }).await.expect("a successful pick publishes its metadata change");
 
     picking
         .await
@@ -209,7 +225,10 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
         .await;
 
     let pick = crate::import::MetadataProvenance::ExternalRelease {
-        record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-answer-1".to_string()),
+        record: crate::import::MetadataRef::new(
+            crate::import::Catalog::MusicBrainz,
+            "mb-answer-1".to_string(),
+        ),
         partners: vec![],
     };
     fixture
@@ -303,10 +322,7 @@ async fn queue_row(fixture: &Fixture, key: &str) -> crate::import::TriageRow {
             tab,
             ..crate::import::ImportListView::default()
         };
-        let projection = fixture
-            .import
-            .wait_for_list(view, |_| true)
-            .await;
+        let projection = fixture.import.wait_for_list(view, |_| true).await;
         let row = projection
             .windows
             .iter()
@@ -471,11 +487,9 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     // One poll asks for the write; dropping the future at the end of the block
     // is the caller being torn down.
     {
-        let mut save = std::pin::pin!(fixture.import.save_candidate_verdict_if_current(
-            &key,
-            run,
-            &row
-        ));
+        let mut save = std::pin::pin!(fixture
+            .import
+            .save_candidate_verdict_if_current(&key, run, &row));
         let first_poll =
             std::future::poll_fn(|cx| std::task::Poll::Ready(save.as_mut().poll(cx))).await;
         assert!(
@@ -525,9 +539,8 @@ fn release_json_stating_pressing(
 /// the MusicBrainz document's, because two sources describing one pressing can
 /// disagree and a row naming both says what each of them says.
 fn discogs_release_json_stating_pressing(release_id: &str, label: &str, year: u32) -> String {
-    let mut release: serde_json::Value =
-        serde_json::from_str(&discogs_release_json(release_id))
-            .expect("the Discogs release fixture parses");
+    let mut release: serde_json::Value = serde_json::from_str(&discogs_release_json(release_id))
+        .expect("the Discogs release fixture parses");
     release["labels"] = serde_json::json!([{ "name": label, "catno": "CAT-1" }]);
     release["year"] = serde_json::json!(year);
     release.to_string()
@@ -570,8 +583,14 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-stated-1".to_string()),
-                partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000301")],
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    "mb-stated-1".to_string(),
+                ),
+                partners: vec![crate::import::MetadataRef::new(
+                    crate::import::Catalog::Discogs,
+                    "70000301",
+                )],
             },
         )
         .await

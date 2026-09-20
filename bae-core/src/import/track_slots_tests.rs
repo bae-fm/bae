@@ -85,7 +85,7 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
         .map(|index| SourceTrack {
             edit: TrackUserEdit {
                 title: format!("Track Title {}", index + 1),
-                side: 1,
+                side: Some(1),
                 track_number: Some(index as i32 + 1),
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
@@ -155,7 +155,7 @@ fn extra_audio_becomes_a_file_only_slot_in_disk_order() {
     // restarting it.
     let unnamed = slots[12].track();
     assert_eq!(unnamed.title, "");
-    assert_eq!(unnamed.side, 1);
+    assert_eq!(unnamed.side, Some(1));
     assert_eq!(unnamed.track_number, Some(13));
 }
 
@@ -489,7 +489,7 @@ fn an_unnamed_slot_is_titled_after_its_file() {
                 id: "track-0".to_string(),
                 release_id: "release-1".to_string(),
                 title: "   ".to_string(),
-                side: 1,
+                side: Some(1),
                 track_number: Some(1),
                 duration_ms: None,
                 discogs_position: None,
@@ -670,10 +670,10 @@ fn a_sheet_whose_timing_exceeds_its_audio_leaves_the_container_standalone() {
     );
     assert!(matches!(
         files.track_sheets().next().map(|sheet| sheet.binding),
-        Some(crate::import::folder_scanner::SheetBinding::Unresolved)
+        Some(crate::import::folder_scanner::SheetBinding::Unresolved { .. })
     ));
     assert!(matches!(
-        files.sheet_binding_options("CDImage.cue").as_slice(),
+        files.sheet_binding_options("CDImage.cue")[0].options.as_slice(),
         [crate::import::folder_scanner::SheetBindingOption {
             file_id,
             offer: SheetBindingOffer::RefusedTiming,
@@ -759,7 +759,7 @@ fn audio_that_left_the_folder_refuses() {
                 id: "track-0".to_string(),
                 release_id: "release-1".to_string(),
                 title: "Track Title".to_string(),
-                side: 1,
+                side: Some(1),
                 track_number: Some(1),
                 duration_ms: None,
                 discogs_position: None,

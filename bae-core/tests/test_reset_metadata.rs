@@ -77,7 +77,7 @@ fn make_track(release_id: &str, n: i32, title: &str) -> DbTrack {
         id: Uuid::new_v4().to_string(),
         release_id: release_id.to_string(),
         title: title.to_string(),
-        side: 1,
+        side: Some(1),
         track_number: Some(n),
         duration_ms: Some(180_000),
         discogs_position: None,

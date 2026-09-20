@@ -254,13 +254,13 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
             .unwrap_or_else(|| panic!("file_id {} not in release_files", segment.file_id));
 
         let expected = match track.side {
-            1 => "CD1/CDImage.ape",
-            2 => "CD2/CDImage.ape",
-            other => panic!("unexpected side {other} for track {}", track.title),
+            Some(1) => "CD1/CDImage.ape",
+            Some(2) => "CD2/CDImage.ape",
+            other => panic!("unexpected side {other:?} for track {}", track.title),
         };
         assert_eq!(
             filename, expected,
-            "track '{}' (side {}) should point at {expected}, got {filename}",
+            "track '{}' (side {:?}) should point at {expected}, got {filename}",
             track.title, track.side,
         );
     }

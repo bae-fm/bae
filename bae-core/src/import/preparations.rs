@@ -106,9 +106,8 @@ impl CandidatePreparations {
     /// decision without clearing it would leave the queue believing an answer
     /// to a question that changed.
     ///
-    /// A pick identification concluded from that verdict goes with it, for the
-    /// same reason. A pick a person made stays: their choice names a release,
-    /// not a shape, and the draft re-derives against the reshaped folder.
+    /// Applied metadata and its provenance remain. The caller replaces only
+    /// tracks whose audio changed, using the current prefill preference.
     ///
     /// The content hash covers files, never role decisions, so this addresses
     /// the same row the verdict lived in rather than orphaning it — and the
@@ -149,22 +148,13 @@ impl CandidatePreparations {
         prep.folder_path = folder_path.to_string();
         prep.file_edits = edits.clone();
         prep.file_edits.revision = next_revision;
-        // The verdict described a shape that is gone, and so did the pick
-        // identification made from it and the signals it read. A person's
-        // pick names a release, not a shape, and stays.
+        // Identification and signals described the prior audio shape. The
+        // applied metadata and its source are independent of that verdict.
         prep.identification = None;
         prep.signals = None;
-        let keep_pick = prep.author == crate::import::MetadataAuthor::User;
-        if !keep_pick {
-            prep.metadata.provenance = None;
-            prep.author = crate::import::MetadataAuthor::Nobody;
-        }
         prep.metadata.draft = mapping_preparation.draft.clone();
-        prep.metadata.source_discogs_artist_ids = if keep_pick {
-            mapping_preparation.source_discogs_artist_ids.clone()
-        } else {
-            Default::default()
-        };
+        prep.metadata.source_discogs_artist_ids =
+            mapping_preparation.source_discogs_artist_ids.clone();
         // The prepared answers were made for the draft before it was redrawn;
         // every artist the redrawn draft needs must be among them, and the
         // ones it no longer needs go.
@@ -226,8 +216,11 @@ impl CandidatePreparations {
                     "metadata replacement has no candidate state row".into(),
                 )
             })?;
-        let mut draft = crate::import::pane::candidate_draft_from_edit(draft.clone()).draft;
-        super::edits::preserve_user_decisions(&mut draft, &prep.metadata.draft);
+        let mut draft = crate::import::pane::candidate_draft_from_edit(draft.clone())
+            .map_err(|error| LibraryError::Import(error.to_string()))?
+            .draft;
+        super::pane::apply_metadata_tracks(&mut draft, &prep.metadata.draft)
+            .map_err(|error| LibraryError::Import(error.to_string()))?;
         let metadata = crate::import::CandidateMetadataDraft {
             draft,
             source_discogs_artist_ids: Default::default(),

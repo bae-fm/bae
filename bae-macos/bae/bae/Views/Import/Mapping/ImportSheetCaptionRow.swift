@@ -17,14 +17,11 @@ struct ImportSheetCaptionRow: View {
     /// The audio this sheet may be bound to, each already offered or refused by
     /// core. `nil` until it has been asked for; empty means there is nothing to
     /// offer, so no menu appears.
-    let options: [BridgeSheetBindingOption]?
+    let options: [BridgeSheetReferenceOptions]?
     /// Identifying signals extracted from this sheet — a cue the disc ID was
     /// computed from. Empty otherwise.
     var evidence: [BridgeFileEvidence]
-    /// Whether the disc menu is on the line. An import with one sheet has one
-    /// disc and the pill would only restate it; a sheet taken out of the
-    /// tracklist keeps the menu whatever the count, because it is the way
-    /// back in.
+    /// Whether this surface offers the CUE selection and disc control.
     let showsDiscMenu: Bool
     let actions: ImportMappingActions
 
@@ -104,7 +101,7 @@ struct ImportSheetCaptionRow: View {
             ImportSheetBindingMenu(
                 sheet: sheet,
                 options: options,
-                onBind: { actions.bindSheet(sheet.sheetId, $0) },
+                onBind: { actions.bindSheet(sheet.sheetId, $0, $1) },
             )
             .disabled(!sourceFileEditsAllowed)
         }

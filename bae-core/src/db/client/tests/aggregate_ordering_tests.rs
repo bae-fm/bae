@@ -234,10 +234,10 @@ async fn release_detail_db() -> (Database, tempfile::TempDir) {
                 ('5b5f8c38-5237-4187-895c-28b1b2a43672', 'Track Artist Name First', 'stamp', '2026-01-01T00:00:00Z'),
                 ('8ccac2a7-7e60-4f52-881e-0b349ff78cc5', 'Track Artist Name Second', 'stamp', '2026-01-01T00:00:00Z');
 
-            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
+            INSERT INTO tracks (position, id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
             VALUES
-                ('04676261-1659-47b1-879c-2947c52f4a8d', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title B', 1, 2, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z');
+                (1, '04676261-1659-47b1-879c-2947c52f4a8d', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title B', 1, 2, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                (0, '0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z');
 
             INSERT INTO track_artists (id, track_id, artist_id, position, _updated_at, created_at)
             VALUES

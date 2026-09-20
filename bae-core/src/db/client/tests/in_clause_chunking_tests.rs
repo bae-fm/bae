@@ -16,8 +16,8 @@ async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
         for (index, track_id) in seed_track_ids.iter().enumerate() {
             conn.execute(
                 "INSERT INTO tracks \
-                     (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at) \
-                 VALUES (?1, '0252dedb-ee39-4547-8803-438dbeb57a64', ?2, 1, ?3, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z')",
+                     (position, id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at) \
+                 VALUES (?3, ?1, '0252dedb-ee39-4547-8803-438dbeb57a64', ?2, 1, ?3, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z')",
                 params![track_id, format!("Track Title {index}"), index as i64],
             )?;
         }

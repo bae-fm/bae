@@ -328,14 +328,14 @@ forward! {
         fn sheet_binding_options(
             candidate_key: String,
             sheet_file_id: String,
-        ) -> Vec<crate::types::BridgeSheetBindingOption> {
+        ) -> Vec<crate::types::BridgeSheetReferenceOptions> {
             Ok(this
                 .services
                 .import_sheet_binding_options(candidate_key, sheet_file_id)
                 .await
                 .map_err(BridgeError::import)?
                 .into_iter()
-                .map(crate::types::BridgeSheetBindingOption::from_core)
+                .map(crate::types::BridgeSheetReferenceOptions::from_core)
                 .collect())
         }
 
@@ -353,11 +353,12 @@ forward! {
         fn set_sheet_binding(
             candidate_key: String,
             sheet_file_id: String,
+            file_reference: String,
             audio_file_id: Option<String>,
         ) -> () {
             Ok(this
                 .services
-                .import_set_sheet_binding(candidate_key, sheet_file_id, audio_file_id)
+                .import_set_sheet_binding(candidate_key, sheet_file_id, file_reference, audio_file_id)
                 .await?)
         }
 

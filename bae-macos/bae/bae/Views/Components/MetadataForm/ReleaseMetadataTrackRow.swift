@@ -9,12 +9,22 @@ struct ReleaseMetadataTrackRow: View {
     let durationDiverges: Bool
     let columns: ReleaseMetadataTrackColumns
     let editingCommands: EditingCommitCommands
+    var displayedPosition: String?
     let onChange: @MainActor (BridgeRawTrackEdit) async -> Void
 
     var body: some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
-            TrackNumberCell(value: trackNumberBinding)
-                .frame(width: ReleaseMetadataTrackColumns.track)
+            Group {
+                if let displayedPosition {
+                    Text(verbatim: displayedPosition)
+                        .font(.system(size: 12))
+                        .monospacedDigit()
+                }
+                else {
+                    TrackNumberCell(value: trackNumberBinding)
+                }
+            }
+            .frame(width: ReleaseMetadataTrackColumns.track)
             CommittedTextField(
                 placeholder: coreString("ui.import.slots.untitled"),
                 value: track.title,

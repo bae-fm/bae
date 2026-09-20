@@ -9188,6 +9188,352 @@
         }
       }
     },
+    "core.import.error.metadata_grouping": {
+      "comment": "Metadata application refused because known disc or side boundaries conflict.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حدود الأقراص أو الأوجه في الإصدار لا تتطابق مع الصوت في المسودة."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Границите на дисковете или страните на изданието не съответстват на аудиото в черновата."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hranice disků nebo stran vydání neodpovídají zvuku v konceptu."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udgivelsens disk- eller sidegrænser svarer ikke til lyden i kladden."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Disc- oder Seitengrenzen der Veröffentlichung stimmen nicht mit dem Audio im Entwurf überein."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Τα όρια δίσκων ή πλευρών της έκδοσης δεν αντιστοιχούν στον ήχο του προσχεδίου."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The release disc or side boundaries do not match the draft audio."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los límites de disco o cara de la edición no coinciden con el audio del borrador."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Julkaisun levyjen tai puolien rajat eivät vastaa luonnoksen ääntä."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les limites des disques ou des faces de cette édition ne correspondent pas à l’audio du brouillon."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גבולות התקליטורים או הצדדים במהדורה אינם תואמים לשמע בטיוטה."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Granice diskova ili strana izdanja ne odgovaraju zvuku u nacrtu."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A kiadvány lemez- vagy oldalhatárai nem egyeznek a vázlat hanganyagával."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I confini dei dischi o dei lati dell’edizione non corrispondono all’audio della bozza."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リリースのディスクまたは面の区切りが下書きの音声と一致しません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴리스의 디스크 또는 면 구분이 초안의 오디오와 일치하지 않습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utgivelsens plate- eller sidegrenser samsvarer ikke med lyden i utkastet."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De schijf- of kantgrenzen van de uitgave komen niet overeen met de audio in het concept."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Granice płyt lub stron wydania nie odpowiadają dźwiękowi w wersji roboczej."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os limites dos discos ou lados da edição não correspondem ao áudio do rascunho."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os limites dos discos ou lados da edição não correspondem ao áudio do rascunho."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limitele discurilor sau fețelor ediției nu corespund sunetului din ciornă."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hranice diskov alebo strán vydania nezodpovedajú zvuku v koncepte."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utgåvans skiv- eller sidgränser stämmer inte med ljudet i utkastet."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürümün disk veya yüz sınırları taslaktaki sesle eşleşmiyor."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Межі дисків або сторін видання не відповідають аудіо в чернетці."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发行版本的碟片或盘面分界与草稿中的音频不匹配。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "發行版本的碟片或盤面分界與草稿中的音訊不符。"
+          }
+        }
+      }
+    },
+    "core.import.error.metadata_track_count": {
+      "comment": "Metadata application refused because track counts differ.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عدد مسارات الإصدار لا يتطابق مع الصوت في المسودة."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Броят на песните в изданието не съответства на аудиото в черновата."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Počet skladeb vydání neodpovídá zvuku v konceptu."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udgivelsens antal numre svarer ikke til lyden i kladden."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Titelanzahl der Veröffentlichung stimmt nicht mit dem Audio im Entwurf überein."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ο αριθμός κομματιών της έκδοσης δεν αντιστοιχεί στον ήχο του προσχεδίου."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The release track count does not match the draft audio."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El número de pistas de la edición no coincide con el audio del borrador."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Julkaisun raitamäärä ei vastaa luonnoksen ääntä."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le nombre de pistes de cette édition ne correspond pas à l’audio du brouillon."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מספר הרצועות במהדורה אינו תואם לשמע בטיוטה."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Broj pjesama izdanja ne odgovara zvuku u nacrtu."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A kiadvány számainak száma nem egyezik a vázlat hanganyagával."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il numero di tracce dell’edizione non corrisponde all’audio della bozza."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リリースのトラック数が下書きの音声と一致しません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴리스의 트랙 수가 초안의 오디오와 일치하지 않습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utgivelsens antall spor samsvarer ikke med lyden i utkastet."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het aantal nummers van de uitgave komt niet overeen met de audio in het concept."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liczba utworów wydania nie odpowiada dźwiękowi w wersji roboczej."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O número de faixas da edição não corresponde ao áudio do rascunho."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O número de faixas da edição não corresponde ao áudio do rascunho."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Numărul de piese al ediției nu corespunde sunetului din ciornă."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Počet skladieb vydania nezodpovedá zvuku v koncepte."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utgåvans antal spår stämmer inte med ljudet i utkastet."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürümün parça sayısı taslaktaki sesle eşleşmiyor."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кількість доріжок видання не відповідає аудіо в чернетці."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发行版本的曲目数与草稿中的音频不匹配。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "發行版本的曲目數與草稿中的音訊不符。"
+          }
+        }
+      }
+    },
     "core.import.evidence.barcode_in_image": {
       "comment": "Import pane, hover over an artwork thumbnail: identification matched the release on a barcode read off this image ({value} is the barcode digits).",
       "localizations": {
@@ -35388,6 +35734,179 @@
           "stringUnit": {
             "state": "translated",
             "value": "放回"
+          }
+        }
+      }
+    },
+    "ui.import.slots.remove_help": {
+      "comment": "Remove an included draft track without deleting its audio file.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة هذا المسار من المسودة."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Премахване на тази песен от черновата."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odebrat tuto skladbu z konceptu."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjern dette nummer fra kladden."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesen Titel aus dem Entwurf entfernen."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αφαίρεση αυτού του κομματιού από το προσχέδιο."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove this track from the draft."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar esta pista del borrador."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poista tämä raita luonnoksesta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer cette piste du brouillon."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הסרת הרצועה הזו מהטיוטה."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ukloni ovu pjesmu iz nacrta."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szám eltávolítása a vázlatból."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi questa traccia dalla bozza."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このトラックを下書きから削除します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "초안에서 이 트랙을 제거합니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjern dette sporet fra utkastet."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit nummer uit het concept verwijderen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń ten utwór z wersji roboczej."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover esta faixa do rascunho."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover esta faixa do rascunho."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elimină această piesă din ciornă."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odstrániť túto skladbu z konceptu."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta bort det här spåret från utkastet."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu parçayı taslaktan kaldır."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вилучити цю доріжку з чернетки."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从草稿中移除此曲目。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從草稿中移除此曲目。"
           }
         }
       }

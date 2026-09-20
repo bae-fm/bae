@@ -277,33 +277,24 @@ impl ImportService {
             .map(|plan| plan.db_delete.release_id.clone())
             .collect();
 
-        let source_durations = crate::import::probe::source_durations(&categorized)?;
-        let audio_durations =
-            crate::import::track_slots::audio_durations(&categorized, &source_durations)?;
-
         let mut records = Vec::new();
         let parsed = match &metadata_provenance {
             Some(crate::import::MetadataProvenance::ExternalRelease { record, partners }) => {
-                // The documents are archived by `prepare_release`, keyed by the
-                // picked catalog release — so nothing about this release's rows
-                // needs to carry them, and the records written below are what
-                // find them again.
-                let payloads = library_manager
-                    .load_release_payloads(record)
-                    .await?
-                    .ok_or_else(|| crate::import::ImportError::Internal {
-                        detail: format!(
-                            "{candidate_key}'s selected release payloads are not prepared"
-                        ),
-                    })?;
-                let parsed =
-                    payloads.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
-                records = crate::import::service::records_for_commit(
-                    library_manager,
-                    &payloads,
-                    partners,
-                )
-                .await?;
+                let applied = prepared_assets.applied_source.as_ref().ok_or_else(|| {
+                    crate::import::ImportError::Internal {
+                        detail: format!("{candidate_key} has no applied source documents"),
+                    }
+                })?;
+                if applied.payloads.release() != record {
+                    return Err(crate::import::ImportError::Internal {
+                        detail: "applied source and draft provenance disagree".into(),
+                    });
+                }
+                let payloads = &applied.payloads;
+                let parsed = applied.parsed(self.clock.as_ref(), self.ids.as_ref())?;
+                records =
+                    crate::import::service::records_for_commit(library_manager, payloads, partners)
+                        .await?;
                 parsed
             }
             Some(crate::import::MetadataProvenance::FileTags) => {
@@ -346,14 +337,12 @@ impl ImportService {
         // any metadata is applied, so everything downstream works on the track
         // list the import will actually write.
         let mut parsed = parsed;
-        let mut user_edit = user_edit;
         let track_bindings = settle_track_rows(
             &mut parsed,
-            &mut user_edit,
-            &categorized,
+            &preparation.draft,
             self.ids.as_ref(),
             self.clock.now(),
-        );
+        )?;
 
         let mut prepared = self
             .reconcile_prepared_release(

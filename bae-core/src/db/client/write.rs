@@ -196,8 +196,9 @@ pub(super) fn insert_track_row(
         r#"
         INSERT INTO tracks (
             id, release_id, title, side, track_number, duration_ms,
-            discogs_position, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            discogs_position, _updated_at, created_at, position
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
+            (SELECT COALESCE(MAX(position) + 1, 0) FROM tracks WHERE release_id = ?))
         "#,
         params![
             track.id,
@@ -209,6 +210,7 @@ pub(super) fn insert_track_row(
             track.discogs_position,
             reg,
             track.created_at.to_rfc3339(),
+            track.release_id,
         ],
     )
     .map(|_| ())

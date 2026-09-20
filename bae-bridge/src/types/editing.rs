@@ -39,7 +39,7 @@ pub struct BridgeReleaseTrack {
     /// Raw position string as the metadata source reports it ("A1", "1",
     /// "1-2", or arbitrary prose). Shown verbatim in the import preview.
     pub position: String,
-    pub side: u32,
+    pub side: Option<u32>,
 }
 
 /// One kind of identifying signal extracted from a candidate file. Mirrors
@@ -118,7 +118,7 @@ pub struct BridgePressingEdit {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackUserEdit {
     pub title: String,
-    pub side: i32,
+    pub side: Option<i32>,
     pub track_number: Option<i32>,
     pub artist_assignments: BridgeTrackArtistAssignments,
     /// Which of the folder's audio holds this track's samples. An import's rows
@@ -410,7 +410,9 @@ pub struct BridgeSheetGroup {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSheetBound {
     /// The sheet describes this audio.
-    Describes { container: BridgeMappingContainer },
+    Describes {
+        container: BridgeMappingContainer,
+    },
     /// The sheet describes several audio files. Each track row names its own
     /// physical file, so the group header has no single container.
     DescribesFiles,
@@ -419,11 +421,16 @@ pub enum BridgeSheetBound {
     /// binding. `requested` is what the directive asked for, so the header can
     /// say what the sheet was looking for while it offers the folder's own
     /// audio instead.
-    Unresolved { requested: Vec<String> },
+    Unresolved {
+        requested: Vec<String>,
+    },
     /// The directive resolved, but bae cannot carve tracks out of that codec.
     /// The physical audio files import independently.
     /// The UI localizes `codec` through `bridge_sheet_refused_codec_key`.
-    RefusedCodec { codec: String },
+    RefusedCodec {
+        codec: String,
+    },
+    RefusedTiming,
 }
 
 /// One of the folder's images, as the gallery shows it. Mirror of bae-core's
@@ -703,7 +710,7 @@ pub struct BridgeRawTrackEdit {
     pub id: String,
     pub title: String,
     pub artist_assignments: BridgeTrackArtistAssignments,
-    pub side: i32,
+    pub side: Option<i32>,
     pub track_number: Option<i32>,
     /// The audio bound to this row. An editor must carry it through untouched:
     /// dropping it when rebuilding a row from its text fields is what unpairs a

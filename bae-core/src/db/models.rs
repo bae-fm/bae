@@ -397,7 +397,7 @@ pub struct DbTrack {
     pub title: String,
     /// Physical side, 1-indexed and always set explicitly, never defaulted: a CD
     /// disc is side 1; vinyl A = 1, B = 2; a cassette has 2 sides.
-    pub side: i32,
+    pub side: Option<i32>,
     pub track_number: Option<i32>,
     pub duration_ms: Option<i64>,
     /// Position from metadata source (e.g., "A1", "1", "1-1")
@@ -767,7 +767,7 @@ impl DbTrack {
             id: track_id.to_string(),
             release_id: release_id.to_string(),
             title: title.to_string(),
-            side: 1,
+            side: Some(1),
             track_number,
             duration_ms: None,
             discogs_position: None,

@@ -248,7 +248,7 @@ pub enum TrackSide {
 pub struct TrackDetail {
     pub id: String,
     pub title: String,
-    pub side: i32,
+    pub side: Option<i32>,
     pub track_number: Option<i32>,
     pub duration_ms: Option<i64>,
     /// Effective artist names for display -- the track's own artists when it

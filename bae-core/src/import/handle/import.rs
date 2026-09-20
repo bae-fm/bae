@@ -142,8 +142,11 @@ impl ImportServiceHandle {
     ) -> Result<String, crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
-        self.committed(async move { this.start_import_write(&candidate_key, storage_mode, pin).await })
-            .await
+        self.committed(async move {
+            this.start_import_write(&candidate_key, storage_mode, pin)
+                .await
+        })
+        .await
     }
 
     async fn start_import_write(
@@ -441,7 +444,7 @@ impl ImportServiceHandle {
                 .await?;
             let source_draft = crate::import::pane::candidate_draft_from_edit(
                 crate::import::RawReleaseEdit::from_user_edit(edit, "test-import-track"),
-            );
+            )?;
             assets.artist_images = self
                 .library_manager
                 .prepare_discogs_artist_images(source_draft.mapped_new_discogs_artist_ids.clone())

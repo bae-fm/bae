@@ -178,7 +178,7 @@ impl Database {
                    ON seg.audio_format_id = af.id AND seg.role = 'main' \
                  JOIN release_files rf ON rf.id = seg.file_id \
                  WHERE t.release_id = ?1 \
-                 ORDER BY t.side, t.track_number",
+                 ORDER BY t.position",
                 [&release_id],
                 |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
             )

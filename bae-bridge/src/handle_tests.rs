@@ -45,7 +45,7 @@ fn track_detail(
     bae_core::album_detail::TrackDetail {
         id: "track-1".to_string(),
         title: "Track".to_string(),
-        side: 1,
+        side: Some(1),
         track_number: Some(1),
         duration_ms,
         artist_names: "Artist".to_string(),

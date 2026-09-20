@@ -36,7 +36,7 @@ impl LibraryManager {
             .len()
             > 1;
         let disc = if has_multiple_sides {
-            Some(meta.track.side)
+            meta.track.side
         } else {
             None
         };

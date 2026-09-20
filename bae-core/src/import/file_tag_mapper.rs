@@ -13,7 +13,7 @@
 //! facts, not release media, so the pressing format stays blank.
 
 use super::assemble::{
-    assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackEvent, TrackIr, TrackNumber,
+    assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackEvent, TrackIr,
 };
 use super::file_tag_snapshot::{
     extract_file_tag_snapshot, non_empty, FileTagFact, FileTagSnapshot, LoftyFileTagReader,
@@ -126,24 +126,14 @@ fn file_tag_facts_ir(
 
     let year = extracted.iter().find_map(|t| t.year).map(|y| y as i32);
 
-    // Side comes from DISCNUMBER, track_number from TRACKNUMBER. The positional
-    // fallback (index within side, by file order) applies only on a side where NO
-    // file is tagged: backfilling a position onto an untagged file that shares a
-    // side with tagged ones would collide with the real values (an untagged file
-    // landing on position 1 beside a TRACKNUMBER=1 file). On a partially-tagged
-    // side the untagged files stay `None` for the user to assign.
-    let side_of = |t: &FileTagFact| match t.disc_number {
-        Some(0) | None => 1,
-        Some(d) if d > i32::MAX as u32 => i32::MAX,
-        Some(d) => d as i32,
+    // Missing disc tags carry no claimed grouping. Numbers default to position
+    // independently of whether neighboring files have number tags.
+    let side_of = |track: &FileTagFact| {
+        track
+            .disc_number
+            .filter(|number| *number > 0)
+            .and_then(|number| i32::try_from(number).ok())
     };
-    let mut side_has_tagged_track: std::collections::HashMap<i32, bool> =
-        std::collections::HashMap::new();
-    for t in extracted.iter() {
-        let entry = side_has_tagged_track.entry(side_of(t)).or_insert(false);
-        *entry = *entry || t.track_number.is_some();
-    }
-
     let tracks: Vec<TrackIr> = extracted
         .iter()
         .map(|t| {
@@ -158,18 +148,10 @@ fn file_tag_facts_ir(
             });
 
             let side = side_of(t);
-            let side_has_tagged = side_has_tagged_track.get(&side).copied().unwrap_or(false);
-            let number = match t.track_number {
-                Some(0) => TrackNumber::Explicit(None),
-                Some(n) if n > i32::MAX as u32 => TrackNumber::Explicit(None),
-                Some(n) => TrackNumber::Explicit(Some(n as i32)),
-                // Untagged file on a side that has tagged siblings — leave it
-                // for the user rather than backfill a colliding position.
-                None if side_has_tagged => TrackNumber::Explicit(None),
-                // Fully-untagged side — positional by file order, numbered by
-                // the assembler's per-side pass.
-                None => TrackNumber::PerSide,
-            };
+            let number = t
+                .track_number
+                .and_then(|number| i32::try_from(number).ok())
+                .filter(|number| *number > 0);
 
             TrackIr {
                 title,
@@ -399,8 +381,10 @@ fn cue_sheets_ir(
 fn cue_track_ir(track: &crate::cue_flac::CueTrack, side: i32) -> TrackIr {
     TrackIr {
         title: non_empty(track.title.clone()).unwrap_or_default(),
-        side,
-        number: TrackNumber::PerSide,
+        side: Some(side),
+        number: i32::try_from(track.number)
+            .ok()
+            .filter(|number| *number > 0),
         source_position: None,
         events: file_tag_credit_events(non_empty(track.performer.clone()).as_deref()),
     }

@@ -223,7 +223,7 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
             id: Uuid::new_v4().to_string(),
             release_id: release_id.to_string(),
             title: format!("Track {i}"),
-            side: 1,
+            side: Some(1),
             track_number: Some(i as i32),
             duration_ms: None,
             discogs_position: None,
@@ -236,7 +236,7 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
 #[tokio::test]
 #[serial(musicbrainz)]
 async fn re_identify_release_exact_archives_the_picked_release() {
-    use crate::import::{ReleaseReseed, MetadataRef, Catalog};
+    use crate::import::{Catalog, MetadataRef, ReleaseReseed};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -330,7 +330,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
     // point at: a 12-track release can't replace a 10-track rip. A folder
     // import maps its own audio into track slots instead, where a count
     // disagreement is a row to look at rather than a refusal.
-    use crate::import::{ReleaseReseed, MetadataRef, Catalog};
+    use crate::import::{Catalog, MetadataRef, ReleaseReseed};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
@@ -383,7 +383,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
     // projects through the new pointer and reaches the documents that commit
     // archived. A regression here means re-identify pointed the release at a
     // source release whose documents it never wrote.
-    use crate::import::{ReleaseReseed, MetadataRef, Catalog};
+    use crate::import::{Catalog, MetadataRef, ReleaseReseed};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -492,7 +492,7 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
             id: id.to_string(),
             release_id: release.id.clone(),
             title: title.to_string(),
-            side: 1,
+            side: Some(1),
             track_number: Some(i as i32 + 1),
             duration_ms: None,
             discogs_position: None,
@@ -612,7 +612,7 @@ async fn re_identify_with_file_tags_keeps_the_fields_a_person_typed() {
         id: "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
         release_id: release.id.clone(),
         title: "MB Track One".to_string(),
-        side: 1,
+        side: Some(1),
         track_number: Some(1),
         duration_ms: None,
         discogs_position: None,
@@ -681,7 +681,7 @@ async fn re_identify_with_file_tags_keeps_the_fields_a_person_typed() {
 #[tokio::test]
 #[serial(musicbrainz)]
 async fn re_identify_with_a_partner_writes_both_identity_rows() {
-    use crate::import::{MetadataRef, Catalog, ReleaseReseed};
+    use crate::import::{Catalog, MetadataRef, ReleaseReseed};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir) = setup_test_manager().await;

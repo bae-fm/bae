@@ -156,15 +156,9 @@
         )
 
         static let moreTracksEditValues: BridgeRawReleaseEdit = {
-            var edit = editMetadataDraft(trackCount: 10)
-            edit.tracks = edit.tracks.enumerated()
-                .map { index, track in
-                    var track = track
-                    track.file =
-                        index == 0
-                        ? .standalone(fileId: moreTracksAudio.file.name) : nil
-                    return track
-                }
+            var edit = editMetadataDraft(trackCount: 1)
+            edit.tracks[0].file = .standalone(fileId: moreTracksAudio.file.name)
+            edit.tracks[0].title = moreTracksAudio.file.fileName
             return edit
         }()
 
@@ -181,7 +175,7 @@
             country: "US",
             barcode: "000000000000",
             trackCount: 10,
-            tracks: moreTracksEditValues.tracks.enumerated()
+            tracks: editMetadataDraft(trackCount: 10).tracks.enumerated()
                 .map {
                     index,
                     track in
@@ -197,76 +191,46 @@
             defaultCover: nil
         )
 
-        /// One file paired to the release's first track, followed by every
-        /// release track the folder has nothing for.
+        /// Ignoring a CUE replaces its songs with the whole container.
         static let moreTracksMappingTable = BridgeMappingTable(
             images: [],
             trackSections: [
                 BridgeMappingTrackSection(
                     side: .flat,
                     headerKey: nil,
-                    content: .tracks(
-                        mappings: moreTracksEditValues.tracks.enumerated()
-                            .map {
-                                index,
-                                track in
-                                let position = "\(index + 1)"
-                                let sourceDurationMs = UInt64(
-                                    252_000 + index * 9000
-                                )
-                                if index == 0 {
-                                    return BridgeTrackMapping(
-                                        source: .file(
-                                            file: BridgeMappingFile(
-                                                fileId: moreTracksAudio.file
-                                                    .name,
-                                                name: moreTracksAudio.file
-                                                    .fileName,
-                                                size: moreTracksAudio.file.size,
-                                                localPath: moreTracksAudio.file
-                                                    .localPath,
-                                                previewTarget:
-                                                    BridgePreviewTarget(
-                                                        path: moreTracksAudio
-                                                            .file
-                                                            .localPath,
-                                                        startSample: 0,
-                                                        endSample: nil
-                                                    ),
-                                                durationMs: 272_000,
-                                                audioFormat: moreTracksAudio
-                                                    .file
-                                                    .audioFormat,
-                                                role: .audio,
-                                                alternatives: moreTracksAudio
-                                                    .alternatives,
-                                                roleChoice: moreTracksAudio
-                                                    .roleChoice
-                                            )
-                                        ),
-                                        becomes: .track(
-                                            track: track,
-                                            position: position,
-                                            namedBySource: true
-                                        ),
-                                        durationMs: sourceDurationMs
-                                    )
-                                }
-                                return BridgeTrackMapping(
-                                    source: .missing,
-                                    becomes: .track(
-                                        track: track,
-                                        position: position,
-                                        namedBySource: true
+                    content: .tracks(mappings: [
+                        BridgeTrackMapping(
+                            source: .file(
+                                file: BridgeMappingFile(
+                                    fileId: moreTracksAudio.file.name,
+                                    name: moreTracksAudio.file.fileName,
+                                    size: moreTracksAudio.file.size,
+                                    localPath: moreTracksAudio.file.localPath,
+                                    previewTarget: BridgePreviewTarget(
+                                        path: moreTracksAudio.file.localPath,
+                                        startSample: 0,
+                                        endSample: nil
                                     ),
-                                    durationMs: sourceDurationMs
+                                    durationMs: 2_720_000,
+                                    audioFormat: moreTracksAudio.file
+                                        .audioFormat,
+                                    role: .audio,
+                                    alternatives: moreTracksAudio.alternatives,
+                                    roleChoice: moreTracksAudio.roleChoice
                                 )
-                            }
-                    )
+                            ),
+                            becomes: .track(
+                                track: moreTracksEditValues.tracks[0],
+                                position: "1",
+                                namedBySource: false
+                            ),
+                            durationMs: 2_720_000
+                        )
+                    ])
                 )
             ],
             files: [],
-            reconciliation: .moreTracks(files: 1, tracks: 10)
+            reconciliation: nil
         )
 
         /// One entry the folder's sheet carves out of its single container.
@@ -671,8 +635,8 @@
             cover: releaseDetailBridge.defaultCover,
         )
 
-        /// A settled ten-track release against a folder containing one audio
-        /// file: the first row is backed and the remaining nine are missing.
+        /// The applied release remains recorded after its CUE is ignored;
+        /// the track list contains the whole file with its own metadata.
         @MainActor
         static let moreTracksMappingCandidate: Candidate = paneCandidate(
             folder: BridgeFolderCandidate(

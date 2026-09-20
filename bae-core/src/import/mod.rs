@@ -159,7 +159,7 @@ desktop_only! {
     };
     pub use cover_art::{CoverChoice, CoverImageSource};
     pub use edits::{
-        apply_track_edits, CandidateEditOverlay, CandidateTrackEdit, ImportFailure,
+        CandidateTrackEdit, ImportFailure,
         TrackEditState,
     };
 }
@@ -184,7 +184,7 @@ desktop_only! {
         ImportQueueSummary, ReadyRowRef,
     };
     pub use mapping::{
-        mapping_table, mapping_tracks, mapping_with_track, mapping_without_track, MappingBecomes,
+        mapping_table, mapping_tracks, MappingBecomes,
         MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage, MappingRole,
         MappingSource, MappingTable, MappingTrackSection, MappingTrackSectionContent,
         PickedTracklist, SheetBound, SheetGroup, TrackMapping, TracklistSource,
@@ -216,8 +216,8 @@ pub use types::{
     FieldOrigins, FieldProvenance, FieldValues, MarkKind, MetadataProvenance, NewArtistSeed,
     PressingEdit, RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
     ReleaseFormReset, ReleaseMark, ReleaseMarkLine, ReleaseRecord, ReleaseUserEdit,
-    SourceAvailability, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit, TrackVerification,
-    Verification, VerificationSource,
+    SourceAvailability, TrackArtistAssignments, TrackUserEdit, TrackVerification, Verification,
+    VerificationSource,
 };
 desktop_only! {
     pub use types::{

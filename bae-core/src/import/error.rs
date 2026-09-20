@@ -73,8 +73,7 @@ pub enum ImportError {
     DiscogsNotConfigured,
 
     /// The source responded, but its payload can't be mapped to a release (no
-    /// artist credits, missing release_group, multi-side track with no side
-    /// letter, medium with no tracks, no track title, ...).
+    /// artist credits, missing release_group, medium with no tracks, no track title, ...).
     ///
     /// The field is `catalog`, not `source`: thiserror reserves a field
     /// literally named `source` for the error-chain source, which a `Catalog`
@@ -82,6 +81,19 @@ pub enum ImportError {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("{} release data cannot be mapped: {detail}", catalog.as_str())]
     SourceData { catalog: Catalog, detail: String },
+
+    /// Metadata cannot describe the included audio without adding or losing tracks.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("release has {metadata_tracks} tracks; the draft includes {audio_tracks}")]
+    MetadataTrackCount {
+        metadata_tracks: usize,
+        audio_tracks: usize,
+    },
+
+    /// Both sources assign groups, but their boundaries contradict each other.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("release disc or side boundaries disagree with the draft")]
+    MetadataGrouping,
 
     /// Local file-tag evidence can't seed a File Tags import (no audio files,
     /// a file failed to open / parse, embedded-cover read failure).
@@ -92,10 +104,6 @@ pub enum ImportError {
     /// A file the import must read cannot be used: audio that will not decode,
     /// a codec bae can't play, bytes that could not be hashed, or audio a track
     /// slot named that is no longer in the folder.
-    ///
-    /// The import's only remaining refusal. A disagreement between the source's
-    /// tracklist and the folder's audio is a track slot to look at, not a
-    /// failure — see [`TrackSlot`](crate::import::TrackSlot).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("{detail}")]
     UnusableFile { detail: String },

@@ -49,6 +49,8 @@ fn seed_discogs_pressing(release_id: &str, label: &str, catalog_number: &str) {
             "duration": "0:01",
             "type_": "track",
             "artists": [],
+        }, {
+            "position": "2", "title": "Track Two", "duration": "0:01", "type_": "track", "artists": []
         }],
     })
     .to_string();
@@ -80,10 +82,7 @@ async fn a_tag_read_draft_says_the_files_own_tags() {
 
     let barcode = provenance(&pane, CandidateEditField::Barcode);
     assert!(pane.metadata_draft.pressing.barcode.is_empty());
-    assert_eq!(
-        barcode.origin, None,
-        "an absent value came from nowhere"
-    );
+    assert_eq!(barcode.origin, None, "an absent value came from nowhere");
 }
 
 /// Typing in a field makes the value the person's, and emptying it leaves no
@@ -117,7 +116,11 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
     let from_tags = pane(&handle, &key).await.metadata_draft;
 
     handle
-        .set_candidate_edit_field(&key, CandidateEditField::AlbumTitle, "Typed Title".to_string())
+        .set_candidate_edit_field(
+            &key,
+            CandidateEditField::AlbumTitle,
+            "Typed Title".to_string(),
+        )
         .await
         .unwrap();
     handle
@@ -176,10 +179,10 @@ async fn clearing_the_metadata_leaves_no_origin() {
 }
 
 /// Picking a release reads every field the catalog states from that catalog,
-/// and what a person typed stands through the rewrite.
+/// and replaces what a person typed.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_pick_reads_its_fields_from_the_catalog_and_keeps_what_was_typed() {
+async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
         .library_manager
@@ -226,11 +229,11 @@ async fn a_pick_reads_its_fields_from_the_catalog_and_keeps_what_was_typed() {
 
     let barcode = provenance(&pane, CandidateEditField::Barcode);
     assert_eq!(
-        pane.metadata_draft.pressing.barcode, "5099749",
-        "the rewrite leaves what the person typed"
+        pane.metadata_draft.pressing.barcode, "",
+        "explicit application replaces typed values, including with absent metadata"
     );
-    assert_eq!(barcode.origin, Some(FieldOrigin::Typed));
-    assert_eq!(barcode.dot, Some(FieldDot::Typed));
+    assert_eq!(barcode.origin, None);
+    assert_eq!(barcode.dot, None);
 }
 
 /// Two catalogs claiming one pressing each state their own reading. The field
@@ -294,11 +297,7 @@ async fn the_catalogs_readings_say_where_they_disagree() {
     );
 
     handle
-        .set_candidate_edit_field(
-            &key,
-            CandidateEditField::CatalogNumber,
-            "CAT-3".to_string(),
-        )
+        .set_candidate_edit_field(&key, CandidateEditField::CatalogNumber, "CAT-3".to_string())
         .await
         .unwrap();
     let typed_over = provenance(
@@ -408,7 +407,7 @@ async fn a_cross_linked_document_is_compared_before_import_and_after() {
     assert_eq!(stored_label.dot, Some(FieldDot::Disagreement));
 }
 
-/// A one-track MusicBrainz release stating a label and a catalog number, in
+/// A two-track MusicBrainz release stating a label and a catalog number, in
 /// the release group `release_group_id` names, and — where `discogs_release`
 /// names one — an editor's link to the Discogs release of the same pressing.
 fn seed_mb_pressing(
@@ -459,19 +458,21 @@ fn seed_mb_pressing(
         media: vec![crate::musicbrainz::MbMedium {
             discs: vec![],
             format: Some("CD".to_string()),
-            tracks: vec![crate::musicbrainz::MbTrack {
-                position: Some(1),
-                number: Some("1".to_string()),
-                title: None,
-                length: None,
-                recording: Some(crate::musicbrainz::MbRecording {
-                    id: None,
-                    title: Some("Track One".to_string()),
+            tracks: (1..=2)
+                .map(|number| crate::musicbrainz::MbTrack {
+                    position: Some(number),
+                    number: Some(number.to_string()),
+                    title: None,
+                    length: None,
+                    recording: Some(crate::musicbrainz::MbRecording {
+                        id: None,
+                        title: Some("Track One".to_string()),
+                        artist_credit: vec![],
+                        relations: vec![],
+                    }),
                     artist_credit: vec![],
-                    relations: vec![],
-                }),
-                artist_credit: vec![],
-            }],
+                })
+                .collect(),
         }],
         relations,
         cover_art_archive: crate::musicbrainz::MbCoverArtArchive {

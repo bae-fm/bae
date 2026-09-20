@@ -140,7 +140,7 @@ fn a_cue_track_starting_after_its_audio_is_rejected() {
     let files = categorize(dir);
     assert!(matches!(
         files.track_sheets().next().map(|sheet| sheet.binding),
-        Some(crate::import::folder_scanner::SheetBinding::Unresolved)
+        Some(crate::import::folder_scanner::SheetBinding::Unresolved { .. })
     ));
     assert!(matches!(
         source_durations(&files)
@@ -172,7 +172,7 @@ fn descending_cue_track_boundaries_are_rejected() {
     let files = categorize(dir);
     assert!(matches!(
         files.track_sheets().next().map(|sheet| sheet.binding),
-        Some(crate::import::folder_scanner::SheetBinding::Unresolved)
+        Some(crate::import::folder_scanner::SheetBinding::Unresolved { .. })
     ));
     assert!(matches!(
         source_durations(&files)

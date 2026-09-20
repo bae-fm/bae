@@ -111,8 +111,7 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
         FileRole::TrackSheet { binding, disc, .. } => {
             let (sheet_binding, sheet_binding_codec) = match binding {
                 SheetBinding::Resolved { .. } => ("resolved", None),
-                SheetBinding::Override { .. } => ("override", None),
-                SheetBinding::Unresolved => ("unresolved", None),
+                SheetBinding::Unresolved { .. } => ("unresolved", None),
                 SheetBinding::RefusedCodec { codec } => ("refused_codec", Some(codec.as_str())),
             };
             let (sheet_disc, sheet_disc_number) = match disc {
@@ -147,14 +146,7 @@ pub(super) fn sheet_binding_of(
             }
             Ok(SheetBinding::Resolved { files: audio_files })
         }
-        "override" => {
-            let mut audio_files = audio_files.into_iter();
-            let (Some(file), None) = (audio_files.next(), audio_files.next()) else {
-                return Err(malformed("must name exactly one audio file"));
-            };
-            Ok(SheetBinding::Override { file })
-        }
-        "unresolved" => Ok(SheetBinding::Unresolved),
+        "unresolved" => Ok(SheetBinding::Unresolved { files: audio_files }),
         "refused_codec" => Ok(SheetBinding::RefusedCodec {
             codec: codec.ok_or_else(|| malformed("has no codec"))?,
         }),

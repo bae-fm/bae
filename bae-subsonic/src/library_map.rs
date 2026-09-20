@@ -198,7 +198,7 @@ pub(crate) async fn track_child(
         suffix: audio.suffix,
         duration: audio.duration_secs,
         bit_rate: None,
-        disc_number: Some(track.side),
+        disc_number: track.side,
         created: Some(track.created_at.to_rfc3339()),
         album_id: Some(album_wire_id(&release.id)),
         artist_id,

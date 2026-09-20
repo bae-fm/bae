@@ -52,12 +52,7 @@ async fn assert_every_mutation_refused(
             .await
             .map(drop),
     );
-    refused(
-        handle
-            .drop_candidate_track(key, track.id)
-            .await
-            .map(drop),
-    );
+    refused(handle.drop_candidate_track(key, track.id).await.map(drop));
     refused(handle.set_candidate_cover(key, cover).await.map(drop));
     refused(
         handle
@@ -93,9 +88,7 @@ async fn assert_every_mutation_refused(
 async fn a_typed_field_lands_in_the_next_form_empty_included() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let seeded = pane(&handle, &key).await;
-    let seeded_artists = seeded
-        .metadata_draft
-        .album_artist_assignments;
+    let seeded_artists = seeded.metadata_draft.album_artist_assignments;
 
     handle
         .set_candidate_edit_field(
@@ -141,7 +134,12 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
 /// source selection before it can persist edits.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_edit_with_no_metadata_source_updates_the_draft() {
-    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate().await;
 
     handle
         .set_candidate_edit_field(
@@ -151,7 +149,10 @@ async fn an_edit_with_no_metadata_source_updates_the_draft() {
         )
         .await
         .unwrap();
-    assert_eq!(pane(&handle, &key).await.metadata_draft.pressing.year, "1991");
+    assert_eq!(
+        pane(&handle, &key).await.metadata_draft.pressing.year,
+        "1991"
+    );
 
     shut_down(handle).await;
 }
@@ -255,7 +256,7 @@ async fn an_edited_track_row_redraws_alone() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_metadata_only_track_edit_does_not_freeze_automatic_file_alignment() {
+async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let mut tracks = track_rows(&pane(&handle, &key).await.mapping);
     tracks[1].title = "Renamed".to_string();
@@ -281,16 +282,12 @@ async fn a_metadata_only_track_edit_does_not_freeze_automatic_file_alignment() {
         .expect("the reshaped candidate remains prepared");
     assert_eq!(
         preparation.draft.tracks[0].edit.file,
-        Some(crate::import::AudioFile::Standalone {
+        crate::import::AudioFile::Standalone {
             file_id: "02 Track.flac".to_string(),
-        })
+        }
     );
-    assert_eq!(preparation.draft.tracks[1].edit.file, None);
-    assert!(preparation
-        .draft
-        .tracks
-        .iter()
-        .all(|track| track.file_author == crate::import::TrackFileAuthor::Automatic));
+    assert_eq!(preparation.draft.tracks.len(), 1);
+    assert_eq!(preparation.draft.tracks[0].edit.title, "Renamed");
 
     shut_down(handle).await;
 }
@@ -321,7 +318,9 @@ async fn a_track_edit_that_keeps_artist_ids_keeps_the_prepared_artist_image() {
             bytes: vec![1, 2, 3, 4],
         },
     };
-    handle.preparations.apply_source(
+    handle
+        .preparations
+        .apply_source(
             &tmp.path().join("watched").to_string_lossy(),
             &crate::import::CandidateAsRead {
                 content_hash: hash.clone(),
@@ -335,6 +334,7 @@ async fn a_track_edit_that_keeps_artist_ids_keeps_the_prepared_artist_image() {
                 provenance: preparation.metadata_provenance,
                 cover: preparation.cover,
                 assets: crate::import::CandidatePreparedAssets {
+                    applied_source: None,
                     remote_cover: preparation.assets.remote_cover,
                     artist_images: vec![image.clone()],
                 },
@@ -416,7 +416,10 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, source_release_id),
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::Discogs,
+                    source_release_id.clone(),
+                ),
                 partners: vec![],
             },
         )
@@ -428,17 +431,33 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
         .load_import_candidate_prepared_assets(&hash)
         .await
         .unwrap();
-    assert!(prepared.artist_images.contains(
-        &crate::import::PreparedArtistImage::Image {
+    assert!(prepared
+        .artist_images
+        .contains(&crate::import::PreparedArtistImage::Image {
             discogs_artist_id: prepared_artist_id.clone(),
             source_url: source_url.clone(),
             image: crate::import::cover_art::RemoteImage {
                 content_type: crate::util::content_type::ContentType::Png,
                 bytes: expected_bytes.clone(),
             },
-        }
-    ));
+        }));
 
+    // Another lookup may replace the shared cache; the applied draft owns
+    // the documents its credits came from.
+    handle
+        .library_manager
+        .save_source_release_payloads_for_test(&[crate::db::DbSourceReleasePayload::new(
+            &crate::import::SourcePayload::new(
+                crate::import::PayloadSource::Discogs,
+                source_release_id.clone(),
+                serde_json::json!({ "id": source_release_id.parse::<u64>().unwrap(),
+                    "title": "Revised release", "artists": [], "tracklist": [] })
+                .to_string(),
+            ),
+            handle.clock.now(),
+        )])
+        .await
+        .unwrap();
     let mut events = handle.subscribe_events();
     let import_id = handle
         .start_import(&key, crate::import::StorageMode::Local, false)
@@ -493,7 +512,9 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
 #[tokio::test(flavor = "multi_thread")]
 async fn import_admission_refuses_an_incomplete_candidate_revision() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
-    handle.preparations.set_album_artists(
+    handle
+        .preparations
+        .set_album_artists(
             &hash,
             &[crate::import::ArtistAssignment::new("Changed Artist")],
         )
@@ -533,12 +554,7 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
         "Blocked title",
         first_track,
         cover,
-        |error| {
-            matches!(
-                error,
-                crate::import::ImportError::CandidateImportInProgress
-            )
-        },
+        |error| matches!(error, crate::import::ImportError::CandidateImportInProgress),
     )
     .await;
 
@@ -594,12 +610,7 @@ async fn an_imported_candidate_refuses_metadata_edits() {
         "Edited after import",
         first_track,
         cover,
-        |error| {
-            matches!(
-                error,
-                crate::import::ImportError::CandidateAlreadyImported
-            )
-        },
+        |error| matches!(error, crate::import::ImportError::CandidateAlreadyImported),
     )
     .await;
 
@@ -652,7 +663,12 @@ async fn an_imported_candidate_refuses_metadata_edits() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
-    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate().await;
 
     let mut events = handle.subscribe_events();
     let import_id = handle
@@ -724,10 +740,10 @@ async fn a_dropped_track_leaves_the_table() {
 async fn metadata_source_changes_preserve_explicit_track_file_mappings() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let mut tracks = track_rows(&pane(&handle, &key).await.mapping);
-    let first_file = tracks[0].file.clone();
-    let second_file = tracks[1].file.clone();
-    tracks[0].file.clone_from(&second_file);
-    tracks[1].file.clone_from(&first_file);
+    let first_file = tracks[0].file.clone().unwrap();
+    let second_file = tracks[1].file.clone().unwrap();
+    tracks[0].file = Some(second_file.clone());
+    tracks[1].file = Some(first_file.clone());
     for track in &tracks {
         handle
             .set_candidate_track_edit(&key, track.clone())
@@ -768,7 +784,6 @@ async fn a_file_decision_after_a_drop_preserves_every_mapping_identity() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let tracks = track_rows(&pane(&handle, &key).await.mapping);
     let dropped_id = tracks[0].id.clone();
-    let kept_id = tracks[1].id.clone();
     handle
         .drop_candidate_track(&key, dropped_id.clone())
         .await
@@ -789,14 +804,7 @@ async fn a_file_decision_after_a_drop_preserves_every_mapping_identity() {
         .await
         .unwrap()
         .expect("the reshaped candidate remains prepared");
-    let active = preparation.draft.release_edit();
-    assert_eq!(active.tracks.len(), 1);
-    assert_eq!(active.tracks[0].id, kept_id);
-    assert!(preparation
-        .draft
-        .tracks
-        .iter()
-        .any(|track| track.edit.id == dropped_id && track.dropped));
+    assert!(preparation.draft.tracks.is_empty());
     shut_down(handle).await;
 }
 
@@ -823,7 +831,13 @@ async fn file_tags_uses_the_conventional_folder_cover() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn file_tags_persists_embedded_artwork_ahead_of_the_folder_cover() {
-    let StoredCandidate { handle, manager, key, tmp: _tmp, .. } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        manager,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate().await;
     let bytes = vec![1, 2, 3, 4];
     handle
         .file_tag_snapshot_with_reader(

@@ -14,7 +14,7 @@ struct ImportMappingTable: View {
     /// What each track sheet may be bound to, by the sheet's file id. Core
     /// probes to decide, so the table is handed the answer: a sheet with no
     /// offer yet shows no picker.
-    let bindingOptions: [String: [BridgeSheetBindingOption]]
+    let bindingOptions: [String: [BridgeSheetReferenceOptions]]
     /// The source window currently auditioning, if any — its row is accented.
     let previewingTarget: BridgePreviewTarget?
     /// Extracted identifying signals by their source file. The row for that
@@ -153,7 +153,7 @@ struct ImportMappingTable: View {
             sheet: sheet,
             options: bindingOptions[sheet.sheetId],
             evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
-            showsDiscMenu: table.sheetCount > 1 || sheet.assignment == .ignored,
+            showsDiscMenu: true,
             actions: actions,
         )
     }
@@ -294,22 +294,6 @@ enum ImportMappingColumns {
     static let action = ReleaseMetadataTrackColumns.action
     static let spacing = ReleaseMetadataTrackColumns.spacing
     static let rowPadding = ReleaseMetadataTrackColumns.rowPadding
-}
-
-extension BridgeMappingTable {
-    /// How many track sheets the folder holds, carving rows or not.
-    var sheetCount: Int {
-        trackSections.filter {
-            if case .sheet = $0.content { return true }
-            return false
-        }
-        .count
-            + files.filter {
-                if case .sheet = $0 { return true }
-                return false
-            }
-            .count
-    }
 }
 
 extension BridgeMappingFileRow {

@@ -1,6 +1,5 @@
 use super::assemble::{
-    assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, ReleaseRole, TrackEvent,
-    TrackIr, TrackNumber,
+    assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, ReleaseRole, TrackEvent, TrackIr,
 };
 use super::ParsedAlbum;
 use crate::db::{is_various_artists, Pressing};
@@ -228,8 +227,8 @@ fn discogs_track_ir(release: &DiscogsRelease, pt: &ProcessedTrack) -> TrackIr {
 
     TrackIr {
         title: pt.title.clone(),
-        side: pt.side,
-        number: TrackNumber::PerSide,
+        side: release_track_side(release, pt),
+        number: super::assemble::position_number(&pt.position),
         source_position: Some(pt.position.clone()),
         events,
     }
@@ -243,7 +242,7 @@ pub(crate) struct ProcessedTrack<'a> {
     pub position: String,
     pub duration_ms: Option<u64>,
     pub source_tracks: Vec<&'a crate::discogs::DiscogsTrack>,
-    pub side: i32,
+    pub side: Option<i32>,
 }
 
 #[derive(Clone)]
@@ -611,23 +610,39 @@ pub(crate) fn parse_duration_to_ms(duration: &str) -> Option<u64> {
     }
 }
 
+/// A known CD contains one side even when its track positions omit a disc.
+pub(crate) fn release_track_side(release: &DiscogsRelease, track: &ProcessedTrack) -> Option<i32> {
+    track.side.or_else(|| {
+        release
+            .format
+            .iter()
+            .any(|format| format.contains("CD"))
+            .then_some(1)
+    })
+}
+
 /// The side a Discogs position string names: for vinyl (`A1`, `B2`, `C1`) the
 /// letter is the side (A=1, B=2, ...); for CD (`1-1`, `2-1`) the disc number is;
-/// a plain number (`1`, `2`) is side 1.
-pub fn parse_side_from_position(position: &str) -> i32 {
+/// a plain number (`1`, `2`) leaves the side unknown.
+pub fn parse_side_from_position(position: &str) -> Option<i32> {
     if let Some(dash_idx) = position.find('-') {
         if let Ok(disc) = position[..dash_idx].parse::<i32>() {
-            return disc;
+            if disc <= 0 {
+                return None;
+            }
+            return Some(disc);
         }
     }
 
     if let Some(first_char) = position.chars().next() {
-        if first_char.is_ascii_alphabetic() {
-            return (first_char.to_ascii_uppercase() as i32) - ('A' as i32) + 1;
+        if first_char.is_ascii_alphabetic()
+            && position[1..].bytes().all(|byte| byte.is_ascii_digit())
+        {
+            return Some((first_char.to_ascii_uppercase() as i32) - ('A' as i32) + 1);
         }
     }
 
-    1
+    None
 }
 
 #[cfg(test)]

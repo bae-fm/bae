@@ -218,12 +218,7 @@ fn content_hash_changes_with_file_modification_time() {
 fn content_hash_is_independent_of_discovery_order() {
     let entry = |name: &str, size: u64, role: FileRole| CandidateFile {
         proposed_audio: matches!(role, FileRole::Audio),
-        file: ScannedFile::new(
-            PathBuf::from(name),
-            name.to_string(),
-            size,
-            1,
-        ),
+        file: ScannedFile::new(PathBuf::from(name), name.to_string(), size, 1),
         role,
     };
     let forward = CategorizedFiles {
@@ -677,7 +672,7 @@ fn per_track_flacs_with_missing_cue_audio_still_import() {
             assert_eq!(sheets.len(), 1);
             assert_eq!(
                 sheets[0].binding,
-                &SheetBinding::Unresolved,
+                &SheetBinding::Unresolved { files: Vec::new() },
                 "the sheet names absent audio",
             );
             assert_eq!(candidate.files.track_count(), 12);
@@ -804,7 +799,7 @@ fn bound_sheets_take_their_positions_as_discs_by_default() {
         vec![
             ("alpha.cue", SheetDisc::Disc { number: 1 }),
             ("beta.cue", SheetDisc::Disc { number: 2 }),
-            ("zeta.cue", SheetDisc::Disc { number: 1 }),
+            ("zeta.cue", SheetDisc::Ignored),
         ],
     );
 }

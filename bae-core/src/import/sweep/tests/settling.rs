@@ -152,10 +152,7 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
 
     // Exactly what a person asking to identify the candidate does.
     fixture.start_explicit_lookup(&dir);
-    let row = tokio::time::timeout(
-        Duration::from_secs(20),
-        fixture.await_identified_row(&dir),
-    )
+    let row = tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
         .await
         .expect("the explicit Lookup recorder stores the verdict");
 
@@ -263,7 +260,10 @@ async fn a_settled_candidate_uses_archived_metadata_and_prepares_its_cover() {
         .select_candidate_metadata_provenance(
             dir.to_string_lossy().into_owned(),
             crate::import::MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-offline-1".to_string()),
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    "mb-offline-1".to_string(),
+                ),
                 partners: vec![],
             },
         )
@@ -318,7 +318,10 @@ async fn a_settled_lead_with_no_documents_fails_loud() {
         .select_candidate_metadata_provenance(
             dir.to_string_lossy().into_owned(),
             crate::import::MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-missing-1".to_string()),
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    "mb-missing-1".to_string(),
+                ),
                 partners: vec![],
             },
         )
@@ -354,7 +357,10 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     );
 
     let pick = || crate::import::MetadataProvenance::ExternalRelease {
-        record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-manual-1".to_string()),
+        record: crate::import::MetadataRef::new(
+            crate::import::Catalog::MusicBrainz,
+            "mb-manual-1".to_string(),
+        ),
         partners: vec![],
     };
     fixture
@@ -420,11 +426,9 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         200,
         discogs_search_json("70000101", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
     );
-    fixture.provider.route(
-        "/releases/70000101",
-        200,
-        discogs_release_json("70000101"),
-    );
+    fixture
+        .provider
+        .route("/releases/70000101", 200, discogs_release_json("70000101"));
     // Nothing links this synthetic Discogs release to a MusicBrainz one, which
     // is the answer the cross-reference lookup would come back with.
     crate::musicbrainz::seed_discogs_url_lookup("70000101", None);
@@ -452,8 +456,14 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     assert_eq!(
         row.metadata_provenance,
         Some(crate::import::MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-paired-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000101")],
+            record: crate::import::MetadataRef::new(
+                crate::import::Catalog::MusicBrainz,
+                "mb-paired-1".to_string()
+            ),
+            partners: vec![crate::import::MetadataRef::new(
+                crate::import::Catalog::Discogs,
+                "70000101"
+            )],
         }),
         "the stored pick claims the Discogs record of the same pressing"
     );
@@ -512,11 +522,9 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         200,
         discogs_search_json("70000102", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
     );
-    fixture.provider.route(
-        "/releases/70000102",
-        200,
-        discogs_release_json("70000102"),
-    );
+    fixture
+        .provider
+        .route("/releases/70000102", 200, discogs_release_json("70000102"));
     crate::musicbrainz::seed_discogs_url_lookup("70000102", None);
     fixture.scan(1).await;
 
@@ -547,8 +555,14 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     assert_eq!(
         row.metadata_provenance,
         Some(crate::import::MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-paired-2".to_string()),
-            partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000102")],
+            record: crate::import::MetadataRef::new(
+                crate::import::Catalog::MusicBrainz,
+                "mb-paired-2".to_string()
+            ),
+            partners: vec![crate::import::MetadataRef::new(
+                crate::import::Catalog::Discogs,
+                "70000102"
+            )],
         }),
         "the stored pick claims the Discogs record the barcode alone found"
     );
@@ -599,7 +613,13 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     fixture.provider.route(
         "/releases/70000103",
         200,
-        discogs_release_json("70000103"),
+        {
+            let mut release: serde_json::Value = serde_json::from_str(&discogs_release_json("70000103")).unwrap();
+            release["tracklist"].as_array_mut().unwrap().push(serde_json::json!({
+                "position": "2", "title": "Track 2", "duration": "0:01", "type_": "track", "artists": []
+            }));
+            release.to_string()
+        },
     );
     crate::musicbrainz::seed_discogs_url_lookup("70000103", None);
     fixture.scan(1).await;
@@ -626,8 +646,14 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     assert_eq!(
         row.metadata_provenance,
         Some(crate::import::MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000103".to_string()),
-            partners: vec![crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-paired-3")],
+            record: crate::import::MetadataRef::new(
+                crate::import::Catalog::Discogs,
+                "70000103".to_string()
+            ),
+            partners: vec![crate::import::MetadataRef::new(
+                crate::import::Catalog::MusicBrainz,
+                "mb-paired-3"
+            )],
         }),
         "so the pick names it primary and the MusicBrainz record its partner"
     );

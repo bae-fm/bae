@@ -165,8 +165,8 @@ fn seed_numbers_tracks_per_side() {
     let edit = seed_for(&vinyl_response());
     let numbers: Vec<Option<i32>> = edit.tracks.iter().map(|t| t.track_number).collect();
     assert_eq!(numbers, vec![Some(1), Some(2), Some(1)]);
-    let sides: Vec<i32> = edit.tracks.iter().map(|t| t.side).collect();
-    assert_eq!(sides, vec![1, 1, 2]);
+    let sides: Vec<Option<i32>> = edit.tracks.iter().map(|t| t.side).collect();
+    assert_eq!(sides, vec![Some(1), Some(1), Some(2)]);
 }
 
 /// Every artist the release credits reaches the editor, in credit order. The

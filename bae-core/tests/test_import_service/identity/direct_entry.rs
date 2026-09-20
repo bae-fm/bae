@@ -12,7 +12,10 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "direct-entry-candidate".to_string(),
-            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
+            source: bae_core::import::release_candidate::CandidateSource::Folder {
+                path: album_dir,
+                scope: bae_core::import::ReleaseFileScope::Recursive,
+            },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -25,10 +28,12 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
                 pressing: PressingEdit::blank(),
                 tracks: vec![TrackUserEdit {
                     title: "Track Title".to_string(),
-                    side: 1,
+                    side: Some(1),
                     track_number: Some(1),
                     artist_assignments: TrackArtistAssignments::AlbumArtists,
-                    file: None,
+                    file: Some(bae_core::import::AudioFile::Standalone {
+                        file_id: "01 Track Title.flac".into(),
+                    }),
                 }],
             }),
         })
@@ -40,13 +45,12 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert!(!release.draft_from_tags);
-    assert!(
-        f.db
-            .get_release_records(&release_id)
-            .await
-            .unwrap()
-            .is_empty()
-    );
+    assert!(f
+        .db
+        .get_release_records(&release_id)
+        .await
+        .unwrap()
+        .is_empty());
     assert_eq!(
         f.db.find_album_by_id(&album_id)
             .await

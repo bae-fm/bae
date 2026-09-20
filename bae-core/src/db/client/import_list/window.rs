@@ -6,10 +6,10 @@
 //! the one key a selection names — never for the queue.
 
 use super::super::folder_scans::load_resolved_boundaries;
-use super::super::records::check_releases_in_library_on;
 use super::super::import_combinations::{load_candidate_on, skipped_on};
 use super::super::import_state::{load_pane_rows_on, load_states_on};
 use super::super::payloads::load_release_payloads_on;
+use super::super::records::check_releases_in_library_on;
 use super::*;
 use crate::identify::{classify, TerminalVerdict, VerdictSummary};
 use crate::import::cover_art::{CoverChoice, RemoteCover};
@@ -198,7 +198,10 @@ pub(super) struct PickedReleaseRows {
     /// each with the documents archived for it. A release nothing archived
     /// documents for is still listed: the pick claims it either way, and the
     /// row says so.
-    claimed: Vec<(MetadataRef, Option<crate::import::payloads::ReleasePayloads>)>,
+    claimed: Vec<(
+        MetadataRef,
+        Option<crate::import::payloads::ReleasePayloads>,
+    )>,
     files: CategorizedFiles,
 }
 
@@ -407,16 +410,17 @@ pub(super) fn load_candidate_detail_on(
             .collect::<Vec<_>>(),
     )
     .map_err(|error| DbError::Message(error.to_string()))?;
-    let described = crate::import::payloads::documents_of_records(&records, |release| {
-        match claimed
-            .iter()
-            .find(|payloads| payloads.release() == release)
-        {
-            Some(payloads) => Ok(Some(payloads.clone())),
-            None => load_release_payloads_on(sql, release),
-        }
-    })
-    .map_err(|error| DbError::Message(error.to_string()))?;
+    let described =
+        crate::import::payloads::documents_of_records(&records, |release| {
+            match claimed
+                .iter()
+                .find(|payloads| payloads.release() == release)
+            {
+                Some(payloads) => Ok(Some(payloads.clone())),
+                None => load_release_payloads_on(sql, release),
+            }
+        })
+        .map_err(|error| DbError::Message(error.to_string()))?;
     let picked_library_status = match claimed.first() {
         Some(payloads) => {
             let check = payloads
@@ -506,15 +510,15 @@ pub(super) fn load_candidate_detail_on(
             // re-orders the rows the next time they are read, with nothing
             // asked again. A candidate whose extraction never stored any text
             // offers its rows unranked rather than none.
-            let text = signals.as_ref().map_or_else(
-                crate::identify::CandidateText::default,
-                |signals| {
-                    crate::identify::CandidateText::of(
-                        &signals.text_pool,
-                        &lookup_choices.discounted_catalogs,
-                    )
-                },
-            );
+            let text =
+                signals
+                    .as_ref()
+                    .map_or_else(crate::identify::CandidateText::default, |signals| {
+                        crate::identify::CandidateText::of(
+                            &signals.text_pool,
+                            &lookup_choices.discounted_catalogs,
+                        )
+                    });
             resumed_identify_state = identify.verdict.clone().resume_state(&status_of, text);
         }
         if picked.is_some() {
@@ -531,13 +535,16 @@ pub(super) fn load_candidate_detail_on(
                 .into_iter()
                 .flat_map(|identify| identify.verdict.lookups()),
         );
-        let mut marks = signals.as_ref()
+        let mut marks = signals
+            .as_ref()
             .map(|signals| crate::import::ReleaseMark::of_signals(signals, &lookup_choices))
             .unwrap_or_default();
         crate::identify::corroborate_marks(
             &mut marks,
             picked.as_ref(),
-            identify.into_iter().flat_map(|identify| identify.verdict.lookups()),
+            identify
+                .into_iter()
+                .flat_map(|identify| identify.verdict.lookups()),
             identify.and_then(|identify| identify.verdict.ledger()),
         );
         let pane = crate::import::pane::draft_pane(
@@ -545,7 +552,6 @@ pub(super) fn load_candidate_detail_on(
             candidate.files(),
             &durations,
             &pane_rows.draft,
-            picked.as_ref(),
         );
         let remote_covers = pane
             .release

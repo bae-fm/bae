@@ -113,6 +113,12 @@ mirror_struct! {
     fields: { file_id, offer: (BridgeSheetBindingOffer) },
 }
 
+mirror_struct! {
+    BridgeSheetReferenceOptions = bae_core::import::folder_scanner::SheetReferenceOptions,
+    from_core: pub(crate) fn,
+    fields: { file_reference, file_id, options: (each BridgeSheetBindingOption) },
+}
+
 impl BridgeCandidateFiles {
     pub(crate) fn from_core(files: bae_core::import::folder_scanner::CategorizedFiles) -> Self {
         // Derived from the whole set before it is taken apart: which slots a
@@ -387,6 +393,7 @@ mirror_enum! {
         DescribesFiles,
         Unresolved { requested },
         RefusedCodec { codec },
+        RefusedTiming,
     },
 }
 

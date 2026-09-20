@@ -39,7 +39,10 @@ async fn one_import_reuses_an_artist_already_waiting_to_be_inserted() {
         .await
         .unwrap();
 
-    assert_eq!(resolved, vec![discogs_credit.id.clone(), discogs_credit.id.clone()]);
+    assert_eq!(
+        resolved,
+        vec![discogs_credit.id.clone(), discogs_credit.id.clone()]
+    );
     let saved = manager
         .get_artist_by_id(&discogs_credit.id)
         .await
@@ -59,21 +62,20 @@ async fn one_import_reuses_an_idless_artist_name_already_waiting_to_be_inserted(
         .await
         .unwrap();
 
-    assert_eq!(resolved, vec![album_credit.id.clone(), album_credit.id.clone()]);
-    assert!(
-        manager
-            .get_artist_by_id(&album_credit.id)
-            .await
-            .unwrap()
-            .is_some()
+    assert_eq!(
+        resolved,
+        vec![album_credit.id.clone(), album_credit.id.clone()]
     );
-    assert!(
-        manager
-            .get_artist_by_id(&track_credit.id)
-            .await
-            .unwrap()
-            .is_none()
-    );
+    assert!(manager
+        .get_artist_by_id(&album_credit.id)
+        .await
+        .unwrap()
+        .is_some());
+    assert!(manager
+        .get_artist_by_id(&track_credit.id)
+        .await
+        .unwrap()
+        .is_none());
 }
 
 #[tokio::test]
@@ -176,7 +178,10 @@ async fn edited_assignments_reuse_an_artist_waiting_to_be_inserted() {
         },
     ];
 
-    let resolved = manager.resolve_artist_assignments(&assignments).await.unwrap();
+    let resolved = manager
+        .resolve_artist_assignments(&assignments)
+        .await
+        .unwrap();
 
     assert_eq!(resolved.ids, vec![resolved.ids[0].clone(); 2]);
     assert_eq!(resolved.inserts.len(), 1);
@@ -207,11 +212,12 @@ async fn conflicting_exact_source_ids_fail_instead_of_choosing_an_artist() {
     assert_eq!(conflict.discogs_artist_id, "d123");
     assert_eq!(conflict.musicbrainz_artist_id, "mb-abc");
     assert_eq!(conflict.discogs_artist.artist_id, discogs_artist.id);
-    assert_eq!(
-        conflict.musicbrainz_artist.artist_id,
-        musicbrainz_artist.id
-    );
-    assert!(manager.get_artist_by_id(&incoming.id).await.unwrap().is_none());
+    assert_eq!(conflict.musicbrainz_artist.artist_id, musicbrainz_artist.id);
+    assert!(manager
+        .get_artist_by_id(&incoming.id)
+        .await
+        .unwrap()
+        .is_none());
 }
 
 #[tokio::test]
@@ -402,7 +408,7 @@ fn make_track(release_id: &str, number: i32) -> DbTrack {
         id: Uuid::new_v4().to_string(),
         release_id: release_id.to_string(),
         title: format!("Track {}", number),
-        side: 1,
+        side: Some(1),
         track_number: Some(number),
         duration_ms: Some(180000),
         discogs_position: None,
