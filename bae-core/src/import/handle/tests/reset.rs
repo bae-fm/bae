@@ -305,12 +305,11 @@ async fn reset_setup_refuses_missing_or_changed_sources_without_prefill() {
         if missing {
             std::fs::remove_file(&file.path).unwrap();
         } else {
-            std::fs::OpenOptions::new()
+            let mut audio = std::fs::OpenOptions::new()
                 .append(true)
                 .open(&file.path)
-                .unwrap()
-                .set_len(file.size + 1)
                 .unwrap();
+            std::io::Write::write_all(&mut audio, &[0]).unwrap();
         }
         assert!(handle.reset_candidate_setup(&key).await.is_err());
         assert_eq!(
