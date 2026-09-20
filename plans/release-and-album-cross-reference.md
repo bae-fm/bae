@@ -30,3 +30,6 @@ The current `ReleaseRecord` requires a pressing key and group key. Establish a r
 
 ## Separate issue
 Artwork decoding failures for GIF cover responses were diagnosed separately. They are not part of this queued enrichment task; report any resulting verification blocker independently.
+
+## Queued successor
+After enrichment lands, execute [Release selection error details](release-selection-error-details.md) as the third task, on its own branch in this same worktree. The order is field-origin removal, release/album enrichment, then visible and copyable selection-error details.
