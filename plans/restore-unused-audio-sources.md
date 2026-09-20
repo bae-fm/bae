@@ -32,3 +32,6 @@ The macOS multi-file CUE header can say “Choose audio…” despite valid asso
 
 ## Delivery
 Product work targets bae-macos; update shared canonical models and required callers together. Do not edit live database or media. Review the implementation against every contract item, run affected core/bridge/macOS checks and normal hooks, commit, then coordinate the main fast-forward landing.
+
+## Queued successor
+After individual source restoration lands, execute [Reset import setup](reset-import-setup.md). Reset is a separate menu action restoring the whole candidate to its initial scanned setup, including source tracks, automatic CUE/file choices, cover, and preference-dependent initial metadata.
