@@ -90,7 +90,8 @@ that main or CI has passed.
 
 - Field-origin removal: `e857e2990`, pushed on `remove-field-origins`; awaiting
   parent review and main integration.
-- Avalonia prerequisite: implementation and verification underway in the same
-  worker worktree; record the final commit and evidence after hooks pass.
+- Avalonia prerequisite: `540ae9326`, pushed on `fix-avalonia-cue-file-bindings`;
+  normal hooks passed and all 262 Avalonia view tests passed. Parent review and
+  main integration remain required.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.
