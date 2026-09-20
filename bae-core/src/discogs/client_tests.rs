@@ -156,6 +156,39 @@ fn release_without_images_offers_none() {
 }
 
 #[test]
+fn release_year_distinguishes_unknown_from_known() {
+    for (field, expected) in [
+        (None, None),
+        (Some(serde_json::Value::Null), None),
+        (Some(serde_json::json!(0)), None),
+        (Some(serde_json::json!(1971)), Some(1971)),
+    ] {
+        let mut document = serde_json::json!({ "id": 123, "title": "Album Title" });
+        if let Some(value) = field {
+            document["year"] = value;
+        }
+        let release = parse_discogs_release_json(&document.to_string()).unwrap();
+        assert_eq!(release.year, expected, "{document}");
+    }
+}
+
+#[test]
+fn master_year_distinguishes_unknown_from_known() {
+    for (document, expected) in [
+        (r#"{}"#, None),
+        (r#"{"year":null}"#, None),
+        (r#"{"year":0}"#, None),
+        (r#"{"year":1966}"#, Some(1966)),
+    ] {
+        assert_eq!(
+            parse_discogs_master_year(document).unwrap(),
+            expected,
+            "{document}"
+        );
+    }
+}
+
+#[test]
 fn release_parser_preserves_nested_tracklist_entries() {
     let release = parse_discogs_release_json(
         &serde_json::json!({

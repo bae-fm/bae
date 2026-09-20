@@ -379,7 +379,8 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
     Ok(DiscogsRelease {
         id: release.id.to_string(),
         title: release.title,
-        year: release.year,
+        // Discogs encodes an unknown year as zero.
+        year: release.year.filter(|year| *year != 0),
         format: formats.into_iter().map(|f| f.name).collect(),
         country: release.country,
         label: label_names,
@@ -400,7 +401,8 @@ pub fn parse_discogs_master_year(raw_json: &str) -> Result<Option<u32>, DiscogsE
     Ok(parsed
         .get("year")
         .and_then(|y| y.as_u64())
-        .map(|y| y as u32))
+        .map(|y| y as u32)
+        .filter(|year| *year != 0))
 }
 
 #[derive(Clone)]
