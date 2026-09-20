@@ -107,7 +107,6 @@ extension ImportView {
         ImportMappingPane(
             candidate: candidate,
             runtime: runtime,
-            bindingOptions: sheetBindingOptions,
             previewingTarget: importStore.previewState.active?.target,
             isApplyingMetadata: importStore.isApplyingMetadata(
                 forKey: candidate.key
@@ -156,12 +155,7 @@ extension ImportView {
             },
         )
         .animation(nil, value: uiStore.selectedFolderCandidates)
-        // Keyed on the folder's files: what a sheet may be bound to changes
-        // when the folder's audio does, and nothing else moves it. The table
-        // itself needs no read — it rides the candidate's own value.
-        .task(id: candidate.key + fileNames(candidate)) {
-            await loadSheetBindingOptions(for: candidate)
-        }
+
     }
 
     private func commitActions(for candidate: Candidate) -> ImportCommitActions
@@ -216,12 +210,6 @@ extension ImportView {
     /// remote art, or artwork found in the folder.
     private func hasCoverOptions(_ candidate: Candidate) -> Bool {
         candidate.release != nil || !candidate.files.coverFiles.isEmpty
-    }
-
-    /// Every file the candidate holds, in one string — the identity the
-    /// binding-offer read is refreshed on.
-    private func fileNames(_ candidate: Candidate) -> String {
-        candidate.files.files.map(\.file.name).joined(separator: "\u{0}")
     }
 
     private func presentCoverPicker(for candidate: Candidate) {

@@ -96,7 +96,9 @@ public sealed partial class ImportMappingTableTests
     private static BridgeMappingTable MultiFileSheetTable() => new(
         [], [],
         [new BridgeMappingFileRow.Sheet(new BridgeSheetGroup(
-            SheetId, SheetId, 100, "/folder/disc.cue", new BridgeSheetBound.DescribesFiles(),
+            SheetId, SheetId, 100, "/folder/disc.cue", new BridgeSheetBound.DescribesFiles(2),
+            [new("first.wav", "first.flac", [Offered("first.flac")]),
+             new("second.wav", "second.flac", [Offered("second.flac")])],
             Disc(1), [1]))],
         Reconciliation: null);
 

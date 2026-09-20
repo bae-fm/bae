@@ -81,8 +81,8 @@ impl ImportServiceHandle {
     /// The refusals are decided here rather than by a UI reading codecs,
     /// because deciding them anywhere else means offering a file the commit
     /// would then reject — the failure an editable binding exists to remove.
-    /// Deciding them costs one probe per audio file, which is why the set is
-    /// asked for when a picker opens and not carried on every candidate.
+    /// The choices use stored scan facts without opening audio. They are also
+    /// carried on each sheet in the candidate mapping projection.
     pub async fn sheet_binding_options(
         &self,
         candidate_key: String,

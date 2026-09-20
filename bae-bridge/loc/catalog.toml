@@ -4175,6 +4175,40 @@ da = "{count, plural, one {Matcher # anden kopi} other {Matcher # andre kopier}}
 nb = "{count, plural, one {Samsvarer med # annen kopi} other {Samsvarer med # andre kopier}}"
 fi = "{count, plural, one {Vastaa # muuta kopiota} other {Vastaa # muuta kopiota}}"
 
+[messages."ui.import.sheet.audio_files"]
+comment = "Track sheet header: the number of physical audio files assigned to a resolved multi-file CUE, independent of included tracks."
+args = { count = "Int" }
+value = "{count, plural, one {# audio file} other {# audio files}}"
+
+[messages."ui.import.sheet.audio_files".translations]
+es = "{count, plural, one {# archivo de audio} other {# archivos de audio}}"
+fr = "{count, plural, one {# fichier audio} other {# fichiers audio}}"
+de = "{count, plural, one {# Audiodatei} other {# Audiodateien}}"
+pt-BR = "{count, plural, one {# arquivo de áudio} other {# arquivos de áudio}}"
+ja = "音声ファイル {count} 個"
+ko = "오디오 파일 {count}개"
+zh-Hans = "{count} 个音频文件"
+ar = "{count, plural, zero {لا ملفات صوتية} one {ملف صوتي واحد} two {ملفان صوتيان} few {# ملفات صوتية} many {# ملفًا صوتيًا} other {# ملف صوتي}}"
+he = "{count, plural, one {קובץ שמע אחד} two {שני קובצי שמע} many {# קובצי שמע} other {# קובצי שמע}}"
+uk = "{count, plural, one {# аудіофайл} few {# аудіофайли} many {# аудіофайлів} other {# аудіофайлу}}"
+bg = "{count, plural, one {# аудиофайл} other {# аудиофайла}}"
+pl = "{count, plural, one {# plik audio} few {# pliki audio} many {# plików audio} other {# pliku audio}}"
+cs = "{count, plural, one {# zvukový soubor} few {# zvukové soubory} many {# zvukového souboru} other {# zvukových souborů}}"
+hr = "{count, plural, one {# zvučna datoteka} few {# zvučne datoteke} other {# zvučnih datoteka}}"
+zh-Hant = "{count} 個音訊檔案"
+it = "{count, plural, one {# file audio} other {# file audio}}"
+tr = "{count} ses dosyası"
+nl = "{count, plural, one {# audiobestand} other {# audiobestanden}}"
+sk = "{count, plural, one {# zvukový súbor} few {# zvukové súbory} many {# zvukového súboru} other {# zvukových súborov}}"
+hu = "{count} hangfájl"
+ro = "{count, plural, one {# fișier audio} few {# fișiere audio} other {# de fișiere audio}}"
+el = "{count, plural, one {# αρχείο ήχου} other {# αρχεία ήχου}}"
+pt-PT = "{count, plural, one {# ficheiro de áudio} other {# ficheiros de áudio}}"
+sv = "{count, plural, one {# ljudfil} other {# ljudfiler}}"
+da = "{count, plural, one {# lydfil} other {# lydfiler}}"
+nb = "{count, plural, one {# lydfil} other {# lydfiler}}"
+fi = "{count, plural, one {# äänitiedosto} other {# äänitiedostoa}}"
+
 [messages."ui.import.sheet.choose_audio"]
 comment = "Import file pane: label of the control that binds a track sheet to one of the folder's audio files, shown when the sheet describes nothing yet."
 value = "Choose audio\u2026"

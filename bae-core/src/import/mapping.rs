@@ -7,7 +7,7 @@
 
 use crate::import::folder_scanner::{
     BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, FileRoleChoice, ScannedFile,
-    SheetBinding, SheetDisc, TrackSheetFile,
+    SheetBinding, SheetDisc, SheetReferenceOptions, TrackSheetFile,
 };
 use crate::import::probe::SourceDurations;
 use crate::import::track_slots::{
@@ -217,6 +217,8 @@ pub struct SheetGroup {
     /// Absolute path — what opening the sheet to read it reaches.
     pub path: PathBuf,
     pub bound: SheetBound,
+    /// Current FILE associations and choices, independent of track inclusion.
+    pub reference_options: Vec<SheetReferenceOptions>,
     pub assignment: SheetDisc,
     /// The discs this sheet may be assigned to, counting from one.
     pub disc_options: Vec<u32>,
@@ -235,7 +237,7 @@ pub enum SheetBound {
     /// The sheet describes several audio files, one per distinct `FILE`
     /// reference. The rows name their own physical files; the group header has
     /// no single container to name.
-    DescribesFiles,
+    DescribesFiles { audio_file_count: u32 },
     /// It describes nothing: the directive named audio that is not in the
     /// folder, named several and only some are here, or the user cleared the
     /// binding. `requested` is what the directive asked for, so the header can
@@ -363,6 +365,7 @@ pub fn mapping_table(
                         disc: *disc,
                     },
                 ),
+                reference_options: files.sheet_binding_options(&entry.file.relative_path),
                 assignment: *disc,
                 disc_options: if binding.is_resolved() {
                     disc_options.clone()
@@ -383,6 +386,8 @@ pub fn mapping_table(
                                     size: sheet.file.size,
                                     path: sheet.file.path.clone(),
                                     bound: bound_sheet(sheet),
+                                    reference_options: files
+                                        .sheet_binding_options(&sheet.file.relative_path),
                                     assignment: sheet.disc,
                                     disc_options: disc_options.clone(),
                                 },
@@ -891,7 +896,10 @@ fn bound_of(files: &CategorizedFiles, sheet: TrackSheetFile<'_>) -> SheetBound {
 fn bound_sheet(sheet: &BoundTrackSheet<'_>) -> SheetBound {
     match sheet.audio_files.as_slice() {
         [(_, audio)] => SheetBound::Describes(container(audio)),
-        [_, _, ..] => SheetBound::DescribesFiles,
+        [_, _, ..] => SheetBound::DescribesFiles {
+            audio_file_count: u32::try_from(sheet.audio_files.len())
+                .expect("sheet audio file count fits u32"),
+        },
         [] => unreachable!("a bound sheet resolves at least one audio file"),
     }
 }

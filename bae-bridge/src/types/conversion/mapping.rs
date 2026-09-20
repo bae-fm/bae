@@ -92,18 +92,21 @@ mirror_enum! {
 mirror_enum! {
     BridgeSheetBindingOffer = bae_core::import::folder_scanner::SheetBindingOffer,
     from_core: fn,
+    into_core: fn,
     variants: { Offered, RefusedCodec { codec }, RefusedTiming, RefusedUnreadable },
 }
 
 mirror_struct! {
     BridgeSheetBindingOption = bae_core::import::folder_scanner::SheetBindingOption,
     from_core: pub(crate) fn,
+    into_core: fn,
     fields: { file_id, offer: (BridgeSheetBindingOffer) },
 }
 
 mirror_struct! {
     BridgeSheetReferenceOptions = bae_core::import::folder_scanner::SheetReferenceOptions,
     from_core: pub(crate) fn,
+    into_core: fn,
     fields: { file_reference, file_id, options: (each BridgeSheetBindingOption) },
 }
 
@@ -354,6 +357,7 @@ impl BridgeSheetGroup {
             size,
             path,
             bound,
+            reference_options,
             assignment,
             disc_options,
         } = sheet;
@@ -363,6 +367,10 @@ impl BridgeSheetGroup {
             size,
             local_path: path.to_string_lossy().into_owned(),
             bound: BridgeSheetBound::from_core(bound),
+            reference_options: reference_options
+                .into_iter()
+                .map(BridgeSheetReferenceOptions::from_core)
+                .collect(),
             assignment: BridgeSheetDisc::from_core(assignment),
             disc_options,
         }
@@ -375,6 +383,7 @@ impl BridgeSheetGroup {
             size,
             local_path,
             bound,
+            reference_options,
             assignment,
             disc_options,
         } = self;
@@ -384,6 +393,10 @@ impl BridgeSheetGroup {
             size,
             path: std::path::PathBuf::from(local_path),
             bound: bound.into_core(),
+            reference_options: reference_options
+                .into_iter()
+                .map(BridgeSheetReferenceOptions::into_core)
+                .collect(),
             assignment: assignment.into_core(),
             disc_options,
         }
@@ -396,7 +409,7 @@ mirror_enum! {
     into_core: fn,
     variants: {
         Describes(container: (BridgeMappingContainer)),
-        DescribesFiles,
+        DescribesFiles { audio_file_count },
         Unresolved { requested },
         RefusedCodec { codec },
         RefusedTiming,

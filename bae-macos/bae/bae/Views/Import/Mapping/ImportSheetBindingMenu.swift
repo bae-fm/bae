@@ -1,67 +1,37 @@
 import BaeKit
 import SwiftUI
 
-/// The sheet caption's binding control: what audio this track sheet describes,
-/// or that it describes nothing.
-///
-/// The scan proposes a pairing from the sheet's `FILE` directive; when the
-/// directive names a file that was later re-encoded under another name, the
-/// user is the only one who knows the answer, and this is where they give it.
-/// Core decides what may be offered — it probes each file — so this places the
-/// answer rather than working one out.
-///
-/// The label is the audio's name and nothing else: no caret, so the line reads
-/// "sheet → audio" and the menu is found by the hover. Why a sheet is on
-/// nothing — the directive's own text, or the codec bae cannot carve — is the
-/// label's tooltip.
+/// One CUE FILE reference's audio choices, already validated by core.
 struct ImportSheetBindingMenu: View {
-    let sheet: BridgeSheetGroup
-    /// The audio this sheet may be bound to, each already offered or refused by
-    /// core.
-    let options: [BridgeSheetReferenceOptions]
-    /// Name the audio this sheet describes, or `nil` to leave it describing
-    /// nothing.
-    let onBind: (String, String?) -> Void
+    let reference: BridgeSheetReferenceOptions
+    let onBind: (String?) -> Void
 
     @State
     private var hovering = false
 
-    @ViewBuilder
     var body: some View {
-        if let reason = sheet.bound.reasonLine {
-            menu.help(reason)
-        }
-        else {
-            menu
-        }
-    }
-
-    private var menu: some View {
         Menu {
-            ForEach(options, id: \.fileReference) { reference in
-                Menu {
-                    ForEach(reference.options, id: \.fileId) { option in
-                        bindButton(option, reference: reference)
-                    }
-                    Divider()
-                    Button {
-                        onBind(reference.fileReference, nil)
-                    } label: {
-                        checkable(
-                            coreString("ui.import.sheet.describes_nothing"),
-                            selected: reference.fileId == nil
-                        )
-                    }
-                } label: {
-                    Text(verbatim: reference.fileReference)
-                }
+            ForEach(reference.options, id: \.fileId) { option in
+                bindButton(option)
+            }
+            Divider()
+            Button {
+                onBind(nil)
+            } label: {
+                checkable(
+                    coreString("ui.import.sheet.describes_nothing"),
+                    selected: reference.fileId == nil
+                )
             }
         } label: {
             Text(
-                sheet.bound.containerName
+                reference.fileId
                     ?? coreString("ui.import.sheet.choose_audio")
             )
             .font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(
+                reference.fileId == nil ? Color.orange : Theme.accent
+            )
             .lineLimit(1)
             .truncationMode(.middle)
             .padding(.horizontal, 5)
@@ -82,8 +52,7 @@ struct ImportSheetBindingMenu: View {
     /// use reads as "here is why" instead of an empty menu.
     @ViewBuilder
     private func bindButton(
-        _ option: BridgeSheetBindingOption,
-        reference: BridgeSheetReferenceOptions
+        _ option: BridgeSheetBindingOption
     ) -> some View {
         if let refusal = option.refusalLine {
             Button {
@@ -96,7 +65,7 @@ struct ImportSheetBindingMenu: View {
         }
         else {
             Button {
-                onBind(reference.fileReference, option.fileId)
+                onBind(option.fileId)
             } label: {
                 checkable(
                     option.fileId,

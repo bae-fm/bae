@@ -176,6 +176,18 @@ extension MappingFixtures {
             localPath: "/tmp/walkthrough/\(sheetId)",
             bound: container.map { .describes(container: $0) }
                 ?? .unresolved(requested: [containerId]),
+            referenceOptions: [
+                BridgeSheetReferenceOptions(
+                    fileReference: containerId,
+                    fileId: container?.fileId,
+                    options: [
+                        BridgeSheetBindingOption(
+                            fileId: containerId,
+                            offer: .offered
+                        )
+                    ]
+                )
+            ],
             assignment: assignment,
             discOptions: [1, 2]
         )

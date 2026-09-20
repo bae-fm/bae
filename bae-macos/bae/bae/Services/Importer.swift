@@ -46,8 +46,6 @@ private struct ImportOperations: Sendable {
             BridgeFolderReleaseDecisionKey, BridgeFolderReleaseDecision
         ) async throws -> Void
     let setCandidateSkipped: @Sendable (String, Bool) async throws -> Void
-    let sheetBindingOptions:
-        @Sendable (String, String) async throws -> [BridgeSheetReferenceOptions]
     let setSheetBinding:
         @Sendable (String, String, String, String?) async throws -> Void
     let applyCandidateExternalMetadata:
@@ -131,12 +129,6 @@ extension ImportOperations {
             },
             setCandidateSkipped: {
                 try await handle.setCandidateSkipped(path: $0, skipped: $1)
-            },
-            sheetBindingOptions: {
-                try await handle.sheetBindingOptions(
-                    candidateKey: $0,
-                    sheetFileId: $1
-                )
             },
             setSheetBinding: {
                 try await handle.setSheetBinding(
@@ -339,9 +331,6 @@ final class Importer: Sendable, Observable {
         setCandidateSkipped:
             @escaping @Sendable (String, Bool) async throws -> Void = { _, _ in
             },
-        sheetBindingOptions:
-            @escaping @Sendable (String, String) async throws ->
-            [BridgeSheetReferenceOptions] = { _, _ in [] },
         setSheetBinding:
             @escaping @Sendable (String, String, String, String?) async throws
             -> Void =
@@ -457,7 +446,6 @@ final class Importer: Sendable, Observable {
             refreshWatchedFolder: refreshWatchedFolder,
             setFolderReleaseDecision: setFolderReleaseDecision,
             setCandidateSkipped: setCandidateSkipped,
-            sheetBindingOptions: sheetBindingOptions,
             setSheetBinding: setSheetBinding,
             applyCandidateExternalMetadata: applyCandidateExternalMetadata,
             applyCandidateFileTags: applyCandidateFileTags,
@@ -532,12 +520,6 @@ extension Importer {
 
     func setCandidateSkipped(_ path: String, _ skipped: Bool) async throws {
         try await operations.setCandidateSkipped(path, skipped)
-    }
-
-    func sheetBindingOptions(_ candidateKey: String, _ sheetFileId: String)
-        async throws -> [BridgeSheetReferenceOptions]
-    {
-        try await operations.sheetBindingOptions(candidateKey, sheetFileId)
     }
 
     func setSheetBinding(

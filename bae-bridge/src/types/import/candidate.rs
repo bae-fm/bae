@@ -32,8 +32,8 @@ pub struct BridgeFileInfo {
 }
 
 /// Whether one of a candidate's audio files can back a sheet's binding. Mirror
-/// of bae-core's `SheetBindingOffer`. Core decides this by probing, so no UI
-/// reads a codec to work out what it may offer.
+/// of bae-core's `SheetBindingOffer`. Core decides from stored scan facts, so no
+/// UI reads a codec to work out what it may offer.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSheetBindingOffer {
     /// The sheet can be bound to this audio.

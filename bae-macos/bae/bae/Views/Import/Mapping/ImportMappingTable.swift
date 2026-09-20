@@ -11,10 +11,6 @@ import SwiftUI
 /// columns.
 struct ImportMappingTable: View {
     let table: BridgeMappingTable
-    /// What each track sheet may be bound to, by the sheet's file id. Core
-    /// probes to decide, so the table is handed the answer: a sheet with no
-    /// offer yet shows no picker.
-    let bindingOptions: [String: [BridgeSheetReferenceOptions]]
     /// The source window currently auditioning, if any — its row is accented.
     let previewingTarget: BridgePreviewTarget?
     /// Extracted identifying signals by their source file. The row for that
@@ -151,7 +147,6 @@ struct ImportMappingTable: View {
     private func sheetCaptionRow(_ sheet: BridgeSheetGroup) -> some View {
         ImportSheetCaptionRow(
             sheet: sheet,
-            options: bindingOptions[sheet.sheetId],
             evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
             showsDiscMenu: true,
             actions: actions,

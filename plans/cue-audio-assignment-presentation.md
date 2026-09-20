@@ -58,6 +58,57 @@ same in each case; only interaction availability changes. Test partial bindings
 with the actual missing reference visible, without presenting the resolved
 references as unassigned.
 
+## Projection and control implementation
+
+Source inspection found that `CategorizedFiles::sheet_binding_options` uses
+stored scan facts for codec and timing decisions; it does not probe files.
+`ImportServiceHandle::sheet_binding_options` wraps that calculation in a
+blocking task. Its comment claiming a probe per audio file is obsolete, as are
+the matching comments in `ImportView` and `ImportSheetBindingMenu`.
+
+Carry the existing `SheetReferenceOptions` values on each mapping sheet group,
+through the canonical Rust bridge definition and its required callers. Reuse
+that producer for current FILE assignments and permitted choices. The mapping
+must include these values for ignored sheets and read-only candidates too.
+Remove macOS's separate `sheetBindingOptions` state and asynchronous loading
+path; the displayed mapping then owns both the association and its choices.
+Keep any existing command/API that other platforms still consume, and correct
+its obsolete probe documentation. Do not duplicate the option calculation.
+
+The caption shows the assigned filename for one resolved file or the resolved
+audio-file count for multiple files. Under it, render each FILE reference and
+its current assignment in a flat row. Its menu contains that reference's
+offered/refused audio choices and the existing clear action directly. Editing
+permissions disable changes without hiding the current assignment. Keep the
+sheet's overall unresolved/refused explanation and identify missing references
+individually; do not call resolved references unassigned.
+
+Update previews and tests to construct the canonical mapping shape. Existing
+set-binding validation remains authoritative at command time, including stale
+source checks and exclusion of audio assigned to another FILE reference.
+
+## Canonical field contract
+
+Add `reference_options: Vec<SheetReferenceOptions>` to `SheetGroup` and mirror it
+as `BridgeSheetGroup.reference_options` (`referenceOptions` in Swift). Both
+mapping construction sites call the existing categorized-files producer once per
+sheet. Draft projection carries that same group through unchanged, so excluded
+tracks cannot remove assignment facts or change the option list.
+
+Change the resolved multi-file variant to
+`SheetBound::DescribesFiles { audio_file_count: u32 }`, mirrored in the bridge.
+The count is the resolved binding's physical audio-file count, independent of
+included tracks. Single-file bindings retain their existing container facts.
+Current per-reference assignments and choices remain the existing shared types;
+bridge conversion carries them in both directions for the existing mapping
+read-back API. No new persisted binding representation is introduced.
+
+The core worker owns mapping production and regression tests; the parent owns
+macOS controls, fixtures, and removal of the redundant loading path; the worker
+owns canonical bridge conversion, required other-platform callers, catalogs,
+verification, and the focused commit. Establish the hosted failure against the
+unchanged UI before changing canonical fields, then regenerate all languages.
+
 ## Verification
 
 Reproduce the resolved multi-file placeholder failure first. Test a single file,

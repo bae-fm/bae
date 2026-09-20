@@ -245,8 +245,25 @@ that main or CI has passed.
   Reset and reset-to-tags confirmation strings. Parent's single manual review
   accepted the final transaction, choice guard, immutable combination behavior,
   stale embedded-snapshot handling and UI. The final snapshot suite passed
-  ten tests; normal hooks run with this focused commit. The unrelated Core catalog
-  resource lookup remains recorded below for the end-of-queue repair.
+  ten tests. Normal hooks passed; parent fast-forwarded and pushed `e46ab15cb`
+  to main. The unrelated Core catalog resource lookup remains recorded below
+  for the end-of-queue repair.
+- CUE audio assignments: implemented on `cue-audio-assignment-presentation`.
+  The hosted baseline reproduced missing current assignments in all three
+  editable/offer/read-only states. Mapping groups now carry existing per-FILE
+  options and resolved physical audio count; macOS renders flat reference rows
+  and removes its separate async option-loading state. Core verification passed
+  22 mapping and 109 scanner tests, including ignored/omitted/partial/refused
+  sheets and no additional file probes. Native binding generation and 69 bridge
+  tests passed. Regenerated C# callers passed all 266 Avalonia view tests after
+  supplying the test library's expected filename and FFmpeg runtime path. The
+  new count string is translated in all 28 locales; the deleted loading-error
+  string was removed from all macOS locales. Hosted macOS verification passed
+  31 tests in two suites; the final routing selection passed 16 tests in one
+  suite, exercising selection and clear on both FILE references plus read-only
+  behavior. Parent manual review accepted the implementation. Normal hooks run
+  with this focused commit. Literal count localization must also be checked
+  after the already-recorded Core resource-owner correction at queue end.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.
 
@@ -259,7 +276,8 @@ compiler evidence. The macOS build passed, then the 487-test/130-suite run faile
 only the multiline diagnostic Retry OCR assertion at
 `ReleaseSelectionFailureTests.swift:193` (recognized text `KeLl`); job
 106108553114 retains that failure. macOS capture passed; mobile capture failures
-still need their exact causes inspected. These are required final CI repairs,
+were inspected at `e02677786` and fail the same inaccessible `MetadataRef`
+re-export, with no separate capture defect established. These are required final CI repairs,
 not gates between the queued implementation tasks.
 
 During Reset verification, the macOS metadata-card layout suite exposed the

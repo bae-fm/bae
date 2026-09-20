@@ -1,8 +1,8 @@
 use super::*;
 use crate::import::TrackUserEdit;
 use crate::import::folder_scanner::{
-    CandidateFileEdits, SheetDiscEdits, StoredCandidateEdits,
-    collect_release_candidate_files_with_scope,
+    CandidateFileEdits, SheetBindingOffer, SheetBindingOption, SheetDiscEdits,
+    StoredCandidateEdits, collect_release_candidate_files_with_scope,
 };
 use crate::import::probe::{SourceDurations, source_durations};
 use crate::import::track_slots::{SourceTrack, slot_table};
@@ -276,6 +276,17 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     assert_eq!(sheet.sheet_id, "CDImage.cue");
     assert_eq!(sheet.assignment, SheetDisc::Disc { number: 1 });
     assert_eq!(sheet.path, tmp.path().join("CDImage.cue"));
+    assert_eq!(
+        sheet.reference_options,
+        vec![SheetReferenceOptions {
+            file_reference: "CDImage.flac".into(),
+            file_id: Some("CDImage.flac".into()),
+            options: vec![SheetBindingOption {
+                file_id: "CDImage.flac".into(),
+                offer: SheetBindingOffer::Offered,
+            }],
+        }]
+    );
     let SheetBound::Describes(container) = &sheet.bound else {
         panic!("expected a bound sheet, got {:?}", sheet.bound);
     };
@@ -634,9 +645,17 @@ fn invalid_cue_times_are_not_reported_as_missing_audio() {
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("the refused CUE remains listed");
     };
-    assert!(
-        !matches!(sheet.bound, SheetBound::Unresolved { .. }),
-        "the audio exists; its duration refuses the CUE"
+    assert_eq!(sheet.bound, SheetBound::RefusedTiming);
+    assert_eq!(
+        sheet.reference_options,
+        vec![SheetReferenceOptions {
+            file_reference: "disc.flac".into(),
+            file_id: Some("disc.flac".into()),
+            options: vec![SheetBindingOption {
+                file_id: "disc.flac".into(),
+                offer: SheetBindingOffer::RefusedTiming,
+            }],
+        }]
     );
 }
 
@@ -794,4 +813,178 @@ fn source_disc_assignments_do_not_change_included_metadata_positions() {
     );
     assert_eq!(positions, ["1", "3"]);
     assert_eq!(mapping_tracks(&table), draft.release_edit().tracks);
+}
+
+#[test]
+fn multi_file_assignments_survive_omitted_tracks_and_ignored_sheets_without_probing() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    for name in ["first.flac", "second.flac"] {
+        write_flac(&tmp.path().join(name));
+    }
+    fs::write(tmp.path().join("album.cue"),
+        "FILE \"first.wav\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\n TRACK 02 AUDIO\n INDEX 01 00:00:15\nFILE \"second.wav\" WAVE\n TRACK 03 AUDIO\n INDEX 01 00:00:00\n"
+    ).unwrap();
+    let mut files = scan(tmp.path());
+    let durations = source_durations(&files).unwrap();
+    let opens = ["first.flac", "second.flac"]
+        .map(|name| crate::audio_codec::probe_opens_for(&tmp.path().join(name)));
+    let mut draft = crate::import::pane::blank_candidate_draft(&files);
+    let expected = vec![
+        SheetReferenceOptions {
+            file_reference: "first.wav".into(),
+            file_id: Some("first.flac".into()),
+            options: vec![SheetBindingOption {
+                file_id: "first.flac".into(),
+                offer: SheetBindingOffer::Offered,
+            }],
+        },
+        SheetReferenceOptions {
+            file_reference: "second.wav".into(),
+            file_id: Some("second.flac".into()),
+            options: vec![SheetBindingOption {
+                file_id: "second.flac".into(),
+                offer: SheetBindingOffer::Offered,
+            }],
+        },
+    ];
+    for included in [3, 1, 0] {
+        draft.tracks.truncate(included);
+        let table = draft_mapping_table(&files, &durations, &draft, &candidate_read(&files));
+        let MappingTrackSectionContent::Sheet { sheet, entries } = &table.track_sections[0].content
+        else {
+            panic!("the CUE header survives removed tracks");
+        };
+        assert_eq!(
+            sheet.bound,
+            SheetBound::DescribesFiles {
+                audio_file_count: 2
+            }
+        );
+        assert_eq!(sheet.reference_options, expected);
+        assert_eq!(entries.len(), 3);
+        assert_eq!(mapping_tracks(&table).len(), included);
+    }
+    let mut sheet_discs = SheetDiscEdits::default();
+    sheet_discs.set("album.cue".into(), SheetDisc::Ignored);
+    files
+        .apply_candidate_file_edits(&CandidateFileEdits {
+            sheet_discs,
+            ..Default::default()
+        })
+        .unwrap();
+    let table = draft_mapping_table(&files, &durations, &draft, &candidate_read(&files));
+    let MappingFileRow::Sheet(sheet) = &table.files[0] else {
+        panic!("ignored CUE remains a file");
+    };
+    assert_eq!(sheet.assignment, SheetDisc::Ignored);
+    assert_eq!(
+        sheet.bound,
+        SheetBound::DescribesFiles {
+            audio_file_count: 2
+        }
+    );
+    assert_eq!(sheet.reference_options, expected);
+    for (name, count) in ["first.flac", "second.flac"].into_iter().zip(opens) {
+        assert_eq!(
+            crate::audio_codec::probe_opens_for(&tmp.path().join(name)),
+            count
+        );
+    }
+}
+
+#[test]
+fn partial_sheet_keeps_assigned_and_missing_references_even_without_choices() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    write_flac(&tmp.path().join("first.flac"));
+    fs::write(tmp.path().join("album.cue"),
+        "FILE \"first.wav\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\nFILE \"absent.wav\" WAVE\n TRACK 02 AUDIO\n INDEX 01 00:00:00\n"
+    ).unwrap();
+    let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
+    let MappingFileRow::Sheet(sheet) = &table.files[0] else {
+        panic!("partial CUE remains listed");
+    };
+    assert_eq!(
+        sheet.bound,
+        SheetBound::Unresolved {
+            requested: vec!["absent.wav".into()]
+        }
+    );
+    assert_eq!(
+        sheet.reference_options,
+        vec![
+            SheetReferenceOptions {
+                file_reference: "first.wav".into(),
+                file_id: Some("first.flac".into()),
+                options: vec![SheetBindingOption {
+                    file_id: "first.flac".into(),
+                    offer: SheetBindingOffer::Offered
+                }],
+            },
+            SheetReferenceOptions {
+                file_reference: "absent.wav".into(),
+                file_id: None,
+                options: vec![]
+            },
+        ]
+    );
+}
+
+#[test]
+fn codec_refusal_does_not_invent_a_current_assignment() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("test-fixtures/audio-format/placeholder-mp3.mp3"),
+        tmp.path().join("disc.mp3"),
+    )
+    .unwrap();
+    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.mp3", 1)).unwrap();
+    let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
+    let MappingFileRow::Sheet(sheet) = &table.files[0] else {
+        panic!("refused CUE remains listed");
+    };
+    assert_eq!(
+        sheet.bound,
+        SheetBound::RefusedCodec {
+            codec: "MP3".into()
+        }
+    );
+    assert_eq!(
+        sheet.reference_options,
+        vec![SheetReferenceOptions {
+            file_reference: "disc.mp3".into(),
+            file_id: None,
+            options: vec![SheetBindingOption {
+                file_id: "disc.mp3".into(),
+                offer: SheetBindingOffer::RefusedCodec {
+                    codec: "MP3".into()
+                }
+            }],
+        }]
+    );
+}
+
+#[test]
+fn competing_sheets_retain_current_assignments_without_contributing_tracks() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    write_flac(&tmp.path().join("disc.flac"));
+    for name in ["first.cue", "second.cue"] {
+        fs::write(tmp.path().join(name), cue_sheet_text("disc.flac", 2)).unwrap();
+    }
+    let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
+    assert_eq!(mappings(&table).len(), 1);
+    assert_eq!(table.files.len(), 2);
+    for row in &table.files {
+        let MappingFileRow::Sheet(sheet) = row else {
+            panic!("competing CUE remains listed");
+        };
+        assert_eq!(sheet.assignment, SheetDisc::Ignored);
+        assert!(
+            matches!(&sheet.bound, SheetBound::Describes(container) if container.file_id == "disc.flac")
+        );
+        assert_eq!(
+            sheet.reference_options[0].file_id.as_deref(),
+            Some("disc.flac")
+        );
+    }
 }

@@ -91,25 +91,22 @@
 
         /// What core offers a sheet in this folder: the FLAC it can use, and
         /// the MP3 it can't, refused with its codec named.
-        static let sheetBindingOptions:
-            [String: [BridgeSheetReferenceOptions]] = [
-                boundTrackSheet.file.name: [
-                    BridgeSheetReferenceOptions(
-                        fileReference: mappedAudioContainer.file.name,
+        static let sheetReferenceOptions = [
+            BridgeSheetReferenceOptions(
+                fileReference: mappedAudioContainer.file.name,
+                fileId: mappedAudioContainer.file.name,
+                options: [
+                    BridgeSheetBindingOption(
                         fileId: mappedAudioContainer.file.name,
-                        options: [
-                            BridgeSheetBindingOption(
-                                fileId: mappedAudioContainer.file.name,
-                                offer: .offered
-                            ),
-                            BridgeSheetBindingOption(
-                                fileId: "Album Title.mp3",
-                                offer: .refusedCodec(codec: "MP3")
-                            ),
-                        ]
-                    )
+                        offer: .offered
+                    ),
+                    BridgeSheetBindingOption(
+                        fileId: "Album Title.mp3",
+                        offer: .refusedCodec(codec: "MP3")
+                    ),
                 ]
-            ]
+            )
+        ]
 
         static let infoLog = previewFile(
             name: "info.log",

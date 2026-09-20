@@ -547,6 +547,7 @@ public sealed partial class ImportMappingTableTests
                         Size: 2048,
                         LocalPath: "/folder/disc.cue",
                         Bound: new BridgeSheetBound.Unresolved(new[] { "disc.wav" }),
+                        ReferenceOptions: [new("disc.wav", null, [])],
                         Assignment: assignment,
                         DiscOptions: new uint[] { 1, 2 }),
                     new[] { Entry(0), Entry(1) })),

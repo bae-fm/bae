@@ -39,12 +39,6 @@ struct ImportView: View {
     /// application must wait for the draft the person was editing to commit.
     @State
     var editingCommands = EditingCommitCommands()
-    /// What each of the selected candidate's track sheets may be bound to,
-    /// keyed by the sheet's file id. Read from core when the selection's files
-    /// change: core probes every audio file to answer, so this is not something
-    /// a candidate can carry through the list.
-    @State
-    var sheetBindingOptions: [String: [BridgeSheetReferenceOptions]] = [:]
     /// Which section the Find online page opens on for each candidate: the
     /// entry that opened it says, and the page keeps that until it is opened
     /// again. Session state of this view, not of the candidate.
@@ -140,41 +134,6 @@ struct ImportView: View {
         }
         .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// Read what each of `candidate`'s track sheets may be bound to. One call
-    /// per sheet, and each probes the folder's audio, so this runs when the
-    /// selection's files change rather than on every render.
-    func loadSheetBindingOptions(for candidate: Candidate) async {
-        guard candidate.sourceFileEditsAllowed else {
-            sheetBindingOptions = [:]
-            return
-        }
-        var options: [String: [BridgeSheetReferenceOptions]] = [:]
-        for sheet in candidate.files.trackSheets {
-            do {
-                options[sheet.file.name] =
-                    try await importer.sheetBindingOptions(
-                        candidate.key,
-                        sheet.file.name
-                    )
-            }
-            catch is CancellationError {
-                return
-            }
-            catch {
-                // No line means a cancellation, which raises no alert.
-                if let line = error.displayLine {
-                    uiStore.showError(
-                        String(
-                            localized:
-                                "Couldn't read what \(sheet.file.name) can describe: \(line)"
-                        )
-                    )
-                }
-            }
-        }
-        sheetBindingOptions = options
     }
 
     /// Mark the candidate at `key` skipped or unskipped. The import-candidate

@@ -732,16 +732,9 @@
         }
 
         static func importTabImporter() -> Importer {
-            let optionsBySheet = sheetBindingOptions
             let importingKey = importTabImportingCandidate.key
             let inFlight = importTabImportInFlight
             return Importer(
-                sheetBindingOptions: { _, sheetFileId in
-                    guard let options = optionsBySheet[sheetFileId] else {
-                        throw StubError.notImplemented
-                    }
-                    return options
-                },
                 candidateRuntime: { key in
                     guard key == importingKey else { return nil }
                     return BridgeCandidateRuntimeSnapshot(

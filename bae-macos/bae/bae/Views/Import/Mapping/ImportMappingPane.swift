@@ -15,8 +15,6 @@ struct ImportMappingPane: View {
     /// shows while one is live, and how far a running import has got. `nil`
     /// when nothing is running for it.
     let runtime: BridgeCandidateRuntimeSnapshot?
-    /// What each track sheet may be bound to, by the sheet's file id.
-    let bindingOptions: [String: [BridgeSheetReferenceOptions]]
     /// The exact source window currently auditioning, if any.
     let previewingTarget: BridgePreviewTarget?
     /// Whether a metadata source is being read into this candidate's draft.
@@ -73,7 +71,6 @@ struct ImportMappingPane: View {
                     }
                     ImportMappingTable(
                         table: mapping,
-                        bindingOptions: bindingOptions,
                         previewingTarget: previewingTarget,
                         evidence: candidate.fileEvidence,
                         actions: mappingActions,

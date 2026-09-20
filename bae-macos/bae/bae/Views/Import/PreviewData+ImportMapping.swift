@@ -279,6 +279,7 @@
                     audioFormat: sourceAudioFormat
                 )
             ),
+            referenceOptions: sheetReferenceOptions,
             assignment: .disc(number: 1),
             discOptions: [1, 2]
         )

@@ -98,6 +98,17 @@ enum SnapshotTestSupport {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }
 
+    /// Open and dismiss a SwiftUI-backed menu so its current items are available.
+    @MainActor
+    static func populateMenu(_ button: NSPopUpButton) {
+        let cancel = Timer(timeInterval: 0.1, repeats: false) { _ in
+            MainActor.assumeIsolated { button.menu?.cancelTracking() }
+        }
+        RunLoop.main.add(cancel, forMode: .common)
+        button.performClick(nil)
+        cancel.invalidate()
+    }
+
     /// One line of text Vision read off a capture: the words, and where on
     /// the image they sit (Vision's normalized box, origin at the bottom left).
     /// A value rather than the observation itself, so it can cross the task

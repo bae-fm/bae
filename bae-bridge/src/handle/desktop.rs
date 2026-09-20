@@ -327,8 +327,8 @@ forward! {
         /// offers or refuses with a reason. A reference remains present even
         /// when it has no available audio.
         ///
-        /// Core probes each file to decide, so ask for this when a picker opens
-        /// rather than holding it alongside the candidate.
+        /// Calculated from stored scan facts. The mapping projection also carries
+        /// these options for surfaces that render the assignments directly.
         fn sheet_binding_options(
             candidate_key: String,
             sheet_file_id: String,

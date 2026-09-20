@@ -327,7 +327,7 @@ impl StoredCandidateEdits {
 }
 
 /// Whether one of the folder's audio files can back a sheet's binding, decided
-/// at offer time by probing it. Offering a file the commit would then reject is
+/// from its stored scan facts. Offering a file the commit would then reject is
 /// the failure the editable binding exists to remove, so the refusal and its
 /// reason are settled here rather than left for the commit to discover.
 #[derive(Debug, Clone, PartialEq, Eq)]

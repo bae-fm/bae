@@ -748,12 +748,7 @@ extension ImportMetadataCardLayoutTests {
             SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSPopUpButton }.first
         )
-        let cancel = Timer(timeInterval: 0.1, repeats: false) { _ in
-            MainActor.assumeIsolated { button.menu?.cancelTracking() }
-        }
-        RunLoop.main.add(cancel, forMode: .common)
-        button.performClick(nil)
-        cancel.invalidate()
+        SnapshotTestSupport.populateMenu(button)
         return try XCTUnwrap(button.menu)
     }
 

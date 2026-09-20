@@ -404,6 +404,8 @@ pub struct BridgeSheetGroup {
     /// Absolute path — what opening the sheet to read it reaches.
     pub local_path: String,
     pub bound: BridgeSheetBound,
+    /// Current FILE associations and permitted choices, in sheet reference order.
+    pub reference_options: Vec<BridgeSheetReferenceOptions>,
     pub assignment: BridgeSheetDisc,
     /// The discs this sheet may be assigned to, counting from one.
     pub disc_options: Vec<u32>,
@@ -422,7 +424,9 @@ pub enum BridgeSheetBound {
     },
     /// The sheet describes several audio files. Each track row names its own
     /// physical file, so the group header has no single container.
-    DescribesFiles,
+    DescribesFiles {
+        audio_file_count: u32,
+    },
     /// It describes nothing: the directive named audio that is not in the
     /// folder, named several and only some are here, or the user cleared the
     /// binding. `requested` is what the directive asked for, so the header can

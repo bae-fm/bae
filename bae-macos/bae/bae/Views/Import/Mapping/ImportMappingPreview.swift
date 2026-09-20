@@ -43,7 +43,6 @@
             return ImportMappingPane(
                 candidate: candidate,
                 runtime: runtime,
-                bindingOptions: PreviewData.sheetBindingOptions,
                 previewingTarget: previewingTarget,
                 isApplyingMetadata: false,
                 libraryStatus: nil,

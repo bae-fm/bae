@@ -1,23 +1,12 @@
 import BaeKit
 import SwiftUI
 
-/// A track sheet's caption over the rows it carves: which disc of the release
-/// those entries are, the sheet's name, and the audio it describes — read left
-/// to right as one line, outside the table's columns.
-///
-/// The two controls are the sheet's decisions and nothing else's. Which audio a
-/// sheet speaks for is one — a `FILE` directive naming a file that was later
-/// re-encoded under another name has no answer but the user's. Which disc it is
-/// is the other: cue filenames are arbitrary, `CD1.cue` may hold disc two, so
-/// the assignment is the truth and no name is read for it.
+/// A track sheet's disc, document, and association summary, followed by one
+/// audio assignment control for each FILE reference.
 struct ImportSheetCaptionRow: View {
     @Environment(\.sourceFileEditsAllowed)
     private var sourceFileEditsAllowed
     let sheet: BridgeSheetGroup
-    /// The audio this sheet may be bound to, each already offered or refused by
-    /// core. `nil` until it has been asked for; empty means there is nothing to
-    /// offer, so no menu appears.
-    let options: [BridgeSheetReferenceOptions]?
     /// Identifying signals extracted from this sheet — a cue the disc ID was
     /// computed from. Empty otherwise.
     var evidence: [BridgeFileEvidence]
@@ -29,6 +18,35 @@ struct ImportSheetCaptionRow: View {
     private var hoveringName = false
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            caption
+            ForEach(sheet.referenceOptions, id: \.fileReference) { reference in
+                HStack(spacing: 8) {
+                    Text(verbatim: reference.fileReference)
+                        .font(.system(size: 11, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(verbatim: "→")
+                        .foregroundStyle(.tertiary)
+                    ImportSheetBindingMenu(
+                        reference: reference,
+                        onBind: {
+                            actions.bindSheet(
+                                sheet.sheetId,
+                                reference.fileReference,
+                                $0
+                            )
+                        }
+                    )
+                    .disabled(!sourceFileEditsAllowed)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    private var caption: some View {
         HStack(spacing: 8) {
             if showsDiscMenu {
                 ImportSheetDiscMenu(
@@ -39,13 +57,16 @@ struct ImportSheetCaptionRow: View {
             }
             formatTag
             nameButton
-            if hasBinding {
-                Text(verbatim: "\u{2192}")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .fixedSize()
-                binding
-            }
+            Text(verbatim: "→")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+                .fixedSize()
+            Text(sheet.bound.descriptionText)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .help(sheet.bound.descriptionText)
             ForEach(ImportEvidence.badges(evidence)) { badge in
                 ImportEvidenceChip(signal: badge.signal)
                     .fixedSize()
@@ -85,40 +106,6 @@ struct ImportSheetCaptionRow: View {
         .onHover { hoveringName = $0 }
     }
 
-    /// There is a binding to show when core has offered audio to bind to, the
-    /// sheet is already on one file, or core has a refusal to explain.
-    private var hasBinding: Bool {
-        options?.isEmpty == false
-            || sheet.bound.containerName != nil
-            || sheet.bound.reasonLine != nil
-    }
-
-    /// The audio the sheet describes: the menu that chooses it where there is
-    /// a choice, else the name alone.
-    @ViewBuilder
-    private var binding: some View {
-        if let options, !options.isEmpty {
-            ImportSheetBindingMenu(
-                sheet: sheet,
-                options: options,
-                onBind: { actions.bindSheet(sheet.sheetId, $0, $1) },
-            )
-            .disabled(!sourceFileEditsAllowed)
-        }
-        else if let name = sheet.bound.containerName {
-            Text(name)
-                .font(.system(size: 11, design: .monospaced))
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-        else if let reason = sheet.bound.reasonLine {
-            Text(reason)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-    }
 }
 
 /// The sheet's disc-assignment control: which of the release's discs its

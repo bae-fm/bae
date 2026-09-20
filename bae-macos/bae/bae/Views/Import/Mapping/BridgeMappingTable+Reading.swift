@@ -113,23 +113,11 @@ extension BridgeMappingFile {
 }
 
 extension BridgeSheetBound {
-    /// The audio the sheet is on, where it is on any.
-    private var container: BridgeMappingContainer? {
+    var descriptionText: String {
         switch self {
-        case .describes(let container): container
-        case .describesFiles, .refusedCodec, .refusedTiming, .unresolved: nil
-        }
-    }
-
-    var containerName: String? { container?.name }
-
-    /// Why the sheet is on no audio, in the user's language — what its
-    /// directive asked for, or the codec bae cannot carve tracks out of. `nil`
-    /// when it is on audio and there is nothing to explain.
-    var reasonLine: String? {
-        switch self {
-        case .describes, .describesFiles:
-            nil
+        case .describes(let container): container.name
+        case .describesFiles(let audioFileCount):
+            coreString("ui.import.sheet.audio_files", Int(audioFileCount))
         case .unresolved(let requested):
             if requested.isEmpty {
                 coreString("ui.import.sheet.describes_nothing")

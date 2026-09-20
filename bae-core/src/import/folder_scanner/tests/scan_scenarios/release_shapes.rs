@@ -359,7 +359,12 @@ fn multi_file_cue_resolves_each_reference_by_unique_stem() {
     else {
         panic!("the resolved CUE should group its track rows");
     };
-    assert_eq!(sheet.bound, crate::import::SheetBound::DescribesFiles);
+    assert_eq!(
+        sheet.bound,
+        crate::import::SheetBound::DescribesFiles {
+            audio_file_count: 3
+        }
+    );
     assert_eq!(
         entries
             .iter()
