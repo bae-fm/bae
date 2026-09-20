@@ -150,3 +150,148 @@ code from unrelated text. Keep validation and equivalent-representation rules
 explicit, preserve every provider-supplied barcode for display, and distinguish
 missing/unusable evidence from two known incompatible barcode sets. Do not
 claim the placeholder helper establishes barcode identity.
+
+## Implementation design
+
+Written after reading `release_group.rs`, its tests, every `group_results` and
+`pressing_count` caller, `search.rs` conversions, the Discogs and MusicBrainz
+search models, `payloads/relationships.rs`, `util/text.rs::squash`,
+`identify/country.rs::named`, `identify/label.rs`, `util/format.rs`, and
+`signals/barcode.rs`. It is the contract the implementation and its review are
+checked against.
+
+### Evidence a result carries
+
+`MetadataResult` (persisted as `import_candidate_match` rows, read back
+unchanged) changes shape; every producer, reader, writer, bridge mirror,
+platform caller, automation type and fixture changes with it, in one commit,
+through a new ordered migration that rebuilds the table the way `025` did.
+
+- `barcode: Option<String>` becomes `barcodes: Vec<String>`: every barcode the
+  source states, in the source's order. MusicBrainz states at most one; a
+  Discogs search result lists all of them (`DiscogsSearchResult.barcode`), and
+  today only the first survives. Persist them in a child table keyed by the
+  match's `(content_hash, position)` with an ordinal, `ON DELETE CASCADE`; the
+  migration copies the old column's value as ordinal 0 where present.
+- `media: StatedMedia` — what the record says the pressing is made of:
+  - `Undescribed`: the response describes no media (MusicBrainz
+    `ws/2/release?query=` results; a Discogs search result whose `format` is
+    absent).
+  - `PerMedium(Vec<Option<String>>)`: one entry per medium the record lists, in
+    its order, `None` where that medium's format is not stated. Read from
+    `MbReleaseResponse.media` for disc-ID results and for `of_pick` through the
+    detail; the matching medium's `format`, count and duration stay as they are.
+  - `Descriptors(Vec<String>)`: format names and qualifiers as one flat list
+    that does not say which medium each belongs to (`DiscogsSearchResult.format`
+    when present, before it is joined into the display `format` string).
+  Persist as a `media_kind` column (`'undescribed' | 'per_medium' |
+  'descriptors'`) plus a child table of ordinal-ordered entries whose value is
+  NULL only for `per_medium`, with CHECKs that tie the two together. The
+  migration maps existing rows losslessly: `format IS NULL` → `undescribed`;
+  Discogs rows → `descriptors` split on `", "` (the exact inverse of how the
+  column was written); MusicBrainz rows → `descriptors` of the one stored
+  format string, because a stored disc-ID row kept only its matching medium's
+  format and cannot claim a complete media list.
+- `links: Vec<MetadataRef>` — releases on other catalogs this record's own
+  document names as the same release: a MusicBrainz disc-ID or full release
+  response's `url-rels`, parsed through `parse_catalog_url` and kept where they
+  name `CatalogPage::Release` on a catalog other than the record's own. A
+  response without relations (both search endpoints, every Discogs document)
+  names none. `ImportSearchReleaseDetail` gains the same field so `of_pick`
+  carries what the full release response stated. Persist in a child table of
+  `(content_hash, position, ordinal, catalog, key)`; existing rows have none.
+
+`ImportSearchReleaseDetail.barcode` stays a single display/draft value;
+`of_pick` collects it into `barcodes`.
+
+`DiscogsSearchResult.master_id` already decodes zero as `None`
+(`optional_master_id`); a synthetic fixture with `"master_id": 0` must show the
+converted result carrying `source_group_id: None` and grouping alone.
+
+### Comparing two records
+
+Each pressing fact compares to one of three outcomes: `Same`, `Different`, or
+`Unknown` (inconclusive). Never compare tuples of optional strings.
+
+- **Link**: `a.links` names `b` or `b.links` names `a` (catalog and key equal).
+- **Barcode**: a stated value is usable only when it is digits with spaces and
+  dashes between them (nothing else — a value with letters or other
+  punctuation is not a code and is skipped with a `debug!`), at least 8 digits,
+  and not `is_placeholder_code`. Its key is its digits, with a 12-digit UPC-A
+  written as the 13-digit EAN that prefixes a zero; no other length is
+  rewritten, so an 8-digit code and a 13-digit code never meet, and a 13-digit
+  code that happens to start with a zero equals the 12-digit code it is the
+  EAN form of. `Same` when any usable key on one side equals any on the other;
+  `Different` when both sides have at least one usable key and none are equal;
+  `Unknown` otherwise.
+- **Catalog number**: `squash` both; `Same` when equal and non-empty. A value
+  that squashes to `none` states no number (MusicBrainz writes `[none]`,
+  Discogs `none`) and is `Unknown`. Never `Different`: the sources punctuate
+  and abbreviate these freely.
+- **Year**: `Same`, `Different`, or `Unknown` when either is absent.
+- **Country**: resolve each through `identify::country::named` (widen it to
+  `pub(crate)`); both resolved → `Same`/`Different` by country. Define regions
+  beside the matcher: Europe is `XE` or `Europe`, Worldwide is `XW` or
+  `Worldwide` (squashed comparison); both regions → `Same`/`Different`. A
+  country against a region, or any unresolved value, is `Unknown`.
+- **Label**: `identify::label::stated` on both (the trade word dropped);
+  `Same` when equal. Otherwise `Unknown` — never `Different`.
+- **Medium**: from `StatedMedia`, derive the media the record is known to
+  contain and whether that is the complete list. Recognizing a medium in one
+  format string is one shared, case-insensitive function in `util/format.rs`
+  that returns every recognized `PhysicalMedium` in the string (vinyl,
+  cassette, CD by the existing substrings), which `detect_format` then reads
+  the first of — one recognizer, not two. `PerMedium`: known = recognized media
+  of stated entries; complete = every entry stated and recognized.
+  `Descriptors`: known = recognized media among the tokens; never complete.
+  `Undescribed`: nothing known. `Different` when either side is complete and
+  the other side knows a medium absent from it. `Same` when both are complete
+  and equal. `Unknown` otherwise.
+
+Identity evidence makes two records candidates for one pressing: a link; a
+`Same` barcode; or a `Same` catalog number corroborated by at least one `Same`
+among year, country, label, medium. A `Different` barcode, year, country, or
+medium is a contradiction and removes an inferred candidate — a barcode or
+catalog candidate. A linked pair is stated, not inferred, and stands.
+
+Support orders candidates as a tuple compared lexicographically:
+`(link, barcode Same, catalog Same, number of Same among year, country, label,
+medium)`.
+
+### Pairing
+
+Pair the MusicBrainz records against the Discogs records over the whole
+result list (the two members of `Catalog::LOOKUP`; any other source is a
+programming error), not within an album card. Take support levels from the
+highest down: at each level, the candidate pairs whose two members are both
+still free are examined together; a member that appears in more than one of
+them is ambiguous and is settled unpaired; every remaining pair at the level is
+taken. A member whose only pair at this level named an ambiguous member stays
+free for lower levels. Nothing depends on arrival order: permuting either side
+gives the same pairs.
+
+### Cards
+
+Bucket by `(source, source_group_id)` as now. Then union the buckets joined by
+a pair; that is the album grouping known links establish. Then the text merge
+as now, over the resulting cards: a card carrying only one source merges with
+the first later card carrying only the other source whose album key is equal.
+A card may hold more than one bucket of one source when pairs join them; its
+`sources` lists each bucket by `source_rank` then first-seen order, its `id`
+is the first of those buckets' group ids or the lead's release id, and its
+title, artist, label and cover are read from releases in that bucket order.
+Rows: each pair is one `Pressing::of([a, b])`, every other release its own
+row; ordering stays as now.
+
+### Tests to revise
+
+`a_formatting_difference_in_the_catalog_number_does_not_pair` inverts:
+`CAT 2 2` and `CAT 2-2` in the same year are one pressing.
+`two_undated_records_pair_by_position_alone` inverts: two Discogs records with
+one barcode and nothing to tell them apart are ambiguous, and all three rows
+stay separate. `an_absent_artist_matches_only_an_absent_artist` and
+`different_titles_across_sources_stay_apart` keep their text-merge meaning only
+where no pair joins the cards; add the paired variants the regression list
+names. Every remaining regression requirement above gets a production-path
+test through `group_results`, `pressing_count`, the disc-ID conversion, and the
+stored-verdict read path.
