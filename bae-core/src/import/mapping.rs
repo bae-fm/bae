@@ -1,10 +1,9 @@
 //! The mapping table: every source unit the folder offers, alongside the track
 //! committing makes of it.
 //!
-//! One structure, not two lists to keep aligned. The editable track row lives
-//! *inside* the row that produces it, so removing a row removes both halves and
-//! no index addresses anything — which is what keeps the joining out of the
-//! surfaces that render it.
+//! The source remains available independently of inclusion. Included rows carry
+//! their editable track; omitted audio carries an exact, revision-bound offer
+//! to add it. Surfaces render this projection without joining separate lists.
 
 use crate::import::folder_scanner::{
     BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, FileRoleChoice, ScannedFile,
@@ -12,7 +11,7 @@ use crate::import::folder_scanner::{
 };
 use crate::import::probe::SourceDurations;
 use crate::import::track_slots::{
-    audio_layout, units_of, SlotReconciliation, SlotTable, TrackSlot, UnitContribution,
+    SlotReconciliation, SlotTable, TrackSlot, UnitContribution, audio_layout, units_of,
 };
 use crate::import::types::{AudioFile, RawTrackEdit};
 use std::collections::{BTreeSet, HashMap};
@@ -199,6 +198,11 @@ pub enum MappingBecomes {
         /// Whether the source's tracklist contains this track. False exactly
         /// for a row that exists only because audio was found for it.
         named_by_source: bool,
+    },
+    /// Available audio omitted from the release, with the read that offered it.
+    NotIncluded {
+        audio: AudioFile,
+        candidate: crate::import::CandidateAsRead,
     },
     /// No release is picked yet, so what this becomes is the open question.
     AwaitingPick,
@@ -439,19 +443,21 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
         .flat_map(MappingTrackSection::mappings)
         .filter_map(|mapping| match &mapping.becomes {
             MappingBecomes::Track { track, .. } => Some(track.clone()),
-            MappingBecomes::AwaitingPick => None,
+            MappingBecomes::AwaitingPick | MappingBecomes::NotIncluded { .. } => None,
         })
         .collect()
 }
 
-/// Render the included tracks by audio identity and in the draft's order.
+/// Render included tracks in their stored order, with omitted audio inserted
+/// at its source position. Every offer retains the read that produced it.
 pub(crate) fn draft_mapping_table(
     files: &CategorizedFiles,
     durations: &SourceDurations,
     draft: &crate::import::CandidateDraft,
+    read: &crate::import::CandidateAsRead,
 ) -> MappingTable {
     let mut table = mapping_table(files, None, durations);
-    let mut sources = HashMap::new();
+    let mut sources = Vec::new();
     let mut sheets = HashMap::new();
     for section in &table.track_sections {
         if let MappingTrackSectionContent::Sheet { sheet, .. } = &section.content {
@@ -471,21 +477,64 @@ pub(crate) fn draft_mapping_table(
                     unreachable!("an audio projection has no missing sources")
                 }
             };
-            sources.insert(audio, row.clone());
+            sources.push((audio, row.clone()));
         }
     }
+    let source_positions: HashMap<_, _> = sources
+        .iter()
+        .enumerate()
+        .map(|(position, (audio, _))| (audio, position))
+        .collect();
+    let included: std::collections::HashSet<_> =
+        draft.tracks.iter().map(|track| &track.edit.file).collect();
+    let mut omitted = sources
+        .iter()
+        .enumerate()
+        .filter(|(_, (audio, _))| !included.contains(audio))
+        .peekable();
     table.track_sections.clear();
-    let multi_side = draft.tracks.first().is_some_and(|first| {
-        draft
-            .tracks
-            .iter()
-            .any(|track| track.edit.side != first.edit.side)
-    });
+    let sides: BTreeSet<_> = draft.tracks.iter().map(|track| track.edit.side).collect();
+    let multi_side = sides.len() > 1;
+    let source_sides: BTreeSet<_> = sheets
+        .values()
+        .map(|sheet| match sheet.assignment {
+            SheetDisc::Disc { number } => number,
+            SheetDisc::Ignored => unreachable!("an available slice belongs to an active sheet"),
+        })
+        .collect();
+    let push_omitted = |table: &mut MappingTable, audio: &AudioFile, source: &TrackMapping| {
+        let mut row = source.clone();
+        row.becomes = MappingBecomes::NotIncluded {
+            audio: audio.clone(),
+            candidate: read.clone(),
+        };
+        let side = match audio {
+            AudioFile::Standalone { .. } => crate::album_detail::TrackSide::Flat,
+            AudioFile::SheetSlice { sheet_id, .. } => {
+                let sheet = &sheets[sheet_id];
+                let SheetDisc::Disc { number } = sheet.assignment else {
+                    unreachable!("an available slice belongs to an active sheet")
+                };
+                if source_sides.len() > 1 {
+                    crate::album_detail::TrackSide::Disc {
+                        disc: number as i32,
+                    }
+                } else {
+                    crate::album_detail::TrackSide::Flat
+                }
+            }
+        };
+        push_draft_mapping(&mut table.track_sections, &sheets, audio, side, row);
+    };
     for track in &draft.tracks {
-        let mut row = sources
+        let position = *source_positions
             .get(&track.edit.file)
-            .expect("draft audio belongs to the candidate's selected audio")
-            .clone();
+            .expect("draft audio belongs to the candidate's selected audio");
+        while omitted.peek().is_some_and(|(index, _)| *index < position) {
+            let (_, (audio, source)) = omitted.next().expect("the omitted source was observed");
+            push_omitted(&mut table, audio, source);
+        }
+        let mut row = sources[position].1.clone();
         let position = crate::util::format::compute_track_position(
             Some(&draft.pressing.format),
             track.edit.side,
@@ -498,36 +547,54 @@ pub(crate) fn draft_mapping_table(
             position: crate::util::format::track_position_text(&position),
             named_by_source: track.source_index.is_some(),
         };
-        match &track.edit.file {
-            AudioFile::Standalone { .. } => push_track_mapping(
-                &mut table.track_sections,
-                PositionedTrackMapping { side, mapping: row },
-            ),
-            AudioFile::SheetSlice { sheet_id, .. } => {
-                if let Some(MappingTrackSection {
-                    side: existing_side,
-                    content: MappingTrackSectionContent::Sheet { sheet, entries },
-                }) = table.track_sections.last_mut()
-                {
-                    if sheet.sheet_id == *sheet_id && *existing_side == side {
-                        entries.push(row);
-                        continue;
-                    }
-                }
-                table.track_sections.push(MappingTrackSection {
-                    side,
-                    content: MappingTrackSectionContent::Sheet {
-                        sheet: sheets
-                            .get(sheet_id)
-                            .expect("selected slice has a sheet")
-                            .clone(),
-                        entries: vec![row],
-                    },
-                });
-            }
-        }
+        push_draft_mapping(
+            &mut table.track_sections,
+            &sheets,
+            &track.edit.file,
+            side,
+            row,
+        );
+    }
+    for (_, (audio, source)) in omitted {
+        push_omitted(&mut table, audio, source);
     }
     table
+}
+
+fn push_draft_mapping(
+    sections: &mut Vec<MappingTrackSection>,
+    sheets: &HashMap<String, SheetGroup>,
+    audio: &AudioFile,
+    side: crate::album_detail::TrackSide,
+    row: TrackMapping,
+) {
+    match audio {
+        AudioFile::Standalone { .. } => {
+            push_track_mapping(sections, PositionedTrackMapping { side, mapping: row })
+        }
+        AudioFile::SheetSlice { sheet_id, .. } => {
+            if let Some(MappingTrackSection {
+                side: existing_side,
+                content: MappingTrackSectionContent::Sheet { sheet, entries },
+            }) = sections.last_mut()
+            {
+                if sheet.sheet_id == *sheet_id && *existing_side == side {
+                    entries.push(row);
+                    return;
+                }
+            }
+            sections.push(MappingTrackSection {
+                side,
+                content: MappingTrackSectionContent::Sheet {
+                    sheet: sheets
+                        .get(sheet_id)
+                        .expect("selected slice has a sheet")
+                        .clone(),
+                    entries: vec![row],
+                },
+            });
+        }
+    }
 }
 
 /// The running state of one projection: which tracklist it is pairing against,

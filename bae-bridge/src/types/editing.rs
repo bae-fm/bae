@@ -335,6 +335,15 @@ pub enum BridgeMappingSource {
     Missing,
 }
 
+/// The exact candidate revisions on which a rendered source offer is based.
+#[cfg(feature = "desktop")]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeCandidateAsRead {
+    pub content_hash: String,
+    pub file_edit_revision: u64,
+    pub metadata_revision: u64,
+}
+
 /// The right half of a mapping row: what committing makes of the source unit.
 /// Mirror of bae-core's `MappingBecomes`.
 #[cfg(feature = "desktop")]
@@ -351,6 +360,11 @@ pub enum BridgeMappingBecomes {
         /// Whether the source's tracklist contains this track — false exactly
         /// for a row that exists only because audio was found for it.
         named_by_source: bool,
+    },
+    /// Available audio omitted from the release, and the read that offered it.
+    NotIncluded {
+        audio: BridgeAudioFile,
+        candidate: BridgeCandidateAsRead,
     },
     /// No release is picked yet, so what this becomes is the open question.
     AwaitingPick,
@@ -482,9 +496,8 @@ pub enum BridgeMappingFileRow {
 /// The mapping table: every source unit the folder offers, alongside the track
 /// committing makes of it. Mirror of bae-core's `MappingTable`.
 ///
-/// One structure, not two lists to keep aligned: the editable track row lives
-/// *inside* the row that produces it, so removing a row removes both halves and
-/// no index addresses anything.
+/// Each source carries either its included editable track or the exact offer
+/// that can add it. Removing a track leaves the available audio visible.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingTable {

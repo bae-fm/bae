@@ -1,11 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// One of the release's tracks: the file behind it, its number, what it will be
-/// called, who it is by, and how long it runs.
-///
-/// The title and artist are edited in place — this is the release being
-/// written. Every draft row has audio; its context menu can change that audio.
+/// An available audio source alongside its included track, or an action to add
+/// it. Included tracks edit their title and artist in place; unused sources
+/// retain their audition target without carrying editable metadata.
 struct ImportMappingTrackRow: View {
     @Environment(\.sourceFileEditsAllowed)
     private var sourceFileEditsAllowed
@@ -39,29 +37,26 @@ struct ImportMappingTrackRow: View {
         return nil
     }
 
-    private var displayedPosition: String {
-        if case .track(_, let position, _) = mapping.becomes { return position }
-        return ""
-    }
-
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
             sourceCell
-            if let track {
+            switch mapping.becomes {
+            case .track(let track, let position, _):
                 ReleaseMetadataTrackRow(
                     track: track,
                     duration: mapping.displayedDuration,
                     durationDiverges: lengthsDiverge,
                     columns: columns,
                     editingCommands: editingCommands,
-                    displayedPosition: displayedPosition,
+                    displayedPosition: position,
                     onChange: { actions.editTrack($0) }
                 )
+            case .awaitingPick:
+                unassignedTrackCells(awaitingPick: true)
+            case .notIncluded:
+                unassignedTrackCells(awaitingPick: false)
             }
-            else {
-                awaitingTrackCells
-            }
-            removalCell
+            actionCell
         }
         // The whole row is the hover shape, gaps included. Hover follows
         // hit-testing, and a stack's empty space is not hit-testable on its
@@ -79,13 +74,15 @@ struct ImportMappingTrackRow: View {
     }
 
     @ViewBuilder
-    private var awaitingTrackCells: some View {
+    private func unassignedTrackCells(awaitingPick: Bool) -> some View {
         Color.clear.frame(width: ReleaseMetadataTrackColumns.track)
         Text(coreString("ui.import.becomes.awaiting_pick"))
             .font(.system(size: 12))
             .foregroundStyle(.tertiary)
             .lineLimit(1)
             .frame(width: columns.title, alignment: .leading)
+            .opacity(awaitingPick ? 1 : 0)
+            .accessibilityHidden(!awaitingPick)
         Color.clear.frame(width: columns.artist)
         Text(mapping.displayedDuration)
             .font(.system(size: 12))
@@ -120,14 +117,39 @@ struct ImportMappingTrackRow: View {
         )
     }
 
-    /// Deleting a draft track leaves its physical file available.
-    private var removalCell: some View {
+    /// Inclusion changes the action, without changing the source or row width.
+    private var actionCell: some View {
         ZStack {
-            if let track, let removal = removal(track) {
-                ImportMappingRowRemovalButton(
-                    removal: removal,
-                    offered: hovering
-                )
+            switch mapping.becomes {
+            case .track(let track, _, _):
+                if let removal = removal(track) {
+                    ImportMappingRowRemovalButton(
+                        removal: removal,
+                        offered: hovering
+                    )
+                }
+            case .notIncluded(let audio, let candidate):
+                Button {
+                    actions.addTrack(audio, candidate)
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(
+                            width: ImportMappingColumns.action,
+                            height: ImportMappingColumns.action
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableIconButtonStyle())
+                .help("Add track")
+                .accessibilityLabel("Add track")
+                .disabled(!sourceFileEditsAllowed)
+                .opacity(sourceFileEditsAllowed ? 1 : 0)
+                .allowsHitTesting(sourceFileEditsAllowed)
+                .accessibilityHidden(!sourceFileEditsAllowed)
+            case .awaitingPick:
+                EmptyView()
             }
         }
         .frame(

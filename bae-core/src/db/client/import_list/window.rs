@@ -533,6 +533,11 @@ pub(super) fn load_candidate_detail_on(
             candidate.files(),
             &durations,
             &pane_rows.draft,
+            &crate::import::CandidateAsRead {
+                content_hash,
+                file_edit_revision: candidate.file_edit_revision(),
+                metadata_revision,
+            },
         );
         let remote_covers = pane
             .release

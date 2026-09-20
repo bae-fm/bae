@@ -530,6 +530,18 @@ forward! {
                 .await?)
         }
 
+        /// Include the exact source audio offered by a viewed candidate revision.
+        fn add_candidate_track(
+            candidate_key: String,
+            audio: crate::types::BridgeAudioFile,
+            candidate: crate::types::BridgeCandidateAsRead,
+        ) -> () {
+            Ok(this
+                .services
+                .import_add_candidate_track(&candidate_key, audio.into_core(), candidate.into_core())
+                .await?)
+        }
+
         /// Take one mapping-table row out of the import.
         fn drop_candidate_track(candidate_key: String, track_id: String) -> () {
             Ok(this

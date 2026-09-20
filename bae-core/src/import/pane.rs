@@ -92,7 +92,7 @@ pub(crate) fn candidate_draft_from_source(
         .flat_map(MappingTrackSection::mappings)
         .filter_map(|mapping| match &mapping.becomes {
             MappingBecomes::Track { track, .. } => Some(track.clone()),
-            MappingBecomes::AwaitingPick => None,
+            MappingBecomes::AwaitingPick | MappingBecomes::NotIncluded { .. } => None,
         })
         .collect::<Vec<_>>();
     draft.tracks = track_rows;
@@ -192,8 +192,9 @@ pub(crate) fn draft_pane(
     files: &CategorizedFiles,
     durations: &SourceDurations,
     draft: &CandidateDraft,
+    read: &crate::import::CandidateAsRead,
 ) -> PanePick {
-    let table = crate::import::mapping::draft_mapping_table(files, durations, draft);
+    let table = crate::import::mapping::draft_mapping_table(files, durations, draft, read);
     PanePick {
         release,
         edit: draft.release_edit(),

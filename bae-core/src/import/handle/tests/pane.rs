@@ -1,5 +1,6 @@
 mod metadata_application;
 mod metadata_edits;
+mod track_restoration;
 mod pick_partners;
 mod candidate_mutation_race;
 mod session;

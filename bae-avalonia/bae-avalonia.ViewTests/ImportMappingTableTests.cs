@@ -181,6 +181,55 @@ public sealed partial class ImportMappingTableTests
         Assert.Empty(table.GetLogicalDescendants().OfType<TextBox>());
     }
 
+    [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void UnusedSourcesRetainTheirAudioWithoutAskingForMetadata(bool sheet, bool readOnly)
+    {
+        var source = sheet ? Entry(0).Source : FileSource("unused.flac");
+        var audio = sheet
+            ? (BridgeAudioFile)new BridgeAudioFile.SheetSlice("disc.flac", SheetId, 0)
+            : Standalone("unused.flac");
+        var mapping = Mapping(source, new BridgeMappingBecomes.NotIncluded(
+            audio, new BridgeCandidateAsRead("source-files", 3, 7)), durationMs: 90_000);
+        var section = sheet
+            ? SheetTable(Disc(1)).TrackSections[0] with
+            {
+                Content = ((BridgeMappingTrackSectionContent.Sheet)
+                    SheetTable(Disc(1)).TrackSections[0].Content) with { Entries = new[] { mapping } },
+            }
+            : FlatSection(mapping);
+        var data = new BridgeMappingTable([], new[] { section }, [], Reconciliation: null);
+        var played = new List<BridgePreviewTarget>();
+        var table = readOnly
+            ? new ReadOnlyImportMappingTable(data, [], () => null, (_, _) => { },
+                played.Add, () => { }).Build()
+            : Build(data, preview: played.Add);
+        var row = Rows(table)[sheet ? 2 : 1];
+        var grid = Assert.IsType<Grid>(Assert.IsType<Border>(row).Child);
+
+        Assert.Empty(row.GetLogicalDescendants().OfType<TextBox>());
+        Assert.DoesNotContain(row.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == Loc.Core("ui.import.becomes.awaiting_pick"));
+        Assert.All(grid.Children.Where(cell => Grid.GetColumn(cell) < 3), cell =>
+            Assert.True(cell is TextBlock { Text: null or "" }));
+        Assert.Contains(row.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == (sheet ? "Sheet Track 1" : "unused.flac"));
+        Assert.Contains(row.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == "1:30");
+        Assert.Equal(0, data.WillWriteCount());
+        Assert.Equal(0, data.UnansweredCount());
+        Assert.Empty(data.AudioChoices());
+
+        PlayButton(row).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(new[]
+        {
+            sheet ? EntryTarget(0) : new BridgePreviewTarget("/folder/unused.flac", 0, null),
+        }, played);
+    }
+
     // A sheet is one group row over its entries, and the header states why this
     // one is on no audio at all. Every row starts at the same leading edge — a
     // sheet's entries are its rows, which the group above them already says.

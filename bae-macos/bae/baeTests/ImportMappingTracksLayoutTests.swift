@@ -275,6 +275,99 @@ struct ImportMappingTracksLayoutTests {
 
 }
 
+extension ImportMappingTracksLayoutTests {
+    @MainActor
+    @Test(
+        "unused file and CUE sources can be auditioned and added without metadata edits",
+        arguments: [(false, true), (true, true), (false, false), (true, false)]
+    )
+    func unusedSourceCanBeAdded(sheet: Bool, editable: Bool) async throws {
+        let original =
+            sheet
+            ? sheetEntryMapping(number: 3, title: "Source Title")
+            : pairedMapping
+        let track = try #require(original.track)
+        let audio = try #require(track.file)
+        let target = try #require(original.source.previewTarget)
+        let candidate = BridgeCandidateAsRead(
+            contentHash: "observed-files",
+            fileEditRevision: 4,
+            metadataRevision: 9
+        )
+        let mapping = BridgeTrackMapping(
+            source: original.source,
+            becomes: .notIncluded(audio: audio, candidate: candidate),
+            durationMs: original.durationMs
+        )
+        let recorder = MappingTrackActionRecorder()
+        let width = ReleaseMetadataTrackColumns.idealTableWidth
+        let size = NSSize(width: width, height: 40)
+        let (window, host) = hostUnusedSource(
+            mapping,
+            recorder: recorder,
+            editable: editable,
+            size: size
+        )
+        await SnapshotTestSupport.settle(host)
+        let height = host.fittingSize.height
+        #expect(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+                .allSatisfy { !$0.isEditable }
+        )
+        try click(
+            at: NSPoint(
+                x: width - ImportMappingColumns.rowPadding
+                    - ImportMappingColumns.action / 2,
+                y: size.height / 2
+            ),
+            in: window
+        )
+        await Task.yield()
+        #expect(recorder.addedAudio == (editable ? [audio] : []))
+        #expect(recorder.addedCandidates == (editable ? [candidate] : []))
+        #expect(recorder.edits == 0)
+        #expect(recorder.drops == 0)
+        try click(
+            at: NSPoint(
+                x: ImportMappingColumns.rowPadding + 22,
+                y: size.height / 2
+            ),
+            in: window
+        )
+        await Task.yield()
+        #expect(recorder.previewed == [target])
+        #expect(host.fittingSize.height == height)
+        withExtendedLifetime(window) {}
+    }
+
+    @MainActor
+    private func hostUnusedSource(
+        _ mapping: BridgeTrackMapping,
+        recorder: MappingTrackActionRecorder,
+        editable: Bool,
+        size: NSSize
+    ) -> (NSWindow, NSView) {
+        SnapshotTestSupport.hostInWindow(
+            ImportMappingTrackRow(
+                mapping: mapping,
+                columns: .resolved(tableWidth: size.width),
+                audioChoices: [],
+                previewingTarget: nil,
+                editingCommands: EditingCommitCommands(),
+                evidence: [],
+                actions: actions(recording: recorder)
+            )
+            .padding(.horizontal, ImportMappingColumns.rowPadding)
+            .frame(width: size.width, height: size.height, alignment: .leading)
+            .environment(\.sourceFileEditsAllowed, editable)
+            .environment(Library.stub())
+            .environment(UiStore()),
+            size: size
+        )
+    }
+}
+
 /// The sheet caption over a group of carved rows.
 extension ImportMappingTracksLayoutTests {
     /// The caption reads left to right: the disc pill leads, the binding menu
@@ -621,9 +714,19 @@ extension ImportMappingTracksLayoutTests {
             stopPreview: {
                 MainActor.assumeIsolated { recorder.stops += 1 }
             },
-            editTrack: { _ in },
+            editTrack: { _ in
+                MainActor.assumeIsolated { recorder.edits += 1 }
+            },
             chooseFile: { _, _ in },
-            drop: { _ in },
+            addTrack: { audio, candidate in
+                MainActor.assumeIsolated {
+                    recorder.addedAudio.append(audio)
+                    recorder.addedCandidates.append(candidate)
+                }
+            },
+            drop: { _ in
+                MainActor.assumeIsolated { recorder.drops += 1 }
+            },
         )
     }
 
@@ -652,4 +755,8 @@ extension ImportMappingTracksLayoutTests {
 private final class MappingTrackActionRecorder {
     var previewed: [BridgePreviewTarget] = []
     var stops = 0
+    var addedAudio: [BridgeAudioFile] = []
+    var addedCandidates: [BridgeCandidateAsRead] = []
+    var edits = 0
+    var drops = 0
 }

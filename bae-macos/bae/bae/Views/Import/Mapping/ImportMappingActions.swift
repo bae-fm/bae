@@ -30,7 +30,9 @@ struct ImportMappingActions {
     /// Point a row at one of the folder's audio units: the row's track id,
     /// then the unit.
     let chooseFile: (String, BridgeAudioFile) -> Void
-    /// Delete a draft track without changing the file on disk.
+    /// Include the source audio offered by the revision the person viewed.
+    let addTrack: (BridgeAudioFile, BridgeCandidateAsRead) -> Void
+    /// Remove a track without changing the file on disk.
     let drop: (String) -> Void
 }
 

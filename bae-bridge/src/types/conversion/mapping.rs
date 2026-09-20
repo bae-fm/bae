@@ -149,7 +149,7 @@ mirror_struct! {
 mirror_enum! {
     BridgeAudioFile = bae_core::import::AudioFile,
     from_core: pub(crate) fn,
-    into_core: pub(super) fn,
+    into_core: pub(crate) fn,
     variants: {
         Standalone { file_id },
         SheetSlice { file_id, sheet_id, index },
@@ -310,12 +310,20 @@ mirror_enum! {
     },
 }
 
+mirror_struct! {
+    BridgeCandidateAsRead = bae_core::import::CandidateAsRead,
+    from_core: fn,
+    into_core: pub(crate) fn,
+    fields: { content_hash, file_edit_revision, metadata_revision },
+}
+
 mirror_enum! {
     BridgeMappingBecomes = bae_core::import::MappingBecomes,
     from_core: fn,
     into_core: fn,
     variants: {
         Track { track: (BridgeRawTrackEdit), position, named_by_source },
+        NotIncluded { audio: (BridgeAudioFile), candidate: (BridgeCandidateAsRead) },
         AwaitingPick,
     },
 }

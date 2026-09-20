@@ -329,16 +329,22 @@ internal sealed partial class ImportMappingTable
         var lengthsDiverge = LengthsDiverge(mapping);
         var track = (mapping.Becomes as BridgeMappingBecomes.Track)?.TrackValue;
 
-        if (mapping.Becomes is BridgeMappingBecomes.Track becomes)
+        switch (mapping.Becomes)
         {
-            AddTrackCells(grid, becomes);
-        }
-        else
-        {
-            var waiting = ImportPaneUi.Cell(
-                Loc.Core("ui.import.becomes.awaiting_pick"), secondary: true);
-            Avalonia.Controls.Grid.SetColumn(waiting, 1);
-            grid.Children.Add(waiting);
+            case BridgeMappingBecomes.Track becomes:
+                AddTrackCells(grid, becomes);
+                break;
+            case BridgeMappingBecomes.AwaitingPick:
+                var waiting = ImportPaneUi.Cell(
+                    Loc.Core("ui.import.becomes.awaiting_pick"), secondary: true);
+                Avalonia.Controls.Grid.SetColumn(waiting, 1);
+                grid.Children.Add(waiting);
+                break;
+            case BridgeMappingBecomes.NotIncluded:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(mapping), mapping.Becomes, "Unknown mapping outcome");
         }
         AddDurationCell(grid, mapping, lengthsDiverge);
 

@@ -339,6 +339,155 @@ impl ImportServiceHandle {
         Ok(())
     }
 
+    /// Include one currently available audio source as a newly initialized row.
+    /// The rendered offer pins the source configuration and the draft it was
+    /// offered beside; adding audio never reapplies the selected release.
+    pub async fn add_candidate_track(
+        &self,
+        candidate_key: &str,
+        audio: crate::import::AudioFile,
+        read: crate::import::CandidateAsRead,
+    ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move {
+            this.add_candidate_track_write(&candidate_key, audio, read)
+                .await
+        })
+        .await
+    }
+
+    async fn add_candidate_track_write(
+        &self,
+        candidate_key: &str,
+        audio: crate::import::AudioFile,
+        read: crate::import::CandidateAsRead,
+    ) -> Result<(), crate::import::ImportError> {
+        let (candidate, preparation, available, source_position) = {
+            let _commit = self
+                .commit_lock_for_revision(
+                    candidate_key,
+                    &read.content_hash,
+                    read.file_edit_revision,
+                )
+                .await?;
+            let candidate = self.editable_candidate(candidate_key).await?;
+            let preparation = self
+                .library_manager
+                .load_import_candidate_preparation(&read.content_hash)
+                .await?
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!("{candidate_key} has no stored import preparation"),
+                })?;
+            if preparation.file_edit_revision != read.file_edit_revision {
+                return Err(crate::import::CandidateAsRead::files_moved(
+                    read.file_edit_revision,
+                    crate::import::preparation::CandidateWrite::PaneEdit,
+                )
+                .into());
+            }
+            let available = crate::import::track_slots::audio_units(candidate.files());
+            let source_position = available
+                .iter()
+                .position(|unit| unit == &audio)
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!("{audio:?} is not available in {candidate_key}"),
+                })?;
+            if preparation
+                .draft
+                .tracks
+                .iter()
+                .any(|track| track.edit.file == audio)
+            {
+                debug!(
+                    ?audio,
+                    candidate_key, "audio is already included; nothing to write"
+                );
+                return Ok(());
+            }
+            if preparation.metadata_revision != read.metadata_revision {
+                return Err(
+                    crate::import::CandidateAsRead::metadata_moved(read.metadata_revision).into(),
+                );
+            }
+            (candidate, preparation, available, source_position)
+        };
+
+        // Snapshot extraction and provider preparation run without the commit
+        // lock. The final locked write refuses either revision moving meanwhile.
+        let initialized = if self.library_manager.get_config().prefs.prefill_with_tags {
+            let (snapshot_candidate, snapshot) = self.file_tag_snapshot(candidate_key).await?;
+            if snapshot_candidate.files().content_hash() != read.content_hash
+                || snapshot_candidate.file_edit_revision() != read.file_edit_revision
+            {
+                return Err(crate::import::ImportError::Internal {
+                    detail: format!("{candidate_key} changed before its audio could be added"),
+                });
+            }
+            let durations = crate::import::probe::source_durations(snapshot_candidate.files())?;
+            crate::import::file_tags_seed::FileTagsSeed::project(
+                &snapshot_candidate,
+                snapshot,
+                &durations,
+                None,
+                self.clock.as_ref(),
+                self.ids.as_ref(),
+            )?
+            .draft
+        } else {
+            candidate.blank_source().draft
+        };
+        let mut track = initialized
+            .tracks
+            .into_iter()
+            .find(|track| track.edit.file == audio)
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("source initialization did not produce {audio:?}"),
+            })?;
+        track.edit.id = self.ids.new_id();
+        track.source_index = None;
+        let mut draft = preparation.draft;
+        let mut insertion = draft.tracks.len();
+        for (index, included) in draft.tracks.iter().enumerate() {
+            let position = available
+                .iter()
+                .position(|unit| unit == &included.edit.file)
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!("included track {} has unavailable audio", included.edit.id),
+                })?;
+            if position > source_position {
+                insertion = index;
+                break;
+            }
+        }
+        draft.tracks.insert(insertion, track.clone());
+        let (source_discogs_artist_ids, assets) = self
+            .prepared_artist_images_for_active(
+                preparation.assets.applied_source.as_ref(),
+                &draft.release_edit(),
+                &draft.tracks,
+                preparation.assets.artist_images,
+            )
+            .await?;
+        // Unchanged source revisions preserve the exact available-audio set
+        // checked above, including every CUE FILE association and slice index.
+        let _commit = self
+            .commit_lock_for_revision(candidate_key, &read.content_hash, read.file_edit_revision)
+            .await?;
+        self.preparations
+            .add_track_prepared(
+                candidate.watched_folder_path(),
+                candidate_key,
+                &read,
+                &track,
+                insertion,
+                &source_discogs_artist_ids,
+                &assets,
+            )
+            .await?;
+        Ok(())
+    }
+
     /// The scanned candidate revision a pane edit is based on, or the refusal
     /// for a key that names no editable folder.
     async fn editable_candidate(

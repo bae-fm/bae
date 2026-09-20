@@ -28,6 +28,13 @@ private final class Recorder {
     var bindCalls: [BindingCall] = []
     var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
     var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
+    struct AddedTrack {
+        let key: String
+        let audio: BridgeAudioFile
+        let candidate: BridgeCandidateAsRead
+    }
+
+    var addedTracks: [AddedTrack] = []
     var droppedTracks: [(key: String, trackId: String)] = []
     var editFields: [(field: BridgeCandidateEditField, value: String)] = []
     var externalMetadata: [BridgeMetadataProvenance] = []
@@ -85,6 +92,13 @@ private final class Recorder {
             setCandidateTrackEdit: { [self] key, track in
                 await MainActor.run {
                     trackEdits.append((key: key, track: track))
+                }
+            },
+            addCandidateTrack: { [self] key, audio, candidate in
+                await MainActor.run {
+                    addedTracks.append(
+                        AddedTrack(key: key, audio: audio, candidate: candidate)
+                    )
                 }
             },
             dropCandidateTrack: { [self] key, trackId in
@@ -372,6 +386,49 @@ struct ImportMappingPaneTests {
         #expect(
             recorder.trackEdits.first?.track.file
                 == .standalone(fileId: "13.flac")
+        )
+    }
+
+    @MainActor
+    @Test(
+        "adding source audio carries its viewed revision without reapplying metadata"
+    )
+    func addingSourceUsesTheViewedOffer() async throws {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable
+        )
+        let before = try #require(
+            store.selectedCandidates[MappingFixtures.candidateKey]?.detail
+        )
+        let recorder = Recorder()
+        let read = BridgeCandidateAsRead(
+            contentHash: "viewed-source-hash",
+            fileEditRevision: 3,
+            metadataRevision: 7
+        )
+        let audio = BridgeAudioFile.sheetSlice(
+            fileId: "disc.flac",
+            sheetId: "disc.cue",
+            index: 4
+        )
+
+        await ImportMappingFlow.addTrack(
+            key: MappingFixtures.candidateKey,
+            audio: audio,
+            candidate: read,
+            services: recorder.services(store)
+        )
+
+        #expect(recorder.addedTracks.count == 1)
+        #expect(recorder.addedTracks.first?.key == MappingFixtures.candidateKey)
+        #expect(recorder.addedTracks.first?.audio == audio)
+        #expect(recorder.addedTracks.first?.candidate == read)
+        #expect(recorder.trackEdits.isEmpty)
+        #expect(recorder.externalMetadata.isEmpty)
+        #expect(recorder.fileTagsApplications == 0)
+        #expect(
+            store.selectedCandidates[MappingFixtures.candidateKey]?.detail
+                == before
         )
     }
 

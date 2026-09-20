@@ -196,6 +196,44 @@ impl CandidatePreparations {
         .await
     }
 
+    /// Insert a newly initialized row and its required artist answers together.
+    /// The read revision pins the surviving rows and their insertion position.
+    pub async fn add_track_prepared(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        read: &CandidateAsRead,
+        track: &crate::import::CandidateTrack,
+        position: usize,
+        source_discogs_artist_ids: &std::collections::BTreeSet<String>,
+        assets: &[crate::import::PreparedArtistImage],
+    ) -> Result<u64, LibraryError> {
+        self.edit_prepared_candidate(
+            watched_folder_path,
+            candidate_path,
+            read,
+            source_discogs_artist_ids,
+            assets,
+            |prep| {
+                let tracks = &mut prep.metadata.draft.tracks;
+                if tracks
+                    .iter()
+                    .any(|included| included.edit.file == track.edit.file)
+                {
+                    return Err(LibraryError::Import("audio is already included".into()));
+                }
+                if position > tracks.len() {
+                    return Err(LibraryError::Import(
+                        "track insertion position is unavailable".into(),
+                    ));
+                }
+                tracks.insert(position, track.clone());
+                Ok(())
+            },
+        )
+        .await
+    }
+
     pub async fn set_track_artists_prepared(
         &self,
         watched_folder_path: &str,

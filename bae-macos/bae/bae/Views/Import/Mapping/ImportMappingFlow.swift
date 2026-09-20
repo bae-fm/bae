@@ -124,6 +124,16 @@ extension ImportMappingFlow {
                     )
                 }
             },
+            addTrack: { audio, candidate in
+                start {
+                    await addTrack(
+                        key: key,
+                        audio: audio,
+                        candidate: candidate,
+                        services: services
+                    )
+                }
+            },
             drop: { trackId in
                 start {
                     await drop(key: key, trackId: trackId, services: services)

@@ -40,8 +40,22 @@ extension ImportMappingFlow {
         await editTrack(key: key, track: track, services: services)
     }
 
-    /// Drop a row the release names and this folder has nothing for. Nothing
-    /// on disk changes: the release is simply imported without that track.
+    /// Include one source offer without reapplying metadata to the other tracks.
+    @MainActor
+    static func addTrack(
+        key: String,
+        audio: BridgeAudioFile,
+        candidate: BridgeCandidateAsRead,
+        services: ImportMappingServices
+    ) async {
+        await write(services: services) {
+            try await services.importer.addCandidateTrack(key, audio, candidate)
+        } describe: { line in
+            String(localized: "Couldn't save that change: \(line)")
+        }
+    }
+
+    /// Remove a track from the import while leaving its source audio available.
     @MainActor
     static func drop(
         key: String,

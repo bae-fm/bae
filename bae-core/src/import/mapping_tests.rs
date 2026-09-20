@@ -1,11 +1,11 @@
 use super::*;
-use crate::import::folder_scanner::{
-    collect_release_candidate_files_with_scope, CandidateFileEdits, SheetDiscEdits,
-    StoredCandidateEdits,
-};
-use crate::import::probe::{source_durations, SourceDurations};
-use crate::import::track_slots::{slot_table, SourceTrack};
 use crate::import::TrackUserEdit;
+use crate::import::folder_scanner::{
+    CandidateFileEdits, SheetDiscEdits, StoredCandidateEdits,
+    collect_release_candidate_files_with_scope,
+};
+use crate::import::probe::{SourceDurations, source_durations};
+use crate::import::track_slots::{SourceTrack, slot_table};
 use std::fs;
 use std::path::Path;
 
@@ -233,10 +233,12 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
     );
     // A directory of images is not collapsed away from the gallery — its
     // files are in it, each with the path a thumbnail reads.
-    assert!(table
-        .images
-        .iter()
-        .any(|image| image.file_id == "scans/scan1.jpg" && image.path.exists()));
+    assert!(
+        table
+            .images
+            .iter()
+            .any(|image| image.file_id == "scans/scan1.jpg" && image.path.exists())
+    );
     assert_eq!(table.track_sections.len(), 1);
     assert_eq!(track_file(mappings(&table)[0]).name, "01.flac");
 }
@@ -352,7 +354,9 @@ fn standalone_tracks_are_sectioned_by_release_side() {
             .iter()
             .map(|mapping| match &mapping.becomes {
                 MappingBecomes::Track { position, .. } => position.as_str(),
-                MappingBecomes::AwaitingPick => panic!("picked tracks have positions"),
+                MappingBecomes::AwaitingPick | MappingBecomes::NotIncluded { .. } => {
+                    panic!("picked tracks have positions")
+                }
             })
             .collect::<Vec<_>>()
     }
@@ -401,7 +405,8 @@ fn each_cue_is_one_section_on_its_assigned_disc() {
                 .iter()
                 .map(|entry| match &entry.becomes {
                     MappingBecomes::Track { position, .. } => position.as_str(),
-                    MappingBecomes::AwaitingPick => panic!("picked tracks have positions"),
+                    MappingBecomes::AwaitingPick | MappingBecomes::NotIncluded { .. } =>
+                        panic!("picked tracks have positions"),
                 })
                 .collect::<Vec<_>>(),
             ["1", "2"],
@@ -647,4 +652,146 @@ fn a_sheet_disc_menu_keeps_the_assigned_disc_available() {
         panic!("the selected CUE groups its tracks");
     };
     assert!(sheet.disc_options.contains(&2));
+}
+
+fn candidate_read(files: &CategorizedFiles) -> crate::import::CandidateAsRead {
+    crate::import::CandidateAsRead {
+        content_hash: files.content_hash(),
+        file_edit_revision: 4,
+        metadata_revision: 7,
+    }
+}
+
+#[test]
+fn omitted_whole_audio_stays_between_surviving_rows_with_its_viewed_revision() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    for number in 1..=3 {
+        write_flac(&tmp.path().join(format!("{number:02}.flac")));
+    }
+    let files = scan(tmp.path());
+    let durations = source_durations(&files).unwrap();
+    let mut draft = crate::import::pane::blank_candidate_draft(&files);
+    let removed = draft.tracks.remove(1);
+    draft.tracks[0].edit.title = "Edited first track".into();
+    let read = candidate_read(&files);
+    let table = draft_mapping_table(&files, &durations, &draft, &read);
+    let rows = mappings(&table);
+    assert_eq!(rows.len(), 3);
+    assert_eq!(
+        rows.iter()
+            .map(|row| track_file(row).name.as_str())
+            .collect::<Vec<_>>(),
+        ["01.flac", "02.flac", "03.flac"]
+    );
+    assert!(matches!(
+        &rows[1].becomes,
+        MappingBecomes::NotIncluded { audio, candidate }
+            if audio == &removed.edit.file && candidate == &read
+    ));
+    assert_eq!(rows[1].duration_ms, Some(1_000));
+    assert!(track_file(rows[1]).preview_target.is_some());
+    assert_eq!(mapping_tracks(&table), draft.release_edit().tracks);
+}
+
+#[test]
+fn all_omitted_cue_slices_keep_the_sheet_and_current_exact_audio_offers() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    write_flac(&tmp.path().join("disc.flac"));
+    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 3)).unwrap();
+    let mut files = scan(tmp.path());
+    let durations = source_durations(&files).unwrap();
+    let mut draft = crate::import::pane::blank_candidate_draft(&files);
+    let audio = draft
+        .tracks
+        .iter()
+        .map(|track| track.edit.file.clone())
+        .collect::<Vec<_>>();
+    draft.tracks.clear();
+    let read = candidate_read(&files);
+    let table = draft_mapping_table(&files, &durations, &draft, &read);
+    let [section] = table.track_sections.as_slice() else {
+        panic!("all omitted slices must retain their selected sheet header");
+    };
+    let MappingTrackSectionContent::Sheet { sheet, entries } = &section.content else {
+        panic!("the selected sheet remains editable");
+    };
+    assert_eq!(sheet.sheet_id, "disc.cue");
+    assert_eq!(entries.len(), 3);
+    for (row, expected) in entries.iter().zip(audio) {
+        assert!(matches!(&row.becomes,
+            MappingBecomes::NotIncluded { audio, candidate }
+                if audio == &expected && candidate == &read));
+        assert!(matches!(&row.source, MappingSource::SheetEntry(_)));
+        assert!(row.duration_ms.is_some());
+    }
+    assert!(mapping_tracks(&table).is_empty());
+
+    let mut sheet_discs = SheetDiscEdits::default();
+    sheet_discs.set("disc.cue".into(), SheetDisc::Ignored);
+    files
+        .apply_candidate_file_edits(&CandidateFileEdits {
+            sheet_discs,
+            ..Default::default()
+        })
+        .unwrap();
+    let table = draft_mapping_table(&files, &durations, &draft, &candidate_read(&files));
+    let rows = mappings(&table);
+    assert_eq!(rows.len(), 1);
+    assert!(matches!(&rows[0].becomes,
+        MappingBecomes::NotIncluded { audio: AudioFile::Standalone { file_id }, .. }
+            if file_id == "disc.flac"));
+}
+
+#[test]
+fn unused_source_offers_do_not_reorder_existing_swapped_tracks() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    for number in 1..=4 {
+        write_flac(&tmp.path().join(format!("{number:02}.flac")));
+    }
+    let files = scan(tmp.path());
+    let durations = source_durations(&files).unwrap();
+    let mut draft = crate::import::pane::blank_candidate_draft(&files);
+    draft.tracks.remove(1);
+    let first_audio = draft.tracks[0].edit.file.clone();
+    draft.tracks[0].edit.file = draft.tracks[2].edit.file.clone();
+    draft.tracks[2].edit.file = first_audio;
+    let table = draft_mapping_table(&files, &durations, &draft, &candidate_read(&files));
+    assert_eq!(mapping_tracks(&table), draft.release_edit().tracks);
+    assert_eq!(mappings(&table).len(), 4);
+    assert_eq!(track_file(mappings(&table)[0]).name, "02.flac");
+}
+
+#[test]
+fn source_disc_assignments_do_not_change_included_metadata_positions() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    write_flac(&tmp.path().join("disc.flac"));
+    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 3)).unwrap();
+    let files = scan(tmp.path());
+    let mut draft = crate::import::pane::blank_candidate_draft(&files);
+    draft.tracks.remove(1);
+    draft.pressing.format = "Vinyl".into();
+    for track in &mut draft.tracks {
+        track.edit.side = None;
+    }
+    let table = draft_mapping_table(
+        &files,
+        &SourceDurations::default(),
+        &draft,
+        &candidate_read(&files),
+    );
+    let positions: Vec<_> = mappings(&table)
+        .into_iter()
+        .filter_map(|row| match &row.becomes {
+            MappingBecomes::Track { position, .. } => Some(position.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        table.track_sections.iter().all(|section| {
+            !matches!(section.side, crate::album_detail::TrackSide::Sided { .. })
+        }),
+        "available CUE audio does not establish vinyl sides"
+    );
+    assert_eq!(positions, ["1", "3"]);
+    assert_eq!(mapping_tracks(&table), draft.release_edit().tracks);
 }

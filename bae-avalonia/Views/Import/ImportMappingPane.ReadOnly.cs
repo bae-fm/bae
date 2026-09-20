@@ -180,23 +180,27 @@ internal sealed class ReadOnlyImportMappingTable(
     private Control TrackRow(BridgeTrackMapping mapping)
     {
         var grid = RowGrid();
-        if (mapping.Becomes is BridgeMappingBecomes.Track becomes)
+        switch (mapping.Becomes)
         {
-            var track = becomes.TrackValue;
-            AddCell(grid, ImportPaneUi.Cell(becomes.Position, secondary: true), 0);
-            AddCell(grid, ImportPaneUi.Cell(track.Title), 1);
-            AddCell(grid, ImportPaneUi.Cell(TrackArtists(track)), 2);
-        }
-        else
-        {
-            AddCell(grid, ImportPaneUi.Cell(string.Empty), 0);
-            AddCell(
-                grid,
-                ImportPaneUi.Cell(
-                    Loc.Core("ui.import.becomes.awaiting_pick"),
-                    secondary: true),
-                1);
-            AddCell(grid, ImportPaneUi.Cell(string.Empty), 2);
+            case BridgeMappingBecomes.Track becomes:
+                var track = becomes.TrackValue;
+                AddCell(grid, ImportPaneUi.Cell(becomes.Position, secondary: true), 0);
+                AddCell(grid, ImportPaneUi.Cell(track.Title), 1);
+                AddCell(grid, ImportPaneUi.Cell(TrackArtists(track)), 2);
+                break;
+            case BridgeMappingBecomes.AwaitingPick:
+                AddCell(
+                    grid,
+                    ImportPaneUi.Cell(
+                        Loc.Core("ui.import.becomes.awaiting_pick"),
+                        secondary: true),
+                    1);
+                break;
+            case BridgeMappingBecomes.NotIncluded:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(mapping), mapping.Becomes, "Unknown mapping outcome");
         }
         var duration = ImportPaneUi.Cell(
             MappingTableReading.DurationText(mapping.DurationMs));

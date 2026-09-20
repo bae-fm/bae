@@ -84,6 +84,9 @@ private struct ImportOperations: Sendable {
         @Sendable (String, [BridgeArtistAssignment]) async throws -> Void
     let setCandidateTrackEdit:
         @Sendable (String, BridgeRawTrackEdit) async throws -> Void
+    let addCandidateTrack:
+        @Sendable (String, BridgeAudioFile, BridgeCandidateAsRead) async throws
+            -> Void
     let dropCandidateTrack: @Sendable (String, String) async throws -> Void
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
     let candidateSignals: @Sendable (String) -> Signals?
@@ -244,6 +247,13 @@ extension ImportOperations {
                     track: $1
                 )
             },
+            addCandidateTrack: {
+                try await handle.addCandidateTrack(
+                    candidateKey: $0,
+                    audio: $1,
+                    candidate: $2
+                )
+            },
             dropCandidateTrack: {
                 try await handle.dropCandidateTrack(
                     candidateKey: $0,
@@ -402,6 +412,10 @@ final class Importer: Sendable, Observable {
         setCandidateTrackEdit:
             @escaping @Sendable (String, BridgeRawTrackEdit) async throws ->
             Void = { _, _ in },
+        addCandidateTrack:
+            @escaping @Sendable (String, BridgeAudioFile, BridgeCandidateAsRead)
+            async throws -> Void = { _, _, _ in throw StubError.notImplemented
+            },
         dropCandidateTrack:
             @escaping @Sendable (String, String) async throws -> Void = {
                 _,
@@ -456,6 +470,7 @@ final class Importer: Sendable, Observable {
             setCandidateEditField: setCandidateEditField,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
+            addCandidateTrack: addCandidateTrack,
             dropCandidateTrack: dropCandidateTrack,
             candidateRuntime: candidateRuntime,
             candidateSignals: candidateSignals,
@@ -690,6 +705,15 @@ extension Importer {
         _ track: BridgeRawTrackEdit
     ) async throws {
         try await operations.setCandidateTrackEdit(candidateKey, track)
+    }
+
+    /// Include the exact audio offered by the candidate revision the person viewed.
+    func addCandidateTrack(
+        _ candidateKey: String,
+        _ audio: BridgeAudioFile,
+        _ candidate: BridgeCandidateAsRead
+    ) async throws {
+        try await operations.addCandidateTrack(candidateKey, audio, candidate)
     }
 
     /// Take one mapping-table row out of the import.

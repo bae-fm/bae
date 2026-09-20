@@ -204,8 +204,27 @@ that main or CI has passed.
   relinking also needed idle compiler output reclaimed after disk exhaustion.
   Parent manual requirement review accepted the final automatic-selection and
   transparency corrections. Mobile canonical callers were updated; mobile
-  cross-builds remain unexecuted locally. Normal hooks and coordinated landing
-  follow this record; CI remains an end-of-queue gate.
+  cross-builds remain unexecuted locally. Normal hooks passed and parent
+  fast-forwarded/pushed main to `994b3dd72`. The next contract-only commit
+  `96d77d916` is also on main. CI remains an end-of-queue gate.
+- Restore unused sources: implemented on `restore-unused-audio-sources`.
+  The actual drop-and-reload baseline failed because removed audio disappeared.
+  Core verification passes 15 restoration/persistence tests and 18 mapping tests,
+  including preference-sensitive initialization, exact CUE identity, all-removed
+  sheet headers, unchanged surviving swaps, stale source/metadata rejection,
+  concurrent adds, combined-disc numbering, and artist-asset rollback. Included
+  metadata positions remain independent of physical sheet-disc assignments.
+  Native bridge generation passed after exposing the existing audio conversion
+  to the new command. The wider import-handle suite passed 106 tests. Hosted
+  macOS baseline failed the two editable Add cases; the final selection passed
+  29 tests in three suites, including exact viewed-revision forwarding and
+  read-only audition. All four Avalonia baseline cases failed their incorrect
+  AwaitingPick label; the corrected full view suite passed 266 tests. Parent's
+  manual review found that unused CUE sources could inherit invented vinyl
+  sides; its regression failed, then all 18 mapping tests passed after keeping
+  physical disc labels independent of selected pressing metadata. Add track is
+  translated in all 28 macOS locales. Native correction rebuild and normal
+  hooks precede coordinated landing; CI remains an end-of-queue gate.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.
 
