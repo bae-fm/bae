@@ -7,6 +7,7 @@ import Vision
 @testable import bae
 
 @MainActor
+@Suite(.serialized)
 struct ReleaseSelectionFailureTests {
     @Test("A release selection failure is not a candidate-wide error")
     func failureDoesNotBecomePaneError() throws {
@@ -26,12 +27,12 @@ struct ReleaseSelectionFailureTests {
         store.metadataApplicationFailed(
             key: key,
             session: session,
-            error: "Release details unavailable"
+            error: DisplayError(line: "Release details unavailable")
         )
         #expect(store.candidate(forKey: key)?.error == nil)
         #expect(store.loadingReleaseId(forKey: key) == nil)
         #expect(
-            store.releaseSelectionFailure(forKey: key)?.message
+            store.releaseSelectionFailure(forKey: key)?.error.line
                 == "Release details unavailable"
         )
     }
@@ -49,14 +50,14 @@ struct ReleaseSelectionFailureTests {
         store.metadataApplicationFailed(
             key: key,
             session: first,
-            error: "First failure"
+            error: DisplayError(line: "First failure")
         )
         store.applyCandidateDetail(
             key: key,
             detail: MappingFixtures.detail(mapping: nil)
         )
         #expect(
-            store.releaseSelectionFailure(forKey: key)?.message
+            store.releaseSelectionFailure(forKey: key)?.error.line
                 == "First failure"
         )
         let retry = try #require(
@@ -69,7 +70,7 @@ struct ReleaseSelectionFailureTests {
         store.metadataApplicationFailed(
             key: key,
             session: first,
-            error: "Stale failure"
+            error: DisplayError(line: "Stale failure")
         )
         #expect(store.metadataApplicationSession(forKey: key) === retry)
         #expect(store.releaseSelectionFailure(forKey: key) == nil)
@@ -83,14 +84,14 @@ struct ReleaseSelectionFailureTests {
         let pressing = try #require(
             state.identifiedGroups.first?.pressings.first
         )
-        let message = "Release details unavailable"
-        state.releaseSelectionFailure = ReleaseSelectionFailure(
-            release: BridgeMetadataRef(
-                catalog: pressing.lead.source,
-                key: pressing.lead.releaseId
-            ),
-            message: message
+        state.releaseSelectionFailure = try await failedSelection(
+            pressing: pressing,
+            error: .Diagnostic(
+                category: .import,
+                detail: "Provider returned 500"
+            )
         )
+        let message = try #require(state.releaseSelectionFailure).error.line
         var selected: Pressing?
         let size = NSSize(width: 900, height: 620)
         // Render the production result list and invoke the failed row's Retry.
@@ -117,8 +118,159 @@ struct ReleaseSelectionFailureTests {
         let png = try await SnapshotTestSupport.capturePNG(host, size: size)
         let observations = try await SnapshotTestSupport.recognizedText(in: png)
         try verifyFailure(observations, message: message, pressing: pressing)
-        try clickRetry(observations, window: window, host: host, size: size)
+        try clickControl(
+            String(localized: "Retry"),
+            observations: observations,
+            window: window,
+            host: host,
+            size: size
+        )
         #expect(selected?.provenance == pressing.provenance)
+    }
+
+    @Test(
+        "unexpected details are visible and copying retains the entire diagnostic",
+        arguments: [
+            "Unsupported artwork input",
+            "Unsupported artwork input\n"
+                + String(
+                    repeating: "Decoder context and image information. ",
+                    count: 30
+                ) + "Terminal cause",
+        ]
+    )
+    func unexpectedDetailsCanBeCopied(_ diagnostic: String) async throws {
+        let state = PreviewData.searchStateFoundExact
+        let pressing = try #require(
+            state.identifiedGroups.first?.pressings.first
+        )
+        let failure = try await failedSelection(
+            pressing: pressing,
+            error: .Diagnostic(category: .internal, detail: diagnostic)
+        )
+        let clipboard = NSPasteboard.general
+        let previous = (clipboard.pasteboardItems ?? [])
+            .map { item in
+                item.types.compactMap {
+                    type -> (NSPasteboard.PasteboardType, Data)? in
+                    item.data(forType: type).map { (type, $0) }
+                }
+            }
+        defer {
+            clipboard.clearContents()
+            let items = previous.map { values in
+                let item = NSPasteboardItem()
+                for (type, data) in values { item.setData(data, forType: type) }
+                return item
+            }
+            if !items.isEmpty { #expect(clipboard.writeObjects(items)) }
+        }
+        let size = NSSize(width: 1100, height: 680)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ReleaseGroupListView(
+                groups: state.identifiedGroups,
+                isImporting: false,
+                libraryStatuses: [:],
+                selectedReleaseId: nil,
+                loadingReleaseId: nil,
+                releaseSelectionFailure: failure,
+                onSelect: { _ in },
+                trailing: { EmptyView() }
+            )
+            .importPreviewEnvironment()
+            .background(Theme.background)
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        await SnapshotTestSupport.settle(host)
+        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+        let observations = try await SnapshotTestSupport.recognizedText(in: png)
+        #expect(observations.map(\.text).carrying("Unsupported artwork input"))
+        #expect(observations.map(\.text).carrying(String(localized: "Retry")))
+        #expect(observations.map(\.text).carrying(failure.error.line))
+        try clickControl(
+            String(localized: "Copy details"),
+            observations: observations,
+            window: window,
+            host: host,
+            size: size
+        )
+        #expect(clipboard.string(forType: .string) == diagnostic)
+    }
+
+    @Test("expected release failures show Retry without diagnostic controls")
+    func expectedFailureHasNoCopyControl() async throws {
+        let state = PreviewData.searchStateFoundExact
+        let pressing = try #require(
+            state.identifiedGroups.first?.pressings.first
+        )
+        let failure = try await failedSelection(
+            pressing: pressing,
+            error: .Diagnostic(
+                category: .import,
+                detail: "Provider returned 404"
+            )
+        )
+        #expect(failure.error.detail == nil)
+        let size = NSSize(width: 1100, height: 680)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ReleaseGroupListView(
+                groups: state.identifiedGroups,
+                isImporting: false,
+                libraryStatuses: [:],
+                selectedReleaseId: nil,
+                loadingReleaseId: nil,
+                releaseSelectionFailure: failure,
+                onSelect: { _ in },
+                trailing: { EmptyView() }
+            )
+            .importPreviewEnvironment()
+            .background(Theme.background)
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
+        let lines = try await SnapshotTestSupport.recognizedText(in: png)
+            .map(\.text)
+        #expect(lines.carrying(String(localized: "Retry")))
+        #expect(!lines.carrying(String(localized: "Copy details")))
+        #expect(!lines.carrying("Provider returned 404"))
+    }
+
+}
+
+extension ReleaseSelectionFailureTests {
+    private func failedSelection(pressing: Pressing, error: BridgeError)
+        async throws -> ReleaseSelectionFailure
+    {
+        let store = MappingFixtures.store(mapping: nil)
+        let importer = Importer(applyCandidateExternalMetadata: { _, _ in
+            throw error
+        })
+        ImportSearchFlow.applyMetadata(
+            importer: importer,
+            importStore: store,
+            endEditing: {},
+            key: MappingFixtures.candidateKey,
+            provenance: pressing.provenance
+        )
+        for _ in 0..<100
+        where store.releaseSelectionFailure(
+            forKey: MappingFixtures.candidateKey
+        ) == nil {
+            await Task.yield()
+        }
+        return try #require(
+            store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
+        )
     }
 
     private func verifyFailure(
@@ -142,15 +294,16 @@ struct ReleaseSelectionFailureTests {
         #expect(errorLine.boundingBox.midY < facts.boundingBox.midY)
     }
 
-    private func clickRetry(
-        _ observations: [SnapshotTestSupport.RecognizedLine],
+    private func clickControl(
+        _ label: String,
+        observations: [SnapshotTestSupport.RecognizedLine],
         window: NSWindow,
         host: NSView,
         size: NSSize
     ) throws {
         let retry = try #require(
             observations.first {
-                $0.text.contains(String(localized: "Retry"))
+                $0.text.contains(label)
             }
         )
         let point = NSPoint(

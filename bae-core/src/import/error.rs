@@ -108,11 +108,22 @@ pub enum ImportError {
     #[error("{detail}")]
     UnusableFile { detail: String },
 
-    /// Cover art selection/fetch/decode failed (download after retries,
-    /// unrecognized image bytes, selected local cover missing, read/resize
-    /// failure).
+    /// The downloaded or selected cover cannot be parsed, decoded, or resized.
     #[error("cover art failed: {detail}")]
     CoverArt { detail: String },
+
+    /// An artwork request failed with a known network or provider condition.
+    /// The reason remains typed for lookup surfaces; detail retains its context.
+    #[error("cover art request failed: {detail}")]
+    CoverArtRequest {
+        failure: crate::signals::LookupFailure,
+        detail: String,
+    },
+
+    /// The selected local cover disappeared or could not be read.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("cover art failed: {detail}")]
+    LocalCover { detail: String },
 
     /// verify_decode_on_import found tracks that would import but not play.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -187,7 +198,6 @@ pub enum ImportError {
     /// A broken invariant, not a user condition: artist-id remap miss,
     /// non-UTF-8 path, spawn_blocking join failure, closed command channel,
     /// missing library-status row.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("internal import error: {detail}")]
     Internal { detail: String },
 }
@@ -251,5 +261,22 @@ mod tests {
             err,
             ImportError::Discogs(crate::discogs::client::DiscogsError::RateLimit)
         ));
+    }
+    #[test]
+    fn invalid_request_preserves_the_discogs_transport_cause() {
+        let request_error = reqwest::Client::new().get("not a URL").build().unwrap_err();
+        let error = super::ImportError::from(crate::discogs::client::DiscogsError::Transport(
+            request_error,
+        ));
+        assert!(
+            error.to_string().contains("RelativeUrlWithoutBase"),
+            "{error}"
+        );
+        let crate::signals::LookupFailure::Diagnostic { detail } =
+            crate::import::search::import_error_to_lookup_failure(&error)
+        else {
+            panic!("invalid request should be diagnostic");
+        };
+        assert!(detail.contains("RelativeUrlWithoutBase"), "{detail}");
     }
 }

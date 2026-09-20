@@ -4,7 +4,7 @@ import BaeKit
 /// not to the candidate's metadata draft or to the search as a whole.
 struct ReleaseSelectionFailure: Equatable {
     let release: BridgeMetadataRef
-    let message: String
+    let error: DisplayError
 
     func matches(_ pressing: Pressing) -> Bool {
         pressing.releases.contains {

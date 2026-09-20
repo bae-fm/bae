@@ -83,11 +83,7 @@ struct ImportSearchResultRow: View {
 
     private var failureLine: some View {
         HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
-            Text(rowFailure?.message ?? "")
-                .foregroundStyle(.red)
-                .textSelection(.enabled)
+            ErrorDetailDisclosure(error: rowFailure?.error)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             Button("Retry") { onSelect(pressing) }

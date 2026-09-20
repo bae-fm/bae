@@ -62,7 +62,7 @@ struct ImportStorePickTests {
         store.metadataApplicationFailed(
             key: Self.key,
             session: session,
-            error: "Release details unavailable"
+            error: DisplayError(line: "Release details unavailable")
         )
 
         #expect(store.metadataApplicationSession(forKey: Self.key) == nil)

@@ -1,5 +1,6 @@
 use crate::import::{Catalog, ImportError};
 use crate::retry::{exponential_backoff, is_transient_status, retry_classified, ClassifiedAttempt};
+use crate::signals::LookupFailure;
 use crate::util::content_type::ContentType;
 use crate::util::test_base_url::TestBaseUrl;
 use std::collections::HashMap;
@@ -197,16 +198,16 @@ const REMOTE_IMAGE_DISK_BUDGET: u64 = 128 * 1024 * 1024;
 fn image_download_client() -> Result<reqwest::Client, ImportError> {
     // The build error is stored as a String because `reqwest::Client`'s builder
     // error is not `Clone` and the cell is cloned on every read; each call
-    // re-wraps it in the typed `CoverArt` error.
+    // re-wraps it in the typed `Internal` error.
     static CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
     CLIENT
         .get_or_init(|| {
             crate::util::http::client_builder()
                 .build()
-                .map_err(|e| format!("Failed to create HTTP client: {}", e))
+                .map_err(|e| format!("Failed to create HTTP client: {e:?}"))
         })
         .clone()
-        .map_err(|detail| ImportError::CoverArt { detail })
+        .map_err(|detail| ImportError::Internal { detail })
 }
 
 /// One decoded provider image's original bytes and detected content type.
@@ -569,9 +570,12 @@ impl RemoteImageCache {
     }
 
     pub(crate) async fn fetch_required(&self, url: &str) -> Result<RemoteImage, ImportError> {
-        self.fetch(url).await?.ok_or_else(|| ImportError::CoverArt {
-            detail: format!("no image is served at {url}"),
-        })
+        self.fetch(url)
+            .await?
+            .ok_or_else(|| ImportError::CoverArtRequest {
+                failure: LookupFailure::Provider { status: Some(404) },
+                detail: format!("no image is served at {url}"),
+            })
     }
 }
 
@@ -590,7 +594,7 @@ async fn read_disk(
 ) -> Result<Option<DiskImageEntry>, ImportError> {
     tokio::task::spawn_blocking(move || disk.get(&url))
         .await
-        .map_err(|error| ImportError::CoverArt {
+        .map_err(|error| ImportError::Internal {
             detail: format!("Remote image cache read task failed: {error}"),
         })
 }
@@ -602,7 +606,7 @@ async fn write_disk(
 ) -> Result<(), ImportError> {
     tokio::task::spawn_blocking(move || disk.put(&url, &entry))
         .await
-        .map_err(|error| ImportError::CoverArt {
+        .map_err(|error| ImportError::Internal {
             detail: format!("Remote image cache write task failed: {error}"),
         })
 }
@@ -650,14 +654,16 @@ async fn send_artwork_request(
             {
                 Ok(response) => response,
                 Err(error) if is_permanent_request_error(&error) => {
-                    return ClassifiedAttempt::Permanent(ImportError::CoverArt {
-                        detail: format!("Failed to fetch image: {error}"),
-                    });
+                    return ClassifiedAttempt::Permanent(artwork_request_error(
+                        error,
+                        "Failed to fetch image",
+                    ));
                 }
                 Err(error) => {
-                    return ClassifiedAttempt::Retry(ImportError::CoverArt {
-                        detail: format!("Failed to fetch image: {error}"),
-                    });
+                    return ClassifiedAttempt::Retry(artwork_request_error(
+                        error,
+                        "Failed to fetch image",
+                    ));
                 }
             };
 
@@ -666,11 +672,17 @@ async fn send_artwork_request(
             } else if response.status() == reqwest::StatusCode::NOT_FOUND {
                 ClassifiedAttempt::Done(None)
             } else if is_transient_status(response.status()) {
-                ClassifiedAttempt::Retry(ImportError::CoverArt {
+                ClassifiedAttempt::Retry(ImportError::CoverArtRequest {
+                    failure: LookupFailure::Provider {
+                        status: Some(response.status().as_u16()),
+                    },
                     detail: format!("Image download failed with status {}", response.status()),
                 })
             } else {
-                ClassifiedAttempt::Permanent(ImportError::CoverArt {
+                ClassifiedAttempt::Permanent(ImportError::CoverArtRequest {
+                    failure: LookupFailure::Provider {
+                        status: Some(response.status().as_u16()),
+                    },
                     detail: format!("Image download failed with status {}", response.status()),
                 })
             }
@@ -686,6 +698,35 @@ fn is_permanent_request_error(error: &reqwest::Error) -> bool {
     error.is_builder() || error.is_redirect()
 }
 
+/// Keep transport failures distinct from an invalid request or response content.
+fn artwork_request_error(error: reqwest::Error, context: &str) -> ImportError {
+    if is_permanent_request_error(&error) {
+        return ImportError::Internal {
+            detail: format!("{context}: {error:?}"),
+        };
+    }
+    let detail = format!("{context}: {error}");
+    let failure = if error.is_timeout() {
+        LookupFailure::Timeout
+    } else if let Some(status) = error.status() {
+        LookupFailure::Provider {
+            status: Some(status.as_u16()),
+        }
+    } else {
+        LookupFailure::Network
+    };
+    ImportError::CoverArtRequest { failure, detail }
+}
+
+fn artwork_body_error(error: crate::util::http::HttpBodyError, context: &str) -> ImportError {
+    match error {
+        crate::util::http::HttpBodyError::Read(error) => artwork_request_error(error, context),
+        crate::util::http::HttpBodyError::TooLarge { .. } => ImportError::CoverArt {
+            detail: format!("{context}: {error}"),
+        },
+    }
+}
+
 /// Read bytes and content type from a successful image response.
 async fn read_image_response(
     response: reqwest::Response,
@@ -693,9 +734,7 @@ async fn read_image_response(
 ) -> Result<ImageResponse, ImportError> {
     let bytes = crate::util::http::read_body_capped(response, crate::util::http::MAX_IMAGE_BYTES)
         .await
-        .map_err(|error| ImportError::CoverArt {
-            detail: format!("Failed to read image response: {error}"),
-        })?;
+        .map_err(|error| artwork_body_error(error, "Failed to read image response"))?;
     if bytes.len() < 100 {
         return Err(ImportError::CoverArt {
             detail: "Downloaded file too small to be a valid image".to_string(),

@@ -37,7 +37,7 @@ scope. Do not mutate the user's live database or media during verification.
    disagreement machinery, not the actual values, source identities, archived
    documents, or evidence-file origins. Keep source application a one-time
    operation. Implementation committed as `e857e2990` on `remove-field-origins`
-   and pushed; parent review and main integration remain required.
+   and pushed; integrated through `403f2b4de` after parent review.
 2. [Repair Avalonia CUE FILE callers](avalonia-cue-file-reference-bindings.md).
    Preserve every FILE reference and its independent association through the
    existing bridge. This is the verification prerequisite before enrichment.
@@ -105,11 +105,11 @@ that main or CI has passed.
 
 ## Execution record
 
-- Field-origin removal: `e857e2990`, pushed on `remove-field-origins`; awaiting
-  parent review and main integration.
+- Field-origin removal: `e857e2990`, reviewed and integrated on main through
+  `403f2b4de`.
 - Avalonia prerequisite: `540ae9326`, pushed on `fix-avalonia-cue-file-bindings`;
-  normal hooks passed and all 262 Avalonia view tests passed. Parent review and
-  main integration remain required.
+  normal hooks passed and all 262 Avalonia view tests passed. Reviewed and
+  integrated on main through `403f2b4de`.
 - Enrichment: the latest full-core verification against dependency `8506256`
   passed 2,237 tests; native bridge generation and building passed. A macOS
   selection ran nine tests in two suites; the import-store suite identifier
@@ -166,7 +166,26 @@ that main or CI has passed.
   this branch; the existing migration is not rewritten. An empty observed audio
   list must not be described as equivalent to an unknown list, because Discogs
   index selection distinguishes them.
-  Enrichment integration remains required, with CI handled at the end under the
+  Enrichment and its manual correction `04f577b26` passed normal hooks and parent
+  review, then fast-forwarded to main through `403f2b4de`. The correction also
+  passed 19 search and three editor-seed tests. CI is handled at the end under the
   user's revised execution contract.
+- Unexpected release diagnostics: implemented on `release-selection-error-details`.
+  The production flow regression failed before retaining `DisplayError`; six
+  artwork classification cases, three bridge classification cases, and the
+  MusicBrainz invalid-request case also failed before their producer corrections.
+  A further three real request-cause regressions demonstrated that reqwest's
+  display text omitted its underlying cause; the copied diagnostic retains it.
+  Verification passed 20 artwork, 21 MusicBrainz, 44 import-service, three
+  request-cause, and 68 desktop bridge tests. Native bridge generation and the
+  macOS build passed, followed by 43 Swift Testing tests in five suites and one
+  XCTest for replacing a focused field. Hosted tests clicked the actual Copy
+  details button for short and multiline diagnostics and verified the complete
+  original clipboard text; expected 404 failures had no diagnostic controls,
+  while Retry remained functional. A stale test member access was found and
+  corrected during the build. Parent manual review found no remaining issue in
+  the inspected paths. Mobile conditional compilation was read-audited, but no
+  mobile cross-build was run for this change. Normal hooks and integration are
+  recorded with the focused commit; CI remains an end-of-queue check.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.

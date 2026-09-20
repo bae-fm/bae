@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Renders a user-facing error: the generic localized line, the concrete fault
 /// beneath it, and — when there is more chain than fits — a collapsible
-/// disclosure exposing the rest with a copy affordance. The single surface every
+/// disclosure exposing the rest. The diagnostic always has a copy action. The single surface every
 /// event-driven error reuses (sync banner, inline import error); the global
 /// alert renders the same `DisplayError` through alert actions instead.
 ///
@@ -12,7 +12,7 @@ import SwiftUI
 /// told nothing about what failed — which is how a failing sync cycle spent an
 /// hour looking like a generic internal error.
 struct ErrorDetailDisclosure: View {
-    let error: DisplayError
+    let error: DisplayError?
     /// Tint for the line and icon — red for hard failures, orange for warnings.
     var tint: Color = .red
     var showIcon: Bool = true
@@ -27,26 +27,36 @@ struct ErrorDetailDisclosure: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(tint)
                 }
-                Text(error.line)
+                Text(error?.line ?? "")
                     .font(.callout)
                     .foregroundStyle(tint)
             }
 
-            if let summary = error.detailSummary {
-                Text(summary)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .truncationMode(.tail)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if let detail = error?.detail {
+                HStack(alignment: .top, spacing: 6) {
+                    Text(error?.detailSummary ?? "")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button {
+                        SystemActions.copyToPasteboard(detail)
+                    } label: {
+                        Label("Copy details", systemImage: "doc.on.doc")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Copy details")
+                    .accessibilityLabel("Copy details")
+                }
             }
 
             // Only when the chain says more than the line above already did —
             // a disclosure that expands to the same sentence is a control that
             // does nothing.
-            if let detail = error.detail, let excerpt = error.detailExcerpt,
-                detail != error.detailSummary
+            if let detail = error?.detail, let excerpt = error?.detailExcerpt,
+                detail != error?.detailSummary
             {
                 Button {
                     detailExpanded = !detailExpanded
@@ -65,22 +75,13 @@ struct ErrorDetailDisclosure: View {
                 .buttonStyle(.plain)
 
                 if detailExpanded {
-                    HStack(alignment: .top, spacing: 6) {
-                        Text(excerpt)
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(6)
-                            .truncationMode(.tail)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Button {
-                            SystemActions.copyToPasteboard(detail)
-                        } label: {
-                            Image(systemName: "doc.on.doc")
-                        }
-                        .buttonStyle(.borderless)
-                        .help("Copy details")
-                    }
+                    Text(excerpt)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(6)
+                        .truncationMode(.tail)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }

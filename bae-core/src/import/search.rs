@@ -375,7 +375,13 @@ fn mb_error_to_lookup_failure(e: &musicbrainz::MusicBrainzError) -> LookupFailur
 pub(crate) fn import_error_to_lookup_failure(error: &ImportError) -> LookupFailure {
     match error {
         ImportError::MusicBrainz(error) => mb_error_to_lookup_failure(error),
+        ImportError::CoverArtRequest { failure, .. } => failure.clone(),
         ImportError::Discogs(error) => match error {
+            DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => {
+                LookupFailure::Diagnostic {
+                    detail: format!("{error:?}"),
+                }
+            }
             DiscogsError::Transport(error) if error.is_timeout() => LookupFailure::Timeout,
             DiscogsError::Transport(_) => LookupFailure::Network,
             DiscogsError::Provider(status) => LookupFailure::Provider {

@@ -144,7 +144,8 @@ Make the shared component's copy action available whenever diagnostic text is
 present, independent of whether it needs expansion. Keep the disclosure only
 when expansion reveals additional text. Copy the complete original detail,
 never the bounded summary or excerpt. Reuse the current icon, help text, and
-`SystemActions.copyToPasteboard`; do not introduce another clipboard wrapper.
+`SystemActions.copyToPasteboard`, with a visible localized “Copy details” label
+beside the icon; do not introduce another clipboard wrapper.
 
 ### Regression and verification sequence
 
@@ -243,17 +244,21 @@ No current hosted test activates `ErrorDetailDisclosure`'s copy button.
 `SnapshotTestSupport.hostInWindow`, `settle`, `capturePNG`, and `recognizedText`
 already host and inspect the production view. The existing Retry test uses the
 recognized text position and a real native control click or window mouse
-events. That OCR path cannot identify the icon-only copy button. Give that
-production button an accessible label using the existing localized “Copy
-details” string and a stable accessibility identifier; locate the hosted
-accessibility element and invoke its real press action. Verify the returned
-action succeeds and `NSPasteboard.general.string(forType: .string)` equals the
-entire original detail, including text beyond the excerpt. Do not call
+events. Give the existing copy button a visible `Label("Copy details",
+systemImage: "doc.on.doc")`, using the existing translation. Locate that text
+and invoke the real button through the same interaction path as Retry. Verify
+`NSPasteboard.general.string(forType: .string)` equals the entire original
+detail, including text beyond the excerpt. Do not call
 `SystemActions.copyToPasteboard` directly from the test. Serialize the clipboard
 interaction tests because they use the process-wide pasteboard, and restore
-its previous contents after each test. Validate this hosted accessibility path
-in the failing regression before relying on it; native-control discovery is
-not yet demonstrated for this SwiftUI icon button.
+its previous contents after each test.
+
+A hosted SwiftUI probe found that `NSHostingView.accessibilityChildren()` is
+empty by default, including outside the sandbox. Enabling the legacy enhanced
+accessibility attribute exposes SwiftUI `AccessibilityNode` values that do not
+conform to `NSAccessibilityProtocol`. Do not add this activation or a private
+accessibility adapter to the test suite. The visible label makes the copy
+action explicit to the user and enables the established hosted-click test.
 
 Reuse `Localizable.xcstrings`' existing “Copy details”, “Details”, and contextual
 failure sentences. If changing any wording, update every translation; otherwise

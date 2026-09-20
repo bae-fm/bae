@@ -284,7 +284,7 @@ class ImportStore {
     func metadataApplicationFailed(
         key: String,
         session: CandidateMetadataApplicationSession,
-        error: String?
+        error: DisplayError?
     ) {
         guard metadataApplicationSession(forKey: key) === session else {
             return
@@ -296,13 +296,13 @@ class ImportStore {
             picks[key]?.state = .failed(
                 ReleaseSelectionFailure(
                     release: record,
-                    message: error
+                    error: error
                 )
             )
             return
         }
         picks.removeValue(forKey: key)
-        if let error { recordPaneError(error, forKey: key) }
+        if let error { recordPaneError(error.line, forKey: key) }
     }
 
     /// Drop this candidate's pick, cancelling the read it has in flight: the

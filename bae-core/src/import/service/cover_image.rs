@@ -34,7 +34,7 @@ impl ImportService {
                     && crate::util::content_type_hint::ContentTypeHint::path_is_raster_image(
                         &file.path,
                     )
-            }).ok_or_else(|| ImportError::CoverArt {
+            }).ok_or_else(|| ImportError::LocalCover {
                 detail: format!(
                     "Selected cover {} not found among discovered images",
                     selected_path
@@ -48,7 +48,7 @@ impl ImportService {
             return Ok(None);
         };
 
-        let bytes = std::fs::read(&cover_file.path).map_err(|e| ImportError::CoverArt {
+        let bytes = std::fs::read(&cover_file.path).map_err(|e| ImportError::LocalCover {
             detail: format!(
                 "Failed to read cover art {}: {e}",
                 cover_file.path.display()

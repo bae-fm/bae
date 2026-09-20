@@ -61,8 +61,8 @@ async fn fetch_gallery(url: &str) -> Result<Vec<RemoteCover>, ImportError> {
     };
     let bytes = crate::util::http::read_body_capped(response, 4 * 1024 * 1024)
         .await
-        .map_err(|error| ImportError::CoverArt {
-            detail: format!("Failed to read Cover Art Archive gallery: {error}"),
+        .map_err(|error| {
+            super::artwork_body_error(error, "Failed to read Cover Art Archive gallery")
         })?;
     parse_gallery(&bytes)
 }
@@ -172,6 +172,16 @@ mod tests {
         );
         assert!(covers[1].label.contains("Back · liner notes"));
         assert_eq!(covers[2].thumbnail_url, covers[2].url);
+    }
+
+    #[tokio::test]
+    async fn gallery_interrupted_body_is_a_network_failure() {
+        let url = super::super::tests::truncated_body_url().await;
+        let error = fetch_gallery(&url).await.unwrap_err();
+        assert_eq!(
+            crate::import::search::import_error_to_lookup_failure(&error),
+            crate::signals::LookupFailure::Network
+        );
     }
 
     #[test]

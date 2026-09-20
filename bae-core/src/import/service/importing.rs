@@ -261,7 +261,7 @@ impl ImportService {
         if matches!(selected_cover, Some(CoverSelection::Embedded(_)))
             && file_tag_snapshot.is_none()
         {
-            return Err(crate::import::ImportError::CoverArt {
+            return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key}'s embedded cover has no prepared tag snapshot"),
             });
         }
@@ -381,13 +381,13 @@ impl ImportService {
                 Some(downloaded_cover(image, url, *source)?)
             }
             (Some(CoverSelection::Remote(_, _)), None) => {
-                return Err(crate::import::ImportError::CoverArt {
+                return Err(crate::import::ImportError::Internal {
                     detail: "selected remote cover has no prepared bytes".into(),
                 });
             }
             (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, None) => None,
             (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) => {
-                return Err(crate::import::ImportError::CoverArt {
+                return Err(crate::import::ImportError::Internal {
                     detail: "prepared remote-cover bytes have no remote cover selection".into(),
                 });
             }
@@ -419,7 +419,7 @@ impl ImportService {
                     Some((cover.data.clone(), cover.content_type.clone()))
                 }
                 (Some(CoverSelection::Embedded(source_file_id)), Some(cover)) => {
-                    return Err(crate::import::ImportError::CoverArt {
+                    return Err(crate::import::ImportError::Internal {
                         detail: format!(
                             "Selected embedded cover {source_file_id} does not match snapshot source {}",
                             cover.source_relative_path
@@ -427,7 +427,7 @@ impl ImportService {
                     })
                 }
                 (Some(CoverSelection::Embedded(source_file_id)), None) => {
-                    return Err(crate::import::ImportError::CoverArt {
+                    return Err(crate::import::ImportError::Internal {
                         detail: format!(
                             "Selected embedded cover {source_file_id} is absent from the File Tags snapshot"
                         ),
@@ -734,7 +734,7 @@ impl ImportService {
                     })
                 }
                 Some(CoverSelection::Remote(_, _)) => {
-                    return Err(crate::import::ImportError::CoverArt {
+                    return Err(crate::import::ImportError::Internal {
                         detail: "selected remote cover produced no downloaded image".to_string(),
                     })
                 }

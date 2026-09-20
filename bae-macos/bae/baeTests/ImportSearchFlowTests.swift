@@ -207,6 +207,142 @@ struct ImportSearchFlowMetadataApplicationTests {
         )
     }
 
+}
+
+extension ImportSearchFlowMetadataApplicationTests {
+    @Test(
+        "unexpected release failures retain their diagnostic",
+        arguments: [
+            BridgeErrorCategory.internal, .database, .config, .importData,
+        ]
+    )
+    func unexpectedFailureRetainsDiagnostic(_ category: BridgeErrorCategory)
+        async throws
+    {
+        let store = unsettledStore()
+        let detail = "Downloaded image could not be decoded: unsupported format"
+        let importer = Importer(
+            applyCandidateExternalMetadata: { _, _ in
+                throw BridgeError.Diagnostic(category: category, detail: detail)
+            }
+        )
+        ImportSearchFlow.applyMetadata(
+            importer: importer,
+            importStore: store,
+            endEditing: {},
+            key: MappingFixtures.candidateKey,
+            provenance: MappingFixtures.provenance
+        )
+        await waitUntil {
+            store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
+                != nil
+        }
+        let failure = try #require(
+            store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
+        )
+        #expect(failure.error.detail == detail)
+    }
+
+    @Test(
+        "expected release failures keep their friendly line without diagnostic controls"
+    )
+    func expectedFailureHasNoDiagnostic() async throws {
+        let store = unsettledStore()
+        let importer = Importer(
+            applyCandidateExternalMetadata: { _, _ in
+                throw BridgeError.Diagnostic(
+                    category: .import,
+                    detail: "Provider returned 500"
+                )
+            }
+        )
+        ImportSearchFlow.applyMetadata(
+            importer: importer,
+            importStore: store,
+            endEditing: {},
+            key: MappingFixtures.candidateKey,
+            provenance: MappingFixtures.provenance
+        )
+        await waitUntil {
+            store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
+                != nil
+        }
+        let failure = try #require(
+            store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
+        )
+        #expect(failure.error.detail == nil)
+        #expect(
+            failure.error.line.contains(
+                BridgeErrorCategory.import.localizedLine
+            )
+        )
+    }
+
+    @Test("a replacement release keeps only its own diagnostic")
+    func replacementFailureReplacesDiagnostic() async throws {
+        let store = unsettledStore()
+        for release in ["first-release", "second-release"] {
+            let importer = Importer(
+                applyCandidateExternalMetadata: { _, _ in
+                    throw BridgeError.Diagnostic(
+                        category: .database,
+                        detail: "Failure for \(release)"
+                    )
+                }
+            )
+            ImportSearchFlow.applyMetadata(
+                importer: importer,
+                importStore: store,
+                endEditing: {},
+                key: MappingFixtures.candidateKey,
+                provenance: .externalRelease(
+                    record: BridgeMetadataRef(
+                        catalog: .musicBrainz,
+                        key: release
+                    ),
+                    partners: []
+                )
+            )
+            await waitUntil {
+                store.releaseSelectionFailure(
+                    forKey: MappingFixtures.candidateKey
+                )?
+                .release.key == release
+            }
+            let failure = try #require(
+                store.releaseSelectionFailure(
+                    forKey: MappingFixtures.candidateKey
+                )
+            )
+            #expect(failure.error.detail == "Failure for \(release)")
+        }
+    }
+
+    @Test("cancelling a release read leaves no failure")
+    func cancelledReadHasNoFailure() async throws {
+        let store = unsettledStore()
+        let importer = Importer(
+            applyCandidateExternalMetadata: { _, _ in throw CancellationError()
+            }
+        )
+        ImportSearchFlow.applyMetadata(
+            importer: importer,
+            importStore: store,
+            endEditing: {},
+            key: MappingFixtures.candidateKey,
+            provenance: MappingFixtures.provenance
+        )
+        await waitUntil {
+            store.metadataApplicationSession(
+                forKey: MappingFixtures.candidateKey
+            ) == nil
+        }
+        #expect(
+            store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
+                == nil
+        )
+    }
+
     private func unsettledStore(
         writes: SessionWriteRecorder? = nil
     ) -> ImportStore {

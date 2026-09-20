@@ -304,3 +304,103 @@ async fn no_image_answer_is_stored() {
     assert_eq!(host.hits(), 1);
     assert!(cache.fetch_required(&url).await.is_err());
 }
+
+#[tokio::test]
+async fn artwork_http_failures_keep_provider_classification_after_retries() {
+    for (status, attempts) in [(400, 1), (401, 1), (429, 4), (500, 4)] {
+        let (host, url) = start_counting_host(status, Vec::new()).await;
+        let error = RemoteImageCache::for_test()
+            .fetch_required(&url)
+            .await
+            .unwrap_err();
+        assert_eq!(host.hits(), attempts, "status {status}");
+        assert_eq!(
+            crate::import::search::import_error_to_lookup_failure(&error),
+            crate::signals::LookupFailure::Provider {
+                status: Some(status)
+            },
+            "{error}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn required_missing_artwork_keeps_not_found_classification() {
+    let (host, url) = start_counting_host(404, Vec::new()).await;
+    let cache = RemoteImageCache::for_test();
+    assert!(cache.fetch(&url).await.unwrap().is_none());
+    let error = cache.fetch_required(&url).await.unwrap_err();
+    assert_eq!(host.hits(), 1);
+    assert_eq!(
+        crate::import::search::import_error_to_lookup_failure(&error),
+        crate::signals::LookupFailure::Provider { status: Some(404) }
+    );
+}
+
+/// A successful response whose body ends before its declared length.
+pub(super) async fn truncated_body_url() -> String {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let mut request = [0; 4096];
+        let received = stream.read(&mut request).await.unwrap();
+        assert!(
+            received > 0,
+            "client must send a request before the response"
+        );
+        stream
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 256\r\nConnection: close\r\n\r\nx")
+            .await
+            .unwrap();
+        stream.shutdown().await.unwrap();
+        let mut remaining = Vec::new();
+        stream.read_to_end(&mut remaining).await.unwrap();
+    });
+    format!("http://{address}/cover")
+}
+
+#[tokio::test]
+async fn artwork_interrupted_body_is_a_network_failure() {
+    let url = truncated_body_url().await;
+    let error = RemoteImageCache::for_test()
+        .fetch_required(&url)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        crate::import::search::import_error_to_lookup_failure(&error),
+        crate::signals::LookupFailure::Network
+    );
+}
+
+#[tokio::test]
+async fn artwork_stalled_body_keeps_timeout_classification() {
+    let url = start_declared_length_response(256).await;
+    let client = crate::util::http::client_builder()
+        .timeout(Duration::from_millis(30))
+        .build()
+        .unwrap();
+    let response = client.get(&url).send().await.unwrap();
+    let error = match read_image_response(response, &url).await {
+        Err(error) => error,
+        Ok(_) => panic!("stalled body should time out"),
+    };
+    assert_eq!(
+        crate::import::search::import_error_to_lookup_failure(&error),
+        crate::signals::LookupFailure::Timeout
+    );
+}
+
+#[tokio::test]
+async fn artwork_invalid_request_is_an_internal_failure() {
+    let error = RemoteImageCache::for_test()
+        .fetch_required("not a URL")
+        .await
+        .unwrap_err();
+    assert!(matches!(&error, ImportError::Internal { .. }), "{error}");
+    assert!(
+        error.to_string().contains("RelativeUrlWithoutBase"),
+        "{error}"
+    );
+}

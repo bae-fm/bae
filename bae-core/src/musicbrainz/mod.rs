@@ -275,11 +275,12 @@ pub enum MusicBrainzError {
 }
 
 impl MusicBrainzError {
-    /// Classify a `reqwest::Error` from a send or body read. A timeout is its own
-    /// variant; an error carrying an HTTP status is a `Provider` response;
-    /// everything else (connection, DNS, dropped body) is transport `Network`.
+    /// Keep invalid request construction and redirect failures diagnostic;
+    /// actual transport, timeout, and HTTP status failures remain typed.
     fn from_reqwest(e: reqwest::Error) -> Self {
-        if e.is_timeout() {
+        if e.is_builder() || e.is_redirect() {
+            MusicBrainzError::Other(format!("{e:?}"))
+        } else if e.is_timeout() {
             MusicBrainzError::Timeout
         } else if let Some(status) = e.status() {
             MusicBrainzError::Provider {

@@ -91,7 +91,7 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
         .unwrap_err();
 
     assert!(
-        matches!(&err, crate::import::ImportError::CoverArt { detail } if detail.contains("Selected cover") && detail.contains("not found")),
+        matches!(&err, crate::import::ImportError::LocalCover { detail } if detail.contains("Selected cover") && detail.contains("not found")),
         "got: {err}"
     );
 }
@@ -106,7 +106,7 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
         .unwrap_err();
 
     assert!(
-        matches!(&err, crate::import::ImportError::CoverArt { detail } if detail.contains("Selected cover") && detail.contains("not found")),
+        matches!(&err, crate::import::ImportError::LocalCover { detail } if detail.contains("Selected cover") && detail.contains("not found")),
         "got: {err}"
     );
 }
@@ -218,7 +218,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
 
     let err = result.unwrap_err();
     assert!(
-        matches!(&err, crate::import::ImportError::CoverArt { detail } if detail.contains("Selected cover cover.bmp not found")),
+        matches!(&err, crate::import::ImportError::LocalCover { detail } if detail.contains("Selected cover cover.bmp not found")),
         "got: {err}"
     );
     assert_eq!(
@@ -249,7 +249,7 @@ async fn unreadable_selected_cover_is_an_error() {
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
     let err = result.unwrap_err();
     assert!(
-        matches!(&err, crate::import::ImportError::CoverArt { detail } if detail.contains("Failed to read cover art")),
+        matches!(&err, crate::import::ImportError::LocalCover { detail } if detail.contains("Failed to read cover art")),
         "got: {err}"
     );
 }

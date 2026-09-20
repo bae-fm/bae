@@ -496,7 +496,7 @@ extension ImportMappingPaneTests {
             forKey: MappingFixtures.candidateKey
         )
         #expect(failure?.release.key == "another-pressing")
-        #expect(failure?.message.isEmpty == false)
+        #expect(failure?.error.line.isEmpty == false)
         #expect(
             store.metadataApplicationSession(
                 forKey: MappingFixtures.candidateKey

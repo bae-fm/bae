@@ -200,6 +200,8 @@ pub enum BridgeErrorCategory {
     Internal,
     SyncUpdateRequired,
     Import,
+    /// Source metadata or artwork could not be parsed or decoded.
+    ImportData,
     CandidateImportInProgress,
     CandidateAlreadyImported,
     MetadataTrackCount,
@@ -317,7 +319,7 @@ impl BridgeError {
 /// yet" cases are user-actionable and keyed (`bridge_playback_error_reason_key`);
 /// every in-core failure is un-enumerable and rides in `Diagnostic` — the UI
 /// renders it through the same `BridgeError` path (generic per-category line +
-/// copyable, log-only detail).
+/// copyable diagnostic detail).
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePlaybackErrorReason {
     /// A remote cloud-only track isn't downloaded and sync is disconnected —
@@ -327,7 +329,7 @@ pub enum BridgePlaybackErrorReason {
     /// to finish.
     UploadPending,
     /// Any other failure. Carries the underlying `BridgeError`; the UI renders
-    /// its generic per-category line plus the opaque, log-only detail.
+    /// its generic per-category line plus the opaque diagnostic detail.
     Diagnostic { error: BridgeError },
 }
 
@@ -341,7 +343,9 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Config => "core.error.category.config",
         BridgeErrorCategory::Internal => "core.error.category.internal",
         BridgeErrorCategory::SyncUpdateRequired => "core.error.sync_update_required",
-        BridgeErrorCategory::Import => "core.error.category.import",
+        BridgeErrorCategory::Import | BridgeErrorCategory::ImportData => {
+            "core.error.category.import"
+        }
         BridgeErrorCategory::CandidateImportInProgress => {
             "core.import.error.candidate_import_in_progress"
         }
@@ -559,39 +563,78 @@ impl From<bae_core::config::ConfigError> for BridgeError {
     }
 }
 
-/// A refused candidate mutation: an import already running for that candidate,
-/// or one already imported, each named as its own category so a surface can
-/// say which, and anything else as the generic import failure.
-///
-/// Not what [`BridgeError::import`] does — that reports `Import` for whatever
-/// it is handed, and stays the call for the import paths whose failures have no
-/// per-candidate refusal to distinguish.
+/// Preserve expected import refusals and provider failures separately from
+/// unusable source data and internal faults. Every variant has an explicit
+/// classification so new producer errors must choose their presentation.
 #[cfg(feature = "desktop")]
 impl From<bae_core::import::ImportError> for BridgeError {
     fn from(error: bae_core::import::ImportError) -> Self {
-        let category = match &error {
-            bae_core::import::ImportError::CandidateImportInProgress => {
+        use bae_core::{
+            discogs::client::DiscogsError, import::ImportError, musicbrainz::MusicBrainzError,
+            signals::LookupFailure,
+        };
+        let detail = error.to_string();
+        let category = match error {
+            ImportError::CandidateImportInProgress => {
                 BridgeErrorCategory::CandidateImportInProgress
             }
-            bae_core::import::ImportError::CandidateAlreadyImported => {
-                BridgeErrorCategory::CandidateAlreadyImported
+            ImportError::CandidateAlreadyImported => BridgeErrorCategory::CandidateAlreadyImported,
+            ImportError::MetadataTrackCount { .. } => BridgeErrorCategory::MetadataTrackCount,
+            ImportError::MetadataGrouping => BridgeErrorCategory::MetadataGrouping,
+            ImportError::SourceData { .. } | ImportError::CoverArt { .. } => {
+                BridgeErrorCategory::ImportData
             }
-            bae_core::import::ImportError::MetadataTrackCount { .. } => {
-                BridgeErrorCategory::MetadataTrackCount
-            }
-            bae_core::import::ImportError::MetadataGrouping => {
-                BridgeErrorCategory::MetadataGrouping
-            }
-            _ => BridgeErrorCategory::Import,
+            ImportError::MusicBrainz(error) => match error {
+                MusicBrainzError::Other(_) => BridgeErrorCategory::ImportData,
+                MusicBrainzError::NotFound(_)
+                | MusicBrainzError::Network(_)
+                | MusicBrainzError::Timeout
+                | MusicBrainzError::Provider { .. } => BridgeErrorCategory::Import,
+            },
+            ImportError::Discogs(error) => match error {
+                DiscogsError::Serialization(_) => BridgeErrorCategory::ImportData,
+                DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => {
+                    BridgeErrorCategory::Internal
+                }
+                DiscogsError::Transport(_)
+                | DiscogsError::Provider(_)
+                | DiscogsError::RateLimit
+                | DiscogsError::InvalidApiKey
+                | DiscogsError::NotFound => BridgeErrorCategory::Import,
+            },
+            ImportError::CoverArtRequest { failure, .. } => match failure {
+                LookupFailure::Network
+                | LookupFailure::Timeout
+                | LookupFailure::Provider { .. } => BridgeErrorCategory::Import,
+                LookupFailure::Diagnostic { .. } | LookupFailure::ArtworkAnalysis => {
+                    BridgeErrorCategory::ImportData
+                }
+            },
+            ImportError::Internal { .. } => BridgeErrorCategory::Internal,
+            ImportError::Config { .. } => BridgeErrorCategory::Config,
+            ImportError::Db(error) => return error.into(),
+            ImportError::Scan(_)
+            | ImportError::InvalidFolder(_)
+            | ImportError::DiscogsNotConfigured
+            | ImportError::FileTags { .. }
+            | ImportError::UnusableFile { .. }
+            | ImportError::LocalCover { .. }
+            | ImportError::DecodeVerification { .. }
+            | ImportError::AlreadyInLibrary { .. }
+            | ImportError::Edit(_)
+            | ImportError::SheetBinding { .. }
+            | ImportError::FileRole { .. }
+            | ImportError::WatchedFolder { .. }
+            | ImportError::Watch { .. } => BridgeErrorCategory::Import,
         };
-        BridgeError::diagnostic(category, error)
+        BridgeError::diagnostic(category, detail)
     }
 }
 
 /// Carry a core `LibraryError`'s diagnostic class across the bridge: the class
 /// (keyring vs cloud credentials vs network vs membership vs …) becomes the
 /// `BridgeErrorCategory` the UI renders a localized line for; the error chain
-/// rides along as opaque, log-only detail.
+/// rides along as opaque diagnostic detail.
 impl From<bae_core::library::LibraryError> for BridgeError {
     fn from(error: bae_core::library::LibraryError) -> Self {
         if matches!(
@@ -779,3 +822,7 @@ mirror_struct! {
         direction: (BridgeSortDirection),
     },
 }
+
+#[cfg(all(test, feature = "desktop"))]
+#[path = "settings_tests.rs"]
+mod tests;

@@ -75,20 +75,36 @@ extension ImportSearchFlow {
     private static func metadataApplicationError(
         _ error: Error,
         provenance: BridgeMetadataProvenance
-    ) -> String? {
-        if case BridgeError.Diagnostic(let category, _) = error,
-            category == .metadataTrackCount || category == .metadataGrouping
-        {
-            return error.displayLine
-        }
-        return error.displayLine.map {
-            switch provenance {
-            case .externalRelease:
-                String(localized: "Failed to load release details: \($0)")
-            case .fileTags:
-                String(localized: "Couldn't read file tags: \($0)")
+    ) -> DisplayError? {
+        guard let displayed = DisplayError(error) else { return nil }
+        let detail: String?
+        if case BridgeError.Diagnostic(let category, let diagnostic) = error {
+            switch category {
+            case .importData, .database, .internal, .config:
+                detail = diagnostic
+            default:
+                detail = nil
+            }
+            if category == .metadataTrackCount || category == .metadataGrouping
+            {
+                return DisplayError(line: displayed.line)
             }
         }
+        else {
+            detail = displayed.detail
+        }
+        let line: String
+        switch provenance {
+        case .externalRelease:
+            line = String(
+                localized: "Failed to load release details: \(displayed.line)"
+            )
+        case .fileTags:
+            line = String(
+                localized: "Couldn't read file tags: \(displayed.line)"
+            )
+        }
+        return DisplayError(line: line, detail: detail)
     }
 
     // MARK: - Import status helpers

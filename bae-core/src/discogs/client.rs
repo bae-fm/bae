@@ -89,7 +89,8 @@ pub fn seed_artist_image_response(artist_id: &str, image_url: Option<String>) {
 pub enum DiscogsError {
     /// The request never reached a usable response — connection, DNS, timeout, a
     /// dropped or unreadable body. Transport-level and worth retrying.
-    #[error("Discogs transport error: {0}")]
+    // reqwest's Display omits the source; Debug retains the actual cause.
+    #[error("Discogs transport error: {0:?}")]
     Transport(#[from] ReqwestError),
     /// Discogs returned an HTTP error status not otherwise carved out below (not
     /// 404 / 401 / 429). Distinct from `Transport` so the retry policy can repeat a

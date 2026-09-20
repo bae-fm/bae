@@ -691,3 +691,15 @@ async fn the_same_path_under_two_base_urls_is_two_answers() {
     assert_eq!(first_requests.load(Ordering::SeqCst), 1);
     assert_eq!(second_requests.load(Ordering::SeqCst), 1);
 }
+
+#[tokio::test]
+async fn invalid_request_is_diagnostic_not_a_network_outage() {
+    let error = mb_get(http_client().get("not a URL"), CallPriority::Interactive)
+        .await
+        .unwrap_err();
+    assert!(matches!(&error, MusicBrainzError::Other(_)), "{error}");
+    assert!(
+        error.to_string().contains("RelativeUrlWithoutBase"),
+        "{error}"
+    );
+}
