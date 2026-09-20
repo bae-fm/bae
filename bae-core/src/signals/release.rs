@@ -256,7 +256,6 @@ mod tests {
         database.insert_album(&album).await.unwrap();
 
         let release = DbRelease {
-            field_origins: Default::default(),
             id: Uuid::new_v4().to_string(),
             album_id: album.id.clone(),
             release_name: None,
@@ -400,7 +399,6 @@ mod tests {
         database.insert_album(&album).await.unwrap();
 
         let release = DbRelease {
-            field_origins: Default::default(),
             id: Uuid::new_v4().to_string(),
             album_id: album.id.clone(),
             release_name: None,

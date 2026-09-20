@@ -466,64 +466,6 @@ impl ReleasePayloads {
 ///
 /// The primary's documents are read first, so what they say about another
 /// catalog stands unless that catalog is one the person themselves claimed — a
-/// The archived documents behind `records`, for the field claims: one set per
-/// record whose catalog publishes documents, read through `load`.
-///
-/// Only the two catalogs bae asks publish documents; the rest are pages a
-/// record links out to. One of those two whose document was never fetched —
-/// a record another catalog's cross-link named — states nothing either, and
-/// says so in the log rather than failing the read.
-///
-/// The one place the records are turned into documents to compare: the
-/// candidate pane reads them on its SQL snapshot, the library editor on its
-/// own, and both compare the same set.
-pub fn documents_of_records(
-    records: &[ReleaseRecord],
-    mut load: impl FnMut(&MetadataRef) -> Result<Option<ReleasePayloads>, ImportError>,
-) -> Result<Vec<(Catalog, ReleasePayloads)>, ImportError> {
-    let mut described = Vec::new();
-    for record in records
-        .iter()
-        .filter(|record| Catalog::LOOKUP.contains(&record.catalog))
-    {
-        let Some(payloads) = load(&record.release_ref())? else {
-            tracing::debug!(
-                "no archived {} document for release {}; it states nothing about the fields",
-                record.catalog.as_str(),
-                record.key
-            );
-            continue;
-        };
-        described.push((record.catalog, payloads));
-    }
-    Ok(described)
-}
-
-/// What each of these catalogs' documents says about the eight album-level
-/// fields, projected through the same mapping the draft itself is read with —
-/// so a claim is exactly what picking that catalog would put in the field.
-///
-/// The one reading behind every field dot, over the documents
-/// [`documents_of_records`] read for a release's records.
-pub fn field_claims(
-    claimed: &[(Catalog, ReleasePayloads)],
-    clock: &dyn coven::Clock,
-    ids: &dyn coven::IdProvider,
-) -> Result<crate::import::FieldClaims, ImportError> {
-    let readings = claimed
-        .iter()
-        .map(|(catalog, payloads)| {
-            // A claim is about the eight album-level fields, which no tracklist
-            // layout touches — so the Discogs layout has nothing to choose
-            // between here and needs no measured audio.
-            let parsed = payloads.parsed(&[], clock, ids)?;
-            let edit = crate::import::parsed_album_to_user_edit(&parsed);
-            Ok((*catalog, crate::import::FieldValues::of_edit(&edit)))
-        })
-        .collect::<Result<Vec<_>, ImportError>>()?;
-    Ok(crate::import::FieldClaims::of(readings))
-}
-
 /// claimed release's own document outranks what an editor cross-linked to it.
 /// Only the primary's anchor reads the draft.
 pub fn claimed_records(

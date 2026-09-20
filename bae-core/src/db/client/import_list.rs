@@ -603,13 +603,8 @@ impl Database {
         let key = key.to_string();
         self.inner
             .handle
-            .subscribe({
-                let clock = self.inner.clock.clone();
-                let ids = self.inner.ids.clone();
-                move |sql| {
-                    window::load_candidate_detail_on(&sql, &key, clock.clone(), ids.clone())
-                        .map_err(CovenError::from)
-                }
+            .subscribe(move |sql| {
+                window::load_candidate_detail_on(&sql, &key).map_err(CovenError::from)
             })
             .process(|process| {
                 process
@@ -639,9 +634,7 @@ impl Database {
         key: &str,
     ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
         let key = key.to_string();
-        let clock = self.inner.clock.clone();
-        let ids = self.inner.ids.clone();
-        self.read(move |sql| window::load_candidate_detail_on(&sql, &key, clock, ids))
+        self.read(move |sql| window::load_candidate_detail_on(&sql, &key))
             .process(|process| process.map(|process| process()).transpose())
             .await
     }

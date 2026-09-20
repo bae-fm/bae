@@ -25,11 +25,8 @@ mod progress;
 pub use progress::*;
 mod catalog;
 pub use catalog::{parse_catalog_url, Catalog, CatalogPage};
-mod field_origin;
-pub use field_origin::{
-    CandidateEditField, FieldClaim, FieldClaims, FieldDot, FieldOrigin, FieldOrigins,
-    FieldProvenance, FieldValues,
-};
+mod candidate_edit_field;
+pub use candidate_edit_field::CandidateEditField;
 mod mark;
 pub use mark::{MarkKind, ReleaseMark, ReleaseMarkLine};
 mod raw_release_edit;
@@ -464,10 +461,6 @@ pub struct ReleaseUserEdit {
     pub album_year: Option<i32>,
     pub pressing: PressingEdit,
     pub tracks: Vec<TrackUserEdit>,
-    /// Where each album-level value above came from, where the surface that
-    /// built the edit knows. A surface that states nothing leaves every field
-    /// unclaimed, and the write reads the fields it changes as typed.
-    pub origins: FieldOrigins,
 }
 
 /// Per-pressing fields a release carries. Grouped because they share one
@@ -554,22 +547,9 @@ pub struct TrackUserEdit {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
-    /// One entry per album-level field: where the release's value came from,
-    /// what every catalog describing it says, and what its dot says.
-    pub field_provenance: Vec<FieldProvenance>,
     pub can_reset_to_source: bool,
     pub cover: Option<crate::album_detail::ImageRef>,
     pub display: crate::album_detail::ReleaseEditDisplayContext,
-}
-
-/// A release's form as its source states it again, with what describes each of
-/// its fields — what a reset hands the editor. The reset writes nothing, so
-/// the cover and the read-only context the sheet already holds stay as they
-/// are and only these two change.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReleaseFormReset {
-    pub edit: RawReleaseEdit,
-    pub field_provenance: Vec<FieldProvenance>,
 }
 
 /// Trim a raw pressing field; empty (after trim) becomes `None`.
@@ -583,14 +563,6 @@ fn trim_to_option(raw: &str) -> Option<String> {
 }
 
 impl ReleaseUserEdit {
-    /// The same edit with every field it states read from `origin`, and
-    /// nothing said about the fields it leaves blank — what a projection of
-    /// one source produces.
-    pub fn read_from(mut self, origin: FieldOrigin) -> Self {
-        self.origins = FieldOrigins::of(&FieldValues::of_edit(&self), origin);
-        self
-    }
-
     /// Trim the album title and every track title, and drop blank artist names.
     /// The normalization the editor's [`RawReleaseEdit::shape`] performs on typed
     /// text, hoisted onto the wire type so MCP, which builds one

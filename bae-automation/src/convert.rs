@@ -454,7 +454,6 @@ impl AutomationReleaseUserEdit {
                 .into_iter()
                 .map(AutomationTrackUserEdit::into_core)
                 .collect(),
-            origins: Default::default(),
         }
     }
 }

@@ -1,13 +1,11 @@
 use super::*;
 
 mod error;
-mod field_provenance;
 mod identify;
 mod library;
 mod metadata_edit;
 
 pub use error::AutomationError;
-pub use field_provenance::*;
 pub use identify::*;
 pub use library::*;
 pub use metadata_edit::*;
@@ -79,9 +77,6 @@ pub enum AutomationCandidate {
         /// with whatever has been typed over them. `None` while nothing is
         /// picked.
         edit: Option<AutomationReleaseUserEdit>,
-        /// One entry per album-level field: where its value came from, and
-        /// what every catalog claiming the pick says about it.
-        field_provenance: Vec<AutomationFieldProvenance>,
         /// The last import of this candidate that failed.
         failure: Option<AutomationImportFailure>,
     },

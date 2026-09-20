@@ -51,10 +51,7 @@ struct EditMetadataSheetTests {
                 await recorder.record(releaseId, edit)
             },
             reset: { _ in
-                BridgeReleaseFormReset(
-                    edit: seed.edit,
-                    fieldProvenance: seed.fieldProvenance
-                )
+                seed.edit
             }
         )
         await session.fieldWriter.setField(.albumTitle, "Saved title")
@@ -70,9 +67,8 @@ struct EditMetadataSheetTests {
 
         await session.fieldWriter.setField(.albumTitle, "Unsaved title")
         session.cancelChanges()
-        while session.isBusy {
-            await Task.yield()
-        }
+        await waitForStoreUpdate { !session.isBusy }
+        #expect(!session.isBusy)
         #expect(session.form.albumTitle == "Saved title")
         #expect(!session.hasChanges)
     }
@@ -83,10 +79,7 @@ struct EditMetadataSheetTests {
         let recorder = SavedEditRecorder()
         var seed = PreviewData.releaseEditSeed(trackCount: 2)
         seed.edit.albumTitle = "Original title"
-        let reset = BridgeReleaseFormReset(
-            edit: seed.edit,
-            fieldProvenance: seed.fieldProvenance
-        )
+        let reset = seed.edit
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
@@ -209,10 +202,7 @@ struct EditMetadataSheetTests {
                 )
             ]
         }
-        let reset = BridgeReleaseFormReset(
-            edit: seed.edit,
-            fieldProvenance: seed.fieldProvenance
-        )
+        let reset = seed.edit
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
@@ -259,13 +249,44 @@ struct EditMetadataSheetTests {
             seed: seed,
             onSave: { _ in },
             onReset: {
-                BridgeReleaseFormReset(
-                    edit: seed.edit,
-                    fieldProvenance: seed.fieldProvenance
-                )
+                seed.edit
             },
             onSaved: {},
             onCancel: {}
         )
+    }
+}
+
+extension EditMetadataSheetTests {
+    @MainActor
+    @Test("Reset replaces edited values and cancel restores the saved form")
+    func resetReplacesEditsAndCancelRestoresSavedForm() async {
+        let seed = PreviewData.releaseEditSeed(trackCount: 2)
+        var source = seed.edit
+        source.albumTitle = "Source title"
+        source.pressing.country = ""
+        let sourceForm = source
+        let session = ReleaseMetadataEditSession(
+            releaseId: "release-test",
+            seed: seed,
+            save: { _, _ in },
+            reset: { _ in sourceForm }
+        )
+        await session.fieldWriter.setField(.albumTitle, "Edited title")
+        await session.fieldWriter.setField(.country, "JP")
+
+        session.resetToSource()
+        await waitForStoreUpdate { !session.isBusy }
+        #expect(!session.isBusy)
+        #expect(session.form.albumTitle == "Source title")
+        #expect(session.form.pressing.country.isEmpty)
+        #expect(session.hasChanges)
+
+        session.cancelChanges()
+        await waitForStoreUpdate { !session.isBusy }
+        #expect(!session.isBusy)
+        #expect(session.form.albumTitle == seed.edit.albumTitle)
+        #expect(session.form.pressing.country == seed.edit.pressing.country)
+        #expect(!session.hasChanges)
     }
 }

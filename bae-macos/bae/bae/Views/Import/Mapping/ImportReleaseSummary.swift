@@ -44,7 +44,7 @@ struct ImportReleaseSummary {
             ])
         case .fileTags:
             factsLine = Self.factsLine([
-                coreString("core.field.origin.tags"), trackText,
+                coreString("core.import.metadata.file_tags"), trackText,
             ])
         case nil:
             factsLine = trackText

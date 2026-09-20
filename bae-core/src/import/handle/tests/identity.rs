@@ -379,7 +379,6 @@ fn make_album(title: &str) -> DbAlbum {
 fn make_release(album_id: &str) -> DbRelease {
     let now = Utc::now();
     DbRelease {
-        field_origins: Default::default(),
         id: Uuid::new_v4().to_string(),
         album_id: album_id.to_string(),
         release_name: None,

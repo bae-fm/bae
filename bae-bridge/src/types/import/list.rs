@@ -157,10 +157,6 @@ pub struct BridgeImportCandidateDetail {
     pub metadata_draft: BridgeRawReleaseEdit,
     /// Whether the draft contains no authored or sourced metadata.
     pub metadata_draft_is_blank: bool,
-    /// One entry per album-level field: where the draft's value came from,
-    /// what every catalog claiming the pick says about it, and what its dot
-    /// says.
-    pub field_provenance: Vec<BridgeFieldProvenance>,
     /// Where the current draft began, absent for direct entry and after clear.
     pub metadata_provenance: Option<BridgeMetadataProvenance>,
     /// Who wrote it. Find online returns to the draft when this becomes

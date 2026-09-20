@@ -336,8 +336,6 @@ fn picked_release(
 pub(super) fn load_candidate_detail_on(
     sql: &SqlReadContext<'_>,
     key: &str,
-    clock: ClockRef,
-    ids: IdRef,
 ) -> Result<
     Option<impl FnOnce() -> Result<ImportCandidateDetailProjection, DbError> + Send + 'static>,
     DbError,
@@ -399,10 +397,7 @@ pub(super) fn load_candidate_detail_on(
     // Only identity keys are needed for the next SQL query. Track and artwork
     // processing runs after the snapshot ends.
     let claimed = claimed_payloads_on(sql, &candidate, picked.as_ref())?;
-    // The records the pick's documents describe the release in, and the
-    // documents archived for those of them a catalog publishes — the
-    // cross-linked release the primary's document names among them, which
-    // is what the field dots compare the primary against.
+    // Every catalog record named by the picked source documents.
     let records = crate::import::payloads::claimed_records(
         &claimed
             .iter()
@@ -410,17 +405,6 @@ pub(super) fn load_candidate_detail_on(
             .collect::<Vec<_>>(),
     )
     .map_err(|error| DbError::Message(error.to_string()))?;
-    let described =
-        crate::import::payloads::documents_of_records(&records, |release| {
-            match claimed
-                .iter()
-                .find(|payloads| payloads.release() == release)
-            {
-                Some(payloads) => Ok(Some(payloads.clone())),
-                None => load_release_payloads_on(sql, release),
-            }
-        })
-        .map_err(|error| DbError::Message(error.to_string()))?;
     let picked_library_status = match claimed.first() {
         Some(payloads) => {
             let check = payloads
@@ -467,9 +451,6 @@ pub(super) fn load_candidate_detail_on(
             .map_err(|error| DbError::Message(error.to_string()))?;
         let audio_durations =
             crate::import::track_slots::audio_durations(candidate.files(), &durations)
-                .map_err(|error| DbError::Message(error.to_string()))?;
-        let field_claims =
-            crate::import::payloads::field_claims(&described, clock.as_ref(), ids.as_ref())
                 .map_err(|error| DbError::Message(error.to_string()))?;
         let release = claimed
             .first()
@@ -565,10 +546,6 @@ pub(super) fn load_candidate_detail_on(
             embedded_cover.as_ref(),
         );
         Ok(ImportCandidateDetailProjection {
-            field_provenance: crate::import::FieldProvenance::of(
-                &pane_rows.draft.origins,
-                &field_claims,
-            ),
             is_added: imported_release.is_some(),
             candidate,
             source_error,

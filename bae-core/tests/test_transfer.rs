@@ -142,7 +142,6 @@ async fn create_local_release(
         created_at: now,
     };
     let release = DbRelease {
-        field_origins: Default::default(),
         id: Uuid::new_v4().to_string(),
         album_id: album.id.clone(),
         release_name: None,

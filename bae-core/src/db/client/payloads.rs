@@ -98,30 +98,6 @@ impl Database {
         Ok(())
     }
 
-    /// What every catalog describing `records` says about the album-level
-    /// fields: the documents behind the records read in one snapshot, then
-    /// projected once the connection is released.
-    pub(crate) async fn release_field_claims(
-        &self,
-        records: Vec<crate::import::ReleaseRecord>,
-    ) -> Result<crate::import::FieldClaims, ImportError> {
-        let clock = self.inner.clock.clone();
-        let ids = self.inner.ids.clone();
-        self.read(move |sql| {
-            Ok(crate::import::payloads::documents_of_records(
-                &records,
-                |release| load_release_payloads_on(&sql, release),
-            ))
-        })
-        .process(move |described| {
-            Ok(described.and_then(|described| {
-                crate::import::payloads::field_claims(&described, clock.as_ref(), ids.as_ref())
-            }))
-        })
-        .await
-        .map_err(|error| ImportError::Db(crate::library::LibraryError::Database(error)))?
-    }
-
     /// The archived set for one release: the anchor document and everything it
     /// names, each read by id in one read.
     pub(crate) async fn load_release_payloads(

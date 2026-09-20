@@ -12,74 +12,6 @@ internal static class ImportCandidateFixtures
 {
     internal const string CandidateKey = "/Music/Incoming/Album";
 
-    /// <summary>A form nothing has described yet: no field states where its
-    /// value was read, because no source has filled one.</summary>
-    internal static BridgeFieldOrigins BlankOrigins =>
-        new(null, null, null, null, null, null, null, null);
-
-    /// <summary>What core says about the fixture draft's eight fields: a label
-    /// the person typed over what the catalogs state, a catalog number the two
-    /// catalogs state differently, and nothing to point at elsewhere.</summary>
-    internal static BridgeFieldProvenance[] FieldProvenance()
-    {
-        BridgeFieldClaim[] Agreed(string value) =>
-        [
-            new(BridgeCatalog.MusicBrainz, value),
-            new(BridgeCatalog.Discogs, value),
-        ];
-        var fromMusicBrainz = new BridgeFieldOrigin.Record(
-            BridgeCatalog.MusicBrainz);
-        return
-        [
-            new(
-                BridgeCandidateEditField.AlbumTitle,
-                new BridgeFieldOrigin.Typed(),
-                Agreed("Album Title"),
-                BridgeFieldDot.Typed),
-            new(
-                BridgeCandidateEditField.AlbumYear,
-                fromMusicBrainz,
-                Agreed("1991"),
-                null),
-            new(
-                BridgeCandidateEditField.PressingYear,
-                fromMusicBrainz,
-                Agreed("1996"),
-                null),
-            new(
-                BridgeCandidateEditField.Format,
-                fromMusicBrainz,
-                Agreed("CD"),
-                null),
-            new(
-                BridgeCandidateEditField.Label,
-                fromMusicBrainz,
-                Agreed("Label Name"),
-                null),
-            new(
-                BridgeCandidateEditField.CatalogNumber,
-                fromMusicBrainz,
-                [
-                    new(BridgeCatalog.MusicBrainz, "CAT-1"),
-                    new(BridgeCatalog.Discogs, "CAT-1-A"),
-                ],
-                BridgeFieldDot.Disagreement),
-            new(
-                BridgeCandidateEditField.Country,
-                fromMusicBrainz,
-                Agreed("UK"),
-                null),
-            new(
-                BridgeCandidateEditField.Barcode,
-                null,
-                [
-                    new(BridgeCatalog.MusicBrainz, null),
-                    new(BridgeCatalog.Discogs, null),
-                ],
-                null),
-        ];
-    }
-
     internal static readonly BridgeAudioFormat SourceAudio = new(
         Codec: "FLAC",
         SampleRateHz: 44_100,
@@ -142,11 +74,9 @@ internal static class ImportCandidateFixtures
                     "1991",
                     new BridgeRawPressingEdit(
                         "1996", "CD", "Label Name", "CAT-1", "UK", string.Empty),
-                    Array.Empty<BridgeRawTrackEdit>(),
-                    BlankOrigins),
+                    Array.Empty<BridgeRawTrackEdit>()),
             MetadataDraftIsBlank: edit is not null
                 && string.IsNullOrEmpty(edit.AlbumTitle),
-            FieldProvenance: FieldProvenance(),
             MetadataProvenance: metadataProvenance,
             MetadataAuthor: metadataProvenance is null
                 ? BridgeMetadataAuthor.Nobody
@@ -218,8 +148,7 @@ internal static class ImportCandidateFixtures
             string.Empty,
             string.Empty,
             string.Empty),
-        Array.Empty<BridgeRawTrackEdit>(),
-        BlankOrigins);
+        Array.Empty<BridgeRawTrackEdit>());
 
     internal static BridgeTrackMapping TrackRow(string fileId, string title) =>
         new(

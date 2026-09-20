@@ -163,7 +163,6 @@ public sealed class ReleaseMarksTests
             Marks = marks,
             Verification = null,
             Records = [],
-            FieldProvenance = ImportCandidateFixtures.FieldProvenance(),
             IsReading = false,
             LookupOptions = null,
             LoadCover = null,

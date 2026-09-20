@@ -13,7 +13,7 @@ struct ImportedReleasePane: View {
     let saveReleaseEdit:
         @Sendable (String, BridgeReleaseUserEdit) async throws -> Void
     let resetReleaseEdit:
-        @Sendable (String) async throws -> BridgeReleaseFormReset
+        @Sendable (String) async throws -> BridgeRawReleaseEdit
     let changeCover:
         @Sendable (String, BridgeCoverSelection) async throws -> Void
     let fetchRemoteCovers:

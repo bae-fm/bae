@@ -22,3 +22,11 @@ Commit on the isolated background worktree branch after checks. Coordinate the f
 
 ## Queued successor
 After this removal lands, execute [Release and album cross-reference enrichment](release-and-album-cross-reference.md) on a separate branch in this same worktree. The successor's complete agreed contract is persisted there so execution survives conversation compaction.
+
+## Verification prerequisite before enrichment
+Avalonia currently fails compilation on stale per-FILE CUE binding callers in `NativeBae.cs`: binding options are grouped by FILE reference, and `SetSheetBinding` requires that reference. After the field-origin removal commit, execute [Avalonia CUE FILE reference bindings](avalonia-cue-file-reference-bindings.md) in a separate focused commit/branch before enrichment and run the affected view tests. Trace the existing per-FILE model; never invent a reference or silently use the first one. This prerequisite is authorized to verify all canonical bridge callers, not to add unrelated Avalonia features.
+
+## Verification receipt
+The replacement regression failed against the previous implementation (`Typed Label` survived instead of becoming absent) and passes after removal. The core library run passed 2,193 tests and exposed an invalid identification-method value in the new migration fixture; correcting that fixture to `catalog_number` made its focused upgrade test pass. Core integration suites passed 54 tests, automation passed 29, and desktop bridge passed 60. Regenerated native bindings built the macOS app; 20 focused editor/import-store tests passed, followed by an eight-test editor rerun after using the existing bounded asynchronous wait helper. Avalonia verification reached the known per-FILE caller compilation errors; its separately queued repair owns that verification prerequisite.
+
+Requirement review confirmed removal of per-field origin types, storage, claims calculations, UI dots, and typed-value protection while retaining field commands, actual values, metadata records and archives, evidence origins, and audio bindings. The populated migration comparison preserves all retained values across thirteen tables. Searches found old field-origin APIs only in historical migrations, migration-upgrade fixtures, and plans. Review removed four stale origin-stamping comments. Normal commit hooks remain the final local gate.

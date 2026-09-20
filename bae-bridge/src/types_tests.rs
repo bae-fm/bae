@@ -312,7 +312,6 @@ mod conversion_roundtrip {
     #[test]
     fn release_user_edit_round_trips() {
         let core = bae_core::import::ReleaseUserEdit {
-            origins: Default::default(),
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![
                 bae_core::import::ArtistAssignment::existing(existing_artist()),
@@ -351,7 +350,6 @@ mod conversion_roundtrip {
     #[test]
     fn raw_release_edit_round_trips() {
         let core = bae_core::import::RawReleaseEdit {
-            origins: Default::default(),
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![
                 bae_core::import::ArtistAssignment::new("Artist Name"),
@@ -392,7 +390,6 @@ mod conversion_roundtrip {
     #[test]
     fn release_edit_seed_carries_the_persisted_editor_projection() {
         let edit = bae_core::import::RawReleaseEdit {
-            origins: Default::default(),
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![bae_core::import::ArtistAssignment::new("Artist Name")],
             album_year: String::new(),
@@ -416,7 +413,6 @@ mod conversion_roundtrip {
 
         for expected in [false, true] {
             let bridge = BridgeReleaseEditSeed::from_core(bae_core::import::ReleaseEditSeed {
-                field_provenance: Vec::new(),
                 edit: edit.clone(),
                 can_reset_to_source: expected,
                 cover: None,

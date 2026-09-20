@@ -373,7 +373,7 @@ extension ReIdentifySheet {
                 let reset = try await releaseEditor.resetReleaseEditToSource(
                     releaseId
                 )
-                let shaped = shapeReleaseEdit(raw: reset.edit)
+                let shaped = shapeReleaseEdit(raw: reset)
                 guard case .valid(let edit) = shaped else {
                     if case .invalid(let reason) = shaped {
                         phase = .error(reason.localizedMessage)

@@ -21,7 +21,6 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
             pin: false,
             metadata_provenance: None,
             user_edit: Some(ReleaseUserEdit {
-                origins: Default::default(),
                 album_title: "Album Title".to_string(),
                 album_artist_assignments: vec![ArtistAssignment::new("Artist Name")],
                 album_year: None,

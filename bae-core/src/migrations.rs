@@ -208,6 +208,11 @@ pub fn all() -> Vec<coven::Migration> {
             "applied_source_documents",
             migrate_applied_source_documents,
         ),
+        coven::Migration::sql(
+            41,
+            "remove_field_origins",
+            include_str!("../migrations/041_remove_field_origins.sql"),
+        ),
     ]
 }
 

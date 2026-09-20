@@ -71,8 +71,7 @@ public sealed class ReleaseActionDialogsTests
             null,
             new BridgeReleaseEditDisplayContext(
                 null,
-                Array.Empty<BridgeReleaseEditTrackContext>()),
-            ImportCandidateFixtures.FieldProvenance());
+                Array.Empty<BridgeReleaseEditTrackContext>()));
         var releaseEditor = new ReleaseEditorService
         {
             ReleaseEditSeed = _ => Task.FromResult(
@@ -109,6 +108,5 @@ public sealed class ReleaseActionDialogsTests
         "1991",
         new BridgeRawPressingEdit(
             "1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
-        Array.Empty<BridgeRawTrackEdit>(),
-        ImportCandidateFixtures.BlankOrigins);
+        Array.Empty<BridgeRawTrackEdit>());
 }

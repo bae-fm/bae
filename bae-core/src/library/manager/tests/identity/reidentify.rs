@@ -563,12 +563,11 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
     );
 }
 
-/// Re-identifying rewrites what a source states and leaves what a person
-/// typed. The label they entered stands, still theirs; every field the tags
-/// state is read from the tags again.
+/// Applying file tags replaces edited fields, including clearing values
+/// absent from the tags.
 #[tokio::test]
-async fn re_identify_with_file_tags_keeps_the_fields_a_person_typed() {
-    use crate::import::{CandidateEditField, FieldOrigin, ReleaseReseed};
+async fn re_identify_with_file_tags_replaces_previously_edited_fields() {
+    use crate::import::ReleaseReseed;
     use lofty::config::WriteOptions;
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
@@ -596,9 +595,6 @@ async fn re_identify_with_file_tags_keeps_the_fields_a_person_typed() {
     release.remote = false;
     // A release read from MusicBrainz with one field a person typed over it.
     release.pressing.label = Some("Typed Label".to_string());
-    release.field_origins.album_title =
-        Some(FieldOrigin::Record(crate::import::Catalog::MusicBrainz));
-    release.field_origins.label = Some(FieldOrigin::Typed);
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
@@ -646,13 +642,8 @@ async fn re_identify_with_file_tags_keeps_the_fields_a_person_typed() {
         .unwrap();
     assert_eq!(
         updated.pressing.label.as_deref(),
-        Some("Typed Label"),
-        "the rewrite leaves the field the person entered"
-    );
-    assert_eq!(
-        updated.field_origins.get(CandidateEditField::Label),
-        Some(FieldOrigin::Typed),
-        "and it is still theirs"
+        None,
+        "applying file tags clears an edited field when the tags do not state it"
     );
 
     let landing_album_id = manager
@@ -668,11 +659,6 @@ async fn re_identify_with_file_tags_keeps_the_fields_a_person_typed() {
         .unwrap()
         .unwrap();
     assert_eq!(landing_album.title, "Tagged Album");
-    assert_eq!(
-        updated.field_origins.get(CandidateEditField::AlbumTitle),
-        Some(FieldOrigin::Tags),
-        "every field the tags state was read from them again"
-    );
 }
 
 /// Re-identifying onto a paired pressing keeps both sources: the picked

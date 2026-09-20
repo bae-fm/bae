@@ -69,10 +69,7 @@ struct InlineFieldHeightTests {
     ) {
         var seed = PreviewData.releaseEditSeed(trackCount: 2)
         seed.edit.albumTitle = Self.title
-        let reset = BridgeReleaseFormReset(
-            edit: seed.edit,
-            fieldProvenance: seed.fieldProvenance
-        )
+        let reset = seed.edit
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,

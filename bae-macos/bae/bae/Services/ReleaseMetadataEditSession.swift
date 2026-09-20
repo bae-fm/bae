@@ -19,20 +19,17 @@ final class ReleaseMetadataEditSession {
     let editingCommands = EditingCommitCommands()
 
     private(set) var form: BridgeRawReleaseEdit
-    /// Core supplies the origin to persist when a field is edited.
-    private var fieldProvenance: [BridgeFieldProvenance]
     private var operation: Operation?
     private(set) var failureMessage: String?
     private(set) var hasChanges = false
 
     private var persistedForm: BridgeRawReleaseEdit
-    private var persistedFieldProvenance: [BridgeFieldProvenance]
     private var formRevision = 0
     private let trackContextById: [String: BridgeReleaseEditTrackContext]
     private let saveAction:
         @Sendable (String, BridgeReleaseUserEdit) async throws -> Void
     private let resetAction:
-        @Sendable (String) async throws -> BridgeReleaseFormReset
+        @Sendable (String) async throws -> BridgeRawReleaseEdit
     private var operationTask: Task<Void, Never>?
     private var operationSerial = 0
 
@@ -44,15 +41,13 @@ final class ReleaseMetadataEditSession {
                 String, BridgeReleaseUserEdit
             ) async throws -> Void,
         reset:
-            @escaping @Sendable (String) async throws -> BridgeReleaseFormReset
+            @escaping @Sendable (String) async throws -> BridgeRawReleaseEdit
     ) {
         self.releaseId = releaseId
         cover = seed.cover
         display = seed.display
         canResetToSource = seed.canResetToSource
         form = seed.edit
-        fieldProvenance = seed.fieldProvenance
-        persistedFieldProvenance = seed.fieldProvenance
         persistedForm = seed.edit
         trackContextById = Dictionary(
             uniqueKeysWithValues: seed.display.tracks.map {
@@ -105,13 +100,11 @@ final class ReleaseMetadataEditSession {
                 return
             }
             let submittedForm = form
-            let submittedProvenance = fieldProvenance
             let submittedRevision = formRevision
             do {
                 try await saveAction(releaseId, edit)
                 try Task.checkCancellation()
                 persistedForm = submittedForm
-                persistedFieldProvenance = submittedProvenance
                 hasChanges = formRevision != submittedRevision
                 finish(serial)
                 onSuccess()
@@ -141,8 +134,7 @@ final class ReleaseMetadataEditSession {
             do {
                 let reset = try await resetAction(releaseId)
                 try Task.checkCancellation()
-                form = reset.edit
-                fieldProvenance = reset.fieldProvenance
+                form = reset
                 formRevision += 1
                 hasChanges = true
                 finish(serial)
@@ -169,7 +161,6 @@ final class ReleaseMetadataEditSession {
                 return
             }
             form = persistedForm
-            fieldProvenance = persistedFieldProvenance
             formRevision += 1
             hasChanges = false
             failureMessage = nil
@@ -195,15 +186,6 @@ final class ReleaseMetadataEditSession {
         case .country: form.pressing.country = value
         case .barcode: form.pressing.barcode = value
         }
-        if let index = fieldProvenance.firstIndex(where: { $0.field == field })
-        {
-            let typed = bridgeTypedFieldProvenance(
-                provenance: fieldProvenance[index],
-                value: value
-            )
-            fieldProvenance[index] = typed
-            form.origins.setField(field, typed.origin)
-        }
         formRevision += 1
         hasChanges = true
         failureMessage = nil
@@ -227,27 +209,6 @@ final class ReleaseMetadataEditSession {
         guard serial == operationSerial else { return }
         operation = nil
         operationTask = nil
-    }
-}
-
-extension BridgeFieldOrigins {
-    /// Put `origin` in this field's slot. The eight slots are named fields of
-    /// one record, so naming one is a switch — the same one the form's values
-    /// go through.
-    mutating func setField(
-        _ field: BridgeCandidateEditField,
-        _ origin: BridgeFieldOrigin?
-    ) {
-        switch field {
-        case .albumTitle: albumTitle = origin
-        case .albumYear: albumYear = origin
-        case .pressingYear: pressingYear = origin
-        case .format: format = origin
-        case .label: label = origin
-        case .catalogNumber: catalogNumber = origin
-        case .country: country = origin
-        case .barcode: barcode = origin
-        }
     }
 }
 

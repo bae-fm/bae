@@ -167,7 +167,6 @@ fn candidate_draft(title: &str, artist: &str) -> crate::import::CandidateDraft {
 
 fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
     RawReleaseEdit {
-        origins: Default::default(),
         album_title: title.to_string(),
         album_artist_assignments: if artist.is_empty() {
             Vec::new()

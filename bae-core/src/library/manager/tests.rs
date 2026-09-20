@@ -177,7 +177,6 @@ fn create_test_album() -> DbAlbum {
 }
 fn create_test_release(album_id: &str) -> DbRelease {
     DbRelease {
-        field_origins: Default::default(),
         id: Uuid::new_v4().to_string(),
         album_id: album_id.to_string(),
         release_name: None,

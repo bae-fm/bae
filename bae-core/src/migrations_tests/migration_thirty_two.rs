@@ -81,7 +81,9 @@ async fn every_stated_field_takes_the_origin_of_what_filled_the_draft() {
         .expect("seed version-thirty-one drafts");
     drop(handle);
 
-    let handle = open(store_dir, "migration-field-origins", all())
+    let mut migrations = all();
+    migrations.truncate(32);
+    let handle = open(store_dir, "migration-field-origins", migrations)
         .expect("migrate the drafts onto per-field origins");
     handle
         .read(|sql| {

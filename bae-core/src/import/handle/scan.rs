@@ -325,9 +325,6 @@ impl ImportServiceHandle {
         for (index, track) in source.draft.tracks.iter_mut().enumerate() {
             track.source_index = Some(u32::try_from(index).expect("source track index fits u32"));
         }
-        source.draft = source.draft.read_from(crate::import::FieldOrigin::Record(
-            payloads.release().catalog,
-        ));
         Ok(source)
     }
 

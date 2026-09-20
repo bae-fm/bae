@@ -311,11 +311,6 @@ pub struct DbRelease {
     /// Not the same question as which marks the release carries: a folder can
     /// state a barcode no catalog ever answered to.
     pub identified_by: Option<crate::import::MarkKind>,
-    /// Where each album-level value the edit sheet edits came from: the album
-    /// title and year, and the five pressing fields beside the pressing year.
-    /// The album's own row keeps the title; where it was read is a fact about
-    /// this release's draft, so it sits here with the rest.
-    pub field_origins: crate::import::FieldOrigins,
     /// Shared, synced fact (the coven gate column): is this release's audio in
     /// the cloud home (remote) or local to one device (local). A local release's
     /// in-place files are registered with coven as the user's own external
@@ -737,7 +732,6 @@ impl DbRelease {
             pressing: Pressing::blank(),
             draft_from_tags: false,
             identified_by: None,
-            field_origins: Default::default(),
             remote: false,
             source_folder_name: None,
             content_hash: None,

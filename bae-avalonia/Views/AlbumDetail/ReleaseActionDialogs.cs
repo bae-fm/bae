@@ -73,7 +73,7 @@ internal sealed class ReleaseActionDialogs
 
     private Control BuildEditMetadata(string releaseId, BridgeReleaseEditSeed seed, Action close)
     {
-        var form = new ReleaseEditForm(seed.Edit, seed.FieldProvenance, 460, _app.Library);
+        var form = new ReleaseEditForm(seed.Edit, 460, _app.Library);
         var column = DialogUi.Column();
         column.MinWidth = 460;
         column.Children.Add(DialogUi.Title(Loc.Chrome("album.edit.title")));
@@ -113,7 +113,7 @@ internal sealed class ReleaseActionDialogs
                 if (result.Reset is { } fresh)
                 {
                     form.ErrorText.IsVisible = false;
-                    form.Seed(fresh.Edit, fresh.FieldProvenance);
+                    form.Seed(fresh);
                 }
                 else
                 {

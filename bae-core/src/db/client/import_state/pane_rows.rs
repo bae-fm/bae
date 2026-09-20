@@ -14,29 +14,12 @@ use super::verdict_rows::unreadable;
 use super::*;
 use crate::db::client::candidate_state_rows::COVER_COLUMNS;
 use crate::import::{
-    ArtistAssignment, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack,
-    CoverSelection, ExistingArtist, FieldOrigin, FieldOrigins, NewArtistSeed, RawPressingEdit,
-    RawTrackEdit, TrackArtistAssignments,
+    ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, ExistingArtist,
+    NewArtistSeed, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, format, \
-     label, catalog_number, country, barcode, \
-     album_title_origin, album_year_origin, year_origin, format_origin, \
-     label_origin, catalog_number_origin, country_origin, barcode_origin";
-
-/// The origin columns in the order [`CandidateEditField::ALL`] lists the
-/// fields they describe, so a row's values and origins are read and written
-/// by one walk of the fields.
-const ORIGIN_COLUMNS: [&str; 8] = [
-    "album_title_origin",
-    "album_year_origin",
-    "year_origin",
-    "format_origin",
-    "label_origin",
-    "catalog_number_origin",
-    "country_origin",
-    "barcode_origin",
-];
+     label, catalog_number, country, barcode";
 
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, side, track_number, source_index, \
@@ -70,16 +53,10 @@ pub(crate) fn insert_draft(
     content_hash: &str,
     draft: &CandidateDraft,
 ) -> Result<(), DbError> {
-    let origins = CandidateEditField::ALL.map(|field| {
-        draft
-            .origins
-            .get(field)
-            .map(|origin| origin.as_str().into_owned())
-    });
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
@@ -91,14 +68,6 @@ pub(crate) fn insert_draft(
             draft.pressing.catalog_number,
             draft.pressing.country,
             draft.pressing.barcode,
-            origins[0],
-            origins[1],
-            origins[2],
-            origins[3],
-            origins[4],
-            origins[5],
-            origins[6],
-            origins[7],
         ],
     )?;
     insert_album_artist_assignments(sql, content_hash, &draft.album_artist_assignments)?;
@@ -312,23 +281,11 @@ pub(crate) fn load_drafts_on(
                 catalog_number: row.get("catalog_number")?,
                 country: row.get("country")?,
                 barcode: row.get("barcode")?,
-                origins: ORIGIN_COLUMNS
-                    .iter()
-                    .map(|column| row.get::<_, Option<String>>(*column))
-                    .collect::<Result<Vec<_>, _>>()?,
             })
         },
     )?;
     let mut out = HashMap::with_capacity(rows.len());
     for row in rows {
-        let mut origins = FieldOrigins::default();
-        for (field, stored) in CandidateEditField::ALL.into_iter().zip(row.origins) {
-            let Some(stored) = stored else { continue };
-            origins.set(
-                field,
-                Some(FieldOrigin::from_str(&stored).map_err(DbError::Message)?),
-            );
-        }
         out.insert(
             row.content_hash.clone(),
             CandidateDraft {
@@ -347,15 +304,13 @@ pub(crate) fn load_drafts_on(
                     barcode: row.barcode,
                 },
                 tracks: tracks.remove(&row.content_hash).unwrap_or_default(),
-                origins,
             },
         );
     }
     Ok(out)
 }
 
-/// One `import_candidate_edit` row as SQLite hands it over: the eight values
-/// and, in the same field order, where each was read.
+/// One `import_candidate_edit` row as SQLite hands it over.
 struct StoredDraftRow {
     content_hash: String,
     album_title: String,
@@ -366,7 +321,6 @@ struct StoredDraftRow {
     catalog_number: String,
     country: String,
     barcode: String,
-    origins: Vec<Option<String>>,
 }
 
 /// One `import_candidate_track` row as SQLite hands it over.

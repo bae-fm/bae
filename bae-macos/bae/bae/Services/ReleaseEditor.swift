@@ -29,7 +29,7 @@ final class ReleaseEditor: Observable {
         @Sendable (_ releaseId: String, _ edit: BridgeReleaseUserEdit)
             async throws -> Void
     let resetReleaseEditToSource:
-        @Sendable (_ releaseId: String) async throws -> BridgeReleaseFormReset
+        @Sendable (_ releaseId: String) async throws -> BridgeRawReleaseEdit
     let fetchRemoteCovers:
         @Sendable (_ target: BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery
@@ -66,7 +66,7 @@ final class ReleaseEditor: Observable {
             @escaping @Sendable (String, BridgeReleaseUserEdit) async throws ->
             Void = { _, _ in },
         resetReleaseEditToSource:
-            @escaping @Sendable (String) async throws -> BridgeReleaseFormReset =
+            @escaping @Sendable (String) async throws -> BridgeRawReleaseEdit =
             { _ in throw StubError.notImplemented },
         fetchRemoteCovers:
             @escaping @Sendable (BridgeCoverTarget) async throws ->

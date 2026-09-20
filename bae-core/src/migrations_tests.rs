@@ -4,6 +4,9 @@ use coven::{Coven, CovenError, FixedClock, MigrationError, StoreDir};
 use serial_test::serial;
 use std::sync::Arc;
 
+#[path = "migrations_tests/remove_field_origins.rs"]
+mod remove_field_origins;
+
 #[path = "migrations_tests/audio_backed_drafts.rs"]
 mod audio_backed_drafts;
 

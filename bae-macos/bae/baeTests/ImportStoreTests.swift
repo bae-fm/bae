@@ -264,7 +264,6 @@ private func detail(
         fileEvidence: [],
         metadataDraft: MappingFixtures.albumEdit,
         metadataDraftIsBlank: false,
-        fieldProvenance: PreviewData.fieldProvenance(),
         metadataProvenance: MappingFixtures.provenance,
         metadataAuthor: .user,
         metadataRevision: 1,

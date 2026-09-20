@@ -387,17 +387,7 @@ async fn file_tags_import_with_user_edit_overlay() {
         }],
     );
 
-    let mut origins = bae_core::import::FieldOrigins::default();
-    origins.set(
-        bae_core::import::CandidateEditField::AlbumTitle,
-        Some(bae_core::import::FieldOrigin::Typed),
-    );
-    origins.set(
-        bae_core::import::CandidateEditField::Label,
-        Some(bae_core::import::FieldOrigin::Tags),
-    );
     let edit = ReleaseUserEdit {
-        origins: origins.clone(),
         album_title: "Edited Title".to_string(),
         album_artist_assignments: vec![ArtistAssignment::new("Artist Edited")],
         album_year: Some(1998),
@@ -440,15 +430,6 @@ async fn file_tags_import_with_user_edit_overlay() {
     assert_eq!(release.pressing.country.as_deref(), Some("JP"));
     assert_eq!(release.pressing.barcode.as_deref(), Some("4943674000000"));
     assert!(release.draft_from_tags);
-    assert_eq!(
-        release.field_origins.album_title,
-        Some(bae_core::import::FieldOrigin::Typed),
-        "the commit carries where each of the draft's fields was read",
-    );
-    assert_eq!(
-        release.field_origins.label,
-        Some(bae_core::import::FieldOrigin::Tags),
-    );
 
     let records = f.db.get_release_records(&release_id).await.unwrap();
     assert!(

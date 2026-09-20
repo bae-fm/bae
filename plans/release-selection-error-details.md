@@ -23,3 +23,6 @@ Do not discard the underlying cause across core, bridge, or Swift. OS logs and a
 
 ## Verification
 Add failing coverage for the actual failure-to-visible/copyable-details flow before implementation. Run relevant core/bridge boundary tests and macOS UI/state tests, build the app, review against this contract, run normal commit hooks, and report exactly what was checked.
+
+## Queued successor
+After this task lands, execute [Cover image formats](cover-image-formats.md) in the same worktree on its own branch. That contract adds Rust decoding for JPEG, PNG, GIF, and WebP consistently across remote, embedded, and local covers; it remains separate from generic unexpected-error diagnostics.

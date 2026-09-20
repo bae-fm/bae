@@ -553,9 +553,6 @@ fn apply_user_edit_to_seed(
         now,
     )?;
 
-    // The draft the person committed says where each of its fields was read;
-    // the release keeps that answer.
-    db_release.field_origins = edit.origins.clone();
     db_release.pressing = crate::db::Pressing {
         year: edit.pressing.year,
         format: edit.pressing.format.clone(),

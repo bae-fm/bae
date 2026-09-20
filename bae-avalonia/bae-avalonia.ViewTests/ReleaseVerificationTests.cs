@@ -88,7 +88,6 @@ public sealed class ReleaseVerificationTests
             Marks = [],
             Verification = verification,
             Records = [],
-            FieldProvenance = ImportCandidateFixtures.FieldProvenance(),
             IsReading = false,
             LookupOptions = null,
             LoadCover = null,

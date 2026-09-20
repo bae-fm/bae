@@ -1,8 +1,7 @@
 //! Persisted release metadata editor loading and source reset.
 //!
-//! Desktop-only, like the editor itself: what a seed says about each field
-//! is read back from the archived documents, which only the desktop build
-//! carries.
+//! The editor reads current values and can explicitly replace them with the
+//! archived source metadata.
 
 use super::release::cover_ref_for;
 use super::*;
@@ -97,17 +96,11 @@ impl LibraryManager {
                     barcode: release.pressing.barcode.clone(),
                 },
                 tracks: tracks.iter().map(|(_, track)| track.clone()).collect(),
-                origins: release.field_origins.clone(),
             },
             tracks.iter().map(|(id, _)| id.as_str()),
         )?;
 
-        let claims = self
-            .database
-            .release_field_claims(context.detail.records.clone())
-            .await?;
         Ok(crate::import::ReleaseEditSeed {
-            field_provenance: crate::import::FieldProvenance::of(&edit.origins, &claims),
             edit,
             can_reset_to_source,
             cover,
@@ -121,19 +114,14 @@ impl LibraryManager {
     pub async fn reset_release_edit_to_source(
         &self,
         release_id: &str,
-    ) -> Result<crate::import::ReleaseFormReset, LibraryError> {
+    ) -> Result<crate::import::RawReleaseEdit, LibraryError> {
         let edit = self.reset_metadata_to_source(release_id).await?;
         let tracks = self.database.get_tracks_for_release(release_id).await?;
         let edit = raw_release_edit_with_persisted_track_ids(
             edit,
             tracks.iter().map(|track| track.id.as_str()),
         )?;
-        let records = self.database.get_release_records(release_id).await?;
-        let claims = self.database.release_field_claims(records).await?;
-        Ok(crate::import::ReleaseFormReset {
-            field_provenance: crate::import::FieldProvenance::of(&edit.origins, &claims),
-            edit,
-        })
+        Ok(edit)
     }
 }
 
@@ -154,13 +142,11 @@ fn raw_release_edit_with_persisted_track_ids<'a>(
         album_year,
         pressing,
         tracks,
-        origins,
     } = edit;
     Ok(crate::import::RawReleaseEdit {
         album_title,
         album_artist_assignments,
         album_year: album_year.map(|year| year.to_string()).unwrap_or_default(),
-        origins,
         pressing: crate::import::RawPressingEdit::from_pressing(&pressing),
         tracks: tracks
             .into_iter()

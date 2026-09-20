@@ -360,7 +360,6 @@ internal static class ShotCapture
         {
             Presentation = presentation,
             DraftIsBlank = draftIsBlank,
-            FieldProvenance = PreviewFieldProvenance(),
             Title = edit?.AlbumTitle is { Length: > 0 } albumTitle
                 ? albumTitle
                 : Loc.Chrome("import.metadata.album_title_placeholder"),
@@ -420,8 +419,7 @@ internal static class ShotCapture
             "CAT-1",
             "UK",
             "0123456789012"),
-        Array.Empty<BridgeRawTrackEdit>(),
-        BlankOrigins);
+        Array.Empty<BridgeRawTrackEdit>());
 
     private static BridgeRawReleaseEdit PreviewBlankMetadata() => new(
         string.Empty,
@@ -434,73 +432,7 @@ internal static class ShotCapture
             string.Empty,
             string.Empty,
             string.Empty),
-        Array.Empty<BridgeRawTrackEdit>(),
-        BlankOrigins);
-
-    /// A form nothing has described yet: no field states where its value was
-    /// read, because no source has filled one.
-    private static BridgeFieldOrigins BlankOrigins =>
-        new(null, null, null, null, null, null, null, null);
-
-    /// The two things a field's dot has to say, over the preview draft: a
-    /// label the person typed over what the catalogs state, and a catalog
-    /// number the two catalogs state differently.
-    private static BridgeFieldProvenance[] PreviewFieldProvenance()
-    {
-        BridgeFieldClaim[] Agreed(string value) =>
-        [
-            new(BridgeCatalog.MusicBrainz, value),
-            new(BridgeCatalog.Discogs, value),
-        ];
-        var fromMusicBrainz = new BridgeFieldOrigin.Record(
-            BridgeCatalog.MusicBrainz);
-        return
-        [
-            new(
-                BridgeCandidateEditField.AlbumTitle,
-                fromMusicBrainz,
-                Agreed("Album Title"),
-                null),
-            new(
-                BridgeCandidateEditField.AlbumYear,
-                fromMusicBrainz,
-                Agreed("1991"),
-                null),
-            new(
-                BridgeCandidateEditField.PressingYear,
-                fromMusicBrainz,
-                Agreed("1996"),
-                null),
-            new(
-                BridgeCandidateEditField.Format,
-                fromMusicBrainz,
-                Agreed("CD"),
-                null),
-            new(
-                BridgeCandidateEditField.Label,
-                new BridgeFieldOrigin.Typed(),
-                Agreed("Label Name"),
-                BridgeFieldDot.Typed),
-            new(
-                BridgeCandidateEditField.CatalogNumber,
-                fromMusicBrainz,
-                [
-                    new(BridgeCatalog.MusicBrainz, "CAT-1"),
-                    new(BridgeCatalog.Discogs, "CAT-1-A"),
-                ],
-                BridgeFieldDot.Disagreement),
-            new(
-                BridgeCandidateEditField.Country,
-                fromMusicBrainz,
-                Agreed("UK"),
-                null),
-            new(
-                BridgeCandidateEditField.Barcode,
-                fromMusicBrainz,
-                Agreed("0123456789012"),
-                null),
-        ];
-    }
+        Array.Empty<BridgeRawTrackEdit>());
 
     private static BridgeArtistAssignment[] PreviewArtists() =>
         PreviewData.ArtistAssignments;

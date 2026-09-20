@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -18,10 +17,6 @@ internal sealed class ImportMetadataSourceSection
     internal required bool DraftIsBlank { get; init; }
     internal required string Title { get; init; }
     internal required BridgeRawReleaseEdit? Edit { get; init; }
-    /// <summary>One entry per album-level field of that draft, as core reads
-    /// them: where the value came from, what every catalog claiming the pick
-    /// says about it, and what its dot says.</summary>
-    internal required IReadOnlyList<BridgeFieldProvenance> FieldProvenance { get; init; }
     internal required string MetaLine { get; init; }
     internal required string SourceAudioLine { get; init; }
     /// <summary>Every name the folder states, drawn under the audio facts.
@@ -399,56 +394,27 @@ internal sealed class ImportMetadataSourceSection
             RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto,Auto,Auto"),
             RowSpacing = 8,
         };
-        Add(grid, 0, 0, Loc.Chrome("edit.field.year"), pressing.Year, BridgeCandidateEditField.PressingYear, fitsValue: true);
-        Add(grid, 0, 1, Loc.Core("core.release.media"), pressing.Format, BridgeCandidateEditField.Format, fitsValue: true);
-        Add(grid, 0, 2, Loc.Chrome("edit.field.label"), pressing.Label, BridgeCandidateEditField.Label, fitsValue: true);
-        Add(grid, 0, 3, Loc.Chrome("edit.field.country"), pressing.Country, BridgeCandidateEditField.Country, fitsValue: true);
-        Add(grid, 0, 4, Loc.Chrome("edit.field.catalog_number"), pressing.CatalogNumber, BridgeCandidateEditField.CatalogNumber, fitsValue: true);
-        Add(grid, 0, 5, Loc.Chrome("edit.field.barcode"), pressing.Barcode, BridgeCandidateEditField.Barcode, fitsValue: true);
+        Add(grid, 0, 0, Loc.Chrome("edit.field.year"), pressing.Year, BridgeCandidateEditField.PressingYear);
+        Add(grid, 0, 1, Loc.Core("core.release.media"), pressing.Format, BridgeCandidateEditField.Format);
+        Add(grid, 0, 2, Loc.Chrome("edit.field.label"), pressing.Label, BridgeCandidateEditField.Label);
+        Add(grid, 0, 3, Loc.Chrome("edit.field.country"), pressing.Country, BridgeCandidateEditField.Country);
+        Add(grid, 0, 4, Loc.Chrome("edit.field.catalog_number"), pressing.CatalogNumber, BridgeCandidateEditField.CatalogNumber);
+        Add(grid, 0, 5, Loc.Chrome("edit.field.barcode"), pressing.Barcode, BridgeCandidateEditField.Barcode);
         column.Children.Add(grid);
         return column;
     }
 
-    /// <summary>What an empty release field is drawn at, so there is
-    /// something to click into; a filled one is as wide as its value.</summary>
-    private const double EmptyValueWidth = 96;
-
-    /// <summary>One labelled field. <paramref name="fitsValue"/> sizes the box
-    /// to its value so the provenance dot sits right after the text; a
-    /// stretched box puts the dot at the far edge of the column.</summary>
     private void Add(
         Grid grid,
         int column,
         int row,
         string label,
         string value,
-        BridgeCandidateEditField field,
-        bool fitsValue = false)
+        BridgeCandidateEditField field)
     {
         var control = DialogUi.Field(label, out var box);
         box.FontSize = 12;
         box.Commits(value, typed => OnEditField(field, typed));
-        if (fitsValue)
-        {
-            box.HorizontalAlignment = HorizontalAlignment.Left;
-            box.MinWidth = value.Length == 0 ? EmptyValueWidth : 0;
-        }
-        var entry = FieldProvenance.FirstOrDefault(item => item.Field == field);
-        if (entry is not null && FieldOriginDot.For(entry) is { } dot)
-        {
-            var stack = (StackPanel)control;
-            stack.Children.RemoveAt(1);
-            var valueRow = new Grid
-            {
-                ColumnDefinitions = new ColumnDefinitions(fitsValue ? "Auto,Auto" : "*,Auto"),
-                ColumnSpacing = 7,
-            };
-            Grid.SetColumn(box, 0);
-            Grid.SetColumn(dot, 1);
-            valueRow.Children.Add(box);
-            valueRow.Children.Add(dot);
-            stack.Children.Add(valueRow);
-        }
         Grid.SetColumn(control, column);
         Grid.SetRow(control, row);
         grid.Children.Add(control);

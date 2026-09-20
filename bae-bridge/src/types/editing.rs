@@ -1,9 +1,6 @@
 #[cfg(feature = "desktop")]
 use super::*;
-use super::{
-    BridgeCatalog, BridgeImageRef, BridgeSourceAudioLayout, BridgeSourceAudioSummary,
-    BridgeTrackSide,
-};
+use super::{BridgeImageRef, BridgeSourceAudioLayout, BridgeSourceAudioSummary, BridgeTrackSide};
 
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
@@ -96,10 +93,6 @@ pub struct BridgeReleaseUserEdit {
     pub album_year: Option<i32>,
     pub pressing: BridgePressingEdit,
     pub tracks: Vec<BridgeTrackUserEdit>,
-    /// Where each album-level value above came from, carried from the form
-    /// that was shaped into this edit. A field the edit changes without
-    /// saying is read by the write as typed.
-    pub origins: BridgeFieldOrigins,
 }
 
 /// Mirror of `bae_core::import::PressingEdit`. Groups the six pressing
@@ -549,84 +542,6 @@ mirror_enum! {
     },
 }
 
-/// Where one album-level field's value came from. Mirrors
-/// `bae_core::import::FieldOrigin`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeFieldOrigin {
-    /// A catalog's description of the release.
-    Record { catalog: BridgeCatalog },
-    /// The audio files' own tags.
-    Tags,
-    /// A person typed it.
-    Typed,
-}
-
-/// Where every album-level field of one form came from. `None` is a blank
-/// field. Mirrors `bae_core::import::FieldOrigins`.
-#[derive(Debug, Clone, Default, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeFieldOrigins {
-    pub album_title: Option<BridgeFieldOrigin>,
-    pub album_year: Option<BridgeFieldOrigin>,
-    pub pressing_year: Option<BridgeFieldOrigin>,
-    pub format: Option<BridgeFieldOrigin>,
-    pub label: Option<BridgeFieldOrigin>,
-    pub catalog_number: Option<BridgeFieldOrigin>,
-    pub country: Option<BridgeFieldOrigin>,
-    pub barcode: Option<BridgeFieldOrigin>,
-}
-
-/// What one catalog's record of the release says about one field. `None` when
-/// that record states nothing for it. Mirrors
-/// `bae_core::import::FieldClaim`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeFieldClaim {
-    pub catalog: BridgeCatalog,
-    pub value: Option<String>,
-}
-
-/// What one field's dot says. Core's answer, so no surface weighs a typed
-/// value against a disagreement. Mirrors `bae_core::import::FieldDot`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeFieldDot {
-    /// A person typed this value.
-    Typed,
-    /// The catalogs describing this release do not agree on this field.
-    Disagreement,
-}
-
-/// One field's whole story: where its value came from, what every catalog
-/// describing the release says about it, and what its dot says. Mirrors
-/// `bae_core::import::FieldProvenance`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeFieldProvenance {
-    pub field: BridgeCandidateEditField,
-    pub origin: Option<BridgeFieldOrigin>,
-    pub claims: Vec<BridgeFieldClaim>,
-    /// The dot to draw after the value, or none.
-    pub dot: Option<BridgeFieldDot>,
-}
-
-/// The field's stable name, for a surface that has to name one — a test hook,
-/// an accessibility identifier — rather than draw it.
-#[cfg_attr(feature = "desktop", uniffi::export)]
-pub fn bridge_field_name(field: BridgeCandidateEditField) -> String {
-    field.into_core().as_str().to_string()
-}
-
-/// One field as a person typing `value` into it leaves it.
-///
-/// A form a surface holds until it is saved has no stored origin to read yet,
-/// so the dot it draws while a person types is this one — core's own rule,
-/// asked rather than re-derived.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn bridge_typed_field_provenance(
-    provenance: BridgeFieldProvenance,
-    value: String,
-) -> BridgeFieldProvenance {
-    BridgeFieldProvenance::from_core(provenance.into_core().typed(&value))
-}
-
 /// Raw edit-metadata form values, exactly as the editor holds them — text
 /// as typed, not yet normalized. Mirrors `bae_core::import::RawReleaseEdit`.
 /// The editor binds directly to this shape and calls `shape_release_edit` to
@@ -638,17 +553,6 @@ pub struct BridgeRawReleaseEdit {
     pub album_year: String,
     pub pressing: BridgeRawPressingEdit,
     pub tracks: Vec<BridgeRawTrackEdit>,
-    /// Where each album-level value above came from, so a form that is saved
-    /// tells core what it was told.
-    pub origins: BridgeFieldOrigins,
-}
-
-/// A release's form as its source states it again, with what describes each of
-/// its fields. Mirrors `bae_core::import::ReleaseFormReset`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseFormReset {
-    pub edit: BridgeRawReleaseEdit,
-    pub field_provenance: Vec<BridgeFieldProvenance>,
 }
 
 /// The raw edit form for one library release plus core's answer about whether
@@ -659,9 +563,6 @@ pub struct BridgeReleaseEditSeed {
     pub can_reset_to_source: bool,
     pub cover: Option<BridgeImageRef>,
     pub display: BridgeReleaseEditDisplayContext,
-    /// One entry per album-level field: where the release's value came from,
-    /// what every catalog describing it says, and what its dot says.
-    pub field_provenance: Vec<BridgeFieldProvenance>,
 }
 
 /// One persisted file that supplies samples for a track in the release editor.
