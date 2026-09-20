@@ -36,12 +36,55 @@ same dimension/allocation policy as normalization. The existing byte-download
 cap remains independent and required.
 
 `util/cover.rs::resize_cover` currently writes the decoded `DynamicImage`
-directly to JPEG. GIF/WebP can produce RGBA, so tests must establish the JPEG
-encoder's behavior and make the output color conversion explicit. Research the
-existing display background/alpha convention before choosing compositing;
-unsupported alpha must not turn valid accepted artwork into an import failure.
+directly to JPEG. The locked `image` version is 0.25.10. Its
+`DynamicImage::write_with_encoder_impl` calls the JPEG encoder's
+`make_compatible_img`, which converts RGBA to RGB with `to_rgb8`; grayscale
+alpha converts to grayscale. Alpha alone therefore does not establish an
+encoding failure. Preserve this existing conversion contract and test it with
+transparent PNG, GIF, and WebP input; do not add background compositing or a
+second conversion solely on the assumption that JPEG rejects `DynamicImage`
+alpha. Actual decoding remains subject to the shared resource limits.
 
 `ContentTypeHint::is_raster_image` includes BMP because BMP remains previewable.
 Do not redefine raster images to mean cover formats. Trace its consumers and
 introduce a cover-specific eligibility predicate only where cover choices are
 constructed; retain file classification and attachment previews.
+
+## Confirmed cover-choice boundaries
+
+- `import/local_artwork.rs::default_local_cover_file` and
+  `import/service/cover_image.rs::pick_folder_cover` currently accept every
+  raster extension, including BMP. Apply the four-format eligibility policy to
+  automatic and explicit choices at both boundaries. Leave scanner image roles
+  and attachment previews intact.
+- `bae-bridge/src/types/conversion/mapping.rs` currently gives every artwork
+  file a required cover choice. The macOS `BridgeCandidateFiles.images` list
+  supplies both the cover picker and the artwork browser. Represent the absent
+  cover choice for previewable unsupported files at the core/bridge boundary;
+  select only eligible choices for the picker while keeping all artwork in the
+  browser. Do not filter the shared images list and thereby hide attachments.
+  Update required canonical callers and fixtures with the bridge shape.
+- `import/file_tag_snapshot.rs::embedded_cover_from_tag` chooses a front picture
+  or the first picture before checking its MIME type; its MIME conversion also
+  accepts BMP. Make eligibility part of choosing the picture, so an unsupported
+  front picture does not hide an eligible later picture. Keep front-picture
+  preference among eligible pictures and existing file order. Both snapshot
+  extraction and `read_embedded_cover` use this helper.
+- `library/manager/image.rs::change_cover` normalizes both stored release files
+  and remote choices with `resize_cover`. Verify this existing stored-cover
+  path as well as the import funnel, and ensure its picker does not offer a
+  format normalization rejects. Original release-file bytes stay unchanged.
+
+`BaeKit/Sources/BaeKit/ImageLoader.swift` uses image index zero for both native
+and thumbnail ImageIO decoding and preserves the image's alpha. It does not
+flatten artwork onto a fixed background. Keep its wider preview behavior; Rust
+cover normalization produces the existing static JPEG representation.
+
+Factor the bounded byte decoder in `util/cover.rs` so remote validation and
+normalization use the same detected-format allowlist, 8,192-pixel width/height
+limits, and 128 MiB decode allocation limit. Remote validation must retain the
+original accepted bytes and their detected content type, not cache normalized
+JPEG bytes under the original type. Retain the independent HTTP body cap and
+the request/content error classification established by the preceding task.
+Remove the arbitrary 100-byte rejection only with a regression exercising the
+real `RemoteImageCache` HTTP path. Do not build a second decoder in that test.
