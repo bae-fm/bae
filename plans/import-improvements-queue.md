@@ -70,6 +70,11 @@ scope. Do not mutate the user's live database or media during verification.
    Correct the misleading **Choose audio…** state for a resolved multi-file
    CUE and expose per-file associations directly rather than hiding them in
    nested menus. This is separate from restoring omitted source tracks.
+9. [Release result matching](release-result-matching.md). Compare release
+   identity evidence before album text grouping. Normalize identifier formatting
+   and semantic pressing values. Label spelling is supporting evidence, not a
+   mandatory exact match. Keep ambiguous candidates separate; do not choose the
+   first or infer a pressing match from a shared master/release group.
 
 ## Existing model and scope guardrails
 
