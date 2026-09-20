@@ -1,7 +1,7 @@
 # Release and album cross-reference enrichment
 
 ## Queue and execution
-Execute after `plans/remove-field-origins.md` has been implemented, reviewed, verified, and landed. Use a separate focused branch in the same background worktree. Research the current source, write the detailed implementation steps, implement with regression tests, review against this contract, run normal hooks, and coordinate a fast-forward merge and push with the parent agent.
+Follow the authoritative order in `plans/import-improvements-queue.md`, after the origin removal and Avalonia caller prerequisite. Use a separate focused branch in the same background worktree. Research the current source, write the detailed implementation steps, implement with regression tests, review against this contract, run normal hooks, and coordinate a fast-forward merge and push with the parent agent.
 
 ## User contract
 Selecting metadata is a one-time replacement of the draft. It overwrites existing values including manually edited ones. No per-field protection and no continuing provider binding.
@@ -47,9 +47,11 @@ A known pressing outranks an album-only record for the same catalog; this never
 licenses inventing a pressing from an album relationship.
 
 Add a new ordered migration for persisted record kind and optional parent key.
-Recover old parent identities from archived source documents where available;
-`group_key == key` is not proof of parenthood or absence because Discogs release
-and master IDs can coincide. Preserve release-to-library-album membership.
+Derive migrated parent identity only from canonical synced state: a distinct
+stored group key remains known, while `group_key == key` remains unknown.
+Local archived documents cannot determine canonical migration results. Preserve
+them for explicit source reapplication, including cases where Discogs release
+and master IDs coincide. Preserve release-to-library-album membership.
 Update duplicate-pressing and album-merge queries, metadata provenance, library
 artwork dispatch, bridge/automation projections, all canonical callers and
 fixtures together. Album catalog links must not create false pressing matches.
@@ -59,8 +61,8 @@ fixtures together. Album catalog links must not create false pressing matches.
 Each request is identified by `(PayloadSource, entity key)`. The release anchor
 remains required. Queue related documents and reverse URL requests discovered
 from each parsed document; mark a request visited before fetching it, including
-missing or failed optional requests. Sort same-kind targets by key for stable
-precedence and fetch each distinct document once. A MusicBrainz release follows
+missing or failed optional requests. Sort same-kind request targets by key for reproducible traversal, never to
+resolve competing identities, and fetch each distinct document once. A MusicBrainz release follows
 release relationships, while a release group follows album relationships; a
 release URL filed on a group must not fabricate a pressing correspondence.
 Discogs releases enqueue their master and reverse release URL lookup; masters
@@ -88,6 +90,19 @@ application may expand previously archived documents with newly supported relate
 documents, while ordinary pane reads and frozen applied snapshots stay offline.
 No later background repair or hidden provider binding is introduced.
 
+Freeze every explicitly selected partner's complete `ReleasePayloads` beside the
+primary in `AppliedSource.partners`. Preparation returns the actual fetched sets;
+manual application and sweep persist those sets in the metadata revision, and
+import projects records exclusively from that frozen selection. Re-identification
+keeps the prepared sets through its operation rather than reloading the archive.
+Migration 43 adds required partner snapshots to pending applications from their
+stored provenance and archived documents, preserves the existing primary bytes,
+and fails atomically if a selected partner cannot be recovered. No default or
+alternate snapshot decoder hides a missing field. An actual import regression
+replaced a partner group's archived AllMusic link after apply and reproduced the
+wrong committed identity before this change.
+
+
 ### Metadata projection
 
 Build provider-neutral album and pressing metadata before allocating database
@@ -107,6 +122,47 @@ without changing credited names or guessing that differently named artists match
 An optional document with an unusable artist credit logs and skips that credit;
 its valid sibling credits and other fields remain available. Selected-release
 validation remains unchanged.
+
+#### Ambiguous relationship policy
+
+The selected release and its explicitly stated parent remain authoritative.
+A unique directly corresponding release may contribute its own stated parent.
+When a selected release names several release counterparts, none becomes a
+pressing claim. Their parent may contribute an album claim only if every named
+counterpart has a usable fetched document and every one states the same parent
+identity. A missing document, missing parent, or conflicting parent makes that
+whole inference unavailable; unrelated archived documents do not supply it.
+Known conflicting counterpart parents remain an ambiguous claim at that priority,
+so a weaker associated link cannot choose one. A direct selected-release album
+URL outranks the counterpart-parent inference for metadata and album-link
+admission. It does not rewrite a known pressing’s stated parent: if selected MB
+names Discogs pressing 11 and master 102, but pressing 11 explicitly belongs to
+master 101, the Discogs record remains pressing 11 → master 101. Metadata may
+come from master 102 under selected-source precedence, while the known pressing
+continues to outrank the conflicting album-only record for catalog identity and
+deduplication.
+
+Resolve album and external-catalog relationships in complete priority groups:
+the selected release’s own parent first; selected-release URL claims; unique or
+unanimously agreed counterpart parents; unique-counterpart URL claims; then
+relationships from the admitted parents and
+albums, followed through successive graph distances. Wikidata links enter only
+through an admitted Wikidata identity. Within one priority group, identical
+claims coalesce, but distinct identities for one catalog leave that catalog
+unclaimed and block weaker alternatives. A stronger previously established
+identity keeps precedence. Never choose an identity by document order, key sort,
+or response order. Resolve each priority group before following its admitted
+identities, so ambiguous documents cannot leak their metadata, artwork, or links.
+
+Only admitted album documents supply supplemental title, artist IDs, original
+year, artwork, or further catalog links. The selected parent supplies missing
+album fields before other admitted parents; a selected pressing retains its
+own tracklist and all supplied fields. Each resulting catalog identity and
+metadata projection must be unchanged when relationship and supporting-document
+orders are permuted. Regression cases cover agreeing and conflicting parents
+of ambiguous pressing links, missing candidate parents, competing direct album
+links, competing same-priority external/Wikidata claims, and stronger direct
+identity precedence.
 
 Apply the assembled result once through existing replacement operations. No
 field-origin data or exception for manual edits returns. Source documents and
@@ -190,3 +246,28 @@ migrated values from the same synced input.
 
 Resolve this boundary before landing the persistence change; do not add nullable legacy kinds, arbitrary
 pressing defaults, or a fallback decoder to conceal the issue.
+
+The selected solution and complete history verification contract are in
+[synced-schema-history.md](synced-schema-history.md).
+
+Parent review also found malformed optional documents escaped the optional-fetch
+error boundary. Three regressions failed first; all 34 payload tests now pass
+with shared supporting-document admission across fetch, archive replay, snapshot
+metadata, detail, records, cover options, and stored rows. Required-anchor errors
+remain surfaced.
+
+Ambiguity and optional-document review verification: all 43 payload tests passed
+(`/private/tmp/bae-ambiguity-final-tests.log`). The regressions first reproduced
+arbitrary parent selection, selected URL precedence, and a known parent conflict
+lost when another counterpart was unavailable. Frozen `AppliedSource` round trips
+also cover malformed optional JSON and nested artwork fields; required anchors
+remain strict and explicit artwork-picker failures remain visible.
+
+Explicit partner snapshots passed the actual import regression after its failing
+baseline (`mw222` from replaced archive versus selected `mw111`). Related checks:
+43 payload tests, 10 partner tests, 76 sweep tests, and 7 re-identification tests
+passed. Two schema-42-to-43 tests verify exact partner selection, unchanged primary
+bytes/durations, required empty partner lists, and whole-upgrade rollback on a
+missing selected partner. Disabling migration 43 made both tests fail; restoring
+its exact source made both pass. Receipt:
+`/private/tmp/bae-frozen-partner-migration-restored.log`.

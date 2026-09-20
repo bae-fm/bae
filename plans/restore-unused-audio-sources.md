@@ -27,6 +27,105 @@ The plan must explicitly cover a removed whole file, a removed selected CUE slic
 - Verify metadata/default/numbering decisions from the completed design against real production construction and persistence, not duplicated test logic.
 - Exercise the actual macOS rendering and plus-button command path; translate the hover string and any other user-facing wording across all relevant catalogs.
 
+## Constructor and write contract
+
+The source trace for this contract is `track_slots.rs`, `pane.rs`,
+`types/raw_release_edit.rs`, `file_tag_mapper.rs`, `file_tags_seed.rs`,
+`release_candidate.rs`, `handle/scan.rs`, `handle/edits.rs`,
+`preparations/pane_edits.rs`, and `mapping.rs`. The available audio list already
+exists independently of included tracks: `audio_units(files)` derives whole
+files and selected CUE slices from the current file roles, sheet choices, and
+FILE associations. Use that list; do not persist an additional unused-source
+list or a removed-track archive.
+
+### New row metadata
+
+Restoration creates a new included row from the current source configuration.
+It does not recover the removed row's manually entered or online metadata.
+Construct the full source seed through the existing initialization projection,
+then take the one row with the requested exact `AudioFile` identity. Do not
+construct a one-track candidate: its position-based default would incorrectly
+become 1, and combined candidates would lose their source ordering and grouping.
+
+With Pre-fill with tags enabled, reuse `FileTagsSeed::project` over the
+candidate's current tag snapshot, with no included-track filter. Whole-file
+titles, artists, sides, and valid positive track numbers come from the existing
+file-tag mapper. A missing whole-file title uses the file stem. CUE slice titles
+and performers come from the selected CUE entry, its side from the sheet's disc
+assignment, and its number from its valid positive CUE number. A missing CUE
+title stays editable and empty, as in initialization; the source row still
+identifies the slice. Preserve the initializer's artist assignment semantics;
+do not guess new artist identities from current displayed names.
+
+With Pre-fill with tags disabled, reuse `ReleaseCandidate::blank_source`:
+title stays empty, artist assignment inherits the current album artists, whole
+files have unknown side, and selected CUE slices retain their physical disc
+assignment. This setting also suppresses CUE title/performer prefilling; it does
+not disable slicing. Combined candidates use their existing source projection
+and numbering rather than being reconstructed as a single folder.
+
+The existing initializer supplies a required number: a valid source number when
+used, otherwise the source's one-based position in the complete available-audio
+order. Retain that number when adding. Do not number from the shortened included
+list, change surviving numbers, or invent a collision-avoidance numbering policy.
+The source projection already permits a default number alongside partially tagged
+numbers; restoration does not add a renumbering facility.
+
+Assign a fresh row ID through the injected ID provider and set `source_index`
+to absent. A current online release is not evidence that this newly added audio
+corresponds to one of its tracks. Preserve all surviving rows, including their
+IDs, metadata, numbers, audio assignments, and source indices; preserve album
+fields, cover, provenance, and the applied-source snapshot.
+
+### Inclusion and ordering
+
+The add command names one exact currently offered audio identity, not a title,
+track number, removed row ID, or list index. A slice identity includes its
+container, sheet, and playable-entry index. Carry enough viewed source revision
+information to reject a stale offer after a rescan or source configuration
+change; checking only the filename is insufficient. Revalidate availability and
+candidate editability when committing.
+
+Insert relative to the current full source order without sorting or rewriting
+surviving rows. Place the new row before the first surviving row whose audio
+comes later in that source order; append when there is none. For the normal
+source-ordered list this restores the removed middle position, including across
+multiple discs. If a user has swapped audio between existing rows, preserve
+those rows' relative order and assignments rather than undoing the swap.
+
+Already included audio is a no-op after checking that the candidate remains
+editable. Concurrent requests based on the same preparation must either observe
+that inclusion or fail the existing revision check; they cannot append twice.
+Ignoring/replacing a CUE removes its slices from the offer set. Restoring a
+slice never changes the CUE FILE association, and it never makes the whole
+container concurrently available as another track.
+
+### Atomic preparation and rendering
+
+Follow the existing prepared pane-edit path: build the changed draft and required
+artist-image set, then save them together under `CandidateAsRead` file and
+metadata revisions and the scanned-candidate identity. Reuse
+`prepared_artist_images_for_active` with the resulting included tracks; an asset
+failure leaves the candidate unchanged. Do not call metadata application to add
+a row, clear identification merely because an included row changed, or fetch
+the selected online release again.
+
+Project unused sources from current available audio minus included audio in
+core, with their existing source names, durations, and audition targets. Expose
+an explicit not-included state to the existing mapping views; an omitted source
+is not AwaitingPick, not Missing, and not an editable track with blank metadata.
+Keep selected CUE controls reachable even when every one of their entries was
+removed. The macOS control is the existing plus icon pattern with Add track
+help/accessibility text; it sends the core-provided source identity. UI code
+does not rebuild source order or decide which slices are available. Update
+shared exhaustive consumers when extending a canonical mapping enum, without
+adding unrelated platform interaction work.
+
+Add assertions for the exact restored source number/title policy with prefilling
+on and off, a restored row after online metadata application retaining no source
+index, a completely removed selected CUE retaining controls, and existing audio
+swaps remaining intact. These extend the required regression cases above.
+
 ## Separate observed issue
 The macOS multi-file CUE header can say “Choose audio…” despite valid associations because ImportSheetBindingMenu uses containerName ?? placeholder and describesFiles has no single container name. This is an observed presentation issue pending design. Do not bundle a menu redesign into restoring unused audio sources.
 

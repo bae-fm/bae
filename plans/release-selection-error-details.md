@@ -1,7 +1,7 @@
 # Release selection error details
 
 ## Queue and execution
-Execute third, after `plans/remove-field-origins.md` and `plans/release-and-album-cross-reference.md` have landed. Use a separate focused branch in the same background worktree. Follow research, detailed implementation plan, regression tests, implementation, requirement-by-requirement review, normal verification/hooks, and coordinated fast-forward landing.
+Follow the authoritative order in `plans/import-improvements-queue.md`: execute after release/album cross-reference enrichment has landed. Use a separate focused branch in the same background worktree. Follow research, detailed implementation plan, regression tests, implementation, requirement-by-requirement review, normal verification/hooks, and coordinated fast-forward landing.
 
 ## User contract
 Only unexpected failures get diagnostic see/copy presentation. Expected failures, including handled HTTP 500/404 responses and other known provider/domain failures, remain in their established domain/status UI and are outside this task. Classify using existing error categories and caller semantics, never merely HTTP non-success or the presence of a selection error.
