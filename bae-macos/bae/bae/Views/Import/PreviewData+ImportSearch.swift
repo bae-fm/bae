@@ -21,7 +21,7 @@
                         label: "Label Name",
                         catalogNumber: "1871-2",
                         country: "US",
-                        barcode: nil,
+                        barcodes: [],
                         sourceGroupId: "group-preview"
                     )
                 ],
@@ -43,7 +43,7 @@
                         label: "Label Name",
                         catalogNumber: "6006-2",
                         country: "US",
-                        barcode: "0123456789012",
+                        barcodes: ["0123456789012"],
                         sourceGroupId: "group-preview"
                     ),
                     BridgeMetadataResult(
@@ -54,7 +54,7 @@
                         label: "Label Name",
                         catalogNumber: "6006-2",
                         country: "US",
-                        barcode: "0123456789012",
+                        barcodes: ["0123456789012"],
                         sourceGroupId: "master-6"
                     ),
                 ],
@@ -149,7 +149,7 @@
                                 label: "Label Name",
                                 catalogNumber: "6006-2",
                                 country: "US",
-                                barcode: "0123456789012",
+                                barcodes: ["0123456789012"],
                                 sourceGroupId: "grp-1"
                             )
                         ],
@@ -171,7 +171,7 @@
                                 label: "Another Label",
                                 catalogNumber: "AL-1234",
                                 country: "JP",
-                                barcode: nil,
+                                barcodes: [],
                                 sourceGroupId: "grp-1"
                             )
                         ],
@@ -215,7 +215,7 @@
                                 label: "Reissue Records",
                                 catalogNumber: "RR-500",
                                 country: "EU",
-                                barcode: "0123456789029",
+                                barcodes: ["0123456789029"],
                                 sourceGroupId: "grp-2"
                             ),
                             BridgeMetadataResult(
@@ -226,7 +226,7 @@
                                 label: "Reissue Records",
                                 catalogNumber: "RR-500",
                                 country: "EU",
-                                barcode: "0123456789029",
+                                barcodes: ["0123456789029"],
                                 sourceGroupId: "master-7"
                             ),
                         ],
@@ -277,7 +277,7 @@
                             label: "Label A",
                             catalogNumber: "AAA-001",
                             country: "US",
-                            barcode: nil,
+                            barcodes: [],
                             sourceGroupId: "group-disc"
                         )
                     ],
@@ -317,7 +317,7 @@
                             label: "Label B",
                             catalogNumber: "BBB-002",
                             country: "JP",
-                            barcode: nil,
+                            barcodes: [],
                             sourceGroupId: "group-bar"
                         )
                     ],

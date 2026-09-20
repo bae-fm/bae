@@ -14,7 +14,7 @@ use std::sync::OnceLock;
 /// What `name` says about which label it is: its words, with the trade words
 /// it ends on dropped, run together the way the candidate's text is read.
 /// `None` when nothing of the name is left.
-pub(super) fn stated(name: &str) -> Option<String> {
+pub(crate) fn stated(name: &str) -> Option<String> {
     let mut words = super::agreements::words(name);
     while let Some(tail) = tails().iter().find(|tail| words.ends_with(tail)) {
         words.truncate(words.len() - tail.len());

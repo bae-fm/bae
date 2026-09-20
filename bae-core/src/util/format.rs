@@ -21,12 +21,30 @@ enum FormatKind {
     Digital, // Downloads or unrecognized formats
 }
 
+/// Every physical medium a format string names, in the order the media are
+/// told apart in: vinyl, then cassette, then CD. Case does not matter —
+/// providers and folders write "Vinyl", "vinyl" and "VINYL". A mixed-media
+/// description names each of them; a string naming none is empty.
+///
+/// The one recognizer: playback classification reads its first medium,
+/// pressing matching reads all of them.
+pub fn recognized_media(format: &str) -> Vec<PhysicalMedium> {
+    let lowered = format.to_lowercase();
+    [
+        ("vinyl", PhysicalMedium::Vinyl),
+        ("cassette", PhysicalMedium::Cassette),
+        ("cd", PhysicalMedium::Cd),
+    ]
+    .into_iter()
+    .filter(|(needle, _)| lowered.contains(needle))
+    .map(|(_, medium)| medium)
+    .collect()
+}
+
 fn detect_format(format: Option<&str>) -> FormatKind {
-    match format {
-        Some(f) if f.contains("Vinyl") => FormatKind::Physical(PhysicalMedium::Vinyl),
-        Some(f) if f.contains("Cassette") => FormatKind::Physical(PhysicalMedium::Cassette),
-        Some(f) if f.contains("CD") => FormatKind::Physical(PhysicalMedium::Cd),
-        _ => FormatKind::Digital,
+    match format.and_then(|f| recognized_media(f).into_iter().next()) {
+        Some(medium) => FormatKind::Physical(medium),
+        None => FormatKind::Digital,
     }
 }
 
@@ -190,6 +208,22 @@ mod tests {
         assert_eq!(physical_medium(Some("2xCD")), Some(PhysicalMedium::Cd));
         assert_eq!(physical_medium(Some("Digital Media")), None);
         assert_eq!(physical_medium(None), None);
+    }
+
+    /// One format string can name several media, and their case is not
+    /// evidence of anything.
+    #[test]
+    fn recognized_media_lists_every_medium_whatever_the_case() {
+        assert_eq!(
+            recognized_media("CD + 12\" vinyl"),
+            vec![PhysicalMedium::Vinyl, PhysicalMedium::Cd]
+        );
+        assert_eq!(recognized_media("CASSETTE"), vec![PhysicalMedium::Cassette]);
+        assert_eq!(recognized_media("Digital Media"), Vec::new());
+        assert_eq!(
+            physical_medium(Some("2xlp, vinyl")),
+            Some(PhysicalMedium::Vinyl)
+        );
     }
 
     #[test]

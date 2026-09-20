@@ -60,14 +60,20 @@ async fn records_a_blank_match_barcode_and_drops_stale_identify_failures() {
         .read(|sql| {
             let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
             assert_eq!(version, i64::try_from(all().len()).expect("ladder fits"));
-            let (release_id, barcode): (String, Option<String>) = sql.query_row(
-                "SELECT release_id, barcode FROM import_candidate_match \
+            let release_id: String = sql.query_row(
+                "SELECT release_id FROM import_candidate_match \
                  WHERE content_hash = 'found-hash'",
                 [],
-                |row| Ok((row.get(0)?, row.get(1)?)),
+                |row| row.get(0),
             )?;
             assert_eq!(release_id, "rel-123");
-            assert_eq!(barcode, None, "no stored match knows its barcode yet");
+            let barcodes: i64 = sql.query_row(
+                "SELECT COUNT(*) FROM import_candidate_match_barcode \
+                 WHERE content_hash = 'found-hash'",
+                [],
+                |row| row.get(0),
+            )?;
+            assert_eq!(barcodes, 0, "no stored match knows its barcode yet");
             let failures: i64 = sql.query_row(
                 "SELECT COUNT(*) FROM import_candidate_verdict WHERE kind = 'failed'",
                 [],

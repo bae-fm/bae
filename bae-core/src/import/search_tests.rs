@@ -73,20 +73,167 @@ fn result_with_title(title: &str) -> DiscogsSearchResult {
     }
 }
 
-/// A Discogs search result states the barcodes Discogs holds; the first is the
-/// one the pressing projection keeps.
+/// A Discogs search result states every barcode Discogs holds, and a
+/// MusicBrainz record printing the second of them is the same pressing.
 #[test]
-fn discogs_search_result_keeps_its_first_barcode() {
+fn discogs_search_result_keeps_every_barcode_for_pairing() {
     let mut result = result_with_title("Artist Name - Album Title");
-    result.barcode = vec!["0 12345 67890 5".to_string(), "012345678905".to_string()];
+    result.year = Some("1992".to_string());
+    result.master_id = Some(7);
+    result.barcode = vec!["0 12345 67890 5".to_string(), "5051961234567".to_string()];
+    let discogs = discogs_search_result_to_metadata(result);
+
+    let mut musicbrainz = MetadataResult::for_test(Catalog::MusicBrainz, "mb-1", Some("group-x"));
+    musicbrainz.title = "Album Title".to_string();
+    musicbrainz.artist = Some("Artist Name".to_string());
+    musicbrainz.year = Some(1992);
+    musicbrainz.barcodes = vec!["5051961234567".to_string()];
+
+    let groups = crate::import::release_group::group_results(
+        crate::import::release_group::unranked(vec![musicbrainz, discogs]),
+    );
+    assert_eq!(groups.len(), 1);
+    assert_eq!(groups[0].pressings.len(), 1);
     assert_eq!(
-        discogs_search_result_to_metadata(result).barcode.as_deref(),
-        Some("0 12345 67890 5")
+        groups[0].pressings[0]
+            .releases
+            .iter()
+            .map(|release| release.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["mb-1", "1"]
+    );
+}
+
+/// Discogs writes zero where a release has no master. That is absence, not a
+/// shared group: two such results are two albums, whatever the titles say.
+#[test]
+fn a_zero_master_id_is_no_group() {
+    let results: Vec<DiscogsSearchResult> = serde_json::from_value(serde_json::json!([
+        { "id": 11, "title": "Artist Name - Album Title", "master_id": 0, "type": "release" },
+        { "id": 12, "title": "Artist Name - Album Title", "master_id": 0, "type": "release" }
+    ]))
+    .expect("Discogs search results parse");
+    let converted: Vec<MetadataResult> = results
+        .into_iter()
+        .map(discogs_search_result_to_metadata)
+        .collect();
+    assert!(converted.iter().all(|result| result.source_group_id.is_none()));
+
+    let groups = crate::import::release_group::group_results(
+        crate::import::release_group::unranked(converted),
+    );
+    assert_eq!(groups.len(), 2);
+    assert_eq!(groups[0].id, "11");
+    assert_eq!(groups[1].id, "12");
+}
+
+/// A release document's URL relations name its counterparts: a Discogs
+/// release page is a link, a master page names the album and not this
+/// pressing, and a page on no known catalog names nothing.
+#[test]
+fn discid_metadata_links_the_releases_its_document_names() {
+    let response: MbReleaseResponse = serde_json::from_value(serde_json::json!({
+        "id": "mb-release-1",
+        "title": "Album Title",
+        "artist-credit": [{ "name": "Artist Name" }],
+        "release-group": { "id": "mb-group-1" },
+        "label-info": [],
+        "media": [
+            { "format": "CD", "discs": [{ "id": "disc-1" }], "tracks": [{ "number": "1", "length": 240000, "title": "CD Track" }] }
+        ],
+        "relations": [
+            { "url": { "resource": "https://www.discogs.com/release/42-Artist-Name-Album-Title" } },
+            { "url": { "resource": "https://www.discogs.com/master/7-Artist-Name-Album-Title" } },
+            { "url": { "resource": "https://example.test/pages/album" } },
+            { "url": { "resource": "https://www.discogs.com/release/43" } }
+        ],
+        "cover-art-archive": { "front": false, "darkened": false }
+    }))
+    .expect("MusicBrainz DiscID response parses");
+
+    let metadata = mb_discid_release_to_metadata("disc-1", response)
+        .expect("the release contains the queried disc");
+
+    assert_eq!(
+        metadata.links,
+        vec![
+            crate::import::MetadataRef::new(Catalog::Discogs, "42"),
+            crate::import::MetadataRef::new(Catalog::Discogs, "43"),
+        ]
     );
     assert_eq!(
-        discogs_search_result_to_metadata(result_with_title("Artist Name - Album Title")).barcode,
-        None
+        metadata.media,
+        StatedMedia::PerMedium(vec![Some("CD".to_string())])
     );
+}
+
+/// A disc ID names one medium of a release that has several. The matching
+/// medium's tracks are what the Ready rule checks, but the pressing is made of
+/// every medium the response lists: a Discogs record of a cassette printing
+/// the same barcode is not this CD-plus-vinyl object, whichever medium the
+/// response lists first.
+#[test]
+fn discid_metadata_carries_every_medium_into_pairing() {
+    let barcode = "012345678905";
+    let discid_release = |media: serde_json::Value| -> MetadataResult {
+        let response: MbReleaseResponse = serde_json::from_value(serde_json::json!({
+            "id": "mb-release-1",
+            "title": "Album Title",
+            "date": "1992",
+            "barcode": barcode,
+            "artist-credit": [{ "name": "Artist Name" }],
+            "release-group": { "id": "mb-group-1" },
+            "label-info": [],
+            "media": media,
+            "relations": [],
+            "cover-art-archive": { "front": false, "darkened": false }
+        }))
+        .expect("MusicBrainz DiscID response parses");
+        mb_discid_release_to_metadata("disc-1", response)
+            .expect("the release contains the queried disc")
+    };
+    let vinyl_then_cd = discid_release(serde_json::json!([
+        { "format": "12\" Vinyl", "discs": [], "tracks": [{ "number": "A1", "length": 180000, "title": "Vinyl Track" }] },
+        { "format": "CD", "discs": [{ "id": "disc-1" }], "tracks": [{ "number": "1", "length": 240000, "title": "CD Track" }] }
+    ]));
+    let cd_then_vinyl = discid_release(serde_json::json!([
+        { "format": "CD", "discs": [{ "id": "disc-1" }], "tracks": [{ "number": "1", "length": 240000, "title": "CD Track" }] },
+        { "format": "12\" Vinyl", "discs": [], "tracks": [{ "number": "A1", "length": 180000, "title": "Vinyl Track" }] }
+    ]));
+    for release in [&vinyl_then_cd, &cd_then_vinyl] {
+        assert_eq!(release.format.as_deref(), Some("CD"));
+        assert_eq!(
+            release.source_tracks,
+            Some(SourceTracks::Listed {
+                count: 1,
+                total_duration_ms: Some(240_000),
+            })
+        );
+    }
+
+    let discogs_of = |format: &[&str]| -> MetadataResult {
+        let mut result = result_with_title("Artist Name - Album Title");
+        result.year = Some("1992".to_string());
+        result.master_id = Some(7);
+        result.barcode = vec![barcode.to_string()];
+        result.format = Some(format.iter().map(|f| f.to_string()).collect());
+        discogs_search_result_to_metadata(result)
+    };
+    let cassette = discogs_of(&["Cassette", "Album"]);
+    let vinyl = discogs_of(&["Vinyl", "LP", "Album"]);
+
+    for musicbrainz in [vinyl_then_cd, cd_then_vinyl] {
+        assert_eq!(
+            crate::import::release_group::pressing_count(vec![musicbrainz.clone(), cassette.clone()]),
+            2,
+            "a cassette is not part of a CD-plus-vinyl object"
+        );
+        assert_eq!(
+            crate::import::release_group::pressing_count(vec![musicbrainz.clone(), vinyl.clone()]),
+            1,
+            "a vinyl record is one of the object's media"
+        );
+    }
 }
 
 /// A typed query builds one request per provider from the same fields.

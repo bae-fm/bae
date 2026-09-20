@@ -885,7 +885,7 @@ public sealed class ImportMappingPaneTests
             "Label Name",
             "CAT-1",
             "UK",
-            "012345678905",
+            ["012345678905"],
             "source-group-1");
         return new BridgeReleaseGroup(
                 "group-1",

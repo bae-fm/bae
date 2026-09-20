@@ -496,8 +496,9 @@ pub struct AutomationMetadataResult {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
-    /// The barcode this source prints for the pressing, where it prints one.
-    pub barcode: Option<String>,
+    /// Every barcode this source prints for the pressing, in its order;
+    /// empty where it prints none.
+    pub barcodes: Vec<String>,
     pub cover_art: Option<AutomationRemoteCover>,
     pub source_group_id: Option<String>,
 }

@@ -48,6 +48,7 @@ desktop_only! {
     pub mod preparation;
     pub mod preparations;
     pub mod probe;
+    pub(crate) mod pressing_evidence;
     pub mod release_candidate;
     pub mod release_group;
     /// Reads what an EAC / XLD / CUERipper log says about the rip it describes.

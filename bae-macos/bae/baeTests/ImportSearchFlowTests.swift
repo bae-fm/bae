@@ -674,7 +674,7 @@ struct ImportSearchFlowLibraryStatusTests {
                                         label: nil,
                                         catalogNumber: nil,
                                         country: nil,
-                                        barcode: nil,
+                                        barcodes: [],
                                         sourceGroupId: "group-live"
                                     )
                                 ],

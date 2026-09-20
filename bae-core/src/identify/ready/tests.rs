@@ -17,7 +17,9 @@ fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResu
         label: None,
         catalog_number: None,
         country: None,
-        barcode: None,
+        barcodes: Vec::new(),
+        media: crate::import::search::StatedMedia::Undescribed,
+        links: Vec::new(),
         cover_art: None,
         source_group_id: Some("rg-1".to_string()),
         source_tracks,
@@ -48,7 +50,7 @@ const BARCODE: &str = "0123456789012";
 
 /// `result`, stating the barcode its source printed.
 fn barcoded(mut result: MetadataResult, barcode: &str) -> MetadataResult {
-    result.barcode = Some(barcode.to_string());
+    result.barcodes = vec![barcode.to_string()];
     result
 }
 

@@ -71,7 +71,7 @@ async fn applied_source_partners_preserve_primary_and_freeze_exact_selected_part
         .unwrap();
     handle.read(|sql| {
         let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-        assert_eq!(version, 43);
+        assert_eq!(version, i64::try_from(all().len()).expect("ladder fits"));
         let snapshots = sql.query("SELECT content_hash, snapshot FROM import_candidate_applied_source ORDER BY content_hash", [], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))?;
         let original: serde_json::Value = serde_json::from_str(&original_snapshot()).unwrap();
         for (hash, snapshot) in snapshots {

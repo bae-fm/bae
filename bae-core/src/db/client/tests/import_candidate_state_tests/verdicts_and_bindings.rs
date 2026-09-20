@@ -63,7 +63,9 @@ fn sample_match() -> MetadataResult {
         label: Some("Label".to_string()),
         catalog_number: Some("CAT-1".to_string()),
         country: Some("US".to_string()),
-        barcode: None,
+        barcodes: Vec::new(),
+        media: crate::import::search::StatedMedia::Undescribed,
+        links: Vec::new(),
         cover_art: None,
         source_group_id: Some("group-1".to_string()),
         source_tracks: None,
@@ -165,6 +167,92 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
         identify.verdict, verdict,
         "the verdict must round-trip exactly, provenance included"
     );
+}
+
+/// Every barcode, every medium entry — stated or not — and every link a
+/// match carries store and read back, so the rows a stored verdict groups
+/// into are the rows the run grouped into.
+#[tokio::test]
+async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
+    use crate::import::search::StatedMedia;
+    use crate::import::{Catalog, MetadataRef};
+
+    let (db, _tmp) = empty_db().await;
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let mut musicbrainz = sample_match();
+    musicbrainz.barcodes = vec!["012345678905".to_string()];
+    musicbrainz.media = StatedMedia::PerMedium(vec![Some("CD".to_string()), None]);
+    musicbrainz.links = vec![
+        MetadataRef::new(Catalog::Discogs, "42"),
+        MetadataRef::new(Catalog::Discogs, "43"),
+    ];
+    let mut discogs = sample_match();
+    discogs.source = Catalog::Discogs;
+    discogs.release_id = "42".to_string();
+    discogs.source_group_id = Some("7".to_string());
+    discogs.barcodes = vec!["0 12345 67890 5".to_string(), "5051961234567".to_string()];
+    discogs.media = StatedMedia::Descriptors(vec!["CD".to_string(), "Album".to_string()]);
+    let mut undescribed = sample_match();
+    undescribed.release_id = "rel-2".to_string();
+    undescribed.year = Some(2001);
+    undescribed.media = StatedMedia::Undescribed;
+    let matches = vec![musicbrainz, discogs, undescribed];
+    let verdict = TerminalVerdict::Found {
+        provenance: matches
+            .iter()
+            .map(|_| LookupProvenance {
+                by_disc_id: true,
+                by_barcode: false,
+                by_catalog: false,
+            })
+            .collect(),
+        matches: matches.clone(),
+        track_count: 11,
+        narrowed_out: Vec::new(),
+        narrowed_out_provenance: Vec::new(),
+        ledger: None,
+    };
+    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict, 2_700_000);
+    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .unwrap();
+
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    let stored = &loaded[&hash]
+        .identify
+        .as_ref()
+        .expect("a stored verdict reads back")
+        .verdict;
+    assert_eq!(*stored, verdict);
+    let TerminalVerdict::Found {
+        matches: stored_matches,
+        ..
+    } = stored
+    else {
+        panic!("the verdict found releases");
+    };
+    let live = crate::import::release_group::group_results(
+        crate::import::release_group::unranked(matches.clone()),
+    );
+    let replayed = crate::import::release_group::group_results(
+        crate::import::release_group::unranked(stored_matches.clone()),
+    );
+    assert_eq!(replayed, live);
+    assert_eq!(live.len(), 1, "the link joins the two groups on one card");
+    assert_eq!(
+        live[0]
+            .pressings
+            .iter()
+            .map(|pressing| pressing.releases.len())
+            .collect::<Vec<_>>(),
+        vec![2, 1],
+        "the linked pair is one row, the other release its own"
+    );
+    assert_eq!(crate::import::release_group::pressing_count(matches), 2);
 }
 
 /// The candidate's own text stores and reads back whole — every line, in the

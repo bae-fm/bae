@@ -213,10 +213,10 @@ pub enum MetadataProvenance {
         record: MetadataRef,
         /// The other catalogs' releases the picked pressing paired with. Find
         /// online pairs a MusicBrainz release and a Discogs release into one
-        /// pressing row when they agree on a barcode or a catalog number;
-        /// picking the row claims both, and these are the ones the draft is
-        /// *not* read from. Each names a different source from the primary and
-        /// from every other partner.
+        /// pressing row when the evidence their records carry says they name
+        /// one physical object; picking the row claims both, and these are
+        /// the ones the draft is *not* read from. Each names a different
+        /// source from the primary and from every other partner.
         ///
         /// This is what the person picked, not what one provider says about
         /// another — a cross-reference an editor linked stays inferred from

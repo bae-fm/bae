@@ -225,6 +225,7 @@ pub fn all() -> Vec<coven::Migration> {
             "applied_source_partners",
             migrate_applied_source_partners,
         ),
+        coven::Migration::run(44, "match_evidence", migrate_match_evidence),
     ]
 }
 
@@ -381,6 +382,140 @@ fn migrate_applied_source_documents(
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     crate::db::Database::migrate_applied_sources(sql)?;
     Ok(())
+}
+
+/// Rebuild the stored matches around every barcode, the media each record
+/// described, and the releases its document linked. The SQL rebuilds the
+/// table and copies the one stored barcode; the medium rows and the ledger
+/// need the same split the Rust side wrote them with, so they are done here.
+fn migrate_match_evidence(sql: &coven::MigrationContext<'_>) -> Result<(), coven::DbError> {
+    sql.execute_batch(include_str!("../migrations/044_match_evidence.sql"))?;
+    let described = sql.query(
+        "SELECT content_hash, position, source, format FROM import_candidate_match \
+         WHERE format IS NOT NULL ORDER BY content_hash, position",
+        [],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        },
+    )?;
+    for (content_hash, position, source, format) in described {
+        for (ordinal, descriptor) in match_format_descriptors(&source, &format)?.enumerate() {
+            sql.execute(
+                "INSERT INTO import_candidate_match_medium \
+                     (content_hash, position, media_kind, ordinal, format) \
+                 VALUES (?, ?, 'descriptors', ?, ?)",
+                coven::rusqlite::params![content_hash, position, ordinal as i64, descriptor],
+            )?;
+        }
+    }
+    let ledgers = sql.query(
+        "SELECT content_hash, ledger_json FROM import_candidate_verdict \
+         WHERE ledger_json IS NOT NULL ORDER BY content_hash",
+        [],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+    )?;
+    for (content_hash, json) in ledgers {
+        let mut ledger: serde_json::Value = serde_json::from_str(&json).map_err(|error| {
+            coven::DbError::Message(format!(
+                "the identify ledger for {content_hash} is unreadable: {error}"
+            ))
+        })?;
+        rewrite_ledger_results(&mut ledger)?;
+        sql.execute(
+            "UPDATE import_candidate_verdict SET ledger_json = ? WHERE content_hash = ?",
+            coven::rusqlite::params![ledger.to_string(), content_hash],
+        )?;
+    }
+    Ok(())
+}
+
+/// The descriptors a stored format string was written from: a Discogs
+/// result's format names and qualifiers were joined with ", ", and a
+/// MusicBrainz result's is the one format of the medium its disc ID matched.
+fn match_format_descriptors<'a>(
+    source: &str,
+    format: &'a str,
+) -> Result<Box<dyn Iterator<Item = &'a str> + 'a>, coven::DbError> {
+    match source {
+        "discogs" => Ok(Box::new(format.split(", "))),
+        "musicbrainz" => Ok(Box::new(std::iter::once(format))),
+        other => Err(coven::DbError::Message(format!(
+            "a stored match names the catalog {other:?}, which answers no lookups"
+        ))),
+    }
+}
+
+/// The ledger stores the results a lookup found inside its cards. Each result
+/// object gains the same shape the table did: its one barcode becomes the
+/// list of barcodes, its format describes its media, and it links nothing.
+fn rewrite_ledger_results(value: &mut serde_json::Value) -> Result<(), coven::DbError> {
+    match value {
+        serde_json::Value::Object(object) => {
+            if is_stored_result(object) {
+                let barcode = object
+                    .remove("barcode")
+                    .expect("a stored result states a barcode column");
+                let barcodes = match barcode {
+                    serde_json::Value::Null => Vec::new(),
+                    code @ serde_json::Value::String(_) => vec![code],
+                    other => {
+                        return Err(coven::DbError::Message(format!(
+                            "a stored result's barcode is {other}, not text"
+                        )))
+                    }
+                };
+                // The ledger writes a catalog as its variant name, the table
+                // as its column value.
+                let source = match object["source"].as_str() {
+                    Some("MusicBrainz") => "musicbrainz",
+                    Some("Discogs") => "discogs",
+                    other => {
+                        return Err(coven::DbError::Message(format!(
+                            "a stored result names the catalog {other:?}, which answers no lookups"
+                        )))
+                    }
+                };
+                let media = match object["format"].as_str() {
+                    None => serde_json::Value::String("Undescribed".to_string()),
+                    Some(format) => serde_json::json!({
+                        "Descriptors": match_format_descriptors(source, format)?.collect::<Vec<_>>()
+                    }),
+                };
+                object.insert("barcodes".to_string(), serde_json::Value::Array(barcodes));
+                object.insert("media".to_string(), media);
+                object.insert("links".to_string(), serde_json::Value::Array(Vec::new()));
+            }
+            for value in object.values_mut() {
+                rewrite_ledger_results(value)?;
+            }
+        }
+        serde_json::Value::Array(values) => {
+            for value in values {
+                rewrite_ledger_results(value)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+/// Whether a ledger object is one stored result: the one object shape in a
+/// ledger that names a release with a source, a barcode and a tracklist.
+fn is_stored_result(object: &serde_json::Map<String, serde_json::Value>) -> bool {
+    [
+        "source",
+        "release_id",
+        "barcode",
+        "source_tracks",
+        "source_group_id",
+    ]
+    .iter()
+    .all(|key| object.contains_key(*key))
 }
 
 fn migrate_applied_source_partners(

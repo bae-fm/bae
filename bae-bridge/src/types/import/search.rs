@@ -20,8 +20,9 @@ pub struct BridgeMetadataResult {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
-    /// The barcode this source prints for the pressing, where it prints one.
-    pub barcode: Option<String>,
+    /// Every barcode this source prints for the pressing, in its order;
+    /// empty where it prints none.
+    pub barcodes: Vec<String>,
     /// The group this release belongs to on its own source — the other half of
     /// the key a library-membership check takes.
     pub source_group_id: Option<String>,

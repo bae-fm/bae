@@ -29,9 +29,9 @@
 pub mod agreements;
 pub mod code;
 pub mod combine;
-mod country;
+pub(crate) mod country;
 pub mod discid;
-mod label;
+pub(crate) mod label;
 mod mark_corroboration;
 pub mod ready;
 pub mod service;

@@ -5,7 +5,8 @@ use super::edit_rows::{apply_file_edit_row, read_file_edit_row};
 use super::lookup_choice_rows::load_lookup_choices_on;
 use super::signal_rows::load_signals_on;
 use super::verdict_rows::{
-    identification_of, read_match_row, read_verdict_row, unreadable, StoredMatches, VERDICT_COLUMNS,
+    identification_of, match_of, read_match_row, read_verdict_row, unreadable, MatchEntries,
+    StoredMatches, VERDICT_COLUMNS,
 };
 use super::*;
 use crate::import::{Catalog, MetadataAuthor, MetadataProvenance, MetadataRef};
@@ -227,8 +228,8 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
 
 const STATE_COLUMNS: &str = "content_hash, folder_path, edit_revision, metadata_revision";
 
-const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, year, \
-     format, label, catalog_number, country, barcode, cover_url, cover_thumbnail_url, \
+const MATCH_COLUMNS: &str = "content_hash, position, source, release_id, title, artist, year, \
+     format, label, catalog_number, country, media_kind, cover_url, cover_thumbnail_url, \
      cover_label, cover_source, source_group_id, source_tracks_kind, source_tracks_count, \
      source_tracks_total_ms, by_disc_id, by_barcode, by_catalog, narrowed_out";
 
@@ -238,10 +239,11 @@ const FILE_EDIT_COLUMNS: &str =
 /// Every candidate's stored matches, keyed by content hash, or just the one
 /// `only` names.
 ///
-/// The whole row per match rather than a count and a lead: how many *pressings*
-/// a verdict named is decided by grouping them, which needs the fields each one
-/// states. The one reader of these columns, for the pane's whole verdict and
-/// for the queue list's summary alike.
+/// The whole row per match rather than a count and a lead, and the barcode,
+/// medium and link rows that hang off it: how many *pressings* a verdict named
+/// is decided by grouping them, which needs everything each one states. The
+/// one reader of these columns, for the pane's whole verdict and for the
+/// queue list's summary alike.
 pub(crate) fn load_matches_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
@@ -265,10 +267,78 @@ pub(crate) fn load_matches_rows_on(
         named_params! { ":only": only },
         |row| Ok(read_match_row(row)),
     )?;
+    let barcodes = sql.query(
+        "SELECT content_hash, position, barcode FROM import_candidate_match_barcode \
+         WHERE :only IS NULL OR content_hash = :only \
+         ORDER BY content_hash, position, ordinal",
+        named_params! { ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        },
+    )?;
+    let media = sql.query(
+        "SELECT content_hash, position, media_kind, format FROM import_candidate_match_medium \
+         WHERE :only IS NULL OR content_hash = :only \
+         ORDER BY content_hash, position, ordinal",
+        named_params! { ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, Option<String>>(3)?,
+            ))
+        },
+    )?;
+    let links = sql.query(
+        "SELECT content_hash, position, catalog, key FROM import_candidate_match_link \
+         WHERE :only IS NULL OR content_hash = :only \
+         ORDER BY content_hash, position, ordinal",
+        named_params! { ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        },
+    )?;
     Ok(move || {
+        let mut entries: HashMap<(String, i64), MatchEntries> = HashMap::new();
+        for (content_hash, position, barcode) in barcodes {
+            entries
+                .entry((content_hash, position))
+                .or_default()
+                .barcodes
+                .push(barcode);
+        }
+        for (content_hash, position, kind, format) in media {
+            entries
+                .entry((content_hash, position))
+                .or_default()
+                .media
+                .push((kind, format));
+        }
+        for (content_hash, position, catalog, key) in links {
+            entries
+                .entry((content_hash, position))
+                .or_default()
+                .links
+                .push((catalog, key));
+        }
         let mut matches: HashMap<String, StoredMatches> = HashMap::new();
         for row in rows {
-            let row = row?;
+            let columns = row?;
+            // A match with nothing in the child tables has no rows there.
+            let entries = entries
+                .remove(&(columns.content_hash.clone(), columns.position))
+                .unwrap_or_default();
+            let row = match_of(columns, entries)?;
             let entry = matches.entry(row.content_hash).or_default();
             let list = if row.narrowed_out {
                 &mut entry.narrowed_out

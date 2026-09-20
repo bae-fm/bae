@@ -6,11 +6,13 @@
 //! group, and one row per physical pressing beneath it.
 //!
 //! The two providers answer independently, so the same album and the same
-//! pressing arrive twice. Both collapses happen here: two sources' groups
-//! become one card when they name the same album, and two sources' releases
-//! become one row when they name the same physical pressing. A row is then a
-//! pressing on however many sources listed it, and picking it claims every one
-//! of them — [`Pressing::pick`] says exactly what.
+//! pressing arrive twice. Both collapses happen here, pressings first: two
+//! sources' releases become one row when the evidence their records carry
+//! says they name the same physical object — what
+//! [`crate::import::pressing_evidence`] weighs — and two sources' groups
+//! become one card when a row joins them or when they name the same album.
+//! A row is then a pressing on however many sources listed it, and picking
+//! it claims every one of them — [`Pressing::pick`] says exactly what.
 //!
 //! The order is decided here too, so no surface sorts anything: rows come
 //! most-agreed-with first — how much of the candidate's own text states the
@@ -22,6 +24,7 @@
 
 use crate::identify::agreements::Agreements;
 use crate::import::cover_art::RemoteCover;
+use crate::import::pressing_evidence::{PressingEvidence, PressingFacts, Support};
 use crate::import::search::MetadataResult;
 use crate::import::types::Catalog;
 use crate::signals::candidate_text::normalize;
@@ -182,12 +185,12 @@ impl Judgements {
     }
 }
 
-/// One source's bucket of releases under one of its groups, each with what the
-/// candidate's own text agrees with about it.
+/// One source's bucket of releases under one of its groups: the releases'
+/// indexes into the result list, in the order the source listed them.
 struct Bucket {
     source: Catalog,
     source_group_id: Option<String>,
-    releases: Vec<Judged>,
+    members: Vec<usize>,
 }
 
 /// One release and what the candidate's own text agrees with about it — what
@@ -196,18 +199,18 @@ pub type Judged = (MetadataResult, Agreements);
 
 impl Bucket {
     /// What decides whether this bucket describes the same album as another
-    /// source's: the album's title and artist, normalized. `None` artist
-    /// matches only `None`.
-    fn album_key(&self) -> (String, Option<String>) {
-        let (first, _) = self
-            .releases
+    /// source's, where no pair of releases has already said so: the album's
+    /// title and artist, normalized. `None` artist matches only `None`.
+    fn album_key(&self, releases: &[MetadataResult]) -> (String, Option<String>) {
+        let first = &releases[*self
+            .members
             .first()
-            .expect("a bucket is built from at least one release");
+            .expect("a bucket is built from at least one release")];
         (
             normalize(&first.title),
-            self.releases
+            self.members
                 .iter()
-                .find_map(|(release, _)| release.artist.as_deref())
+                .find_map(|&at| releases[at].artist.as_deref())
                 .map(normalize),
         )
     }
@@ -252,16 +255,23 @@ pub fn unranked(results: Vec<MetadataResult>) -> Vec<Judged> {
 
 /// Group results into album cards with one row per physical pressing.
 ///
-/// Five steps: bucket each source's releases by its own group, merge a
-/// MusicBrainz bucket with a Discogs bucket describing the same album, pair
-/// the two sources' releases into shared pressing rows, order the rows by how
-/// much of the candidate's text agrees with them and then by pressing year,
-/// and order the cards by their best row.
+/// Pressings are matched before albums are: the two sources' releases are
+/// paired over the whole list by the evidence their records carry, so the
+/// spelling of an album's title never keeps two records of one object apart.
+/// Then each source's releases are bucketed by its own group, buckets a pair
+/// joins become one card, a MusicBrainz card and a Discogs card whose album
+/// text agrees merge, the rows are ordered by how much of the candidate's
+/// text agrees with them and then by pressing year, and the cards by their
+/// best row.
 pub fn group_results(results: Vec<Judged>) -> Vec<ReleaseGroup> {
     let judgements = Judgements::of(&results);
-    let mut cards: Vec<(ReleaseGroup, u32)> = merge_buckets(bucket_by_source_group(results))
+    let releases: Vec<MetadataResult> = results.into_iter().map(|(release, _)| release).collect();
+    let pairs = pair_releases(&releases);
+    let cards = merge_buckets(bucket_by_source_group(&releases), &releases, &pairs);
+    let mut releases: Vec<Option<MetadataResult>> = releases.into_iter().map(Some).collect();
+    let mut cards: Vec<(ReleaseGroup, u32)> = cards
         .into_iter()
-        .map(|card| build_group(card, &judgements))
+        .map(|card| build_group(card, &mut releases, &pairs, &judgements))
         .collect();
     // Stable: cards nothing tells apart keep the order the signals named them
     // in, which is the order they were bucketed.
@@ -269,115 +279,266 @@ pub fn group_results(results: Vec<Judged>) -> Vec<ReleaseGroup> {
     cards.into_iter().map(|(group, _)| group).collect()
 }
 
+/// The pairs of MusicBrainz and Discogs records that name one pressing, as
+/// indexes into `releases`, the MusicBrainz record first.
+///
+/// Every MusicBrainz record is weighed against every Discogs record — the
+/// two members of [`Catalog::LOOKUP`]; a record from any other catalog is a
+/// programming error. Candidates are taken from the best-supported level
+/// down: at each level, the candidate pairs whose two members are both still
+/// free are examined together, a member that appears in more than one of them
+/// is ambiguous and is settled unpaired, and every remaining pair is taken. A
+/// member whose only pair at a level named an ambiguous member stays free for
+/// the levels below. Nothing depends on the order the records arrived in.
+fn pair_releases(releases: &[MetadataResult]) -> Vec<(usize, usize)> {
+    let facts: Vec<PressingFacts<'_>> = releases.iter().map(PressingFacts::of).collect();
+    let facts = &facts;
+    let mut musicbrainz = Vec::new();
+    let mut discogs = Vec::new();
+    for (at, release) in releases.iter().enumerate() {
+        match release.source {
+            Catalog::MusicBrainz => musicbrainz.push(at),
+            Catalog::Discogs => discogs.push(at),
+            other => unreachable!("{other} answers no lookups, so it has no results to pair"),
+        }
+    }
+    let mut candidates: Vec<(Support, usize, usize)> = musicbrainz
+        .iter()
+        .flat_map(|&a| {
+            discogs.iter().filter_map(move |&b| {
+                PressingEvidence::between(&facts[a], &facts[b])
+                    .support()
+                    .map(|support| (support, a, b))
+            })
+        })
+        .collect();
+    candidates.sort_by(|(a, _, _), (b, _, _)| b.cmp(a));
+
+    let mut free = vec![true; releases.len()];
+    let mut pairs = Vec::new();
+    let mut level = candidates.as_slice();
+    while let Some((support, _, _)) = level.first() {
+        let end = level
+            .iter()
+            .position(|(other, _, _)| other != support)
+            .unwrap_or(level.len());
+        let live: Vec<(usize, usize)> = level[..end]
+            .iter()
+            .filter(|(_, a, b)| free[*a] && free[*b])
+            .map(|(_, a, b)| (*a, *b))
+            .collect();
+        let mut named = vec![0usize; releases.len()];
+        for &(a, b) in &live {
+            named[a] += 1;
+            named[b] += 1;
+        }
+        for (a, b) in live {
+            let ambiguous = named[a] > 1 || named[b] > 1;
+            if ambiguous {
+                for member in [a, b] {
+                    if named[member] > 1 {
+                        free[member] = false;
+                    }
+                }
+            } else {
+                pairs.push((a, b));
+                free[a] = false;
+                free[b] = false;
+            }
+        }
+        level = &level[end..];
+    }
+    pairs
+}
+
 /// Bucket by `(source, source_group_id)`, preserving first-seen order. A
 /// result without a group id can't share one, so it becomes its own bucket.
-fn bucket_by_source_group(results: Vec<Judged>) -> Vec<Bucket> {
+fn bucket_by_source_group(releases: &[MetadataResult]) -> Vec<Bucket> {
     use std::collections::HashMap;
 
     let mut buckets: Vec<Bucket> = Vec::new();
     let mut index: HashMap<(Catalog, String), usize> = HashMap::new();
-    for judged in results {
-        match judged.0.source_group_id.clone() {
+    for (at, release) in releases.iter().enumerate() {
+        match release.source_group_id.clone() {
             Some(group_id) => {
-                let key = (judged.0.source, group_id.clone());
+                let key = (release.source, group_id.clone());
                 match index.get(&key) {
-                    Some(&at) => buckets[at].releases.push(judged),
+                    Some(&bucket) => buckets[bucket].members.push(at),
                     None => {
                         index.insert(key, buckets.len());
                         buckets.push(Bucket {
-                            source: judged.0.source,
+                            source: release.source,
                             source_group_id: Some(group_id),
-                            releases: vec![judged],
+                            members: vec![at],
                         });
                     }
                 }
             }
             None => buckets.push(Bucket {
-                source: judged.0.source,
+                source: release.source,
                 source_group_id: None,
-                releases: vec![judged],
+                members: vec![at],
             }),
         }
     }
     buckets
 }
 
-/// Pair each bucket with at most one bucket from the other source describing
-/// the same album. A merged card sits at the earlier bucket's position, and its
-/// buckets are ordered by [`source_rank`] — the order the card's title, label
-/// and cover are read in, and the order it names its sources in.
-fn merge_buckets(buckets: Vec<Bucket>) -> Vec<Vec<Bucket>> {
-    let mut buckets: Vec<Option<Bucket>> = buckets.into_iter().map(Some).collect();
+/// The cards the buckets make. Buckets a pair joins are one card — the album
+/// grouping the matched pressings establish, which may put more than one of
+/// a source's buckets on a card. Then a card carrying only one source merges
+/// with the first later card carrying only the other source whose album text
+/// agrees with it. A card sits at its earliest bucket's position, and its
+/// buckets are ordered by [`source_rank`] and then first-seen — the order the
+/// card's title, label and cover are read in, and the order it names its
+/// sources in.
+fn merge_buckets(
+    buckets: Vec<Bucket>,
+    releases: &[MetadataResult],
+    pairs: &[(usize, usize)],
+) -> Vec<Vec<Bucket>> {
+    let mut bucket_of = vec![0usize; releases.len()];
+    for (at, bucket) in buckets.iter().enumerate() {
+        for &member in &bucket.members {
+            bucket_of[member] = at;
+        }
+    }
     let mut cards: Vec<Vec<Bucket>> = Vec::new();
+    let mut card_of: Vec<Option<usize>> = vec![None; buckets.len()];
+    let mut buckets: Vec<Option<Bucket>> = buckets.into_iter().map(Some).collect();
     for at in 0..buckets.len() {
-        let Some(bucket) = buckets[at].take() else {
+        if card_of[at].is_some() {
+            continue;
+        }
+        // Everything reachable from this bucket through pairs, in first-seen
+        // order.
+        let mut joined = vec![at];
+        let mut next = 0;
+        while next < joined.len() {
+            let bucket = joined[next];
+            for &(a, b) in pairs {
+                let (from, to) = if bucket_of[a] == bucket {
+                    (bucket, bucket_of[b])
+                } else if bucket_of[b] == bucket {
+                    (bucket, bucket_of[a])
+                } else {
+                    continue;
+                };
+                if from != to && !joined.contains(&to) {
+                    joined.push(to);
+                }
+            }
+            next += 1;
+        }
+        let card = cards.len();
+        let mut members: Vec<Bucket> = Vec::with_capacity(joined.len());
+        for bucket in joined {
+            card_of[bucket] = Some(card);
+            members.push(buckets[bucket].take().expect("a bucket joins one card"));
+        }
+        cards.push(members);
+    }
+
+    let only_source = |card: &[Bucket]| -> Option<Catalog> {
+        let source = card.first()?.source;
+        card.iter().all(|bucket| bucket.source == source).then_some(source)
+    };
+    let mut cards: Vec<Option<Vec<Bucket>>> = cards.into_iter().map(Some).collect();
+    let mut merged: Vec<Vec<Bucket>> = Vec::new();
+    for at in 0..cards.len() {
+        let Some(mut card) = cards[at].take() else {
             continue;
         };
-        let key = bucket.album_key();
-        let partner = (at + 1..buckets.len()).find(|&other| {
-            buckets[other].as_ref().is_some_and(|candidate| {
-                candidate.source != bucket.source && candidate.album_key() == key
-            })
-        });
-        let mut card = match partner.and_then(|other| buckets[other].take()) {
-            Some(partner) => vec![bucket, partner],
-            None => vec![bucket],
-        };
-        card.sort_by_key(|bucket| source_rank(bucket.source));
-        cards.push(card);
+        if let Some(source) = only_source(&card) {
+            let key = card[0].album_key(releases);
+            let partner = (at + 1..cards.len()).find(|&other| {
+                cards[other].as_ref().is_some_and(|candidate| {
+                    only_source(candidate).is_some_and(|other_source| other_source != source)
+                        && candidate[0].album_key(releases) == key
+                })
+            });
+            if let Some(partner) = partner.and_then(|other| cards[other].take()) {
+                card.extend(partner);
+            }
+        }
+        merged.push(card);
     }
-    cards
+    for card in &mut merged {
+        card.sort_by_key(|bucket| (source_rank(bucket.source), bucket.members[0]));
+    }
+    merged
 }
 
 /// The card, and how much the candidate's text agrees with its best row —
 /// what orders the cards against each other.
-fn build_group(card: Vec<Bucket>, judgements: &Judgements) -> (ReleaseGroup, u32) {
+///
+/// Takes the card's releases out of `releases`: each lands on exactly one
+/// card.
+fn build_group(
+    card: Vec<Bucket>,
+    releases: &mut [Option<MetadataResult>],
+    pairs: &[(usize, usize)],
+    judgements: &Judgements,
+) -> (ReleaseGroup, u32) {
     let sources: Vec<ReleaseGroupSource> = card.iter().map(Bucket::as_source).collect();
-    let releases: Vec<&MetadataResult> = card
+    let members: Vec<usize> = card
         .iter()
-        .flat_map(|bucket| bucket.releases.iter().map(|(release, _)| release))
+        .flat_map(|bucket| bucket.members.iter().copied())
         .collect();
-    let lead = releases
-        .first()
-        .expect("a card is built from at least one release");
+    let read = |at: usize| -> &MetadataResult {
+        releases[at]
+            .as_ref()
+            .expect("a release is read before its card takes it")
+    };
+    let lead = read(
+        *members
+            .first()
+            .expect("a card is built from at least one release"),
+    );
     let id = card
         .iter()
         .find_map(|bucket| bucket.source_group_id.clone())
         .unwrap_or_else(|| lead.release_id.clone());
     let title = lead.title.clone();
-    let artist = releases.iter().find_map(|release| release.artist.clone());
-    let label = releases.iter().find_map(|release| release.label.clone());
-    let cover_art = releases
-        .iter()
-        .find_map(|release| release.cover_art.clone());
-    let years: Vec<i32> = releases.iter().filter_map(|release| release.year).collect();
+    let artist = members.iter().find_map(|&at| read(at).artist.clone());
+    let label = members.iter().find_map(|&at| read(at).label.clone());
+    let cover_art = members.iter().find_map(|&at| read(at).cover_art.clone());
+    let years: Vec<i32> = members.iter().filter_map(|&at| read(at).year).collect();
     let year_min = years.iter().min().copied();
     let year_max = years.iter().max().copied();
 
-    let mut buckets = card.into_iter();
-    let first = buckets
-        .next()
-        .expect("a card is built from at least one bucket");
-    let pressings = match buckets.next() {
-        Some(second) => pair_pressings(
-            releases_of(first.releases),
-            releases_of(second.releases),
-            judgements,
-        ),
-        None => releases_of(first.releases)
-            .into_iter()
-            .map(|release| Pressing::of(vec![release], judgements))
-            .collect(),
+    let partner_of = |at: usize| -> Option<usize> {
+        pairs.iter().find_map(|&(a, b)| {
+            if a == at {
+                Some(b)
+            } else if b == at {
+                Some(a)
+            } else {
+                None
+            }
+        })
     };
-    let rows = ordered_rows(
-        pressings
-            .into_iter()
-            .map(|pressing| Row {
-                agreements: pressing.agreements(judgements).count(),
-                pressing,
-            })
-            .collect(),
-    );
+    let mut rows: Vec<Row> = Vec::with_capacity(members.len());
+    for at in members {
+        let Some(release) = releases[at].take() else {
+            // Already taken as its partner's other record.
+            continue;
+        };
+        let mut records = vec![release];
+        if let Some(partner) = partner_of(at) {
+            records.push(
+                releases[partner]
+                    .take()
+                    .expect("a pair's two records are on one card"),
+            );
+        }
+        let pressing = Pressing::of(records, judgements);
+        rows.push(Row {
+            agreements: pressing.agreements(judgements).count(),
+            pressing,
+        });
+    }
+    let rows = ordered_rows(rows);
     let best = rows.first().map_or(0, |row| row.agreements);
 
     (
@@ -403,86 +564,6 @@ struct Row {
     agreements: u32,
 }
 
-/// The releases a bucket holds, with what was said about them left behind:
-/// pairing asks which records name one physical object, which is a question
-/// about the records themselves.
-fn releases_of(judged: Vec<Judged>) -> Vec<MetadataResult> {
-    judged.into_iter().map(|(release, _)| release).collect()
-}
-
-/// Pair the two sources' releases into shared pressing rows. A barcode both
-/// state is the strongest evidence that they name the same physical object, so
-/// every barcode pair is taken before any catalog-number pair; each release
-/// pairs at most once, and what is left over is its own single-source row.
-///
-/// A label's reissues share a barcode and a catalog number with the pressing
-/// they reissue, so a code can name several of the other source's records. The
-/// pressing year is what tells them apart: a record pressed the same year as
-/// the one being paired is taken over one that merely prints the same code.
-fn pair_pressings(
-    first: Vec<MetadataResult>,
-    second: Vec<MetadataResult>,
-    judged: &Judgements,
-) -> Vec<Pressing> {
-    let mut other: Vec<Option<MetadataResult>> = second.into_iter().map(Some).collect();
-    let mut partners: Vec<Option<usize>> = vec![None; first.len()];
-
-    for key_of in [
-        barcode_key as fn(&MetadataResult) -> Option<String>,
-        catalog_key,
-    ] {
-        for (at, release) in first.iter().enumerate() {
-            if partners[at].is_some() {
-                continue;
-            }
-            let Some(key) = key_of(release) else {
-                continue;
-            };
-            let taken: std::collections::HashSet<usize> =
-                partners.iter().flatten().copied().collect();
-            let states_key = |candidate: &Option<MetadataResult>| {
-                candidate
-                    .as_ref()
-                    .is_some_and(|candidate| key_of(candidate).as_deref() == Some(key.as_str()))
-            };
-            let same_year = |candidate: &Option<MetadataResult>| {
-                release.year.is_some()
-                    && candidate
-                        .as_ref()
-                        .is_some_and(|candidate| candidate.year == release.year)
-            };
-            let found = other
-                .iter()
-                .enumerate()
-                .position(|(index, candidate)| {
-                    !taken.contains(&index) && states_key(candidate) && same_year(candidate)
-                })
-                .or_else(|| {
-                    other.iter().enumerate().position(|(index, candidate)| {
-                        !taken.contains(&index) && states_key(candidate)
-                    })
-                });
-            partners[at] = found;
-        }
-    }
-
-    let mut rows: Vec<Pressing> = Vec::with_capacity(first.len() + other.len());
-    for (release, partner) in first.into_iter().zip(&partners) {
-        let mut releases = vec![release];
-        if let Some(partner) = partner.and_then(|at| other[at].take()) {
-            releases.push(partner);
-        }
-        rows.push(Pressing::of(releases, judged));
-    }
-    rows.extend(
-        other
-            .into_iter()
-            .flatten()
-            .map(|release| Pressing::of(vec![release], judged)),
-    );
-    rows
-}
-
 /// Whether the source listed this release's own tracks. A record that answered
 /// with a tracklist has rows to fill a draft with and lengths to check the
 /// audio against; one nobody has asked yet, and one that answered with
@@ -503,28 +584,6 @@ fn source_rank(source: Catalog) -> usize {
         .iter()
         .position(|listed| *listed == source)
         .expect("every source is one of Catalog::ALL")
-}
-
-/// The digits of a stated barcode. Sources print the same code with different
-/// spacing, and one of them pads it with a leading zero, so only the digits
-/// are comparable. `None` when the release states none, or states something
-/// with no digits in it — neither pairs with anything.
-fn barcode_key(release: &MetadataResult) -> Option<String> {
-    let digits: String = release
-        .barcode
-        .as_deref()?
-        .chars()
-        .filter(char::is_ascii_digit)
-        .collect();
-    (!digits.is_empty()).then_some(digits)
-}
-
-/// A stated catalog number, trimmed and case-folded. Weaker than a barcode:
-/// the sources punctuate multi-disc numbers differently ("… 2 2" vs "… 2-2"),
-/// so only an exact match after folding counts.
-fn catalog_key(release: &MetadataResult) -> Option<String> {
-    let trimmed = release.catalog_number.as_deref()?.trim();
-    (!trimmed.is_empty()).then(|| trimmed.to_ascii_lowercase())
 }
 
 /// Order the rows: most agreed with first, and among rows the candidate's text

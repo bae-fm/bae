@@ -460,6 +460,11 @@ mod conversion_roundtrip {
             catalog_number: Some("CAT-1".to_string()),
             country: Some("US".to_string()),
             barcode: Some("012345678905".to_string()),
+            media: bae_core::import::search::StatedMedia::PerMedium(vec![Some("CD".to_string())]),
+            links: vec![bae_core::import::MetadataRef::new(
+                bae_core::import::Catalog::Discogs,
+                "42",
+            )],
             track_count: 10,
             tracks: vec![bae_core::import::search::ReleaseTrack {
                 title: "Track Title".to_string(),

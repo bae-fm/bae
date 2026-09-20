@@ -3,6 +3,9 @@ use super::*;
 #[path = "migrations_tests/applied_source_partners.rs"]
 mod applied_source_partners;
 
+#[path = "migrations_tests/match_evidence.rs"]
+mod match_evidence;
+
 #[path = "migrations_tests/record_kinds.rs"]
 mod record_kinds;
 use chrono::{TimeZone, Utc};

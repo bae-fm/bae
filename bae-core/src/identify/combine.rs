@@ -753,7 +753,9 @@ mod tests {
                 label: Some("Warner Bros.".to_string()),
                 catalog_number: Some("20P2-2031".to_string()),
                 country: Some("JP".to_string()),
-                barcode: Some("4988014720311".to_string()),
+                barcodes: vec!["4988014720311".to_string()],
+                media: crate::import::search::StatedMedia::Undescribed,
+                links: Vec::new(),
                 year: Some(1988),
                 source_group_id: Some("rg-van-halen-ii".to_string()),
                 ..mk_result("mb-van-halen-ii", Some("rg-van-halen-ii"))
@@ -773,7 +775,9 @@ mod tests {
                 label: Some("Warner Bros.".to_string()),
                 catalog_number: Some("20P2-2031".to_string()),
                 country: Some("Japan".to_string()),
-                barcode: Some("4988014720311".to_string()),
+                barcodes: vec!["4988014720311".to_string()],
+                media: crate::import::search::StatedMedia::Undescribed,
+                links: Vec::new(),
                 year,
                 source_group_id: Some("master-van-halen-ii".to_string()),
                 ..mk_result(release_id, Some("master-van-halen-ii"))

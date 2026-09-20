@@ -18,7 +18,7 @@ use std::sync::OnceLock;
 /// The first name is the standard's own; any after it are forms in common use
 /// that a folder is as likely to print. Spacing and punctuation are not a
 /// form of their own — `Viet Nam` is looked up the same as `Vietnam`.
-pub(super) struct Country {
+pub(crate) struct Country {
     pub code: &'static str,
     pub names: &'static [&'static str],
 }
@@ -29,7 +29,7 @@ pub(super) struct Country {
 /// Compared the way the candidate's text is read — case, spacing, punctuation
 /// and diacritics dropped — so `JP`, `jp`, `Japan` and `japan` all reach the
 /// same country.
-pub(super) fn named(value: &str) -> Option<&'static Country> {
+pub(crate) fn named(value: &str) -> Option<&'static Country> {
     let value = squash(value);
     (!value.is_empty())
         .then(|| index().get(&value).map(|&at| &COUNTRIES[at]))

@@ -5,7 +5,7 @@
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::RemoteCover;
 use crate::import::parse_year;
-use crate::import::types::Catalog;
+use crate::import::types::{parse_catalog_url, Catalog, CatalogPage, MetadataRef};
 use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::signals::LookupFailure;
@@ -30,10 +30,18 @@ pub struct MetadataResult {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
-    /// The barcode printed on the physical product, as the source states it.
-    /// `None` when the source lists none. Two sources agreeing on this is what
-    /// pairs their rows into one pressing.
-    pub barcode: Option<String>,
+    /// Every barcode the source states for the physical product, in the
+    /// source's order and as it prints them. Empty when the source lists
+    /// none. MusicBrainz states at most one; Discogs lists each code the
+    /// sleeve carries. Two sources printing one code is what pairs their
+    /// rows into one pressing.
+    pub barcodes: Vec<String>,
+    /// What the record says the pressing is made of — the evidence a medium
+    /// contradiction is read from, kept apart from the display `format`.
+    pub media: StatedMedia,
+    /// Releases on other catalogs this record's own document names as the
+    /// same release. Only a MusicBrainz release document states any.
+    pub links: Vec<MetadataRef>,
     pub cover_art: Option<RemoteCover>,
     pub source_group_id: Option<String>,
     /// What the source says about this release's own tracklist — the other half
@@ -76,7 +84,9 @@ impl MetadataResult {
             label: detail.label.clone(),
             catalog_number: detail.catalog_number.clone(),
             country: detail.country.clone(),
-            barcode: detail.barcode.clone(),
+            barcodes: detail.barcode.iter().cloned().collect(),
+            media: detail.media.clone(),
+            links: detail.links.clone(),
             cover_art: detail.default_cover().cloned(),
             source_group_id: detail.source_group_id.clone(),
             source_tracks: Some(SourceTracks::Listed {
@@ -85,6 +95,25 @@ impl MetadataResult {
             }),
         }
     }
+}
+
+/// What a record says a pressing is made of.
+///
+/// A medium is read out of each stated format string by
+/// [`crate::util::format::recognized_media`]; what the shape adds is whether
+/// the record lists its media one by one, and so can be complete, or only
+/// describes them.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum StatedMedia {
+    /// The response describes no media: a `ws/2/release?query=` result, or a
+    /// Discogs search result with no `format`.
+    Undescribed,
+    /// One entry per medium the record lists, in its order; `None` where that
+    /// medium's format is not stated. A MusicBrainz release document.
+    PerMedium(Vec<Option<String>>),
+    /// Format names and qualifiers as one flat list that does not say which
+    /// medium each belongs to. A Discogs record.
+    Descriptors(Vec<String>),
 }
 
 #[cfg(any(test, feature = "test-utils"))]
@@ -104,7 +133,9 @@ impl MetadataResult {
             label: None,
             catalog_number: None,
             country: None,
-            barcode: None,
+            barcodes: Vec::new(),
+            media: StatedMedia::Undescribed,
+            links: Vec::new(),
             cover_art: None,
             source_group_id: source_group_id.map(str::to_string),
             source_tracks: None,
@@ -148,6 +179,9 @@ impl From<&MetadataResult> for crate::db::LibraryCheck {
 /// override in the edit-metadata form before commit. `source_group_id` carries
 /// the per-source group (MB release-group ID or Discogs master ID) so the UI can
 /// build a `ReleaseRecord` row from the picked release without a second fetch.
+/// `media` and `links` are what the document stated about the pressing's
+/// media and its counterparts on other catalogs, carried so the result a pick
+/// becomes states them too.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportSearchReleaseDetail {
     pub release_id: String,
@@ -161,6 +195,8 @@ pub struct ImportSearchReleaseDetail {
     pub catalog_number: Option<String>,
     pub country: Option<String>,
     pub barcode: Option<String>,
+    pub media: StatedMedia,
+    pub links: Vec<MetadataRef>,
     pub track_count: u32,
     pub tracks: Vec<ReleaseTrack>,
     pub cover_art: Vec<RemoteCover>,
@@ -199,6 +235,12 @@ pub fn discogs_search_result_to_metadata(
     let format = r.format.as_ref().map(|f| f.join(", "));
     let label = r.label.as_ref().and_then(|l| l.first().cloned());
     let cover_art = r.remote_cover();
+    // The response lists format names and qualifiers as one flat list; which
+    // medium each describes is not said.
+    let media = match r.format {
+        Some(descriptors) => StatedMedia::Descriptors(descriptors),
+        None => StatedMedia::Undescribed,
+    };
     let source_group_id = r.master_id.map(|id| id.to_string());
     MetadataResult {
         source: Catalog::Discogs,
@@ -210,9 +252,10 @@ pub fn discogs_search_result_to_metadata(
         label,
         catalog_number: r.catno,
         country: r.country,
-        // The search response lists every barcode Discogs holds for the
-        // pressing; the first is the one it prints first.
-        barcode: r.barcode.into_iter().next(),
+        barcodes: r.barcode,
+        media,
+        // A Discogs document names no counterpart on another catalog.
+        links: Vec::new(),
         cover_art,
         source_group_id,
         // The Discogs search response describes no tracklist; a Discogs result
@@ -267,6 +310,8 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
     let format = medium.format.clone();
     let source_tracks = Some(source_tracks_from_mb_tracks(medium.tracks.iter()));
     let pressing = crate::import::musicbrainz_mapper::pressing(&r);
+    let media = mb_stated_media(&r);
+    let links = mb_release_links(&r);
     let cover_art = r
         .has_front_cover()
         .then(|| RemoteCover::musicbrainz_release(&r.id));
@@ -280,11 +325,35 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         label: pressing.label,
         catalog_number: pressing.catalog_number,
         country: pressing.country,
-        barcode: pressing.barcode,
+        barcodes: pressing.barcode.into_iter().collect(),
+        media,
+        links,
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
         source_tracks,
     })
+}
+
+/// Every medium a MusicBrainz release document lists, each with the format it
+/// states for it. The matching medium's tracks are what a disc ID answers
+/// for; the pressing is made of all of them.
+fn mb_stated_media(r: &MbReleaseResponse) -> StatedMedia {
+    StatedMedia::PerMedium(r.media.iter().map(|medium| medium.format.clone()).collect())
+}
+
+/// The releases on other catalogs a MusicBrainz release document names as
+/// the same release, in relation order. A link to an album page names an
+/// album, not this pressing, and is not one of them.
+fn mb_release_links(r: &MbReleaseResponse) -> Vec<MetadataRef> {
+    crate::musicbrainz::relation_urls(&r.relations)
+        .filter_map(parse_catalog_url)
+        .filter_map(|page| match page {
+            CatalogPage::Release { catalog, key } if catalog != Catalog::MusicBrainz => {
+                Some(MetadataRef::new(catalog, key))
+            }
+            CatalogPage::Release { .. } | CatalogPage::Group { .. } => None,
+        })
+        .collect()
 }
 
 fn mb_discid_releases_to_metadata(
@@ -309,11 +378,14 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         label,
         catalog_number,
         country: r.country,
-        barcode: r.barcode,
+        barcodes: r.barcode.into_iter().collect(),
+        // `ws/2/release?query=…` takes no `inc`, so its response describes no
+        // media, states no relations, and carries no `tracks` array to read a
+        // count or a length from.
+        media: StatedMedia::Undescribed,
+        links: Vec::new(),
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
-        // `ws/2/release?query=…` takes no `inc`, so its response carries no
-        // `tracks` array to read a count or a length from.
         source_tracks: None,
     }
 }
@@ -572,6 +644,8 @@ pub(crate) fn build_mb_detail(
         catalog_number: pressing.catalog_number,
         country: pressing.country,
         barcode: pressing.barcode,
+        media: mb_stated_media(mb_response),
+        links: mb_release_links(mb_response),
         track_count: tracks.len() as u32,
         tracks,
         cover_art,
@@ -630,6 +704,14 @@ pub(crate) fn build_discogs_detail(
         catalog_number: pressing.catalog_number,
         country: pressing.country,
         barcode: pressing.barcode,
+        // The document's format names are one flat list, as the search
+        // result's are, and a Discogs document names no counterpart.
+        media: if release.format.is_empty() {
+            StatedMedia::Undescribed
+        } else {
+            StatedMedia::Descriptors(release.format.clone())
+        },
+        links: Vec::new(),
         track_count: tracks.len() as u32,
         tracks,
         cover_art,

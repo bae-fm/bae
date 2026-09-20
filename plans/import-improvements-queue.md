@@ -264,6 +264,37 @@ that main or CI has passed.
   behavior. Parent manual review accepted the implementation. Normal hooks run
   with this focused commit. Literal count localization must also be checked
   after the already-recorded Core resource-owner correction at queue end.
+- Release result matching: implemented on `release-result-matching`. Seven
+  production-path baselines failed before the change: a colon-versus-dash
+  title blocking a barcode pair, a shared catalog number pairing across
+  incompatible barcodes, a catalog number pairing with no corroboration,
+  "CAT 2 2" versus "CAT 2-2" refusing to pair, two indistinguishable Discogs
+  records taking the first, the second Discogs barcode being discarded, and a
+  disc-ID conversion keeping only the matched medium so a cassette record
+  paired with a CD-plus-vinyl release; the Discogs master-id-zero fixture
+  already decoded as absence and is kept as coverage. Results now carry every
+  stated barcode, the media the record described (`StatedMedia`), and the
+  releases its document links; `import/pressing_evidence.rs` compares each
+  pressing fact as Same/Different/Unknown and orders support; pairing runs
+  over the whole result list by support level with ambiguous members settled
+  unpaired; cards union the buckets pairs join before the text merge.
+  Migration 44 (43 is the applied-source-partners Rust migration already
+  registered on main) rebuilds `import_candidate_match` with `media_kind` and
+  barcode, medium and link child tables, splits stored formats the way they
+  were written, and rewrites stored ledger results to the same shape; its
+  historical-schema test seeds the previous schema and reads the migrated
+  verdict back through `load_import_candidate_states`. Verification passed
+  49 grouping, 22 search-conversion, 7 evidence and 11 format tests, 60
+  migration tests including the two historical tests corrected for the new
+  top rung, the stored-verdict round trip whose replayed grouping equals the
+  live grouping, the whole bae-core library suite (2,323 passed before those
+  two corrections, then the affected selections), 46 bridge and 31 automation
+  tests. Native bridge generation, the macOS build, and 18 macOS tests in
+  five suites touching result rows passed. The C# callers and the Avalonia
+  test fixture were updated and the C# bindings regenerated, but the Avalonia
+  view tests could not complete: the test host failed the uniffi contract
+  version check when loading the native bridge and hung, and the run was
+  stopped. Mobile cross-builds were not run. CI remains an end-of-queue gate.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.
 

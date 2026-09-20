@@ -356,7 +356,8 @@ mirror_struct! {
 
 impl AutomationMetadataResult {
     /// Not a copy: core's `source_tracks` is the settle marker for a stored
-    /// verdict, not something an MCP client reads.
+    /// verdict, and its `media` and `links` are the evidence the pressing
+    /// rows were paired by — neither is something an MCP client reads.
     pub(crate) fn from_core(result: MetadataResult) -> Self {
         Self {
             source: result.source.into(),
@@ -368,7 +369,7 @@ impl AutomationMetadataResult {
             label: result.label,
             catalog_number: result.catalog_number,
             country: result.country,
-            barcode: result.barcode,
+            barcodes: result.barcodes,
             cover_art: result.cover_art.map(AutomationRemoteCover::from_core),
             source_group_id: result.source_group_id,
         }
@@ -399,25 +400,35 @@ mirror_struct! {
     fields: { title, artist, duration_ms, position, side },
 }
 
-mirror_struct! {
-    AutomationReleaseDetail = ImportSearchReleaseDetail,
-    from_core: pub(crate) fn,
-    fields: {
-        release_id,
-        source: (into),
-        source_group_id,
-        title,
-        artist,
-        year,
-        format,
-        label,
-        catalog_number,
-        country,
-        barcode,
-        track_count,
-        tracks: (each AutomationReleaseTrack),
-        cover_art: (each AutomationRemoteCover),
-    },
+impl AutomationReleaseDetail {
+    /// Not a copy: core's `media` and `links` are pairing evidence the
+    /// result a pick becomes carries, not something an MCP client reads.
+    pub(crate) fn from_core(detail: ImportSearchReleaseDetail) -> Self {
+        Self {
+            release_id: detail.release_id,
+            source: detail.source.into(),
+            source_group_id: detail.source_group_id,
+            title: detail.title,
+            artist: detail.artist,
+            year: detail.year,
+            format: detail.format,
+            label: detail.label,
+            catalog_number: detail.catalog_number,
+            country: detail.country,
+            barcode: detail.barcode,
+            track_count: detail.track_count,
+            tracks: detail
+                .tracks
+                .into_iter()
+                .map(AutomationReleaseTrack::from_core)
+                .collect(),
+            cover_art: detail
+                .cover_art
+                .into_iter()
+                .map(AutomationRemoteCover::from_core)
+                .collect(),
+        }
+    }
 }
 
 mirror_struct! {

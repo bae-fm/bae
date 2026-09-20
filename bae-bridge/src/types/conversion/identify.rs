@@ -10,7 +10,7 @@ impl BridgeMetadataResult {
             label,
             catalog_number,
             country,
-            barcode,
+            barcodes,
             source_group_id,
             // Dropped: the card carries the album's title/artist/cover, so a
             // pressing projection keeps only pressing-distinguishing fields.
@@ -21,6 +21,11 @@ impl BridgeMetadataResult {
             // a pressing row renders; the sidebar reads the classification the
             // rule produced from it.
             source_tracks: _,
+            // What the record said about its media and its counterparts is
+            // pairing evidence; the row renders `format`, and the pairing it
+            // fed is already the row.
+            media: _,
+            links: _,
         } = r;
         BridgeMetadataResult {
             source: BridgeCatalog::from_core(source),
@@ -30,7 +35,7 @@ impl BridgeMetadataResult {
             label,
             catalog_number,
             country,
-            barcode,
+            barcodes,
             source_group_id,
         }
     }
@@ -102,6 +107,10 @@ impl BridgeReleaseDetail {
             track_count,
             tracks,
             cover_art,
+            // Pairing evidence the result a pick becomes carries; the picker
+            // renders `format` and the pressing fields.
+            media: _,
+            links: _,
         } = d;
         BridgeReleaseDetail {
             release_id,

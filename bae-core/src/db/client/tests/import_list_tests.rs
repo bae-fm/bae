@@ -44,7 +44,9 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
             label: None,
             catalog_number: None,
             country: None,
-            barcode: None,
+            barcodes: Vec::new(),
+            media: crate::import::search::StatedMedia::Undescribed,
+            links: Vec::new(),
             cover_art: None,
             source_group_id: Some("group-1".to_string()),
             source_tracks: Some(SourceTracks::Listed {

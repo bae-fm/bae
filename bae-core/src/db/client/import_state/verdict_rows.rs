@@ -8,8 +8,8 @@
 use super::*;
 use crate::identify::{IdentifyFailure, IdentifyRunView, LookupProvenance, TerminalVerdict};
 use crate::import::cover_art::RemoteCover;
-use crate::import::search::{MetadataResult, SourceTracks};
-use crate::import::Catalog;
+use crate::import::search::{MetadataResult, SourceTracks, StatedMedia};
+use crate::import::{Catalog, MetadataRef};
 use std::str::FromStr;
 
 /// What a stored column holds that no writer here produces.
@@ -185,10 +185,21 @@ fn insert_match(
                 .transpose()?,
         ),
     };
+    let (media_kind, media_entries): (&str, Vec<Option<&str>>) = match &result.media {
+        StatedMedia::Undescribed => (MEDIA_UNDESCRIBED, Vec::new()),
+        StatedMedia::PerMedium(entries) => (
+            MEDIA_PER_MEDIUM,
+            entries.iter().map(Option::as_deref).collect(),
+        ),
+        StatedMedia::Descriptors(tokens) => (
+            MEDIA_DESCRIPTORS,
+            tokens.iter().map(|token| Some(token.as_str())).collect(),
+        ),
+    };
     sql.execute(
         "INSERT INTO import_candidate_match \
              (content_hash, position, source, release_id, title, artist, year, format, \
-              label, catalog_number, country, barcode, cover_url, cover_thumbnail_url, \
+              label, catalog_number, country, media_kind, cover_url, cover_thumbnail_url, \
               cover_label, cover_source, source_group_id, source_tracks_kind, \
               source_tracks_count, source_tracks_total_ms, by_disc_id, by_barcode, by_catalog, \
               narrowed_out) \
@@ -205,7 +216,7 @@ fn insert_match(
             result.label,
             result.catalog_number,
             result.country,
-            result.barcode,
+            media_kind,
             cover.map(|cover| cover.url.as_str()),
             cover.map(|cover| cover.thumbnail_url.as_str()),
             cover.map(|cover| cover.label.as_str()),
@@ -220,7 +231,57 @@ fn insert_match(
             narrowed_out,
         ],
     )?;
+    for (ordinal, barcode) in result.barcodes.iter().enumerate() {
+        sql.execute(
+            "INSERT INTO import_candidate_match_barcode (content_hash, position, ordinal, barcode) \
+             VALUES (?, ?, ?, ?)",
+            params![content_hash, position, ordinal_column(ordinal)?, barcode],
+        )?;
+    }
+    for (ordinal, format) in media_entries.iter().enumerate() {
+        sql.execute(
+            "INSERT INTO import_candidate_match_medium \
+                 (content_hash, position, media_kind, ordinal, format) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![content_hash, position, media_kind, ordinal_column(ordinal)?, format],
+        )?;
+    }
+    for (ordinal, link) in result.links.iter().enumerate() {
+        sql.execute(
+            "INSERT INTO import_candidate_match_link (content_hash, position, ordinal, catalog, key) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![
+                content_hash,
+                position,
+                ordinal_column(ordinal)?,
+                link.catalog.as_str(),
+                link.key
+            ],
+        )?;
+    }
     Ok(())
+}
+
+fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
+    i64::try_from(ordinal)
+        .map_err(|_| DbError::Message("a match's list is longer than SQLite counts".to_string()))
+}
+
+/// The stored `media_kind` values, one per [`StatedMedia`] shape.
+pub(super) const MEDIA_UNDESCRIBED: &str = "undescribed";
+pub(super) const MEDIA_PER_MEDIUM: &str = "per_medium";
+pub(super) const MEDIA_DESCRIPTORS: &str = "descriptors";
+
+/// The ordinal-ordered rows the child tables hold for one match, read in the
+/// same pass as its row and handed to [`match_of`].
+#[derive(Default)]
+pub(super) struct MatchEntries {
+    pub(super) barcodes: Vec<String>,
+    /// `(media_kind, format)`: the kind rides on every medium row, so a row
+    /// whose kind disagrees with its match's is unreadable rather than
+    /// silently reinterpreted.
+    pub(super) media: Vec<(String, Option<String>)>,
+    pub(super) links: Vec<(String, String)>,
 }
 
 /// One candidate's stored releases, each list in the order it was written: the
@@ -241,7 +302,78 @@ pub(super) struct MatchRow {
     pub(super) narrowed_out: bool,
 }
 
-pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
+/// One match row's own columns, before the child tables' rows are joined
+/// to it.
+pub(super) struct MatchColumns {
+    pub(super) content_hash: String,
+    pub(super) position: i64,
+    media_kind: String,
+    /// The result with its list fields still empty; [`match_of`] fills them.
+    result: MetadataResult,
+    provenance: LookupProvenance,
+    narrowed_out: bool,
+}
+
+/// The match its columns and its child rows describe. The media kind and the
+/// medium rows have to agree: a kind with no entries is `undescribed`, a
+/// `descriptors` row states its format, and a row of another kind is a
+/// different match's.
+pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<MatchRow, DbError> {
+    let MatchColumns {
+        content_hash,
+        position,
+        media_kind,
+        mut result,
+        provenance,
+        narrowed_out,
+    } = columns;
+    let MatchEntries {
+        barcodes,
+        media,
+        links,
+    } = entries;
+    let mismatch = |what: &str| {
+        DbError::Message(format!(
+            "match {position} of {content_hash} holds {media_kind} media but {what}"
+        ))
+    };
+    for (kind, _) in &media {
+        if *kind != media_kind {
+            return Err(mismatch(&format!("a {kind} medium row")));
+        }
+    }
+    result.media = match media_kind.as_str() {
+        MEDIA_UNDESCRIBED => {
+            if !media.is_empty() {
+                return Err(mismatch("lists medium rows"));
+            }
+            StatedMedia::Undescribed
+        }
+        MEDIA_PER_MEDIUM => {
+            StatedMedia::PerMedium(media.into_iter().map(|(_, format)| format).collect())
+        }
+        MEDIA_DESCRIPTORS => StatedMedia::Descriptors(
+            media
+                .into_iter()
+                .map(|(_, format)| format.ok_or_else(|| mismatch("a descriptor row states none")))
+                .collect::<Result<_, _>>()?,
+        ),
+        other => return Err(unreadable("media_kind", other)),
+    };
+    result.barcodes = barcodes;
+    result.links = links
+        .into_iter()
+        .map(|(catalog, key)| Ok(MetadataRef::new(source_of(&catalog)?, key)))
+        .collect::<Result<_, DbError>>()?;
+    Ok(MatchRow {
+        content_hash,
+        result,
+        provenance,
+        narrowed_out,
+    })
+}
+
+pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
     let cover_url: Option<String> = row.get("cover_url")?;
     let cover_source: Option<String> = row.get("cover_source")?;
     let cover_art = match (cover_url, cover_source) {
@@ -281,8 +413,10 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
         Some(other) => return Err(unreadable("source_tracks_kind", other)),
     };
     let source: String = row.get("source")?;
-    Ok(MatchRow {
+    Ok(MatchColumns {
         content_hash: row.get("content_hash")?,
+        position: row.get("position")?,
+        media_kind: row.get("media_kind")?,
         result: MetadataResult {
             source: source_of(&source)?,
             release_id: row.get("release_id")?,
@@ -293,7 +427,9 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
             label: row.get("label")?,
             catalog_number: row.get("catalog_number")?,
             country: row.get("country")?,
-            barcode: row.get("barcode")?,
+            barcodes: Vec::new(),
+            media: StatedMedia::Undescribed,
+            links: Vec::new(),
             cover_art,
             source_group_id: row.get("source_group_id")?,
             source_tracks,
