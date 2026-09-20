@@ -12,6 +12,12 @@ tests, implement, review every requirement, fix findings, run affected checks an
 normal hooks, commit, and push. Coordinate parent review and fast-forward landing
 on main; report branch, commit, checks, and unresolved failures accurately.
 
+The user has explicitly removed CI as a gate between tasks. Complete local
+verification, normal hooks, and requirement/rules review, then land each concern
+and continue the queue without waiting for CI. Record CI failures and resolve
+them after the queued implementation; the final outcome still requires passing
+CI. The parent owns the existing CI watcher and coordinates that final repair.
+
 Update this plan's execution record with commit and verification evidence as
 work advances. Preserve all queued plans in Git. Product UI scope is macOS;
 shared canonical model changes update required callers on all platforms. The
@@ -123,10 +129,18 @@ that main or CI has passed.
   together in `f9a8e2302493898d17baeaf94a17ff4c6c9f2ace`: operation-specific
   historical cells and shared migration validation/recovery helpers. Its normal
   hooks passed, as did 40 database schema, 20 replication schema, seven converter,
-  and 11 Circle tests. The host pins this corrected revision; focused historical
-  and caller checks, the corrected macOS test selection, and the affected rules
-  review are running. Dependency CI/landing and enrichment integration remain
-  required. Do not treat the earlier core result as verification of the later
-  adapter representation change.
+  and 11 Circle tests. The host pins this corrected revision; verification passed
+  57 historical migration tests, 43 import-service integration tests, 31 automation,
+  46 bridge, 16 Subsonic unit and 17 Subsonic integration tests, 20 macOS tests in
+  five suites, and all 262 Avalonia view tests with regenerated C# bindings.
+  Disk exhaustion interrupted an earlier attempt; after removing idle compiler
+  output, the checks passed. The .NET test host also needed its generated bridge
+  in the native probe directory with the FFmpeg runtime path.
+  The affected rules rerun approved the operation model and shared helpers;
+  three unused-helper claims are false positives because the host's historical
+  migration tests use that facade API. One duplicated test transformation remains
+  under correction in Coven; it does not change production behavior. Dependency
+  landing and enrichment integration remain required, with CI handled at the end
+  under the user's revised execution contract.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.

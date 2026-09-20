@@ -96,3 +96,37 @@ Test the actual result matching function and its selection/count consumers:
 Use synthetic fixtures, reproduce confirmed failures before fixing, run affected
 tests and normal hooks, and review each contract item before committing/pushing
 and coordinating main integration. Do not mutate live media or the live database.
+
+## Existing normalization boundaries
+
+`util/text.rs::squash` already defines canonical catalog-number normalization
+for lookup and stored marks: Unicode decomposition, removal of combining marks,
+case folding, and retention of letters and digits. Reuse that definition for
+catalog evidence rather than keeping `release_group.rs::catalog_key`'s different
+trim-and-lowercase rule. Empty normalized identifiers supply no evidence.
+
+`identify/country.rs::named` resolves ISO country codes and their listed English
+names to one country. Share this lookup when comparing pressing countries;
+do not copy its country table into import matching. Its contract deliberately
+does not resolve MusicBrainz's XE/XW region values. Define region comparison
+separately where provider records supply that evidence, and keep unrecognized
+values inconclusive rather than treating two unknowns as equal countries.
+
+`util/format.rs::physical_medium` is a playback/display classifier: its current
+substring matching is case-sensitive, it selects the first of vinyl, cassette,
+or CD, and it returns None for both unknown and digital formats. That result
+alone cannot establish a pressing's medium or a contradiction. The matching
+implementation must preserve actual recognized medium evidence, including
+mixed-media descriptions, while ignoring descriptive qualifiers. Reuse existing
+physical-medium values where applicable; do not infer digital identity from an
+unknown format or equate a mixed-medium release with whichever token matched
+first. Cover case variation and mixed/partially described formats in the
+production matching tests.
+
+`signals/barcode.rs::is_placeholder_code` only recognizes repeated-digit
+placeholders; it does not validate check digits or canonicalize UPC/EAN forms.
+The present grouping helper strips every non-digit, which can manufacture a
+code from unrelated text. Keep validation and equivalent-representation rules
+explicit, preserve every provider-supplied barcode for display, and distinguish
+missing/unusable evidence from two known incompatible barcode sets. Do not
+claim the placeholder helper establishes barcode identity.

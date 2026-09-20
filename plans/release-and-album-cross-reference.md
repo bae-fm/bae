@@ -256,11 +256,15 @@ The selected solution and complete history verification contract are in
 
 Pinned-dependency verification at Coven `8506256` passed all 2,237 core tests,
 native bridge generation, and nine macOS catalog/source tests. The import-store
-suite selection was incorrect; its corrected identifiers are being verified
-against the final dependency pin. Rules
+suite selection was incorrect; its corrected identifiers subsequently passed
+against `f9a8e230`: 20 tests in five suites. Rules
 review then required operation-specific adapter cell variants and shared
-validation helpers; those corrections and their final dependency pin require
-focused verification before landing.
+validation helpers. Their final dependency pin passes 57 migration tests,
+43 import-service integration tests, 31 automation tests, 46 bridge tests,
+16 Subsonic unit and 17 integration tests, and 262 Avalonia view tests.
+Native bindings were regenerated for Swift and C#. Interrupted disk-full and
+.NET native-library probe attempts were rerun successfully; no product source
+was changed to bypass either environment failure.
 
 Parent review also found malformed optional documents escaped the optional-fetch
 error boundary. Three regressions failed first; all 34 payload tests now pass
