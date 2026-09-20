@@ -98,5 +98,9 @@ that main or CI has passed.
 - Avalonia prerequisite: `540ae9326`, pushed on `fix-avalonia-cue-file-bindings`;
   normal hooks passed and all 262 Avalonia view tests passed. Parent review and
   main integration remain required.
+- Enrichment: implementation and affected suites pass, including 2,217 core
+  tests. Persistence review identified a historical-sync-package incompatibility
+  in the uncommitted record-kind migration; see the enrichment plan. Resolve
+  that boundary before committing this task.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.

@@ -68,14 +68,25 @@ enqueue reverse release-group URL lookup. Release parents are always followed.
 Reuse recognized external catalog links and Wikidata items, without crawling
 ordinary linked websites or enumerating group/master pressings.
 
-Archive raw URL lookup responses under separate release/master relationship
-payload sources, including successful empty answers. An absent URL resource is
-a known no-match. Fetched release and album documents retain their own entity
-keys. The same pure relationship extraction drives online traversal and offline
-archive assembly; source-only lookup is replaced with entity-keyed access.
-Supporting fetch failures preserve the existing optional-enrichment behavior and
-are logged with source/key; the anchor failure still fails selection. No later
-background repair or hidden provider binding is introduced.
+Preserve existing reverse-release alias documents: a unique URL relationship
+fetches the canonical MB document once and archives its bytes under the originating
+Discogs release key as well. Add the analogous reverse-master alias containing the
+MB group document under the Discogs master key. Reuse already fetched canonical
+bytes for aliases. This preserves the existing applied-source snapshot shape.
+No-match or multiple distinct targets do not claim a counterpart; log ambiguous
+results and never choose the first. Archive replacement atomically clears the directly related document keys before
+storing the successful set. This removes obsolete reverse aliases and unavailable
+canonical parents, so replay cannot resurrect a previous answer omitted by the
+fresh lookup. Descendants behind an absent parent become unreachable; frozen
+applied-source snapshots retain their own documents.
+
+The same pure relationship extraction drives online traversal and offline archive
+assembly; source-only lookup is replaced with entity-keyed access. Supporting
+fetch failures preserve the existing optional-enrichment behavior and are logged
+with source/key; the anchor failure still fails selection. Explicit source
+application may expand previously archived documents with newly supported related
+documents, while ordinary pane reads and frozen applied snapshots stay offline.
+No later background repair or hidden provider binding is introduced.
 
 ### Metadata projection
 
@@ -91,8 +102,11 @@ album year exists. This distinguishes original album year from pressing year.
 Where the selected release supplies an album-level date directly, it wins.
 All unknown years stay absent. Selected tracks, order, positions, sides and
 credits remain the selected release's; parent records do not replace tracklists.
-Preserve existing cross-provider artist-ID enrichment without changing credited
-names or creating a new artist match policy.
+Retain cross-provider artist IDs only on the same credited name (ignoring case),
+without changing credited names or guessing that differently named artists match.
+An optional document with an unusable artist credit logs and skips that credit;
+its valid sibling credits and other fields remain available. Selected-release
+validation remains unchanged.
 
 Apply the assembled result once through existing replacement operations. No
 field-origin data or exception for manual edits returns. Source documents and
@@ -124,3 +138,55 @@ Artwork dispatch uses the actual identity kind (release vs group/master).
 Follow the authoritative order in [import-improvements-queue.md](import-improvements-queue.md).
 Unexpected release-selection diagnostics follow enrichment on a separate branch
 in the same worktree.
+
+
+## Review and verification evidence
+
+- Synthetic album-backlink regression failed before enrichment and now retains
+  selected A/B tracks, selected-provider original year, independent MB group
+  identity, and associated catalog links without a fabricated MB pressing.
+- Real HTTP traversal tests cover release/group cycles, duplicate relationships,
+  ambiguous reverse answers, and a failed canonical fetch reached through two
+  aliases. Disabling fetch-attempt tracking reproduced the duplicate request.
+- Review found an archived parent could return after a fresh lookup omitted it.
+  The store/load regression failed with differing payload sets; replacement now
+  invalidates related keys and writes successful documents in one transaction.
+- Review found unusable supplemental artist credits rejected a valid selection.
+  Both group and linked-release regressions failed first; the three focused
+  tests now pass, including unchanged selected-release validation.
+- Migration review tests actual schema-41-to-42 reopening with production sync
+  declarations. It reproduced a pinned clock-column ordinal mismatch; migration
+  42 now appends its new kind column. Both populated-data and real synced-store
+  upgrade regressions pass. The sync schema test now inspects migrated SQLite
+  instead of approximating migrations with a CREATE/DROP text parser.
+- Core import/reset integration: 50 passed. Automation: 31 passed. Bridge: 61
+  passed. Subsonic: 16 unit and 17 integration passed with serial execution;
+  the initial parallel test process exhausted its file descriptor allowance.
+- Native bridge generation and macOS app build passed. macOS catalog/source and
+  import-store suites: 20 passed. Regenerated C# callers: all 262 Avalonia view
+  tests passed. Mobile/other-platform CI has not been run for this commit yet.
+- Final full core suite: 2,217 passed. Normal commit hooks remain required.
+
+## Open migration review finding
+
+Do not commit migration 42 in its present form. Reopening an existing database
+passes, but historical sync packages still contain the original nine-column
+release-record shape. Coven accepts older package schema versions and applies
+their SQLite changesets directly against the current schema: an old insert has
+no required kind value, and an old update can restore the self-parent sentinel
+into the new optional parent column. Keeping clock ordinals stable is necessary
+but does not solve historical replay.
+
+The checked-out Coven API has no versioned changeset transformation hook or
+implemented minimum-writer-schema protocol. Snapshot publication alone does not
+prevent subsequent older writes or account for unpublished local journals.
+Two regressions now use the real schema-41 Coven store, capture its SQLite
+Session changesets, migrate through the actual ladder, and apply the original
+bytes. INSERT aborts on the new constraint. UPDATE succeeds but stores the old
+self-parent sentinel as a known album parent. Both regressions fail as expected.
+A further migration issue is that archived provider documents are an unsynced
+cache: using them to recover parent identity can give different devices different
+migrated values from the same synced input.
+
+Resolve this boundary before landing the persistence change; do not add nullable legacy kinds, arbitrary
+pressing defaults, or a fallback decoder to conceal the issue.

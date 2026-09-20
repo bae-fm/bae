@@ -25,3 +25,23 @@ Use one focused change after the preceding queued tasks. Coordinate main fast-fo
 
 ## Queued successor
 After cover format support lands, execute [Restore unused audio sources](restore-unused-audio-sources.md) on its own branch. Unused whole files and selected CUE slices remain visible and can be added individually with a plus button and “Add track” hover text, without resetting other track metadata.
+
+## Decoder research
+
+The current remote validator in `import/cover_art.rs::read_image_response`
+rejects bodies under 100 bytes before asking the decoder, then decodes without
+`util/cover.rs`'s explicit resource limits. Valid compact GIF/WebP files can be
+shorter than that heuristic; validation must use the actual decoder and the
+same dimension/allocation policy as normalization. The existing byte-download
+cap remains independent and required.
+
+`util/cover.rs::resize_cover` currently writes the decoded `DynamicImage`
+directly to JPEG. GIF/WebP can produce RGBA, so tests must establish the JPEG
+encoder's behavior and make the output color conversion explicit. Research the
+existing display background/alpha convention before choosing compositing;
+unsupported alpha must not turn valid accepted artwork into an import failure.
+
+`ContentTypeHint::is_raster_image` includes BMP because BMP remains previewable.
+Do not redefine raster images to mean cover formats. Trace its consumers and
+introduce a cover-specific eligibility predicate only where cover choices are
+constructed; retain file classification and attachment previews.
