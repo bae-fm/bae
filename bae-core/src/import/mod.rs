@@ -216,16 +216,16 @@ desktop_only! {
 pub use types::{
     asked_sources, is_the_only_asked_source, parse_catalog_url, ArtistAssignment, AudioFile,
     CandidateDraft, CandidateEditField, CandidateTrack, Catalog, CatalogAvailability, CatalogPage,
-    EditValidationError, ExistingArtist, MarkKind, MetadataProvenance, NewArtistSeed, PressingEdit,
-    RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed, ReleaseMark,
-    ReleaseMarkLine, ReleaseRecord, ReleaseUserEdit, SourceAvailability, TrackArtistAssignments,
-    TrackUserEdit, TrackVerification, Verification, VerificationSource,
+    EditValidationError, ExistingArtist, MarkKind, MetadataProvenance, MetadataRef, NewArtistSeed,
+    PressingEdit, RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
+    ReleaseMark, ReleaseMarkLine, ReleaseRecord, ReleaseUserEdit, SourceAvailability,
+    TrackArtistAssignments, TrackUserEdit, TrackVerification, Verification, VerificationSource,
 };
 desktop_only! {
     pub use types::{
         CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, ImportPhase,
-        ImportProgress, ImportStep, MetadataRef, PayloadSource, PrepareStep, PreparedArtistImage,
-        ReleaseReseed, SourcePayload, StorageMode, TrackAudio, TrackFile,
+        ImportProgress, ImportStep, PayloadSource, PrepareStep, PreparedArtistImage, ReleaseReseed,
+        SourcePayload, StorageMode, TrackAudio, TrackFile,
     };
     pub use watched_folder::WatchedFolder;
 }
