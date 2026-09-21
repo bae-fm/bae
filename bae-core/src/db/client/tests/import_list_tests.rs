@@ -72,64 +72,6 @@ async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &s
     save_verdict_with_ledger(db, candidate, release_id, None).await;
 }
 
-/// Store a verdict whose extraction read a barcode off two of the folder's
-/// scans and a catalog number out of its name.
-async fn save_verdict_with_marks(db: &Database, candidate: &FolderCandidate, release_id: &str) {
-    assert!(crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&NewImportCandidateVerdict {
-            candidate: crate::import::CandidateAsRead {
-                content_hash: candidate.files.content_hash(),
-                file_edit_revision: 0,
-                metadata_revision: 0,
-            },
-            folder_path: candidate.path.to_string_lossy().into_owned(),
-            verdict: verdict(release_id, None),
-            signals: crate::signals::Signals {
-                disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
-                verification: None,
-                barcode: crate::signals::BarcodeSignal::Settled {
-                    codes: vec![
-                        crate::signals::SourcedValue::in_file(
-                            "0075678164521".to_string(),
-                            crate::signals::SignalOrigin::Artwork,
-                            "back.jpg".to_string(),
-                        ),
-                        crate::signals::SourcedValue::in_file(
-                            "0075678164521".to_string(),
-                            crate::signals::SignalOrigin::CueSheet,
-                            "Album.cue".to_string(),
-                        ),
-                    ],
-                },
-                text: crate::signals::TextSignal::Settled {
-                    catalogs: vec![crate::signals::SourcedValue::new(
-                        "7559-60691-2".to_string(),
-                        crate::signals::SignalOrigin::FolderName,
-                    )],
-                    free_text: Vec::new(),
-                },
-                text_pool: Vec::new(),
-                durations: crate::import::probe::SourceDurations::totalling(1_000),
-            },
-            metadata: None,
-        })
-        .await
-        .unwrap());
-}
-
-/// Say which of the folder's catalog numbers this candidate's runs ask about.
-async fn choose_catalogs(db: &Database, candidate: &FolderCandidate, catalogs: &[&str]) {
-    db.save_import_candidate_lookup_choices(
-        &candidate.files.content_hash(),
-        &crate::import::LookupChoices {
-            chosen_catalogs: catalogs.iter().map(|value| value.to_string()).collect(),
-            ..crate::import::LookupChoices::default()
-        },
-    )
-    .await
-    .unwrap();
-}
-
 /// Store a verdict and the ledger its run recorded, beside the signals
 /// extraction read — the group one write lands.
 async fn save_verdict_with_ledger(

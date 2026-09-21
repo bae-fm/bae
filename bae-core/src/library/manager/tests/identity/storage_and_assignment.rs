@@ -100,7 +100,7 @@ async fn set_records_to_file_tags_moves_release_to_fresh_album() {
         .unwrap();
 
     manager
-        .set_records(&release.id, vec![], true, None)
+        .set_records(&release.id, vec![], true)
         .await
         .unwrap();
 
@@ -161,7 +161,6 @@ async fn set_records_replaces_rows_when_the_new_records_fit_the_current_album() 
             &release1.id,
             vec![mb_identity("g1", "mb-rel-99")],
             false,
-            None,
         )
         .await
         .unwrap();
@@ -225,7 +224,6 @@ async fn set_records_creates_a_new_album_when_no_existing_album_fits() {
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
             false,
-            None,
         )
         .await
         .unwrap();
@@ -269,7 +267,6 @@ async fn set_records_moves_the_release_to_the_matching_album() {
             &release_alpha.id,
             vec![mb_identity("g2", "mb-rel-pressing")],
             false,
-            None,
         )
         .await
         .unwrap();
@@ -315,7 +312,6 @@ async fn set_records_keeps_the_vacated_album_when_other_releases_remain() {
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
             false,
-            None,
         )
         .await
         .unwrap();
@@ -377,7 +373,6 @@ async fn set_records_does_not_touch_metadata_columns() {
             &release.id,
             vec![discogs_identity("dg1", "dg-rel-1")],
             false,
-            None,
         )
         .await
         .unwrap();
@@ -466,7 +461,6 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
             false,
-            None,
         )
         .await
         .unwrap();
@@ -534,7 +528,6 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
             false,
-            None,
         )
         .await
         .unwrap();
@@ -609,7 +602,6 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
             &release_alpha.id,
             &[mb_identity("g2", "g2-rel")],
             false,
-            None,
             &album_a.id,
             &fresh_album.id,
             Some(&fresh_album),
@@ -725,7 +717,7 @@ async fn album_records_merge_albums_but_never_match_pressings() {
         .await
         .unwrap();
     manager
-        .set_records(&another_release.id, vec![pressing.clone()], false, None)
+        .set_records(&another_release.id, vec![pressing.clone()], false)
         .await
         .unwrap();
     assert_eq!(

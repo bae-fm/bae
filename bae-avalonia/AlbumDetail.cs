@@ -83,16 +83,10 @@ public sealed class Release : INotifyPropertyChanged
     /// <see cref="StorageActions"/>.</summary>
     internal IReadOnlyList<BridgeReleaseRecord> Records => _release.Records;
 
-    /// <summary>Every name read off the object itself, one line per value and
-    /// in the order core lists mark kinds. Internal for the same reason as
-    /// <see cref="StorageActions"/>.</summary>
-    internal IReadOnlyList<BridgeReleaseMark> Marks => _release.Marks;
-
     /// <summary>What the rip databases said about this release's audio.
     /// <c>null</c> for a release no source verified. Internal for the same
     /// reason as <see cref="StorageActions"/>.</summary>
     internal BridgeVerification? Verification => _release.Verification;
-    internal BridgeMarkKind? IdentifiedBy => _release.IdentifiedBy;
 
     /// <summary>Whether this release lives in the cloud (Remote) rather than
     /// locally.</summary>

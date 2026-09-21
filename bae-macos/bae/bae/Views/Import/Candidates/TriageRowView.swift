@@ -151,9 +151,7 @@ struct TriageRowView: View {
     @ViewBuilder
     private var releaseSummary: some View {
         if let summary = ImportReleaseSummary(row: row) {
-            ImportReleaseSummaryView(summary: summary, style: .sidebar) {
-                glyphs
-            }
+            ImportReleaseSummaryView(summary: summary, style: .sidebar)
         }
     }
 
@@ -169,32 +167,6 @@ struct TriageRowView: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-            glyphs
-                .layoutPriority(1)
-        }
-    }
-
-    /// What the row states about its release, after whichever title it leads
-    /// with. Core decides whether an identifier tied it to the chosen record.
-    private var glyphs: some View {
-        IdentityGlyphs(
-            identifiedBy: row.identifiedBy,
-            marks: row.marks,
-            verification: row.verification,
-            records: records
-        )
-        .environment(
-            \.releaseEvidenceSubject,
-            .candidate(key: row.candidateKey)
-        )
-    }
-
-    /// Every catalog that describes the release the draft was read from —
-    /// what the glyphs' card links out to. Empty for every other reading.
-    private var records: [BridgeReleaseRecord] {
-        switch row.reading {
-        case .identified(let records): records
-        case .unidentified, .prefilled: []
         }
     }
 
@@ -528,14 +500,12 @@ extension TriageRowView {
         .windowBackground()
     }
 
-    #Preview("Identity glyphs") {
+    #Preview("Where the draft was read from") {
         let importStore = ImportStore()
         let rows = [
-            PreviewData.triageRowSealAndCheck,
-            PreviewData.triageRowSealOnly,
-            PreviewData.triageRowCheckOnly,
-            PreviewData.triageRowNeitherGlyph,
-            PreviewData.triageRowCheckBesideMatches,
+            PreviewData.triageRowReadFromRecord,
+            PreviewData.triageRowNotReadFromRecord,
+            PreviewData.triageRowSeveralMatches,
         ]
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(rows, id: \.candidateKey) { row in
@@ -549,11 +519,11 @@ extension TriageRowView {
                 )
             }
             // The same row as the list's first, drawn as the selection draws
-            // it: the whole text column goes white and the glyphs follow.
+            // it: the whole text column goes white.
             TriageRowView(
-                row: PreviewData.triageRowSealAndCheck,
+                row: PreviewData.triageRowReadFromRecord,
                 coverContent: importStore.sidebarCover(
-                    for: PreviewData.triageRowSealAndCheck
+                    for: PreviewData.triageRowReadFromRecord
                 ),
                 uploadObservation: nil,
                 isGroupMember: false,

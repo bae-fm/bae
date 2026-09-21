@@ -22,28 +22,6 @@ impl Database {
                 &content_hash,
                 rows.cover.as_ref(),
             )?;
-            let mut marks = state
-                .signals
-                .as_ref()
-                .map(|signals| {
-                    crate::import::ReleaseMark::of_signals(signals, &state.lookup_choices)
-                })
-                .unwrap_or_default();
-            crate::identify::corroborate_marks(
-                &mut marks,
-                state.metadata_provenance.as_ref(),
-                state.identify.iter().flat_map(|identify| identify.verdict.lookups()),
-                state.identify.as_ref().and_then(|identify| identify.verdict.ledger()),
-            );
-            // Which lookup produced the record the draft reads, asked of the
-            // stored verdict's own match rows before the pick is handed on.
-            let identified_by = crate::identify::identified_by(
-                state.metadata_provenance.as_ref(),
-                state
-                    .identify
-                    .iter()
-                    .flat_map(|identification| identification.verdict.lookups()),
-            );
             Ok(Some(crate::db::DbCandidateImportPreparation {
                 file_edit_revision: state.file_edits.revision,
                 metadata_revision: state.metadata_revision,
@@ -52,12 +30,10 @@ impl Database {
                 draft: rows.draft,
                 source_discogs_artist_ids,
                 assets,
-                marks,
                 verification: state
                     .signals
                     .as_ref()
                     .and_then(|signals| signals.verification.clone()),
-                identified_by,
             }))
         })
         .await

@@ -21,7 +21,6 @@ internal sealed class ImportMetadataSourceSection
     internal required string SourceAudioLine { get; init; }
     /// <summary>Every name the folder states, drawn under the audio facts.
     /// Empty until something has read it.</summary>
-    internal required IReadOnlyList<BridgeReleaseMark> Marks { get; init; }
     /// <summary>What the rip databases said about the folder's audio, drawn
     /// under the names it states. <c>null</c> until something has read its
     /// log.</summary>
@@ -249,10 +248,9 @@ internal sealed class ImportMetadataSourceSection
         body.Children.Add(grid);
         // The names the folder states and what the rip databases said: a
         // block of its own under the cover row, the full width of the card.
-        if (Marks.Count > 0 || Verification?.MatchedCopies is not null)
+        if (RipMatchLine.Build(Verification, OnOpenEvidence) is { } ripMatch)
         {
-            body.Children.Add(RipMatchLine.BuildWithMarks(
-                Marks, Verification, ReleaseFactsScale.Pane, OnOpenEvidence));
+            body.Children.Add(ripMatch);
         }
         // Which catalogs describe the release, last in the card under a rule
         // of their own.

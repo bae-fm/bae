@@ -77,7 +77,6 @@ pub(super) fn build_release_detail_on(
     let audio_formats = get_audio_formats_for_release_on(sql, &release.id)?;
     let audio_segments = get_audio_segments_for_release_on(sql, &release.id)?;
     let records = get_release_records_on(sql, &release.id)?;
-    let marks = get_release_marks_on(sql, &release.id)?;
     let verification = get_release_verification_on(sql, &release.id)?;
 
     Ok(ReleaseDetailRows {
@@ -87,7 +86,6 @@ pub(super) fn build_release_detail_on(
         audio_formats,
         audio_segments,
         records,
-        marks,
         verification,
     })
 }
@@ -99,7 +97,6 @@ pub(super) struct ReleaseDetailRows {
     audio_formats: Vec<DbAudioFormat>,
     audio_segments: Vec<DbAudioSegment>,
     records: Vec<crate::import::ReleaseRecord>,
-    marks: Vec<crate::import::ReleaseMark>,
     verification: Option<crate::import::Verification>,
 }
 
@@ -112,7 +109,6 @@ impl ReleaseDetailRows {
             audio_formats: self.audio_formats,
             audio_segments: self.audio_segments,
             records: self.records,
-            marks: self.marks,
             verification: self.verification,
         }
     }
@@ -282,48 +278,6 @@ pub(super) fn get_release_records_on(
     Ok(records)
 }
 
-/// Every name read off a release's own object, one row per sighting, in the
-/// order extraction read them.
-pub(super) fn get_release_marks_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<Vec<crate::import::ReleaseMark>, DbError> {
-    sql.query(
-        r#"
-            SELECT kind, value, origin, origin_path, corroborated,
-                   region_x, region_y, region_width, region_height
-            FROM release_marks
-            WHERE release_id = ?
-            ORDER BY position
-            "#,
-        params![release_id],
-        |row| {
-            let value: String = row.get("value")?;
-            let region = stored_region(
-                &value,
-                [
-                    row.get("region_x")?,
-                    row.get("region_y")?,
-                    row.get("region_width")?,
-                    row.get("region_height")?,
-                ],
-            )
-            .map_err(|e| column_conversion_error(row, "region_x", e.to_string()))?;
-            Ok(crate::import::ReleaseMark {
-                kind: parsed_column(row, "kind")?,
-                corroborated: row.get("corroborated")?,
-                sighting: crate::signals::SourcedValue {
-                    value,
-                    origin: parsed_column(row, "origin")?,
-                    origin_path: row.get("origin_path")?,
-                    region,
-                },
-            })
-        },
-    )
-    .map_err(DbError::from)
-}
-
 /// What the rip databases said about a release's audio, one row per track in
 /// track order. `None` for a release no source verified.
 pub(super) fn get_release_verification_on(
@@ -389,6 +343,10 @@ fn verification_count(row: &Row, column: &str) -> coven::rusqlite::Result<Option
 /// The region a row stores, as the four columns every table that stores one
 /// uses: all present and inside the image, or all absent. Anything else is a
 /// row nothing here wrote.
+///
+/// Every table that stores one belongs to the import pipeline, which is
+/// desktop-only.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn stored_region(
     value: &str,
     columns: [Option<f64>; 4],
@@ -526,18 +484,6 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
             barcode: row.get("barcode")?,
         },
         draft_from_tags: row.get("draft_from_tags")?,
-        identified_by: row
-            .get::<_, Option<String>>("identified_by")?
-            .map(|stored| {
-                stored.parse().map_err(|error: String| {
-                    coven::rusqlite::Error::FromSqlConversionFailure(
-                        0,
-                        coven::rusqlite::types::Type::Text,
-                        error.into(),
-                    )
-                })
-            })
-            .transpose()?,
         remote: row.get("remote")?,
         source_folder_name: row.get("source_folder_name")?,
         content_hash: row.get("content_hash")?,

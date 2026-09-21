@@ -168,7 +168,6 @@ async fn create_local_release(
         release_name: None,
         pressing: Pressing::blank(),
         draft_from_tags: true,
-        identified_by: None,
         remote: false,
         source_folder_name: None,
         content_hash: None,

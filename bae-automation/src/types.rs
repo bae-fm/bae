@@ -385,25 +385,6 @@ pub enum AutomationReleaseRecord {
     },
 }
 
-/// Which name a mark is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AutomationMarkKind {
-    DiscId,
-    Barcode,
-    CatalogNumber,
-}
-
-/// One name read off the object itself: the kind, the value, and every surface
-/// it was read from, each named once.
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationReleaseMark {
-    pub kind: AutomationMarkKind,
-    pub value: String,
-    pub origins: Vec<AutomationSignalOrigin>,
-    pub corroborated: bool,
-}
-
 /// Where a release's verification came from. Mirrors
 /// `bae_core::import::VerificationSource`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

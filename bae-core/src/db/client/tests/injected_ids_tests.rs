@@ -107,7 +107,6 @@ async fn identity_rows_take_their_ids_from_the_injected_provider() {
         &release.id,
         &[identity(Catalog::MusicBrainz, "mb-release-1")],
         false,
-        None,
         &album.id,
         &target.id,
         Some(&target),

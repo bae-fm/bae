@@ -9,9 +9,6 @@ struct ImportReleaseSummary {
     let artist: String?
     let factsLine: String
     let sourceAudio: BridgeCandidateSourceAudio?
-    /// Every name the candidate's folder states, whatever the draft was read
-    /// from. Empty until something has read it.
-    let marks: [BridgeReleaseMark]
     /// What the rip databases said about the folder's audio. `nil` until
     /// something has read its log, and for a folder whose log states nothing
     /// about its bits.
@@ -49,7 +46,6 @@ struct ImportReleaseSummary {
         case nil:
             factsLine = trackText
         }
-        marks = candidate.marks
         verification = candidate.verification
         sourceAudio = candidate.files.sourceAudio
     }
@@ -66,7 +62,6 @@ struct ImportReleaseSummary {
             artistNames.isEmpty
             ? nil : ListFormatter.localizedString(byJoining: artistNames)
         factsLine = ""
-        marks = row.marks
         verification = row.verification
         sourceAudio = nil
     }
@@ -80,9 +75,8 @@ struct ImportReleaseSummary {
 
 /// One rendering of an import release summary, scaled for its two homes.
 ///
-/// What sits after the title is the caller's — the sidebar's row puts its
-/// identity glyphs there; the pane names its catalogs in the records row
-/// instead and puts nothing.
+/// What sits after the title is the caller's; the pane names its catalogs in
+/// the records row instead and puts nothing.
 struct ImportReleaseSummaryView<TitleAccessory: View>: View {
     enum Style {
         case sidebar

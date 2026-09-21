@@ -161,23 +161,15 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// The names printed on the object the folder was copied from, one line
-    /// each, and under them what the rip databases said about its audio.
-    /// Absent — not an empty block — for a folder nothing has read.
+    /// What the rip databases said about the audio of the object the folder
+    /// was copied from. Absent — not an empty block — for a folder whose log
+    /// states nothing about its bits.
     @ViewBuilder
     private var folderFacts: some View {
-        if !releaseSummary.marks.isEmpty
-            || releaseSummary.verification?.matchedCopies != nil
+        if let verification = releaseSummary.verification,
+            verification.matchedCopies != nil
         {
-            VStack(
-                alignment: .leading,
-                spacing: ReleaseFactsScale.pane.lineSpacing
-            ) {
-                MarkLines(marks: releaseSummary.marks, scale: .pane)
-                if let verification = releaseSummary.verification {
-                    RipMatchLine(verification: verification)
-                }
-            }
+            RipMatchLine(verification: verification)
         }
     }
 

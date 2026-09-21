@@ -132,13 +132,13 @@ pub(super) fn insert_release_row(
         r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
-            draft_from_tags, identified_by,
+            draft_from_tags,
             format, label, catalog_number, country, barcode,
             remote,
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
             _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             release.id,
@@ -146,7 +146,6 @@ pub(super) fn insert_release_row(
             release.release_name,
             release.pressing.year,
             release.draft_from_tags,
-            release.identified_by.map(|kind| kind.as_str()),
             release.pressing.format,
             release.pressing.label,
             release.pressing.catalog_number,
@@ -745,47 +744,6 @@ pub(super) fn insert_release_record_row(
             album_key,
             record.url(),
             record.reads_draft(),
-            reg,
-            now,
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-/// Insert one mark sighting. Shared by the atomic import path (inside its
-/// transaction) and `insert_release_marks` (on the connection directly).
-pub(super) fn insert_release_mark_row(
-    conn: &SqlContext<'_, '_>,
-    release_id: &str,
-    mark: &crate::import::ReleaseMark,
-    position: usize,
-    id: String,
-    reg: &str,
-    now: &str,
-) -> Result<(), DbError> {
-    let region = mark.sighting.region;
-    conn.execute(
-        r#"
-        INSERT INTO release_marks (
-            id, release_id, position, kind, value, origin, origin_path,
-            region_x, region_y, region_width, region_height,
-            corroborated, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            id,
-            release_id,
-            position as i64,
-            mark.kind.as_str(),
-            mark.sighting.value,
-            mark.sighting.origin.as_str(),
-            mark.sighting.origin_path,
-            region.map(|region| f64::from(region.x)),
-            region.map(|region| f64::from(region.y)),
-            region.map(|region| f64::from(region.width)),
-            region.map(|region| f64::from(region.height)),
-            mark.corroborated,
             reg,
             now,
         ],

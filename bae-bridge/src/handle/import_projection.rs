@@ -203,9 +203,7 @@ impl crate::types::BridgeTriageRow {
             import_status,
             metadata_provenance,
             reading,
-            marks,
             verification,
-            identified_by,
             verified,
         } = row;
         crate::types::BridgeTriageRow {
@@ -235,12 +233,7 @@ impl crate::types::BridgeTriageRow {
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             reading: crate::types::BridgeTriageReading::from_core(reading),
-            marks: marks
-                .into_iter()
-                .map(crate::types::BridgeReleaseMark::from_core)
-                .collect(),
             verification: verification.map(crate::types::BridgeVerification::from_core),
-            identified_by: identified_by.map(crate::types::BridgeMarkKind::from_core),
             verified,
         }
     }

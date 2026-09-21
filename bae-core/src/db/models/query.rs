@@ -233,9 +233,6 @@ pub struct DbReleaseDetail {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
-    /// Every name read off the object itself, one row per sighting. Empty when
-    /// its folder stated none.
-    pub marks: Vec<crate::import::ReleaseMark>,
     /// What the rip databases said about this release's audio. `None` for a
     /// release no source verified.
     pub verification: Option<crate::import::Verification>,

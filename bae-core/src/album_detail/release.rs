@@ -108,16 +108,10 @@ pub struct ReleaseDetail {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
-    /// Every name read off the object itself, one line per value and in
-    /// `MarkKind` order. Empty when its folder stated none.
-    pub marks: Vec<crate::import::ReleaseMarkLine>,
     /// What the rip databases said about this release's audio — how many other
     /// copies of each track agree with this one. `None` for a release no
     /// source verified.
     pub verification: Option<crate::import::Verification>,
-    /// Which name read off the object tied its files to the record the draft
-    /// was read from. `None` where nothing did.
-    pub identified_by: Option<crate::import::MarkKind>,
     /// Whether other copies of this release's audio agree with it. Derived
     /// from `verification` once, here, so no surface reads a count to answer
     /// a yes-or-no question.
@@ -418,8 +412,6 @@ impl ReleaseDetail {
             cover_files,
             gallery_items: gallery,
             records: raw.records,
-            marks: crate::import::ReleaseMarkLine::fold(&raw.marks),
-            identified_by: release.identified_by,
             verified: raw
                 .verification
                 .as_ref()
@@ -461,7 +453,6 @@ mod release_edit_display_tests {
                 artists: Vec::new(),
             }],
             files: Vec::new(),
-            marks: Vec::new(),
             verification: None,
             audio_formats: vec![format.clone()],
             audio_segments: vec![crate::db::DbAudioSegment {

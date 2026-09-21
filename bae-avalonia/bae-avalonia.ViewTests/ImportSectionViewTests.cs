@@ -143,7 +143,7 @@ public sealed class ImportSectionViewTests
         Assert.Empty(RowTrailingText(view));
     }
 
-    // Identification is stated in the list; rip verification belongs in the pane.
+    // Rip verification belongs in the pane, never in the list.
     [AvaloniaTheory]
     [InlineData(true, true)]
     [InlineData(true, false)]
@@ -162,14 +162,10 @@ public sealed class ImportSectionViewTests
                 reading: identified
                     ? new BridgeTriageReading.Identified(PairedRecords)
                     : new BridgeTriageReading.Prefilled(),
-                identifiedBy: identified ? BridgeMarkKind.DiscId : null,
                 verified: verified),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
-        Assert.Equal(identified, HasGlyph(view, "identified-glyph"));
         Assert.False(HasGlyph(view, "verified-glyph"));
-        // Neither word is ever drawn: the glyphs are the whole statement.
-        Assert.DoesNotContain(Loc.Core("core.identity.identified"), RowText(view));
         Assert.DoesNotContain(Loc.Core("core.identity.verified"), RowText(view));
         Assert.Empty(RowTrailingText(view));
     }
@@ -186,11 +182,9 @@ public sealed class ImportSectionViewTests
                 BridgeTriageSkipAction.Skip,
                 metadataSummary: AppliedDraft,
                 reading: new BridgeTriageReading.Prefilled(),
-                identifiedBy: null,
                 verified: true),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
-        Assert.False(HasGlyph(view, "identified-glyph"));
         Assert.False(HasGlyph(view, "verified-glyph"));
         Assert.Equal(
             new[]
@@ -685,7 +679,6 @@ public sealed class ImportSectionViewTests
         BridgeCoverImageSource? coverThumbnail = null,
         BridgeMetadataProvenance? metadataProvenance = null,
         BridgeTriageReading? reading = null,
-        BridgeMarkKind? identifiedBy = null,
         bool verified = false) => new()
     {
         new BridgeImportListItem.Candidate(
@@ -698,7 +691,6 @@ public sealed class ImportSectionViewTests
                 coverThumbnail,
                 metadataProvenance,
                 reading,
-                identifiedBy,
                 verified),
             IsGroupMember: isGroupMember),
     };
@@ -711,7 +703,6 @@ public sealed class ImportSectionViewTests
         BridgeCoverImageSource? coverThumbnail = null,
         BridgeMetadataProvenance? metadataProvenance = null,
         BridgeTriageReading? reading = null,
-        BridgeMarkKind? identifiedBy = null,
         bool verified = false) =>
             new BridgeTriageRow(
                 CandidateKey: CandidateKey,
@@ -756,9 +747,7 @@ public sealed class ImportSectionViewTests
                             [])
                         : null),
                 Reading: reading ?? new BridgeTriageReading.Unidentified(),
-                Marks: [],
                 Verification: null,
-                IdentifiedBy: identifiedBy,
                 Verified: verified);
 
     private static BridgeImportQueueSummary MatchedSummary(

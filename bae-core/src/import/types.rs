@@ -27,8 +27,6 @@ mod catalog;
 pub use catalog::{parse_catalog_url, Catalog, CatalogPage};
 mod candidate_edit_field;
 pub use candidate_edit_field::CandidateEditField;
-mod mark;
-pub use mark::{MarkKind, ReleaseMark, ReleaseMarkLine};
 mod raw_release_edit;
 pub use raw_release_edit::{
     CandidateDraft, CandidateTrack, EditValidationError, RawPressingEdit, RawReleaseEdit,

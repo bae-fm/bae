@@ -219,10 +219,10 @@ desktop_only! {
 pub use types::{
     asked_sources, is_the_only_asked_source, parse_catalog_url, ArtistAssignment, AudioFile,
     CandidateDraft, CandidateEditField, CandidateTrack, Catalog, CatalogAvailability, CatalogPage,
-    EditValidationError, ExistingArtist, MarkKind, MetadataProvenance, MetadataRef, NewArtistSeed,
+    EditValidationError, ExistingArtist, MetadataProvenance, MetadataRef, NewArtistSeed,
     PressingEdit, RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
-    ReleaseMark, ReleaseMarkLine, ReleaseRecord, ReleaseUserEdit, SourceAvailability,
-    TrackArtistAssignments, TrackUserEdit, TrackVerification, Verification, VerificationSource,
+    ReleaseRecord, ReleaseUserEdit, SourceAvailability, TrackArtistAssignments, TrackUserEdit,
+    TrackVerification, Verification, VerificationSource,
 };
 desktop_only! {
     pub use types::{

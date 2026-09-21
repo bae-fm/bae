@@ -220,15 +220,9 @@ impl ImportService {
         let selected_cover = preparation.cover;
         let user_edit = Some(preparation.draft.release_edit().shape()?);
         let prepared_assets = preparation.assets;
-        // The names the folder itself states, whatever the draft was read
-        // from: a File Tags import carries its barcode too.
-        let marks = preparation.marks;
         // What the rip databases said about this folder's audio, from the log
         // the extraction pass already read.
         let verification = preparation.verification;
-        // What tied these files to the record their draft was read from, as
-        // the candidate's stored verdict recorded it.
-        let identified_by = preparation.identified_by;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
@@ -352,7 +346,6 @@ impl ImportService {
             .reconcile_prepared_release(
                 parsed,
                 records,
-                marks,
                 verification,
                 user_edit,
                 &replacement_release_ids,
@@ -365,8 +358,6 @@ impl ImportService {
             crate::import::release_candidate::CandidateSource::Combination => None,
         };
         prepared.db_release.content_hash = Some(content_hash);
-        // Kept with the release the way its marks and its verification are.
-        prepared.db_release.identified_by = identified_by;
 
         prepared.selected_cover = selected_cover.clone();
 
@@ -527,7 +518,6 @@ impl ImportService {
             artist_external_id_updates,
             artist_images,
             records,
-            marks,
             verification,
             selected_cover,
             remote_cover_image,
@@ -789,7 +779,6 @@ impl ImportService {
                     audio_formats: &built_audio.audio_formats,
                     audio_segments: &built_audio.audio_segments,
                     records,
-                    marks,
                     verification: verification.as_ref(),
                 },
                 prepared_files,

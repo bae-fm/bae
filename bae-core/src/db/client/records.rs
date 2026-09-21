@@ -118,10 +118,9 @@ impl Database {
         .await
     }
 
-    /// Replace a release's record rows, set where its draft was read from —
-    /// whether off the files' own tags, and which name read off the object
-    /// tied them to the new record — and move the release between albums when
-    /// the target differs from the source.
+    /// Replace a release's record rows, set whether its draft was read off
+    /// the files' own tags, and move the release between albums when the
+    /// target differs from the source.
     ///
     /// Everything below runs in one transaction:
     ///
@@ -130,8 +129,7 @@ impl Database {
     ///    (so a fresh album lands fully populated, not a bare row that
     ///    drops the artist links the source already had).
     /// 2. Replace the release's records.
-    /// 3. UPDATE the release's `album_id`, `draft_from_tags` and
-    ///    `identified_by`.
+    /// 3. UPDATE the release's `album_id` and `draft_from_tags`.
     /// 4. If the release vacated `current_album_id` (the source), check
     ///    inside the transaction whether any releases remain. None →
     ///    delete the source album. Some → clear `primary_release_id`
@@ -157,7 +155,6 @@ impl Database {
         release_id: &str,
         new_records: &[crate::import::ReleaseRecord],
         draft_from_tags: bool,
-        identified_by: Option<crate::import::MarkKind>,
         current_album_id: &str,
         target_album_id: &str,
         new_album: Option<&DbAlbum>,
@@ -209,13 +206,6 @@ impl Database {
             }
 
             // 2. Replace the records.
-            // The old readings' proof belongs to the previous identification.
-            // Replacing records supplies no per-value lookup evidence.
-            tx.execute(
-                "UPDATE release_marks SET corroborated = 0, _updated_at = ? \
-                 WHERE release_id = ? AND corroborated = 1",
-                params![reg, release_id],
-            )?;
             tx.execute(
                 "DELETE FROM release_records WHERE release_id = ?",
                 params![release_id],
@@ -230,17 +220,10 @@ impl Database {
                     UPDATE releases SET
                         album_id = ?,
                         draft_from_tags = ?,
-                        identified_by = ?,
                         _updated_at = ?
                     WHERE id = ?
                     "#,
-                params![
-                    target_album_id,
-                    draft_from_tags,
-                    identified_by.map(|kind| kind.as_str()),
-                    reg,
-                    release_id
-                ],
+                params![target_album_id, draft_from_tags, reg, release_id],
             )?;
 
             // 4. Source-album cleanup. Only runs when the release actually

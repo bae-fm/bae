@@ -435,9 +435,7 @@ extension ImportCandidateViewportTests {
                 importStatus: nil,
                 metadataProvenance: nil,
                 reading: .unidentified,
-                marks: [],
                 verification: nil,
-                identifiedBy: nil,
                 verified: false
             )
         )

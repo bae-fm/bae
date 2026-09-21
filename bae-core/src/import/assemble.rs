@@ -436,7 +436,6 @@ pub(crate) fn assemble_parsed_album(
         draft_from_tags: matches!(ir.metadata_provenance, Some(MetadataProvenance::FileTags)),
         // Which lookup found the record is the candidate's answer, not this
         // assembly's; `run_import` stamps it onto the row it writes.
-        identified_by: None,
         // Imports land local; the upload observer flips `remote` true once the
         // release's audio is durably in the cloud.
         remote: false,

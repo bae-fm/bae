@@ -326,18 +326,10 @@ pub struct BridgeRelease {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<BridgeReleaseRecord>,
-    /// Every name read off the object itself — its disc ID, barcodes and
-    /// catalog numbers — one line per value, in the order surfaces list mark
-    /// kinds. Empty when its folder stated none.
-    pub marks: Vec<crate::types::BridgeReleaseMark>,
     /// What the rip databases said about this release's audio — how many other
     /// copies of each track agree with this one. `None` for a release no
     /// source verified.
     pub verification: Option<crate::types::BridgeVerification>,
-    /// Which name read off the object tied its files to the record its draft
-    /// was read from. `None` where nothing did. Core decides it; a surface
-    /// draws the glyph and nothing else.
-    pub identified_by: Option<crate::types::BridgeMarkKind>,
     /// Whether other copies of this release's audio agree with it. Core
     /// derives it from the verification; a surface never reads a count to
     /// answer a yes-or-no question.

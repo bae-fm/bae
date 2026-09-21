@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
@@ -52,25 +51,5 @@ internal static class RipMatchLine
             Loc.Core(BaeBridgeMethods.BridgeSignalOriginKey(BridgeSignalOrigin.DiscToc)),
             new BridgeEvidenceSelection.Verification(), openEvidence));
         return row;
-    }
-
-    /// <summary>The names an object states and what the databases said about
-    /// its bits, stacked — the block three surfaces draw as one.</summary>
-    internal static Control BuildWithMarks(
-        IReadOnlyList<BridgeReleaseMark> marks,
-        BridgeVerification? verification,
-        ReleaseFactsScale scale = ReleaseFactsScale.Pane,
-        Action<BridgeEvidenceSelection>? openEvidence = null)
-    {
-        var column = new StackPanel { Spacing = scale.LineSpacing() };
-        if (marks.Count > 0)
-        {
-            column.Children.Add(MarkLines.Build(marks, scale, openEvidence));
-        }
-        if (Build(verification, openEvidence) is { } line)
-        {
-            column.Children.Add(line);
-        }
-        return column;
     }
 }

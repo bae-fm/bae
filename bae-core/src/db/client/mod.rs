@@ -45,7 +45,6 @@ mod blobs;
 mod candidate_state_rows;
 mod coven_capabilities;
 mod database_read;
-mod marks;
 mod records;
 // Watched folders, folder scans and the import candidate queue. Read
 // `import::watched_folder` and `import::FolderScanStatus`, both desktop-only,

@@ -491,27 +491,6 @@ pub(super) fn load_candidate_detail_on(
                 .as_ref()
                 .map(|release| MatchedRelease::of_pick(release.source, release));
         }
-        // Asked of the record the draft was read from, whichever of the
-        // verdict's matches that is — a person can pick a pressing the run
-        // did not lead with, and a pick from search is in no match row at all.
-        let identified_by = crate::identify::identified_by(
-            picked.as_ref(),
-            identify
-                .into_iter()
-                .flat_map(|identify| identify.verdict.lookups()),
-        );
-        let mut marks = signals
-            .as_ref()
-            .map(|signals| crate::import::ReleaseMark::of_signals(signals, &lookup_choices))
-            .unwrap_or_default();
-        crate::identify::corroborate_marks(
-            &mut marks,
-            picked.as_ref(),
-            identify
-                .into_iter()
-                .flat_map(|identify| identify.verdict.lookups()),
-            identify.and_then(|identify| identify.verdict.ledger()),
-        );
         let pane = crate::import::pane::draft_pane(
             release,
             candidate.files(),
@@ -543,8 +522,6 @@ pub(super) fn load_candidate_detail_on(
             resumed_identify_state,
             answer,
             matched,
-            identified_by,
-            marks: crate::import::ReleaseMarkLine::fold(&marks),
             metadata_provenance: picked,
             metadata_author,
             metadata_revision,

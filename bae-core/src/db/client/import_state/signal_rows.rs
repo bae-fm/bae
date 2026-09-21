@@ -302,45 +302,20 @@ fn free_text(text: &TextSignal) -> &[String] {
     }
 }
 
-/// What a candidate's settled signals state about the object it was copied
-/// from: the names its folder carries, and what the rip databases said about
-/// its audio.
-pub(crate) struct CandidateSignalFacts {
-    /// Extracted readings, before the selected record's lookups corroborate them.
-    pub(crate) marks: Vec<crate::import::ReleaseMark>,
-    /// `None` for a candidate whose log states nothing about its bits.
-    pub(crate) verification: Option<Verification>,
-}
-
-/// Those facts for every candidate, or for the one `only` names.
-///
-/// Read through the signals themselves rather than off the value rows
-/// directly: which of a candidate's signals are names read off the object is
-/// [`crate::import::ReleaseMark::of_signals`]'s answer, and asking it twice is
-/// two answers to one question. That answer reads the person's lookup choices,
-/// so they are loaded here beside the signals; a candidate with no stored
-/// choices runs with the default, as every other reader of them does. Both
-/// facts come out of one load, because both are readings of one settled
-/// extraction.
-pub(crate) fn load_signal_facts_on(
+/// What the rip databases said about each candidate's audio, for every
+/// candidate whose log states something about its bits, or for the one `only`
+/// names. A candidate whose log states nothing is absent from the map.
+pub(crate) fn load_verifications_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
-) -> Result<HashMap<String, CandidateSignalFacts>, DbError> {
+) -> Result<HashMap<String, Verification>, DbError> {
     let signals = load_signals_on(sql, only)?;
-    let choices = super::lookup_choice_rows::load_lookup_choices_on(sql, only)?;
-    let mut choices = choices()?;
     Ok(signals()?
         .into_iter()
-        .map(|(content_hash, signals)| {
-            let choices = choices.remove(&content_hash).unwrap_or_default();
-            let marks = crate::import::ReleaseMark::of_signals(&signals, &choices);
-            (
-                content_hash,
-                CandidateSignalFacts {
-                    marks,
-                    verification: signals.verification,
-                },
-            )
+        .filter_map(|(content_hash, signals)| {
+            signals
+                .verification
+                .map(|verification| (content_hash, verification))
         })
         .collect())
 }

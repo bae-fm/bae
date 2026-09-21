@@ -1,61 +1,7 @@
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn evidence_opens_each_recorded_scan_and_no_unrelated_file() {
-    use crate::import::{MarkKind, ReleaseMark};
-    use crate::signals::{SignalOrigin, SourcedValue};
-    let (manager, dir) = setup_test_manager().await;
-    let (release, _) = insert_export_release_rows(
-        &manager,
-        &dir.path().join("source"),
-        "Album Title",
-        &[
-            ("front.jpg", b"front"),
-            ("back.jpg", b"back"),
-            ("other.jpg", b"other"),
-        ],
-    )
-    .await;
-    let marks = ["front.jpg", "back.jpg", "front.jpg"].map(|name| ReleaseMark {
-        kind: MarkKind::Barcode,
-        sighting: SourcedValue::in_file("1234567890123".into(), SignalOrigin::Artwork, name.into()),
-        corroborated: false,
-    });
-    manager
-        .database
-        .insert_release_marks(&release.id, &marks)
-        .await
-        .unwrap();
-    let subject = EvidenceSubject::Release { id: release.id };
-    let selection = EvidenceSelection::Mark {
-        kind: MarkKind::Barcode,
-        value: "1234567890123".into(),
-        origin: SignalOrigin::Artwork,
-    };
-    assert_eq!(
-        manager.read_evidence(&subject, &selection).await.unwrap(),
-        vec![
-            EvidenceContent::Image {
-                name: "front.jpg".into(),
-                bytes: b"front".to_vec()
-            },
-            EvidenceContent::Image {
-                name: "back.jpg".into(),
-                bytes: b"back".to_vec()
-            },
-        ]
-    );
-    std::fs::remove_file(dir.path().join("source/back.jpg")).unwrap();
-    assert!(
-        manager.read_evidence(&subject, &selection).await.is_err(),
-        "missing evidence must be reported"
-    );
-}
-
-#[cfg(feature = "test-utils")]
-#[tokio::test]
 async fn evidence_verification_opens_the_log_with_the_stored_track_results() {
-    use crate::import::{MarkKind, ReleaseMark, Verification};
-    use crate::signals::{SignalOrigin, SourcedValue};
+    use crate::import::Verification;
     let (manager, dir) = setup_test_manager().await;
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
@@ -106,22 +52,6 @@ async fn evidence_verification_opens_the_log_with_the_stored_track_results() {
             .await
             .unwrap();
     }
-    manager
-        .database
-        .insert_release_marks(
-            &release.id,
-            &[ReleaseMark {
-                kind: MarkKind::DiscId,
-                sighting: SourcedValue::in_file(
-                    "disc-id".into(),
-                    SignalOrigin::DiscToc,
-                    "toc.log".into(),
-                ),
-                corroborated: true,
-            }],
-        )
-        .await
-        .unwrap();
     let subject = EvidenceSubject::Release { id: release.id };
     assert_eq!(
         manager
@@ -133,23 +63,6 @@ async fn evidence_verification_opens_the_log_with_the_stored_track_results() {
             text: text.into()
         },]
     );
-    assert_eq!(
-        manager
-            .read_evidence(
-                &subject,
-                &EvidenceSelection::Mark {
-                    kind: MarkKind::DiscId,
-                    value: "disc-id".into(),
-                    origin: SignalOrigin::DiscToc
-                }
-            )
-            .await
-            .unwrap(),
-        vec![EvidenceContent::Document {
-            name: "toc.log".into(),
-            text: "Unrecognized TOC-only log".into()
-        },]
-    );
 }
 
 #[cfg(feature = "test-utils")]
@@ -159,7 +72,7 @@ async fn evidence_candidate_opens_its_recorded_cue_and_verification_log() {
         CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
         ScannedFile,
     };
-    use crate::import::{CandidateAsRead, CandidatePreparations, MarkKind, Verification};
+    use crate::import::{CandidateAsRead, CandidatePreparations, Verification};
     use crate::signals::{
         BarcodeSignal, DiscIdSignal, SignalOrigin, Signals, SourcedValue, TextSignal,
     };
@@ -257,23 +170,6 @@ async fn evidence_candidate_opens_its_recorded_cue_and_verification_log() {
         vec![EvidenceContent::Document {
             name: "rip.LOG".into(),
             text: log_text
-        }]
-    );
-    assert_eq!(
-        manager
-            .read_evidence(
-                &subject,
-                &EvidenceSelection::Mark {
-                    kind: MarkKind::Barcode,
-                    value: "1234567890123".into(),
-                    origin: SignalOrigin::CueSheet
-                }
-            )
-            .await
-            .unwrap(),
-        vec![EvidenceContent::Document {
-            name: "album.cue".into(),
-            text: cue.into()
         }]
     );
 }

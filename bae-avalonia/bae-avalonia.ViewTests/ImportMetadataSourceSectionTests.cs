@@ -247,7 +247,6 @@ public sealed class ImportMetadataSourceSectionTests
             Presentation = presentation,
             DraftIsBlank = draftIsBlank,
             Title = title ?? "Album Title",
-            Marks = [],
             Verification = null,
             Records = [],
             Edit = edit ?? Edit(),

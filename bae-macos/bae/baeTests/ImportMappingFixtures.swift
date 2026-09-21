@@ -442,7 +442,6 @@ extension MappingFixtures {
         folderName: String = "Walkthrough",
         audioIdentity: String = "empty-audio-files",
         reading: BridgeTriageReading = .unidentified,
-        marks: [BridgeReleaseMark] = [],
         verification: BridgeVerification? = nil
     ) -> BridgeImportCandidateDetail {
         let folder = sourceFolder(
@@ -459,7 +458,6 @@ extension MappingFixtures {
                 edit: edit,
                 metadataProvenance: metadataProvenance,
                 reading: reading,
-                marks: marks,
                 verification: verification
             ),
             release: {
@@ -491,17 +489,15 @@ extension MappingFixtures {
         )
     }
 
-    /// The queue's row for that same folder — what the pane reads its title,
-    /// its placement and the names its folder states from.
+    /// The queue's row for that same folder — what the pane reads its title
+    /// and its placement from.
     @MainActor
     private static func row(
         folder: BridgeFolderCandidate,
         edit: BridgeRawReleaseEdit,
         metadataProvenance: BridgeMetadataProvenance?,
         reading: BridgeTriageReading,
-        marks: [BridgeReleaseMark],
         verification: BridgeVerification? = nil,
-        identifiedBy: BridgeMarkKind? = nil,
         verified: Bool = false
     ) -> BridgeTriageRow {
         let undecided = metadataProvenance == nil && edit.albumTitle.isEmpty
@@ -524,9 +520,7 @@ extension MappingFixtures {
             importStatus: nil,
             metadataProvenance: metadataProvenance,
             reading: reading,
-            marks: marks,
             verification: verification,
-            identifiedBy: identifiedBy,
             verified: verified
         )
     }
@@ -590,7 +584,6 @@ extension MappingFixtures {
         edit: BridgeRawReleaseEdit = albumEdit,
         presentation: BridgeMetadataPresentation = .draft,
         reading: BridgeTriageReading = .unidentified,
-        marks: [BridgeReleaseMark] = [],
         verification: BridgeVerification? = nil
     ) -> ImportStore {
         let store = ImportStore()
@@ -602,7 +595,6 @@ extension MappingFixtures {
                 metadataProvenance: metadataProvenance,
                 presentation: presentation,
                 reading: reading,
-                marks: marks,
                 verification: verification
             )
         )

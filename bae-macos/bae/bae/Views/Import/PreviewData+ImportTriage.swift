@@ -49,9 +49,7 @@
             importStatus: BridgeTriageImportStatus? = nil,
             metadataProvenance: BridgeMetadataProvenance? = nil,
             reading: BridgeTriageReading = .unidentified,
-            marks: [BridgeReleaseMark] = [],
             verification: BridgeVerification? = nil,
-            identifiedBy: BridgeMarkKind? = nil,
             verified: Bool = false
         ) -> BridgeTriageRow {
             BridgeTriageRow(
@@ -72,9 +70,7 @@
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance,
                 reading: reading,
-                marks: marks,
                 verification: verification,
-                identifiedBy: identifiedBy,
                 verified: verified
             )
         }

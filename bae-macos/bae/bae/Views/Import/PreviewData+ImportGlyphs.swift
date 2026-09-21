@@ -2,9 +2,9 @@
     import BaeKit
     import Foundation
 
-    /// Preview fixtures for the two facts a candidate row states about its
-    /// release: the four combinations of the seal and the check, and the row
-    /// still being asked which pressing it is.
+    /// Preview fixtures for what a candidate row states about its release:
+    /// whether its draft was read from a catalog record, and the row still
+    /// being asked which pressing it is.
     extension PreviewData {
         private static func glyphCandidate(_ name: String) -> Candidate {
             importTabFolder(
@@ -19,13 +19,10 @@
             albumArtistAssignments: [newArtist("Artist Name")]
         )
 
-        /// A settled row, with whichever of the two facts it states. Each
-        /// pairing is its own row so the four combinations, and the question
-        /// a row can still be carrying, all render side by side.
+        /// A settled row whose draft was read from a record, or was not.
         private static func glyphRow(
             _ folder: String,
-            identifiedBy: BridgeMarkKind?,
-            verified: Bool,
+            readFromRecord: Bool,
             placement: BridgeTriagePlacement = .ready
         ) -> BridgeTriageRow {
             triageRow(
@@ -39,63 +36,40 @@
                 matched: nil,
                 metadataSummary: glyphSummary,
                 coverThumbnail: .local(path: previewArtPath("Front.png")),
-                metadataProvenance: identifiedBy == nil
-                    ? nil
-                    : .externalRelease(
+                metadataProvenance: readFromRecord
+                    ? .externalRelease(
                         record: BridgeMetadataRef(
                             catalog: .musicBrainz,
                             key: "rel-paired"
                         ),
                         partners: []
-                    ),
-                reading: identifiedBy == nil
-                    ? .prefilled
-                    : .identified(records: identifiedFromBothCatalogs),
-                marks: releaseMarks,
-                verification: verified ? releaseVerification : nil,
-                identifiedBy: identifiedBy,
-                verified: verified
+                    )
+                    : nil,
+                reading: readFromRecord
+                    ? .identified(records: identifiedFromBothCatalogs)
+                    : .prefilled,
+                verification: readFromRecord ? releaseVerification : nil,
+                verified: readFromRecord
             )
         }
 
-        /// A disc ID tied the files to the record, and the rip databases
-        /// found other copies of the disc: both glyphs.
-        static let triageRowSealAndCheck = glyphRow(
+        /// The draft was read from a catalog record.
+        static let triageRowReadFromRecord = glyphRow(
             "Release Folder Fifteen",
-            identifiedBy: .discId,
-            verified: true
+            readFromRecord: true
         )
 
-        /// A barcode tied the files to the record, and no database confirmed
-        /// the bits: the seal alone.
-        static let triageRowSealOnly = glyphRow(
+        /// The draft came off the files' own tags rather than any record.
+        static let triageRowNotReadFromRecord = glyphRow(
             "Release Folder Sixteen",
-            identifiedBy: .barcode,
-            verified: false
-        )
-
-        /// The bits matched other copies, and the draft came off the files'
-        /// own tags rather than any record: the check alone.
-        static let triageRowCheckOnly = glyphRow(
-            "Release Folder Seventeen",
-            identifiedBy: nil,
-            verified: true
-        )
-
-        /// Neither fact holds, and the row draws no glyph at all.
-        static let triageRowNeitherGlyph = glyphRow(
-            "Release Folder Eighteen",
-            identifiedBy: nil,
-            verified: false
+            readFromRecord: false
         )
 
         /// Several pressings are still in question, so no record is chosen
-        /// and there is no seal — but the bits matched other copies either
-        /// way, and the check sits beside the question's chip.
-        static let triageRowCheckBesideMatches = glyphRow(
+        /// and the row draws the question's chip instead.
+        static let triageRowSeveralMatches = glyphRow(
             "Release Folder Nineteen",
-            identifiedBy: nil,
-            verified: true,
+            readFromRecord: false,
             placement: .needsYou(reason: .severalMatches(count: 3))
         )
     }

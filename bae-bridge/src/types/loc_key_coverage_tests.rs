@@ -244,15 +244,6 @@ fn produced_keys() -> Vec<String> {
         assert!(bridge_cloud_provider_label_key(Some(p)).is_none());
     }
 
-    // bridge_mark_kind_key — every kind names the line it labels.
-    for kind in [
-        BridgeMarkKind::DiscId,
-        BridgeMarkKind::Barcode,
-        BridgeMarkKind::CatalogNumber,
-    ] {
-        keys.push(bridge_mark_kind_key(kind));
-    }
-
     // bridge_signal_origin_key — every surface a value can be read off tags
     // the line that states it.
     for origin in [

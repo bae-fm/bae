@@ -423,9 +423,7 @@
                 importStatus: nil,
                 metadataProvenance: metadataProvenance,
                 reading: .unidentified,
-                marks: PreviewData.releaseMarks,
                 verification: PreviewData.releaseVerification,
-                identifiedBy: .discId,
                 verified: true
             )
         }

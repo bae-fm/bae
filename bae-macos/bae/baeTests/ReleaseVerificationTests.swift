@@ -81,12 +81,11 @@ struct ReleaseVerificationTests {
         )
     }
 
-    /// The glyphs' card states it with the names, above the catalogs.
-    @Test("the glyph card states what the databases said")
+    /// The facts card states it above the catalogs.
+    @Test("the facts card states what the databases said")
     func theCardStatesTheCount() async throws {
         let lines = try await FindOnlineRendering.text(
             ReleaseFactsPopover(
-                marks: PreviewData.releaseMarks,
                 verification: PreviewData.releaseVerification,
                 records: PreviewData.releaseRecordsPair
             )
@@ -102,8 +101,8 @@ struct ReleaseVerificationTests {
         )
     }
 
-    /// The library expansion's popover states it with the release's own names
-    /// and the catalogs that describe it.
+    /// The library expansion's popover states it with the catalogs that
+    /// describe the release.
     @Test("the expansion popover states what the databases said")
     func theExpansionPopoverStatesTheCount() async throws {
         let store = PreviewData.seededLibraryStore()
@@ -113,7 +112,6 @@ struct ReleaseVerificationTests {
 
         let lines = try await FindOnlineRendering.text(
             ReleaseFactsPopover(
-                marks: release.marks,
                 verification: verification,
                 records: release.records
             )

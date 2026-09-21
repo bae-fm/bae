@@ -85,7 +85,6 @@ public sealed class ReleaseVerificationTests
             Edit = ImportCandidateFixtures.BlankEdit(),
             MetaLine = "2 tracks",
             SourceAudioLine = "FLAC · 44.1 kHz",
-            Marks = [],
             Verification = verification,
             Records = [],
             IsReading = false,

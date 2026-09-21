@@ -143,9 +143,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             importStatus: nil,
             metadataProvenance: nil,
             reading: .unidentified,
-            marks: [],
             verification: nil,
-            identifiedBy: nil,
             verified: false
         ),
         isGroupMember: false

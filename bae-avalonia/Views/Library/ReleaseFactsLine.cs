@@ -14,11 +14,10 @@ namespace Bae.Desktop;
 /// <summary>
 /// The release's facts, and the way into where they came from.
 ///
-/// At rest the line reads as a line of facts. When the release carries names of
-/// its own, the rip databases confirmed its audio, or a catalog describes it,
-/// pointing at it fills it softly and fades a seal in for an identifier match. A click
-/// toggles a card under it stating them. A release with none of the three has
-/// nothing behind the line, so it is not a trigger at all.
+/// At rest the line reads as a line of facts. When the rip databases confirmed
+/// the release's audio or a catalog describes it, pointing at it fills it
+/// softly, and a click toggles a card under it stating them. A release with
+/// neither has nothing behind the line, so it is not a trigger at all.
 ///
 /// The card hangs off the line's leading edge, a little below it, with no
 /// arrow: it is part of the expansion, not a window pointing back at the line.
@@ -44,62 +43,31 @@ internal sealed class ReleaseFactsLine : ContentControl
         HorizontalAlignment = HorizontalAlignment.Left;
     }
 
-    /// <summary>Draw <paramref name="facts"/>, as a trigger when the release
-    /// states a name of its own, <paramref name="verification"/> says the rip
-    /// databases confirmed it, or <paramref name="records"/> names a catalog,
-    /// and as plain text when it has none of them.</summary>
+    /// <summary>Draw <paramref name="facts"/>, as a trigger when
+    /// <paramref name="verification"/> says the rip databases confirmed the
+    /// release or <paramref name="records"/> names a catalog, and as plain
+    /// text when it has neither.</summary>
     internal void Show(
         string facts,
-        BridgeMarkKind? identifiedBy,
-        IReadOnlyList<BridgeReleaseMark> marks,
         BridgeVerification? verification,
         IReadOnlyList<BridgeReleaseRecord> records,
         Action<BridgeEvidenceSelection>? openEvidence = null)
     {
         _facts.Text = facts;
         IsVisible = facts.Length > 0;
-        Content = marks.Count == 0 && records.Count == 0
-            && verification?.MatchedCopies is null
+        Content = records.Count == 0 && verification?.MatchedCopies is null
             ? _facts
-            : Trigger(identifiedBy, marks, verification, records, openEvidence);
+            : Trigger(verification, records, openEvidence);
     }
 
     private Control Trigger(
-        BridgeMarkKind? identifiedBy,
-        IReadOnlyList<BridgeReleaseMark> marks,
         BridgeVerification? verification,
         IReadOnlyList<BridgeReleaseRecord> records,
         Action<BridgeEvidenceSelection>? openEvidence = null)
     {
-        var seal = Icons.Glyph(Icons.Seal, 11, "BaeTextSecondaryBrush");
-        seal.Opacity = 0;
-        seal.VerticalAlignment = VerticalAlignment.Center;
-        seal.IsHitTestVisible = false;
-        Avalonia.Automation.AutomationProperties.SetAccessibilityView(
-            seal, identifiedBy is null
-                ? Avalonia.Automation.AccessibilityView.Raw
-                : Avalonia.Automation.AccessibilityView.Content);
-        Avalonia.Automation.AutomationProperties.SetName(
-            seal, Loc.Core("core.identity.identified"));
-        // The seal fades rather than snaps: it is a hint at the line's tail,
-        // not a control that appears.
-        seal.Transitions =
-        [
-            new DoubleTransition
-            {
-                Property = OpacityProperty,
-                Duration = TimeSpan.FromSeconds(0.15),
-            },
-        ];
-        var row = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            Children = { _facts, seal },
-        };
         var button = new Button
         {
-            Content = row,
+            Content = _facts,
             Padding = new Thickness(5, 2),
             BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(5),
@@ -113,12 +81,10 @@ internal sealed class ReleaseFactsLine : ContentControl
         Avalonia.Automation.AutomationProperties.SetAutomationId(button, "release-facts");
         button.PointerEntered += (_, _) =>
         {
-            seal.Opacity = identifiedBy is null ? 0 : 1;
             button[!BackgroundProperty] = new DynamicResourceExtension("BaeHoverBrush");
         };
         button.PointerExited += (_, _) =>
         {
-            seal.Opacity = 0;
             button.Background = Brushes.Transparent;
         };
         var flyout = new Flyout
@@ -126,7 +92,7 @@ internal sealed class ReleaseFactsLine : ContentControl
             Placement = PlacementMode.BottomEdgeAlignedLeft,
             VerticalOffset = CardOffset,
             ShowMode = FlyoutShowMode.Standard,
-            Content = ReleaseFactsFlyout.Build(marks, verification, records, openEvidence),
+            Content = ReleaseFactsFlyout.Build(verification, records, openEvidence),
         };
         button.Click += (_, _) =>
         {

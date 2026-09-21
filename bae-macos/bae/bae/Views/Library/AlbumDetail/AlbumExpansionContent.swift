@@ -71,8 +71,6 @@ struct AlbumExpansionContent: View {
                     }
                     ReleaseFactsLine(
                         facts: selectedRelease.compactMetadata,
-                        identifiedBy: selectedRelease.identifiedBy,
-                        marks: selectedRelease.marks,
                         verification: selectedRelease.verification,
                         records: selectedRelease.records
                     )
@@ -230,8 +228,6 @@ struct AlbumExpansionContent: View {
 /// that closes it on a click away or Escape.
 private struct ReleaseFactsLine: View {
     let facts: String
-    let identifiedBy: BridgeMarkKind?
-    let marks: [BridgeReleaseMark]
     let verification: BridgeVerification?
     let records: [BridgeReleaseRecord]
 
@@ -249,40 +245,25 @@ private struct ReleaseFactsLine: View {
     private var lineHeight: CGFloat = 0
 
     var body: some View {
-        if marks.isEmpty, records.isEmpty, verification?.matchedCopies == nil {
+        if records.isEmpty, verification?.matchedCopies == nil {
             factsText
         }
         else {
             Button {
                 isShowingCard.toggle()
             } label: {
-                HStack(spacing: 6) {
-                    factsText
-                    Image(systemName: "seal")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .opacity(isHovering && identifiedBy != nil ? 1 : 0)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(identifiedBy == nil)
-                        .animation(
-                            .easeInOut(duration: 0.15),
-                            value: isHovering
-                        )
-                        .accessibilityLabel(
-                            coreString("core.identity.identified")
-                        )
-                }
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(isHovering ? Theme.hover : Color.clear)
-                )
-                // The fill bleeds outward from where the line already sat, so
-                // the card reads the same at rest as it did before it became
-                // a trigger.
-                .padding(.horizontal, -5)
-                .padding(.vertical, -2)
+                factsText
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(isHovering ? Theme.hover : Color.clear)
+                    )
+                    // The fill bleeds outward from where the line already
+                    // sat, so the card reads the same at rest as it did
+                    // before it became a trigger.
+                    .padding(.horizontal, -5)
+                    .padding(.vertical, -2)
             }
             .buttonStyle(.plain)
             .background { OverlayTrigger(anchor: trigger) }
@@ -307,7 +288,6 @@ private struct ReleaseFactsLine: View {
 
     private var card: some View {
         ReleaseFactsPopover(
-            marks: marks,
             verification: verification,
             records: records
         )

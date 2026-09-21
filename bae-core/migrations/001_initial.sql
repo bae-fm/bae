@@ -178,10 +178,6 @@ CREATE TABLE IF NOT EXISTS releases (
     -- Whether the stored metadata was read off the folder's own file tags
     -- rather than a catalog record.
     draft_from_tags INTEGER NOT NULL DEFAULT 0 CHECK (draft_from_tags IN (0, 1)),
-    -- Which name off the folder led identification to this pressing. NULL where
-    -- nothing did.
-    identified_by TEXT CHECK (identified_by IS NULL
-           OR identified_by IN ('disc_id', 'barcode', 'catalog_number')),
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
 ) STRICT;
 
@@ -330,41 +326,6 @@ CREATE INDEX IF NOT EXISTS idx_release_records_catalog_album ON release_records
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_release_records_reads_draft
     ON release_records (release_id) WHERE reads_draft = 1;
-
--- Each name identification read off the imported folder — a disc ID, barcode,
--- or catalog number — with where on which surface it was read.
-CREATE TABLE IF NOT EXISTS release_marks (
-    id            TEXT NOT NULL PRIMARY KEY,
-    release_id    TEXT NOT NULL,
-    -- Where this reading sits in the order extraction read them, so a surface
-    -- that names the surfaces a value was read from names them in that order.
-    position      INTEGER NOT NULL,
-    kind          TEXT NOT NULL,
-    value         TEXT NOT NULL CHECK (value <> ''),
-    origin        TEXT NOT NULL,
-    -- The candidate-relative path of the file it was read off, or NULL where
-    -- the surface is not a file (the folder's own name).
-    origin_path   TEXT,
-    -- The box the detector drew around the value, as fractions of the image.
-    -- All four or none: half a box crops nothing.
-    region_x      REAL,
-    region_y      REAL,
-    region_width  REAL,
-    region_height REAL,
-    _updated_at   TEXT NOT NULL,
-    created_at    TEXT NOT NULL,
-    -- Whether a catalog the release was matched against states this same value.
-    corroborated  INTEGER NOT NULL DEFAULT 0 CHECK (corroborated IN (0, 1)),
-    CHECK (
-        (region_x IS NULL AND region_y IS NULL
-         AND region_width IS NULL AND region_height IS NULL)
-        OR (region_x IS NOT NULL AND region_y IS NOT NULL
-            AND region_width IS NOT NULL AND region_height IS NOT NULL)
-    ),
-    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_release_marks_release ON release_marks (release_id);
 
 -- The rip-check counts a ripper's log stated for each track of a release.
 CREATE TABLE IF NOT EXISTS release_verification (

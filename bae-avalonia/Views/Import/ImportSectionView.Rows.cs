@@ -292,24 +292,6 @@ internal sealed partial class ImportSectionView
             Margin = new Thickness(6, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        if (row.IdentifiedBy is not null)
-        {
-            glyphs.Children.Add(Glyph(
-                Icons.Seal,
-                "BaeTextSecondaryBrush",
-                "identified-glyph",
-                Loc.Core("core.identity.identified")));
-        }
-        if (glyphs.Children.Count > 0)
-        {
-            var records = row.Reading is BridgeTriageReading.Identified identified
-                ? identified.Records
-                : [];
-            HoverFlyout.Attach(
-                glyphs,
-                () => ReleaseFactsFlyout.Build(row.Marks, row.Verification, records,
-                    selection => _ = _dialogs.ShowEvidence(_app, new BridgeEvidenceSubject.Candidate(row.CandidateKey), selection)));
-        }
         return glyphs;
     }
 

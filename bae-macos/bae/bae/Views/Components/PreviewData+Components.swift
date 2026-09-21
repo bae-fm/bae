@@ -55,32 +55,6 @@
                 }
         }
 
-        /// Every name a folder can state: a disc ID off its log, one barcode
-        /// its cover and its CUE sheet both state, and a catalog number in its
-        /// own name.
-        static var releaseMarks: [BridgeReleaseMark] {
-            [
-                BridgeReleaseMark(
-                    kind: .discId,
-                    value: "Wn8eRBtfLDMmvbjEACGGMLhxxfM-",
-                    origins: [.discToc],
-                    corroborated: true
-                ),
-                BridgeReleaseMark(
-                    kind: .barcode,
-                    value: "0075678164521",
-                    origins: [.artwork, .cueSheet],
-                    corroborated: false
-                ),
-                BridgeReleaseMark(
-                    kind: .catalogNumber,
-                    value: "7559-60691-2",
-                    origins: [.folderName],
-                    corroborated: false
-                ),
-            ]
-        }
-
         /// A rip whose weakest track thirty-seven other people's copies
         /// agree with — two tracks, each confirmed by both databases.
         static var releaseVerification: BridgeVerification {

@@ -31,7 +31,6 @@ pub(crate) struct ImportRows<'a> {
     pub audio_formats: &'a [DbAudioFormat],
     pub audio_segments: &'a [DbAudioSegment],
     pub records: &'a [crate::import::ReleaseRecord],
-    pub marks: &'a [crate::import::ReleaseMark],
     /// What the rip databases said about the release's audio, one row per
     /// track. `None` for a release no source verified.
     pub verification: Option<&'a crate::import::Verification>,
@@ -458,7 +457,6 @@ impl Database {
             .collect();
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let records = rows.records.to_vec();
-        let marks = rows.marks.to_vec();
         let verification = rows.verification.cloned();
         let replacement_deletes = replacement_deletes.to_vec();
 
@@ -539,20 +537,6 @@ impl Database {
                     // rows for one catalog.
                     for record in &records {
                         insert_release_record_row(tx, &release.id, record, ids.new_id(), &reg, &now)?;
-                    }
-
-                    // One row per sighting of a name read off the object: the
-                    // same barcode read off two scans keeps both readings.
-                    for (position, mark) in marks.iter().enumerate() {
-                        insert_release_mark_row(
-                            tx,
-                            &release.id,
-                            mark,
-                            position,
-                            ids.new_id(),
-                            &reg,
-                            &now,
-                        )?;
                     }
 
                     // One row per track the rip databases answered for, keyed

@@ -29,7 +29,7 @@ use super::agreements::{agreements_of, CandidateText};
 use crate::db::LibraryStatus;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing};
 use crate::import::search::MetadataResult;
-use crate::import::{Catalog, MarkKind};
+use crate::import::Catalog;
 use std::collections::{HashMap, HashSet};
 
 /// Which lookup produced one result: the result came back from that signal's
@@ -44,50 +44,6 @@ pub struct LookupProvenance {
     pub by_disc_id: bool,
     pub by_barcode: bool,
     pub by_catalog: bool,
-}
-
-impl LookupProvenance {
-    /// Which name the object carries produced this result, where one did: the
-    /// disc's own identity first, then the two codes printed on the package.
-    /// Several lookups can name one release, and the first of them in that
-    /// order is what tied the files to it — a disc ID identifies the pressing,
-    /// a barcode only the product.
-    ///
-    /// `None` for a result no lookup claims, which is a release somebody found
-    /// by searching.
-    fn mark(&self) -> Option<MarkKind> {
-        if self.by_disc_id {
-            Some(MarkKind::DiscId)
-        } else if self.by_barcode {
-            Some(MarkKind::Barcode)
-        } else if self.by_catalog {
-            Some(MarkKind::CatalogNumber)
-        } else {
-            None
-        }
-    }
-}
-
-/// Which name read off the folder tied its files to the record `picked` reads
-/// its draft from, over the lookups' answers `lookups` pairs with the releases
-/// they named.
-///
-/// The question is asked of the chosen record alone: another answer's route is
-/// a fact about a release nobody settled on. So a draft read off the files'
-/// own tags, a draft nobody has filled, and a record found by searching all
-/// answer `None` — as does a candidate still being asked which pressing it is,
-/// since it has chosen no record to ask about.
-pub fn identified_by<'a>(
-    picked: Option<&crate::import::MetadataProvenance>,
-    lookups: impl IntoIterator<Item = (&'a MetadataResult, &'a LookupProvenance)>,
-) -> Option<MarkKind> {
-    let crate::import::MetadataProvenance::ExternalRelease { record, .. } = picked? else {
-        return None;
-    };
-    lookups
-        .into_iter()
-        .find(|(result, _)| result.source == record.catalog && result.release_id == record.key)
-        .and_then(|(_, provenance)| provenance.mark())
 }
 
 /// The pressings agreement left out, as the releases they are made of — every

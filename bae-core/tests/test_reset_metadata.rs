@@ -61,7 +61,6 @@ fn make_release(album_id: &str) -> DbRelease {
         release_name: None,
         pressing: Pressing::blank(),
         draft_from_tags: false,
-        identified_by: None,
         remote: true,
         source_folder_name: None,
         content_hash: None,

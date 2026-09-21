@@ -189,7 +189,6 @@ fn create_test_release(album_id: &str) -> DbRelease {
             barcode: None,
         },
         draft_from_tags: true,
-        identified_by: None,
         remote: true,
         source_folder_name: None,
         content_hash: None,

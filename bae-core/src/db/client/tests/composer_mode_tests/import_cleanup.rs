@@ -78,7 +78,6 @@ fn test_release(id: &str, album_id: &str, now: chrono::DateTime<chrono::Utc>) ->
             barcode: None,
         },
         draft_from_tags: true,
-        identified_by: None,
         remote: false,
         source_folder_name: None,
         content_hash: None,
@@ -382,7 +381,6 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     let album = test_album(ALBUM_A, "Album Title A", &album_artist.id, now);
     let release = DbRelease {
         draft_from_tags: false,
-        identified_by: None,
         remote: true,
         ..test_release(RELEASE_A, &album.id, now)
     };

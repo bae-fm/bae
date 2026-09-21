@@ -465,12 +465,6 @@ struct Candidate: Equatable, Identifiable {
         }
     }
 
-    /// Every name this candidate's folder states, one line per value and in
-    /// the order core lists mark kinds. Empty until something has read it.
-    var marks: [BridgeReleaseMark] {
-        row?.marks ?? []
-    }
-
     /// What the rip databases said about this candidate's audio. `nil` until
     /// something has read its log, and for a folder whose log states nothing
     /// about its bits.

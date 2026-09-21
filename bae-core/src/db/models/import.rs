@@ -133,18 +133,10 @@ pub struct DbCandidateImportPreparation {
     pub draft: crate::import::CandidateDraft,
     pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
     pub assets: crate::import::CandidatePreparedAssets,
-    /// Every name the folder stated, read off the signals extraction settled
-    /// on. Empty for a candidate nothing has extracted signals from; commit
-    /// keeps these with the release.
-    pub marks: Vec<crate::import::ReleaseMark>,
     /// What the rip databases said about the folder's audio, off the same
     /// settled signals. `None` for a candidate whose log states nothing about
     /// its bits; commit keeps this with the release.
     pub verification: Option<crate::import::Verification>,
-    /// Which name read off the folder tied its files to the record the draft
-    /// was read from, as the stored verdict's match rows record it. `None`
-    /// where nothing did; commit keeps this with the release.
-    pub identified_by: Option<crate::import::MarkKind>,
 }
 
 /// The exact candidate state a library import transaction is allowed to
