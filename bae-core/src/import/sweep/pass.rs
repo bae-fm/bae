@@ -52,6 +52,13 @@ impl Pass {
                 pass.queue(candidate);
             }
         }
+        info!(
+            "sweep: pass planned over {} candidates: {} already answered, {} queued as {} jobs",
+            pass.total,
+            pass.identified,
+            pass.total.saturating_sub(pass.identified),
+            pass.pending.len()
+        );
         pass
     }
 
@@ -62,9 +69,16 @@ impl Pass {
     /// queue and not something a view can infer from the rows it happens to be
     /// holding.
     pub(super) fn announce(&self, context: &SweepContext) {
+        let identified = self.identified.min(self.total);
+        info!(
+            "sweep: queue identification at {identified}/{} ({} queued, {} running)",
+            self.total,
+            self.pending.len(),
+            self.in_flight.len()
+        );
         context
             .import
-            .announce_queue_identify_progress(self.identified.min(self.total), self.total);
+            .announce_queue_identify_progress(identified, self.total);
     }
 
     /// Tell the import runtime exactly which keys this pass has queued.
@@ -81,6 +95,11 @@ impl Pass {
 
     pub(super) fn in_flight_count(&self) -> usize {
         self.in_flight.len()
+    }
+
+    /// How many jobs are still waiting for a slot.
+    pub(super) fn queued_count(&self) -> usize {
+        self.pending.len()
     }
 
     /// Whether the pass already counts `key` as exactly this shape.

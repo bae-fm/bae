@@ -207,7 +207,9 @@ pub(super) async fn save(
         }
     };
     if !wrote {
-        debug!(
+        // Info rather than debug: a candidate whose answer is refused is run
+        // again, so a queue that never finishes reads as this line repeating.
+        info!(
             "sweep: discarded stale verdict for {} at file-edit revision {} and metadata revision {}",
             row.folder_path, row.candidate.file_edit_revision, row.candidate.metadata_revision
         );

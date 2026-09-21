@@ -394,6 +394,7 @@ async fn run_pass(
     config: &mut tokio::sync::watch::Receiver<crate::config::Config>,
 ) {
     if !config.borrow().prefs.identify_automatically {
+        info!("sweep: no pass — automatic identification is off");
         context.release_all();
         announce_empty_queue(context);
         return;
@@ -423,6 +424,7 @@ async fn run_pass(
     pass.announce(context);
     pass.publish_queue(context);
     if pass.is_idle() {
+        info!("sweep: pass over — every candidate already holds an answer");
         return;
     }
     let _automatic_queue = AutomaticQueueGuard(context.import.clone());
@@ -435,6 +437,7 @@ async fn run_pass(
     loop {
         while pass.in_flight_count() + finishing.len() < MAX_IN_FLIGHT {
             if !config.borrow().prefs.identify_automatically {
+                info!("sweep: pass over — automatic identification was turned off");
                 context.release_all();
                 drain(context, &mut finishing).await;
                 announce_empty_queue(context);
@@ -474,6 +477,11 @@ async fn run_pass(
                 metadata_revision: expected_metadata_revision,
                 choices,
             } = start;
+            info!(
+                "sweep: identifying {key} ({} more queued, {} already running)",
+                pass.queued_count(),
+                pass.in_flight_count()
+            );
             context.ours.lock().unwrap().insert(key.clone());
             let run = context.import.new_identification_run();
             context.import.start_identification(
@@ -493,12 +501,14 @@ async fn run_pass(
         }
 
         if pass.is_idle() && finishing.is_empty() {
+            info!("sweep: pass over — nothing left to run and nothing left to store");
             return;
         }
 
         tokio::select! {
             biased;
             _ = token.cancelled() => {
+                info!("sweep: pass abandoned — the sweep is shutting down");
                 // `settling` is a child of this token, so the answers in
                 // flight are already told to stop; what is left is waiting
                 // for them to say so.
@@ -508,6 +518,7 @@ async fn run_pass(
             }
             changed = config.changed() => {
                 if changed.is_err() || !config.borrow().prefs.identify_automatically {
+                    info!("sweep: pass over — automatic identification was turned off");
                     // The runs the sweep has going are cancelled; the answers
                     // already being written are not. A candidate whose verdict
                     // is in flight keeps its write and its row lands.
@@ -525,11 +536,21 @@ async fn run_pass(
                         let stored = matches!(&done.outcome, FinishCandidateOutcome::Stored);
                         match done.outcome {
                             FinishCandidateOutcome::Stored => {
+                                info!(
+                                    "sweep: stored the verdict for {}",
+                                    done.representative_key
+                                );
                                 for key in &done.candidate_keys {
                                     context.import.clear_automatic_identification(key);
                                 }
                             }
                             FinishCandidateOutcome::Superseded => {
+                                info!(
+                                    "sweep: {} changed while its answer was being stored; \
+                                     re-queueing {} candidate(s) for it",
+                                    done.representative_key,
+                                    done.current_candidates.len() + deferred.len()
+                                );
                                 for candidate in
                                     done.current_candidates.into_iter().chain(deferred)
                                 {
@@ -689,7 +710,10 @@ async fn run_pass(
                     );
                     pass.replay_in_flight(context);
                 }
-                Some(Err(broadcast::error::RecvError::Closed)) | None => return,
+                Some(Err(broadcast::error::RecvError::Closed)) | None => {
+                    info!("sweep: pass over — the import event stream closed");
+                    return;
+                }
             },
         }
     }
