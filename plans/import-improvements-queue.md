@@ -297,6 +297,70 @@ that main or CI has passed.
   stopped. Mobile cross-builds were not run. CI remains an end-of-queue gate.
 - Remaining entries: queued in the order above. Their linked contracts are
   part of this plan, not optional follow-up work.
+- End-of-queue CI repairs: on `ci-repairs`, one commit per cause.
+  `MetadataRef` is defined without a platform cfg and is a field of the
+  unconditionally exported `MetadataProvenance` and `ReleaseRecord`, so its
+  re-export moved out of the desktop-only block; the iOS clippy command from
+  the workflow failed with E0433 before and passed after, and the Android
+  clippy command passed with the local NDK. The Windows Reset test grew the
+  changed source with `set_len` on an append-only handle, which Windows
+  refuses; it now appends a byte like its neighbours, and the 14 Reset tests
+  pass on macOS. The CUE reference rows failed on CI because the hosted
+  runner is in the light appearance at 1x (a temporary capture diagnostic
+  printed `backing=1.0`, `NSAppearanceNameAqua` on the runner; this machine
+  is dark at 2x): a hosted view is transparent where it paints nothing, and
+  the recognizer reads light label text over transparency but not dark, so
+  forcing the test window to the light appearance locally reproduced CI's
+  exact recognized text, and painting the window background under the
+  capture passed both appearances locally and on a dispatched branch run
+  (494 tests, only the Retry read still failing). The Retry read (`KeLl`)
+  is caption text ten pixels tall at the runner's 1x. Captures now draw at
+  a fixed 2x through the one bitmap the pixel-colour tests already built;
+  the runner's uploaded captures showed two more things that needed
+  doing: a 2x bitmap alone carried the runner's 1x layer contents
+  stretched (`Copy detalls`, `6086-2`), so every layer is told to draw at
+  2x first, which read every word in the uploaded rendering; and the
+  window-background fill through the bitmap's AppKit context painted
+  nothing on the runner (alpha 0 at every sampled pixel), so the backdrop
+  is composed in a Core Graphics context addressed in pixels; and that
+  composition converted the capture to sRGB, which alone turned a thin
+  grey catalog number's `0` into an `8` for the recognizer (the same
+  capture re-encoded in the display's own space and in sRGB, over four
+  backdrops each), so captures stay in the display's colour space. Telling
+  the layers to redraw at capture time made two captures a test compares
+  pixel for pixel differ on the runner, so the layers are rescaled as soon
+  as the view is hosted and the redraw lands while the test settles it; and
+  asking an image-backed layer to display again emptied it, so a triage
+  row's seal glyph vanished from the runner's capture and the rows with
+  and without it compared equal — forcing the rescale locally at 3x
+  reproduced that failure; a layer handed a `CGImage` now keeps it while a
+  layer that drew its own backing store redraws, which passed at 3x and at
+  the restored 2x. The
+  dead-code gate had failed on every run since the CUE presentation change
+  left `isTrackSheet` and `trackSheets` without a reader; both are deleted.
+  The rustdoc gate on main failed on a link from `release_group`'s public
+  docs to the crate-private `pressing_evidence` module; the name is plain
+  code text now, and `cargo doc` with deny-warnings passes. The Windows
+  x86_64 run of `an_imported_candidate_refuses_metadata_edits` heard the
+  import's completion and was refused as still importing: the candidate
+  runtime recorded events from its own broadcast subscription, racing the
+  test's. `ImportEventBus` now records every event in the runtime before
+  broadcasting it and the recorder task is gone; a bus test pins the order,
+  and the whole bae-core library suite passed 2,327 tests with the change.
+  `EditMetadataSheetTests` compared the CUE-row and file-row title fields'
+  whole frames, and on the runner's 1x display a title field settles at 15
+  or 16 points high independently in each hosting (three of five runs, the
+  odd height on either side, origins always equal; frames logged identical
+  on a passing run); the comparison is now the fields' placement — origin
+  and width — which is what the test is about. The `Bundle.main` suspicion
+  below is closed: `baeTests.xctest`
+  is hosted by `bae.app`, whose bundle carries the generated `Core.strings`
+  with every `core.audio.*` key, and the metadata-card layout suite passes
+  on CI. `AppearanceRenderingTests` fails on this machine at the committed
+  state (1,314 fill pixels) and passes on CI; it is a local difference this
+  branch does not touch. After rebasing onto `710cc388c`, the macOS selection
+  of the mapping layout, release-selection failure, album track list and
+  edit-sheet suites passed 30 tests.
 
 ## End-of-queue CI evidence
 
@@ -311,10 +375,17 @@ were inspected at `e02677786` and fail the same inaccessible `MetadataRef`
 re-export, with no separate capture defect established. These are required final CI repairs,
 not gates between the queued implementation tasks.
 
-During Reset verification, the macOS metadata-card layout suite exposed the
-existing Core catalog lookup using `Bundle.main`, although `Core.xcstrings` is
-packaged in `BaeKit_BaeKit.bundle`. Two layout assertions see raw
-`core.audio.*` keys. Fix that resource-owner lookup as an end-of-queue CI
-concern and retain the tests' localized expectations; do not paper over it in
-Reset's tests. The native build and new Reset flow/menu tests passed before
-the separate confirmation harness correction.
+During Reset verification, the macOS metadata-card layout suite was suspected
+of exposing the Core catalog lookup using `Bundle.main` while `Core.xcstrings`
+is packaged in `BaeKit_BaeKit.bundle`. The build products show both: the app
+bundle and the BaeKit bundle each carry the generated `Core.strings`, the unit
+tests run inside `bae.app`, and the metadata-card layout suite passes on CI.
+The lookup is correct and the item is closed.
+
+At `012f2b9b8`, Build 35545267671 added a rustdoc failure (private link from
+`release_group`), a one-point CUE-row frame difference in
+`EditMetadataSheetTests` that recurred on the runner's 1x display until the
+comparison was narrowed to placement, the periphery failure on the two unread
+track-sheet selectors, and the Windows x86_64 refusal race in
+`an_imported_candidate_refuses_metadata_edits`. The `ci-repairs` record
+above names each cause and its verification.
