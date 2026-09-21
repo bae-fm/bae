@@ -27,9 +27,19 @@ enum SnapshotTestSupport {
         return (window, host)
     }
 
-    /// Lay out `host` and capture it as PNG bytes. Yields once so SwiftUI's
-    /// async work settles, and sleeps `waitNanoseconds` first when the view has
-    /// async content (a cover load) that must resolve before the capture.
+    /// Lay out `host` and capture it as PNG bytes for text recognition: the
+    /// view over its window's background, the way a person sees it. Yields
+    /// once so SwiftUI's async work settles, and sleeps `waitNanoseconds`
+    /// first when the view has async content (a cover load) that must
+    /// resolve before the capture.
+    ///
+    /// The window's background is painted under the view because the view
+    /// alone is transparent where it draws nothing, and text in a label
+    /// colour over transparency reads by appearance: the recognizer sees the
+    /// light text of the dark appearance and misses the dark text of the
+    /// light one, so a capture that read on a dark development machine read
+    /// as empty on a light hosted runner. Over the window's own colour the
+    /// words have the same contrast in either appearance.
     @MainActor
     static func capturePNG(
         _ host: NSView,
@@ -43,11 +53,24 @@ enum SnapshotTestSupport {
             try await Task.sleep(nanoseconds: waitNanoseconds)
         }
         host.layoutSubtreeIfNeeded()
-        let bitmap = try #require(
+        let window = try #require(host.window)
+        let view = try #require(
             host.bitmapImageRepForCachingDisplay(in: bounds)
         )
-        host.cacheDisplay(in: bounds, to: bitmap)
-        return try #require(bitmap.representation(using: .png, properties: [:]))
+        host.cacheDisplay(in: bounds, to: view)
+        let composed = try #require(
+            host.bitmapImageRepForCachingDisplay(in: bounds)
+        )
+        let context = try #require(NSGraphicsContext(bitmapImageRep: composed))
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        window.backgroundColor.setFill()
+        bounds.fill()
+        view.draw(in: bounds)
+        NSGraphicsContext.restoreGraphicsState()
+        return try #require(
+            composed.representation(using: .png, properties: [:])
+        )
     }
 
     /// Let SwiftUI publish its renders before a hosted-view test inspects or
