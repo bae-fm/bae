@@ -73,8 +73,10 @@ async fn only_the_barcode_that_found_the_chosen_record_is_sealed_on_every_read()
                     by_barcode: true,
                     by_catalog: false
                 }],
+                pressings: vec![0],
                 narrowed_out: Vec::new(),
                 narrowed_out_provenance: Vec::new(),
+                narrowed_out_pressings: Vec::new(),
                 ledger: Some(ledger),
             },
             signals: Signals {

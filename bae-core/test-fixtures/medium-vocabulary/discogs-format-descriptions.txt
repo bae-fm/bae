@@ -1,0 +1,163 @@
+# Source: same page, "The Description Field" table. One description per line, page order, duplicates removed (the page repeats a description under each format it applies to).
+LP
+16"
+12"
+14"
+11"
+10"
+9"
+8"
+7"
+6½"
+6"
+5½"
+5"
+4"
+3½"
+3"
+2"
+1"
+8 ⅓ RPM
+16 ⅔ RPM
+33 ⅓ RPM
+45 RPM
+78 RPM
+120 RPM
+21cm
+25cm
+27cm
+29cm
+35cm
+40cm
+50cm
+80 RPM
+90 RPM
+15/16 ips
+1 ⅞ ips
+15 ips
+3 ¾ ips
+30 ips
+7 ½ ips
+½"
+¼"
+⅛"
+2-Track Mono
+2-Track Stereo
+4-Track Mono
+4-Track Stereo
+10.5" NAB Reel
+3" Cine Reel
+5" Cine Reel
+6" Cine Reel
+7" Cine Reel
+2 Minute
+3 Minute
+4 Minute
+Concert
+Salon
+Mini
+Business Card
+Shape
+Minimax
+CD-ROM
+CDi
+CD+G
+HDCD
+VCD
+AVCD
+SVCD
+XRCD
+4K
+8K
+Blu-ray Audio
+Multichannel
+DVD-Audio
+DVD-Data
+DVD-Video
+Hybrid
+AAC
+AIFC
+AIFF
+ALAC
+AMR
+APE
+AVI
+DFF
+Disc Image
+DSF
+FLAC
+FLV
+MOV
+MP1
+MP2
+MP3
+MPEG Video
+MPEG-4 Video
+ogg-vorbis
+Opus
+RA
+RM
+SHN
+SPX
+SWF
+TTA
+WAV
+WavPack
+WMA
+WMV
+MP3 Surround
+3.5"
+5.25"
+CD-Record
+DualDisc
+DVDplus
+VinylDisc
+Double Sided
+Single Sided
+Advance
+Album
+Mini-Album
+EP
+Maxi-Single
+Record Store Day
+Single
+Compilation
+Stereo
+Mono
+Quadraphonic
+Ambisonic
+Bioplastic
+Card Backed
+Club Edition
+Copy Protected
+Deluxe Edition
+Enhanced
+Etched
+Jukebox
+Limited Edition
+Mispress
+Misprint
+Mixed
+Mixtape
+Numbered
+Partially Mixed
+Partially Unofficial
+Picture Disc
+Promo
+Reissue
+Remastered
+Repress
+Sampler
+Special Cut
+Special Edition
+Styrene
+Test Pressing
+Tour Recording
+Transcription
+Unofficial Release
+White Label
+16mm
+35mm
+NTSC
+PAL
+SECAM

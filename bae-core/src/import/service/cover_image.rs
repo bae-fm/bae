@@ -19,39 +19,33 @@ pub(super) struct CoverCandidate {
 }
 
 impl ImportService {
-    /// Read the chosen cover file's bytes. Nothing is written here, and no row is
-    /// built: the caller resizes the winning candidate and records the result.
+    /// Read the selected cover file's bytes. Nothing is written here, and no row
+    /// is built: the caller resizes the winning candidate and records the result.
+    ///
+    /// The path is the candidate's stored selection, so a folder that no
+    /// longer holds that image is a candidate whose selection no longer
+    /// describes it, and that is stated rather than replaced by some other
+    /// image.
     pub(super) fn pick_folder_cover(
         &self,
         discovered_files: &[ScannedFile],
-        selected_cover_path: Option<&str>,
+        selected_cover_path: &str,
     ) -> Result<Option<CoverCandidate>, crate::import::ImportError> {
         use crate::import::ImportError;
 
-        let selected_cover = if let Some(selected_path) = selected_cover_path {
-            Some(
-                discovered_files
-                    .iter()
-                    .find(|file| {
-                        file.relative_path == selected_path
+        let cover_file = discovered_files
+            .iter()
+            .find(|file| {
+                file.relative_path == selected_cover_path
                     && crate::util::content_type_hint::ContentTypeHint::path_is_supported_cover(
                         &file.path,
                     )
-                    })
-                    .ok_or_else(|| ImportError::LocalCover {
-                        detail: format!(
-                            "Selected cover {} not found among discovered images",
-                            selected_path
-                        ),
-                    })?,
-            )
-        } else {
-            crate::import::local_artwork::default_local_cover_file(discovered_files)
-        };
-
-        let Some(cover_file) = selected_cover else {
-            return Ok(None);
-        };
+            })
+            .ok_or_else(|| ImportError::LocalCover {
+                detail: format!(
+                    "Selected cover {selected_cover_path} not found among discovered images"
+                ),
+            })?;
 
         let bytes = std::fs::read(&cover_file.path).map_err(|e| ImportError::LocalCover {
             detail: format!(

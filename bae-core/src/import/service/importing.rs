@@ -429,9 +429,6 @@ impl ImportService {
                         ),
                     })
                 }
-                (None, Some(cover)) if cover.content_type.is_supported_cover() => {
-                    Some((cover.data.clone(), cover.content_type.clone()))
-                }
                 _ => None,
             }
         } else {
@@ -713,38 +710,31 @@ impl ImportService {
             });
         }
 
-        // A selected cover is exact. With no selection, File Tags' embedded
-        // artwork leads, then the folder's deterministic image default.
-        // Finalize writes the winner's bytes and row in one coven batch.
-        let cover_candidate = match remote_cover_image.take() {
-            Some(remote) => Some(remote),
-            None => match selected_cover.as_ref() {
-                Some(CoverSelection::Local(path)) => {
-                    self.pick_folder_cover(discovered_files, Some(path))?
-                }
-                Some(CoverSelection::Embedded(_)) => {
-                    embedded_cover.take().map(|(bytes, _content_type)| {
-                        cover_image::CoverCandidate {
-                            bytes,
-                            source: "embedded".to_string(),
-                            source_url: None,
-                        }
-                    })
-                }
-                Some(CoverSelection::Remote(_, _)) => {
+        // The candidate's stored cover selection is what it commits with, and
+        // the only thing: the image a person chose, the one its
+        // identification fetched, or the folder's own cover the scan stored
+        // for it. Nothing is chosen here. Finalize writes the winner's bytes
+        // and row in one coven batch.
+        let cover_candidate = match selected_cover.as_ref() {
+            Some(CoverSelection::Remote(_, _)) => match remote_cover_image.take() {
+                Some(remote) => Some(remote),
+                None => {
                     return Err(crate::import::ImportError::Internal {
                         detail: "selected remote cover produced no downloaded image".to_string(),
                     })
                 }
-                None => match embedded_cover.take() {
-                    Some((bytes, _content_type)) => Some(cover_image::CoverCandidate {
+            },
+            Some(CoverSelection::Local(path)) => self.pick_folder_cover(discovered_files, path)?,
+            Some(CoverSelection::Embedded(_)) => {
+                embedded_cover
+                    .take()
+                    .map(|(bytes, _content_type)| cover_image::CoverCandidate {
                         bytes,
                         source: "embedded".to_string(),
                         source_url: None,
-                    }),
-                    None => self.pick_folder_cover(discovered_files, None)?,
-                },
-            },
+                    })
+            }
+            None => None,
         };
         // Resize the winner to a ≤600px JPEG thumbnail — one funnel for all three
         // sources — and build the row from that output, so its hash, size and

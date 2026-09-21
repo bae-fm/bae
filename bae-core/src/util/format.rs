@@ -21,38 +21,32 @@ enum FormatKind {
     Digital, // Downloads or unrecognized formats
 }
 
-/// Every physical medium a format string names, in the order the media are
-/// told apart in: vinyl, then cassette, then CD. Case does not matter —
-/// providers and folders write "Vinyl", "vinyl" and "VINYL". A mixed-media
-/// description names each of them; a string naming none is empty.
+/// The physical medium a free-text format string names: the first of vinyl,
+/// cassette and CD the string carries, whatever case it is written in —
+/// providers and folders write "Vinyl", "vinyl" and "VINYL". `None` where
+/// the string names none of them, which reads the same for a download and
+/// for a word this classification has never heard of.
 ///
-/// The one recognizer: playback classification reads its first medium,
-/// pressing matching reads all of them.
-pub fn recognized_media(format: &str) -> Vec<PhysicalMedium> {
-    let lowered = format.to_lowercase();
+/// A display and playback classifier over free text: it answers whether a
+/// release has sides or discs, and its answer is no evidence about a
+/// pressing. What a catalog states a release's media to be is read from that
+/// catalog's own list of format names, by [`crate::import::medium`].
+pub fn physical_medium(format: Option<&str>) -> Option<PhysicalMedium> {
+    let lowered = format?.to_lowercase();
     [
         ("vinyl", PhysicalMedium::Vinyl),
         ("cassette", PhysicalMedium::Cassette),
         ("cd", PhysicalMedium::Cd),
     ]
     .into_iter()
-    .filter(|(needle, _)| lowered.contains(needle))
+    .find(|(needle, _)| lowered.contains(needle))
     .map(|(_, medium)| medium)
-    .collect()
 }
 
 fn detect_format(format: Option<&str>) -> FormatKind {
-    match format.and_then(|f| recognized_media(f).into_iter().next()) {
+    match physical_medium(format) {
         Some(medium) => FormatKind::Physical(medium),
         None => FormatKind::Digital,
-    }
-}
-
-/// The physical medium for a release format that has sides or CD discs.
-pub fn physical_medium(format: Option<&str>) -> Option<PhysicalMedium> {
-    match detect_format(format) {
-        FormatKind::Physical(medium) => Some(medium),
-        FormatKind::Digital => None,
     }
 }
 
@@ -210,16 +204,18 @@ mod tests {
         assert_eq!(physical_medium(None), None);
     }
 
-    /// One format string can name several media, and their case is not
-    /// evidence of anything.
+    /// The case a format string is written in is not evidence of anything,
+    /// and a string naming several media is classified by the first of them.
     #[test]
-    fn recognized_media_lists_every_medium_whatever_the_case() {
+    fn a_format_string_reads_the_same_in_any_case() {
         assert_eq!(
-            recognized_media("CD + 12\" vinyl"),
-            vec![PhysicalMedium::Vinyl, PhysicalMedium::Cd]
+            physical_medium(Some("CD + 12\" vinyl")),
+            Some(PhysicalMedium::Vinyl)
         );
-        assert_eq!(recognized_media("CASSETTE"), vec![PhysicalMedium::Cassette]);
-        assert_eq!(recognized_media("Digital Media"), Vec::new());
+        assert_eq!(
+            physical_medium(Some("CASSETTE")),
+            Some(PhysicalMedium::Cassette)
+        );
         assert_eq!(
             physical_medium(Some("2xlp, vinyl")),
             Some(PhysicalMedium::Vinyl)

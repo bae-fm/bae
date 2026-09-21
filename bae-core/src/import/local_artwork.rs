@@ -1,15 +1,24 @@
 //! Source-neutral selection of artwork files from an import candidate.
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use super::folder_scanner::CategorizedFiles;
 use super::folder_scanner::ScannedFile;
 use crate::util::content_type_hint::ContentTypeHint;
 
-/// The folder fallback in the same complete form the detail pane consumes.
+/// The cover a folder holds for itself: the artwork its own audio embeds —
+/// `embedded`, the selection the File Tags snapshot names — and failing that
+/// the folder's own image default. `None` when the folder has neither.
+///
+/// One rule, run wherever a candidate's cover is filled in: a scan, a reset,
+/// the migration that fills what earlier scans left empty. A candidate's
+/// cover is a stored value, so nothing derives one when a candidate is read.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn default_local_cover_choice(files: &CategorizedFiles) -> Option<super::CoverChoice> {
-    default_local_cover_file(files.artwork())
-        .map(|image| super::CoverChoice::local(image.relative_path.clone(), image.path.clone()))
+pub(crate) fn folder_cover<'a>(
+    embedded: Option<super::CoverSelection>,
+    artwork: impl IntoIterator<Item = &'a ScannedFile>,
+) -> Option<super::CoverSelection> {
+    embedded.or_else(|| {
+        default_local_cover_file(artwork)
+            .map(|image| super::CoverSelection::Local(image.relative_path.clone()))
+    })
 }
 
 /// Select the folder image used when no source supplies artwork. Every caller

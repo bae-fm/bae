@@ -154,7 +154,11 @@ async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
                     .tracks
                     .iter()
                     .all(|row| row.edit.title.is_empty()));
-                assert_eq!(after.cover, None);
+                assert_eq!(
+                    after.cover,
+                    Some(crate::import::CoverSelection::Local("cover.jpg".into())),
+                    "a reset leaves the candidate the cover its folder gives it"
+                );
                 assert_eq!(after.metadata_provenance, None);
             }
             shut_down(handle).await;
@@ -509,7 +513,12 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
     assert_eq!(reset.assets, CandidatePreparedAssets::default());
     assert!(reset.source_discogs_artist_ids.is_empty());
     assert!(reset.draft.album_artist_assignments.is_empty());
-    assert_eq!(reset.cover, None);
+    assert_eq!(
+        reset.cover,
+        Some(crate::import::CoverSelection::Local("cover.jpg".into())),
+        "a reset unmakes the setup, so the candidate starts again with the \
+         cover its folder gives it"
+    );
     assert_eq!(reset.metadata_provenance, None);
     assert!(reset
         .draft
@@ -907,11 +916,20 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
     assert_eq!(reset.candidate.files(), source.files());
     assert_eq!(reset.metadata_provenance, None);
     let saved = preparation(&handle, &source.files().content_hash()).await;
-    assert_eq!(saved.cover, None);
-    assert!(matches!(
-        reset.cover.unwrap().selection,
-        crate::import::CoverSelection::Local(_)
-    ));
+    // Which of the combined folders leads the file list is the combination's
+    // own order, so the image is named by whichever it is.
+    let Some(crate::import::CoverSelection::Local(file_id)) = saved.cover.clone() else {
+        panic!(
+            "a reset with no tags to read leaves the folder's own image, got {:?}",
+            saved.cover
+        );
+    };
+    assert!(file_id.ends_with("/cover.jpg"), "{file_id}");
+    assert_eq!(
+        reset.cover.map(|cover| cover.selection),
+        saved.cover,
+        "the pane shows the stored selection"
+    );
     let stale = manager
         .load_candidate_file_tag_snapshot(source.watched_folder_path(), &key)
         .await

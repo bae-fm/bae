@@ -340,8 +340,19 @@ pub(crate) fn embedded_cover_selection(
     snapshot
         .embedded_cover
         .as_ref()
-        .filter(|cover| cover.content_type.is_supported_cover())
-        .map(|cover| super::CoverSelection::Embedded(cover.source_relative_path.clone()))
+        .and_then(|cover| embedded_cover_of(&cover.source_relative_path, &cover.content_type))
+}
+
+/// The selection one embedded cover names, when its bytes are an image the
+/// import can store. The one rule, whether the fact is a snapshot in hand or
+/// a stored row read back.
+pub(crate) fn embedded_cover_of(
+    source_relative_path: &str,
+    content_type: &ContentType,
+) -> Option<super::CoverSelection> {
+    content_type
+        .is_supported_cover()
+        .then(|| super::CoverSelection::Embedded(source_relative_path.to_string()))
 }
 
 fn observe_file(file: &ScannedFile) -> Result<FileObservation, ImportError> {

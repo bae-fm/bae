@@ -56,14 +56,14 @@ impl Database {
 }
 
 /// Seed a candidate's stored draft from the folder's own file tags: the draft
-/// they project, the provenance naming them as its source, and the cover they
-/// embed. The author is the same one a person's "Reset to tags" writes —
-/// identification never concludes a folder's own files.
+/// they project and the provenance naming them as its source. The author is
+/// the same one a person's "Reset to tags" writes — identification never
+/// concludes a folder's own files. The cover the tags embed is stored with
+/// the folder's own cover, beside this.
 pub(crate) fn insert_file_tags_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     draft: &crate::import::CandidateDraft,
-    cover: Option<&crate::import::CoverSelection>,
 ) -> Result<(), DbError> {
     pane_rows::insert_draft(sql, content_hash, draft)?;
     let author = author_column(crate::import::MetadataAuthor::User)
@@ -74,9 +74,6 @@ pub(crate) fn insert_file_tags_draft(
         &crate::import::MetadataProvenance::FileTags,
         author,
     )?;
-    if let Some(cover) = cover {
-        super::candidate_state_rows::save_cover(sql, content_hash, cover)?;
-    }
     Ok(())
 }
 

@@ -3,8 +3,14 @@ use super::*;
 #[path = "migrations_tests/applied_source_partners.rs"]
 mod applied_source_partners;
 
+#[path = "migrations_tests/candidate_folder_covers.rs"]
+mod candidate_folder_covers;
+
 #[path = "migrations_tests/match_evidence.rs"]
 mod match_evidence;
+
+#[path = "migrations_tests/match_pressings.rs"]
+mod match_pressings;
 
 #[path = "migrations_tests/record_kinds.rs"]
 mod record_kinds;

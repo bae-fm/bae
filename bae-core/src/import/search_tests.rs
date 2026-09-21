@@ -169,8 +169,8 @@ fn discid_metadata_links_the_releases_its_document_names() {
 
 /// A disc ID names one medium of a release that has several. The matching
 /// medium's tracks are what the Ready rule checks, but the pressing is made of
-/// every medium the response lists: a Discogs record of a cassette printing
-/// the same barcode is not this CD-plus-vinyl object, whichever medium the
+/// every medium the response lists: the Discogs record of the same two media
+/// is this object and one naming a cassette is not, whichever medium the
 /// response lists first.
 #[test]
 fn discid_metadata_carries_every_medium_into_pairing() {
@@ -220,18 +220,21 @@ fn discid_metadata_carries_every_medium_into_pairing() {
         discogs_search_result_to_metadata(result)
     };
     let cassette = discogs_of(&["Cassette", "Album"]);
-    let vinyl = discogs_of(&["Vinyl", "LP", "Album"]);
+    let both = discogs_of(&["Vinyl", "LP", "CD", "Album"]);
 
     for musicbrainz in [vinyl_then_cd, cd_then_vinyl] {
         assert_eq!(
-            crate::import::release_group::pressing_count(vec![musicbrainz.clone(), cassette.clone()]),
+            crate::import::release_group::pressing_count(vec![
+                musicbrainz.clone(),
+                cassette.clone()
+            ]),
             2,
             "a cassette is not part of a CD-plus-vinyl object"
         );
         assert_eq!(
-            crate::import::release_group::pressing_count(vec![musicbrainz.clone(), vinyl.clone()]),
+            crate::import::release_group::pressing_count(vec![musicbrainz.clone(), both.clone()]),
             1,
-            "a vinyl record is one of the object's media"
+            "the record naming both media is the same object"
         );
     }
 }

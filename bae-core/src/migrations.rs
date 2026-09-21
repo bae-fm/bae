@@ -226,7 +226,58 @@ pub fn all() -> Vec<coven::Migration> {
             migrate_applied_source_partners,
         ),
         coven::Migration::run(44, "match_evidence", migrate_match_evidence),
+        coven::Migration::run(
+            45,
+            "candidate_folder_covers",
+            migrate_candidate_folder_covers,
+        ),
+        coven::Migration::run(46, "match_pressings", migrate_match_pressings),
     ]
+}
+
+/// Record the pressing row each stored match belongs to. The rows a run built
+/// are its own answer, and re-forming them from one of its two lists is a
+/// different one; the matches already stored have nothing that says what
+/// their run built, so the grouping as it stands gives them their rows.
+fn migrate_match_pressings(sql: &coven::MigrationContext<'_>) -> Result<(), coven::DbError> {
+    let counted = |sql: &coven::MigrationContext<'_>| {
+        sql.query_row("SELECT COUNT(*) FROM import_candidate_match", [], |row| {
+            row.get::<_, i64>(0)
+        })
+    };
+    let before = counted(sql)?;
+    // The row each stored match belongs to, answered before the table is
+    // rebuilt around the column that records it. Folder scanning is
+    // desktop-only, so a mobile store holds no match to answer for.
+    sql.execute_batch(
+        "CREATE TEMP TABLE match_pressing (
+             content_hash TEXT NOT NULL,
+             position     INTEGER NOT NULL,
+             pressing     INTEGER NOT NULL CHECK (pressing >= 0),
+             PRIMARY KEY (content_hash, position)
+         );",
+    )?;
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    crate::db::Database::fill_match_pressings(sql)?;
+    sql.execute_batch(include_str!("../migrations/046_match_pressings.sql"))?;
+    let after = counted(sql)?;
+    if before != after {
+        return Err(coven::DbError::Message(format!(
+            "{before} stored matches were given a pressing row and {after} crossed the rebuild"
+        )));
+    }
+    Ok(())
+}
+
+/// Store the cover each candidate's folder gives it, for the candidates
+/// scanned before a scan stored one. Folder scanning is desktop-only, so a
+/// mobile store holds no candidate to fill one for.
+fn migrate_candidate_folder_covers(
+    _sql: &coven::MigrationContext<'_>,
+) -> Result<(), coven::DbError> {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    crate::db::Database::fill_candidate_folder_covers(_sql)?;
+    Ok(())
 }
 
 fn migrate_import_metadata_seeds(sql: &coven::MigrationContext<'_>) -> Result<(), coven::DbError> {

@@ -50,7 +50,7 @@ fn library_check_matches_detail_keys_with_and_without_source_groups() {
                 supporting: Vec::new(),
             };
             let check = payloads.library_check().unwrap();
-            let detail = payloads.detail_for_audio(&[]).unwrap();
+            let detail = payloads.detail_for_audio(&[], &[]).unwrap();
             assert_eq!(check.source, detail.source);
             assert_eq!(check.release_id, detail.release_id);
             assert_eq!(check.source_group_id, detail.source_group_id);
@@ -140,6 +140,89 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
             .iter()
             .any(|cover| cover.url == "https://images.example/booklet.jpg"));
     }
+}
+
+/// A MusicBrainz release the archive holds no front image for.
+fn unillustrated_musicbrainz_release(relations: serde_json::Value) -> String {
+    serde_json::json!({
+        "id": "mb-release", "title": "Album Title",
+        "artist-credit": [], "label-info": [], "media": [],
+        "relations": relations,
+        "release-group": { "id": "mb-group" },
+        "cover-art-archive": { "front": false, "darkened": false }
+    })
+    .to_string()
+}
+
+/// A Discogs release with one image.
+fn illustrated_discogs_release() -> String {
+    serde_json::json!({
+        "id": 123, "title": "Album Title",
+        "images": [{ "type": "primary", "uri": "https://images.example/front.jpg" }]
+    })
+    .to_string()
+}
+
+/// A pick's covers are every claimed release's own images first, the
+/// primary's first among them — so a primary the archive holds nothing for
+/// offers its partner's image, and the album address, which may be some
+/// other release's cover or nothing at all, comes after it.
+#[test]
+fn a_picks_covers_lead_with_every_claimed_releases_own_images() {
+    let primary = ReleasePayloads {
+        release: MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        anchor: unillustrated_musicbrainz_release(serde_json::json!([])),
+        supporting: Vec::new(),
+    };
+    let partner = ReleasePayloads {
+        release: MetadataRef::new(Catalog::Discogs, "123"),
+        anchor: illustrated_discogs_release(),
+        supporting: Vec::new(),
+    };
+    let covers =
+        pick_covers(&primary, std::slice::from_ref(&partner)).expect("the archived artwork parses");
+    assert_eq!(covers.len(), 2, "{covers:?}");
+    assert_eq!(covers[0].url, "https://images.example/front.jpg");
+    assert!(
+        covers[1].url.ends_with("/release-group/mb-group/front"),
+        "the album's address follows the partner's own image: {covers:?}"
+    );
+    let alone = primary.covers().expect("the primary's own artwork parses");
+    assert_eq!(alone.len(), 1, "{alone:?}");
+    assert_eq!(
+        alone[0].url, covers[1].url,
+        "the primary's own documents offer nothing but its album's address"
+    );
+}
+
+/// A Discogs release reachable twice — cross-linked by the primary's own
+/// document and claimed as a partner — offers its images once.
+#[test]
+fn a_release_reachable_twice_offers_its_images_once() {
+    let primary = ReleasePayloads {
+        release: MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        anchor: unillustrated_musicbrainz_release(
+            serde_json::json!([{ "url": { "resource": "https://www.discogs.com/release/123" } }]),
+        ),
+        supporting: vec![SourcePayload::new(
+            PayloadSource::Discogs,
+            "123",
+            illustrated_discogs_release(),
+        )],
+    };
+    let partner = ReleasePayloads {
+        release: MetadataRef::new(Catalog::Discogs, "123"),
+        anchor: illustrated_discogs_release(),
+        supporting: Vec::new(),
+    };
+    let covers =
+        pick_covers(&primary, std::slice::from_ref(&partner)).expect("the archived artwork parses");
+    assert_eq!(covers.len(), 2, "the image reachable twice is offered once: {covers:?}");
+    assert_eq!(covers[0].url, "https://images.example/front.jpg");
+    assert!(
+        covers[1].url.ends_with("/release-group/mb-group/front"),
+        "{covers:?}"
+    );
 }
 
 fn mb_release_with_relations(id: &str, group_id: &str, urls: &[&str]) -> serde_json::Value {

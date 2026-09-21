@@ -197,16 +197,14 @@ impl ReleasePayloads {
         }
     }
 
-    /// The cover options this release offers, in the order a picker shows
-    /// them.
-    ///
-    /// Include artwork from the anchor and its archived cross-references.
-    /// Discogs releases and masters carry their complete image lists.
-    pub fn covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
+    /// The images the release documents in this set publish: the anchor's own
+    /// front image, and every image of the release an editor cross-linked to
+    /// it. These are this pressing's artwork, whichever catalog printed it.
+    fn release_covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
         let mut covers = Vec::new();
         match self.release.catalog {
             Catalog::MusicBrainz => {
-                covers.extend(crate::import::cover_art::musicbrainz_covers(
+                covers.extend(crate::import::cover_art::musicbrainz_release_cover(
                     &self.musicbrainz_anchor()?,
                 ));
                 if let Some(release) = self.discogs_xref()? {
@@ -216,11 +214,32 @@ impl ReleasePayloads {
             Catalog::Discogs => {
                 covers.extend(self.discogs_anchor()?.covers);
                 if let Some(release) = self.musicbrainz_xref()? {
-                    covers.extend(crate::import::cover_art::musicbrainz_covers(&release));
+                    covers.extend(crate::import::cover_art::musicbrainz_release_cover(&release));
                 }
             }
             other => not_fetched(other),
         }
+        Ok(covers)
+    }
+
+    /// The images the albums these releases belong to publish: a Discogs
+    /// master's gallery and the archive's address for a MusicBrainz release
+    /// group.
+    ///
+    /// An album's image is some release of the album's, which may not be this
+    /// one and may not exist at all, so every one of them is offered after
+    /// every release image.
+    fn album_covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
+        let musicbrainz = match self.release.catalog {
+            Catalog::MusicBrainz => Some(self.musicbrainz_anchor()?),
+            Catalog::Discogs => self.musicbrainz_xref()?,
+            other => not_fetched(other),
+        };
+        let mut covers: Vec<RemoteCover> = musicbrainz
+            .as_ref()
+            .and_then(crate::import::cover_art::musicbrainz_album_cover)
+            .into_iter()
+            .collect();
         for (catalog, key, json) in self.album_documents()? {
             match catalog {
                 Catalog::Discogs => {
@@ -230,8 +249,17 @@ impl ReleasePayloads {
                 other => not_fetched(other),
             }
         }
+        Ok(covers)
+    }
+
+    /// The cover options this one release's documents offer, in the order a
+    /// picker shows them: its pressing's images, then its album's.
+    ///
+    /// What a pick offers is [`pick_covers`] — a pick claims more releases
+    /// than this one.
+    fn covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
         let mut unique = Vec::new();
-        for cover in covers {
+        for cover in self.release_covers()?.into_iter().chain(self.album_covers()?) {
             crate::import::cover_art::push_unique_cover(&mut unique, cover);
         }
         Ok(unique)
@@ -240,7 +268,7 @@ impl ReleasePayloads {
     /// On-demand picker artwork. The archived documents supply Discogs images;
     /// the archive supplies the MusicBrainz release and release-group galleries.
     /// This does not change the offline metadata projection or automatic cover.
-    pub async fn gallery_covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
+    async fn gallery_covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
         let mut covers = self.covers()?;
         covers.retain(|cover| cover.source != Catalog::MusicBrainz);
         let musicbrainz = match self.release.catalog {
@@ -281,13 +309,6 @@ impl ReleasePayloads {
         Ok(covers)
     }
 
-    /// The cover a surface offers first for this release, and therefore the one
-    /// an import that names no other lands. Read off [`Self::covers`] so the
-    /// pane and the commit cannot default to different images.
-    pub fn default_cover(&self) -> Result<Option<RemoteCover>, ImportError> {
-        Ok(self.covers()?.into_iter().next())
-    }
-
     /// The keys the pane checks against the library, without building its
     /// tracks or artwork. A source that names no group leaves it absent.
     pub(crate) fn library_check(&self) -> Result<crate::db::LibraryCheck, ImportError> {
@@ -309,11 +330,16 @@ impl ReleasePayloads {
         })
     }
 
+    /// The picker's detail for this release as the primary of a pick.
+    ///
+    /// `partners` are the pick's other claimed releases, because the cover
+    /// options the detail carries are the pick's, not this document's alone.
     pub fn detail_for_audio(
         &self,
         audio_durations_ms: &[u64],
+        partners: &[ReleasePayloads],
     ) -> Result<ImportSearchReleaseDetail, ImportError> {
-        let covers = self.covers()?;
+        let covers = pick_covers(self, partners)?;
         let mut detail = match self.release.catalog {
             Catalog::MusicBrainz => crate::import::search::build_mb_detail(
                 &self.release.key,
@@ -377,6 +403,52 @@ impl ReleasePayloads {
             other => not_fetched(other),
         }
     }
+}
+
+/// The cover options a pick offers, in the order a surface shows them and so
+/// the order the default is the first of.
+///
+/// A pick claims a primary release and, where it names one, that release on
+/// each other catalog, and it is picked whole — so its artwork is every
+/// claimed document's artwork, not the primary's alone. Every claimed
+/// release's own images come first, the primary's first among them, because
+/// a pressing's own cover is the one this import wants; the albums' images
+/// follow in the same order, each of them being some release of the album's
+/// and possibly not this one. An image reachable twice — the release an
+/// editor cross-linked to the primary also claimed as a partner, two
+/// partners under one master — is offered once.
+pub fn pick_covers(
+    primary: &ReleasePayloads,
+    partners: &[ReleasePayloads],
+) -> Result<Vec<RemoteCover>, ImportError> {
+    let claimed = || std::iter::once(primary).chain(partners);
+    let mut covers = Vec::new();
+    for release in claimed() {
+        for cover in release.release_covers()? {
+            crate::import::cover_art::push_unique_cover(&mut covers, cover);
+        }
+    }
+    for release in claimed() {
+        for cover in release.album_covers()? {
+            crate::import::cover_art::push_unique_cover(&mut covers, cover);
+        }
+    }
+    Ok(covers)
+}
+
+/// The complete galleries behind [`pick_covers`], for the picker: the same
+/// claimed documents, each asked what the Cover Art Archive holds for it.
+pub async fn pick_gallery_covers(
+    primary: &ReleasePayloads,
+    partners: &[ReleasePayloads],
+) -> Result<Vec<RemoteCover>, ImportError> {
+    let mut covers = Vec::new();
+    for release in std::iter::once(primary).chain(partners) {
+        for cover in release.gallery_covers().await? {
+            crate::import::cover_art::push_unique_cover(&mut covers, cover);
+        }
+    }
+    Ok(covers)
 }
 
 /// The records the releases one pick claims describe together.

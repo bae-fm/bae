@@ -729,8 +729,10 @@ impl Fixture {
                 by_barcode: false,
                 by_catalog: false,
             }],
+            pressings: vec![0],
             narrowed_out: Vec::new(),
             narrowed_out_provenance: Vec::new(),
+            narrowed_out_pressings: Vec::new(),
             ledger: None,
         };
         let wrote = self

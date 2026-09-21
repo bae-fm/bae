@@ -54,6 +54,7 @@ fn found_state() -> IdentifyState {
             by_barcode: false,
             by_catalog: false,
         }],
+        pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
         ledger: None,
         context: mk_context(11),
@@ -77,8 +78,10 @@ fn found_drops_library_status_and_keeps_the_rest() {
                 by_barcode: false,
                 by_catalog: false,
             }],
+            pressings: vec![0],
             narrowed_out: Vec::new(),
             narrowed_out_provenance: Vec::new(),
+            narrowed_out_pressings: Vec::new(),
             ledger: None,
         }
     );
@@ -157,6 +160,7 @@ fn a_stored_verdict_keeps_what_agreement_narrowed_out() {
         matches: vec![mk_result("rel-out")],
         library_statuses: vec![LibraryStatus::absent("rel-out")],
         provenance: vec![disc_id_only()],
+        pressings: vec![0],
     };
     let verdict = TerminalVerdict::try_from(state).unwrap();
     let TerminalVerdict::Found {
@@ -188,8 +192,10 @@ fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
         matches: vec![mk_result("rel-1")],
         track_count: 11,
         provenance: vec![disc_id_only()],
+        pressings: vec![0],
         narrowed_out: vec![mk_result("rel-out")],
         narrowed_out_provenance: vec![disc_id_only()],
+        narrowed_out_pressings: vec![0],
         ledger: None,
     };
     let IdentifyState::Found { narrowed_out, .. } = verdict.resume_state(
@@ -270,8 +276,10 @@ fn a_union_of_disagreeing_signals_stores_as_one_match_list() {
                     by_catalog: false,
                 },
             ],
+            pressings: vec![0, 1],
             narrowed_out: Vec::new(),
             narrowed_out_provenance: Vec::new(),
+            narrowed_out_pressings: Vec::new(),
             ledger: None,
         }
     );

@@ -1,0 +1,116 @@
+# Source: https://musicbrainz.org/statistics/formats (generated from the medium_format table), captured 2026-09-21. One name per line, in the page order. "Unknown format" (a NULL format) omitted.
+Digital Media
+CD
+12" Vinyl
+7" Vinyl
+Cassette
+CD-R
+Vinyl
+DVD-Video
+10" Shellac
+Enhanced CD
+8cm CD
+10" Vinyl
+DVD
+Blu-ray
+Hybrid SACD
+SHM-CD
+HDCD
+Copy Control CD
+Wax Cylinder
+SACD
+Hybrid SACD (CD layer)
+Hybrid SACD (SACD layer, 2 channels)
+Data CD
+Blu-spec CD
+USB Flash Drive
+VHS
+Download Card
+HQCD
+Phonograph record
+Hybrid SACD (SACD layer, multichannel)
+Other
+7" Flexi-disc
+DVD-Audio
+Mixed Mode CD
+Shellac
+DAT
+Reel-to-reel
+8-Track Cartridge
+Hybrid SACD (SACD layer)
+VCD
+12" Shellac
+CD+G
+MiniDisc
+Flexi-disc
+SACD (2 channels)
+SHM-SACD
+DualDisc (CD side)
+DVD-R Video
+DualDisc
+DualDisc (DVD-Video side)
+LaserDisc
+CDV
+Piano Roll
+Edison Diamond Disc
+SHM-SACD (2 channels)
+DTS CD
+10" Acetate
+8cm CD+G
+12" LaserDisc
+7" Shellac
+Data DVD
+12" Acetate
+SACD (multichannel)
+3.5" Floppy Disk
+DualDisc (DVD-Audio side)
+KiT Album
+Cartridge
+Data DVD-R
+VinylDisc
+Minimax CD
+Microcassette
+8cm CD-R
+Acetate
+VinylDisc (CD side)
+VinylDisc (Vinyl side)
+7" Acetate
+3" Vinyl
+ROM cartridge
+Betacam SP
+Playbutton
+Betamax
+Blu-ray-R
+DCC
+Pathé disc
+SD Card
+Floppy Disk
+DualDisc (DVD side)
+microSD
+DVDplus (DVD-Video side)
+DVDplus (CD side)
+UMD
+CD-i
+DataPlay
+DVDplus
+VHD
+HD-DVD
+PlayTape
+slotMusic
+DVDplus (DVD-Audio side)
+SVCD
+CED
+Zip Disk
+5.25" Floppy Disk
+Ultra HD Blu-ray
+8" LaserDisc
+MiniDVD
+Tefifon
+Minimax DVD-Video
+SHM-SACD (multichannel)
+MiniDVD-Audio
+HiPac
+MiniDVD-Video
+VinylDisc (DVD side)
+Minimax DVD
+Minimax DVD-Audio

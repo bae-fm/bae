@@ -131,6 +131,13 @@ impl ImportServiceHandle {
                 }
                 (draft, None, None, None)
             };
+            // A reset unmakes the whole setup, so the candidate starts again
+            // with the cover its folder gives it — the same one a scan of a
+            // new candidate stores.
+            let cover = crate::import::local_artwork::folder_cover(
+                cover,
+                initialized_candidate.files().artwork(),
+            );
             // A CUE or artwork file can change while its audio's tags are read.
             // Check the whole scanned source again before committing its seed.
             crate::import::file_identity::validate_scanned_file_identities(&identity_files)?;

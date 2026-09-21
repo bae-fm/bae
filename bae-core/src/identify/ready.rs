@@ -157,9 +157,9 @@ pub struct VerdictSummary {
     /// The folder's own track count, as identification counted it. `None` for
     /// `NotFound`, which counts nothing.
     pub track_count: Option<u32>,
-    /// How many physical pressings the `found` list names — its releases as
-    /// [`crate::import::release_group::pressing_count`] groups them, so two
-    /// sources' records of one pressing count once. Zero for the other shapes.
+    /// How many physical pressings the `found` list names — the rows the run
+    /// built, so two sources' records of one pressing count once. Zero for
+    /// the other shapes.
     pub pressing_count: u32,
     pub lead: Option<LeadMatch>,
 }
@@ -171,12 +171,12 @@ impl VerdictSummary {
                 matches,
                 track_count,
                 provenance,
+                pressings,
                 ..
             } => Self {
                 kind: VerdictKind::Found,
                 track_count: Some(*track_count),
-                pressing_count: crate::import::release_group::pressing_count(matches.clone())
-                    as u32,
+                pressing_count: crate::import::release_group::row_count(pressings) as u32,
                 lead: matches
                     .first()
                     .map(|result| LeadMatch::of(result, provenance.first())),

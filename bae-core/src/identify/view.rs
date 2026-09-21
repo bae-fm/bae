@@ -31,7 +31,7 @@ use super::state::{
     IdentifyState, LookupResults, LookupState, SignalsContext,
 };
 use crate::db::LibraryStatus;
-use crate::import::release_group::{group_results, Judgements, ReleaseGroup};
+use crate::import::release_group::{group_formed_rows, group_results, Judgements, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
 use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
@@ -336,9 +336,10 @@ impl From<IdentifyState> for IdentifyStateView {
                 catalog,
                 context,
             } => {
-                let (matches, library_statuses, provenance, narrowed_out) =
+                let (matches, library_statuses, provenance, pressings, narrowed_out) =
                     live_matches(&discid, &barcode, &catalog, &context);
-                let (groups, agreements) = fold_matches(matches, provenance, &context.text);
+                let (groups, agreements) =
+                    fold_matches(matches, provenance, &pressings, &context.text);
                 IdentifyStateView::Triangulating {
                     run: run_view(&discid, &barcode, &catalog, &context),
                     groups,
@@ -353,12 +354,14 @@ impl From<IdentifyState> for IdentifyStateView {
                 library_statuses,
                 track_count,
                 provenance,
+                pressings,
                 narrowed_out,
                 ledger,
                 context,
             } => {
                 let catalog_agreements = catalog_agreements(&matches, &provenance, &context.text);
-                let (groups, agreements) = fold_matches(matches, provenance, &context.text);
+                let (groups, agreements) =
+                    fold_matches(matches, provenance, &pressings, &context.text);
                 IdentifyStateView::Found {
                     run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
                     groups,
@@ -388,13 +391,15 @@ impl From<IdentifyState> for IdentifyStateView {
                 matches,
                 library_statuses,
                 provenance,
+                pressings,
                 narrowed_out,
                 track_count: _,
                 ledger,
                 context,
             } => {
                 let catalog_agreements = catalog_agreements(&matches, &provenance, &context.text);
-                let (groups, agreements) = fold_matches(matches, provenance, &context.text);
+                let (groups, agreements) =
+                    fold_matches(matches, provenance, &pressings, &context.text);
                 IdentifyStateView::Failed {
                     run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
                     failures,
@@ -424,6 +429,7 @@ fn live_matches(
     Vec<MetadataResult>,
     Vec<LibraryStatus>,
     Vec<LookupProvenance>,
+    Vec<u32>,
     NarrowedOut,
 ) {
     let outcome = combine_results(
@@ -437,11 +443,22 @@ fn live_matches(
             matches,
             library_statuses,
             provenance,
+            pressings,
             narrowed_out,
-        } => (matches, library_statuses, provenance, narrowed_out),
-        CombineOutcome::NotFoundAnywhere => {
-            (Vec::new(), Vec::new(), Vec::new(), NarrowedOut::default())
-        }
+        } => (
+            matches,
+            library_statuses,
+            provenance,
+            pressings,
+            narrowed_out,
+        ),
+        CombineOutcome::NotFoundAnywhere => (
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            NarrowedOut::default(),
+        ),
     }
 }
 
@@ -455,17 +472,20 @@ fn live_matches(
 /// because the fields being looked for are, and once the releases are inside
 /// the cards that alignment is no longer expressible.
 ///
-/// This is the one place a stored verdict's rows are judged. A run's own rows
-/// were judged by `combine`, against this same text, so a row does not change
-/// what it says between the run and the read.
+/// This is the one place a stored verdict's rows are judged. The rows are the
+/// ones the run built — `pressings` says which row each release is in — and a
+/// run's own rows were judged by `combine` against this same text, so a row
+/// does not change what it says, or which records it holds, between the run
+/// and the read.
 fn fold_matches(
     matches: Vec<MetadataResult>,
     provenance: Vec<LookupProvenance>,
+    pressings: &[u32],
     text: &CandidateText,
 ) -> (Vec<ReleaseGroup>, Vec<(String, Agreements)>) {
     let judged = judged_results(matches, &provenance, text);
     let judgements = Judgements::of(&judged);
-    let groups = group_results(judged);
+    let groups = group_formed_rows(judged, pressings);
     let keyed = groups
         .iter()
         .flat_map(|group| &group.pressings)
@@ -487,8 +507,9 @@ fn fold_narrowed_out(narrowed_out: NarrowedOut, text: &CandidateText) -> Narrowe
         matches,
         library_statuses,
         provenance,
+        pressings,
     } = narrowed_out;
-    let (groups, agreements) = fold_matches(matches, provenance, text);
+    let (groups, agreements) = fold_matches(matches, provenance, &pressings, text);
     NarrowedOutView {
         groups,
         library_statuses,

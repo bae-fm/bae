@@ -94,30 +94,140 @@ fn catalog_numbers_compare_squashed_and_never_disagree() {
     assert_eq!(evidence(&a, &b).catalog, Comparison::Unknown);
 }
 
-/// A complete media list contradicts a record known to contain a medium
-/// outside it; descriptors never claim completeness; an unstated or
-/// unrecognized medium keeps a list incomplete.
+/// A MusicBrainz record's media, one format name per medium.
+fn per_medium(names: &[&str]) -> StatedMedia {
+    StatedMedia::PerMedium(names.iter().map(|name| Some(name.to_string())).collect())
+}
+
+/// A Discogs record's `format` array: its format names followed by their
+/// descriptions, flat.
+fn descriptors(words: &[&str]) -> StatedMedia {
+    StatedMedia::Descriptors(words.iter().map(|word| word.to_string()).collect())
+}
+
+/// What a MusicBrainz record stating `a` and a Discogs record stating `b`
+/// say about the pressing's media.
+fn media(a: StatedMedia, b: StatedMedia) -> Comparison {
+    let mut one = release(Catalog::MusicBrainz, "mb-1");
+    one.media = a;
+    let mut other = release(Catalog::Discogs, "dg-1");
+    other.media = b;
+    evidence(&one, &other).medium
+}
+
+/// Each catalog's words are read in that catalog's own list of format names,
+/// and two records that each say what they are made of either name the same
+/// carriers or contradict each other.
 #[test]
-fn media_compare_by_what_is_known_and_whether_that_is_everything() {
-    let mut a = release(Catalog::MusicBrainz, "mb-1");
-    let mut b = release(Catalog::Discogs, "dg-1");
-    a.media = StatedMedia::PerMedium(vec![Some("CD".to_string()), Some("12\" Vinyl".to_string())]);
-    b.media = StatedMedia::Descriptors(vec!["vinyl".to_string(), "LP".to_string()]);
-    assert_eq!(evidence(&a, &b).medium, Comparison::Unknown);
-    b.media = StatedMedia::Descriptors(vec!["Cassette".to_string()]);
-    assert_eq!(evidence(&a, &b).medium, Comparison::Different);
-    b.media = StatedMedia::Undescribed;
-    assert_eq!(evidence(&a, &b).medium, Comparison::Unknown);
+fn media_compare_as_the_carriers_each_catalogs_words_name() {
+    assert_eq!(
+        media(per_medium(&["CD"]), descriptors(&["CD", "Album"])),
+        Comparison::Same
+    );
+    assert_eq!(
+        media(
+            per_medium(&["CD"]),
+            descriptors(&["File", "FLAC", "Album", "Reissue"])
+        ),
+        Comparison::Different,
+        "a download is not a CD"
+    );
+    assert_eq!(
+        media(
+            per_medium(&["CD", "DVD-Video"]),
+            descriptors(&["CD", "Album", "DVD", "DVD-Video", "NTSC"])
+        ),
+        Comparison::Same
+    );
+    assert_eq!(
+        media(
+            per_medium(&["CD", "DVD-Video"]),
+            descriptors(&["CD", "Album"])
+        ),
+        Comparison::Different,
+        "the Discogs record names what it is made of, and there is no DVD in it"
+    );
+    assert_eq!(
+        media(
+            per_medium(&["Hybrid SACD"]),
+            descriptors(&["SACD", "Hybrid", "Multichannel"])
+        ),
+        Comparison::Same,
+        "a hybrid SACD is an SACD on both catalogs"
+    );
+}
 
-    a.media = StatedMedia::PerMedium(vec![Some("CD".to_string()), None]);
-    b.media = StatedMedia::Descriptors(vec!["Cassette".to_string()]);
-    assert_eq!(evidence(&a, &b).medium, Comparison::Unknown, "an unstated medium could be the cassette");
-    a.media = StatedMedia::PerMedium(vec![Some("CD".to_string()), Some("Digital Media".to_string())]);
-    assert_eq!(evidence(&a, &b).medium, Comparison::Unknown, "an unrecognized medium keeps the list incomplete");
+/// The case a catalog writes its own name in is not evidence of anything.
+#[test]
+fn a_format_name_is_the_same_name_in_any_case() {
+    assert_eq!(
+        media(per_medium(&["cd"]), descriptors(&["CD"])),
+        Comparison::Same
+    );
+}
 
-    a.media = StatedMedia::PerMedium(vec![Some("cd".to_string())]);
-    b.media = StatedMedia::PerMedium(vec![Some("CD".to_string())]);
-    assert_eq!(evidence(&a, &b).medium, Comparison::Same);
+/// A Discogs word outside both of its lists is almost always a description —
+/// those are added regularly while the format names barely move — so it is
+/// passed over; a MusicBrainz medium names a format, so a word outside that
+/// list leaves the medium unknown. Either way the word is logged, because
+/// what needs fixing is the vocabulary.
+#[test]
+fn a_word_outside_the_vocabulary_is_logged_and_settles_by_catalog() {
+    let logs = crate::test_logs::capture_warn_logs(|| {
+        assert_eq!(
+            media(per_medium(&["CD"]), descriptors(&["CD", "Album", "Zorblax"])),
+            Comparison::Same
+        );
+    });
+    assert!(logs.contains("Zorblax"), "the unknown word is logged: {logs}");
+
+    let logs = crate::test_logs::capture_warn_logs(|| {
+        assert_eq!(
+            media(
+                per_medium(&["CD", "Zorblax Disc"]),
+                descriptors(&["CD", "Album"])
+            ),
+            Comparison::Unknown,
+            "what the second MusicBrainz medium is cannot be said"
+        );
+    });
+    assert!(
+        logs.contains("Zorblax Disc"),
+        "the unknown word is logged: {logs}"
+    );
+}
+
+/// A record with a medium it does not name still contradicts a record that
+/// accounts for everything it is made of and does not hold what this one
+/// knows; what it says nothing about is what leaves the comparison open.
+#[test]
+fn a_medium_left_unstated_is_weighed_against_a_complete_account() {
+    assert_eq!(
+        media(
+            StatedMedia::PerMedium(vec![Some("CD".to_string()), None]),
+            descriptors(&["Cassette"])
+        ),
+        Comparison::Different,
+        "the Discogs array lists the release's formats, and a CD is not among them"
+    );
+    assert_eq!(
+        media(
+            StatedMedia::PerMedium(vec![Some("CD".to_string()), None]),
+            descriptors(&["CD", "Album"])
+        ),
+        Comparison::Unknown,
+        "the Discogs record lacks nothing the MusicBrainz one knows, and what \
+         the unstated medium is nobody says"
+    );
+    assert_eq!(
+        media(per_medium(&["CD"]), StatedMedia::Undescribed),
+        Comparison::Unknown
+    );
+    assert_eq!(
+        media(StatedMedia::Undescribed, descriptors(&["Album", "Reissue"])),
+        Comparison::Unknown,
+        "descriptions alone name no carrier"
+    );
 }
 
 /// A shared catalog number is a candidate only with corroboration, and a

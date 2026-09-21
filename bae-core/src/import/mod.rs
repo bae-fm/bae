@@ -40,6 +40,9 @@ desktop_only! {
     // import pane's one structure, and desktop-only like the slots it reads.
     pub(crate) mod direct_entry_mapper;
     pub mod mapping;
+    /// The carriers MusicBrainz and Discogs name, in each catalog's own
+    /// closed list of format names.
+    pub(crate) mod medium;
     pub mod musicbrainz_mapper;
     // The payload store's projections build the picker detail and the commit's
     // `ParsedAlbum` from archived documents — both desktop-only import shapes.

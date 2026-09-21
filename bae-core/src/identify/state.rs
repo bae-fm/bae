@@ -57,6 +57,10 @@ pub enum IdentifyState {
         /// index-aligned with `matches` — drives the per-row signal badges, and
         /// says which signal produced any given match.
         provenance: Vec<LookupProvenance>,
+        /// Index-aligned with `matches`: which pressing row of this list each
+        /// release belongs to. The rows this run built, carried rather than
+        /// re-formed by whoever draws them.
+        pressings: Vec<u32>,
         /// The releases the signals' agreement left out of `matches`. Empty
         /// when nothing was narrowed.
         narrowed_out: NarrowedOut,
@@ -91,6 +95,8 @@ pub enum IdentifyState {
         matches: Vec<MetadataResult>,
         library_statuses: Vec<LibraryStatus>,
         provenance: Vec<LookupProvenance>,
+        /// Index-aligned with `matches`, as on `Found`.
+        pressings: Vec<u32>,
         /// The releases the surviving signals' agreement left out of
         /// `matches`. Empty when nothing was narrowed, and for a failure
         /// resumed from its stored verdict.
@@ -671,16 +677,27 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
         context.catalog.active_results(),
         &context.text,
     );
-    let (matches, library_statuses, provenance, narrowed_out) = match outcome {
+    let (matches, library_statuses, provenance, pressings, narrowed_out) = match outcome {
         CombineOutcome::Found {
             matches,
             library_statuses,
             provenance,
+            pressings,
             narrowed_out,
-        } => (matches, library_statuses, provenance, narrowed_out),
-        CombineOutcome::NotFoundAnywhere => {
-            (Vec::new(), Vec::new(), Vec::new(), NarrowedOut::default())
-        }
+        } => (
+            matches,
+            library_statuses,
+            provenance,
+            pressings,
+            narrowed_out,
+        ),
+        CombineOutcome::NotFoundAnywhere => (
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            NarrowedOut::default(),
+        ),
     };
     let track_count = context.track_count;
     let failures = context.active_failures();
@@ -690,6 +707,7 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
             matches,
             library_statuses,
             provenance,
+            pressings,
             narrowed_out,
             track_count,
             ledger,
@@ -704,6 +722,7 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
         library_statuses,
         track_count,
         provenance,
+        pressings,
         narrowed_out,
         ledger,
         context,

@@ -529,8 +529,10 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
             by_barcode: false,
             by_catalog: false,
         }],
+        pressings: vec![0],
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
+        narrowed_out_pressings: Vec::new(),
         ledger: None,
     }
 }
@@ -739,4 +741,66 @@ async fn unskipping_a_stored_candidate_mid_pass_counts_it_immediately() {
         "the stored unskipped candidate is counted immediately: {progress:?}"
     );
     assert_eq!(progress.last(), Some(&(2, 2)), "{progress:?}");
+}
+
+/// An identification that settles on a release the catalogs hold no artwork
+/// for leaves the candidate the cover its folder gave it. A folder holding
+/// `cover.jpg` does not import bare because the record it was matched to had
+/// no image.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
+    let fixture = Fixture::new("keeps-folder-cover").await;
+    let dir = fixture.disc_id_candidate("Album");
+    std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
+    let probed = fixture.probed_total_ms(&dir);
+    let lengths = [probed / 2, probed - probed / 2];
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-bare-1", "rg-bare-1", &lengths),
+    );
+    fixture.provider.route(
+        "/release/mb-bare-1?",
+        200,
+        release_json("mb-bare-1", "rg-bare-1", &lengths),
+    );
+    fixture.scan(1).await;
+
+    let folders_own = crate::import::CoverSelection::Local("cover.jpg".to_string());
+    assert_eq!(
+        fixture
+            .manager
+            .load_import_candidate_preparation(&fixture.content_hash(&dir))
+            .await
+            .unwrap()
+            .expect("the scanned candidate is prepared")
+            .cover,
+        Some(folders_own.clone()),
+        "the scan stores the cover the folder gives the candidate"
+    );
+
+    fixture.sweep_once().await;
+
+    assert_eq!(
+        fixture
+            .manager
+            .load_import_candidate_preparation(&fixture.content_hash(&dir))
+            .await
+            .unwrap()
+            .expect("the identified candidate is prepared")
+            .cover,
+        Some(folders_own.clone()),
+        "the settled release brought no image, so the folder's cover stands"
+    );
+    assert_eq!(
+        fixture
+            .pane(&dir)
+            .await
+            .expect("the identified candidate reads back")
+            .cover
+            .expect("the pane shows the stored selection")
+            .selection,
+        folders_own
+    );
 }

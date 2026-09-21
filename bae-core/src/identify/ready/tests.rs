@@ -35,12 +35,15 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
             by_catalog: false,
         })
         .collect();
+    let pressings = crate::import::release_group::form_rows(&matches);
     TerminalVerdict::Found {
         matches,
         track_count,
         provenance,
+        pressings,
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
+        narrowed_out_pressings: Vec::new(),
         ledger: None,
     }
 }
@@ -101,6 +104,7 @@ fn what_agreement_narrowed_out_is_not_a_match() {
         matches,
         track_count,
         provenance,
+        pressings,
         ..
     } = found(vec![result("mb-1", agreeing(11, 2_400_000))], 11)
     else {
@@ -110,12 +114,14 @@ fn what_agreement_narrowed_out_is_not_a_match() {
         matches,
         track_count,
         provenance,
+        pressings,
         narrowed_out: vec![result("mb-2", agreeing(11, 2_400_000))],
         narrowed_out_provenance: vec![LookupProvenance {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
         }],
+        narrowed_out_pressings: vec![0],
         ledger: None,
     };
     assert_eq!(
@@ -141,6 +147,45 @@ fn two_sources_agreeing_on_a_barcode_are_one_pressing() {
     assert_eq!(
         classify(&verdict, 2_400_000, &[status("mb-1", false, false)]),
         QueueClassification::Ready
+    );
+}
+
+/// The count is the rows the run recorded, not the rows this list would form
+/// on its own. A run that kept two records apart because of a record in its
+/// other list is not re-decided by the reader that counts them.
+#[test]
+fn the_pressing_count_is_the_rows_the_run_recorded() {
+    let matches = vec![
+        barcoded(result("mb-1", agreeing(11, 2_400_000)), BARCODE),
+        discogs("d-1", BARCODE),
+    ];
+    assert_eq!(
+        crate::import::release_group::form_rows(&matches),
+        vec![0, 0],
+        "forming rows over this list alone makes the two one row"
+    );
+    let TerminalVerdict::Found {
+        track_count,
+        provenance,
+        ..
+    } = found(matches.clone(), 11)
+    else {
+        panic!("a found verdict");
+    };
+    let verdict = TerminalVerdict::Found {
+        matches,
+        track_count,
+        provenance,
+        pressings: vec![0, 1],
+        narrowed_out: Vec::new(),
+        narrowed_out_provenance: Vec::new(),
+        narrowed_out_pressings: Vec::new(),
+        ledger: None,
+    };
+    assert_eq!(VerdictSummary::of(&verdict).pressing_count, 2);
+    assert_eq!(
+        classify(&verdict, 2_400_000, &[]),
+        QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
     );
 }
 

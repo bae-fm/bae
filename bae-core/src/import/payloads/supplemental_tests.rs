@@ -163,7 +163,7 @@ fn malformed_optional_documents_do_not_block_snapshot_projections() {
         assert_eq!(payloads.records().unwrap().len(), 1);
         assert!(payloads.covers().unwrap().is_empty());
         assert_eq!(
-            payloads.detail_for_audio(&[]).unwrap().title,
+            payloads.detail_for_audio(&[], &[]).unwrap().title,
             "Selected Album"
         );
         assert_eq!(

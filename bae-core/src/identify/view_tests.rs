@@ -665,12 +665,14 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
             by_barcode: false,
             by_catalog: false,
         }],
+        pressings: vec![0],
         narrowed_out: vec![MetadataResult::for_test(DG, "dg-1", Some("g"))],
         narrowed_out_provenance: vec![LookupProvenance {
             by_disc_id: false,
             by_barcode: true,
             by_catalog: false,
         }],
+        narrowed_out_pressings: vec![0],
         ledger: Some(recorded_ledger()),
     };
     let run = run_of(verdict.resume_state(&not_in_library, Default::default()));
@@ -827,6 +829,10 @@ fn resumed(
     let verdict = TerminalVerdict::Found {
         provenance: by_disc_id(matches.len()),
         narrowed_out_provenance: by_disc_id(narrowed_out.len()),
+        // A stored verdict carries the rows its run built; a test that
+        // stands one up forms them over each list the way a run would.
+        pressings: crate::import::release_group::form_rows(&matches),
+        narrowed_out_pressings: crate::import::release_group::form_rows(&narrowed_out),
         matches,
         narrowed_out,
         track_count: 9,

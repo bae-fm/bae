@@ -48,6 +48,9 @@ async fn linked_cover_gallery_can_be_empty() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
+    // The pick offers the partner's album address, which the archive holds
+    // no image at.
+    crate::import::cover_art::serve_empty_archive_for_test();
     let (handle, _tmp, key, hash) = pane_fixture().await;
     handle
         .library_manager
@@ -106,6 +109,17 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
             .unwrap()
             .is_some(),
         "the partner's own documents are archived by the apply"
+    );
+    assert_eq!(
+        handle
+            .library_manager
+            .load_import_candidate_preparation(&hash)
+            .await
+            .unwrap()
+            .expect("the picked candidate is prepared")
+            .cover,
+        Some(crate::import::CoverSelection::Local("cover.jpg".to_string())),
+        "neither claimed release holds an image, so the folder's cover stands"
     );
     shut_down(handle).await;
 }
@@ -364,6 +378,9 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn applied_partner_identity_survives_archive_replacement() {
+    // The pick offers the partner's album address, which the archive holds
+    // no image at.
+    crate::import::cover_art::serve_empty_archive_for_test();
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
         .library_manager

@@ -44,14 +44,7 @@ async fn metadata_for_settled_lead(
             Ok(Some(
                 context
                     .import
-                    .external_candidate_metadata(
-                        &payloads,
-                        partners,
-                        durations,
-                        provenance,
-                        &current.draft,
-                        None,
-                    )
+                    .external_candidate_metadata(&payloads, partners, durations, provenance, &current.draft)
                     .await?,
             ))
         }
@@ -226,10 +219,10 @@ pub(super) async fn save(
 /// The one pressing a verdict's matches describe, or `None` when they describe
 /// several.
 ///
-/// Find online groups the same results into album cards and pairs two sources'
-/// records of one physical pressing into a single row, so "how many pressings
-/// did this candidate match" is that grouping's question, not a count of
-/// result rows. A MusicBrainz release and a Discogs release agreeing on a
+/// The rows are the run's own — `pressings` says which row each match belongs
+/// to — so "how many pressings did this candidate match" is what that run
+/// answered rather than a count of result rows, and rather than a grouping of
+/// this list alone. A MusicBrainz release and a Discogs release agreeing on a
 /// barcode are one row a person picks whole — an answer, not a question.
 ///
 /// The matches are judged against the candidate's own text here, exactly as
@@ -239,14 +232,15 @@ pub(super) async fn save(
 fn sole_pressing(
     matches: &[MetadataResult],
     provenance: &[crate::identify::LookupProvenance],
+    pressings: &[u32],
     text: &crate::identify::CandidateText,
 ) -> Option<crate::import::release_group::Pressing> {
     let judged = crate::identify::judged_results(matches.to_vec(), provenance, text);
-    let mut pressings = crate::import::release_group::group_results(judged)
+    let mut rows = crate::import::release_group::group_formed_rows(judged, pressings)
         .into_iter()
         .flat_map(|group| group.pressings);
-    let only = pressings.next()?;
-    pressings.next().is_none().then_some(only)
+    let only = rows.next()?;
+    rows.next().is_none().then_some(only)
 }
 
 /// Settle a candidate's lead: buy the documents that describe the pressing it
@@ -283,6 +277,7 @@ async fn settle_lead(
     let TerminalVerdict::Found {
         matches,
         provenance,
+        pressings,
         track_count,
         ledger,
         ..
@@ -290,7 +285,7 @@ async fn settle_lead(
     else {
         return Ok(SettledLead::NoExternalRelease);
     };
-    let Some(pressing) = sole_pressing(matches, provenance, text) else {
+    let Some(pressing) = sole_pressing(matches, provenance, pressings, text) else {
         return Ok(SettledLead::NoExternalRelease);
     };
     let (primary, partners) = pressing.claims();

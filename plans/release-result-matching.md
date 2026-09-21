@@ -236,17 +236,34 @@ Each pressing fact compares to one of three outcomes: `Same`, `Different`, or
   country against a region, or any unresolved value, is `Unknown`.
 - **Label**: `identify::label::stated` on both (the trade word dropped);
   `Same` when equal. Otherwise `Unknown` — never `Different`.
-- **Medium**: from `StatedMedia`, derive the media the record is known to
-  contain and whether that is the complete list. Recognizing a medium in one
-  format string is one shared, case-insensitive function in `util/format.rs`
-  that returns every recognized `PhysicalMedium` in the string (vinyl,
-  cassette, CD by the existing substrings), which `detect_format` then reads
-  the first of — one recognizer, not two. `PerMedium`: known = recognized media
-  of stated entries; complete = every entry stated and recognized.
-  `Descriptors`: known = recognized media among the tokens; never complete.
-  `Undescribed`: nothing known. `Different` when either side is complete and
-  the other side knows a medium absent from it. `Same` when both are complete
-  and equal. `Unknown` otherwise.
+- **Medium**: from `StatedMedia`, derive the carriers the record names and how
+  much of the pressing they account for. Each word is read in its own
+  catalog's closed list of format names, `import/medium.rs`: `Medium` is the
+  carrier families, `Medium::musicbrainz` and `Medium::discogs` match a whole
+  name case-insensitively, and the answer is `Carrier`, `NamesNoCarrier` (in
+  the catalog's list, naming no carrier: "Other", "Phonograph record",
+  "Hybrid", "All Media", "Box Set"), `Description` (a Discogs description) or
+  `Unrecognized`. `util/format.rs::physical_medium` stays a free-text
+  classifier for playback and takes no part in matching.
+  - `PerMedium` (MusicBrainz): known = carriers of stated entries; the record
+    is complete when it has entries and every one is stated and names a
+    carrier. A word the table lacks is `warn`-logged and
+    leaves that medium unknown.
+  - `Descriptors` (Discogs): known = carriers among the words; the array
+    lists the release's formats, so one carrier in it is a complete account
+    of what the release is made of, and a record of nothing but descriptions
+    accounts for nothing.
+    Descriptions and no-carrier names are passed over, and so is an
+    unrecognized word — the format names barely move while descriptions are
+    added regularly, so an unknown word is almost always a description — but
+    it is `warn`-logged with the source and release id.
+  - `Undescribed`: nothing known.
+  - The comparison is unchanged: `Different` when either side is complete and
+    lacks a carrier the other knows, `Same` when both are complete and equal,
+    `Unknown` otherwise. A record with a medium it does not name is still
+    contradicted by a complete record that does not hold what this one knows —
+    a Discogs array lists the release's formats, so a cassette-only record is
+    not a record with a CD in it, whatever the unstated medium is.
 
 Identity evidence makes two records candidates for one pressing: a link; a
 `Same` barcode; or a `Same` catalog number corroborated by at least one `Same`
@@ -258,30 +275,55 @@ Support orders candidates as a tuple compared lexicographically:
 `(link, barcode Same, catalog Same, number of Same among year, country, label,
 medium)`.
 
-### Pairing
+### Forming the rows
 
-Pair the MusicBrainz records against the Discogs records over the whole
-result list (the two members of `Catalog::LOOKUP`; any other source is a
-programming error), not within an album card. Take support levels from the
-highest down: at each level, the candidate pairs whose two members are both
-still free are examined together; a member that appears in more than one of
-them is ambiguous and is settled unpaired; every remaining pair at the level is
-taken. A member whose only pair at this level named an ambiguous member stays
-free for lower levels. Nothing depends on arrival order: permuting either side
-gives the same pairs.
+Gather the records into pressing rows over the whole result list, not within
+an album card, and weigh every record against every other — records of one
+catalog included, since a catalog lists one object twice as readily as two
+catalogs list it once. Take support levels from the highest down: at each
+level, the candidate edges between distinct open sets are read together, the
+sets an edge chain connects become one when every record across them supports
+every other, a set more than one of the chain's edges names is ambiguous and
+settles as it stands, and a set named once stays open for the levels below.
+Nothing depends on arrival order.
 
 ### Cards
 
-Bucket by `(source, source_group_id)` as now. Then union the buckets joined by
-a pair; that is the album grouping known links establish. Then the text merge
+Bucket by `(source, source_group_id)` as now. Then union the buckets a row
+spans; that is the album grouping known links establish. Then the text merge
 as now, over the resulting cards: a card carrying only one source merges with
 the first later card carrying only the other source whose album key is equal.
-A card may hold more than one bucket of one source when pairs join them; its
+A card may hold more than one bucket of one source when rows join them; its
 `sources` lists each bucket by `source_rank` then first-seen order, its `id`
 is the first of those buckets' group ids or the lead's release id, and its
 title, artist, label and cover are read from releases in that bucket order.
-Rows: each pair is one `Pressing::of([a, b])`, every other release its own
+Rows: each gathered set is one `Pressing::of`, every other release its own
 row; ordering stays as now.
+
+### The run's rows are stored
+
+A run decides the rows over everything it found, and its two lists — what it
+offers and what it set aside — are each a part of that. Re-forming a part's
+rows is a different answer: a record the run settled as ambiguous because of a
+record in the other list rolls up when its list is grouped alone. So the rows
+are recorded, not re-derived.
+
+`import_candidate_match` carries a `pressing` column: the row's index within
+its own list, numbered from zero in row order, the matches numbering their
+rows and the narrowed-out releases numbering theirs. The records of one row
+are read in stored `position` order, the lead first.
+`TerminalVerdict::Found` carries the same numbers as `pressings` and
+`narrowed_out_pressings`, index-aligned with the two lists, and
+`CombineOutcome` hands them over from the grouping it ran.
+
+`release_group::group_formed_rows` builds the cards over rows already formed —
+every reader of a stored verdict calls it, and `group_results` is "form the
+rows, then that". `row_count` is how many rows a stored list holds, which is
+what the Ready rule and the queue read. `form_rows` is the only thing that
+forms rows over a list of its own: a run's own grouping, and the migration
+that gave the already-stored lists their rows, which is the one place there is
+nothing recorded to read. The ledger a run records already stores its cells'
+cards whole, so nothing re-groups there either.
 
 ### Tests to revise
 

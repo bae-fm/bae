@@ -81,8 +81,10 @@ fn sample_verdict() -> TerminalVerdict {
             by_barcode: true,
             by_catalog: true,
         }],
+        pressings: vec![0],
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
+        narrowed_out_pressings: Vec::new(),
         ledger: Some(sample_ledger()),
     }
 }
@@ -208,10 +210,12 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
                 by_catalog: false,
             })
             .collect(),
+        pressings: crate::import::release_group::form_rows(&matches),
         matches: matches.clone(),
         track_count: 11,
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
+        narrowed_out_pressings: Vec::new(),
         ledger: None,
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict, 2_700_000);
@@ -315,8 +319,10 @@ async fn a_verdict_with_no_ledger_reads_back_without_one() {
         matches,
         track_count,
         provenance,
+        pressings,
         narrowed_out,
         narrowed_out_provenance,
+        narrowed_out_pressings,
         ..
     } = sample_verdict()
     else {
@@ -326,8 +332,10 @@ async fn a_verdict_with_no_ledger_reads_back_without_one() {
         matches,
         track_count,
         provenance,
+        pressings,
         narrowed_out,
         narrowed_out_provenance,
+        narrowed_out_pressings,
         ledger: None,
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict, 2_700_000);
@@ -362,6 +370,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
         matches,
         track_count,
         provenance,
+        pressings,
         ..
     } = sample_verdict()
     else {
@@ -373,12 +382,14 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
         matches,
         track_count,
         provenance,
+        pressings,
         narrowed_out: vec![left_out],
         narrowed_out_provenance: vec![LookupProvenance {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
         }],
+        narrowed_out_pressings: vec![0],
         ledger: Some(sample_ledger()),
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict, 2_700_000);

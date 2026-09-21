@@ -326,6 +326,12 @@ impl ImportServiceHandle {
 
     /// Project one external release and prepare every provider image its
     /// candidate revision owns before the revision is written.
+    ///
+    /// The cover is the source's own image and only that: where the source
+    /// offers none, or the one it offers cannot be fetched, this names no
+    /// cover, and the write leaves the candidate the selection it already
+    /// has — a metadata application that names no image says nothing about
+    /// the cover.
     pub(crate) async fn external_candidate_metadata(
         &self,
         payloads: &crate::import::payloads::ReleasePayloads,
@@ -333,7 +339,6 @@ impl ImportServiceHandle {
         durations: &crate::import::probe::SourceDurations,
         provenance: crate::import::MetadataProvenance,
         current: &crate::import::CandidateDraft,
-        fallback_cover: Option<&crate::import::CoverSelection>,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
         let source_draft = self.external_candidate_draft(payloads, durations, current)?;
         let draft = source_draft.draft;
@@ -346,7 +351,10 @@ impl ImportServiceHandle {
             .library_manager
             .prepare_discogs_artist_images(required_artist_ids)
             .await?;
-        let (cover, remote_cover) = match payloads.default_cover()? {
+        let default_cover = crate::import::payloads::pick_covers(payloads, &partners)?
+            .into_iter()
+            .next();
+        let (cover, remote_cover) = match default_cover {
             Some(remote) => match self.library_manager.fetch_remote_image(&remote.url).await? {
                 Some(image) => (
                     Some(crate::import::CoverSelection::Remote(
@@ -355,9 +363,9 @@ impl ImportServiceHandle {
                     )),
                     Some(image),
                 ),
-                None => (local_or_embedded_cover(fallback_cover), None),
+                None => (None, None),
             },
-            None => (local_or_embedded_cover(fallback_cover), None),
+            None => (None, None),
         };
         Ok(crate::import::CandidateMetadataDraft {
             draft,
@@ -449,16 +457,6 @@ impl ImportServiceHandle {
                     CallPriority::Interactive,
                 )
                 .await?;
-                let metadata = self
-                    .external_candidate_metadata(
-                        &payloads,
-                        prepared_partners,
-                        &durations,
-                        provenance.clone(),
-                        &current.draft,
-                        current.cover.as_ref(),
-                    )
-                    .await?;
                 // A release the person chose answers the candidate. Where a run
                 // has already answered it, that run's own result is the record
                 // of what it found and stands; where none has, the choice is
@@ -466,7 +464,16 @@ impl ImportServiceHandle {
                 // asking.
                 let audio_durations =
                     crate::import::track_slots::audio_durations(candidate.files(), &durations)?;
-                let detail = payloads.detail_for_audio(&audio_durations)?;
+                let detail = payloads.detail_for_audio(&audio_durations, &prepared_partners)?;
+                let metadata = self
+                    .external_candidate_metadata(
+                        &payloads,
+                        prepared_partners,
+                        &durations,
+                        provenance.clone(),
+                        &current.draft,
+                    )
+                    .await?;
                 let settled_by_choice = crate::identify::TerminalVerdict::of_pick(
                     crate::import::search::MetadataResult::of_pick(&detail),
                     audio_durations.len() as u32,
@@ -869,36 +876,3 @@ impl ImportServiceHandle {
     }
 }
 
-fn local_or_embedded_cover(
-    cover: Option<&crate::import::CoverSelection>,
-) -> Option<crate::import::CoverSelection> {
-    match cover {
-        Some(
-            cover @ (crate::import::CoverSelection::Local(_)
-            | crate::import::CoverSelection::Embedded(_)),
-        ) => Some(cover.clone()),
-        Some(crate::import::CoverSelection::Remote(_, _)) | None => None,
-    }
-}
-
-#[cfg(test)]
-mod cover_fallback_tests {
-    use super::*;
-
-    #[test]
-    fn a_source_without_a_remote_cover_keeps_the_local_selection() {
-        let selected = crate::import::CoverSelection::Local("cover.jpg".to_string());
-
-        assert_eq!(local_or_embedded_cover(Some(&selected)), Some(selected));
-    }
-
-    #[test]
-    fn a_source_without_a_remote_cover_does_not_reuse_an_old_remote_selection() {
-        let selected = crate::import::CoverSelection::Remote(
-            "https://example.invalid/old".to_string(),
-            crate::import::Catalog::Discogs,
-        );
-
-        assert_eq!(local_or_embedded_cover(Some(&selected)), None);
-    }
-}

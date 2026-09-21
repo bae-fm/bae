@@ -3,11 +3,11 @@ use crate::import::search::StatedMedia;
 
 /// The tests are about how results bucket, pair and order by year, none of
 /// which the candidate's text takes part in.
-fn grouped(results: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
+pub(super) fn grouped(results: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
     group_results(unranked(results))
 }
 
-fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
+pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
     MetadataResult {
         source: Catalog::MusicBrainz,
         release_id: release_id.to_string(),
@@ -29,14 +29,14 @@ fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataRe
 
 /// The same album on Discogs, whose group is a master and whose card URL
 /// therefore differs from MusicBrainz's.
-fn discogs(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
+pub(super) fn discogs(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
     MetadataResult {
         source: Catalog::Discogs,
         ..mb(release_id, group_id, year)
     }
 }
 
-fn cover() -> RemoteCover {
+pub(super) fn cover() -> RemoteCover {
     RemoteCover {
         url: "https://caa.example/front.jpg".to_string(),
         thumbnail_url: "https://caa.example/thumb.jpg".to_string(),
@@ -45,7 +45,7 @@ fn cover() -> RemoteCover {
     }
 }
 
-fn lead_ids(group: &ReleaseGroup) -> Vec<Vec<&str>> {
+pub(super) fn lead_ids(group: &ReleaseGroup) -> Vec<Vec<&str>> {
     group
         .pressings
         .iter()
@@ -244,10 +244,11 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
     );
 }
 
-/// A link outranks an inferred pair: the release the document names is the
-/// pressing, even when another record prints the same barcode.
+/// Two Discogs records print the barcode and nothing tells them apart, so
+/// they are one pressing with the MusicBrainz record — and the one the
+/// document names stands for Discogs in the claim, over the one it does not.
 #[test]
-fn a_stated_link_is_taken_over_a_shared_barcode() {
+fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.barcodes = vec!["012345678905".to_string()];
     one.links = vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-linked")];
@@ -259,7 +260,15 @@ fn a_stated_link_is_taken_over_a_shared_barcode() {
     let groups = grouped(vec![barcoded, one, linked]);
     assert_eq!(
         lead_ids(&groups[0]),
-        vec![vec!["mb-1", "dg-linked"], vec!["dg-barcoded"]]
+        vec![vec!["mb-1", "dg-linked", "dg-barcoded"]]
+    );
+    assert_eq!(
+        groups[0].pressings[0].pick(),
+        crate::import::MetadataProvenance::ExternalRelease {
+            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
+            partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-linked")],
+        },
+        "one record per catalog is claimed"
     );
 }
 
@@ -379,6 +388,29 @@ fn meaningful_conflicts_prevent_inferred_pairs() {
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
 
+/// A release issued as files is not the CD it was cut from, however much
+/// the two records share: a reissue carries the CD's catalog number, its
+/// year and its country, and the one thing that tells them apart is what
+/// each catalog says they are made of.
+#[test]
+fn a_file_release_is_not_the_cd_whose_catalog_number_it_carries() {
+    let mut cd = mb("mb-1", Some("group-x"), Some(2013));
+    cd.catalog_number = Some("CAT-7".to_string());
+    cd.country = Some("JP".to_string());
+    cd.media = StatedMedia::PerMedium(vec![Some("CD".to_string())]);
+    let mut download = discogs("dg-1", Some("master-7"), Some(2013));
+    download.catalog_number = Some("CAT-7".to_string());
+    download.country = Some("Japan".to_string());
+    download.media = StatedMedia::Descriptors(vec![
+        "File".to_string(),
+        "FLAC".to_string(),
+        "Album".to_string(),
+        "Reissue".to_string(),
+    ]);
+    let groups = grouped(vec![cd, download]);
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]]);
+}
+
 /// Reissues repeat a pressing's codes. Where the year tells the records
 /// apart, each pairs with its own; where nothing does, none pairs — and
 /// however the records arrive, the pairs are the same.
@@ -414,18 +446,19 @@ fn reissues_pair_by_what_tells_them_apart_whatever_the_order() {
     }
 }
 
-/// Two MusicBrainz records competing for one Discogs record with the same
-/// support are ambiguous, and both stay unpaired; the Discogs record remains
-/// free for a better-supported pair below.
+/// Two MusicBrainz records pressed in different years compete for one
+/// undated Discogs record with the same support: the Discogs record is
+/// ambiguous and settles alone, and each rival stays open for a pressing
+/// below.
 #[test]
-fn an_ambiguous_member_settles_unpaired_but_its_rivals_stay_free() {
+fn an_ambiguous_member_settles_alone_but_its_rivals_stay_open() {
     let mut first = mb("mb-first", Some("group-x"), Some(1992));
     first.barcodes = vec!["012345678905".to_string()];
-    let mut second = mb("mb-second", Some("group-x"), Some(1992));
+    let mut second = mb("mb-second", Some("group-x"), Some(1993));
     second.barcodes = vec!["012345678905".to_string()];
-    let mut contested = discogs("dg-contested", Some("master-7"), Some(1992));
+    let mut contested = discogs("dg-contested", Some("master-7"), None);
     contested.barcodes = vec!["012345678905".to_string()];
-    let mut by_catalog = discogs("dg-catalog", Some("master-7"), Some(1992));
+    let mut by_catalog = discogs("dg-catalog", Some("master-7"), Some(1993));
     by_catalog.catalog_number = Some("CAT-7".to_string());
     second.catalog_number = Some("CAT-7".to_string());
 
@@ -723,247 +756,6 @@ fn the_same_group_id_across_sources_does_not_collide() {
         groups
             .iter()
             .map(|group| group.sources[0].source)
-            .collect::<Vec<_>>(),
-        vec![Catalog::MusicBrainz, Catalog::Discogs]
-    );
-}
-
-// MARK: - Ranking
-
-fn agreed(count: u32) -> Agreements {
-    Agreements {
-        disc_id: count >= 1,
-        barcode: count >= 2,
-        catalog: count >= 3,
-        label: count >= 4,
-        year: count >= 5,
-        country: count >= 6,
-    }
-}
-
-/// The rows the candidate's own text says most about lead, whatever year
-/// they were pressed.
-#[test]
-fn rows_the_text_says_most_about_lead() {
-    let groups = group_results(vec![
-        (mb("rel-early", Some("group-x"), Some(1976)), agreed(1)),
-        (mb("rel-late", Some("group-x"), Some(2003)), agreed(4)),
-    ]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-late"], vec!["rel-early"]]);
-}
-
-/// Rows the text says as much about keep the pressing-year order.
-#[test]
-fn rows_the_text_says_as_much_about_keep_the_year_order() {
-    let groups = group_results(vec![
-        (mb("rel-late", Some("group-x"), Some(2003)), agreed(2)),
-        (mb("rel-early", Some("group-x"), Some(1976)), agreed(2)),
-    ]);
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-early"], vec!["rel-late"]]);
-}
-
-/// A row is picked whole, so what the text says about the row is what it
-/// says about every source's record of it — a record the text says nothing
-/// about does not hold its partner back.
-#[test]
-fn a_paired_row_ranks_by_its_records_together() {
-    let mut mb_release = mb("mb-1", Some("group-x"), Some(1976));
-    mb_release.barcodes = vec!["0075678169328".to_string()];
-    let mut dg_release = discogs("dg-1", Some("master-7"), Some(1976));
-    dg_release.barcodes = vec!["0075678169328".to_string()];
-    let groups = group_results(vec![
-        (mb("mb-other", Some("group-x"), Some(1976)), agreed(2)),
-        (mb_release, Agreements::NONE),
-        (dg_release, agreed(4)),
-    ]);
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["dg-1", "mb-1"], vec!["mb-other"]],
-        "and the record the text does say something about leads the row",
-    );
-}
-
-/// The two sources answer different questions about one object — a disc ID
-/// is MusicBrainz's alone, a Discogs record states the catalog number the
-/// sleeve prints — so a row outranks one that neither source says as much
-/// about, even though neither of its own records does.
-#[test]
-fn a_row_outranks_by_what_its_records_add_up_to() {
-    let mut mb_release = mb("mb-1", Some("group-x"), Some(1976));
-    mb_release.barcodes = vec!["0075678169328".to_string()];
-    let mut dg_release = discogs("dg-1", Some("master-7"), Some(1976));
-    dg_release.barcodes = vec!["0075678169328".to_string()];
-    let disc_id_only = Agreements {
-        disc_id: true,
-        ..Agreements::NONE
-    };
-    let catalog_only = Agreements {
-        catalog: true,
-        ..Agreements::NONE
-    };
-    let groups = group_results(vec![
-        (mb_release, disc_id_only),
-        (dg_release, catalog_only),
-        (mb("mb-other", Some("group-x"), Some(1970)), disc_id_only),
-    ]);
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["mb-1", "dg-1"], vec!["mb-other"]],
-        "two agreements between them beat one, whatever the years say",
-    );
-}
-
-/// A label's reissues print the pressing's barcode and catalog number
-/// again, so a code can name several of the other source's records. The
-/// pressing year is what tells them apart, ahead of the order the source
-/// listed them in.
-#[test]
-fn a_shared_barcode_pairs_with_the_record_pressed_the_same_year() {
-    let mut lead = mb("mb-1988", Some("group-x"), Some(1988));
-    lead.barcodes = vec!["4988014720311".to_string()];
-    let reissues: Vec<MetadataResult> = [Some(1991), Some(1988), None]
-        .into_iter()
-        .map(|year| {
-            let mut release = discogs(
-                &format!("dg-{}", year.map_or("undated".to_string(), |y| y.to_string())),
-                Some("master-7"),
-                year,
-            );
-            release.barcodes = vec!["4988014720311".to_string()];
-            release
-        })
-        .collect();
-
-    let groups = grouped(std::iter::once(lead).chain(reissues).collect());
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![
-            vec!["mb-1988", "dg-1988"],
-            vec!["dg-1991"],
-            vec!["dg-undated"]
-        ]
-    );
-}
-
-/// Two Discogs records print the barcode and nothing tells them apart from
-/// each other, so which one the MusicBrainz record is cannot be said: all
-/// three stay separate rather than the first listed being taken.
-#[test]
-fn records_nothing_tells_apart_are_ambiguous_and_stay_separate() {
-    let mut lead = mb("mb-1", Some("group-x"), None);
-    lead.barcodes = vec!["4988014720311".to_string()];
-    let mut first = discogs("dg-first", Some("master-7"), None);
-    first.barcodes = vec!["4988014720311".to_string()];
-    let mut second = discogs("dg-second", Some("master-7"), None);
-    second.barcodes = vec!["4988014720311".to_string()];
-
-    let groups = grouped(vec![lead.clone(), first.clone(), second.clone()]);
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["mb-1"], vec!["dg-first"], vec!["dg-second"]]
-    );
-    assert_eq!(pressing_count(vec![second, lead, first]), 3);
-}
-
-/// Cards are ordered by their best row, so the album the folder describes
-/// is the one at the top of the list.
-#[test]
-fn cards_are_ordered_by_their_best_row() {
-    let groups = group_results(vec![
-        (mb("rel-stranger", Some("group-stranger"), None), agreed(1)),
-        (mb("rel-named", Some("group-named"), None), agreed(4)),
-    ]);
-    assert_eq!(
-        groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
-        vec!["group-named", "group-stranger"],
-    );
-}
-
-// MARK: - Which record of a pressing leads it
-
-/// A tracklist as a source states it. What it says does not matter here; that
-/// it was said is the tie-break.
-fn listed() -> crate::import::search::SourceTracks {
-    crate::import::search::SourceTracks::Listed {
-        count: 9,
-        total_duration_ms: Some(2_400_000),
-    }
-}
-
-/// One pressing as both sources state it, paired by the barcode they share.
-fn paired() -> (MetadataResult, MetadataResult) {
-    let mut one = mb("mb-1", Some("group-x"), Some(1976));
-    one.barcodes = vec!["0075678169328".to_string()];
-    let mut other = discogs("dg-1", Some("master-7"), Some(1976));
-    other.barcodes = vec!["0075678169328".to_string()];
-    (one, other)
-}
-
-/// Both sources describe the disc and neither of them is the one the draft is
-/// read from by name: the record the folder says more about leads the row, and
-/// picking the row claims the other beside it.
-#[test]
-fn the_record_the_text_says_most_about_leads_its_pressing() {
-    let (mb_release, dg_release) = paired();
-
-    let groups = group_results(vec![(mb_release, agreed(1)), (dg_release, agreed(3))]);
-
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["dg-1", "mb-1"]]);
-    assert_eq!(
-        groups[0].pressings[0].pick(),
-        crate::import::MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1")],
-        }
-    );
-}
-
-/// Records the folder says as much about: the one that states a tracklist
-/// leads, since the draft's rows and the settle's check of them against the
-/// audio are read out of that tracklist. A source that answered and listed
-/// nothing states none.
-#[test]
-fn a_stated_tracklist_leads_records_the_text_says_as_much_about() {
-    let (mut mb_release, mut dg_release) = paired();
-    mb_release.source_tracks = Some(crate::import::search::SourceTracks::Nothing);
-    dg_release.source_tracks = Some(listed());
-
-    let groups = group_results(vec![(mb_release, agreed(2)), (dg_release, agreed(2))]);
-
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["dg-1", "mb-1"]]);
-}
-
-/// Nothing the folder says tells the two records apart and both state a
-/// tracklist, so the source name has the last word.
-#[test]
-fn records_nothing_tells_apart_lead_with_musicbrainz() {
-    let (mut mb_release, mut dg_release) = paired();
-    mb_release.source_tracks = Some(listed());
-    dg_release.source_tracks = Some(listed());
-
-    let groups = group_results(vec![(dg_release, agreed(2)), (mb_release, agreed(2))]);
-
-    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
-}
-
-/// The chips under an album's title name its sources in the one order surfaces
-/// list them in, whichever record the card's best row is read from.
-#[test]
-fn the_card_names_its_sources_in_the_order_surfaces_list_them() {
-    let (mb_release, dg_release) = paired();
-
-    let groups = group_results(vec![(mb_release, agreed(1)), (dg_release, agreed(3))]);
-
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["dg-1", "mb-1"]],
-        "the best row is read from the Discogs record",
-    );
-    assert_eq!(
-        groups[0]
-            .sources
-            .iter()
-            .map(|source| source.source)
             .collect::<Vec<_>>(),
         vec![Catalog::MusicBrainz, Catalog::Discogs]
     );

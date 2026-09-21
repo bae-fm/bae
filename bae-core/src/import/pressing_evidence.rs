@@ -11,12 +11,12 @@
 
 use crate::identify::country::named;
 use crate::identify::label::stated;
+use crate::import::medium::{Lookup, Medium};
 use crate::import::search::{MetadataResult, StatedMedia};
 use crate::import::types::{Catalog, MetadataRef};
 use crate::signals::barcode::is_placeholder_code;
-use crate::util::format::{recognized_media, PhysicalMedium};
 use crate::util::text::squash;
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// What two records say about one pressing fact.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,7 +58,7 @@ impl<'a> PressingFacts<'a> {
             year: release.year,
             country: release.country.as_deref().and_then(Place::named),
             label: release.label.as_deref().and_then(stated),
-            media: KnownMedia::of(&release.media),
+            media: KnownMedia::of(release.source, &release.release_id, &release.media),
         }
     }
 }
@@ -151,45 +151,76 @@ impl Place {
     }
 }
 
-/// The media a record is known to contain, and whether that is all of them.
+/// The carriers a record names, and whether they are all of them.
 struct KnownMedia {
-    known: Vec<PhysicalMedium>,
+    known: Vec<Medium>,
+    /// Whether the carriers are the whole of what the pressing is made of.
+    /// A MusicBrainz record lists its media, so it accounts for them all
+    /// when every entry names a carrier; a Discogs record's `format` array
+    /// lists every format the release has, so naming one carrier accounts
+    /// for them all too.
     complete: bool,
 }
 
 impl KnownMedia {
-    fn of(media: &StatedMedia) -> Self {
-        let mut known = Vec::new();
-        let mut recognize = |format: &str| {
-            let recognized = recognized_media(format);
-            for medium in &recognized {
-                if !known.contains(medium) {
-                    known.push(*medium);
+    /// What a record's stated media say it is made of, each word read in its
+    /// own catalog's vocabulary.
+    ///
+    /// A MusicBrainz medium names one format, so a word the table lacks
+    /// leaves that medium unknown; a Discogs `format` array mixes format
+    /// names with descriptions, so a word the table lacks is almost always a
+    /// description — the descriptions are added regularly while the format
+    /// names barely move — and is passed over. Either way the word is logged,
+    /// because the vocabulary is what needs fixing.
+    fn of(source: Catalog, release_id: &str, media: &StatedMedia) -> Self {
+        let mut known: Vec<Medium> = Vec::new();
+        let mut read = |word: &str| {
+            let lookup = match source {
+                Catalog::MusicBrainz => Medium::musicbrainz(word),
+                Catalog::Discogs => Medium::discogs(word),
+                other => unreachable!("{other} answers no lookups, so it states no media"),
+            };
+            match lookup {
+                Lookup::Carrier(medium) => {
+                    if !known.contains(&medium) {
+                        known.push(medium);
+                    }
                 }
+                Lookup::Unrecognized => warn!(
+                    %source,
+                    release_id,
+                    word,
+                    "a stated medium is outside the catalog's vocabulary"
+                ),
+                Lookup::NamesNoCarrier | Lookup::Description => {}
             }
-            !recognized.is_empty()
+            lookup
         };
         let complete = match media {
             StatedMedia::Undescribed => false,
-            // Complete only when every medium is stated and recognized: a
-            // medium whose format is absent or unrecognized could be
-            // anything.
+            // A medium whose format is absent, or whose name the table
+            // lacks, could be anything — but every entry is read rather than
+            // stopped at the first of those, because what the later ones name
+            // is still known.
             StatedMedia::PerMedium(entries) => {
-                // Every entry is recognized, not stopped at the first that is
-                // not: what the later ones name is still known.
-                let mut complete = true;
+                let mut complete = !entries.is_empty();
                 for entry in entries {
-                    complete &= entry.as_deref().is_some_and(&mut recognize);
+                    complete &= entry
+                        .as_deref()
+                        .is_some_and(|name| matches!(read(name), Lookup::Carrier(_)));
                 }
                 complete
             }
-            // Descriptors say what is in the record, never that nothing
-            // else is.
-            StatedMedia::Descriptors(tokens) => {
-                for token in tokens {
-                    recognize(token);
+            // The array lists the release's formats, so one carrier in it is
+            // an account of what the release is made of. Words that name no
+            // carrier describe it; a record of nothing but those describes
+            // no medium at all.
+            StatedMedia::Descriptors(words) => {
+                let mut complete = false;
+                for word in words {
+                    complete |= matches!(read(word), Lookup::Carrier(_));
                 }
-                false
+                complete
             }
         };
         Self { known, complete }
@@ -200,6 +231,9 @@ impl KnownMedia {
     }
 
     fn compare(&self, other: &Self) -> Comparison {
+        // A record that accounts for everything it is made of is
+        // contradicted by a carrier outside that account, however much the
+        // other record leaves out.
         if (self.complete && !self.contains_all_of(other))
             || (other.complete && !other.contains_all_of(self))
         {

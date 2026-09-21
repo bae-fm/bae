@@ -59,7 +59,7 @@ pub(super) fn materialise(
                     .get(content_hash)
                     .filter(|state| state.edit_revision == scanned.file_edit_revision)
                     .and_then(|state| state.selected_cover.as_ref());
-                let files = if row.metadata_provenance.is_some() || selected.is_none() {
+                let files = if row.metadata_provenance.is_some() {
                     Some(
                         load_candidate_on(sql, &scanned.path)?
                             .ok_or_else(|| {
@@ -87,10 +87,9 @@ pub(super) fn materialise(
                     )?,
                     None => None,
                 };
-                let cover = match selected {
-                    Some(selected) => RowCover::Selected(row_cover_source(sql, scanned, selected)?),
-                    None => RowCover::Default(files.expect("a default cover has fetched files")),
-                };
+                let cover = selected
+                    .map(|selected| row_cover_source(sql, scanned, selected))
+                    .transpose()?;
                 Ok(WindowItemRows::Candidate {
                     row,
                     picked,
@@ -133,7 +132,10 @@ pub(super) enum WindowItemRows {
     Candidate {
         row: crate::import::triage::TriageRow,
         picked: Option<PickedReleaseRows>,
-        cover: RowCover,
+        /// The candidate's stored cover selection, as the row draws it.
+        /// Nothing stands in for an empty one: the row shows what the
+        /// candidate would commit with.
+        cover: Option<crate::import::CoverImageSource>,
         is_group_member: bool,
     },
 }
@@ -165,20 +167,7 @@ impl WindowItemRows {
                     None if row.metadata_provenance.is_some() => row.matched = None,
                     None => {}
                 }
-                row.cover_thumbnail = match cover {
-                    RowCover::Selected(cover) => Some(cover),
-                    RowCover::Default(files) => match row
-                        .matched
-                        .as_ref()
-                        .and_then(|matched| matched.cover_thumbnail_url.as_ref())
-                    {
-                        Some(url) => {
-                            Some(crate::import::CoverImageSource::Remote { url: url.clone() })
-                        }
-                        None => crate::import::local_artwork::default_local_cover_choice(&files)
-                            .map(|choice| choice.thumbnail),
-                    },
-                };
+                row.cover_thumbnail = cover;
                 Ok(ImportListItem::Candidate {
                     row,
                     is_group_member,
@@ -186,11 +175,6 @@ impl WindowItemRows {
             }
         }
     }
-}
-
-pub(super) enum RowCover {
-    Selected(crate::import::CoverImageSource),
-    Default(CategorizedFiles),
 }
 
 pub(super) struct PickedReleaseRows {
@@ -221,14 +205,14 @@ impl PickedReleaseRows {
         let records = crate::import::payloads::claimed_records(&self.claimed)
             .map_err(|error| DbError::Message(error.to_string()))?;
         // Only the release the draft was read from states the row's facts; a
-        // partner's own document is not a second set of them.
-        let (primary, payloads) = self
-            .claimed
-            .into_iter()
-            .next()
-            .expect("a pick claims at least its primary");
+        // partner's own document is not a second set of them. Its artwork is
+        // another matter: a row's cover is the pick's, so the partners go to
+        // the detail that carries the cover options.
+        let mut claimed = self.claimed.into_iter();
+        let (primary, payloads) = claimed.next().expect("a pick claims at least its primary");
+        let partners: Vec<_> = claimed.filter_map(|(_, payloads)| payloads).collect();
         let matched = payloads
-            .map(|payloads| payloads.detail_for_audio(&audio_durations))
+            .map(|payloads| payloads.detail_for_audio(&audio_durations, &partners))
             .transpose()
             .map_err(|error| DbError::Message(error.to_string()))?
             .map(|detail| MatchedRelease::of_pick(primary.catalog, &detail));
@@ -453,10 +437,10 @@ pub(super) fn load_candidate_detail_on(
             crate::import::track_slots::audio_durations(candidate.files(), &durations)
                 .map_err(|error| DbError::Message(error.to_string()))?;
         let release = claimed
-            .first()
-            .map(|payloads| {
-                payloads
-                    .detail_for_audio(&audio_durations)
+            .split_first()
+            .map(|(primary, partners)| {
+                primary
+                    .detail_for_audio(&audio_durations, partners)
                     .map_err(|error| DbError::Message(error.to_string()))
             })
             .transpose()?;
@@ -612,28 +596,26 @@ fn claimed_payloads_on(
         .collect()
 }
 
-/// The cover the candidate commits with: its selection, the picked release's
-/// default, or the folder's default image. A selection naming an image the
-/// folder no longer holds falls back through the same source-neutral order.
+/// The cover the candidate commits with: its stored selection, read as it
+/// stands. A selection naming an image the folder no longer holds describes
+/// the candidate no longer, and no other image stands in for it.
 fn chosen_cover(
     files: &CategorizedFiles,
     chosen: Option<&CoverSelection>,
     release: Option<&ImportSearchReleaseDetail>,
     embedded_cover: Option<&crate::import::file_tag_snapshot::EmbeddedCoverFact>,
 ) -> Option<CoverChoice> {
-    let default = || {
-        release
-            .and_then(|release| release.default_cover())
-            .map(CoverChoice::remote)
-            .or_else(|| crate::import::local_artwork::default_local_cover_choice(files))
-    };
     match chosen {
-        None => default(),
-        Some(CoverSelection::Local(file_id)) => files
-            .artwork()
-            .find(|image| &image.relative_path == file_id)
-            .map(|image| CoverChoice::local(file_id.clone(), image.path.clone()))
-            .or_else(default),
+        None => None,
+        Some(CoverSelection::Local(file_id)) => {
+            let image = files
+                .artwork()
+                .find(|image| &image.relative_path == file_id);
+            if image.is_none() {
+                tracing::warn!(file_id, "the selected cover is no longer among the candidate's images");
+            }
+            image.map(|image| CoverChoice::local(file_id.clone(), image.path.clone()))
+        }
         Some(CoverSelection::Embedded(source_file_id)) => embedded_cover
             .filter(|cover| &cover.source_relative_path == source_file_id)
             .map(|cover| CoverChoice::embedded(source_file_id.clone(), cover.data.clone())),

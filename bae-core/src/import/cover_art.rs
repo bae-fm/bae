@@ -52,6 +52,68 @@ pub fn set_base_url_for_test(url: Option<String>) {
     ARCHIVE.set_for_test(url);
 }
 
+/// Point the archive at a stand-in that holds nothing: every address answers
+/// 404, which is what the archive itself answers for a release group it has
+/// no image for.
+///
+/// A test whose subject offers an archive address — the album address a
+/// release group's cover is offered at is a guess by construction —
+/// otherwise reads a connection failure rather than the archive's answer.
+///
+/// The stand-in is started once and the archive is pointed at it on every
+/// call, because another test's fixture restores the unserved default when it
+/// ends. Calling this is serialized with every other test that points the
+/// archive somewhere, as the base address requires.
+#[cfg(test)]
+pub(crate) fn serve_empty_archive_for_test() {
+    static STAND_IN: OnceLock<String> = OnceLock::new();
+    let address = STAND_IN.get_or_init(|| {
+        let (address_tx, address_rx) = std::sync::mpsc::channel();
+        // Its own runtime on its own thread: the stand-in outlives each
+        // `#[tokio::test]` that reaches it, so it lives on no one test's
+        // runtime.
+        std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("the stand-in archive's runtime builds");
+            runtime.block_on(async move {
+                let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+                    .await
+                    .expect("the stand-in archive binds");
+                address_tx
+                    .send(
+                        listener
+                            .local_addr()
+                            .expect("the stand-in archive has an address"),
+                    )
+                    .expect("the starting thread is waiting for the address");
+                while let Ok((mut stream, _)) = listener.accept().await {
+                    tokio::spawn(async move {
+                        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+                        let mut request = [0u8; 1024];
+                        if let Err(error) = stream.read(&mut request).await {
+                            debug!("the stand-in archive could not read a request: {error}");
+                            return;
+                        }
+                        if let Err(error) = stream
+                            .write_all(
+                                b"HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n",
+                            )
+                            .await
+                        {
+                            debug!("the stand-in archive could not answer: {error}");
+                        }
+                    });
+                }
+            });
+        });
+        let address = address_rx.recv().expect("the stand-in archive starts");
+        format!("http://{address}")
+    });
+    set_base_url_for_test(Some(address.clone()));
+}
+
 /// A remote cover art option from an external source: where the full image and
 /// its thumbnail live, and which service is offering them.
 ///
@@ -97,24 +159,33 @@ impl RemoteCover {
     }
 }
 
-/// The cover options a MusicBrainz release document offers, in the order the
-/// picker shows them: the pressing's own front image first, then the album's.
-///
-/// The pressing's is offered only when the document says the archive serves one
-/// — that block is the release's own statement, so nothing has to be asked. The
-/// album's has no such statement anywhere in MusicBrainz's data: a release group
-/// document carries no `cover-art-archive` block, so the address is offered and
-/// the fetch is what answers whether the archive has an image there.
+/// This pressing's own front image, offered only when the release document
+/// says the archive serves one — that block is the release's own statement,
+/// so nothing has to be asked.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub fn musicbrainz_covers(response: &crate::musicbrainz::MbReleaseResponse) -> Vec<RemoteCover> {
-    let mut covers = Vec::new();
-    if response.has_front_cover() {
-        covers.push(RemoteCover::musicbrainz_release(&response.id));
-    }
-    if let Some(group) = response.release_group.as_ref() {
-        covers.push(RemoteCover::musicbrainz_release_group(&group.id));
-    }
-    covers
+pub fn musicbrainz_release_cover(
+    response: &crate::musicbrainz::MbReleaseResponse,
+) -> Option<RemoteCover> {
+    response
+        .has_front_cover()
+        .then(|| RemoteCover::musicbrainz_release(&response.id))
+}
+
+/// The album this release belongs to, as the archive addresses it.
+///
+/// No statement anywhere in MusicBrainz's data says whether the archive holds
+/// an image there — a release group document carries no `cover-art-archive`
+/// block — so the address is offered and the fetch is what answers. That is
+/// why it is an album option and never a pressing's: it may be some other
+/// release's cover, and it may be nothing at all.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub fn musicbrainz_album_cover(
+    response: &crate::musicbrainz::MbReleaseResponse,
+) -> Option<RemoteCover> {
+    response
+        .release_group
+        .as_ref()
+        .map(|group| RemoteCover::musicbrainz_release_group(&group.id))
 }
 
 /// Where a cover's bytes are read from — a remote address, a file the folder
@@ -127,9 +198,12 @@ pub enum CoverImageSource {
     Bytes { data: Vec<u8> },
 }
 
-/// The effective cover a candidate will be committed with, and where to draw
-/// it from. The selection identifies either a stored choice or the fallback
-/// that import will use when no choice is stored.
+/// The cover a candidate will be committed with, and where to draw it from.
+///
+/// The selection is the candidate's stored one — what the scan read off the
+/// folder, what its identification fetched, or what the person chose. A
+/// candidate with none stored commits with no cover, so there is no such
+/// thing here as a cover that only a reader knows about.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverChoice {

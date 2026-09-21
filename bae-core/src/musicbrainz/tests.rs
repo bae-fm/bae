@@ -181,7 +181,7 @@ fn a_darkened_release_serves_no_front_cover() {
 
     let response: MbReleaseResponse = serde_json::from_str(json).unwrap();
     assert!(!response.has_front_cover());
-    assert!(crate::import::cover_art::musicbrainz_covers(&response).is_empty());
+    assert!(crate::import::cover_art::musicbrainz_release_cover(&response).is_none());
 }
 
 // ── Provider response fixtures ─────────────────────────────────────────────

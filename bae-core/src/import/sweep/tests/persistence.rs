@@ -107,8 +107,12 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                 by_catalog: false,
             })
             .collect(),
+        // Each release is a pressing of its own: the group lists several, and
+        // which one the folder is, is the open question.
+        pressings: (0..release_ids.len() as u32).collect(),
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
+        narrowed_out_pressings: Vec::new(),
         ledger: None,
     }
 }

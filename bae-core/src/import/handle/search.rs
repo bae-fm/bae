@@ -191,24 +191,27 @@ impl ImportServiceHandle {
         else {
             return Ok(RemoteCoverGallery::Unlinked);
         };
-        let mut covers = Vec::new();
+        let mut claimed_payloads = Vec::new();
         for claimed in std::iter::once(record).chain(partners) {
-            let payloads = self
-                .library_manager
-                .load_release_payloads(&claimed)
-                .await?
-                .ok_or_else(|| crate::import::ImportError::Internal {
-                    detail: format!(
-                        "{key} names {} release {} without archived metadata",
-                        claimed.catalog.as_str(),
-                        claimed.key
-                    ),
-                })?;
-            for cover in payloads.gallery_covers().await? {
-                crate::import::cover_art::push_unique_cover(&mut covers, cover);
-            }
+            claimed_payloads.push(
+                self.library_manager
+                    .load_release_payloads(&claimed)
+                    .await?
+                    .ok_or_else(|| crate::import::ImportError::Internal {
+                        detail: format!(
+                            "{key} names {} release {} without archived metadata",
+                            claimed.catalog.as_str(),
+                            claimed.key
+                        ),
+                    })?,
+            );
         }
-        Ok(RemoteCoverGallery::Linked(covers))
+        let (primary, partners) = claimed_payloads
+            .split_first()
+            .expect("a pick claims at least its primary");
+        Ok(RemoteCoverGallery::Linked(
+            crate::import::payloads::pick_gallery_covers(primary, partners).await?,
+        ))
     }
 
     async fn release_covers(

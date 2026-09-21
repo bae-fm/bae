@@ -109,8 +109,10 @@ fn insert_matches(
         TerminalVerdict::Found {
             matches,
             provenance,
+            pressings,
             narrowed_out,
             narrowed_out_provenance,
+            narrowed_out_pressings,
             ..
         } => {
             let aligned = |what: &str, results: &[MetadataResult], provenance: &[LookupProvenance]| {
@@ -126,21 +128,39 @@ fn insert_matches(
             };
             aligned("matches", matches, provenance)?;
             aligned("narrowed-out releases", narrowed_out, narrowed_out_provenance)?;
+            let rowed = |what: &str, results: &[MetadataResult], rows: &[u32]| {
+                if results.len() == rows.len() {
+                    return Ok(());
+                }
+                Err(DbError::Message(format!(
+                    "a found verdict for {content_hash} carries {} {what} and {} pressing \
+                     entries; they are index-aligned",
+                    results.len(),
+                    rows.len()
+                )))
+            };
+            rowed("matches", matches, pressings)?;
+            rowed("narrowed-out releases", narrowed_out, narrowed_out_pressings)?;
             let written = matches
                 .iter()
                 .zip(provenance.iter())
+                .zip(pressings.iter())
                 .map(|pair| (pair, false))
                 .chain(
                     narrowed_out
                         .iter()
                         .zip(narrowed_out_provenance.iter())
+                        .zip(narrowed_out_pressings.iter())
                         .map(|pair| (pair, true)),
                 );
-            for (position, ((result, provenance), narrowed_out)) in written.enumerate() {
+            for (position, (((result, provenance), pressing), narrowed_out)) in
+                written.enumerate()
+            {
                 insert_match(
                     sql,
                     content_hash,
                     position,
+                    *pressing,
                     result,
                     provenance,
                     narrowed_out,
@@ -158,6 +178,7 @@ fn insert_match(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     position: usize,
+    pressing: u32,
     result: &MetadataResult,
     provenance: &LookupProvenance,
     narrowed_out: bool,
@@ -198,15 +219,16 @@ fn insert_match(
     };
     sql.execute(
         "INSERT INTO import_candidate_match \
-             (content_hash, position, source, release_id, title, artist, year, format, \
+             (content_hash, position, pressing, source, release_id, title, artist, year, format, \
               label, catalog_number, country, media_kind, cover_url, cover_thumbnail_url, \
               cover_label, cover_source, source_group_id, source_tracks_kind, \
               source_tracks_count, source_tracks_total_ms, by_disc_id, by_barcode, by_catalog, \
               narrowed_out) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
+            pressing,
             result.source.as_str(),
             result.release_id,
             result.title,
@@ -284,19 +306,29 @@ pub(super) struct MatchEntries {
     pub(super) links: Vec<(String, String)>,
 }
 
+/// One stored release of a verdict: what the lookup returned, which lookups
+/// named it, and which pressing row of its list the run put it in.
+pub(crate) struct StoredMatch {
+    pub(crate) result: MetadataResult,
+    pub(crate) provenance: LookupProvenance,
+    /// The row's number within this list, as the run numbered it. Rows are
+    /// read, never re-formed: a list of a run's answers does not hold what
+    /// the run decided its rows against.
+    pub(crate) pressing: u32,
+}
+
 /// One candidate's stored releases, each list in the order it was written: the
 /// verdict's matches, the lead first, and the releases its signals' agreement
 /// narrowed out.
 #[derive(Default)]
 pub(crate) struct StoredMatches {
-    pub(crate) found: Vec<(MetadataResult, LookupProvenance)>,
-    pub(crate) narrowed_out: Vec<(MetadataResult, LookupProvenance)>,
+    pub(crate) found: Vec<StoredMatch>,
+    pub(crate) narrowed_out: Vec<StoredMatch>,
 }
 
 pub(super) struct MatchRow {
     pub(super) content_hash: String,
-    pub(super) result: MetadataResult,
-    pub(super) provenance: LookupProvenance,
+    pub(super) stored: StoredMatch,
     /// Whether this release is one the agreement left out rather than one the
     /// verdict settled on.
     pub(super) narrowed_out: bool,
@@ -307,6 +339,7 @@ pub(super) struct MatchRow {
 pub(super) struct MatchColumns {
     pub(super) content_hash: String,
     pub(super) position: i64,
+    pressing: i64,
     media_kind: String,
     /// The result with its list fields still empty; [`match_of`] fills them.
     result: MetadataResult,
@@ -322,6 +355,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
     let MatchColumns {
         content_hash,
         position,
+        pressing,
         media_kind,
         mut result,
         provenance,
@@ -365,15 +399,29 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         .into_iter()
         .map(|(catalog, key)| Ok(MetadataRef::new(source_of(&catalog)?, key)))
         .collect::<Result<_, DbError>>()?;
+    let row = u32::try_from(pressing).map_err(|_| {
+        DbError::Message(format!(
+            "match {position} of {content_hash} names pressing row {pressing}"
+        ))
+    })?;
     Ok(MatchRow {
         content_hash,
-        result,
-        provenance,
+        stored: StoredMatch {
+            result,
+            provenance,
+            pressing: row,
+        },
         narrowed_out,
     })
 }
 
 pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
+    read_match_columns(row, row.get("pressing")?)
+}
+
+/// One match row's own columns with the pressing row it belongs to supplied
+/// beside it, for a reader whose rows do not carry the column yet.
+fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbError> {
     let cover_url: Option<String> = row.get("cover_url")?;
     let cover_source: Option<String> = row.get("cover_source")?;
     let cover_art = match (cover_url, cover_source) {
@@ -416,6 +464,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
     Ok(MatchColumns {
         content_hash: row.get("content_hash")?,
         position: row.get("position")?,
+        pressing,
         media_kind: row.get("media_kind")?,
         result: MetadataResult {
             source: source_of(&source)?,
@@ -509,15 +558,17 @@ pub(super) fn identification_of(
     };
     let verdict = match kind.as_str() {
         "found" => {
-            let (matches, provenance) = found.found.into_iter().unzip();
-            let (narrowed_out, narrowed_out_provenance) =
-                found.narrowed_out.into_iter().unzip();
+            let (matches, provenance, pressings) = unzip_stored(found.found);
+            let (narrowed_out, narrowed_out_provenance, narrowed_out_pressings) =
+                unzip_stored(found.narrowed_out);
             TerminalVerdict::Found {
                 matches,
                 track_count: count_of()?,
                 provenance,
+                pressings,
                 narrowed_out,
                 narrowed_out_provenance,
+                narrowed_out_pressings,
                 ledger,
             }
         }
@@ -559,4 +610,139 @@ pub(super) fn identification_of(
         })?,
         identified_at,
     })
+}
+
+/// One stored list as the verdict carries it: three index-aligned lists.
+fn unzip_stored(
+    stored: Vec<StoredMatch>,
+) -> (Vec<MetadataResult>, Vec<LookupProvenance>, Vec<u32>) {
+    let mut results = Vec::with_capacity(stored.len());
+    let mut provenance = Vec::with_capacity(stored.len());
+    let mut pressings = Vec::with_capacity(stored.len());
+    for entry in stored {
+        results.push(entry.result);
+        provenance.push(entry.provenance);
+        pressings.push(entry.pressing);
+    }
+    (results, provenance, pressings)
+}
+
+/// The columns a stored match carried before it named the pressing row it
+/// belongs to.
+const MATCH_COLUMNS_BEFORE_PRESSINGS: &str = "content_hash, position, source, release_id, title, \
+     artist, year, format, label, catalog_number, country, media_kind, cover_url, \
+     cover_thumbnail_url, cover_label, cover_source, source_group_id, source_tracks_kind, \
+     source_tracks_count, source_tracks_total_ms, by_disc_id, by_barcode, by_catalog, \
+     narrowed_out";
+
+impl Database {
+    /// Give every stored match the pressing row it belongs to, into the
+    /// `match_pressing` table the caller created, by grouping each stored
+    /// list as it stands.
+    ///
+    /// This is the one place re-forming a stored list's rows is right:
+    /// nothing recorded what the run that answered these built, so the
+    /// grouping as it stands is the only answer there is. Every list written
+    /// from here on carries its own run's rows instead.
+    pub(crate) fn fill_match_pressings(sql: &coven::MigrationContext<'_>) -> Result<(), DbError> {
+        let rows = sql.query(
+            &format!(
+                "SELECT {MATCH_COLUMNS_BEFORE_PRESSINGS} FROM import_candidate_match \
+                 ORDER BY content_hash, position"
+            ),
+            [],
+            |row| Ok(read_match_columns(row, 0)),
+        )?;
+        let barcodes = sql.query(
+            "SELECT content_hash, position, barcode FROM import_candidate_match_barcode \
+             ORDER BY content_hash, position, ordinal",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )?;
+        let media = sql.query(
+            "SELECT content_hash, position, media_kind, format \
+             FROM import_candidate_match_medium ORDER BY content_hash, position, ordinal",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, Option<String>>(3)?,
+                ))
+            },
+        )?;
+        let links = sql.query(
+            "SELECT content_hash, position, catalog, key FROM import_candidate_match_link \
+             ORDER BY content_hash, position, ordinal",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                ))
+            },
+        )?;
+        let mut entries: std::collections::HashMap<(String, i64), MatchEntries> =
+            std::collections::HashMap::new();
+        for (content_hash, position, barcode) in barcodes {
+            entries
+                .entry((content_hash, position))
+                .or_default()
+                .barcodes
+                .push(barcode);
+        }
+        for (content_hash, position, kind, format) in media {
+            entries
+                .entry((content_hash, position))
+                .or_default()
+                .media
+                .push((kind, format));
+        }
+        for (content_hash, position, catalog, key) in links {
+            entries
+                .entry((content_hash, position))
+                .or_default()
+                .links
+                .push((catalog, key));
+        }
+        // One list per candidate and side, in the order the rows were
+        // written: each list numbers its own rows.
+        type StoredList = ((String, bool), Vec<(i64, MetadataResult)>);
+        let mut lists: Vec<StoredList> = Vec::new();
+        for row in rows {
+            let columns = row?;
+            let key = (columns.content_hash.clone(), columns.position);
+            let entries = entries.remove(&key).unwrap_or_default();
+            let row = match_of(columns, entries)?;
+            let list = (row.content_hash, row.narrowed_out);
+            match lists.iter_mut().find(|(named, _)| *named == list) {
+                Some((_, members)) => members.push((key.1, row.stored.result)),
+                None => lists.push((list, vec![(key.1, row.stored.result)])),
+            }
+        }
+        for ((content_hash, _), members) in lists {
+            let results: Vec<MetadataResult> =
+                members.iter().map(|(_, result)| result.clone()).collect();
+            for ((position, _), pressing) in members
+                .iter()
+                .zip(crate::import::release_group::form_rows(&results))
+            {
+                sql.execute(
+                    "INSERT INTO match_pressing (content_hash, position, pressing) \
+                     VALUES (?, ?, ?)",
+                    params![content_hash, position, pressing],
+                )?;
+            }
+        }
+        Ok(())
+    }
 }

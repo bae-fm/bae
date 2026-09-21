@@ -79,8 +79,10 @@ impl CandidatePreparations {
         prep.signals = Some(verdict.signals.clone());
         if let Some(metadata) = &verdict.metadata {
             prep.author = crate::import::MetadataAuthor::Identification;
-            prep.metadata = metadata.clone();
-            prep.assets_prepared = true;
+            let mut metadata = metadata.clone();
+            settle_cover(&mut metadata, &mut prep.metadata);
+            prep.assets_prepared = assets_are_prepared(&metadata);
+            prep.metadata = metadata;
             prep.metadata_revision += 1;
         }
         // A run that settled on a release is a pick, and confirms the number
@@ -346,9 +348,10 @@ impl CandidatePreparations {
         mut prep: CandidatePreparation,
         scanned: Option<ScannedCandidateKey>,
         folder_path: &str,
-        metadata: crate::import::CandidateMetadataDraft,
+        mut metadata: crate::import::CandidateMetadataDraft,
         file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
     ) -> Result<u64, LibraryError> {
+        settle_cover(&mut metadata, &mut prep.metadata);
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
@@ -359,8 +362,8 @@ impl CandidatePreparations {
             Some(_) => MetadataAuthor::User,
             None => MetadataAuthor::Nobody,
         };
+        prep.assets_prepared = assets_are_prepared(&metadata);
         prep.metadata = metadata;
-        prep.assets_prepared = true;
         prep.metadata_revision += 1;
         let revision = prep.metadata_revision;
         let extras = CandidateSaveExtras {
@@ -378,5 +381,126 @@ impl CandidatePreparations {
                 "candidate changed before its metadata was stored".into(),
             )),
         }
+    }
+}
+
+/// A candidate's cover and the bytes prepared for it, which move together: a
+/// remote selection is stored with the image that revision fetched, and one
+/// without the other is refused when the rows are written.
+struct PreparedCover {
+    selection: Option<crate::import::CoverSelection>,
+    image: Option<crate::import::cover_art::RemoteImage>,
+}
+
+/// The cover a metadata application settles the candidate on.
+///
+/// `supplied` is the image the source itself brought. A source that brought
+/// none says nothing about the cover, so the candidate keeps the one it has,
+/// whatever it is: the `cover.jpg` beside the audio, the artwork its tags
+/// embed, or the image an earlier pick fetched — which is why the prepared
+/// bytes travel with the selection rather than being left behind.
+fn settled_cover(supplied: PreparedCover, stored: PreparedCover) -> PreparedCover {
+    match supplied.selection {
+        Some(_) => supplied,
+        None => stored,
+    }
+}
+
+/// Whether this application holds the bytes every asset it names needs. A
+/// remote cover with no prepared image is the one pair that is short, and it
+/// is the state a cover chosen from the picker's gallery leaves behind until
+/// a source is applied again — so an application that carries that selection
+/// forward carries the waiting with it rather than dropping the choice.
+fn assets_are_prepared(metadata: &crate::import::CandidateMetadataDraft) -> bool {
+    !matches!(
+        (&metadata.cover, &metadata.assets.remote_cover),
+        (Some(crate::import::CoverSelection::Remote(_, _)), None)
+    )
+}
+
+/// Move the settled cover onto `metadata`, taking it from `stored` where the
+/// application supplies none. The bytes move with it, so what is written is
+/// a selection and the image prepared for it, never one of the two.
+fn settle_cover(
+    metadata: &mut crate::import::CandidateMetadataDraft,
+    stored: &mut crate::import::CandidateMetadataDraft,
+) {
+    let settled = settled_cover(
+        PreparedCover {
+            selection: metadata.cover.take(),
+            image: metadata.assets.remote_cover.take(),
+        },
+        PreparedCover {
+            selection: stored.cover.take(),
+            image: stored.assets.remote_cover.take(),
+        },
+    );
+    metadata.cover = settled.selection;
+    metadata.assets.remote_cover = settled.image;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::import::CoverSelection;
+
+    fn image(byte: u8) -> crate::import::cover_art::RemoteImage {
+        crate::import::cover_art::RemoteImage {
+            bytes: vec![byte],
+            content_type: crate::util::content_type::ContentType::Jpeg,
+        }
+    }
+
+    /// A source that brings no image of its own says nothing about the
+    /// cover, so the stored one stands — a remote selection with the bytes
+    /// prepared for it, which is what the candidate commits with.
+    #[test]
+    fn a_source_with_no_image_keeps_the_stored_cover_and_its_bytes() {
+        let folders_own = CoverSelection::Local("cover.jpg".to_string());
+        let remote = CoverSelection::Remote(
+            "https://example.invalid/front".to_string(),
+            crate::import::Catalog::Discogs,
+        );
+        let nothing = || PreparedCover {
+            selection: None,
+            image: None,
+        };
+
+        let kept = settled_cover(
+            nothing(),
+            PreparedCover {
+                selection: Some(folders_own.clone()),
+                image: None,
+            },
+        );
+        assert_eq!(kept.selection, Some(folders_own.clone()));
+        assert_eq!(kept.image, None);
+
+        let kept = settled_cover(
+            nothing(),
+            PreparedCover {
+                selection: Some(remote.clone()),
+                image: Some(image(1)),
+            },
+        );
+        assert_eq!(kept.selection, Some(remote.clone()));
+        assert_eq!(kept.image, Some(image(1)));
+
+        let none_either_way = settled_cover(nothing(), nothing());
+        assert_eq!(none_either_way.selection, None);
+        assert_eq!(none_either_way.image, None);
+
+        let replaced = settled_cover(
+            PreparedCover {
+                selection: Some(remote.clone()),
+                image: Some(image(2)),
+            },
+            PreparedCover {
+                selection: Some(folders_own),
+                image: None,
+            },
+        );
+        assert_eq!(replaced.selection, Some(remote));
+        assert_eq!(replaced.image, Some(image(2)));
     }
 }

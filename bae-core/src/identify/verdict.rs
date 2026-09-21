@@ -73,6 +73,14 @@ pub enum TerminalVerdict {
         /// each one, for the sidebar's "matched on disc ID / barcode / text"
         /// evidence line.
         provenance: Vec<LookupProvenance>,
+        /// Index-aligned with `matches`: which pressing row of this list each
+        /// release belongs to, numbered from zero in row order.
+        ///
+        /// The rows the run built, kept rather than re-formed on read: a
+        /// record the run settled as ambiguous because of a record in the
+        /// other list rolls up when this list is grouped without it, so a
+        /// reader that re-groups shows rows the run never offered.
+        pressings: Vec<u32>,
         /// The releases the signals' agreement left out of `matches` — real
         /// answers from real lookups that the intersection discarded. Kept so
         /// a resumed candidate can still offer them; empty when the agreement
@@ -81,6 +89,9 @@ pub enum TerminalVerdict {
         /// Index-aligned with `narrowed_out`, as `provenance` is with
         /// `matches`.
         narrowed_out_provenance: Vec<LookupProvenance>,
+        /// Index-aligned with `narrowed_out`, as `pressings` is with
+        /// `matches`. Each list numbers its own rows from zero.
+        narrowed_out_pressings: Vec<u32>,
         ledger: Option<IdentifyRunView>,
     },
     /// Both signals ran and settled on zero results. Distinct from a transport
@@ -118,8 +129,10 @@ impl TerminalVerdict {
                 by_barcode: false,
                 by_catalog: false,
             }],
+            pressings: vec![0],
             narrowed_out: Vec::new(),
             narrowed_out_provenance: Vec::new(),
+            narrowed_out_pressings: Vec::new(),
             ledger: None,
         }
     }
@@ -153,6 +166,7 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 matches,
                 track_count,
                 provenance,
+                pressings,
                 narrowed_out,
                 ledger,
                 // A live per-release check at read time, not a stored copy —
@@ -165,8 +179,10 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 matches,
                 track_count,
                 provenance,
+                pressings,
                 narrowed_out: narrowed_out.matches,
                 narrowed_out_provenance: narrowed_out.provenance,
+                narrowed_out_pressings: narrowed_out.pressings,
                 ledger,
             }),
 
@@ -194,6 +210,7 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 matches: _,
                 library_statuses: _,
                 provenance: _,
+                pressings: _,
                 narrowed_out: _,
                 context: _,
             } => Ok(Self::Failed {
@@ -277,8 +294,10 @@ impl TerminalVerdict {
                 matches,
                 track_count,
                 provenance,
+                pressings,
                 narrowed_out,
                 narrowed_out_provenance,
+                narrowed_out_pressings,
                 ledger,
             } => {
                 let library_statuses: Vec<LibraryStatus> = matches.iter().map(status_of).collect();
@@ -286,12 +305,14 @@ impl TerminalVerdict {
                     library_statuses: narrowed_out.iter().map(status_of).collect(),
                     matches: narrowed_out,
                     provenance: narrowed_out_provenance,
+                    pressings: narrowed_out_pressings,
                 };
                 IdentifyState::Found {
                     matches,
                     library_statuses,
                     track_count,
                     provenance,
+                    pressings,
                     narrowed_out,
                     ledger,
                     context: context(),
@@ -324,6 +345,7 @@ impl TerminalVerdict {
                 matches: Vec::new(),
                 library_statuses: Vec::new(),
                 provenance: Vec::new(),
+                pressings: Vec::new(),
                 narrowed_out: NarrowedOut::default(),
             },
         }

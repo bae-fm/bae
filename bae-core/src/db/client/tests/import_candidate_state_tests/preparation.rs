@@ -600,8 +600,9 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     );
     assert_eq!(applied_revision, 4);
     assert_eq!(
-        applied.cover, None,
-        "applying a source clears a local cover"
+        applied.cover,
+        Some(CoverSelection::Local("cover.jpg".to_string())),
+        "the source brought no image of its own, so the folder's cover stands"
     );
     assert_eq!(
         db.load_import_candidate_state(&hash)
@@ -636,7 +637,15 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         mapping.file().cloned().unwrap()
     );
     assert_eq!(cleared_revision, 6);
-    assert_eq!(cleared.cover, None, "clearing removes a remote cover");
+    assert_eq!(
+        cleared.cover,
+        Some(CoverSelection::Remote(
+            "https://example.invalid/cover".to_string(),
+            Catalog::MusicBrainz,
+        )),
+        "a draft that brings no image of its own says nothing about the cover, \
+         so the one the person chose stands — still waiting for its bytes"
+    );
 }
 
 #[tokio::test]

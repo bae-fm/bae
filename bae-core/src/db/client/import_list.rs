@@ -395,8 +395,8 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut drafts = super::import_state::load_drafts_on(sql, None)?;
     let mut covers = super::import_state::load_covers_on(sql, None)?;
     // Every match row, not a count and a lead row: how many *pressings* a
-    // verdict named is what the Ready rule asks, and two sources' records of
-    // one pressing pair by fields no `COUNT(*)` can see.
+    // verdict named is what the Ready rule asks, and which row each match
+    // belongs to is what its own run decided.
     let mut matches = load_matches_on(sql, None)?;
     // Read before the verdicts: which lookup named the record a draft was read
     // from is asked of the match row naming *that* record, which is not always
@@ -433,23 +433,30 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             crate::identify::corroborate_marks(
                 &mut facts.marks,
                 provenances.get(&content_hash).map(|(provenance, _)| provenance),
-                found.iter().map(|(result, provenance)| (result, provenance)),
+                found
+                    .iter()
+                    .map(|stored| (&stored.result, &stored.provenance)),
                 ledger.as_ref(),
             );
         }
         let lead = found
             .first()
-            .map(|(result, provenance)| LeadMatch::of(result, Some(provenance)));
+            .map(|stored| LeadMatch::of(&stored.result, Some(&stored.provenance)));
         if let Some(mark) = crate::identify::identified_by(
             provenances
                 .get(&content_hash)
                 .map(|(provenance, _)| provenance),
-            found.iter().map(|(result, provenance)| (result, provenance)),
+            found
+                .iter()
+                .map(|stored| (&stored.result, &stored.provenance)),
         ) {
             identified.insert(content_hash.clone(), mark);
         }
-        let pressing_count = crate::import::release_group::pressing_count(
-            found.into_iter().map(|(result, _)| result).collect(),
+        // The rows the run built, read off the row each match names. Nothing
+        // re-forms them: a list of a run's answers does not hold what it
+        // decided those rows against.
+        let pressing_count = crate::import::release_group::row_count(
+            &found.iter().map(|stored| stored.pressing).collect::<Vec<_>>(),
         ) as u32;
         let summary = VerdictSummary {
             kind: match kind.as_str() {

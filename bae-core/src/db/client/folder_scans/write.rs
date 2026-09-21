@@ -301,9 +301,31 @@ pub(crate) fn ensure_candidate_state(
                     sql,
                     &content_hash,
                     &seed.draft,
-                    seed.cover.as_ref(),
                 )?;
             }
+        }
+    }
+    // The cover a candidate starts with is the folder's own, stored the
+    // moment the candidate is, so every later reader has a value to read
+    // rather than a rule to re-run. A candidate that already has a
+    // selection keeps it: a rescan re-reads files, not decisions.
+    let has_cover = sql
+        .query_row(
+            "SELECT 1 FROM import_candidate_cover WHERE content_hash = ?",
+            [&content_hash],
+            |_| Ok(()),
+        )
+        .optional()?
+        .is_some();
+    if !has_cover {
+        let embedded = match seed {
+            CandidateStateSeed::Blank(_) => None,
+            CandidateStateSeed::FileTags(seed) => seed.cover.clone(),
+        };
+        if let Some(cover) =
+            crate::import::local_artwork::folder_cover(embedded, files.artwork())
+        {
+            super::super::candidate_state_rows::save_cover(sql, &content_hash, &cover)?;
         }
     }
     if created {

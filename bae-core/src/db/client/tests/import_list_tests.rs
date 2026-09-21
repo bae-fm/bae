@@ -60,8 +60,10 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
             by_barcode: false,
             by_catalog: false,
         }],
+        pressings: vec![0],
         narrowed_out: Vec::new(),
         narrowed_out_provenance: Vec::new(),
+        narrowed_out_pressings: Vec::new(),
         ledger,
     }
 }
@@ -651,14 +653,16 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     assert_eq!(
         rows(&projection).remove(0).cover_thumbnail,
         Some(crate::import::CoverImageSource::Local {
-            path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+            path: PathBuf::from(format!("{root}/Album/folder.jpg")),
         }),
-        "clearing the selection reveals the folder fallback"
+        "a draft that brings no image of its own leaves the selection standing"
     );
 }
 
+/// A scan stores the cover the folder gives the candidate, so the pane, the
+/// row and the commit all read one value rather than each deriving one.
 #[tokio::test]
-async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
+async fn the_scan_stores_the_folders_own_cover() {
     let (db, _tmp, root) = watched_root().await;
     db.add_watched_import_folder(&root).await.unwrap();
     let generation = db.begin_folder_scan(&root).await.unwrap();
@@ -680,12 +684,15 @@ async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
         .await
         .unwrap();
 
-    assert!(db
-        .load_import_candidate_pane_rows(&candidate.files.content_hash())
-        .await
-        .unwrap()
-        .cover
-        .is_none());
+    assert_eq!(
+        db.load_import_candidate_pane_rows(&candidate.files.content_hash())
+            .await
+            .unwrap()
+            .cover,
+        Some(crate::import::CoverSelection::Local(
+            "cover.jpg".to_string()
+        ))
+    );
     let detail = db
         .load_import_candidate(&candidate.path.to_string_lossy())
         .await
@@ -730,10 +737,11 @@ async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
         .unwrap();
     assert_eq!(
         rows(&projection).remove(0).cover_thumbnail,
-        Some(crate::import::CoverImageSource::Remote {
-            url: "https://example.invalid/thumb.jpg".to_string(),
+        Some(crate::import::CoverImageSource::Local {
+            path: PathBuf::from(format!("{root}/Album/cover.jpg")),
         }),
-        "the matched release's cover outranks local fallback artwork"
+        "a row shows the cover the candidate would commit with, and nothing a \
+         verdict merely found"
     );
 }
 
