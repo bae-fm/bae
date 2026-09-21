@@ -409,6 +409,7 @@
                 actionable: true,
                 placement: metadataProvenance == nil
                     && edit.albumTitle.isEmpty ? .pending : .ready,
+                identification: nil,
                 skipAction: .skip,
                 actions: (metadataProvenance == nil
                     && edit.albumTitle.isEmpty ? [] : [.importReady])

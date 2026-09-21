@@ -194,6 +194,7 @@ impl crate::types::BridgeTriageRow {
             combine_ancestor_key,
             actionable,
             placement,
+            identification,
             skip_action,
             actions,
             matched,
@@ -217,6 +218,7 @@ impl crate::types::BridgeTriageRow {
                 .map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
+            identification: identification.map(crate::types::BridgeIdentificationStatus::from_core),
             skip_action: skip_action.map(crate::types::BridgeTriageSkipAction::from_core),
             actions: actions
                 .into_iter()
@@ -267,7 +269,6 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Pending,
-        Identification { status: (crate::types::BridgeIdentificationStatus) },
         Ready,
         NeedsYou { reason: (crate::types::BridgeNeedsYou) },
         Importing,

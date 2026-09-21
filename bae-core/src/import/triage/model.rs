@@ -14,16 +14,14 @@ pub enum TriageTab {
 /// One field rather than a tab plus optional status fields, so an unresolved
 /// row without a reason and an importable row with one are unrepresentable.
 /// See `many-fields-none-together-means-a-missing-type`.
+///
+/// What identification is doing is not part of this. A run is true of a row
+/// wherever the row sits, so it is [`TriageRow::identification`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriagePlacement {
-    /// Pending without a question or an automatic action in flight.
+    /// Pending with nothing yet known about the release: no verdict, no pick,
+    /// no draft that would import.
     Pending,
-    /// Identification owns this candidate. Its state is carried whole so a
-    /// queued job, a running lookup, a result being committed, and a failed
-    /// commit cannot be rendered as one another.
-    Identification {
-        status: IdentificationStatus,
-    },
     /// Metadata is prepared for import. Offered actions also account for live
     /// identification, which can temporarily prevent a bulk import.
     Ready,
@@ -50,12 +48,9 @@ pub enum TriagePlacement {
 impl TriagePlacement {
     pub fn tab(&self) -> TriageTab {
         match self {
-            Self::Pending
-            | Self::Identification { .. }
-            | Self::Ready
-            | Self::NeedsYou { .. }
-            | Self::Importing
-            | Self::Failed => TriageTab::Pending,
+            Self::Pending | Self::Ready | Self::NeedsYou { .. } | Self::Importing | Self::Failed => {
+                TriageTab::Pending
+            }
             Self::Done => TriageTab::Done,
             Self::Skipped => TriageTab::Skipped,
         }
@@ -65,9 +60,7 @@ impl TriagePlacement {
     /// where skipping it means anything: the attempt is what decides it now.
     pub fn skip_action(&self) -> Option<TriageSkipAction> {
         match self {
-            Self::Pending | Self::Identification { .. } | Self::Ready | Self::NeedsYou { .. } => {
-                Some(TriageSkipAction::Skip)
-            }
+            Self::Pending | Self::Ready | Self::NeedsYou { .. } => Some(TriageSkipAction::Skip),
             Self::Skipped => Some(TriageSkipAction::Unskip),
             Self::Importing | Self::Failed | Self::Done => None,
         }
@@ -83,7 +76,10 @@ pub enum TriageSkipAction {
     Unskip,
 }
 
-/// What identification is doing for a candidate with no stored verdict.
+/// What identification is doing for a candidate right now.
+///
+/// A runtime fact, true of the candidate wherever its placement puts it: a
+/// Ready row being identified again holds one, and so does a Needs-you row.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IdentificationStatus {
     /// The candidate has been admitted but its driver has not started.
@@ -96,19 +92,6 @@ pub enum IdentificationStatus {
     /// The terminal result could not be committed. The result stays available
     /// to the candidate pane and the diagnostic says why the row stopped.
     FinalizationFailed { error: String },
-}
-
-/// What is known about one candidate: the classification of its stored verdict,
-/// or — with no verdict — how far identification has got.
-///
-/// One value rather than an `Option` beside a phase field, because the phase is
-/// meaningless once a verdict exists and a caller should not be able to hand
-/// over both.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CandidateAnswer {
-    Classified(QueueClassification),
-    Unidentified,
-    Identification(IdentificationStatus),
 }
 
 /// Which signal produced a match — the row's trailing evidence chip, and the
@@ -358,6 +341,10 @@ pub struct TriageRow {
     pub combine_ancestor_key: Option<FolderReleaseDecisionKey>,
     pub actionable: bool,
     pub placement: TriagePlacement,
+    /// What identification is doing for this candidate right now, beside
+    /// wherever the placement puts it. `None` when no run is queued, running
+    /// or settling and the last one's write did not fail.
+    pub identification: Option<IdentificationStatus>,
     pub skip_action: Option<TriageSkipAction>,
     pub actions: Vec<CandidateAction>,
     /// The release the row leads with. `None` and the folder name is the title.

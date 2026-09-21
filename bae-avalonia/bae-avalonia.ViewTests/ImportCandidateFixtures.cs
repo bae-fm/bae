@@ -124,6 +124,7 @@ internal static class ImportCandidateFixtures
         CombineAncestorKey: null,
         Actionable: true,
         Placement: new BridgeTriagePlacement.Ready(),
+        Identification: null,
         SkipAction: BridgeTriageSkipAction.Skip,
         Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToTags, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
         Matched: null,

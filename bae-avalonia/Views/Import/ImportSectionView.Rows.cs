@@ -126,9 +126,11 @@ internal sealed partial class ImportSectionView
         Grid.SetColumn(trailing, 3);
         grid.Children.Add(trailing);
 
+        // A run the person cannot answer anything into. A write that failed is
+        // not one: the row is answerable again and says what went wrong.
         var identificationInProgress =
-            row.Placement is BridgeTriagePlacement.Identification identifying
-            && identifying.Status is not BridgeIdentificationStatus.FinalizationFailed;
+            row.Identification is not null
+            && row.Identification is not BridgeIdentificationStatus.FinalizationFailed;
         var host = new Border
         {
             Child = grid,
@@ -333,14 +335,17 @@ internal sealed partial class ImportSectionView
 
     // The second line: the resolved artist, a disagreement sentence, or an
     // import failure. Identification activity belongs to its trailing
-    // indicator's tooltip.
-    private string? RowSubLine(BridgeTriageRow row) => row.Placement switch
+    // indicator's tooltip — except a write that failed, which is an error
+    // about the row and leads whatever the placement would have said.
+    private string? RowSubLine(BridgeTriageRow row) =>
+        row.Identification is BridgeIdentificationStatus.FinalizationFailed failed
+            ? BridgeDisplay.LocalizedLine(failed.Error)
+            : PlacementSubLine(row);
+
+    private string? PlacementSubLine(BridgeTriageRow row) => row.Placement switch
     {
         BridgeTriagePlacement.Ready or BridgeTriagePlacement.Skipped =>
             RowArtist(row),
-        BridgeTriagePlacement.Identification { Status: BridgeIdentificationStatus.FinalizationFailed failed } =>
-            BridgeDisplay.LocalizedLine(failed.Error),
-        BridgeTriagePlacement.Identification => null,
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.AlreadyInLibrary } =>
             RowArtist(row),
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.SeveralMatches } =>
@@ -436,11 +441,19 @@ internal sealed partial class ImportSectionView
         return button;
     }
 
-    // The row's trailing column: whatever the placement puts at the end of the
-    // row. Where the draft came from is the title line's mark, not a column of
-    // its own.
+    // The row's trailing column. Where the draft came from is the title line's
+    // mark, not a column of its own.
+    //
+    // A run in flight takes the column from the placement rather than sitting
+    // beside it. The placement's trailing is what the row is asking of the
+    // person, and while a run is going there is nothing to answer: the row
+    // offers no command but Skip, and the answer being written is about to
+    // replace the question.
     private Control RowTrailing(BridgeTriageRow row) =>
-        PlacementTrailing(row) ?? new Panel();
+        (row.Identification is { } identification
+            ? IdentificationTrailing(identification)
+            : PlacementTrailing(row))
+        ?? new Panel();
 
     // What the placement itself puts at the end of the row, or nothing when it
     // has nothing to put there.
@@ -450,8 +463,6 @@ internal sealed partial class ImportSectionView
         {
             case BridgeTriagePlacement.Ready:
                 return null;
-            case BridgeTriagePlacement.Identification identifying:
-                return IdentificationTrailing(identifying.Status);
             case BridgeTriagePlacement.NeedsYou(var reason):
                 return NeedsYouTrailing(row, reason);
             case BridgeTriagePlacement.Importing:

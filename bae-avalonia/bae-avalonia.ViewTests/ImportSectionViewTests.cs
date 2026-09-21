@@ -278,11 +278,13 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void AVerdictSettlingUnderTheOpenPaneKeepsItsSelection()
     {
-        var identifying = new BridgeTriagePlacement.Identification(
-            new BridgeIdentificationStatus.Running());
+        var pending = new BridgeTriagePlacement.Pending();
         var (view, app) = BuildSection(
-            MatchedItems(identifying, BridgeTriageSkipAction.Skip),
-            MatchedSummary(identifying, BridgeTriageTab.Pending),
+            MatchedItems(
+                pending,
+                BridgeTriageSkipAction.Skip,
+                identification: new BridgeIdentificationStatus.Running()),
+            MatchedSummary(pending, BridgeTriageTab.Pending),
             BridgeTriageTab.Pending);
         RaiseTap(CandidateRow(view));
 
@@ -295,14 +297,19 @@ public sealed class ImportSectionViewTests
         Assert.Equal(CandidateKey, SelectedKey(view));
     }
 
+    // A row being identified again is still Ready, and it is the run that its
+    // trailing column states while the run is going.
     [AvaloniaFact]
     public void IdentificationPhaseLivesOnTheTrailingIndicatorTooltip()
     {
         var status = new BridgeIdentificationStatus.Running();
         var label = BridgeDisplay.LocalizedLine(status);
-        var placement = new BridgeTriagePlacement.Identification(status);
+        var placement = new BridgeTriagePlacement.Ready();
         var view = BuildView(
-            MatchedItems(placement, BridgeTriageSkipAction.Skip),
+            MatchedItems(
+                placement,
+                BridgeTriageSkipAction.Skip,
+                identification: status),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
         var row = CandidateRow(view);
@@ -321,9 +328,12 @@ public sealed class ImportSectionViewTests
         var failure = new BridgeException.Diagnostic(
             new BridgeErrorCategory.Import(), "the verdict could not be stored");
         var status = new BridgeIdentificationStatus.FinalizationFailed(failure);
-        var placement = new BridgeTriagePlacement.Identification(status);
+        var placement = new BridgeTriagePlacement.Pending();
         var view = BuildView(
-            MatchedItems(placement, BridgeTriageSkipAction.Skip),
+            MatchedItems(
+                placement,
+                BridgeTriageSkipAction.Skip,
+                identification: status),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
         var row = CandidateRow(view);
@@ -631,7 +641,8 @@ public sealed class ImportSectionViewTests
         BridgeTriageMetadataSummary? metadataSummary = null,
         BridgeCoverImageSource? coverThumbnail = null,
         BridgeMetadataProvenance? metadataProvenance = null,
-        BridgeTriageReading? reading = null) => new()
+        BridgeTriageReading? reading = null,
+        BridgeIdentificationStatus? identification = null) => new()
     {
         new BridgeImportListItem.Candidate(
             PreviewData.CandidateStableKey(CandidateKey),
@@ -642,7 +653,8 @@ public sealed class ImportSectionViewTests
                 metadataSummary,
                 coverThumbnail,
                 metadataProvenance,
-                reading),
+                reading,
+                identification),
             IsGroupMember: isGroupMember),
     };
 
@@ -653,7 +665,8 @@ public sealed class ImportSectionViewTests
         BridgeTriageMetadataSummary? metadataSummary = null,
         BridgeCoverImageSource? coverThumbnail = null,
         BridgeMetadataProvenance? metadataProvenance = null,
-        BridgeTriageReading? reading = null) =>
+        BridgeTriageReading? reading = null,
+        BridgeIdentificationStatus? identification = null) =>
             new BridgeTriageRow(
                 CandidateKey: CandidateKey,
                 FolderName: "Release 01",
@@ -663,13 +676,16 @@ public sealed class ImportSectionViewTests
                 CombineAncestorKey: null,
                 Actionable: true,
                 Placement: placement,
+                Identification: identification,
                 SkipAction: skipAction,
-                Actions: placement switch
+                Actions: identification is not null
+                    and not BridgeIdentificationStatus.FinalizationFailed
+                    ? [BridgeCandidateAction.Skip]
+                    : placement switch
                 {
                     BridgeTriagePlacement.Ready => [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToTags, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
                     BridgeTriagePlacement.Pending => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToTags, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
                     BridgeTriagePlacement.NeedsYou => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToTags, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
-                    BridgeTriagePlacement.Identification => [BridgeCandidateAction.Skip],
                     BridgeTriagePlacement.Failed => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToTags, BridgeCandidateAction.ClearMetadata],
                     BridgeTriagePlacement.Skipped => [BridgeCandidateAction.Restore],
                     BridgeTriagePlacement.Done or BridgeTriagePlacement.Importing => [],

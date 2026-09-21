@@ -154,6 +154,7 @@ private func readyRow(
         combineAncestorKey: nil,
         actionable: true,
         placement: .ready,
+        identification: nil,
         skipAction: .skip,
         actions: [
             .importReady, .identify, .resetToTags, .clearMetadata, .skip,
@@ -192,6 +193,7 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         combineAncestorKey: nil,
         actionable: true,
         placement: .done,
+        identification: nil,
         skipAction: nil,
         actions: [],
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
@@ -214,6 +216,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         combineAncestorKey: nil,
         actionable: true,
         placement: .skipped,
+        identification: nil,
         skipAction: .unskip,
         actions: [.restore],
         matched: nil,

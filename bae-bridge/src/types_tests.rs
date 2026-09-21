@@ -90,12 +90,11 @@ mod triage_tests {
     /// rule.
     #[test]
     fn tab_of_placement_mirrors_core() {
-        use bae_core::import::{IdentificationStatus, TriagePlacement, TriageTab};
+        use bae_core::import::{TriagePlacement, TriageTab};
         for core in [
+            TriagePlacement::Pending,
             TriagePlacement::Ready,
-            TriagePlacement::Identification {
-                status: IdentificationStatus::Queued,
-            },
+            TriagePlacement::Failed,
             TriagePlacement::NeedsYou {
                 reason: bae_core::identify::NeedsYou::SeveralMatches { count: 2 },
             },

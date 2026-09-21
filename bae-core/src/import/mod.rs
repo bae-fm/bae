@@ -208,7 +208,7 @@ desktop_only! {
         lengths_disagree, SlotFile, SlotReconciliation, SlotSpan, SlotTable, SourceTrack, TrackSlot,
     };
     pub use triage::{
-        CandidateAnswer, IdentificationStatus, MatchEvidence, MatchedPressing, MatchedRelease,
+        IdentificationStatus, MatchEvidence, MatchedPressing, MatchedRelease,
         MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
         TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
     };

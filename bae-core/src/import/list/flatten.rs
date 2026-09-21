@@ -15,8 +15,8 @@ use super::{
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::classify_summary;
 use crate::import::triage::{
-    import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus,
-    TriagePlacement, TriageRow, TriageRuntimeFacts, TriageTab, TriageTabCounts,
+    import_status_of, place, MatchedRelease, TriageGroup, TriageImportStatus, TriageRow,
+    TriageRuntimeFacts, TriageTab, TriageTabCounts,
 };
 use crate::import::watched_folder::candidate_relative_path;
 use crate::import::FolderReleaseDecisionKey;
@@ -371,11 +371,6 @@ fn place_row(
             lead_status,
         )
     });
-    let known = match (answer, facts.identification.clone()) {
-        (Some(classification), _) => CandidateAnswer::Classified(classification),
-        (None, Some(status)) => CandidateAnswer::Identification(status),
-        (None, None) => CandidateAnswer::Unidentified,
-    };
     let skipped = match &row.source {
         crate::db::CandidateListSource::Combination { skipped, .. } => *skipped,
         crate::db::CandidateListSource::Folder => rows.skipped.contains(&(
@@ -391,13 +386,13 @@ fn place_row(
         import_status.as_ref(),
         metadata_provenance.as_ref(),
         state.is_some_and(|state| state.metadata_draft_valid),
-        &known,
+        answer.as_ref(),
     );
     let actions = crate::import::triage::candidate_actions(
         row.source.error().is_none(),
         &placement,
         facts.identification.as_ref(),
-        &known,
+        answer.as_ref(),
     );
     Ok(TriageRow {
         candidate_key: row.path.clone(),
@@ -422,6 +417,7 @@ fn place_row(
             .flatten(),
         selectable: actions.contains(&crate::import::triage::CandidateAction::ImportReady),
         actions,
+        identification: facts.identification.clone(),
         matched: verdict.and_then(MatchedRelease::of_summary),
         // The records are read off the pick's archived documents, which the
         // queue never opens: the window that materialises the row reads them
@@ -573,9 +569,7 @@ fn summarise(
             continue;
         };
         let row = &placed[index].row;
-        if first_unidentified.is_none()
-            && matches!(&row.placement, TriagePlacement::Identification { .. })
-        {
+        if first_unidentified.is_none() && row.identification.is_some() {
             first_unidentified = Some(FirstUnidentifiedRowRef {
                 candidate_key: row.candidate_key.clone(),
                 stable_key: ImportListItem::candidate_stable_key(&row.candidate_key),

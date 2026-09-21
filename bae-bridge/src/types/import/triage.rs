@@ -214,12 +214,12 @@ pub enum BridgeTriageTab {
 /// Where a row sits, including why a Pending row still needs input. One value
 /// rather than a tab plus an optional group, so a surface cannot read half of
 /// it.
+///
+/// Live identification is not here: a run is true of a row wherever the row
+/// sits, so it rides on `BridgeTriageRow::identification` instead.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTriagePlacement {
     Pending,
-    Identification {
-        status: BridgeIdentificationStatus,
-    },
     Ready,
     NeedsYou {
         reason: BridgeNeedsYou,
@@ -255,7 +255,8 @@ pub enum BridgeCandidateAction {
     Restore,
 }
 
-/// What identification is doing for a candidate with no stored verdict.
+/// What identification is doing for a candidate right now, whatever its
+/// placement says.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeIdentificationStatus {
     /// Admitted to the queue but not started.
@@ -326,7 +327,6 @@ pub fn bridge_needs_you_key(needs_you: &BridgeNeedsYou) -> String {
 pub fn bridge_triage_tab(placement: &BridgeTriagePlacement) -> BridgeTriageTab {
     match placement {
         BridgeTriagePlacement::Pending
-        | BridgeTriagePlacement::Identification { .. }
         | BridgeTriagePlacement::Ready
         | BridgeTriagePlacement::NeedsYou { .. }
         | BridgeTriagePlacement::Importing
@@ -479,6 +479,10 @@ pub struct BridgeTriageRow {
     pub combine_ancestor_key: Option<BridgeFolderReleaseDecisionKey>,
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
+    /// What identification is doing for this candidate right now, beside
+    /// wherever the placement puts it. Absent when no run is queued, running
+    /// or settling and the last one's write did not fail.
+    pub identification: Option<BridgeIdentificationStatus>,
     pub skip_action: Option<BridgeTriageSkipAction>,
     pub actions: Vec<BridgeCandidateAction>,
     pub matched: Option<BridgeMatchedRelease>,

@@ -21,7 +21,7 @@ use super::mapping::MappingTable;
 use super::release_candidate::ReleaseCandidate;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
-    import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus,
+    import_status_of, place, MatchedRelease, TriageGroup, TriageImportStatus,
     TriageMetadataSummary, TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit};
@@ -417,11 +417,7 @@ impl ImportCandidateDetailProjection {
         } else {
             failure
         };
-        let known = match (answer.filter(|_| actionable), facts.identification.clone()) {
-            (Some(classification), _) => CandidateAnswer::Classified(classification),
-            (None, Some(status)) => CandidateAnswer::Identification(status),
-            (None, None) => CandidateAnswer::Unidentified,
-        };
+        let known = answer.filter(|_| actionable);
         let metadata_draft_valid = metadata_draft.clone().shape().is_ok();
         let placement = place(
             skipped,
@@ -429,13 +425,13 @@ impl ImportCandidateDetailProjection {
             import_status.as_ref(),
             metadata_provenance.as_ref().filter(|_| actionable),
             metadata_draft_valid,
-            &known,
+            known.as_ref(),
         );
         let actions = super::triage::candidate_actions(
             actionable,
             &placement,
             facts.identification.as_ref(),
-            &known,
+            known.as_ref(),
         );
         // The pick and the draft summary the row leads with, read once: its
         // reading, its summary and its provenance all state the same fact.
@@ -452,6 +448,7 @@ impl ImportCandidateDetailProjection {
             skip_action: actionable.then(|| placement.skip_action()).flatten(),
             selectable: actions.contains(&super::triage::CandidateAction::ImportReady),
             actions,
+            identification: facts.identification.clone(),
             matched: matched.filter(|_| actionable),
             reading: super::triage::TriageReading::of(
                 metadata_summary.as_ref(),

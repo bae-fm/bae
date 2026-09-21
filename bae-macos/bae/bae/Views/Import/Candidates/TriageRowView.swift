@@ -99,14 +99,15 @@ struct TriageRowView: View {
         row.resolvedBoundaries.filter(isCombined)
     }
 
+    /// A run the person cannot answer anything into. A write that failed is
+    /// not one: the row is answerable again and says what went wrong.
     private var identificationInProgress: Bool {
-        if case .identification(let status) = row.placement {
-            if case .finalizationFailed = status {
-                return false
-            }
+        switch row.identification {
+        case .queued, .running, .finalizing:
             return true
+        case .finalizationFailed, nil:
+            return false
         }
-        return false
     }
 
     // MARK: - Leading
@@ -199,15 +200,14 @@ struct TriageRowView: View {
 extension TriageRowView {
     /// State that belongs below the release summary: a disagreement or an
     /// import failure. Identification activity belongs to its trailing
-    /// indicator's tooltip.
+    /// indicator's tooltip — except a write that failed, which is an error
+    /// about the row and leads whatever the placement would have said.
     private var statusLine: String? {
+        if case .finalizationFailed(let error) = row.identification {
+            return error.displayLine
+        }
         switch row.placement {
         case .pending:
-            return nil
-        case .identification(let status):
-            if case .finalizationFailed(let error) = status {
-                return error.displayLine
-            }
             return nil
         case .ready:
             return nil
@@ -245,13 +245,26 @@ extension TriageRowView {
 
     // MARK: - Trailing
 
-    /// Whatever the placement puts at the end of the row. Kept at its ideal
-    /// width: the release's title and artist truncate before a tag does, since
-    /// a tag is already as short as it gets. What the row states about its
-    /// release is the title line's arrow, not a column of its own.
+    /// What the row ends with. Kept at its ideal width: the release's title and
+    /// artist truncate before a tag does, since a tag is already as short as it
+    /// gets. What the row states about its release is the title line's arrow,
+    /// not a column of its own.
+    ///
+    /// A run in flight takes the column from the placement rather than sitting
+    /// beside it. The placement's trailing is what the row is asking of the
+    /// person — which pressing, which of two signals — and while a run is going
+    /// there is nothing to answer: the row offers no command but Skip, and the
+    /// answer being written is about to replace the question.
     private var trailing: some View {
-        placementTrailing
-            .fixedSize()
+        Group {
+            if let identification = row.identification {
+                identificationTrailing(identification)
+            }
+            else {
+                placementTrailing
+            }
+        }
+        .fixedSize()
     }
 
     @ViewBuilder
@@ -259,8 +272,6 @@ extension TriageRowView {
         switch row.placement {
         case .pending:
             EmptyView()
-        case .identification(let status):
-            identificationTrailing(status)
         case .ready:
             EmptyView()
         case .needsYou(let reason):

@@ -1,6 +1,5 @@
 use super::{
-    CandidateAnswer, IdentificationStatus, NeedsYou, QueueClassification, TriagePlacement,
-    TriageSkipAction,
+    IdentificationStatus, NeedsYou, QueueClassification, TriagePlacement, TriageSkipAction,
 };
 
 /// Commands offered for a candidate at its current lifecycle position.
@@ -19,7 +18,7 @@ pub(crate) fn candidate_actions(
     actionable: bool,
     placement: &TriagePlacement,
     identification: Option<&IdentificationStatus>,
-    answer: &CandidateAnswer,
+    answer: Option<&QueueClassification>,
 ) -> Vec<CandidateAction> {
     use CandidateAction as A;
     use TriagePlacement as P;
@@ -37,19 +36,7 @@ pub(crate) fn candidate_actions(
     let mut actions = match placement {
         P::Importing | P::Done | P::Skipped => Vec::new(),
         _ if identifying => Vec::new(),
-        P::Identification {
-            status:
-                IdentificationStatus::Queued
-                | IdentificationStatus::Running
-                | IdentificationStatus::Finalizing,
-        } => Vec::new(),
-        P::Pending
-        | P::Ready
-        | P::NeedsYou { .. }
-        | P::Failed
-        | P::Identification {
-            status: IdentificationStatus::FinalizationFailed { .. },
-        } => {
+        P::Pending | P::Ready | P::NeedsYou { .. } | P::Failed => {
             let mut actions = Vec::new();
             if matches!(placement, P::Ready) {
                 actions.push(A::ImportReady);
@@ -57,17 +44,10 @@ pub(crate) fn candidate_actions(
             actions.push(A::Identify);
             if matches!(
                 answer,
-                CandidateAnswer::Classified(QueueClassification::NeedsYou(NeedsYou::LookupFailed))
+                Some(QueueClassification::NeedsYou(NeedsYou::LookupFailed))
             ) || matches!(
                 identification,
                 Some(IdentificationStatus::FinalizationFailed { .. })
-            ) || matches!(
-                placement,
-                P::NeedsYou {
-                    reason: NeedsYou::LookupFailed
-                } | P::Identification {
-                    status: IdentificationStatus::FinalizationFailed { .. }
-                }
             ) {
                 actions.push(A::RetryIdentification);
             }
@@ -99,26 +79,18 @@ mod tests {
             TriagePlacement::Importing,
         ] {
             assert_eq!(
-                candidate_actions(true, &placement, None, &CandidateAnswer::Unidentified)
+                candidate_actions(true, &placement, None, None)
                     .contains(&CandidateAction::ImportReady),
                 placement == TriagePlacement::Ready
             );
-            assert!(
-                candidate_actions(false, &placement, None, &CandidateAnswer::Unidentified)
-                    .is_empty()
-            );
+            assert!(candidate_actions(false, &placement, None, None).is_empty());
         }
     }
 
     #[test]
     fn skipped_candidates_offer_restore_without_replacing_metadata() {
         assert_eq!(
-            candidate_actions(
-                true,
-                &TriagePlacement::Skipped,
-                None,
-                &CandidateAnswer::Unidentified
-            ),
+            candidate_actions(true, &TriagePlacement::Skipped, None, None),
             vec![CandidateAction::Restore]
         );
     }
@@ -135,13 +107,16 @@ mod tests {
                     true,
                     &TriagePlacement::Ready,
                     Some(&status),
-                    &CandidateAnswer::Classified(QueueClassification::Ready)
+                    Some(&QueueClassification::Ready)
                 ),
                 vec![CandidateAction::Skip]
             );
         }
     }
 
+    /// A candidate nobody has answered yet is Pending, and a run in flight for
+    /// it leaves only the skip — the run is about to write the answer every
+    /// other command would overwrite.
     #[test]
     fn active_identification_cannot_be_overwritten_by_a_bulk_action() {
         for status in [
@@ -150,14 +125,7 @@ mod tests {
             IdentificationStatus::Finalizing,
         ] {
             assert_eq!(
-                candidate_actions(
-                    true,
-                    &TriagePlacement::Identification {
-                        status: status.clone()
-                    },
-                    Some(&status),
-                    &CandidateAnswer::Identification(status.clone())
-                ),
+                candidate_actions(true, &TriagePlacement::Pending, Some(&status), None),
                 vec![CandidateAction::Skip]
             );
         }
@@ -165,33 +133,28 @@ mod tests {
 
     #[test]
     fn lookup_and_finalization_failures_offer_retry() {
-        let failed_lookup =
-            CandidateAnswer::Classified(QueueClassification::NeedsYou(NeedsYou::LookupFailed));
+        let failed_lookup = QueueClassification::NeedsYou(NeedsYou::LookupFailed);
         for placement in [
             TriagePlacement::NeedsYou {
                 reason: NeedsYou::LookupFailed,
             },
             TriagePlacement::Ready,
         ] {
-            assert!(candidate_actions(true, &placement, None, &failed_lookup)
-                .contains(&CandidateAction::RetryIdentification));
+            assert!(
+                candidate_actions(true, &placement, None, Some(&failed_lookup))
+                    .contains(&CandidateAction::RetryIdentification)
+            );
         }
         let failure = IdentificationStatus::FinalizationFailed {
             error: "Provider unavailable".to_owned(),
         };
-        assert!(candidate_actions(
-            true,
-            &TriagePlacement::Ready,
-            Some(&failure),
-            &CandidateAnswer::Identification(failure.clone())
-        )
-        .contains(&CandidateAction::RetryIdentification));
-        assert!(!candidate_actions(
-            true,
-            &TriagePlacement::Pending,
-            None,
-            &CandidateAnswer::Unidentified
-        )
-        .contains(&CandidateAction::RetryIdentification));
+        assert!(
+            candidate_actions(true, &TriagePlacement::Ready, Some(&failure), None)
+                .contains(&CandidateAction::RetryIdentification)
+        );
+        assert!(
+            !candidate_actions(true, &TriagePlacement::Pending, None, None)
+                .contains(&CandidateAction::RetryIdentification)
+        );
     }
 }

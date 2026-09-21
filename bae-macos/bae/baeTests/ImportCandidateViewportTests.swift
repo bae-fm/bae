@@ -426,6 +426,7 @@ extension ImportCandidateViewportTests {
                 combineAncestorKey: nil,
                 actionable: true,
                 placement: .skipped,
+                identification: nil,
                 skipAction: .unskip,
                 actions: [.restore],
                 matched: nil,

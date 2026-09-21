@@ -254,6 +254,7 @@
                 combineAncestorKey: nil,
                 actionable: true,
                 placement: .ready,
+                identification: nil,
                 skipAction: .skip,
                 actions: [
                     .importReady, .identify, .resetToTags, .clearMetadata,

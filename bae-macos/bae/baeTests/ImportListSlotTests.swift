@@ -134,6 +134,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             combineAncestorKey: nil,
             actionable: true,
             placement: .skipped,
+            identification: nil,
             skipAction: .unskip,
             actions: [.restore],
             matched: nil,

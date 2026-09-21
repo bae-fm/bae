@@ -41,6 +41,7 @@
         static func triageRow(
             for candidate: Candidate,
             placement: BridgeTriagePlacement,
+            identification: BridgeIdentificationStatus? = nil,
             skipAction: BridgeTriageSkipAction?,
             actions: [BridgeCandidateAction],
             matched: BridgeMatchedRelease?,
@@ -59,6 +60,7 @@
                 combineAncestorKey: nil,
                 actionable: true,
                 placement: placement,
+                identification: identification,
                 skipAction: skipAction,
                 actions: actions,
                 matched: matched,
@@ -486,7 +488,8 @@
 
         static let triageRowIdentifying = triageRow(
             for: importTabIdentifyingCandidate,
-            placement: .identification(status: .running),
+            placement: .pending,
+            identification: .running,
             skipAction: .skip,
             actions: [.skip],
             matched: nil,

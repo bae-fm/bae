@@ -506,6 +506,7 @@ extension MappingFixtures {
             combineAncestorKey: nil,
             actionable: true,
             placement: undecided ? .pending : .ready,
+            identification: nil,
             skipAction: .skip,
             actions: (undecided ? [] : [.importReady])
                 + [.identify, .resetToTags, .clearMetadata, .skip],

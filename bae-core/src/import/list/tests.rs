@@ -18,6 +18,7 @@ mod actions;
 mod dates;
 mod flatten;
 mod flatten_groups;
+mod placement;
 mod subscription;
 mod window;
 
@@ -155,6 +156,20 @@ fn not_found_state() -> CandidateStateListRow {
         probed_total_duration_ms: 2_400_000,
         metadata_provenance: None,
         metadata_draft_valid: false,
+        metadata_summary: None,
+        selected_cover: None,
+    }
+}
+
+/// A candidate nobody has identified whose draft the scan pre-filled from its
+/// file tags — the shape nearly every scanned folder is in.
+fn prefilled_from_tags_state() -> CandidateStateListRow {
+    CandidateStateListRow {
+        edit_revision: 0,
+        verdict: None,
+        probed_total_duration_ms: 0,
+        metadata_provenance: Some(MetadataProvenance::FileTags),
+        metadata_draft_valid: true,
         metadata_summary: None,
         selected_cover: None,
     }

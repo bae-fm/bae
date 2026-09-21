@@ -52,18 +52,22 @@ pub use model::*;
 ///    that just failed.
 /// 5. **Then a stored pick**, which is the user answering whatever the verdict
 ///    was going to ask. Nothing is left to ask, so the row is Ready.
-/// 6. **Then what is known about it**, for a candidate nobody has answered.
+/// 6. **Then what its stored verdict classified to**, for a candidate nobody
+///    has answered.
 ///
-/// A candidate with no verdict and no valid draft is not Ready. Placement
-/// describes its preparation; action availability also accounts for live
-/// identification so a stored Ready draft does not permit conflicting work.
+/// A candidate with no verdict and no valid draft is not Ready.
+///
+/// Live identification is not one of these facts. A run is true of a candidate
+/// wherever that candidate is placed — a Ready row somebody asked to identify
+/// again is still Ready, and still running — so it rides on the row as
+/// [`TriageRow::identification`] rather than displacing the placement.
 pub fn place(
     skipped: bool,
     is_added: bool,
     import_status: Option<&TriageImportStatus>,
     picked: Option<&MetadataProvenance>,
     metadata_draft_valid: bool,
-    answer: &CandidateAnswer,
+    answer: Option<&QueueClassification>,
 ) -> TriagePlacement {
     // Spelled out rather than `is_some()`: each variant places the row
     // somewhere different, and a new one should have to be placed here on
@@ -91,17 +95,13 @@ pub fn place(
     if picked.is_some() || metadata_draft_valid {
         return TriagePlacement::Ready;
     }
-    let reason = match answer {
-        CandidateAnswer::Classified(QueueClassification::Ready) => return TriagePlacement::Ready,
-        CandidateAnswer::Classified(QueueClassification::NeedsYou(needs_you)) => needs_you.clone(),
-        CandidateAnswer::Unidentified => return TriagePlacement::Pending,
-        CandidateAnswer::Identification(status) => {
-            return TriagePlacement::Identification {
-                status: status.clone(),
-            }
-        }
-    };
-    TriagePlacement::NeedsYou { reason }
+    match answer {
+        Some(QueueClassification::Ready) => TriagePlacement::Ready,
+        Some(QueueClassification::NeedsYou(reason)) => TriagePlacement::NeedsYou {
+            reason: reason.clone(),
+        },
+        None => TriagePlacement::Pending,
+    }
 }
 
 /// Where a candidate's import stands, from the three places that can say so.
@@ -134,9 +134,9 @@ pub fn import_status_of(
     })
 }
 
-/// The runtime facts a row's placement reads: a change to any other part of
-/// a candidate's runtime — a progress tick within a running import — leaves
-/// the queue as projected.
+/// The runtime facts a row reads: a change to any other part of a candidate's
+/// runtime — a progress tick within a running import — leaves the queue as
+/// projected.
 /// The default is a key nothing is running for: no identification work exists
 /// and no import has claimed it.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -174,18 +174,14 @@ impl TriageRuntimeFacts {
 mod tests {
     use super::*;
 
+    /// A candidate nobody has answered is Pending whatever identification is
+    /// doing for it: the run is the row's, not the placement's.
     #[test]
-    fn a_terminal_identify_result_is_not_a_needs_you_question() {
-        let placement = place(
-            false,
-            false,
-            None,
-            None,
-            false,
-            &CandidateAnswer::Identification(IdentificationStatus::Finalizing),
+    fn an_unanswered_candidate_is_pending() {
+        assert_eq!(
+            place(false, false, None, None, false, None),
+            TriagePlacement::Pending
         );
-
-        assert!(!matches!(placement, TriagePlacement::NeedsYou { .. }));
     }
 
     fn a_draft() -> TriageMetadataSummary {

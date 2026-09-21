@@ -216,7 +216,7 @@ struct ImportPreviewDataTests {
         )
         #expect(
             rows.contains { row in
-                if case .identification = row.placement { return true }
+                if case .running = row.identification { return true }
                 return false
             }
         )
