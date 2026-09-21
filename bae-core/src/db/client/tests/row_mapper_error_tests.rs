@@ -7,14 +7,6 @@ fn seeded_conn() -> Connection {
     let conn = Connection::open_in_memory().unwrap();
     conn.execute_batch(include_str!("../../../../migrations/001_initial.sql"))
         .unwrap();
-    conn.execute_batch(include_str!(
-        "../../../../migrations/003_metadata_drafts_and_provenance.sql"
-    ))
-    .unwrap();
-    conn.execute_batch(include_str!(
-        "../../../../migrations/031_release_records.sql"
-    ))
-    .unwrap();
     let now = "2026-01-01T00:00:00Z";
     conn.execute(
         "INSERT INTO artists (id, name, _updated_at, created_at) VALUES ('6c441836-aef7-4239-8a84-5336c4cce52c', 'Artist Name', ?, ?)",

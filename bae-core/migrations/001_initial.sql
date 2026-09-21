@@ -3,9 +3,16 @@
 -- `CREATE TABLE`/`CREATE INDEX` is `IF NOT EXISTS`: re-running over a
 -- snapshot-bootstrapped database that already carries the schema is a no-op.
 --
--- The `sync_cursors`, `sync_state`, and `cloud_outbox` bookkeeping tables are
--- owned by coven (created by coven's MIGRATION_SQL), not declared here.
+-- coven's own bookkeeping tables (sync cursors, the cloud outbox, the circle
+-- and store-write ledgers) are created by coven's MIGRATION_SQL, not here.
+--
+-- Sections: the library, playback, watched folders and their scans, import
+-- candidates, identification, and the catalog documents lookups cached.
 
+-- ── The library ───────────────────────────────────────────────────────────────
+
+-- Every artist the library knows, whether credited on a release, a track, or a
+-- work. The provider ids are what a later lookup matches an incoming artist to.
 CREATE TABLE IF NOT EXISTS artists (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -17,7 +24,38 @@ CREATE TABLE IF NOT EXISTS artists (
     created_at TEXT NOT NULL
 ) STRICT;
 
--- Albums are aggregates over releases; identity lives on `release_identities`.
+CREATE INDEX IF NOT EXISTS idx_artists_name ON artists (name COLLATE NOCASE);
+
+CREATE INDEX IF NOT EXISTS idx_artists_discogs_id ON artists (discogs_artist_id);
+
+CREATE INDEX IF NOT EXISTS idx_artists_mb_id ON artists (musicbrainz_artist_id);
+
+-- One stored picture per artist, keyed by the artist it belongs to.
+CREATE TABLE IF NOT EXISTS artist_images (
+    -- The artist id this image belongs to (1:1).
+    id TEXT PRIMARY KEY,
+    content_type TEXT NOT NULL,
+    file_size INTEGER NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    source TEXT NOT NULL,
+    source_url TEXT,
+    -- Cloud object key for this image's blob (relative to the `artist_images`
+    -- namespace coven prepends). NULL = hashed-by-id (opaque homes); a value =
+    -- the readable `{artist}/artist.{ext}` key on a browsable home.
+    cloud_path TEXT,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    -- Content hash, as on release_files.hash.
+    hash TEXT NOT NULL,
+    -- The id of the coven blob holding this image's bytes — a new one per
+    -- stored image, as on covers.blob_id.
+    blob_id TEXT NOT NULL,
+    FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
+) STRICT;
+
+-- Albums are aggregates over releases; a pressing's own facts live on its row
+-- in `releases`.
 CREATE TABLE IF NOT EXISTS albums (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -34,6 +72,9 @@ CREATE TABLE IF NOT EXISTS albums (
     created_at TEXT NOT NULL
 ) STRICT;
 
+CREATE INDEX IF NOT EXISTS idx_albums_artist_id ON albums (artist_id);
+
+-- The artists an album is credited to, in credit order.
 CREATE TABLE IF NOT EXISTS album_artists (
     id TEXT PRIMARY KEY,
     album_id TEXT NOT NULL,
@@ -46,17 +87,66 @@ CREATE TABLE IF NOT EXISTS album_artists (
     UNIQUE(album_id, artist_id)
 ) STRICT;
 
+CREATE INDEX IF NOT EXISTS idx_album_artists_album_id ON album_artists (album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_artists_artist_id ON album_artists (artist_id);
+
+-- The compositions tracks perform, as MusicBrainz names them.
+CREATE TABLE IF NOT EXISTS works (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    disambiguation TEXT,
+    work_type TEXT,
+    musicbrainz_work_id TEXT NOT NULL,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_works_mb_id ON works (musicbrainz_work_id);
+
+-- Who wrote, arranged, or is otherwise credited on a work.
+CREATE TABLE IF NOT EXISTS work_artists (
+    id TEXT PRIMARY KEY,
+    work_id TEXT NOT NULL,
+    artist_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    UNIQUE(work_id, artist_id, position)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_work_artists_work ON work_artists(work_id);
+
+CREATE INDEX IF NOT EXISTS idx_work_artists_artist ON work_artists(artist_id);
+
+-- A work that is part of a larger work, in the parent's order.
+CREATE TABLE IF NOT EXISTS work_parts (
+    id TEXT PRIMARY KEY,
+    parent_work_id TEXT NOT NULL,
+    child_work_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (parent_work_id) REFERENCES works (id) ON DELETE CASCADE,
+    FOREIGN KEY (child_work_id) REFERENCES works (id) ON DELETE CASCADE,
+    UNIQUE(parent_work_id, child_work_id)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_work_parts_parent ON work_parts(parent_work_id);
+
+CREATE INDEX IF NOT EXISTS idx_work_parts_child ON work_parts(child_work_id);
+
+-- One pressing of an album: the physical or digital edition whose audio the
+-- library holds.
 CREATE TABLE IF NOT EXISTS releases (
     id TEXT PRIMARY KEY,
     album_id TEXT NOT NULL,
     release_name TEXT,
     year INTEGER,
-    disc_id TEXT,
-    -- 'musicbrainz' | 'discogs' | 'file_tags'.
-    metadata_source TEXT NOT NULL,
-    -- Specific MB/Discogs release the metadata was seeded from. NULL
-    -- when `metadata_source = 'file_tags'`.
-    metadata_source_release_id TEXT,
     format TEXT,
     label TEXT,
     catalog_number TEXT,
@@ -85,217 +175,23 @@ CREATE TABLE IF NOT EXISTS releases (
     album_peak_linear REAL,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
+    -- Whether the stored metadata was read off the folder's own file tags
+    -- rather than a catalog record.
+    draft_from_tags INTEGER NOT NULL DEFAULT 0 CHECK (draft_from_tags IN (0, 1)),
+    -- Which name off the folder led identification to this pressing. NULL where
+    -- nothing did.
+    identified_by TEXT CHECK (identified_by IS NULL
+           OR identified_by IN ('disc_id', 'barcode', 'catalog_number')),
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
 ) STRICT;
 
--- The device-local truth that a local release's files are in place is owned by
--- coven, not bae: a local release file is a coven *user-provided* blob, tracked
--- in coven's own device-local `local_blob_refs` table (blob_id = file id, the
--- path = `folder/original_filename`). bae registers/clears those refs through
--- coven's `register_external_blob` / `clear_external_blob`; coven flips them as
--- part of the make-Remote / make-Local transitions. There is no bae table here.
+CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id);
 
--- Per-source identity rows. A release has 0+ rows: 0 = Unknown, 1+ = identified,
--- each naming the pressing it claims. Cross-source equivalences are encoded by
--- a release having rows in multiple sources.
-CREATE TABLE IF NOT EXISTS release_identities (
-    id                TEXT PRIMARY KEY,
-    release_id        TEXT NOT NULL,
-    source            TEXT NOT NULL,
-    source_group_id   TEXT NOT NULL,
-    source_release_id TEXT NOT NULL,
-    _updated_at       TEXT NOT NULL,
-    created_at        TEXT NOT NULL,
-    UNIQUE (release_id, source),
-    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
-) STRICT;
+CREATE INDEX IF NOT EXISTS idx_releases_content_hash
+    ON releases (content_hash)
+    WHERE content_hash IS NOT NULL;
 
-CREATE TABLE IF NOT EXISTS tracks (
-    id TEXT PRIMARY KEY,
-    release_id TEXT NOT NULL,
-    title TEXT NOT NULL,
-    side INTEGER NOT NULL,
-    track_number INTEGER,
-    duration_ms INTEGER,
-    discogs_position TEXT,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS track_artists (
-    id TEXT PRIMARY KEY,
-    track_id TEXT NOT NULL,
-    artist_id TEXT NOT NULL,
-    position INTEGER NOT NULL,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
-    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE
-) STRICT;
-
--- `id` is minted, never the source's own work id: a MusicBrainz work MBID is
--- often a name-based (version 3) UUID, which the sync layer refuses on a synced
--- row. `musicbrainz_work_id` carries the source identity and is what an import
--- dedups a work on. MusicBrainz is the only source of works, so every row has
--- one. It is indexed, not UNIQUE: two devices can mint separate rows for the
--- same work, and a synced row must never fail to land.
-CREATE TABLE IF NOT EXISTS works (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    disambiguation TEXT,
-    work_type TEXT,
-    musicbrainz_work_id TEXT NOT NULL,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS work_artists (
-    id TEXT PRIMARY KEY,
-    work_id TEXT NOT NULL,
-    artist_id TEXT NOT NULL,
-    position INTEGER NOT NULL,
-    source TEXT NOT NULL,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
-    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
-    UNIQUE(work_id, artist_id, position)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS work_parts (
-    id TEXT PRIMARY KEY,
-    parent_work_id TEXT NOT NULL,
-    child_work_id TEXT NOT NULL,
-    position INTEGER NOT NULL,
-    source TEXT NOT NULL,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (parent_work_id) REFERENCES works (id) ON DELETE CASCADE,
-    FOREIGN KEY (child_work_id) REFERENCES works (id) ON DELETE CASCADE,
-    UNIQUE(parent_work_id, child_work_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS track_works (
-    id TEXT PRIMARY KEY,
-    track_id TEXT NOT NULL,
-    work_id TEXT NOT NULL,
-    position INTEGER NOT NULL,
-    source TEXT NOT NULL,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
-    FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
-    UNIQUE(track_id, work_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS release_artist_roles (
-    id TEXT PRIMARY KEY,
-    release_id TEXT NOT NULL,
-    artist_id TEXT NOT NULL,
-    position INTEGER NOT NULL,
-    source TEXT NOT NULL,
-    source_credit TEXT,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
-    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
-    UNIQUE(release_id, artist_id, position, source)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS track_artist_roles (
-    id TEXT PRIMARY KEY,
-    track_id TEXT NOT NULL,
-    artist_id TEXT NOT NULL,
-    position INTEGER NOT NULL,
-    source TEXT NOT NULL,
-    source_credit TEXT,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
-    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
-    UNIQUE(track_id, artist_id, position, source)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS release_files (
-    id TEXT PRIMARY KEY,
-    release_id TEXT NOT NULL,
-    original_filename TEXT NOT NULL,
-    file_size INTEGER NOT NULL,
-    content_type TEXT NOT NULL,
-    -- Cloud object key for this file's remote blob, mirroring coven's
-    -- BlobRef.cloud_path. NULL = the hashed-by-id layout (opaque homes); a
-    -- value = the explicit readable key set when the file entered a browsable
-    -- home (`{artist}/{album}/{filename}`). Synced, so every device addresses
-    -- the blob the same way; computed once at upload time and never re-derived,
-    -- so a metadata rename never moves the blob.
-    cloud_path TEXT,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    -- Lowercase-hex SHA-256 of the blob's plaintext (coven's
-    -- `BlobDecl::hash_column`), signed on the row alongside the declared size
-    -- and verified against the decrypted bytes on a Remote fetch. NOT NULL:
-    -- coven reads it off every blob-bearing row and refuses a row without one,
-    -- so a hashless blob is not a state this schema can hold.
-    hash TEXT NOT NULL,
-    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
-) STRICT;
-
--- bits_per_sample is nullable: lossy codecs (MP3, AAC, etc.) don't expose a
--- bit depth via FFmpeg, and substituting a default would store a fabricated
--- value. NULL surfaces the absence to consumers.
--- Audio-format rows hold track-level codec/display metadata. File-backed sample
--- windows live in audio_format_segments so a CUE track can be assembled from
--- ordered windows across one or more source files.
-CREATE TABLE IF NOT EXISTS audio_formats (
-    id TEXT PRIMARY KEY,
-    track_id TEXT NOT NULL UNIQUE,
-    content_type TEXT NOT NULL,
-    pregap_ms INTEGER,
-    generated_pregap_ms INTEGER,
-    pregap_samples INTEGER,
-    generated_pregap_samples INTEGER,
-    sample_rate INTEGER NOT NULL,
-    bits_per_sample INTEGER,
-    channels INTEGER NOT NULL,
-    -- Per-track loudness measured at import (EBU R128 integrated loudness over
-    -- this track's sample window), in LUFS. NULL = not measured (decode/measure
-    -- failure, or a near-silent track that has no usable loudness). Playback
-    -- derives a gain from this and a constant target; the stored value is the
-    -- raw measurement, never a gain.
-    track_loudness_lufs REAL,
-    -- Per-track true peak as a LINEAR ratio (1.0 = 0 dBTP), the max across
-    -- channels. NULL = not measured. Playback caps the track gain at 1.0/peak
-    -- to prevent clipping.
-    track_peak_linear REAL,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS audio_format_segments (
-    id TEXT PRIMARY KEY,
-    audio_format_id TEXT NOT NULL,
-    segment_index INTEGER NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('audio_pregap', 'main')),
-    file_id TEXT NOT NULL,
-    start_sample INTEGER NOT NULL,
-    end_sample INTEGER,
-    start_byte INTEGER,
-    end_byte INTEGER,
-    _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    UNIQUE (audio_format_id, segment_index),
-    FOREIGN KEY (audio_format_id) REFERENCES audio_formats (id) ON DELETE CASCADE,
-    FOREIGN KEY (file_id) REFERENCES release_files(id) ON DELETE CASCADE
-) STRICT;
-
--- Album covers — the one small grid image bae produces per release, 1:1 with a
--- release (`id` IS the release id). A coven host-provided · CacheEager *asset*:
--- bae hands coven the bytes (`local_files::store("covers", id, …)`), coven owns
--- the on-device copy (its local store while Local, its cache while Remote). The
--- FK on `id` makes coven gate the cover as a child of its release and ride the
--- release's gate without keeping it alive (declared `.asset()`).
+-- One stored cover per release, keyed by the release it belongs to.
 CREATE TABLE IF NOT EXISTS covers (
     -- The release id this cover belongs to (1:1).
     id TEXT PRIMARY KEY,
@@ -323,113 +219,305 @@ CREATE TABLE IF NOT EXISTS covers (
     FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
 
--- Artist images — bae-produced, 1:1 with an artist (`id` IS the artist id). A
--- coven host-provided · CacheEager *asset* of `artists`, same shape as `covers`.
-CREATE TABLE IF NOT EXISTS artist_images (
-    -- The artist id this image belongs to (1:1).
+-- The files a release's audio and artwork are stored as, with the facts of the
+-- audio they were imported from.
+CREATE TABLE IF NOT EXISTS release_files (
     id TEXT PRIMARY KEY,
-    content_type TEXT NOT NULL,
+    release_id TEXT NOT NULL,
+    original_filename TEXT NOT NULL,
     file_size INTEGER NOT NULL,
-    width INTEGER,
-    height INTEGER,
-    source TEXT NOT NULL,
-    source_url TEXT,
-    -- Cloud object key for this image's blob (relative to the `artist_images`
-    -- namespace coven prepends). NULL = hashed-by-id (opaque homes); a value =
-    -- the readable `{artist}/artist.{ext}` key on a browsable home.
+    content_type TEXT NOT NULL,
+    -- Cloud object key for this file's remote blob, mirroring coven's
+    -- BlobRef.cloud_path. NULL = the hashed-by-id layout (opaque homes); a
+    -- value = the explicit readable key set when the file entered a browsable
+    -- home (`{artist}/{album}/{filename}`). Synced, so every device addresses
+    -- the blob the same way; computed once at upload time and never re-derived,
+    -- so a metadata rename never moves the blob.
     cloud_path TEXT,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    -- Content hash, as on release_files.hash.
+    -- Lowercase-hex SHA-256 of the blob's plaintext (coven's
+    -- `BlobDecl::hash_column`), signed on the row alongside the declared size
+    -- and verified against the decrypted bytes on a Remote fetch. NOT NULL:
+    -- coven reads it off every blob-bearing row and refuses a row without one,
+    -- so a hashless blob is not a state this schema can hold.
     hash TEXT NOT NULL,
-    -- The id of the coven blob holding this image's bytes — a new one per
-    -- stored image, as on covers.blob_id.
-    blob_id TEXT NOT NULL,
-    FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
+    -- What the file held before import rewrote it: either its own audio
+    -- ('file') or one slice of a CUE-described disc ('cue'). All seven facts
+    -- are present together or all absent, and which of bits-per-sample and
+    -- bitrate is stated follows from the codec.
+    source_audio_layout TEXT CHECK (source_audio_layout IS NULL OR source_audio_layout IN ('file', 'cue')),
+    source_audio_content_type TEXT,
+    source_audio_duration_ms INTEGER CHECK (source_audio_duration_ms IS NULL OR source_audio_duration_ms >= 0),
+    source_audio_sample_rate_hz INTEGER CHECK (source_audio_sample_rate_hz IS NULL OR source_audio_sample_rate_hz > 0),
+    source_audio_bits_per_sample INTEGER CHECK (source_audio_bits_per_sample IS NULL OR source_audio_bits_per_sample > 0),
+    source_audio_bitrate_kbps INTEGER CHECK (source_audio_bitrate_kbps IS NULL OR source_audio_bitrate_kbps > 0),
+    source_audio_channels INTEGER CHECK (
+        (source_audio_layout IS NULL
+            AND source_audio_content_type IS NULL
+            AND source_audio_duration_ms IS NULL
+            AND source_audio_sample_rate_hz IS NULL
+            AND source_audio_bits_per_sample IS NULL
+            AND source_audio_bitrate_kbps IS NULL
+            AND source_audio_channels IS NULL)
+        OR (
+            source_audio_channels IS NOT NULL
+            AND source_audio_channels > 0
+            AND source_audio_content_type IS NOT NULL
+            AND source_audio_duration_ms IS NOT NULL
+            AND source_audio_sample_rate_hz IS NOT NULL
+            AND (
+                (source_audio_content_type IN (
+                    'audio/flac', 'audio/x-ape', 'audio/alac', 'audio/pcm',
+                    'audio/wavpack', 'audio/dsd'
+                ) AND source_audio_bits_per_sample IS NOT NULL
+                    AND source_audio_bitrate_kbps IS NULL)
+                OR
+                (source_audio_content_type IN (
+                    'audio/mpeg', 'audio/aac', 'audio/opus', 'audio/vorbis'
+                ) AND source_audio_bits_per_sample IS NULL
+                    AND source_audio_bitrate_kbps IS NOT NULL)
+            )
+        )
+    ),
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
 
--- The documents a metadata lookup returned, keyed by the *source* entity each
--- one describes rather than by any local release. One store serves both halves
--- of a release's life: identification writes the rows before it stores the
--- verdict that names the release, so opening a candidate replays what
--- identification fetched with no network at all; a committed release reads the
--- same rows back through its `metadata_source` / `metadata_source_release_id`
--- pointer, which is how a metadata reset re-projects the seed.
---
--- Two candidates that match one release share its row, and a re-fetch upserts
--- it. NOT synced: no `_updated_at` and absent from `synced_tables()`, the same
--- device-local convention as `playback_state` and `import_candidate_state` —
--- these are re-fetchable provider documents, not the user's library.
---
--- No foreign key and no cascade: a row outlives whichever candidate or release
--- caused it to be fetched, and is shared between them. Pruning, if the volume
--- ever justifies it, attaches to candidate deletion.
-CREATE TABLE IF NOT EXISTS source_release_payloads (
-    -- Which lookup produced this document, and therefore what
-    -- `source_release_id` names:
-    --   'musicbrainz'                     the release itself
-    --   'musicbrainz_release_group'       its release group, by group id
-    --   'discogs'                         a Discogs release
-    --   'discogs_master'                  a Discogs master, by master id
-    --   'musicbrainz_discogs_xref'        the MusicBrainz release cross-linked
-    --                                     to a Discogs one, by the *Discogs*
-    --                                     release id — MusicBrainz's URL lookup
-    --                                     found it, so nothing in the Discogs
-    --                                     document names it back
-    --   'wikidata'                        the Wikidata item a MusicBrainz
-    --                                     release or release group links to,
-    --                                     by item id
-    source TEXT NOT NULL,
-    source_release_id TEXT NOT NULL,
-    -- The document as the provider returned it.
-    json TEXT NOT NULL CHECK (json_valid(json)),
-    fetched_at TEXT NOT NULL,
-    PRIMARY KEY (source, source_release_id)
-) STRICT;
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_artists_discogs_id ON artists (discogs_artist_id);
-CREATE INDEX IF NOT EXISTS idx_artists_mb_id ON artists (musicbrainz_artist_id);
-CREATE INDEX IF NOT EXISTS idx_artists_name ON artists (name COLLATE NOCASE);
-CREATE INDEX IF NOT EXISTS idx_albums_artist_id ON albums (artist_id);
-CREATE INDEX IF NOT EXISTS idx_album_artists_album_id ON album_artists (album_id);
-CREATE INDEX IF NOT EXISTS idx_album_artists_artist_id ON album_artists (artist_id);
-CREATE INDEX IF NOT EXISTS idx_track_artists_track_id ON track_artists (track_id);
-CREATE INDEX IF NOT EXISTS idx_track_artists_artist_id ON track_artists (artist_id);
-CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id);
-CREATE INDEX IF NOT EXISTS idx_releases_content_hash
-    ON releases (content_hash)
-    WHERE content_hash IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_release_identities_group
-    ON release_identities (source, source_group_id);
-CREATE INDEX IF NOT EXISTS idx_release_identities_release
-    ON release_identities (source, source_release_id);
-CREATE INDEX IF NOT EXISTS idx_tracks_release_id ON tracks (release_id);
 CREATE INDEX IF NOT EXISTS idx_release_files_release_id ON release_files (release_id);
-CREATE INDEX IF NOT EXISTS idx_audio_formats_track_id ON audio_formats (track_id);
-CREATE INDEX IF NOT EXISTS idx_audio_format_segments_format_id ON audio_format_segments (audio_format_id);
 
--- Device-local playback queue, restored after a restart on the same device.
--- NOT synced: no `_updated_at` and absent from `synced_tables()`, the same
--- device-local convention as coven's own bookkeeping tables. A single row
--- (id = 'current'). The row is the recipe to refill the queue, not its rows:
--- `source` is what the context lane played from (NULL for a single track),
--- `shuffled` whether that lane was shuffled, `manual` the Up Next track ids,
--- and `current_track_id` the resume point. Session edits (removals, reorders,
--- the shuffled order) are not stored — restore rebuilds a pristine lane.
+-- Who is credited on a release, and in what role, as the catalog stated it.
+CREATE TABLE IF NOT EXISTS release_artist_roles (
+    id TEXT PRIMARY KEY,
+    release_id TEXT NOT NULL,
+    artist_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    source_credit TEXT,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    UNIQUE(release_id, artist_id, position, source)
+) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_works_mb_id ON works (musicbrainz_work_id);
-CREATE INDEX IF NOT EXISTS idx_work_artists_artist ON work_artists(artist_id);
-CREATE INDEX IF NOT EXISTS idx_work_artists_work ON work_artists(work_id);
-CREATE INDEX IF NOT EXISTS idx_work_parts_parent ON work_parts(parent_work_id);
-CREATE INDEX IF NOT EXISTS idx_work_parts_child ON work_parts(child_work_id);
-CREATE INDEX IF NOT EXISTS idx_track_works_track ON track_works(track_id);
-CREATE INDEX IF NOT EXISTS idx_track_works_work ON track_works(work_id);
-CREATE INDEX IF NOT EXISTS idx_release_artist_roles_artist ON release_artist_roles(artist_id);
 CREATE INDEX IF NOT EXISTS idx_release_artist_roles_release ON release_artist_roles(release_id);
-CREATE INDEX IF NOT EXISTS idx_track_artist_roles_artist ON track_artist_roles(artist_id);
+
+CREATE INDEX IF NOT EXISTS idx_release_artist_roles_artist ON release_artist_roles(artist_id);
+
+-- The catalog entries that describe a release: one per catalog, naming either
+-- the pressing itself or the album it belongs to. Exactly one per release may
+-- be the record the stored metadata was read from.
+CREATE TABLE IF NOT EXISTS release_records (
+    id          TEXT NOT NULL PRIMARY KEY,
+    release_id  TEXT NOT NULL,
+    catalog     TEXT NOT NULL,
+    key         TEXT NOT NULL,
+    album_key   TEXT,
+    url         TEXT NOT NULL CHECK (url <> ''),
+    reads_draft INTEGER NOT NULL CHECK (reads_draft IN (0, 1)),
+    _updated_at TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    kind        TEXT NOT NULL CHECK (kind IN ('pressing', 'album')),
+    CHECK (kind = 'pressing' OR (album_key IS NULL AND reads_draft = 0)),
+    UNIQUE (release_id, catalog),
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_release_records_catalog_key ON release_records (catalog, key) WHERE kind = 'pressing';
+
+CREATE INDEX IF NOT EXISTS idx_release_records_catalog_album ON release_records
+    (catalog, CASE WHEN kind = 'album' THEN key ELSE album_key END);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_release_records_reads_draft
+    ON release_records (release_id) WHERE reads_draft = 1;
+
+-- Each name identification read off the imported folder — a disc ID, barcode,
+-- or catalog number — with where on which surface it was read.
+CREATE TABLE IF NOT EXISTS release_marks (
+    id            TEXT NOT NULL PRIMARY KEY,
+    release_id    TEXT NOT NULL,
+    -- Where this reading sits in the order extraction read them, so a surface
+    -- that names the surfaces a value was read from names them in that order.
+    position      INTEGER NOT NULL,
+    kind          TEXT NOT NULL,
+    value         TEXT NOT NULL CHECK (value <> ''),
+    origin        TEXT NOT NULL,
+    -- The candidate-relative path of the file it was read off, or NULL where
+    -- the surface is not a file (the folder's own name).
+    origin_path   TEXT,
+    -- The box the detector drew around the value, as fractions of the image.
+    -- All four or none: half a box crops nothing.
+    region_x      REAL,
+    region_y      REAL,
+    region_width  REAL,
+    region_height REAL,
+    _updated_at   TEXT NOT NULL,
+    created_at    TEXT NOT NULL,
+    -- Whether a catalog the release was matched against states this same value.
+    corroborated  INTEGER NOT NULL DEFAULT 0 CHECK (corroborated IN (0, 1)),
+    CHECK (
+        (region_x IS NULL AND region_y IS NULL
+         AND region_width IS NULL AND region_height IS NULL)
+        OR (region_x IS NOT NULL AND region_y IS NOT NULL
+            AND region_width IS NOT NULL AND region_height IS NOT NULL)
+    ),
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_release_marks_release ON release_marks (release_id);
+
+-- The rip-check counts a ripper's log stated for each track of a release.
+CREATE TABLE IF NOT EXISTS release_verification (
+    id                      TEXT NOT NULL PRIMARY KEY,
+    release_id              TEXT NOT NULL,
+    track                   INTEGER NOT NULL CHECK (track >= 1),
+    -- Where the counts came from. Reading the log the rip left beside the
+    -- audio is one source; asking the databases directly is another.
+    source                  TEXT NOT NULL CHECK (source IN ('log')),
+    -- How many other copies AccurateRip holds that agree with these bits. NULL
+    -- where it holds none, disagreed, or was never asked: a disagreement's
+    -- count belongs to the copy the database held, not to this rip.
+    accuraterip_confidence  INTEGER CHECK (accuraterip_confidence IS NULL OR accuraterip_confidence >= 0),
+    ctdb_confidence         INTEGER CHECK (ctdb_confidence IS NULL OR ctdb_confidence >= 0),
+    -- The checksum of the bits that were kept, where the source states one.
+    crc                     INTEGER,
+    _updated_at             TEXT NOT NULL,
+    created_at              TEXT NOT NULL,
+    UNIQUE (release_id, track),
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_release_verification_release ON release_verification (release_id);
+
+-- The tracks of a release, in playing order.
+CREATE TABLE IF NOT EXISTS tracks (
+    id TEXT PRIMARY KEY,
+    release_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    track_number INTEGER,
+    duration_ms INTEGER,
+    discogs_position TEXT,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    -- Playing order within the release, counted from zero over every side.
+    position INTEGER NOT NULL DEFAULT 0 CHECK (position >= 0),
+    -- The side or disc this track sits on, where the pressing has them.
+    side INTEGER,
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_tracks_release_id ON tracks (release_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS tracks_release_position ON tracks(release_id, position);
+
+-- The artists a track is credited to, in credit order.
+CREATE TABLE IF NOT EXISTS track_artists (
+    id TEXT PRIMARY KEY,
+    track_id TEXT NOT NULL,
+    artist_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_track_artists_track_id ON track_artists (track_id);
+
+CREATE INDEX IF NOT EXISTS idx_track_artists_artist_id ON track_artists (artist_id);
+
+-- Who is credited on a track, and in what role, as the catalog stated it.
+CREATE TABLE IF NOT EXISTS track_artist_roles (
+    id TEXT PRIMARY KEY,
+    track_id TEXT NOT NULL,
+    artist_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    source_credit TEXT,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    UNIQUE(track_id, artist_id, position, source)
+) STRICT;
+
 CREATE INDEX IF NOT EXISTS idx_track_artist_roles_track ON track_artist_roles(track_id);
 
+CREATE INDEX IF NOT EXISTS idx_track_artist_roles_artist ON track_artist_roles(artist_id);
+
+-- The works a track performs, in the order the track performs them.
+CREATE TABLE IF NOT EXISTS track_works (
+    id TEXT PRIMARY KEY,
+    track_id TEXT NOT NULL,
+    work_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
+    FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
+    UNIQUE(track_id, work_id)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_track_works_track ON track_works(track_id);
+
+CREATE INDEX IF NOT EXISTS idx_track_works_work ON track_works(work_id);
+
+-- How a track's audio is laid out in the stored files, and the loudness it was
+-- measured at.
+CREATE TABLE IF NOT EXISTS audio_formats (
+    id TEXT PRIMARY KEY,
+    track_id TEXT NOT NULL UNIQUE,
+    content_type TEXT NOT NULL,
+    pregap_ms INTEGER,
+    generated_pregap_ms INTEGER,
+    pregap_samples INTEGER,
+    generated_pregap_samples INTEGER,
+    sample_rate INTEGER NOT NULL,
+    bits_per_sample INTEGER,
+    channels INTEGER NOT NULL,
+    -- Per-track loudness measured at import (EBU R128 integrated loudness over
+    -- this track's sample window), in LUFS. NULL = not measured (decode/measure
+    -- failure, or a near-silent track that has no usable loudness). Playback
+    -- derives a gain from this and a constant target; the stored value is the
+    -- raw measurement, never a gain.
+    track_loudness_lufs REAL,
+    -- Per-track true peak as a LINEAR ratio (1.0 = 0 dBTP), the max across
+    -- channels. NULL = not measured. Playback caps the track gain at 1.0/peak
+    -- to prevent clipping.
+    track_peak_linear REAL,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_audio_formats_track_id ON audio_formats (track_id);
+
+-- The consecutive spans of a file a track's audio is read from: its pregap,
+-- then its main body.
+CREATE TABLE IF NOT EXISTS audio_format_segments (
+    id TEXT PRIMARY KEY,
+    audio_format_id TEXT NOT NULL,
+    segment_index INTEGER NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('audio_pregap', 'main')),
+    file_id TEXT NOT NULL,
+    start_sample INTEGER NOT NULL,
+    end_sample INTEGER,
+    start_byte INTEGER,
+    end_byte INTEGER,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (audio_format_id, segment_index),
+    FOREIGN KEY (audio_format_id) REFERENCES audio_formats (id) ON DELETE CASCADE,
+    FOREIGN KEY (file_id) REFERENCES release_files(id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_audio_format_segments_format_id ON audio_format_segments (audio_format_id);
+
+-- ── Playback ──────────────────────────────────────────────────────────────────
+
+-- The one row describing what this device was playing, so a restart resumes it.
+-- Device-local: never synced.
 CREATE TABLE IF NOT EXISTS playback_state (
     id               TEXT PRIMARY KEY,
     source           TEXT,
@@ -445,293 +533,17 @@ CREATE TABLE IF NOT EXISTS playback_state (
     is_muted         INTEGER NOT NULL
 );
 
--- Device-local import triage state, keyed by an import candidate's content
--- hash (`CategorizedFiles::content_hash` — sorted (relative_path, size) over
--- every file the release carries). NOT synced: no `_updated_at` and absent from
--- `synced_tables()`, the same device-local convention as `playback_state`
--- above. Adding, removing, or resizing a file changes the hash, which is the
--- invalidation — nothing deletes the orphaned row under the old hash.
---
--- Two independent things share the row, because both are derived state about
--- one set of bytes: what identification concluded, and what the user decided.
--- Either can be present without the other.
-CREATE TABLE IF NOT EXISTS import_candidate_state (
-    content_hash             TEXT PRIMARY KEY,
-    -- Where the candidate was last seen. Not identity, not authoritative.
-    folder_path              TEXT NOT NULL,
-    -- The identify result. Set and cleared as one group: all NULL together or
-    -- all set together. Set only once identification reached a terminal
-    -- verdict; cleared when a file decision changes what the folder is.
-    verdict_kind             TEXT CHECK (verdict_kind IN ('found', 'not_found', 'manual_only')),
-    verdict_track_count      INTEGER CHECK (verdict_track_count IS NULL OR verdict_track_count >= 0),
-    -- Which of the candidate's barcodes the lookup that matched ran against.
-    -- The barcode rows carry the image each was read off, so this names which
-    -- of them is the evidence a chip belongs on. NULL when no barcode matched.
-    verdict_matched_barcode  TEXT,
-    probed_total_duration_ms INTEGER,
-    identified_at            TEXT,
-    -- The identity decided for this candidate: a pressing, or the folder's own
-    -- tags. `identity_pick_author` says who decided it.
-    pick_kind                TEXT CHECK (pick_kind IS NULL OR pick_kind IN ('release', 'unknown')),
-    pick_source              TEXT CHECK (pick_source IS NULL OR pick_source IN ('musicbrainz', 'discogs')),
-    pick_release_id          TEXT,
-    identity_pick_author     TEXT CHECK (identity_pick_author IS NULL OR identity_pick_author IN ('user', 'identification')),
-    -- Advances with every file decision, so a verdict derived from an older
-    -- shape is refused.
-    edit_revision            INTEGER NOT NULL DEFAULT 0 CHECK (edit_revision >= 0),
-    CHECK (
-        (verdict_kind IS NULL AND verdict_track_count IS NULL
-            AND probed_total_duration_ms IS NULL AND identified_at IS NULL)
-        OR
-        (verdict_kind IS NOT NULL AND probed_total_duration_ms IS NOT NULL
-            AND probed_total_duration_ms >= 0 AND identified_at IS NOT NULL)
-    ),
-    CHECK (verdict_kind IN ('found', 'manual_only') = (verdict_track_count IS NOT NULL)),
-    -- A matched barcode with no found verdict behind it is not a provenance.
-    CHECK (verdict_matched_barcode IS NULL OR verdict_kind = 'found'),
-    CHECK ((pick_kind IS NULL) = (identity_pick_author IS NULL)),
-    CHECK ((pick_kind = 'release') = (pick_source IS NOT NULL AND pick_release_id IS NOT NULL))
-) STRICT;
+-- ── Watched folders and their scans ───────────────────────────────────────────
 
--- One matched release of a found verdict, in match order, with the provenance
--- saying which signal produced it.
-CREATE TABLE IF NOT EXISTS import_candidate_match (
-    content_hash           TEXT NOT NULL,
-    position               INTEGER NOT NULL CHECK (position >= 0),
-    source                 TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
-    release_id             TEXT NOT NULL,
-    title                  TEXT NOT NULL,
-    artist                 TEXT,
-    year                   INTEGER,
-    format                 TEXT,
-    label                  TEXT,
-    catalog_number         TEXT,
-    country                TEXT,
-    cover_url              TEXT,
-    cover_thumbnail_url    TEXT,
-    cover_label            TEXT,
-    cover_source           TEXT CHECK (cover_source IS NULL OR cover_source IN ('musicbrainz', 'discogs')),
-    source_group_id        TEXT,
-    -- NULL: nobody asked the source for its tracklist yet. 'listed' /
-    -- 'nothing': asked. The total is NULL when any listed track has no length.
-    source_tracks_kind     TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing')),
-    source_tracks_count    INTEGER CHECK (source_tracks_count IS NULL OR source_tracks_count >= 0),
-    source_tracks_total_ms INTEGER CHECK (source_tracks_total_ms IS NULL OR source_tracks_total_ms >= 0),
-    by_disc_id             INTEGER NOT NULL CHECK (by_disc_id IN (0, 1)),
-    by_barcode             INTEGER NOT NULL CHECK (by_barcode IN (0, 1)),
-    by_catalog        INTEGER NOT NULL CHECK (by_catalog IN (0, 1)),
-    PRIMARY KEY (content_hash, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK ((cover_url IS NULL) = (cover_thumbnail_url IS NULL) AND (cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL)),
-    CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
-    CHECK (source_tracks_total_ms IS NULL OR source_tracks_kind = 'listed')
-) STRICT;
-
--- One file's user decisions: its role, which audio a sheet describes, which
--- disc a sheet is. A column is NULL where the user decided nothing about
--- that aspect; an absent row is no decision at all. A cleared sheet binding
--- is stored ('cleared'), not removed: the scan's proposal is not restored.
-CREATE TABLE IF NOT EXISTS import_candidate_file_edit (
-    content_hash          TEXT NOT NULL,
-    relative_path         TEXT NOT NULL,
-    role_choice           TEXT CHECK (role_choice IS NULL OR role_choice IN ('audio', 'not_a_track')),
-    sheet_binding         TEXT CHECK (sheet_binding IS NULL OR sheet_binding IN ('describes', 'cleared')),
-    sheet_binding_file_id TEXT,
-    sheet_disc            TEXT CHECK (sheet_disc IS NULL OR sheet_disc IN ('disc', 'ignored')),
-    sheet_disc_number     INTEGER CHECK (sheet_disc_number IS NULL OR sheet_disc_number >= 1),
-    PRIMARY KEY (content_hash, relative_path),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK ((sheet_binding = 'describes') = (sheet_binding_file_id IS NOT NULL)),
-    CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL)),
-    CHECK (role_choice IS NOT NULL OR sheet_binding IS NOT NULL OR sheet_disc IS NOT NULL)
-) STRICT;
-
-
--- What one of the candidate's audio units plays for, as reading it off the
--- disk found. Written by identification and by the pane when it opens a
--- candidate identification never measured; read by the mapping table, so
--- opening a candidate never opens its files again.
---
--- `duration_ms` NULL means the unit was read and states no length — a file
--- that would not probe, or a sheet entry the sheet gives no timing. The
--- absence of a row is the different fact that nothing has read it yet.
-CREATE TABLE IF NOT EXISTS import_candidate_file_duration (
-    content_hash        TEXT NOT NULL,
-    -- 'file': relative_path is the audio file. 'slice': relative_path is
-    -- the container; sheet_relative_path and slice_index name the entry.
-    kind                TEXT NOT NULL CHECK (kind IN ('file', 'slice')),
-    relative_path       TEXT NOT NULL,
-    sheet_relative_path TEXT NOT NULL DEFAULT '',
-    -- The sheet's playable tracks counted from zero — the number the binding
-    -- carries, not the number the sheet prints.
-    slice_index         INTEGER NOT NULL DEFAULT -1 CHECK (slice_index >= -1),
-    duration_ms         INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0),
-    PRIMARY KEY (content_hash, kind, relative_path, sheet_relative_path, slice_index),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    -- A STRICT primary key column cannot be NULL, so the two sentinels stand
-    -- in for "this kind names no sheet entry"; these keep them and the kind
-    -- agreeing.
-    CHECK ((kind = 'file') = (sheet_relative_path = '' AND slice_index = -1)),
-    CHECK ((kind = 'slice') = (sheet_relative_path <> '' AND slice_index >= 0))
-) STRICT;
-
--- The signals identification settled on for one candidate: the disc ID, the
--- barcode verdict, and the classified text, with their list values in
--- `import_candidate_signal_value`. Stored so the pane and the search sheet
--- read them back after a restart instead of re-extracting them.
---
--- Only a settled value is storable: a `Scanning` barcode or text signal is
--- artwork OCR still running, and a verdict is written only after it finishes.
-CREATE TABLE IF NOT EXISTS import_candidate_signals (
-    content_hash        TEXT PRIMARY KEY,
-    disc_id_state       TEXT NOT NULL CHECK (disc_id_state IN ('computed', 'absent', 'failed')),
-    disc_id             TEXT,
-    -- The candidate-relative path of the LOG or CUE the disc ID came from, so a
-    -- surface can put it on that file's row. NULL for a re-identify pass over a
-    -- library release, which derives the ID from stored tracks rather than a
-    -- file of a scanned folder.
-    disc_id_source_file TEXT,
-    track_count         INTEGER NOT NULL CHECK (track_count >= 0),
-    disc_id_failure     TEXT CHECK (disc_id_failure IS NULL OR disc_id_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
-    disc_id_failure_status INTEGER,
-    disc_id_failure_detail TEXT,
-    barcode_state       TEXT NOT NULL CHECK (barcode_state IN ('settled', 'failed', 'absent')),
-    barcode_failure     TEXT CHECK (barcode_failure IS NULL OR barcode_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
-    barcode_failure_status INTEGER,
-    barcode_failure_detail TEXT,
-    text_state          TEXT NOT NULL CHECK (text_state IN ('settled', 'failed')),
-    text_failure        TEXT CHECK (text_failure IS NULL OR text_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
-    text_failure_status INTEGER,
-    text_failure_detail TEXT,
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK ((disc_id_state = 'computed') = (disc_id IS NOT NULL)),
-    -- A source file with no computed ID behind it is not a provenance.
-    CHECK (disc_id_source_file IS NULL OR disc_id_state = 'computed'),
-    CHECK ((disc_id_state = 'failed') = (disc_id_failure IS NOT NULL)),
-    CHECK ((barcode_state = 'failed') = (barcode_failure IS NOT NULL)),
-    CHECK ((text_state = 'failed') = (text_failure IS NOT NULL)),
-    CHECK (disc_id_failure_status IS NULL OR disc_id_failure = 'provider'),
-    CHECK ((disc_id_failure = 'diagnostic') = (disc_id_failure_detail IS NOT NULL)),
-    CHECK (barcode_failure_status IS NULL OR barcode_failure = 'provider'),
-    CHECK ((barcode_failure = 'diagnostic') = (barcode_failure_detail IS NOT NULL)),
-    CHECK (text_failure_status IS NULL OR text_failure = 'provider'),
-    CHECK ((text_failure = 'diagnostic') = (text_failure_detail IS NOT NULL))
-) STRICT;
-
--- One value of one of the three lists a settled signal carries, in the order
--- extraction found it. Free text carries no origin; barcodes and catalog
--- numbers do, because their badges say where each came from.
-CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
-    content_hash TEXT NOT NULL,
-    list         TEXT NOT NULL CHECK (list IN ('barcode', 'catalog', 'free_text')),
-    position     INTEGER NOT NULL CHECK (position >= 0),
-    value        TEXT NOT NULL,
-    origin       TEXT CHECK (origin IS NULL OR origin IN ('disc_toc', 'cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file')),
-    -- The candidate-relative path of the file the value was read off, where the
-    -- origin is a file: the image OCR found a barcode on, the sheet a field came
-    -- from. NULL where the origin names no file (the folder's own name), and for
-    -- a re-identify pass over a library release, whose images are stored blobs.
-    -- Relative because these rows sync, and one device's absolute path means
-    -- nothing on another's.
-    origin_path  TEXT,
-    PRIMARY KEY (content_hash, list, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
-    CHECK ((list = 'free_text') = (origin IS NULL)),
-    -- A file with no origin behind it is not a provenance.
-    CHECK (origin_path IS NULL OR origin IS NOT NULL)
-) STRICT;
-
--- The last import of this candidate that failed, so the pane still offers
--- Retry after a relaunch. Cleared when an import is queued for the hash;
--- written by the worker when one fails.
-CREATE TABLE IF NOT EXISTS import_candidate_failure (
-    content_hash TEXT PRIMARY KEY,
-    error        TEXT NOT NULL,
-    failed_at    TEXT NOT NULL,
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
-) STRICT;
-
--- The cover the user chose for this candidate: one of the folder's own images,
--- or one of the picked release's remote covers. No row means the picked
--- release's default cover stands; a row is written only on an explicit choice.
-CREATE TABLE IF NOT EXISTS import_candidate_cover (
-    content_hash TEXT PRIMARY KEY,
-    kind         TEXT NOT NULL CHECK (kind IN ('local', 'remote')),
-    file_id      TEXT,
-    url          TEXT,
-    source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK ((kind = 'local') = (file_id IS NOT NULL)),
-    CHECK ((kind = 'remote') = (url IS NOT NULL AND source IS NOT NULL))
-) STRICT;
-
--- The album-level metadata fields the user typed over the picked release's
--- own. Every column is nullable and NULL means the seed's value stands, so a
--- field nobody touched still commits as untouched; a stored string, including
--- the empty one, is the user's value. `year` is text because the form is text
--- — the commit parses it.
-CREATE TABLE IF NOT EXISTS import_candidate_edit (
-    content_hash      TEXT PRIMARY KEY,
-    album_title       TEXT,
-    album_artist_text TEXT,
-    year              TEXT,
-    format            TEXT,
-    label             TEXT,
-    catalog_number    TEXT,
-    country           TEXT,
-    barcode           TEXT,
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK (album_title IS NOT NULL OR album_artist_text IS NOT NULL OR year IS NOT NULL
-        OR format IS NOT NULL OR label IS NOT NULL OR catalog_number IS NOT NULL
-        OR country IS NOT NULL OR barcode IS NOT NULL)
-) STRICT;
-
--- One mapping-table track row the user changed, whole: a track row is edited
--- as a unit, and `track_number` has no NULL left over to mean "untouched".
--- `dropped = 1` is a row taken out of the import, which then holds nothing
--- else.
-CREATE TABLE IF NOT EXISTS import_candidate_track_edit (
-    content_hash TEXT NOT NULL,
-    -- The row identity the mapping table addresses this track by.
-    track_id     TEXT NOT NULL,
-    dropped      INTEGER NOT NULL DEFAULT 0 CHECK (dropped IN (0, 1)),
-    title        TEXT,
-    artist_text  TEXT,
-    side         INTEGER,
-    track_number INTEGER,
-    -- NULL kind: the row has no audio behind it — a track the folder has
-    -- nothing for.
-    file_kind    TEXT CHECK (file_kind IS NULL OR file_kind IN ('standalone', 'sheet_slice')),
-    file_id      TEXT,
-    sheet_id     TEXT,
-    slice_index  INTEGER CHECK (slice_index IS NULL OR slice_index >= 0),
-    PRIMARY KEY (content_hash, track_id),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK ((dropped = 1) = (title IS NULL AND artist_text IS NULL AND side IS NULL
-        AND track_number IS NULL AND file_kind IS NULL)),
-    CHECK ((file_kind IS NOT NULL) = (file_id IS NOT NULL)),
-    CHECK ((file_kind = 'sheet_slice') = (sheet_id IS NOT NULL AND slice_index IS NOT NULL))
-) STRICT;
-
-
--- Device-local watched-root intent. These tables deliberately have no
--- `_updated_at` and are absent from `synced_tables()`.
+-- The folders the desktop app watches for importable releases, in the order
+-- the user arranged them.
 CREATE TABLE IF NOT EXISTS watched_import_folders (
     path      TEXT PRIMARY KEY,
     position  INTEGER NOT NULL UNIQUE CHECK (position >= 0)
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS skipped_import_candidates (
-    watched_folder_path    TEXT NOT NULL,
-    relative_candidate_path TEXT NOT NULL,
-    PRIMARY KEY (watched_folder_path, relative_candidate_path),
-    FOREIGN KEY (watched_folder_path)
-        REFERENCES watched_import_folders (path)
-        ON DELETE CASCADE
-) STRICT;
-
--- Device-local folder interpretation. Paths identify filesystem locations on
--- this device and never enter the synced membership graph.
+-- Whether a folder that holds several release-looking subfolders is one
+-- release or several.
 CREATE TABLE IF NOT EXISTS folder_release_decisions (
     watched_folder_path  TEXT NOT NULL,
     relative_folder_path TEXT NOT NULL,
@@ -748,11 +560,18 @@ CREATE TABLE IF NOT EXISTS folder_release_decisions (
         ON DELETE CASCADE
 ) STRICT;
 
--- Device-local cache of the last observed folder scan. A scan generation is
--- durable before traversal begins. Entries are written as they are discovered;
--- successful completion removes entries not seen in that generation in the
--- same transaction that marks the root complete. A failed or interrupted scan
--- keeps both previously known entries and newly discovered entries.
+-- The candidates the user dismissed, so a later scan does not offer them again.
+CREATE TABLE IF NOT EXISTS skipped_import_candidates (
+    watched_folder_path    TEXT NOT NULL,
+    relative_candidate_path TEXT NOT NULL,
+    PRIMARY KEY (watched_folder_path, relative_candidate_path),
+    FOREIGN KEY (watched_folder_path)
+        REFERENCES watched_import_folders (path)
+        ON DELETE CASCADE
+) STRICT;
+
+-- The one row handing out scan generations, so every root's generation is
+-- durable before its traversal begins.
 CREATE TABLE IF NOT EXISTS folder_scan_generation_sequence (
     singleton       INTEGER PRIMARY KEY CHECK (singleton = 1),
     last_generation INTEGER NOT NULL CHECK (last_generation >= 0)
@@ -761,6 +580,11 @@ CREATE TABLE IF NOT EXISTS folder_scan_generation_sequence (
 INSERT OR IGNORE INTO folder_scan_generation_sequence (singleton, last_generation)
 VALUES (1, 0);
 
+-- Device-local cache of the last observed scan of each watched folder. Entries
+-- are written as they are discovered; successful completion removes entries not
+-- seen in that generation in the same transaction that marks the root complete.
+-- A failed or interrupted scan keeps both previously known and newly discovered
+-- entries.
 CREATE TABLE IF NOT EXISTS folder_scan_roots (
     watched_folder_path TEXT PRIMARY KEY,
     generation          INTEGER NOT NULL CHECK (generation >= 0),
@@ -776,13 +600,17 @@ CREATE TABLE IF NOT EXISTS folder_scan_roots (
         ON DELETE CASCADE
 ) STRICT;
 
+-- The directories seen under a watched folder and when each last changed, so a
+-- rescan can skip the ones that did not.
+CREATE TABLE IF NOT EXISTS folder_scan_directory (
+    watched_folder_path TEXT NOT NULL,
+    path                TEXT NOT NULL,
+    modified_at         INTEGER NOT NULL,
+    PRIMARY KEY (watched_folder_path, path),
+    FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE
+) STRICT;
 
--- One scanned folder under a watched root. `kind` is what the scan made of
--- it: a release approximation seen before its enclosing boundary was known
--- (tentative), a release (valid), or a folder that failed validation
--- (invalid — carries the reason, no files). Entries are written as they are
--- discovered; successful completion removes entries not seen in that
--- generation in the same transaction that marks the root complete.
+-- One release-looking folder the scan found, or one combination of them.
 CREATE TABLE IF NOT EXISTS scan_candidate (
     watched_folder_path            TEXT NOT NULL,
     path                           TEXT NOT NULL,
@@ -794,20 +622,29 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     scope                          TEXT CHECK (scope IS NULL OR scope IN ('direct', 'recursive')),
     content_hash                   TEXT,
     file_edit_revision             INTEGER NOT NULL DEFAULT 0 CHECK (file_edit_revision >= 0),
-    format_label                   TEXT,
     combine_ancestor_relative_path TEXT,
     invalid_reason                 TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'corrupt_image', 'no_valid_audio')),
     invalid_reason_path            TEXT,
+    first_seen_at                  INTEGER,
+    source_date                    INTEGER,
+    source_date_kind               TEXT CHECK ((source_date IS NULL AND source_date_kind IS NULL)
+        OR (source_date IS NOT NULL AND source_date_kind IS NOT NULL
+            AND source_date_kind IN ('added_to_directory', 'created'))),
+    source_kind                    TEXT NOT NULL DEFAULT 'folder' CHECK (source_kind IN ('folder', 'combination')),
     PRIMARY KEY (watched_folder_path, path),
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
     CHECK ((kind = 'invalid') = (invalid_reason IS NOT NULL)),
-    CHECK ((kind = 'invalid') = (file_root IS NULL AND scope IS NULL AND content_hash IS NULL AND format_label IS NULL)),
+    CHECK ((kind = 'invalid') = (file_root IS NULL AND scope IS NULL AND content_hash IS NULL)),
     CHECK ((invalid_reason IN ('corrupt_audio', 'corrupt_image')) = (invalid_reason_path IS NOT NULL))
 ) STRICT;
 
--- Every file under a candidate's root, in relative_path order, with the
--- role the scan proposed (and the user's decisions applied). A track sheet
--- carries what its FILE directive resolved to and which disc it is.
+CREATE INDEX IF NOT EXISTS idx_scan_candidate_path ON scan_candidate (path);
+
+CREATE INDEX IF NOT EXISTS idx_scan_candidate_content_hash
+    ON scan_candidate (content_hash) WHERE content_hash IS NOT NULL;
+
+-- Every file of a candidate folder, the role the scan read it as, and the audio
+-- facts probing found in it.
 CREATE TABLE IF NOT EXISTS scan_candidate_file (
     watched_folder_path   TEXT NOT NULL,
     candidate_path        TEXT NOT NULL,
@@ -815,24 +652,104 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     position              INTEGER NOT NULL CHECK (position >= 0),
     absolute_path         TEXT NOT NULL,
     size                  INTEGER NOT NULL CHECK (size >= 0),
+    modified_at_ns        INTEGER NOT NULL CHECK (modified_at_ns >= 0),
+    audio_content_type    TEXT,
+    audio_duration_ms     INTEGER CHECK (audio_duration_ms IS NULL OR audio_duration_ms >= 0),
+    audio_sample_rate_hz  INTEGER CHECK (audio_sample_rate_hz IS NULL OR audio_sample_rate_hz > 0),
+    audio_bits_per_sample INTEGER CHECK (audio_bits_per_sample IS NULL OR audio_bits_per_sample > 0),
+    audio_bitrate_kbps    INTEGER CHECK (audio_bitrate_kbps IS NULL OR audio_bitrate_kbps > 0),
+    audio_channels        INTEGER CHECK (audio_channels IS NULL OR audio_channels > 0),
     file_name             TEXT NOT NULL,
     dir_prefix            TEXT,
     proposed_audio        INTEGER NOT NULL CHECK (proposed_audio IN (0, 1)),
     role                  TEXT NOT NULL CHECK (role IN ('audio', 'track_sheet', 'artwork', 'document', 'other')),
-    sheet_binding         TEXT CHECK (sheet_binding IS NULL OR sheet_binding IN ('describes', 'unresolved', 'refused_codec')),
-    sheet_binding_file_id TEXT,
+    sheet_binding         TEXT CHECK (sheet_binding IS NULL OR sheet_binding IN ('resolved', 'override', 'unresolved', 'refused_codec')),
     sheet_binding_codec   TEXT,
     sheet_disc            TEXT CHECK (sheet_disc IS NULL OR sheet_disc IN ('disc', 'ignored')),
     sheet_disc_number     INTEGER CHECK (sheet_disc_number IS NULL OR sheet_disc_number >= 1),
     PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path) REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
     CHECK ((role = 'track_sheet') = (sheet_binding IS NOT NULL AND sheet_disc IS NOT NULL)),
-    CHECK ((sheet_binding IN ('describes', 'refused_codec')) = (sheet_binding_file_id IS NOT NULL)),
     CHECK ((sheet_binding = 'refused_codec') = (sheet_binding_codec IS NOT NULL)),
-    CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL))
+    CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL)),
+    CHECK (
+        (proposed_audio = 0 AND audio_content_type IS NULL AND audio_duration_ms IS NULL
+            AND audio_sample_rate_hz IS NULL AND audio_bits_per_sample IS NULL
+            AND audio_bitrate_kbps IS NULL AND audio_channels IS NULL)
+        OR
+        (proposed_audio = 1 AND audio_content_type IS NOT NULL AND audio_duration_ms IS NOT NULL
+            AND audio_sample_rate_hz IS NOT NULL AND audio_channels IS NOT NULL
+            AND (
+                (audio_content_type IN (
+                    'audio/flac', 'audio/x-ape', 'audio/alac', 'audio/pcm',
+                    'audio/wavpack', 'audio/dsd'
+                ) AND audio_bits_per_sample IS NOT NULL AND audio_bitrate_kbps IS NULL)
+                OR
+                (audio_content_type IN (
+                    'audio/mpeg', 'audio/aac', 'audio/opus', 'audio/vorbis'
+                ) AND audio_bits_per_sample IS NULL AND audio_bitrate_kbps IS NOT NULL)
+            ))
+    )
 ) STRICT;
 
--- The parsed sheet behind a track-sheet file.
+-- What a candidate's files were probed at, and the cover its tags carried.
+CREATE TABLE IF NOT EXISTS scan_candidate_tag_snapshot (
+    watched_folder_path                 TEXT NOT NULL,
+    candidate_path                      TEXT NOT NULL,
+    scan_generation                     INTEGER NOT NULL CHECK (scan_generation >= 0),
+    file_edit_revision                  INTEGER NOT NULL CHECK (file_edit_revision >= 0),
+    embedded_cover_source_relative_path TEXT,
+    embedded_cover_content_type         TEXT,
+    embedded_cover_data                 BLOB,
+    PRIMARY KEY (watched_folder_path, candidate_path),
+    FOREIGN KEY (watched_folder_path, candidate_path)
+        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
+    CHECK (
+        (embedded_cover_source_relative_path IS NULL
+            AND embedded_cover_content_type IS NULL AND embedded_cover_data IS NULL)
+        OR
+        (embedded_cover_source_relative_path IS NOT NULL
+            AND embedded_cover_content_type IS NOT NULL AND embedded_cover_data IS NOT NULL)
+    )
+) STRICT;
+
+-- The tags each audio file of a candidate carried when it was probed.
+CREATE TABLE IF NOT EXISTS scan_candidate_file_tag (
+    watched_folder_path TEXT NOT NULL,
+    candidate_path      TEXT NOT NULL,
+    relative_path       TEXT NOT NULL,
+    file_size           INTEGER NOT NULL CHECK (file_size >= 0),
+    modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
+    title               TEXT,
+    track_artist        TEXT,
+    album_title         TEXT,
+    album_artist        TEXT,
+    year                INTEGER,
+    track_number        INTEGER,
+    disc_number         INTEGER,
+    PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
+    FOREIGN KEY (watched_folder_path, candidate_path)
+        REFERENCES scan_candidate_tag_snapshot (watched_folder_path, candidate_path) ON DELETE CASCADE,
+    FOREIGN KEY (watched_folder_path, candidate_path, relative_path)
+        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
+) STRICT;
+
+-- The subfolder boundaries a candidate was resolved across, and how each was
+-- decided.
+CREATE TABLE IF NOT EXISTS scan_candidate_resolved_boundary (
+    watched_folder_path  TEXT NOT NULL,
+    candidate_path       TEXT NOT NULL,
+    position             INTEGER NOT NULL CHECK (position >= 0),
+    relative_folder_path TEXT NOT NULL,
+    decision             TEXT NOT NULL CHECK (decision IN ('combine_as_one_release', 'keep_as_separate_releases')),
+    name                 TEXT NOT NULL,
+    display_path         TEXT NOT NULL,
+    PRIMARY KEY (watched_folder_path, candidate_path, position),
+    FOREIGN KEY (watched_folder_path, candidate_path)
+        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE
+) STRICT;
+
+-- A CUE sheet found beside a candidate's audio, as parsed.
 CREATE TABLE IF NOT EXISTS scan_cue_sheet (
     watched_folder_path TEXT NOT NULL,
     candidate_path      TEXT NOT NULL,
@@ -846,6 +763,7 @@ CREATE TABLE IF NOT EXISTS scan_cue_sheet (
         REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
 ) STRICT;
 
+-- One track of a CUE sheet, with the span and pregap it declares.
 CREATE TABLE IF NOT EXISTS scan_cue_track (
     watched_folder_path         TEXT NOT NULL,
     candidate_path              TEXT NOT NULL,
@@ -871,6 +789,7 @@ CREATE TABLE IF NOT EXISTS scan_cue_track (
     CHECK ((pregap_kind = 'audio') = (pregap_index_number IS NOT NULL AND pregap_index_file_reference IS NOT NULL))
 ) STRICT;
 
+-- Every INDEX line of a CUE track, in the order the sheet stated them.
 CREATE TABLE IF NOT EXISTS scan_cue_index (
     watched_folder_path TEXT NOT NULL,
     candidate_path      TEXT NOT NULL,
@@ -885,39 +804,634 @@ CREATE TABLE IF NOT EXISTS scan_cue_index (
         REFERENCES scan_cue_track (watched_folder_path, candidate_path, sheet_relative_path, position) ON DELETE CASCADE
 ) STRICT;
 
--- The explicit boundary decisions that exposed a candidate, retained so its
--- context menu can set the opposite interpretation.
-CREATE TABLE IF NOT EXISTS scan_candidate_resolved_boundary (
-    watched_folder_path  TEXT NOT NULL,
-    candidate_path       TEXT NOT NULL,
-    position             INTEGER NOT NULL CHECK (position >= 0),
-    relative_folder_path TEXT NOT NULL,
-    decision             TEXT NOT NULL CHECK (decision IN ('combine_as_one_release', 'keep_as_separate_releases')),
-    name                 TEXT NOT NULL,
-    display_path         TEXT NOT NULL,
-    PRIMARY KEY (watched_folder_path, candidate_path, position),
-    FOREIGN KEY (watched_folder_path, candidate_path) REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE
-) STRICT;
-
--- Every directory a completed walk of this root read, and when it was last
--- modified. What lets a folder on a network volume be asked "has anything
--- moved?" without walking it: a directory's mtime changes when a file in it is
--- added, removed or rewritten, and adding a folder changes its parent's.
---
--- Recorded only by a walk that could read the mtime of every directory it
--- visited. A root with no rows here is a root nothing can be concluded about,
--- and it is walked.
-CREATE TABLE IF NOT EXISTS folder_scan_directory (
+-- Which audio file each FILE reference of a CUE sheet resolved to.
+CREATE TABLE IF NOT EXISTS scan_sheet_audio_file (
     watched_folder_path TEXT NOT NULL,
-    path                TEXT NOT NULL,
-    modified_at         INTEGER NOT NULL,
-    PRIMARY KEY (watched_folder_path, path),
-    FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE
+    candidate_path      TEXT NOT NULL,
+    sheet_relative_path TEXT NOT NULL,
+    position            INTEGER NOT NULL CHECK (position >= 0),
+    file_reference      TEXT NOT NULL,
+    audio_relative_path TEXT NOT NULL,
+    PRIMARY KEY (watched_folder_path, candidate_path, sheet_relative_path, position),
+    UNIQUE (watched_folder_path, candidate_path, sheet_relative_path, file_reference),
+    UNIQUE (watched_folder_path, candidate_path, sheet_relative_path, audio_relative_path),
+    FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path)
+        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE,
+    FOREIGN KEY (watched_folder_path, candidate_path, audio_relative_path)
+        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
 ) STRICT;
 
--- A candidate is addressed by its path alone (the key a selection carries)
--- and gathered by its content hash (the file decision that reshapes every
--- copy of one release). Neither is the leading column of the primary key.
-CREATE INDEX IF NOT EXISTS idx_scan_candidate_path ON scan_candidate (path);
-CREATE INDEX IF NOT EXISTS idx_scan_candidate_content_hash
-    ON scan_candidate (content_hash) WHERE content_hash IS NOT NULL;
+-- Several scanned folders the user joined into one candidate.
+CREATE TABLE IF NOT EXISTS candidate_combination (
+    candidate_key TEXT PRIMARY KEY,
+    watched_folder_path TEXT NOT NULL
+        REFERENCES watched_import_folders (path) ON DELETE CASCADE,
+    name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+    skipped INTEGER NOT NULL DEFAULT 0 CHECK (skipped IN (0, 1)),
+    created_at INTEGER NOT NULL,
+    error TEXT
+) STRICT;
+
+-- One member folder of a combination, with the discs and tracks it contributes.
+CREATE TABLE IF NOT EXISTS candidate_combination_member (
+    combination_key TEXT NOT NULL
+        REFERENCES candidate_combination (candidate_key) ON DELETE CASCADE,
+    position INTEGER NOT NULL CHECK (position >= 0),
+    candidate_key TEXT NOT NULL UNIQUE,
+    watched_folder_path TEXT NOT NULL,
+    folder_name TEXT NOT NULL,
+    file_prefix TEXT NOT NULL,
+    first_disc INTEGER NOT NULL CHECK (first_disc >= 1),
+    disc_count INTEGER NOT NULL CHECK (disc_count >= 1),
+    track_count INTEGER NOT NULL CHECK (track_count >= 1),
+    PRIMARY KEY (combination_key, position)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS candidate_combination_member_by_root
+    ON candidate_combination_member (watched_folder_path);
+
+-- A combination outlives neither its watched folder nor its member folders: it
+-- is dropped when the root goes, and marked unusable when a member changes.
+
+CREATE TRIGGER IF NOT EXISTS remove_root_combinations BEFORE DELETE ON watched_import_folders
+BEGIN
+    DELETE FROM candidate_combination
+    WHERE candidate_key IN (
+        SELECT combination_key FROM candidate_combination_member
+        WHERE watched_folder_path = OLD.path
+    );
+END;
+
+CREATE TRIGGER IF NOT EXISTS invalidate_combination_source_delete BEFORE DELETE ON scan_candidate
+WHEN OLD.source_kind = 'folder'
+BEGIN
+    UPDATE candidate_combination
+    SET error = 'Source folder changed or disappeared: ' || OLD.name
+    WHERE candidate_key IN (
+        SELECT combination_key FROM candidate_combination_member WHERE candidate_key = OLD.path
+    );
+END;
+
+CREATE TRIGGER IF NOT EXISTS invalidate_combination_source_edit AFTER UPDATE OF content_hash, file_edit_revision ON scan_candidate
+WHEN OLD.source_kind = 'folder'
+    AND (NEW.content_hash IS NOT OLD.content_hash OR NEW.file_edit_revision != OLD.file_edit_revision)
+BEGIN
+    UPDATE candidate_combination
+    SET error = 'Source folder changed: ' || OLD.name
+    WHERE candidate_key IN (
+        SELECT combination_key FROM candidate_combination_member WHERE candidate_key = OLD.path
+    );
+END;
+
+CREATE TRIGGER IF NOT EXISTS remove_combination_candidate AFTER DELETE ON candidate_combination
+BEGIN
+    DELETE FROM scan_candidate
+    WHERE source_kind = 'combination' AND path = OLD.candidate_key;
+END;
+
+-- ── Import candidates ─────────────────────────────────────────────────────────
+
+-- One folder being imported, named by the hash of its file structure. Every
+-- other candidate table hangs off this one.
+CREATE TABLE IF NOT EXISTS import_candidate_state (
+    content_hash      TEXT PRIMARY KEY,
+    -- Where the candidate was last seen. Not identity, not authoritative.
+    folder_path       TEXT NOT NULL,
+    -- Advances with every metadata-draft or selected-cover mutation. Commands
+    -- return this value so a surface can wait for the exact committed detail.
+    metadata_revision INTEGER NOT NULL DEFAULT 0 CHECK (metadata_revision >= 0),
+    -- Advances with every file decision, so a verdict derived from an older
+    -- shape is refused.
+    edit_revision     INTEGER NOT NULL DEFAULT 0 CHECK (edit_revision >= 0)
+) STRICT;
+
+-- Which watched folders a candidate was found under — more than one when the
+-- same folder is watched twice.
+CREATE TABLE IF NOT EXISTS import_candidate_watched_root (
+    content_hash        TEXT NOT NULL,
+    watched_folder_path TEXT NOT NULL,
+    PRIMARY KEY (content_hash, watched_folder_path),
+    FOREIGN KEY (content_hash)
+        REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (watched_folder_path)
+        REFERENCES watched_import_folders (path) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS import_candidate_watched_root_by_root
+    ON import_candidate_watched_root (watched_folder_path);
+
+-- The release-level metadata draft the import will write.
+CREATE TABLE IF NOT EXISTS import_candidate_edit (
+    content_hash   TEXT PRIMARY KEY,
+    album_title    TEXT NOT NULL,
+    album_year     TEXT NOT NULL,
+    year           TEXT NOT NULL,
+    format         TEXT NOT NULL,
+    label          TEXT NOT NULL,
+    catalog_number TEXT NOT NULL,
+    country        TEXT NOT NULL,
+    barcode        TEXT NOT NULL,
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The album artists of the draft: either an artist the library already holds
+-- or a new one to create.
+CREATE TABLE IF NOT EXISTS import_candidate_album_artist_assignment (
+    content_hash          TEXT NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    assignment_kind       TEXT NOT NULL CHECK (assignment_kind IN ('existing', 'new')),
+    artist_id             TEXT,
+    name                  TEXT,
+    sort_name             TEXT,
+    musicbrainz_artist_id TEXT,
+    discogs_artist_id     TEXT,
+    PRIMARY KEY (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
+    CHECK (
+        (assignment_kind = 'existing' AND artist_id IS NOT NULL AND name IS NULL
+            AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL)
+        OR
+        (assignment_kind = 'new' AND artist_id IS NULL AND name IS NOT NULL AND name <> '')
+    )
+) STRICT;
+
+-- The tracks of the draft, each bound to the file (or CUE slice) it plays.
+CREATE TABLE IF NOT EXISTS import_candidate_track (
+    content_hash           TEXT NOT NULL,
+    track_id               TEXT NOT NULL,
+    position               INTEGER NOT NULL CHECK (position >= 0),
+    title                  TEXT NOT NULL,
+    artist_assignment_kind TEXT NOT NULL CHECK (artist_assignment_kind IN ('album_artists', 'explicit')),
+    side                   INTEGER,
+    track_number           INTEGER NOT NULL,
+    source_index           INTEGER CHECK (source_index IS NULL OR source_index >= 0),
+    file_kind              TEXT NOT NULL CHECK (file_kind IN ('standalone', 'sheet_slice')),
+    file_id                TEXT NOT NULL,
+    sheet_id               TEXT,
+    slice_index            INTEGER CHECK (slice_index IS NULL OR slice_index >= 0),
+    PRIMARY KEY (content_hash, track_id),
+    UNIQUE (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE,
+    CHECK (
+        (file_kind = 'standalone' AND file_id IS NOT NULL AND sheet_id IS NULL AND slice_index IS NULL)
+        OR (file_kind = 'sheet_slice' AND file_id IS NOT NULL AND sheet_id IS NOT NULL AND slice_index IS NOT NULL)
+    )
+) STRICT;
+
+-- The per-track artists of the draft, where a track does not take the album's.
+CREATE TABLE IF NOT EXISTS import_candidate_track_artist_assignment (
+    content_hash          TEXT NOT NULL,
+    track_id              TEXT NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    assignment_kind       TEXT NOT NULL CHECK (assignment_kind IN ('existing', 'new')),
+    artist_id             TEXT,
+    name                  TEXT,
+    sort_name             TEXT,
+    musicbrainz_artist_id TEXT,
+    discogs_artist_id     TEXT,
+    PRIMARY KEY (content_hash, track_id, position),
+    FOREIGN KEY (content_hash, track_id)
+        REFERENCES import_candidate_track (content_hash, track_id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
+    CHECK (
+        (assignment_kind = 'existing' AND artist_id IS NOT NULL AND name IS NULL
+            AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL)
+        OR
+        (assignment_kind = 'new' AND artist_id IS NULL AND name IS NOT NULL AND name <> '')
+    )
+) STRICT;
+
+-- The user's answers about a candidate's files: what a file is, and which disc
+-- a CUE sheet describes.
+CREATE TABLE IF NOT EXISTS import_candidate_file_edit (
+    content_hash TEXT NOT NULL,
+    relative_path TEXT NOT NULL,
+    role_choice TEXT CHECK (role_choice IS NULL OR role_choice IN ('audio', 'not_a_track')),
+    sheet_disc TEXT CHECK (sheet_disc IS NULL OR sheet_disc IN ('disc', 'ignored')),
+    sheet_disc_number INTEGER CHECK (sheet_disc_number IS NULL OR sheet_disc_number >= 1),
+    PRIMARY KEY (content_hash, relative_path),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state(content_hash) ON DELETE CASCADE,
+    CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL)),
+    CHECK (role_choice IS NOT NULL OR sheet_disc IS NOT NULL)
+) STRICT;
+
+-- Which audio file the user bound each FILE reference of a CUE sheet to.
+CREATE TABLE IF NOT EXISTS import_candidate_sheet_reference (
+    content_hash TEXT NOT NULL,
+    sheet_id TEXT NOT NULL,
+    file_reference TEXT NOT NULL,
+    file_id TEXT,
+    PRIMARY KEY (content_hash, sheet_id, file_reference),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state(content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The cover the import will write: a file of the folder, a tag's embedded
+-- image, or one offered by a catalog.
+CREATE TABLE IF NOT EXISTS import_candidate_cover (
+    content_hash TEXT PRIMARY KEY,
+    kind         TEXT NOT NULL CHECK (kind IN ('local', 'remote', 'embedded')),
+    file_id      TEXT,
+    url          TEXT,
+    source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK ((kind IN ('local', 'embedded')) = (file_id IS NOT NULL)),
+    CHECK ((kind = 'remote') = (url IS NOT NULL AND source IS NOT NULL))
+) STRICT;
+
+-- The bytes of a catalog-offered cover, fetched before the import runs.
+CREATE TABLE IF NOT EXISTS import_candidate_remote_cover_asset (
+    content_hash TEXT PRIMARY KEY,
+    content_type TEXT NOT NULL,
+    bytes        BLOB NOT NULL,
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_cover (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The Discogs artists the draft credits, so their pictures can be fetched.
+CREATE TABLE IF NOT EXISTS import_candidate_source_artist (
+    content_hash      TEXT NOT NULL,
+    discogs_artist_id TEXT NOT NULL,
+    PRIMARY KEY (content_hash, discogs_artist_id),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The picture fetched for one credited artist, or the settled answer that
+-- there is none.
+CREATE TABLE IF NOT EXISTS import_candidate_artist_asset (
+    content_hash      TEXT NOT NULL,
+    discogs_artist_id TEXT NOT NULL,
+    answer            TEXT NOT NULL CHECK (answer IN ('image', 'nothing')),
+    source_url        TEXT,
+    content_type      TEXT,
+    bytes             BLOB,
+    PRIMARY KEY (content_hash, discogs_artist_id),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK (
+        (answer = 'image' AND source_url IS NOT NULL AND content_type IS NOT NULL AND bytes IS NOT NULL)
+        OR
+        (answer = 'nothing' AND source_url IS NULL AND content_type IS NULL AND bytes IS NULL)
+    )
+) STRICT;
+
+-- The candidates whose remote assets are all fetched and ready to import.
+CREATE TABLE IF NOT EXISTS import_candidate_asset_preparation (
+    content_hash TEXT PRIMARY KEY,
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- Where the draft was read from, and who asked for that reading.
+CREATE TABLE IF NOT EXISTS import_candidate_draft_provenance (
+    content_hash TEXT PRIMARY KEY,
+    kind         TEXT NOT NULL CHECK (kind IN ('external_release', 'file_tags')),
+    source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
+    release_id   TEXT,
+    author       TEXT NOT NULL CHECK (author IN ('user', 'identification')),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE,
+    -- Only a release names a release; File Tags names the candidate's own files.
+    CHECK ((kind = 'external_release') = (source IS NOT NULL)),
+    CHECK ((kind = 'external_release') = (release_id IS NOT NULL)),
+    -- Identification only ever concludes a release. Reading a folder's own tags
+    -- is something a person asks for.
+    CHECK (author != 'identification' OR kind = 'external_release')
+) STRICT;
+
+-- The releases in the other catalogs that the draft's own record links to.
+CREATE TABLE IF NOT EXISTS import_candidate_provenance_partner (
+    content_hash TEXT NOT NULL,
+    source       TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    release_id   TEXT NOT NULL,
+    PRIMARY KEY (content_hash, source),
+    FOREIGN KEY (content_hash)
+        REFERENCES import_candidate_draft_provenance (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The catalog documents the draft was built from, stored whole so the draft
+-- can be re-read without asking the provider again.
+CREATE TABLE IF NOT EXISTS import_candidate_applied_source (
+    content_hash TEXT PRIMARY KEY,
+    snapshot TEXT NOT NULL CHECK (json_valid(snapshot)),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- What the import pane is showing for this candidate and what is typed in its
+-- search fields.
+CREATE TABLE IF NOT EXISTS import_candidate_session (
+    content_hash   TEXT PRIMARY KEY,
+    presentation   TEXT NOT NULL CHECK (presentation IN ('draft', 'find_online')),
+    search_tab     TEXT NOT NULL CHECK (search_tab IN ('general', 'catalog_number', 'barcode')),
+    search_artist  TEXT NOT NULL,
+    search_album   TEXT NOT NULL,
+    search_catalog TEXT NOT NULL,
+    search_barcode TEXT NOT NULL,
+    error          TEXT,
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- Why a candidate's import failed.
+CREATE TABLE IF NOT EXISTS import_candidate_failure (
+    content_hash TEXT PRIMARY KEY,
+    error        TEXT NOT NULL,
+    failed_at    TEXT NOT NULL,
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The failure where one incoming artist name matches two library artists, each
+-- already linked to a different provider.
+CREATE TABLE IF NOT EXISTS import_candidate_artist_identity_conflict (
+    content_hash                  TEXT PRIMARY KEY,
+    incoming_artist_name          TEXT NOT NULL,
+    discogs_artist_id             TEXT NOT NULL,
+    musicbrainz_artist_id         TEXT NOT NULL,
+    discogs_library_artist_id     TEXT NOT NULL,
+    musicbrainz_library_artist_id TEXT NOT NULL,
+    FOREIGN KEY (content_hash)
+        REFERENCES import_candidate_failure (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (discogs_library_artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
+    FOREIGN KEY (musicbrainz_library_artist_id) REFERENCES artists (id) ON DELETE RESTRICT
+) STRICT;
+
+-- ── Identification ────────────────────────────────────────────────────────────
+
+-- What extraction read off a candidate: the disc's table of contents, and
+-- whether the barcode and text passes settled or failed.
+CREATE TABLE IF NOT EXISTS import_candidate_signals (
+    content_hash           TEXT PRIMARY KEY,
+    disc_id_state          TEXT NOT NULL CHECK (disc_id_state IN ('computed', 'absent', 'failed')),
+    disc_id                TEXT,
+    -- The candidate-relative path of the LOG or CUE the disc ID came from, so a
+    -- surface can put it on that file's row. NULL for a re-identify pass over a
+    -- library release, which derives the ID from stored tracks rather than a
+    -- file of a scanned folder.
+    disc_id_source_file    TEXT,
+    track_count            INTEGER NOT NULL CHECK (track_count >= 0),
+    disc_id_failure        TEXT CHECK (disc_id_failure IS NULL OR disc_id_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
+    disc_id_failure_status INTEGER,
+    disc_id_failure_detail TEXT,
+    barcode_state          TEXT NOT NULL CHECK (barcode_state IN ('settled', 'failed', 'absent')),
+    barcode_failure        TEXT CHECK (barcode_failure IS NULL OR barcode_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
+    barcode_failure_status INTEGER,
+    barcode_failure_detail TEXT,
+    text_state             TEXT NOT NULL CHECK (text_state IN ('settled', 'failed')),
+    text_failure           TEXT CHECK (text_failure IS NULL OR text_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
+    text_failure_status    INTEGER,
+    text_failure_detail    TEXT,
+    -- Where the rip-check counts were read from, where there are any.
+    verification_source    TEXT CHECK (verification_source IS NULL OR verification_source IN ('log')),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK ((disc_id_state = 'computed') = (disc_id IS NOT NULL)),
+    -- A source file with no computed ID behind it is not a provenance.
+    CHECK (disc_id_source_file IS NULL OR disc_id_state = 'computed'),
+    CHECK ((disc_id_state = 'failed') = (disc_id_failure IS NOT NULL)),
+    CHECK ((barcode_state = 'failed') = (barcode_failure IS NOT NULL)),
+    CHECK ((text_state = 'failed') = (text_failure IS NOT NULL)),
+    CHECK (disc_id_failure_status IS NULL OR disc_id_failure = 'provider'),
+    CHECK ((disc_id_failure = 'diagnostic') = (disc_id_failure_detail IS NOT NULL)),
+    CHECK (barcode_failure_status IS NULL OR barcode_failure = 'provider'),
+    CHECK ((barcode_failure = 'diagnostic') = (barcode_failure_detail IS NOT NULL)),
+    CHECK (text_failure_status IS NULL OR text_failure = 'provider'),
+    CHECK ((text_failure = 'diagnostic') = (text_failure_detail IS NOT NULL))
+) STRICT;
+
+-- The barcodes and catalog numbers read off a candidate, in reading order,
+-- each with the surface it was read from.
+CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
+    content_hash TEXT NOT NULL,
+    list         TEXT NOT NULL CHECK (list IN ('barcode', 'catalog', 'free_text')),
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    value        TEXT NOT NULL,
+    origin       TEXT CHECK (origin IS NULL OR origin IN ('disc_toc', 'cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file')),
+    -- The candidate-relative path of the file the value was read off, where the
+    -- origin is a file: the image OCR found a barcode on, the sheet a field came
+    -- from. NULL where the origin names no file (the folder's own name), and for
+    -- a re-identify pass over a library release, whose images are stored blobs.
+    origin_path  TEXT,
+    -- The box the detector drew around the value, as fractions of the image.
+    region_x REAL,
+    region_y REAL,
+    region_width REAL,
+    region_height REAL,
+    PRIMARY KEY (content_hash, list, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
+    CHECK ((list = 'free_text') = (origin IS NULL)),
+    -- A file with no origin behind it is not a provenance.
+    CHECK (origin_path IS NULL OR origin IS NOT NULL)
+) STRICT;
+
+-- Every line of text read off a candidate's surfaces, which ranking reads the
+-- folder's own claims out of.
+CREATE TABLE IF NOT EXISTS import_candidate_text_line (
+    content_hash  TEXT NOT NULL,
+    position      INTEGER NOT NULL CHECK (position >= 0),
+    text          TEXT NOT NULL,
+    origin        TEXT NOT NULL
+        CHECK (origin IN ('disc_toc', 'cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file')),
+    -- The candidate-relative path of the file the line was read off. NULL for
+    -- the folder's own name, and for a re-identify pass over a library release,
+    -- whose images are stored blobs rather than files of a folder.
+    origin_path   TEXT,
+    -- Where on the image the line was read, as fractions of its width and
+    -- height with the origin at the top-left corner. All four present or all
+    -- four absent; only an artwork line whose recognizer reports positions has
+    -- them.
+    region_x      REAL,
+    region_y      REAL,
+    region_width  REAL,
+    region_height REAL,
+    PRIMARY KEY (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
+    CHECK ((region_x IS NULL) = (region_y IS NULL)
+       AND (region_x IS NULL) = (region_width IS NULL)
+       AND (region_x IS NULL) = (region_height IS NULL))
+) STRICT;
+
+-- The rip-check counts a ripper's log stated for each track of a candidate.
+CREATE TABLE IF NOT EXISTS import_candidate_verification (
+    content_hash            TEXT NOT NULL,
+    track                   INTEGER NOT NULL CHECK (track >= 1),
+    accuraterip_confidence  INTEGER CHECK (accuraterip_confidence IS NULL OR accuraterip_confidence >= 0),
+    ctdb_confidence         INTEGER CHECK (ctdb_confidence IS NULL OR ctdb_confidence >= 0),
+    crc                     INTEGER,
+    PRIMARY KEY (content_hash, track),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- Which of the names read off a candidate the user let the lookups use.
+CREATE TABLE IF NOT EXISTS import_candidate_lookup_choices (
+    content_hash     TEXT PRIMARY KEY,
+    disc_id_excluded INTEGER NOT NULL CHECK (disc_id_excluded IN (0, 1)),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The catalog numbers the user chose to look up, in the order chosen.
+CREATE TABLE IF NOT EXISTS import_candidate_chosen_catalog (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL,
+    value        TEXT NOT NULL,
+    PRIMARY KEY (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_lookup_choices (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The catalog numbers the user ruled out.
+CREATE TABLE IF NOT EXISTS import_candidate_discounted_catalog (
+    content_hash TEXT NOT NULL,
+    value        TEXT NOT NULL,
+    PRIMARY KEY (content_hash, value),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_lookup_choices (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The barcodes the user ruled out.
+CREATE TABLE IF NOT EXISTS import_candidate_excluded_barcode (
+    content_hash TEXT NOT NULL,
+    value        TEXT NOT NULL,
+    PRIMARY KEY (content_hash, value),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_lookup_choices (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- What an identify run concluded, and the ledger it recorded as it ended.
+CREATE TABLE IF NOT EXISTS import_candidate_verdict (
+    content_hash             TEXT PRIMARY KEY,
+    kind                     TEXT NOT NULL
+        CHECK (kind IN ('found', 'not_found', 'manual_only', 'failed')),
+    -- The tracks the folder played when the verdict was reached. Only a verdict
+    -- that found nothing anywhere counts none.
+    track_count              INTEGER CHECK (track_count IS NULL OR track_count >= 0),
+    -- The typed lookup failures of a failed verdict, serialized as one value
+    -- because no query dispatches on their internals; queue placement needs only
+    -- the verdict's kind.
+    failures_json            TEXT CHECK (
+        failures_json IS NULL
+        OR (json_valid(failures_json)
+            AND json_type(failures_json) = 'array'
+            AND json_array_length(failures_json) > 0)
+    ),
+    -- The ledger the run recorded as it ended, stored whole: no query reads into
+    -- it. NULL is "no ledger recorded".
+    ledger_json              TEXT CHECK (
+        ledger_json IS NULL
+        OR (json_valid(ledger_json) AND json_type(ledger_json) = 'object')
+    ),
+    probed_total_duration_ms INTEGER NOT NULL CHECK (probed_total_duration_ms >= 0),
+    identified_at            TEXT NOT NULL,
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK ((kind = 'not_found') = (track_count IS NULL)),
+    CHECK ((kind = 'failed') = (failures_json IS NOT NULL))
+) STRICT;
+
+-- Every release a run's lookups returned, in the order it listed them, with
+-- what the record said and which lookup found it.
+CREATE TABLE IF NOT EXISTS import_candidate_match (
+    content_hash           TEXT NOT NULL,
+    position               INTEGER NOT NULL CHECK (position >= 0),
+    -- The pressing row this release belongs to, numbered from zero within its
+    -- own list: the matches number their rows and the narrowed-out releases
+    -- number theirs, each in the order the run listed them.
+    pressing               INTEGER NOT NULL CHECK (pressing >= 0),
+    source                 TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    release_id             TEXT NOT NULL,
+    title                  TEXT NOT NULL,
+    artist                 TEXT,
+    year                   INTEGER,
+    format                 TEXT,
+    label                  TEXT,
+    catalog_number         TEXT,
+    country                TEXT,
+    -- What the record said the pressing is made of. 'undescribed': the
+    -- response described no media, and there are no medium rows.
+    -- 'per_medium': one medium row per medium the record listed, its format
+    -- NULL where the record stated none. 'descriptors': one medium row per
+    -- format name or qualifier, each stating its text; which medium each
+    -- describes is not said.
+    media_kind             TEXT NOT NULL
+        CHECK (media_kind IN ('undescribed', 'per_medium', 'descriptors')),
+    cover_url              TEXT,
+    cover_thumbnail_url    TEXT,
+    cover_label            TEXT,
+    cover_source           TEXT CHECK (cover_source IS NULL OR cover_source IN ('musicbrainz', 'discogs')),
+    source_group_id        TEXT,
+    -- NULL: nobody asked the source for its tracklist yet. 'listed' /
+    -- 'nothing': asked. The total is NULL when any listed track has no length.
+    source_tracks_kind     TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing')),
+    source_tracks_count    INTEGER CHECK (source_tracks_count IS NULL OR source_tracks_count >= 0),
+    source_tracks_total_ms INTEGER CHECK (source_tracks_total_ms IS NULL OR source_tracks_total_ms >= 0),
+    -- Which lookup returned this release. What the folder's own text says about
+    -- it is not here: that is read out of the text lines every time the
+    -- verdict is read, so changing what the text is taken to state re-ranks the
+    -- rows without re-running anything.
+    by_disc_id             INTEGER NOT NULL CHECK (by_disc_id IN (0, 1)),
+    by_barcode             INTEGER NOT NULL CHECK (by_barcode IN (0, 1)),
+    by_catalog             INTEGER NOT NULL CHECK (by_catalog IN (0, 1)),
+    narrowed_out           INTEGER NOT NULL DEFAULT 0 CHECK (narrowed_out IN (0, 1)),
+    PRIMARY KEY (content_hash, position),
+    -- The medium rows reference the match together with its media kind, so a
+    -- row can only ever belong to a match of the kind it was written for.
+    UNIQUE (content_hash, position, media_kind),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    CHECK ((cover_url IS NULL) = (cover_thumbnail_url IS NULL) AND (cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL)),
+    CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
+    CHECK (source_tracks_total_ms IS NULL OR source_tracks_kind = 'listed')
+) STRICT;
+
+-- Every barcode a matched record states.
+CREATE TABLE IF NOT EXISTS import_candidate_match_barcode (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL,
+    ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
+    barcode      TEXT NOT NULL CHECK (barcode <> ''),
+    PRIMARY KEY (content_hash, position, ordinal),
+    FOREIGN KEY (content_hash, position)
+        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
+) STRICT;
+
+-- Every other catalog entry a matched record links to.
+CREATE TABLE IF NOT EXISTS import_candidate_match_link (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL,
+    ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
+    catalog      TEXT NOT NULL CHECK (catalog <> ''),
+    key          TEXT NOT NULL CHECK (key <> ''),
+    PRIMARY KEY (content_hash, position, ordinal),
+    FOREIGN KEY (content_hash, position)
+        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
+) STRICT;
+
+-- What a matched record said its media are, one row per medium or per format
+-- descriptor, per the match's media kind.
+CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL,
+    media_kind   TEXT NOT NULL CHECK (media_kind IN ('per_medium', 'descriptors')),
+    ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
+    format       TEXT CHECK (format IS NULL OR format <> ''),
+    PRIMARY KEY (content_hash, position, ordinal),
+    FOREIGN KEY (content_hash, position, media_kind)
+        REFERENCES import_candidate_match (content_hash, position, media_kind)
+        ON DELETE CASCADE,
+    CHECK (media_kind = 'per_medium' OR format IS NOT NULL)
+) STRICT;
+
+-- ── Catalog documents ─────────────────────────────────────────────────────────
+
+-- The provider responses a lookup fetched, kept as returned so a draft can be
+-- re-read without asking again.
+CREATE TABLE IF NOT EXISTS source_release_payloads (
+    -- Which lookup produced this document, and therefore what
+    -- `source_release_id` names:
+    --   'musicbrainz'                     the release itself
+    --   'musicbrainz_release_group'       its release group, by group id
+    --   'discogs'                         a Discogs release
+    --   'discogs_master'                  a Discogs master, by master id
+    --   'musicbrainz_discogs_xref'        the MusicBrainz release cross-linked
+    --                                     to a Discogs one, by the *Discogs*
+    --                                     release id — MusicBrainz's URL lookup
+    --                                     found it, so nothing in the Discogs
+    --                                     document names it back
+    --   'wikidata'                        the Wikidata item a MusicBrainz
+    --                                     release or release group links to,
+    --                                     by item id
+    source TEXT NOT NULL,
+    source_release_id TEXT NOT NULL,
+    -- The document as the provider returned it.
+    json TEXT NOT NULL CHECK (json_valid(json)),
+    fetched_at TEXT NOT NULL,
+    PRIMARY KEY (source, source_release_id)
+) STRICT;
