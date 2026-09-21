@@ -8,6 +8,11 @@ enum SnapshotTestSupport {
     /// Host `view` (sized to `size`) in a borderless key window. The caller keeps
     /// the returned window alive for the test's duration and uses the host to
     /// capture pixels or send events through the window.
+    ///
+    /// The tree's layers are set to draw at `captureScale` as soon as they
+    /// exist, so the redraw that a display at another scale needs happens
+    /// while the caller settles the view, not between two captures a test
+    /// compares pixel for pixel.
     @MainActor
     static func hostInWindow<V: View>(
         _ view: V,
@@ -24,6 +29,10 @@ enum SnapshotTestSupport {
         )
         window.contentView = host
         window.makeKeyAndOrderFront(nil)
+        host.layoutSubtreeIfNeeded()
+        if let layer = host.layer {
+            rescale(layer)
+        }
         return (window, host)
     }
 
@@ -40,37 +49,155 @@ enum SnapshotTestSupport {
     /// light one, so a capture that read on a dark development machine read
     /// as empty on a light hosted runner. Over the window's own colour the
     /// words have the same contrast in either appearance.
+    ///
+    /// Composed in a Core Graphics context addressed in pixels: a fill
+    /// through the bitmap's AppKit graphics context painted nothing on the
+    /// hosted runner and left the capture transparent, while the same fill
+    /// painted on a development machine.
     @MainActor
     static func capturePNG(
         _ host: NSView,
         size: NSSize,
         waitNanoseconds: UInt64 = 0
     ) async throws -> Data {
-        let bounds = NSRect(origin: .zero, size: size)
         host.layoutSubtreeIfNeeded()
         await Task.yield()
         if waitNanoseconds > 0 {
             try await Task.sleep(nanoseconds: waitNanoseconds)
         }
         host.layoutSubtreeIfNeeded()
-        let window = try #require(host.window)
-        let view = try #require(
-            host.bitmapImageRepForCachingDisplay(in: bounds)
+        let view = try bitmap(of: host, size: size)
+        let viewImage = try #require(view.cgImage)
+        let pixels = CGRect(
+            x: 0,
+            y: 0,
+            width: view.pixelsWide,
+            height: view.pixelsHigh
         )
-        host.cacheDisplay(in: bounds, to: view)
-        let composed = try #require(
-            host.bitmapImageRepForCachingDisplay(in: bounds)
+        let space = try #require(view.colorSpace.cgColorSpace)
+        let context = try #require(
+            CGContext(
+                data: nil,
+                width: view.pixelsWide,
+                height: view.pixelsHigh,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: space,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
         )
-        let context = try #require(NSGraphicsContext(bitmapImageRep: composed))
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = context
-        window.backgroundColor.setFill()
-        bounds.fill()
-        view.draw(in: bounds)
-        NSGraphicsContext.restoreGraphicsState()
+        let backdrop = try windowBackground(for: host, in: view.colorSpace)
+        context.setFillColor(backdrop.cgColor)
+        context.fill(pixels)
+        context.draw(viewImage, in: pixels)
+        let composedImage = try #require(context.makeImage())
+        let composed = NSBitmapImageRep(cgImage: composedImage)
+        composed.size = size
         return try #require(
             composed.representation(using: .png, properties: [:])
         )
+    }
+
+    /// Pixels per point in every capture. Fixed rather than read from the
+    /// window's screen so every machine draws the same pixels: a Retina
+    /// development machine gives 2x, a hosted runner's display 1x, and at 1x
+    /// a caption-sized word is ten pixels tall, which the text recognizer
+    /// reads as other letters.
+    static let captureScale = 2
+
+    /// The pixels `host` paints, at `captureScale`, in the colour space its
+    /// display would draw them in. Transparent where the view draws nothing.
+    ///
+    /// The colour space is the display's rather than sRGB because converting
+    /// a capture to sRGB changed what the recognizer read: a thin grey
+    /// catalog number read correctly in the display's space and with one
+    /// digit wrong after conversion, over any backdrop or none.
+    ///
+    /// The hosted tree's layers draw their contents at the display's scale
+    /// and a capture only copies those contents, so on a 1x display a 2x
+    /// bitmap held text rasterized at 1x and stretched, which the recognizer
+    /// misread by a glyph. Every layer is told to draw at `captureScale`
+    /// first, so the capture carries text rendered at that scale wherever
+    /// the window sits.
+    @MainActor
+    static func bitmap(of host: NSView, size: NSSize) throws -> NSBitmapImageRep
+    {
+        let bounds = NSRect(origin: .zero, size: size)
+        let layer = try #require(host.layer)
+        rescale(layer)
+        host.displayIfNeeded()
+        let matched = try #require(
+            host.bitmapImageRepForCachingDisplay(in: bounds)
+        )
+        let bitmap = try bitmap(size: size, in: matched.colorSpace)
+        host.cacheDisplay(in: bounds, to: bitmap)
+        return bitmap
+    }
+
+    /// Have every layer below `layer` that draws itself draw at
+    /// `captureScale`. A layer already at that scale is left alone, so a
+    /// display that draws at it captures exactly what it shows; one that is
+    /// not redraws now, so the capture that follows copies contents drawn at
+    /// the new scale rather than whatever the next transaction would have
+    /// replaced. A layer handed an image keeps it: asking it to display
+    /// again replaces the image with an empty backing store, and a glyph
+    /// the row had drawn was gone from the capture.
+    private static func rescale(_ layer: CALayer) {
+        if !holdsImage(layer), layer.contentsScale != CGFloat(captureScale) {
+            layer.contentsScale = CGFloat(captureScale)
+            layer.setNeedsDisplay()
+            layer.displayIfNeeded()
+        }
+        layer.sublayers?.forEach(rescale)
+    }
+
+    /// Whether `layer` shows an image it was handed rather than one it drew:
+    /// its contents are a `CGImage`, where a layer that draws itself holds
+    /// the backing store its drawing filled.
+    private static func holdsImage(_ layer: CALayer) -> Bool {
+        guard let contents = layer.contents else { return false }
+        return CFGetTypeID(contents as CFTypeRef) == CGImage.typeID
+    }
+
+    /// The window background colour under `host`'s appearance, as concrete
+    /// components in `space`: a dynamic colour resolves against the
+    /// appearance current when it is drawn, and a bitmap context has none of
+    /// its own.
+    @MainActor
+    private static func windowBackground(
+        for host: NSView,
+        in space: NSColorSpace
+    ) throws -> NSColor {
+        var resolved: NSColor?
+        host.effectiveAppearance.performAsCurrentDrawingAppearance {
+            resolved = NSColor.windowBackgroundColor.usingColorSpace(space)
+        }
+        let backdrop = try #require(resolved)
+        try #require(backdrop.alphaComponent == 1)
+        return backdrop
+    }
+
+    /// An empty bitmap in `space`, `captureScale` pixels per point of `size`.
+    private static func bitmap(size: NSSize, in space: NSColorSpace) throws
+        -> NSBitmapImageRep
+    {
+        let bitmap = try #require(
+            NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: Int(size.width) * captureScale,
+                pixelsHigh: Int(size.height) * captureScale,
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bytesPerRow: 0,
+                bitsPerPixel: 0
+            )?
+            .retagging(with: space)
+        )
+        bitmap.size = size
+        return bitmap
     }
 
     /// Let SwiftUI publish its renders before a hosted-view test inspects or

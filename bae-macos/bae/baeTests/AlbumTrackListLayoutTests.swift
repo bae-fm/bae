@@ -212,24 +212,7 @@ struct AlbumTrackListLayoutTests {
         {
             await SnapshotTestSupport.settle(host)
             try await Task.sleep(for: .milliseconds(250))
-            let bitmap = try #require(
-                NSBitmapImageRep(
-                    bitmapDataPlanes: nil,
-                    pixelsWide: Int(size.width) * 2,
-                    pixelsHigh: Int(size.height) * 2,
-                    bitsPerSample: 8,
-                    samplesPerPixel: 4,
-                    hasAlpha: true,
-                    isPlanar: false,
-                    colorSpaceName: .deviceRGB,
-                    bytesPerRow: 0,
-                    bitsPerPixel: 0
-                )?
-                .retagging(with: .sRGB)
-            )
-            bitmap.size = size
-            host.cacheDisplay(in: NSRect(origin: .zero, size: size), to: bitmap)
-            return bitmap
+            return try SnapshotTestSupport.bitmap(of: host, size: size)
         }
 
         private func distance(_ a: NSColor, _ b: NSColor) -> CGFloat {
