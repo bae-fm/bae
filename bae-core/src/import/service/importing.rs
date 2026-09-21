@@ -14,9 +14,9 @@ impl ImportService {
         ids: coven::IdRef,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
-        let (event_tx, _) = broadcast::channel(1024);
-        let event_tx_for_worker = event_tx.clone();
         let runtime = CandidateRuntime::default();
+        let event_tx = crate::import::handle::ImportEventBus::new(1024, runtime.clone());
+        let event_tx_for_worker = event_tx.clone();
         let services = crate::import::ImportServices::new(
             event_tx,
             library_manager.clone(),
@@ -111,9 +111,7 @@ impl ImportService {
                 error!("could not record the failed import of {candidate_key}: {write}");
             }
 
-            send_event(
-                &self.event_tx,
-                crate::import::handle::ImportEvent::ImportProgress {
+            self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
                     candidate_key,
                     progress: ImportProgress::Failed { error, import_id },
                 },
@@ -156,9 +154,7 @@ impl ImportService {
         let expected_edit_revision = expectation.candidate.file_edit_revision;
 
         let import_start = std::time::Instant::now();
-        send_event(
-            &self.event_tx,
-            crate::import::handle::ImportEvent::ImportProgress {
+        self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
                 candidate_key: candidate_key.clone(),
                 progress: ImportProgress::Preparing {
                     import_id: import_id.clone(),
@@ -864,9 +860,7 @@ impl ImportService {
                 album_id: album_id.to_string(),
             }
         };
-        send_event(
-            &self.event_tx,
-            crate::import::handle::ImportEvent::ImportProgress {
+        self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
                 candidate_key: candidate_key.to_string(),
                 progress,
             },

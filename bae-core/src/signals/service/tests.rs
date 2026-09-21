@@ -171,11 +171,12 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
 /// `CandidateRemoved`.
 async fn make_service() -> (
     ExtractionServiceHandle,
-    broadcast::Sender<ImportEvent>,
+    ImportEventBus,
     broadcast::Receiver<ImportEvent>,
     TempDir,
 ) {
-    let (tx, rx) = broadcast::channel(64);
+    let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
+        let rx = tx.subscribe();
     let (library_manager, lib_tmp) = make_library_manager().await;
     let handle = ExtractionService::start(
         tokio::runtime::Handle::current(),

@@ -63,8 +63,7 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
     tokio::time::sleep(Duration::from_millis(100)).await;
     tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
         candidate_key: "cand-1".to_string(),
-    }))
-    .unwrap();
+    }));
 
     loop {
         match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {

@@ -7,7 +7,7 @@ use super::code::{lookup_code, PrintedCode};
 use super::discid::lookup_and_resolve;
 use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome};
 use crate::import::search::SourceLookup;
-use crate::import::{Catalog, ImportEvent, LookupChoices};
+use crate::import::{Catalog, ImportEvent, ImportEventBus, LookupChoices};
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionWatch, SignalsSnapshot};
 use crate::util::rate_limiter::CallPriority;
@@ -25,14 +25,6 @@ use tracing::{debug, warn};
 fn emit_step(tx: &mpsc::UnboundedSender<IdentifyEvent>, event: IdentifyEvent) {
     if let Err(err) = tx.send(event) {
         warn!("identify step channel closed; dropped {:?}", err.0);
-    }
-}
-
-/// Broadcast an identify state change on the import bus. The bus lives as long as
-/// the app, so having no subscribers is odd enough to warn about.
-fn broadcast_state_change(tx: &broadcast::Sender<ImportEvent>, event: ImportEvent) {
-    if let Err(err) = tx.send(event) {
-        warn!("identify state-change broadcast had no subscribers: {err}");
     }
 }
 
@@ -67,7 +59,7 @@ pub struct IdentifyServiceHandle {
 struct IdentifyServiceInner {
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
-    event_tx: broadcast::Sender<ImportEvent>,
+    event_tx: ImportEventBus,
     drivers: Mutex<HashMap<String, CandidateDriver>>,
     /// Source of [`IdentifyRunId`]s: every run this service starts is told
     /// apart from every other, including earlier runs of the same candidate.
@@ -103,7 +95,7 @@ impl IdentifyServiceHandle {
     pub fn new(
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
-        event_tx: broadcast::Sender<ImportEvent>,
+        event_tx: ImportEventBus,
     ) -> IdentifyServiceHandle {
         let inner = Arc::new(IdentifyServiceInner {
             library_manager,
@@ -308,15 +300,12 @@ async fn run_driver(
         // last (a stale response the reducer's `for_barcode` guard dropped). The
         // signals toolbar is a projection of the state, so a consumer that draws
         // the badge row derives it from this same value.
-        broadcast_state_change(
-            &inner.event_tx,
-            ImportEvent::IdentifyStateChanged {
-                candidate_key: key.clone(),
-                run,
-                state: state.clone(),
-                priority,
-            },
-        );
+        inner.event_tx.send(ImportEvent::IdentifyStateChanged {
+            candidate_key: key.clone(),
+            run,
+            state: state.clone(),
+            priority,
+        });
 
         // The run is over the moment the reducer stops moving: a terminal state
         // is its answer, `Idle` is its cancellation. The driver deregisters and
@@ -487,7 +476,7 @@ mod tests {
             tokio::runtime::Handle::current(),
             crate::import::cover_art::RemoteImageCache::for_test(),
         );
-        let (event_tx, _) = broadcast::channel(64);
+        let event_tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
         let inner = Arc::new(IdentifyServiceInner {
             library_manager: manager,
             runtime_handle: tokio::runtime::Handle::current(),

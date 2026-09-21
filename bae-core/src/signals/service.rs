@@ -45,7 +45,7 @@ use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
 use crate::identify::IdentifyRunId;
-use crate::import::{ImportEvent, ScanEvent};
+use crate::import::{ImportEvent, ImportEventBus, ScanEvent};
 use crate::library::LibraryManager;
 use crate::signals::{
     ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue,
@@ -94,7 +94,7 @@ pub struct ExtractionServiceHandle {
 
 struct ExtractionServiceInner {
     runtime_handle: tokio::runtime::Handle,
-    event_tx: broadcast::Sender<ImportEvent>,
+    event_tx: ImportEventBus,
     /// The platform's artwork analyzer, registered at boot. `None` on a platform
     /// that ships none: artwork is then not a barcode or text source, and
     /// extraction says exactly that (`BarcodeSignal::Absent`) rather than
@@ -141,7 +141,7 @@ pub struct ExtractionService;
 impl ExtractionService {
     pub fn start(
         runtime_handle: tokio::runtime::Handle,
-        event_tx: broadcast::Sender<ImportEvent>,
+        event_tx: ImportEventBus,
         library_manager: LibraryManager,
     ) -> ExtractionServiceHandle {
         let inner = Arc::new(ExtractionServiceInner {
@@ -777,23 +777,16 @@ fn emit_signals(
                 signals: signals.clone(),
                 artwork: artwork.clone(),
             }));
-            inner
-                .event_tx
-                .send(ImportEvent::SignalsUpdated {
-                    candidate_key: key.clone(),
-                    run: extraction.run,
-                    signals,
-                    artwork,
-                    priority: extraction.priority,
-                })
-                .map_err(|err| err.to_string())
+            inner.event_tx.send(ImportEvent::SignalsUpdated {
+                candidate_key: key.clone(),
+                run: extraction.run,
+                signals,
+                artwork,
+                priority: extraction.priority,
+            });
         });
-    match sent {
-        Some(Ok(_)) => {}
-        Some(Err(err)) => {
-            warn!("signals: SignalsUpdated broadcast had no subscribers for {key}: {err}");
-        }
-        None => debug!("signals: {key} extraction was replaced; its snapshot is not sent"),
+    if sent.is_none() {
+        debug!("signals: {key} extraction was replaced; its snapshot is not sent");
     }
 }
 

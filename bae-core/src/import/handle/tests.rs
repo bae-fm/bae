@@ -92,6 +92,39 @@ async fn await_import_outcome(
     }
 }
 
+/// A subscriber that hears an import end and then asks the runtime finds the
+/// claim already released: the bus records an event before it broadcasts it.
+#[tokio::test]
+async fn an_import_outcome_is_recorded_before_it_is_broadcast() {
+    let runtime = CandidateRuntime::default();
+    let bus = ImportEventBus::new(8, runtime.clone());
+    let mut events = bus.subscribe();
+    runtime.claim_for_import("candidate");
+    assert!(runtime
+        .get("candidate")
+        .is_some_and(|candidate| candidate.import.is_some()));
+
+    bus.send(ImportEvent::ImportProgress {
+        candidate_key: "candidate".to_string(),
+        progress: crate::import::ImportProgress::Complete {
+            id: REL_1.to_string(),
+            import_id: "import-1".to_string(),
+            album_id: "album-1".to_string(),
+        },
+    });
+
+    assert!(matches!(
+        events.recv().await.unwrap(),
+        ImportEvent::ImportProgress {
+            progress: crate::import::ImportProgress::Complete { .. },
+            ..
+        }
+    ));
+    assert!(runtime
+        .get("candidate")
+        .is_none_or(|candidate| candidate.import.is_none()));
+}
+
 include!("tests/identity.rs");
 include!("tests/edit_shape.rs");
 include!("tests/candidate_state.rs");

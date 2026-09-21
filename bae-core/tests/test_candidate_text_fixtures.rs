@@ -17,7 +17,7 @@
 //! new fixture just requires dropping another file in that directory —
 //! the loop below picks them up automatically.
 
-use bae_core::import::ImportEvent;
+use bae_core::import::{ImportEvent, ImportEventBus};
 use bae_core::signals::service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
 use bae_core::signals::{ArtworkAnalysis, ArtworkAnalyzer, TextSignal};
 use bae_test_support as support;
@@ -28,7 +28,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tempfile::TempDir;
-use tokio::sync::broadcast;
 
 #[derive(Debug, Deserialize)]
 struct Fixture {
@@ -238,7 +237,8 @@ async fn drive_fixture(
     folder: PathBuf,
     ocr_map: HashMap<PathBuf, Vec<String>>,
 ) -> (Vec<String>, Vec<String>) {
-    let (tx, mut rx) = broadcast::channel::<ImportEvent>(128);
+    let tx = ImportEventBus::new(128, bae_core::import::CandidateRuntime::default());
+    let mut rx = tx.subscribe();
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let handle: ExtractionServiceHandle =
         ExtractionService::start(tokio::runtime::Handle::current(), tx, library_manager);

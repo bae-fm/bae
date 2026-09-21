@@ -5,7 +5,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
         preparations,
         temp: tmp,
     } = setup_import_service().await;
-    let (event_tx, _) = tokio::sync::broadcast::channel(1024);
+    let event_tx = crate::import::ImportEventBus::new(1024, crate::import::CandidateRuntime::default());
     service.event_tx = event_tx;
     // The import under test commits a draft it was handed, not one the folder's
     // tags wrote: the pre-fill would give the candidate a File Tags draft whose

@@ -29,13 +29,39 @@ use super::candidates::{
 #[cfg(test)]
 mod tests;
 
-/// Send an import event on the broadcast bus, logging on send failure.
-/// `broadcast::Sender::send` returns `Err` only when there are zero active
-/// receivers — a warning is appropriate (something upstream lost interest)
-/// but not fatal.
-pub(super) fn send_event(sender: &broadcast::Sender<ImportEvent>, ev: ImportEvent) {
-    if let Err(e) = sender.send(ev) {
-        warn!("import event send failed: {}", e);
+/// The import event channel and the candidate runtime it records into.
+///
+/// Every event is recorded in the runtime before it is broadcast, so a
+/// subscriber that hears an event and then asks the runtime finds what the
+/// event implies already there. Recording from a subscriber task instead
+/// left a window after an import's `Complete` in which the candidate still
+/// read as claimed by that import, and an edit asked in that window was
+/// refused as in progress rather than as already imported.
+#[derive(Clone)]
+pub struct ImportEventBus {
+    sender: broadcast::Sender<ImportEvent>,
+    runtime: CandidateRuntime,
+}
+
+impl ImportEventBus {
+    /// A bus whose subscribers may fall `capacity` events behind, recording
+    /// into `runtime`.
+    pub fn new(capacity: usize, runtime: CandidateRuntime) -> Self {
+        let (sender, _) = broadcast::channel(capacity);
+        Self { sender, runtime }
+    }
+
+    /// Record `event` in the runtime, then broadcast it. The bus lives as
+    /// long as the app, so having no subscriber is odd enough to warn about.
+    pub fn send(&self, event: ImportEvent) {
+        self.runtime.record_event(&event);
+        if let Err(error) = self.sender.send(event) {
+            warn!("import event broadcast had no subscribers: {error}");
+        }
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<ImportEvent> {
+        self.sender.subscribe()
     }
 }
 
@@ -142,7 +168,8 @@ pub struct ImportServiceHandle {
     /// reader the scan's pre-fill uses, so both answer from one source.
     file_tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     /// Unified event channel — all import service events go here.
-    event_tx: broadcast::Sender<ImportEvent>,
+    event_tx: ImportEventBus,
+    /// What the bus's events have said about every candidate.
     runtime: CandidateRuntime,
     /// The identify driver and the extraction feeding it. Built here because
     /// both run on this handle's event bus, and held here because the commands
@@ -276,7 +303,7 @@ impl ImportServiceHandle {
             event_tx.clone(),
             library_manager.clone(),
         );
-        let handle = Self {
+        Self {
             worker,
             library_manager,
             preparations,
@@ -290,35 +317,7 @@ impl ImportServiceHandle {
             folder_state_commit,
             watcher,
             runtime_handle,
-        };
-        handle.start_runtime_recorder();
-        handle
-    }
-
-    /// Accumulate every candidate's runtime from the bus. Lock-free by
-    /// design: the only runtime a durable write gates on is the import claim,
-    /// which import admission records directly under the commit lock rather
-    /// than through an event.
-    fn start_runtime_recorder(&self) {
-        let mut events = self.event_tx.subscribe();
-        let runtime = self.runtime.clone();
-        let library_manager = self.library_manager.clone();
-        self.runtime_handle.spawn(async move {
-            loop {
-                match events.recv().await {
-                    Ok(event) => runtime.record_event(&event),
-                    Err(broadcast::error::RecvError::Lagged(count)) => {
-                        warn!("candidate runtime recorder dropped {count} import events");
-                        library_manager.record_telemetry(
-                            crate::diagnostics::TelemetryEvent::Anomaly {
-                                kind: crate::diagnostics::AnomalyKind::EventBusLagged,
-                            },
-                        );
-                    }
-                    Err(broadcast::error::RecvError::Closed) => break,
-                }
-            }
-        });
+        }
     }
 
     /// The id of a run about to start. Separate from
@@ -427,15 +426,13 @@ impl ImportServiceHandle {
     }
 
     pub(crate) fn announce_queue_identify_progress(&self, identified: u32, total: u32) {
-        send_event(
-            &self.event_tx,
-            ImportEvent::QueueIdentifyProgress { identified, total },
-        );
+        self.event_tx
+            .send(ImportEvent::QueueIdentifyProgress { identified, total });
     }
 
     #[cfg(any(test, feature = "test-utils"))]
     pub fn emit_event_for_test(&self, event: ImportEvent) {
-        send_event(&self.event_tx, event);
+        self.event_tx.send(event);
     }
 
     /// Claim a candidate the way committing an import does, for a test with no

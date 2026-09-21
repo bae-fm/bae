@@ -70,7 +70,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         temp.path().to_path_buf(),
         std::fs::metadata(temp.path()).unwrap().len(),
     )]);
-    let (event_tx, _rx) = broadcast::channel(16);
+    let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
 
     let result = measure_loudness(
         &event_tx,

@@ -60,14 +60,10 @@ impl ImportServiceHandle {
             .combine_candidates(key.clone(), name, candidates)
             .await?;
         for candidate_key in keys {
-            send_event(
-                &self.event_tx,
-                ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }),
+            self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }),
             );
         }
-        send_event(
-            &self.event_tx,
-            ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
+        self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
                 candidate_key: key.clone(),
             }),
         );
@@ -97,13 +93,11 @@ impl ImportServiceHandle {
         self.library_manager
             .separate_combined_candidate(key)
             .await?;
-        send_event(
-            &self.event_tx,
-            ImportEvent::Scan(ScanEvent::CandidateRemoved {
+        self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
                 candidate_key: key.into(),
             }),
         );
-        send_event(&self.event_tx, ImportEvent::Scan(ScanEvent::Finished));
+        self.event_tx.send(ImportEvent::Scan(ScanEvent::Finished));
         Ok(())
     }
 

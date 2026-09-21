@@ -33,13 +33,11 @@ impl ImportService {
     fn announce_scan_failure(
         root: &Path,
         message: String,
-        event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
+        event_tx: &crate::import::handle::ImportEventBus,
     ) {
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
-        send_event(
-            event_tx,
-            crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+        event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status: crate::import::WatchedFolderScanStatus {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
@@ -197,9 +195,7 @@ impl ImportService {
         let generation = services.library_manager.begin_folder_scan(root_key).await?;
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
-        send_event(
-            event_tx,
-            crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+        event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status: crate::import::WatchedFolderScanStatus {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
@@ -360,9 +356,7 @@ impl ImportService {
             let superseded_keys = write.superseded_keys().to_vec();
             displaced_keys.extend(superseded_keys.iter().cloned());
             for candidate_key in superseded_keys {
-                send_event(
-                    event_tx,
-                    crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
                         candidate_key,
                     }),
                 );
@@ -380,9 +374,7 @@ impl ImportService {
                     let is_added = library_manager
                         .is_content_hash_imported(&candidate.files.content_hash())
                         .await?;
-                    send_event(
-                        event_tx,
-                        crate::import::handle::ImportEvent::Scan(if actionable {
+                    event_tx.send(crate::import::handle::ImportEvent::Scan(if actionable {
                             ScanEvent::FolderCandidate {
                                 candidate,
                                 skipped,
@@ -400,9 +392,7 @@ impl ImportService {
                 // Invalid candidates have no tab state, so they need no stamping.
                 ScanItem::Invalid(candidate) => {
                     written_keys.push(candidate.display_path.clone());
-                    send_event(
-                        event_tx,
-                        crate::import::handle::ImportEvent::Scan(ScanEvent::InvalidCandidate(
+                    event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::InvalidCandidate(
                             candidate,
                         )),
                     );
@@ -456,18 +446,14 @@ impl ImportService {
             pruned
         );
         for candidate_key in pruned {
-            send_event(
-                event_tx,
-                crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+            event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
                     candidate_key,
                 }),
             );
         }
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
-        send_event(
-            event_tx,
-            crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+        event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status: crate::import::WatchedFolderScanStatus {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
@@ -477,9 +463,7 @@ impl ImportService {
             }),
         );
 
-        send_event(
-            event_tx,
-            crate::import::handle::ImportEvent::Scan(ScanEvent::Finished),
+        event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::Finished),
         );
         drop(commit);
         Ok(())

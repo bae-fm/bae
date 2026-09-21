@@ -192,9 +192,7 @@ impl ImportService {
                                 {
                                     Ok((_, superseded)) => {
                                         for candidate_key in superseded {
-                                            send_event(
-                                                &event_tx,
-                                                crate::import::handle::ImportEvent::Scan(
+                                            event_tx.send(crate::import::handle::ImportEvent::Scan(
                                                     ScanEvent::CandidateRemoved {
                                                         candidate_key,
                                                     },
@@ -242,16 +240,12 @@ impl ImportService {
                             } => {
                                 let folders = watched_folders(&library_manager).await;
                                 for candidate_key in removed_keys {
-                                    send_event(
-                                        &event_tx,
-                                        crate::import::handle::ImportEvent::Scan(
+                                    event_tx.send(crate::import::handle::ImportEvent::Scan(
                                             ScanEvent::CandidateRemoved { candidate_key },
                                         ),
                                     );
                                 }
-                                send_event(
-                                    &event_tx,
-                                    crate::import::handle::ImportEvent::Scan(
+                                event_tx.send(crate::import::handle::ImportEvent::Scan(
                                         ScanEvent::WatchedFoldersChanged { folders },
                                     ),
                                 );

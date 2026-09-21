@@ -56,7 +56,7 @@ async fn setup_import_service() -> TestService {
         crate::import::cover_art::RemoteImageCache::for_test(),
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
-    let (event_tx, _) = tokio::sync::broadcast::channel(16);
+    let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
     TestService {
         service: ImportService {
             commands_rx,
@@ -402,7 +402,7 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
 fn test_scan_services(
     service: &ImportService,
     preparations: &crate::import::CandidatePreparations,
-    event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
+    event_tx: crate::import::handle::ImportEventBus,
     folder_watcher: Arc<FolderWatcher>,
     file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     directories: Arc<dyn crate::import::folder_scanner::DirectoryReader>,
@@ -438,7 +438,7 @@ impl TestService {
         &self,
     ) -> (
         TestScan,
-        broadcast::Receiver<crate::import::handle::ImportEvent>,
+        tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
     ) {
         self.scan_with(
             Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
@@ -455,9 +455,10 @@ impl TestService {
         directories: Arc<dyn crate::import::folder_scanner::DirectoryReader>,
     ) -> (
         TestScan,
-        broadcast::Receiver<crate::import::handle::ImportEvent>,
+        tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
     ) {
-        let (event_tx, events) = broadcast::channel(256);
+        let event_tx = crate::import::ImportEventBus::new(256, crate::import::CandidateRuntime::default());
+        let events = event_tx.subscribe();
         let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
         let scan = TestScan {
             services: test_scan_services(

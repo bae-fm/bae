@@ -9,7 +9,8 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
     // Build the inner directly, because a *started* service always holds a receiver
     // (its own candidate-removal listener). The no-subscriber state this warn guards
     // therefore only exists at app shutdown.
-    let (tx, rx) = broadcast::channel(64);
+    let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
+        let rx = tx.subscribe();
     drop(rx);
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let inner = ExtractionServiceInner {
@@ -53,7 +54,7 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
     });
 
     assert!(
-        logs.contains("signals: SignalsUpdated broadcast had no subscribers"),
+        logs.contains("import event broadcast had no subscribers"),
         "expected no-subscriber warning, got {logs:?}",
     );
 }
@@ -83,7 +84,8 @@ async fn fast_pass_join_error_reports_why_there_is_no_pass() {
 /// is not coming.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
-    let (tx, mut rx) = broadcast::channel(64);
+    let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
+        let mut rx = tx.subscribe();
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let inner = ExtractionServiceInner {
         runtime_handle: tokio::runtime::Handle::current(),

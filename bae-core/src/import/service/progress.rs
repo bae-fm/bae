@@ -3,7 +3,6 @@
 //! Thin emitters that publish `ImportProgress` onto the broadcast bus as the
 //! import advances through its phases.
 
-use crate::import::handle::send_event;
 use crate::import::types::{ImportPhase, ImportProgress};
 
 use super::ImportService;
@@ -23,15 +22,13 @@ impl ImportService {
     }
 
     pub(super) fn emit_phase_progress_on(
-        event_tx: &tokio::sync::broadcast::Sender<crate::import::handle::ImportEvent>,
+        event_tx: &crate::import::handle::ImportEventBus,
         run: super::ImportRun<'_>,
         id: &str,
         percent: Option<u8>,
         phase: ImportPhase,
     ) {
-        send_event(
-            event_tx,
-            crate::import::handle::ImportEvent::ImportProgress {
+        event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
                 candidate_key: run.candidate_key.to_string(),
                 progress: ImportProgress::Progress {
                     id: id.to_string(),

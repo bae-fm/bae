@@ -23,7 +23,7 @@ use {
     std::sync::Arc,
 };
 
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 mod active_roots;
@@ -114,7 +114,6 @@ fn storage_mode_label(mode: &StorageMode) -> &'static str {
     }
 }
 
-use crate::import::handle::send_event;
 
 /// What the import worker thread receives: an import to run, or the teardown
 /// signal `ImportServiceHandle::stop_and_join` sends. The explicit signal (vs
@@ -182,7 +181,7 @@ impl ImportExpectation {
 
 pub struct ImportService {
     commands_rx: mpsc::UnboundedReceiver<ImportWorkerMessage>,
-    event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
+    event_tx: crate::import::handle::ImportEventBus,
     library_manager: LibraryManager,
     clock: coven::ClockRef,
     ids: coven::IdRef,

@@ -9,10 +9,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use tokio::sync::broadcast;
 use tracing::{debug, warn};
 
-use crate::import::handle::send_event;
 use crate::import::types::TrackFile;
 use crate::playback::data_source::{AudioDataReader, LocalReader};
 use crate::playback::sparse_buffer::create_sparse_buffer;
@@ -43,7 +41,7 @@ struct TrackOutcome {
 /// call.
 #[derive(Clone)]
 struct LoudnessProgress {
-    event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
+    event_tx: crate::import::handle::ImportEventBus,
     candidate_key: String,
     release_id: String,
     import_id: String,
@@ -54,7 +52,7 @@ struct LoudnessProgress {
 
 impl LoudnessProgress {
     fn new(
-        event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
+        event_tx: &crate::import::handle::ImportEventBus,
         candidate_key: &str,
         release_id: &str,
         import_id: &str,
@@ -69,9 +67,7 @@ impl LoudnessProgress {
     }
 
     fn report_initial(&self, total_frames: Option<u64>) {
-        send_event(
-            &self.event_tx,
-            crate::import::handle::ImportEvent::ImportProgress {
+        self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
                 candidate_key: self.candidate_key.clone(),
                 progress: crate::import::types::ImportProgress::Progress {
                     id: self.release_id.clone(),
@@ -98,9 +94,7 @@ impl LoudnessProgress {
         {
             return;
         }
-        send_event(
-            &self.event_tx,
-            crate::import::handle::ImportEvent::ImportProgress {
+        self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
                 candidate_key: self.candidate_key.clone(),
                 progress: crate::import::types::ImportProgress::Progress {
                     id: self.release_id.clone(),
@@ -285,7 +279,7 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
 /// header), marks the track broken. Broken tracks are always logged and returned;
 /// the caller decides whether to fail the import (per `verify_decode_on_import`).
 pub(super) async fn measure_loudness(
-    event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
+    event_tx: &crate::import::handle::ImportEventBus,
     audio_formats: &mut [crate::db::DbAudioFormat],
     audio_segments: &[crate::db::DbAudioSegment],
     file_ids: &HashMap<PathBuf, String>,
@@ -535,7 +529,7 @@ mod tests {
     use super::*;
 
     fn sink_with(total: Option<u64>, done: u64, errors: u32) -> LoudnessProgressSink {
-        let (event_tx, _rx) = broadcast::channel(16);
+        let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
         LoudnessProgressSink {
             state: None,
             error: None,
@@ -552,7 +546,8 @@ mod tests {
 
     #[test]
     fn measured_frames_control_progress_value_and_determinacy() {
-        let (event_tx, mut rx) = broadcast::channel(16);
+        let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
+        let mut rx = event_tx.subscribe();
         let emit = |total_frames, done_frames, frames_done_before, scan_total_frames| {
             LoudnessProgressSink {
                 state: None,
@@ -752,7 +747,7 @@ mod tests {
 
     /// The whole-percent moves one loudness pass reported, in order.
     fn loudness_percents(
-        rx: &mut broadcast::Receiver<crate::import::handle::ImportEvent>,
+        rx: &mut tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
     ) -> Vec<u8> {
         let mut percents = Vec::new();
         while let Ok(event) = rx.try_recv() {
@@ -772,7 +767,7 @@ mod tests {
     /// none of them varies the candidate key, release id, or import id, and none
     /// asserts on one.
     async fn measure(
-        event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
+        event_tx: &crate::import::handle::ImportEventBus,
         audio_formats: &mut [crate::db::DbAudioFormat],
         audio_segments: &[crate::db::DbAudioSegment],
         file_ids: &HashMap<PathBuf, String>,
@@ -806,7 +801,8 @@ mod tests {
     /// reader rather than hidden behind another metadata check.
     #[tokio::test]
     async fn measure_loudness_skips_unreadable_source() {
-        let (event_tx, mut rx) = broadcast::channel(16);
+        let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
+        let mut rx = event_tx.subscribe();
         let missing = PathBuf::from("/nonexistent/track.flac");
         let mut audio_formats = vec![audio_format("track-0", "af-0")];
         let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
@@ -843,7 +839,7 @@ mod tests {
     /// decode) and stays unmeasured.
     #[tokio::test]
     async fn measure_loudness_skips_track_with_no_segments() {
-        let (event_tx, _rx) = broadcast::channel(16);
+        let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
         let mut audio_formats = vec![audio_format("track-0", "af-0")];
         let audio_segments: Vec<crate::db::DbAudioSegment> = Vec::new();
         let file_ids = HashMap::new();
@@ -869,7 +865,7 @@ mod tests {
     #[tokio::test]
     async fn measure_loudness_computes_track_and_album_values() {
         crate::audio_codec::init();
-        let (event_tx, _rx) = broadcast::channel(16);
+        let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
         let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
         let mut audio_formats = vec![audio_format("track-0", "af-0")];
         let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
@@ -903,7 +899,8 @@ mod tests {
     #[tokio::test]
     async fn measure_loudness_progress_weights_tracks_by_frames() {
         crate::audio_codec::init();
-        let (event_tx, mut rx) = broadcast::channel(32);
+        let event_tx = crate::import::ImportEventBus::new(32, crate::import::CandidateRuntime::default());
+        let mut rx = event_tx.subscribe();
         let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
         let mut audio_formats = vec![
             audio_format("track-0", "af-0"),
@@ -951,7 +948,7 @@ mod tests {
     #[tokio::test]
     async fn measure_loudness_leaves_ungated_track_unmeasured() {
         crate::audio_codec::init();
-        let (event_tx, _rx) = broadcast::channel(16);
+        let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
         let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
         let mut audio_formats = vec![audio_format("track-0", "af-0")];
         // ~50 ms at 44.1 kHz — far short of a 400 ms gated block.

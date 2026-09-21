@@ -76,9 +76,7 @@ impl ImportServiceHandle {
             return Err(error);
         }
         let folders = self.watched_folders().await?;
-        send_event(
-            &self.event_tx,
-            ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
+        self.event_tx.send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
         );
         Ok(())
     }

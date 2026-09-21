@@ -41,9 +41,7 @@ impl ImportServiceHandle {
                 if skipped {
                     self.cancel_identification(&path);
                 }
-                send_event(
-                    &self.event_tx,
-                    ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+                self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
                         candidate_key: path,
                         skipped,
                     }),
@@ -64,9 +62,7 @@ impl ImportServiceHandle {
             if skipped {
                 self.cancel_identification(&path);
             }
-            send_event(
-                &self.event_tx,
-                ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+            self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
                     candidate_key: path,
                     skipped,
                 }),
@@ -568,9 +564,7 @@ impl ImportServiceHandle {
 
     /// Tell the surfaces a candidate's metadata provenance changed.
     pub(crate) fn announce_metadata_provenance(&self, candidate_key: String) {
-        send_event(
-            &self.event_tx,
-            ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }),
+        self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }),
         );
     }
 

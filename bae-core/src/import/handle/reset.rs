@@ -179,6 +179,6 @@ impl ImportServiceHandle {
                 candidate_key: candidate.key,
             },
         };
-        send_event(&self.event_tx, ImportEvent::Scan(event));
+        self.event_tx.send(ImportEvent::Scan(event));
     }
 }

@@ -116,7 +116,7 @@ pub struct ParsedAlbum {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Clone)]
 pub(crate) struct ImportServices {
-    event_tx: tokio::sync::broadcast::Sender<handle::ImportEvent>,
+    event_tx: handle::ImportEventBus,
     library_manager: crate::library::LibraryManager,
     preparations: preparations::CandidatePreparations,
     clock: coven::ClockRef,
@@ -135,7 +135,7 @@ pub(crate) struct ImportServices {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl ImportServices {
     pub(crate) fn new(
-        event_tx: tokio::sync::broadcast::Sender<handle::ImportEvent>,
+        event_tx: handle::ImportEventBus,
         library_manager: crate::library::LibraryManager,
         preparations: preparations::CandidatePreparations,
         clock: coven::ClockRef,
@@ -178,7 +178,7 @@ desktop_only! {
     };
     pub use handle::{
         parsed_album_to_user_edit, DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
-        ImportServiceHandle, ScanEvent,
+        ImportEventBus, ImportServiceHandle, ScanEvent,
     };
     pub use list::{
         ActiveFolderScan, FirstUnidentifiedRowRef, FolderScanActivity, ImportCandidateDetail,
