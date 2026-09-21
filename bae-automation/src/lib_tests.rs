@@ -338,6 +338,8 @@ mod identify_mirrors {
                     by_catalog: true,
                 },
             ],
+            // Two pressings of one album: each release is its own row.
+            pressings: vec![0, 1],
             narrowed_out: Default::default(),
             ledger: None,
             context: empty_context(),
@@ -398,6 +400,8 @@ mod identify_mirrors {
                     by_catalog: false,
                 },
             ],
+            // One release each, so each is its own row.
+            pressings: vec![0, 1],
             narrowed_out: Default::default(),
             ledger: None,
             context: empty_context(),
