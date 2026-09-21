@@ -11,11 +11,6 @@ extension BridgeFileRole {
         return false
     }
 
-    var isTrackSheet: Bool {
-        if case .trackSheet = self { return true }
-        return false
-    }
-
     /// Artwork shown in the gallery, including images unavailable as covers.
     var isImage: Bool {
         if case .artwork = self { return true }
@@ -40,12 +35,6 @@ extension BridgeCandidateFile {
 }
 
 extension BridgeCandidateFiles {
-    /// The sheets whose bindings the mapping table offers a control for — one
-    /// read of core's offers per sheet.
-    var trackSheets: [BridgeCandidateFile] {
-        files.filter { $0.role.isTrackSheet }
-    }
-
     /// Every artwork attachment shown by the lightbox.
     var images: [BridgeCandidateFile] { files.filter { $0.role.isImage } }
 }
