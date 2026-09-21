@@ -13,10 +13,11 @@ namespace Bae.Desktop;
 /// <summary>
 /// The release's facts, and the way into the catalogs that describe it.
 ///
-/// At rest the line reads as a line of facts. When a catalog describes the
-/// release, pointing at it fills it softly, and a click toggles a card under it
-/// naming them. A release no catalog describes has nothing behind the line, so
-/// it is not a trigger at all.
+/// A release a catalog describes carries the same arrow the records row links
+/// out with, at rest rather than on hover: the facts before it were read from
+/// a record. Pointing at the line fills it softly, and a click toggles a card
+/// under it naming the catalogs — the library's only way to those links. A
+/// release no catalog describes draws no arrow and is not a trigger at all.
 ///
 /// The card hangs off the line's leading edge, a little below it, with no
 /// arrow: it is part of the expansion, not a window pointing back at the line.
@@ -57,9 +58,26 @@ internal sealed class ReleaseFactsLine : ContentControl
 
     private Control Trigger(IReadOnlyList<BridgeReleaseRecord> records)
     {
+        var arrow = new TextBlock
+        {
+            Text = ImportPaneUi.OutboundArrow,
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsHitTestVisible = false,
+        };
+        arrow[!TextBlock.ForegroundProperty] =
+            new DynamicResourceExtension("BaeTextSecondaryBrush");
+        Avalonia.Automation.AutomationProperties.SetName(
+            arrow, Loc.Core("core.identity.identified"));
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            Children = { _facts, arrow },
+        };
         var button = new Button
         {
-            Content = _facts,
+            Content = row,
             Padding = new Thickness(5, 2),
             BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(5),

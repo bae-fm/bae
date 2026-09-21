@@ -69,8 +69,9 @@ struct ImportReleaseSummary {
 
 /// One rendering of an import release summary, scaled for its two homes.
 ///
-/// What sits after the title is the caller's; the pane names its catalogs in
-/// the records row instead and puts nothing.
+/// What sits after the title is the caller's — the sidebar's row puts the
+/// record arrow there; the pane names its catalogs in the records row instead
+/// and puts nothing.
 struct ImportReleaseSummaryView<TitleAccessory: View>: View {
     enum Style {
         case sidebar

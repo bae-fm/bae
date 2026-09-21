@@ -70,11 +70,11 @@ struct ReleaseRecordsTests {
         }
     }
 
-    /// The expansion is untouched at rest: the facts line becomes a trigger
-    /// when a catalog describes the release, and a trigger that is not being
-    /// pointed at draws nothing of its own.
-    @Test("the expansion card reads the same at rest with and without records")
-    func theExpansionIsUntouchedAtRest() async throws {
+    /// The facts line carries the record arrow at rest when a catalog
+    /// describes the release, and nothing when none does — the one thing on
+    /// the line that says where its facts were read.
+    @Test("the expansion line draws its arrow only when records describe it")
+    func theExpansionDrawsItsArrowOnlyWhenDescribed() async throws {
         let store = PreviewData.seededLibraryStore()
         let summary = try #require(store.albumSummaries["a-01"])
         let described = try #require(
@@ -90,7 +90,7 @@ struct ReleaseRecordsTests {
         // inequality between megabyte-sized captures is not a diff worth
         // computing.
         let identical = withRecords == without
-        #expect(identical, "the records leave the card as it was")
+        #expect(!identical, "the records put the arrow on the line")
     }
 
     private func pixels(

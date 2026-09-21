@@ -151,7 +151,9 @@ struct TriageRowView: View {
     @ViewBuilder
     private var releaseSummary: some View {
         if let summary = ImportReleaseSummary(row: row) {
-            ImportReleaseSummaryView(summary: summary, style: .sidebar)
+            ImportReleaseSummaryView(summary: summary, style: .sidebar) {
+                RecordArrow(reading: row.reading)
+            }
         }
     }
 
@@ -167,6 +169,8 @@ struct TriageRowView: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
+            RecordArrow(reading: row.reading)
+                .layoutPriority(1)
         }
     }
 
@@ -244,7 +248,7 @@ extension TriageRowView {
     /// Whatever the placement puts at the end of the row. Kept at its ideal
     /// width: the release's title and artist truncate before a tag does, since
     /// a tag is already as short as it gets. What the row states about its
-    /// release is the title line's glyphs, not a column of its own.
+    /// release is the title line's arrow, not a column of its own.
     private var trailing: some View {
         placementTrailing
             .fixedSize()

@@ -208,13 +208,13 @@ struct AlbumExpansionContent: View {
     }
 }
 
-/// The release's facts, and the way into where they came from.
+/// The release's facts, and the way into the catalogs that describe it.
 ///
-/// At rest the line reads as it always has. When the release carries names of
-/// its own, the rip databases confirmed its audio, or a catalog describes it,
-/// hovering fills the line softly and, for an identifier match, fades a seal
-/// in at its tail. A click toggles a card under it stating all three. A release with none of
-/// them has nothing behind the line, so it is not a trigger at all.
+/// A release a catalog describes carries the same arrow the records row links
+/// out with, at rest rather than on hover: the facts after it were read from a
+/// record. Hovering fills the line softly and a click toggles a card under it
+/// naming the catalogs — the library's only way to those links. A release no
+/// catalog describes draws no arrow and is not a trigger at all.
 ///
 /// The card is drawn in the window, anchored to the line's leading edge and
 /// laid over whatever sits under it, rather than as a popover floating off
@@ -246,18 +246,27 @@ private struct ReleaseFactsLine: View {
             Button {
                 isShowingCard.toggle()
             } label: {
-                factsText
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(
-                        RoundedRectangle(cornerRadius: 5)
-                            .fill(isHovering ? Theme.hover : Color.clear)
-                    )
-                    // The fill bleeds outward from where the line already
-                    // sat, so the card reads the same at rest as it did
-                    // before it became a trigger.
-                    .padding(.horizontal, -5)
-                    .padding(.vertical, -2)
+                HStack(spacing: 6) {
+                    factsText
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .allowsHitTesting(false)
+                        .accessibilityLabel(
+                            coreString("core.identity.identified")
+                        )
+                }
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(isHovering ? Theme.hover : Color.clear)
+                )
+                // The fill bleeds outward from where the line already sat,
+                // so the card reads the same at rest as it did before it
+                // became a trigger.
+                .padding(.horizontal, -5)
+                .padding(.vertical, -2)
             }
             .buttonStyle(.plain)
             .background { OverlayTrigger(anchor: trigger) }

@@ -221,7 +221,7 @@ internal sealed partial class ImportSectionView
             title.FontFamily = new FontFamily("monospace");
             leading = Icons.Glyph(Icons.Folder, 13, "BaeTextSecondaryBrush");
         }
-        column.Children.Add(TitleWithGlyphs(leading, title));
+        column.Children.Add(TitleWithGlyphs(leading, title, row.Reading));
 
         // A running import is the one line on a row that changes by the
         // second, so it draws itself off the candidate-runtime signal rather
@@ -253,13 +253,17 @@ internal sealed partial class ImportSectionView
         return column;
     }
 
-    // The title takes the remaining width and trims.
-    private static Control TitleWithGlyphs(Control? leading, TextBlock title)
+    // The title takes the remaining width and trims; the record arrow keeps
+    // its width so the line reads the same whichever reading a row has.
+    private static Control TitleWithGlyphs(
+        Control? leading,
+        TextBlock title,
+        BridgeTriageReading reading)
     {
         var line = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions(
-                leading is null ? "*" : "Auto,*"),
+                leading is null ? "*,Auto" : "Auto,*,Auto"),
         };
         var column = 0;
         if (leading is not null)
@@ -268,9 +272,41 @@ internal sealed partial class ImportSectionView
             Grid.SetColumn(leading, column++);
             line.Children.Add(leading);
         }
-        Grid.SetColumn(title, column);
+        Grid.SetColumn(title, column++);
         line.Children.Add(title);
+
+        var arrow = RecordArrow(reading);
+        Grid.SetColumn(arrow, column);
+        line.Children.Add(arrow);
         return line;
+    }
+
+    // The arrow a row draws after its title when its facts were read from a
+    // catalog record — the same glyph the records row links out with. Hidden
+    // rather than absent for any other reading, so the line keeps its width.
+    // It states a fact and answers nothing, so it takes no hits.
+    private static Control RecordArrow(BridgeTriageReading reading)
+    {
+        var readFromRecord = reading is BridgeTriageReading.Identified;
+        var arrow = new TextBlock
+        {
+            Text = ImportPaneUi.OutboundArrow,
+            FontSize = 11,
+            Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Opacity = readFromRecord ? 1 : 0,
+            IsHitTestVisible = false,
+        };
+        arrow[!TextBlock.ForegroundProperty] =
+            new DynamicResourceExtension("BaeTextSecondaryBrush");
+        Avalonia.Automation.AutomationProperties.SetAutomationId(arrow, "identified-glyph");
+        Avalonia.Automation.AutomationProperties.SetName(
+            arrow, Loc.Core("core.identity.identified"));
+        Avalonia.Automation.AutomationProperties.SetAccessibilityView(
+            arrow, readFromRecord
+                ? Avalonia.Automation.AccessibilityView.Content
+                : Avalonia.Automation.AccessibilityView.Raw);
+        return arrow;
     }
 
     // The line under the title: what the row has to say, and nothing when it
