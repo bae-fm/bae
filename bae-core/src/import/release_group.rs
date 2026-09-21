@@ -8,9 +8,9 @@
 //! The two providers answer independently, so the same album and the same
 //! pressing arrive twice. Both collapses happen here, pressings first: two
 //! sources' releases become one row when the evidence their records carry
-//! says they name the same physical object — what
-//! [`crate::import::pressing_evidence`] weighs — and two sources' groups
-//! become one card when a row joins them or when they name the same album.
+//! says they name the same physical object — what `pressing_evidence`
+//! weighs — and two sources' groups become one card when a row joins them
+//! or when they name the same album.
 //! A row is then a pressing on however many sources listed it, and picking
 //! it claims every one of them — [`Pressing::pick`] says exactly what.
 //!
