@@ -70,7 +70,6 @@ mod tests {
                 track_count: 14,
                 source_file: Some("Album.log".to_string()),
             },
-            verification: None,
             barcode: BarcodeSignal::Settled {
                 codes: vec![
                     SourcedValue::in_file(

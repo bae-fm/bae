@@ -187,8 +187,7 @@ struct ArtistAssignmentsFieldTests {
                 writer: ReleaseFieldWriter(setField: { _, _ in }),
                 editingCommands: EditingCommitCommands(),
                 cover: { Color.clear },
-                audioFacts: { EmptyView() },
-                folderFacts: { EmptyView() }
+                audioFacts: { EmptyView() }
             )
             .padding(24)
             .frame(width: size.width, height: size.height)

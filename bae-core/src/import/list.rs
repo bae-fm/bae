@@ -458,13 +458,6 @@ impl ImportCandidateDetailProjection {
                 picked.as_ref(),
                 records,
             ),
-            verified: signals
-                .as_ref()
-                .and_then(|signals| signals.verification.as_ref())
-                .is_some_and(crate::import::Verification::verified),
-            verification: signals
-                .as_ref()
-                .and_then(|signals| signals.verification.clone()),
             metadata_summary,
             cover_thumbnail: None,
             placement,

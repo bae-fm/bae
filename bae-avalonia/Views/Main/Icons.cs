@@ -46,16 +46,6 @@ internal static class Icons
     // A folder served over the network, for a watched root that lives on one.
     internal const string NetworkFolder =
         "M15 9H9v2H3v10h18V11h-6V9zM5 19v-6h4v6H5zm14 0h-4v-6h4v6zm-8-8V7h2V3h-2V1h4v4h-2v2h2v4h-4z";
-    // A seal, for the mark a release carries when a catalog describes it.
-    internal const string Seal =
-        "M23 12l-2.44-2.78.34-3.68-3.61-.82-1.89-3.18L12 2.96 8.6 1.54 6.71 4.72l-3.61.81.34 3.68L1 12l2.44 2.78-.34 3.69 3.61.82 1.89 3.18L12 21.04l3.4 1.42 1.89-3.18 3.61-.82-.34-3.68L23 12z";
-    // The same seal with a tick struck through it, for a release the rip
-    // databases confirmed.
-    internal const string CheckSeal =
-        "M23 12l-2.44-2.78.34-3.68-3.61-.82-1.89-3.18L12 2.96 8.6 1.54 6.71 4.72l-3.61.81.34 3.68L1 12l2.44 2.78-.34 3.69 3.61.82 1.89 3.18L12 21.04l3.4 1.42 1.89-3.18 3.61-.82-.34-3.68L23 12zm-12.91 4.72l-3.8-3.81 1.48-1.48 2.32 2.33 5.85-5.87 1.48 1.48-7.33 7.35z";
-    // A plain tick, for the release the rip databases confirmed.
-    internal const string Check =
-        "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z";
     internal const string Folder =
         "M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z";
 

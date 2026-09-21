@@ -326,14 +326,6 @@ pub struct BridgeRelease {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<BridgeReleaseRecord>,
-    /// What the rip databases said about this release's audio — how many other
-    /// copies of each track agree with this one. `None` for a release no
-    /// source verified.
-    pub verification: Option<crate::types::BridgeVerification>,
-    /// Whether other copies of this release's audio agree with it. Core
-    /// derives it from the verification; a surface never reads a count to
-    /// answer a yes-or-no question.
-    pub verified: bool,
     /// Total playing time across all tracks, as the words it reads in, or `None`
     /// when no track reports a length. The raw sum does not cross: with the
     /// milliseconds in hand a UI could name the total its own way, which is how

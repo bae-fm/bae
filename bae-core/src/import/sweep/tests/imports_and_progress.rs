@@ -647,7 +647,6 @@ async fn a_cancelled_candidate_writes_no_row() {
             &verdict,
             crate::signals::Signals {
                 disc_id: crate::signals::DiscIdSignal::Absent { track_count: 0 },
-                verification: None,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
                     catalogs: Vec::new(),

@@ -82,8 +82,7 @@ struct InlineFieldHeightTests {
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 cover: { EmptyView() },
-                audioFacts: { EmptyView() },
-                folderFacts: { EmptyView() }
+                audioFacts: { EmptyView() }
             )
             .environment(Library.stub())
             .environment(UiStore())

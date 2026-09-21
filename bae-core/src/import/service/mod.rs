@@ -89,10 +89,6 @@ struct PreparedMetadata {
     /// direct entry, which name no catalog. Commit writes one
     /// record row per element.
     records: Vec<crate::import::ReleaseRecord>,
-    /// What the rip databases said about the candidate's audio, as its rip log
-    /// states it. `None` for a candidate whose log states nothing about its
-    /// bits. Commit writes one row per track.
-    verification: Option<crate::import::Verification>,
     album_title: String,
 }
 

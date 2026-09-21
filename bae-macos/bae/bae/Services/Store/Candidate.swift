@@ -465,13 +465,6 @@ struct Candidate: Equatable, Identifiable {
         }
     }
 
-    /// What the rip databases said about this candidate's audio. `nil` until
-    /// something has read its log, and for a folder whose log states nothing
-    /// about its bits.
-    var verification: BridgeVerification? {
-        row?.verification
-    }
-
     /// Who wrote the current draft. `.nobody` for a candidate with no pick,
     /// and for a re-identify session, which has no candidate row to write one
     /// on.

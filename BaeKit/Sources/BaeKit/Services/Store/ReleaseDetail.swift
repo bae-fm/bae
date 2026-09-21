@@ -24,9 +24,6 @@ public struct ReleaseDetail: Identifiable {
     /// Every catalog that describes this release, in the order core lists
     /// them. Empty when no catalog does.
     public var records: [BridgeReleaseRecord]
-    /// What the rip databases said about this release's audio. `nil` for a
-    /// release no source verified.
-    public var verification: BridgeVerification?
 
     public var id: String {
         summary.id
@@ -62,6 +59,5 @@ public struct ReleaseDetail: Identifiable {
         coverFiles = bridge.coverFiles
         galleryItems = bridge.galleryItems
         records = bridge.records
-        verification = bridge.verification
     }
 }

@@ -133,10 +133,6 @@ pub struct DbCandidateImportPreparation {
     pub draft: crate::import::CandidateDraft,
     pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
     pub assets: crate::import::CandidatePreparedAssets,
-    /// What the rip databases said about the folder's audio, off the same
-    /// settled signals. `None` for a candidate whose log states nothing about
-    /// its bits; commit keeps this with the release.
-    pub verification: Option<crate::import::Verification>,
 }
 
 /// The exact candidate state a library import transaction is allowed to

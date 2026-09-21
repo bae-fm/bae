@@ -221,7 +221,7 @@ internal sealed partial class ImportSectionView
             title.FontFamily = new FontFamily("monospace");
             leading = Icons.Glyph(Icons.Folder, 13, "BaeTextSecondaryBrush");
         }
-        column.Children.Add(TitleWithGlyphs(leading, title, row));
+        column.Children.Add(TitleWithGlyphs(leading, title));
 
         // A running import is the one line on a row that changes by the
         // second, so it draws itself off the candidate-runtime signal rather
@@ -253,17 +253,13 @@ internal sealed partial class ImportSectionView
         return column;
     }
 
-    // The title takes the remaining width and trims; the identification seal
-    // keeps its width so it stays visible.
-    private Control TitleWithGlyphs(
-        Control? leading,
-        TextBlock title,
-        BridgeTriageRow row)
+    // The title takes the remaining width and trims.
+    private static Control TitleWithGlyphs(Control? leading, TextBlock title)
     {
         var line = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions(
-                leading is null ? "*,Auto" : "Auto,*,Auto"),
+                leading is null ? "*" : "Auto,*"),
         };
         var column = 0;
         if (leading is not null)
@@ -272,40 +268,9 @@ internal sealed partial class ImportSectionView
             Grid.SetColumn(leading, column++);
             line.Children.Add(leading);
         }
-        Grid.SetColumn(title, column++);
+        Grid.SetColumn(title, column);
         line.Children.Add(title);
-
-        var glyphs = IdentityGlyphs(row);
-        Grid.SetColumn(glyphs, column);
-        line.Children.Add(glyphs);
         return line;
-    }
-
-    // The seal identifies the chosen record. Rip verification is stated in
-    // the details behind it and in the pane, without a check in the list.
-    private Control IdentityGlyphs(BridgeTriageRow row)
-    {
-        var glyphs = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 4,
-            Margin = new Thickness(6, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        return glyphs;
-    }
-
-    private static Control Glyph(
-        string data,
-        string brushKey,
-        string automationId,
-        string name)
-    {
-        var glyph = Icons.Glyph(data, 11, brushKey);
-        glyph.VerticalAlignment = VerticalAlignment.Center;
-        Avalonia.Automation.AutomationProperties.SetAutomationId(glyph, automationId);
-        Avalonia.Automation.AutomationProperties.SetName(glyph, name);
-        return glyph;
     }
 
     // The line under the title: what the row has to say, and nothing when it

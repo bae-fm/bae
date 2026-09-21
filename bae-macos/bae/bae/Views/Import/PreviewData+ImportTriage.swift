@@ -48,9 +48,7 @@
             coverThumbnail: BridgeCoverImageSource? = nil,
             importStatus: BridgeTriageImportStatus? = nil,
             metadataProvenance: BridgeMetadataProvenance? = nil,
-            reading: BridgeTriageReading = .unidentified,
-            verification: BridgeVerification? = nil,
-            verified: Bool = false
+            reading: BridgeTriageReading = .unidentified
         ) -> BridgeTriageRow {
             BridgeTriageRow(
                 candidateKey: candidate.key,
@@ -69,9 +67,7 @@
                 selectable: actions.contains(.importReady),
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance,
-                reading: reading,
-                verification: verification,
-                verified: verified
+                reading: reading
             )
         }
 

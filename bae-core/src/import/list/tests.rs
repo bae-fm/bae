@@ -121,7 +121,6 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
         metadata_draft_valid: true,
         metadata_summary: None,
         selected_cover: None,
-        verification: None,
     }
 }
 
@@ -140,7 +139,6 @@ fn several_matches_state() -> CandidateStateListRow {
         metadata_draft_valid: false,
         metadata_summary: None,
         selected_cover: None,
-        verification: None,
     }
 }
 
@@ -159,7 +157,6 @@ fn not_found_state() -> CandidateStateListRow {
         metadata_draft_valid: false,
         metadata_summary: None,
         selected_cover: None,
-        verification: None,
     }
 }
 

@@ -381,14 +381,6 @@ pub struct TriageRow {
     /// How the row's text column reads, with every catalog the pick's
     /// archived documents describe the release in.
     pub reading: TriageReading,
-    /// What the rip databases said about this candidate's audio, as its rip
-    /// log states it. `None` until something has extracted the folder's
-    /// signals, and for a folder whose log states nothing about its bits.
-    pub verification: Option<crate::import::Verification>,
-    /// Whether other copies of this candidate's audio agree with it. Derived
-    /// from `verification` once, here, so no surface reads a count to answer
-    /// a yes-or-no question.
-    pub verified: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -93,8 +93,6 @@ impl BridgeRelease {
             cover_files,
             gallery_items,
             records,
-            verification,
-            verified,
         } = rel;
         // Single-source the summary-derived fields through BridgeReleaseSummary,
         // then exhaustively destructure it into BridgeRelease's flat fields so the
@@ -143,8 +141,6 @@ impl BridgeRelease {
                 .into_iter()
                 .map(crate::types::BridgeReleaseRecord::from_core)
                 .collect(),
-            verification: verification.map(crate::types::BridgeVerification::from_core),
-            verified,
             file_count,
             total_size,
             cover,

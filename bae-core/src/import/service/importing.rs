@@ -220,9 +220,6 @@ impl ImportService {
         let selected_cover = preparation.cover;
         let user_edit = Some(preparation.draft.release_edit().shape()?);
         let prepared_assets = preparation.assets;
-        // What the rip databases said about this folder's audio, from the log
-        // the extraction pass already read.
-        let verification = preparation.verification;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
@@ -346,7 +343,6 @@ impl ImportService {
             .reconcile_prepared_release(
                 parsed,
                 records,
-                verification,
                 user_edit,
                 &replacement_release_ids,
                 &prepared_assets.artist_images,
@@ -518,7 +514,6 @@ impl ImportService {
             artist_external_id_updates,
             artist_images,
             records,
-            verification,
             selected_cover,
             remote_cover_image,
             embedded_cover,
@@ -779,7 +774,6 @@ impl ImportService {
                     audio_formats: &built_audio.audio_formats,
                     audio_segments: &built_audio.audio_segments,
                     records,
-                    verification: verification.as_ref(),
                 },
                 prepared_files,
                 library_image,

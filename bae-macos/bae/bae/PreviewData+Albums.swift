@@ -179,10 +179,7 @@
                 records: album.id == "a-01" ? releaseRecordsEveryCatalog : [],
                 // The same album's first pressing states every name a folder
                 // can carry, so the expansion preview shows a full popover.
-                // The same pressing is the one a rip log verified, so the
                 // popover preview states its match count too.
-                verification: album.id == "a-01" ? releaseVerification : nil,
-                verified: album.id == "a-01",
                 totalDuration: groupDuration(tracks),
                 fileCount: 0,
                 totalSize: 0,

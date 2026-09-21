@@ -11,9 +11,6 @@
     extension View {
         func importPreviewEnvironment() -> some View {
             self
-                .releaseEvidencePreviewEnvironment(
-                    subject: .candidate(key: PreviewData.mappingCandidate.key)
-                )
                 .environment(PreviewData.artImageStore())
                 .environment(UiStore())
                 .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))

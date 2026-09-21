@@ -71,12 +71,7 @@ struct AlbumExpansionContent: View {
                     }
                     ReleaseFactsLine(
                         facts: selectedRelease.compactMetadata,
-                        verification: selectedRelease.verification,
                         records: selectedRelease.records
-                    )
-                    .environment(
-                        \.releaseEvidenceSubject,
-                        .release(id: selectedRelease.id)
                     )
                     HStack(spacing: 10) {
                         Button(action: onPlay) {
@@ -228,7 +223,6 @@ struct AlbumExpansionContent: View {
 /// that closes it on a click away or Escape.
 private struct ReleaseFactsLine: View {
     let facts: String
-    let verification: BridgeVerification?
     let records: [BridgeReleaseRecord]
 
     /// How far under the line the card's top sits.
@@ -245,7 +239,7 @@ private struct ReleaseFactsLine: View {
     private var lineHeight: CGFloat = 0
 
     var body: some View {
-        if records.isEmpty, verification?.matchedCopies == nil {
+        if records.isEmpty {
             factsText
         }
         else {
@@ -287,23 +281,20 @@ private struct ReleaseFactsLine: View {
     }
 
     private var card: some View {
-        ReleaseFactsPopover(
-            verification: verification,
-            records: records
-        )
-        .background(Theme.tile, in: RoundedRectangle(cornerRadius: 9))
-        .overlay {
-            RoundedRectangle(cornerRadius: 9)
-                .strokeBorder(Theme.hairline, lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.5), radius: 14, y: 8)
-        .background {
-            OverlayDismissMonitor(trigger: trigger) {
-                isShowingCard = false
+        ReleaseRecordsCard(records: records)
+            .background(Theme.tile, in: RoundedRectangle(cornerRadius: 9))
+            .overlay {
+                RoundedRectangle(cornerRadius: 9)
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
             }
-        }
-        .fixedSize()
-        .accessibilityIdentifier("release-facts-card")
+            .shadow(color: .black.opacity(0.5), radius: 14, y: 8)
+            .background {
+                OverlayDismissMonitor(trigger: trigger) {
+                    isShowingCard = false
+                }
+            }
+            .fixedSize()
+            .accessibilityIdentifier("release-facts-card")
     }
 
     private var factsText: some View {

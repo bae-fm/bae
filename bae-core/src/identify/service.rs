@@ -493,7 +493,6 @@ mod tests {
     fn absent_signals() -> Signals {
         Signals {
             disc_id: DiscIdSignal::Absent { track_count: 7 },
-            verification: None,
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Settled {
                 catalogs: vec![],

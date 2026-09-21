@@ -124,8 +124,6 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("releases", RowIdentity::IndependentUuid).gated_by("remote"),
         SyncedTable::new("release_records", RowIdentity::IndependentUuid)
             .gated_through("release_id"),
-        SyncedTable::new("release_verification", RowIdentity::IndependentUuid)
-            .gated_through("release_id"),
         SyncedTable::new("tracks", RowIdentity::IndependentUuid).gated_through("release_id"),
         SyncedTable::new("track_artists", RowIdentity::IndependentUuid).gated_through("track_id"),
         SyncedTable::new("works", RowIdentity::IndependentUuid).gated_by_descendants(),
@@ -325,7 +323,6 @@ mod tests {
                 ("release_artist_roles", "release_id"),
                 ("release_files", "release_id"),
                 ("release_records", "release_id"),
-                ("release_verification", "release_id"),
                 ("track_artist_roles", "track_id"),
                 ("track_artists", "track_id"),
                 ("track_works", "track_id"),

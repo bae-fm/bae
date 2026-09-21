@@ -497,14 +497,6 @@ pub struct BridgeTriageRow {
     /// How the row's text column reads: its folder, a draft, or a draft read
     /// from a catalog's release.
     pub reading: BridgeTriageReading,
-    /// What the rip databases said about this candidate's audio. `None` until
-    /// something has read its log, and for a folder whose log states nothing
-    /// about its bits.
-    pub verification: Option<crate::types::BridgeVerification>,
-    /// Whether other copies of this candidate's audio agree with it. Core
-    /// derives it from the verification; a surface never reads a count to
-    /// answer a yes-or-no question.
-    pub verified: bool,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

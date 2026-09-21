@@ -13,7 +13,7 @@
 mod window;
 
 use super::records::check_releases_in_library_on;
-use super::import_state::{load_matches_on, load_provenance_on, load_verifications_on};
+use super::import_state::{load_matches_on, load_provenance_on};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_scanner::InvalidReason;
@@ -87,10 +87,6 @@ pub struct CandidateStateListRow {
     pub metadata_draft_valid: bool,
     pub metadata_summary: Option<crate::import::TriageMetadataSummary>,
     pub selected_cover: Option<crate::import::CoverSelection>,
-    /// What the rip databases said about the candidate's audio. `None` until
-    /// something has extracted its signals, and for a folder whose log states
-    /// nothing about its bits.
-    pub verification: Option<crate::import::Verification>,
 }
 
 /// Every column the queue is placed from, in one read.
@@ -394,7 +390,6 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut matches = load_matches_on(sql, None)?;
     let mut provenances = load_provenance_on(sql, None)?;
     let mut verdicts: HashMap<String, (VerdictSummary, u64)> = HashMap::new();
-    let mut verifications = load_verifications_on(sql, None)?;
     for row in sql.query(
         "SELECT content_hash, kind, track_count, probed_total_duration_ms \
          FROM import_candidate_verdict",
@@ -464,7 +459,6 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         let metadata_summary =
             crate::import::TriageMetadataSummary::of(&release_edit, metadata_provenance.clone());
         let selected_cover = covers.remove(&content_hash);
-        let verification = verifications.remove(&content_hash);
         states.insert(
             content_hash,
             CandidateStateListRow {
@@ -475,7 +469,6 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 metadata_draft_valid,
                 metadata_summary,
                 selected_cover,
-                verification,
             },
         );
     }

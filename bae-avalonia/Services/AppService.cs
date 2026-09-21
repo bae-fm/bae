@@ -29,7 +29,6 @@ internal sealed class AppService : IDisposable
     public CastService Cast { get; }
     public SettingsService Settings { get; }
     public ImportService Import { get; }
-    public EvidenceService Evidence { get; }
     public ReleaseEditorService ReleaseEditor { get; }
     public DiscogsService Discogs { get; }
     public AutomationService Automation { get; }
@@ -78,8 +77,7 @@ internal sealed class AppService : IDisposable
             ReleaseEditorService.FromSession(session),
             DiscogsService.FromSession(session),
             AutomationService.FromSession(session),
-            SubsonicService.FromSession(session),
-            EvidenceService.FromSession(session))
+            SubsonicService.FromSession(session))
     {
     }
 
@@ -102,8 +100,7 @@ internal sealed class AppService : IDisposable
         ReleaseEditorService releaseEditor,
         DiscogsService discogs,
         AutomationService automation,
-        SubsonicService subsonic,
-        EvidenceService evidence)
+        SubsonicService subsonic)
     {
         Session = session;
         MediaControl = mediaControl;
@@ -120,7 +117,6 @@ internal sealed class AppService : IDisposable
         Discogs = discogs;
         Automation = automation;
         Subsonic = subsonic;
-        Evidence = evidence;
 
         ShellStore = new ShellStore();
         PlaybackStore = new PlaybackStore(
@@ -215,8 +211,7 @@ internal sealed class AppService : IDisposable
             releaseEditor ?? new ReleaseEditorService(),
             new DiscogsService(),
             new AutomationService(),
-            new SubsonicService(),
-            new EvidenceService());
+            new SubsonicService());
 #endif
 
     /// <summary>Route a caught error to the shell's error banner — the macOS

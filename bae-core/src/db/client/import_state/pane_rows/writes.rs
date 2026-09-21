@@ -30,10 +30,6 @@ impl Database {
                 draft: rows.draft,
                 source_discogs_artist_ids,
                 assets,
-                verification: state
-                    .signals
-                    .as_ref()
-                    .and_then(|signals| signals.verification.clone()),
             }))
         })
         .await

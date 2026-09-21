@@ -108,14 +108,6 @@ pub struct ReleaseDetail {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
-    /// What the rip databases said about this release's audio — how many other
-    /// copies of each track agree with this one. `None` for a release no
-    /// source verified.
-    pub verification: Option<crate::import::Verification>,
-    /// Whether other copies of this release's audio agree with it. Derived
-    /// from `verification` once, here, so no surface reads a count to answer
-    /// a yes-or-no question.
-    pub verified: bool,
 }
 
 /// One physical source file that supplies a persisted track. A track can span
@@ -412,11 +404,6 @@ impl ReleaseDetail {
             cover_files,
             gallery_items: gallery,
             records: raw.records,
-            verified: raw
-                .verification
-                .as_ref()
-                .is_some_and(crate::import::Verification::verified),
-            verification: raw.verification,
         };
         (detail, audio_format_orphans)
     }
@@ -453,7 +440,6 @@ mod release_edit_display_tests {
                 artists: Vec::new(),
             }],
             files: Vec::new(),
-            verification: None,
             audio_formats: vec![format.clone()],
             audio_segments: vec![crate::db::DbAudioSegment {
                 id: "segment-id".to_string(),

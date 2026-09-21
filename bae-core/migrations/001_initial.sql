@@ -327,29 +327,6 @@ CREATE INDEX IF NOT EXISTS idx_release_records_catalog_album ON release_records
 CREATE UNIQUE INDEX IF NOT EXISTS idx_release_records_reads_draft
     ON release_records (release_id) WHERE reads_draft = 1;
 
--- The rip-check counts a ripper's log stated for each track of a release.
-CREATE TABLE IF NOT EXISTS release_verification (
-    id                      TEXT NOT NULL PRIMARY KEY,
-    release_id              TEXT NOT NULL,
-    track                   INTEGER NOT NULL CHECK (track >= 1),
-    -- Where the counts came from. Reading the log the rip left beside the
-    -- audio is one source; asking the databases directly is another.
-    source                  TEXT NOT NULL CHECK (source IN ('log')),
-    -- How many other copies AccurateRip holds that agree with these bits. NULL
-    -- where it holds none, disagreed, or was never asked: a disagreement's
-    -- count belongs to the copy the database held, not to this rip.
-    accuraterip_confidence  INTEGER CHECK (accuraterip_confidence IS NULL OR accuraterip_confidence >= 0),
-    ctdb_confidence         INTEGER CHECK (ctdb_confidence IS NULL OR ctdb_confidence >= 0),
-    -- The checksum of the bits that were kept, where the source states one.
-    crc                     INTEGER,
-    _updated_at             TEXT NOT NULL,
-    created_at              TEXT NOT NULL,
-    UNIQUE (release_id, track),
-    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_release_verification_release ON release_verification (release_id);
-
 -- The tracks of a release, in playing order.
 CREATE TABLE IF NOT EXISTS tracks (
     id TEXT PRIMARY KEY,
@@ -1136,8 +1113,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     text_failure           TEXT CHECK (text_failure IS NULL OR text_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
     text_failure_status    INTEGER,
     text_failure_detail    TEXT,
-    -- Where the rip-check counts were read from, where there are any.
-    verification_source    TEXT CHECK (verification_source IS NULL OR verification_source IN ('log')),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((disc_id_state = 'computed') = (disc_id IS NOT NULL)),
     -- A source file with no computed ID behind it is not a provenance.
@@ -1203,17 +1178,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_text_line (
     CHECK ((region_x IS NULL) = (region_y IS NULL)
        AND (region_x IS NULL) = (region_width IS NULL)
        AND (region_x IS NULL) = (region_height IS NULL))
-) STRICT;
-
--- The rip-check counts a ripper's log stated for each track of a candidate.
-CREATE TABLE IF NOT EXISTS import_candidate_verification (
-    content_hash            TEXT NOT NULL,
-    track                   INTEGER NOT NULL CHECK (track >= 1),
-    accuraterip_confidence  INTEGER CHECK (accuraterip_confidence IS NULL OR accuraterip_confidence >= 0),
-    ctdb_confidence         INTEGER CHECK (ctdb_confidence IS NULL OR ctdb_confidence >= 0),
-    crc                     INTEGER,
-    PRIMARY KEY (content_hash, track),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE
 ) STRICT;
 
 -- Which of the names read off a candidate the user let the lookups use.

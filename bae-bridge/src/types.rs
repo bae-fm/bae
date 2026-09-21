@@ -1,7 +1,3 @@
-#[cfg(feature = "desktop")]
-mod evidence;
-#[cfg(feature = "desktop")]
-pub use evidence::*;
 mod configuration;
 #[cfg(feature = "desktop")]
 mod conversion;
@@ -17,7 +13,6 @@ mod live_results;
 mod playback_values;
 mod signal_origin;
 mod storage_inspector;
-mod verification;
 
 pub use configuration::*;
 #[cfg(feature = "desktop")]
@@ -32,7 +27,6 @@ pub use live_results::*;
 pub use playback_values::*;
 pub use signal_origin::*;
 pub use storage_inspector::*;
-pub use verification::*;
 
 #[cfg(test)]
 #[path = "types/device_pairing_progress_tests.rs"]

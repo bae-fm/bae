@@ -214,40 +214,6 @@ impl AutomationReleaseRecord {
 }
 
 mirror_enum! {
-    AutomationVerificationSource = bae_core::import::VerificationSource,
-    from_core: pub(crate) fn,
-    variants: { Log },
-}
-
-mirror_struct! {
-    AutomationTrackVerification = bae_core::import::TrackVerification,
-    from_core: pub(crate) fn,
-    fields: {
-        number,
-        accuraterip_confidence,
-        ctdb_confidence,
-        crc,
-    },
-}
-
-impl AutomationVerification {
-    /// Not a field-for-field copy: the one number a reader wants is derived,
-    /// and core is what derives it.
-    pub(crate) fn from_core(value: bae_core::import::Verification) -> Self {
-        let matched_copies = value.matched_copies();
-        let bae_core::import::Verification { source, tracks } = value;
-        AutomationVerification {
-            source: AutomationVerificationSource::from_core(source),
-            matched_copies,
-            tracks: tracks
-                .into_iter()
-                .map(AutomationTrackVerification::from_core)
-                .collect(),
-        }
-    }
-}
-
-mirror_enum! {
     AutomationMetadataProvenance = MetadataProvenance,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
@@ -749,8 +715,6 @@ impl AutomationRelease {
                 .into_iter()
                 .map(AutomationReleaseRecord::from_core)
                 .collect(),
-            verified: release.verified,
-            verification: release.verification.map(AutomationVerification::from_core),
         }
     }
 }

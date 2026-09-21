@@ -14,7 +14,6 @@
 use super::super::read::stored_region;
 use super::verdict_rows::unreadable;
 use super::*;
-use crate::import::{TrackVerification, Verification, VerificationSource};
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextLine,
     TextSignal,
@@ -24,17 +23,13 @@ const SIGNALS_COLUMNS: &str = "content_hash, disc_id_state, disc_id, disc_id_sou
      track_count, \
      disc_id_failure, disc_id_failure_status, disc_id_failure_detail, \
      barcode_state, barcode_failure, barcode_failure_status, barcode_failure_detail, \
-     text_state, text_failure, text_failure_status, text_failure_detail, \
-     verification_source";
+     text_state, text_failure, text_failure_status, text_failure_detail";
 
 const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin, origin_path, \
      region_x, region_y, region_width, region_height";
 
 const TEXT_LINE_COLUMNS: &str = "content_hash, position, text, origin, origin_path, \
      region_x, region_y, region_width, region_height";
-
-const VERIFICATION_COLUMNS: &str =
-    "content_hash, track, accuraterip_confidence, ctdb_confidence, crc";
 
 /// One failure as its three columns.
 struct FailureColumns {
@@ -168,7 +163,7 @@ pub(super) fn insert_signals(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
@@ -187,34 +182,8 @@ pub(super) fn insert_signals(
             text_failure.kind,
             text_failure.status,
             text_failure.detail,
-            signals
-                .verification
-                .as_ref()
-                .map(|verification| verification.source.as_str()),
         ],
     )?;
-
-    // One row per track the log stated a result for. The header's source says
-    // the candidate has a verification at all; these say what it is.
-    for track in signals
-        .verification
-        .iter()
-        .flat_map(|verification| &verification.tracks)
-    {
-        sql.execute(
-            &format!(
-                "INSERT INTO import_candidate_verification ({VERIFICATION_COLUMNS}) \
-                 VALUES (?, ?, ?, ?, ?)"
-            ),
-            params![
-                content_hash,
-                track.number,
-                track.accuraterip_confidence,
-                track.ctdb_confidence,
-                track.crc,
-            ],
-        )?;
-    }
 
     let sourced = |list: &'static str, values: &[SourcedValue]| {
         values
@@ -302,24 +271,6 @@ fn free_text(text: &TextSignal) -> &[String] {
     }
 }
 
-/// What the rip databases said about each candidate's audio, for every
-/// candidate whose log states something about its bits, or for the one `only`
-/// names. A candidate whose log states nothing is absent from the map.
-pub(crate) fn load_verifications_on(
-    sql: &SqlReadContext<'_>,
-    only: Option<&str>,
-) -> Result<HashMap<String, Verification>, DbError> {
-    let signals = load_signals_on(sql, only)?;
-    Ok(signals()?
-        .into_iter()
-        .filter_map(|(content_hash, signals)| {
-            signals
-                .verification
-                .map(|verification| (content_hash, verification))
-        })
-        .collect())
-}
-
 /// Every candidate's settled signals, or the one `only` names.
 pub(super) fn load_signals_on(
     sql: &SqlReadContext<'_>,
@@ -370,23 +321,6 @@ pub(super) fn load_signals_on(
             ))
         },
     )?;
-    let verifications = sql.query(
-        &format!(
-            "SELECT {VERIFICATION_COLUMNS} FROM import_candidate_verification \
-             WHERE :only IS NULL OR content_hash = :only \
-             ORDER BY content_hash, track"
-        ),
-        named_params! { ":only": only },
-        |row| {
-            Ok((
-                row.get::<_, String>("content_hash")?,
-                row.get::<_, i64>("track")?,
-                row.get::<_, Option<i64>>("accuraterip_confidence")?,
-                row.get::<_, Option<i64>>("ctdb_confidence")?,
-                row.get::<_, Option<i64>>("crc")?,
-            ))
-        },
-    )?;
     let rows = sql.query(
         &format!(
             "SELECT {SIGNALS_COLUMNS} FROM import_candidate_signals \
@@ -411,7 +345,6 @@ pub(super) fn load_signals_on(
                 row.get::<_, Option<String>>("text_failure")?,
                 row.get::<_, Option<i64>>("text_failure_status")?,
                 row.get::<_, Option<String>>("text_failure_detail")?,
-                row.get::<_, Option<String>>("verification_source")?,
             ))
         },
     )?;
@@ -434,22 +367,6 @@ pub(super) fn load_signals_on(
                 "free_text" => entry.free_text.push(value),
                 other => return Err(unreadable("list", other)),
             }
-        }
-        let mut verified: HashMap<String, Vec<TrackVerification>> = HashMap::new();
-        for (content_hash, track, accuraterip_confidence, ctdb_confidence, crc) in verifications {
-            verified
-                .entry(content_hash)
-                .or_default()
-                .push(TrackVerification {
-                    number: stored_count("track", track)?,
-                    accuraterip_confidence: accuraterip_confidence
-                        .map(|value| stored_count("accuraterip confidence", value))
-                        .transpose()?,
-                    ctdb_confidence: ctdb_confidence
-                        .map(|value| stored_count("CTDB confidence", value))
-                        .transpose()?,
-                    crc: crc.map(|value| stored_count("CRC", value)).transpose()?,
-                });
         }
         let mut pools: HashMap<String, Vec<TextLine>> = HashMap::new();
         for (content_hash, text, origin, origin_path, region) in text_lines {
@@ -480,7 +397,6 @@ pub(super) fn load_signals_on(
                 text_failure,
                 text_failure_status,
                 text_failure_detail,
-                verification_source,
             ) = row;
             let values = lists.remove(&content_hash).unwrap_or_default();
             let track_count = u32::try_from(track_count).map_err(|_| {
@@ -536,29 +452,10 @@ pub(super) fn load_signals_on(
                 other => return Err(unreadable("text_state", other)),
             };
             let text_pool = pools.remove(&content_hash).unwrap_or_default();
-            let tracks = verified.remove(&content_hash).unwrap_or_default();
-            // A source with no track rows under it, or rows with no source
-            // over them, is half a verification — one write put both there.
-            let verification = match (verification_source, tracks.is_empty()) {
-                (None, true) => None,
-                (Some(source), false) => Some(Verification {
-                    source: source
-                        .parse::<VerificationSource>()
-                        .map_err(DbError::Message)?,
-                    tracks,
-                }),
-                (source, _) => {
-                    return Err(DbError::Message(format!(
-                        "candidate {content_hash} states verification source {source:?} \
-                         with no track rows, or track rows with no source"
-                    )))
-                }
-            };
             out.insert(
                 content_hash,
                 Signals {
                     disc_id,
-                    verification,
                     barcode,
                     text,
                     text_pool,
@@ -575,14 +472,6 @@ struct SignalValues {
     barcodes: Vec<SourcedValue>,
     catalogs: Vec<SourcedValue>,
     free_text: Vec<String>,
-}
-
-/// A stored count back as the `u32` the type holds it as. Every one of these
-/// columns is written from a `u32`, so a value outside that range is a row
-/// nothing here wrote.
-fn stored_count(what: &str, value: i64) -> Result<u32, DbError> {
-    u32::try_from(value)
-        .map_err(|_| DbError::Message(format!("a stored {what} is {value}")))
 }
 
 fn sourced_value(

@@ -252,8 +252,6 @@
                 // what a release a MusicBrainz pick linked all the way out
                 // reads like.
                 records: PreviewData.releaseRecordsEveryCatalog,
-                verification: PreviewData.releaseVerification,
-                verified: true,
                 totalDuration: .minutesOnly(minutes: 39),
                 fileCount: Int64(files.count),
                 totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },
@@ -277,11 +275,6 @@
         @MainActor
         func albumDetailPreviewEnvironment(store: LibraryStore) -> some View {
             self
-                .releaseEvidencePreviewEnvironment(
-                    subject: .release(
-                        id: PreviewData.releaseDetail(albumId: "a-01").id
-                    )
-                )
                 .environment(MediaPaths.stub())
                 .environment(ImageStore.stub())
                 .environment(Playback.stub())

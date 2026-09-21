@@ -143,36 +143,9 @@ public sealed class ImportSectionViewTests
         Assert.Empty(RowTrailingText(view));
     }
 
-    // Rip verification belongs in the pane, never in the list.
-    [AvaloniaTheory]
-    [InlineData(true, true)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(false, false)]
-    public void RipVerificationNeverAddsACheckToTheList(
-        bool identified,
-        bool verified)
-    {
-        var placement = new BridgeTriagePlacement.Ready();
-        var view = BuildView(
-            MatchedItems(
-                placement,
-                BridgeTriageSkipAction.Skip,
-                metadataSummary: AppliedDraft,
-                reading: identified
-                    ? new BridgeTriageReading.Identified(PairedRecords)
-                    : new BridgeTriageReading.Prefilled(),
-                verified: verified),
-            MatchedSummary(placement, BridgeTriageTab.Pending));
-
-        Assert.False(HasGlyph(view, "verified-glyph"));
-        Assert.DoesNotContain(Loc.Core("core.identity.verified"), RowText(view));
-        Assert.Empty(RowTrailingText(view));
-    }
-
-    // Several matches remain visible without a rip verification check.
+    // Several matches keep the question's chip and draw no glyph.
     [AvaloniaFact]
-    public void SeveralMatchesHaveNoVerificationCheck()
+    public void SeveralMatchesKeepTheirChip()
     {
         var placement = new BridgeTriagePlacement.NeedsYou(
             new BridgeNeedsYou.SeveralMatches(3));
@@ -181,35 +154,15 @@ public sealed class ImportSectionViewTests
                 placement,
                 BridgeTriageSkipAction.Skip,
                 metadataSummary: AppliedDraft,
-                reading: new BridgeTriageReading.Prefilled(),
-                verified: true),
+                reading: new BridgeTriageReading.Prefilled()),
             MatchedSummary(placement, BridgeTriageTab.Pending));
 
-        Assert.False(HasGlyph(view, "verified-glyph"));
         Assert.Equal(
             new[]
             {
                 BridgeDisplay.LocalizedLine(new BridgeNeedsYou.SeveralMatches(3)),
             },
             RowTrailingText(view));
-    }
-
-    // Every catalog that describes the pressing the pick claimed, each
-    // linking to its own page for it.
-    [AvaloniaFact]
-    public void TheGlyphCardNamesEveryCatalog()
-    {
-        var text = TextOf(ReleaseFactsFlyout.Build([], null, PairedRecords));
-
-        // Each link is one text run: the catalog's name and the outbound arrow.
-        Assert.Contains(
-            text,
-            line => line.StartsWith(
-                BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.MusicBrainz)));
-        Assert.Contains(
-            text,
-            line => line.StartsWith(
-                BaeBridgeMethods.BridgeCatalogName(BridgeCatalog.Discogs)));
     }
 
     internal static readonly BridgeReleaseRecord[] PairedRecords =
@@ -678,8 +631,7 @@ public sealed class ImportSectionViewTests
         BridgeTriageMetadataSummary? metadataSummary = null,
         BridgeCoverImageSource? coverThumbnail = null,
         BridgeMetadataProvenance? metadataProvenance = null,
-        BridgeTriageReading? reading = null,
-        bool verified = false) => new()
+        BridgeTriageReading? reading = null) => new()
     {
         new BridgeImportListItem.Candidate(
             PreviewData.CandidateStableKey(CandidateKey),
@@ -690,8 +642,7 @@ public sealed class ImportSectionViewTests
                 metadataSummary,
                 coverThumbnail,
                 metadataProvenance,
-                reading,
-                verified),
+                reading),
             IsGroupMember: isGroupMember),
     };
 
@@ -702,8 +653,7 @@ public sealed class ImportSectionViewTests
         BridgeTriageMetadataSummary? metadataSummary = null,
         BridgeCoverImageSource? coverThumbnail = null,
         BridgeMetadataProvenance? metadataProvenance = null,
-        BridgeTriageReading? reading = null,
-        bool verified = false) =>
+        BridgeTriageReading? reading = null) =>
             new BridgeTriageRow(
                 CandidateKey: CandidateKey,
                 FolderName: "Release 01",
@@ -746,9 +696,7 @@ public sealed class ImportSectionViewTests
                             new BridgeMetadataRef(BridgeCatalog.MusicBrainz, "rel-matched"),
                             [])
                         : null),
-                Reading: reading ?? new BridgeTriageReading.Unidentified(),
-                Verification: null,
-                Verified: verified);
+                Reading: reading ?? new BridgeTriageReading.Unidentified());
 
     private static BridgeImportQueueSummary MatchedSummary(
         BridgeTriagePlacement placement,

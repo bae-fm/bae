@@ -266,8 +266,6 @@
                 importStatus: nil,
                 metadataProvenance: nil,
                 reading: .unidentified,
-                verification: nil,
-                verified: false
             )
         }
 

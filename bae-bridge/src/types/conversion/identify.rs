@@ -401,13 +401,11 @@ mirror_enum! {
     },
 }
 
-/// Not a `mirror_struct`: the measured durations, the candidate's own text
-/// lines, and what the rip databases said do not cross. The durations are a
-/// Ready-rule input and the mapping table's lengths, and the pane reads them
-/// through its own record; the text pool is what core judges and orders the
-/// rows by, and what it concluded is already on every row as its badges; the
-/// verification is nothing the identify run looks anything up by, and the row
-/// carries it.
+/// Not a `mirror_struct`: the measured durations and the candidate's own text
+/// lines do not cross. The durations are a Ready-rule input and the mapping
+/// table's lengths, and the pane reads them through its own record; the text
+/// pool is what core judges and orders the rows by, and what it concluded is
+/// already on every row as its badges.
 impl BridgeSignals {
     pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
         let bae_core::signals::Signals {
@@ -416,7 +414,6 @@ impl BridgeSignals {
             text,
             text_pool: _,
             durations: _,
-            verification: _,
         } = s;
         BridgeSignals {
             disc_id: BridgeDiscIdSignal::from_core(disc_id),

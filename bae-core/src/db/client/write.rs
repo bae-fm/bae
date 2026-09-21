@@ -752,43 +752,6 @@ pub(super) fn insert_release_record_row(
     .map_err(DbError::from)
 }
 
-/// Insert one track's verification row: what each rip database answered for
-/// that track, and the CRC of the bits those answers are about. Written by the
-/// import commit, which is the desktop's.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn insert_release_verification_row(
-    conn: &SqlContext<'_, '_>,
-    release_id: &str,
-    source: crate::import::VerificationSource,
-    track: &crate::import::TrackVerification,
-    id: String,
-    reg: &str,
-    now: &str,
-) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT INTO release_verification (
-            id, release_id, track, source,
-            accuraterip_confidence, ctdb_confidence, crc,
-            _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            id,
-            release_id,
-            track.number,
-            source.as_str(),
-            track.accuraterip_confidence,
-            track.ctdb_confidence,
-            track.crc,
-            reg,
-            now,
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
 /// Replace every `album_artists` row for `album_id` with `artists` (delete then
 /// insert), so the `album_artists` schema is written in one place.
 pub(super) fn replace_album_artists(

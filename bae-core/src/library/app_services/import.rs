@@ -8,7 +8,6 @@ use crate::import::{
 };
 
 impl AppServices {
-    delegate_async!(manager, read_evidence => read_evidence(subject: &crate::library::EvidenceSubject, selection: &crate::library::EvidenceSelection) -> Result<Vec<crate::library::EvidenceContent>, crate::library::LibraryError>);
     delegate_async!(import, import_candidate_source_folders => candidate_source_folders(key: &str) -> Result<Vec<String>, crate::import::ImportError>);
     delegate_async!(import, import_combine_candidates => combine_candidates(keys: Vec<String>) -> Result<String, crate::import::ImportError>);
     delegate_async!(import, import_separate_combined_candidate => separate_combined_candidate(key: &str) -> Result<(), crate::import::ImportError>);

@@ -62,7 +62,7 @@ enum ReleaseMetadataLayout {
 /// of its own the full width of the surface. Its callers supply the cover and
 /// the two folder slots so candidate and persisted-release ownership never
 /// leaks into this component.
-struct ReleaseMetadataHeader<Cover: View, AudioFacts: View, FolderFacts: View>:
+struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
     View
 {
     let values: BridgeRawReleaseEdit
@@ -75,11 +75,6 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View, FolderFacts: View>:
     /// where nothing has read the files.
     @ViewBuilder
     let audioFacts: () -> AudioFacts
-    /// The names the object carries and what the rip databases said about
-    /// its bits: a block of its own under the cover row, above the release
-    /// facts. Empty where there is no folder behind the release.
-    @ViewBuilder
-    let folderFacts: () -> FolderFacts
 
     var body: some View {
         VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
@@ -98,7 +93,6 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View, FolderFacts: View>:
                     audioFacts: audioFacts
                 )
             }
-            folderFacts()
             ReleasePressingFieldsGrid(
                 values: values,
                 writer: writer,
@@ -554,8 +548,7 @@ struct ArtistAssignmentsField: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             },
-            audioFacts: { EmptyView() },
-            folderFacts: { EmptyView() }
+            audioFacts: { EmptyView() }
         )
         .padding(24)
         .frame(width: 900, height: 480)
@@ -580,8 +573,7 @@ struct ArtistAssignmentsField: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             },
-            audioFacts: { EmptyView() },
-            folderFacts: { EmptyView() }
+            audioFacts: { EmptyView() }
         )
         .padding(24)
         .frame(width: 900, height: 480)

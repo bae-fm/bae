@@ -30,9 +30,6 @@ internal sealed class ReleaseActionDialogs
         _lightbox = lightbox;
     }
 
-    internal Task ShowEvidence(string releaseId, BridgeEvidenceSelection selection) =>
-        EvidenceDialog.Show(_host, _app.Evidence, new BridgeEvidenceSubject.Release(releaseId), selection, _app.ShowError);
-
     // Open the release's gallery in the lightbox. The items come from the loaded
     // release detail (as on macOS); each entry reads its bytes on demand through
     // the image store, which fetches and decrypts from the cloud home when

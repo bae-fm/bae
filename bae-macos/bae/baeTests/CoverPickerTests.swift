@@ -123,8 +123,6 @@ struct CoverPickerTests {
             coverFiles: [file],
             galleryItems: [],
             records: [],
-            verification: nil,
-            verified: false,
             totalDuration: nil,
             fileCount: 2,
             totalSize: 220,

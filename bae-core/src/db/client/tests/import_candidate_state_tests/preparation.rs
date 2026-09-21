@@ -821,4 +821,3 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
     );
 }
 
-include!("preparation_evidence.rs");

@@ -75,14 +75,10 @@ const DIRECT_KEYS: &[&str] = &[
     // Generic lookup-failure line for the keyless `Diagnostic` variant:
     // `bridge_lookup_failure_key` returns `None`, the UI shows this line.
     "core.lookup.failure.diagnostic",
-    // The two identity glyphs' accessibility labels and hover titles. Which
-    // of them a row draws is two typed fields, so neither needs a key
-    // function and neither word is ever drawn.
+    // The arrow's accessibility label on a row whose facts were read from a
+    // catalog record. One key, no variants to enumerate, and the word itself
+    // is never drawn.
     "core.identity.identified",
-    "core.identity.verified",
-    // The rip-match line: core hands over the count, the surface resolves the
-    // plural against it. Nothing enumerates a variant here, so no key fn.
-    "core.verification.matches_other_rips",
 ];
 
 /// A stand-in cover choice for walking the file roles that carry one. The
@@ -242,19 +238,6 @@ fn produced_keys() -> Vec<String> {
         BridgeCloudProvider::CloudKit,
     ] {
         assert!(bridge_cloud_provider_label_key(Some(p)).is_none());
-    }
-
-    // bridge_signal_origin_key — every surface a value can be read off tags
-    // the line that states it.
-    for origin in [
-        BridgeSignalOrigin::DiscToc,
-        BridgeSignalOrigin::CueSheet,
-        BridgeSignalOrigin::Artwork,
-        BridgeSignalOrigin::FolderName,
-        BridgeSignalOrigin::Filename,
-        BridgeSignalOrigin::TextFile,
-    ] {
-        keys.push(bridge_signal_origin_key(origin));
     }
 
     // bridge_invalid_reason_key — every variant carries a key.

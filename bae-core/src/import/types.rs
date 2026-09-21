@@ -32,10 +32,8 @@ pub use raw_release_edit::{
     CandidateDraft, CandidateTrack, EditValidationError, RawPressingEdit, RawReleaseEdit,
     RawReleaseEditOf, RawTrackEdit,
 };
-mod verification;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::{path::PathBuf, sync::Arc};
-pub use verification::{TrackVerification, Verification, VerificationSource};
 
 /// Whether a source is asked when the sources are asked together, and when it
 /// is not, why not. Core's answer, so no surface re-derives "on and reachable"

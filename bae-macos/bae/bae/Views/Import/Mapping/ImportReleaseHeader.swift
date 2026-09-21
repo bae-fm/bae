@@ -99,8 +99,7 @@ struct ImportReleaseHeader: View {
                                 sourceAudio: sourceAudio
                             )
                         }
-                    },
-                    folderFacts: { folderFacts }
+                    }
                 )
                 .disabled(!actionable)
                 // Which catalogs describe the release is the card's last
@@ -158,18 +157,6 @@ struct ImportReleaseHeader: View {
             Text(
                 "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed."
             )
-        }
-    }
-
-    /// What the rip databases said about the audio of the object the folder
-    /// was copied from. Absent — not an empty block — for a folder whose log
-    /// states nothing about its bits.
-    @ViewBuilder
-    private var folderFacts: some View {
-        if let verification = releaseSummary.verification,
-            verification.matchedCopies != nil
-        {
-            RipMatchLine(verification: verification)
         }
     }
 

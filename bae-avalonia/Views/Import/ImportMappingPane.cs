@@ -537,9 +537,6 @@ internal sealed partial class ImportMappingPane : UserControl
         Edit = _candidate?.Edit,
         MetaLine = MetaLine(),
         SourceAudioLine = SourceAudioLine(_candidate?.Files),
-        OnOpenEvidence = selection => _ = _dialogs.ShowEvidence(_app,
-            new BridgeEvidenceSubject.Candidate(_key ?? throw new InvalidOperationException("No candidate selected")), selection),
-        Verification = _candidate?.Verification,
         Records = _candidate?.Records ?? [],
         IsReading = PickInFlight() is not null,
         LookupOptions = _candidate?.MetadataPresentation

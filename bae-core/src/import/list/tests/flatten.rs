@@ -612,7 +612,6 @@ fn a_valid_source_less_draft_is_ready_and_bulk_importable() {
             metadata_draft_valid: true,
             metadata_summary: None,
             selected_cover: None,
-            verification: None,
         },
     );
 

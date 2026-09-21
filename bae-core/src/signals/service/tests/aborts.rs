@@ -40,7 +40,6 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
             &extraction,
             Signals {
                 disc_id: DiscIdSignal::Absent { track_count: 0 },
-                verification: None,
                 barcode: BarcodeSignal::Absent,
                 text: TextSignal::Settled {
                     catalogs: Vec::new(),
@@ -115,7 +114,6 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
             failure: failure.clone(),
             track_count: 0,
         },
-        None,
         failure.clone(),
     );
 

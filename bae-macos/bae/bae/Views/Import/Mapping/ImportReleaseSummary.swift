@@ -9,10 +9,6 @@ struct ImportReleaseSummary {
     let artist: String?
     let factsLine: String
     let sourceAudio: BridgeCandidateSourceAudio?
-    /// What the rip databases said about the folder's audio. `nil` until
-    /// something has read its log, and for a folder whose log states nothing
-    /// about its bits.
-    let verification: BridgeVerification?
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
         let provenance = candidate.metadataProvenance
@@ -46,7 +42,6 @@ struct ImportReleaseSummary {
         case nil:
             factsLine = trackText
         }
-        verification = candidate.verification
         sourceAudio = candidate.files.sourceAudio
     }
 
@@ -62,7 +57,6 @@ struct ImportReleaseSummary {
             artistNames.isEmpty
             ? nil : ListFormatter.localizedString(byJoining: artistNames)
         factsLine = ""
-        verification = row.verification
         sourceAudio = nil
     }
 

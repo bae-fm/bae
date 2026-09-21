@@ -83,11 +83,6 @@ public sealed class Release : INotifyPropertyChanged
     /// <see cref="StorageActions"/>.</summary>
     internal IReadOnlyList<BridgeReleaseRecord> Records => _release.Records;
 
-    /// <summary>What the rip databases said about this release's audio.
-    /// <c>null</c> for a release no source verified. Internal for the same
-    /// reason as <see cref="StorageActions"/>.</summary>
-    internal BridgeVerification? Verification => _release.Verification;
-
     /// <summary>Whether this release lives in the cloud (Remote) rather than
     /// locally.</summary>
     public bool IsCloud => _release.StorageState == BridgeReleaseStorageState.Remote;

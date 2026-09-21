@@ -441,8 +441,7 @@ extension MappingFixtures {
         candidateKey key: String = MappingFixtures.candidateKey,
         folderName: String = "Walkthrough",
         audioIdentity: String = "empty-audio-files",
-        reading: BridgeTriageReading = .unidentified,
-        verification: BridgeVerification? = nil
+        reading: BridgeTriageReading = .unidentified
     ) -> BridgeImportCandidateDetail {
         let folder = sourceFolder(
             key: key,
@@ -457,8 +456,7 @@ extension MappingFixtures {
                 folder: folder,
                 edit: edit,
                 metadataProvenance: metadataProvenance,
-                reading: reading,
-                verification: verification
+                reading: reading
             ),
             release: {
                 if case .externalRelease = metadataProvenance {
@@ -496,9 +494,7 @@ extension MappingFixtures {
         folder: BridgeFolderCandidate,
         edit: BridgeRawReleaseEdit,
         metadataProvenance: BridgeMetadataProvenance?,
-        reading: BridgeTriageReading,
-        verification: BridgeVerification? = nil,
-        verified: Bool = false
+        reading: BridgeTriageReading
     ) -> BridgeTriageRow {
         let undecided = metadataProvenance == nil && edit.albumTitle.isEmpty
         return BridgeTriageRow(
@@ -519,9 +515,7 @@ extension MappingFixtures {
             selectable: !edit.albumTitle.isEmpty,
             importStatus: nil,
             metadataProvenance: metadataProvenance,
-            reading: reading,
-            verification: verification,
-            verified: verified
+            reading: reading
         )
     }
 
@@ -583,8 +577,7 @@ extension MappingFixtures {
         metadataProvenance: BridgeMetadataProvenance? = provenance,
         edit: BridgeRawReleaseEdit = albumEdit,
         presentation: BridgeMetadataPresentation = .draft,
-        reading: BridgeTriageReading = .unidentified,
-        verification: BridgeVerification? = nil
+        reading: BridgeTriageReading = .unidentified
     ) -> ImportStore {
         let store = ImportStore()
         store.applyCandidateDetail(
@@ -594,8 +587,7 @@ extension MappingFixtures {
                 edit: edit,
                 metadataProvenance: metadataProvenance,
                 presentation: presentation,
-                reading: reading,
-                verification: verification
+                reading: reading
             )
         )
         return store

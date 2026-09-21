@@ -44,10 +44,10 @@ public sealed class ReleaseRecordsTests
     {
         var line = new ReleaseFactsLine();
 
-        line.Show("2003 · CD", null, [], null, []);
+        line.Show("2003 · CD", []);
         Assert.IsAssignableFrom<TextBlock>(line.Content);
 
-        line.Show("2003 · CD", null, [], null, Records);
+        line.Show("2003 · CD", Records);
         Assert.IsAssignableFrom<Button>(line.Content);
     }
 

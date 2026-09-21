@@ -432,10 +432,6 @@ fn place_row(
             Vec::new(),
         ),
         metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
-        verified: state
-            .and_then(|state| state.verification.as_ref())
-            .is_some_and(crate::import::Verification::verified),
-        verification: state.and_then(|state| state.verification.clone()),
         cover_thumbnail: None,
         placement,
         import_status,

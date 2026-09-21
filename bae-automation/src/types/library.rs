@@ -23,12 +23,6 @@ pub struct AutomationRelease {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<AutomationReleaseRecord>,
-    /// What the rip databases said about this release's audio. `None` for a
-    /// release no source verified.
-    pub verification: Option<AutomationVerification>,
-    /// Whether other copies of this release's audio agree with it — every
-    /// track confirmed by at least one database.
-    pub verified: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

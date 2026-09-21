@@ -423,8 +423,6 @@
                 importStatus: nil,
                 metadataProvenance: metadataProvenance,
                 reading: .unidentified,
-                verification: PreviewData.releaseVerification,
-                verified: true
             )
         }
 

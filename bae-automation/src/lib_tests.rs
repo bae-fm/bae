@@ -553,7 +553,6 @@ mod identify_mirrors {
                 track_count: 10,
                 source_file: None,
             },
-            verification: None,
             barcode: BarcodeSignal::Settled {
                 codes: vec![SourcedValue::new(
                     "0123456789012".to_string(),

@@ -109,7 +109,6 @@ fn drain(changes: &mut broadcast::Receiver<CandidateRuntimeChange>) -> Vec<Candi
 fn extracted_signals() -> crate::signals::Signals {
     crate::signals::Signals {
         disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
-        verification: None,
         barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: crate::signals::TextSignal::Settled {
             catalogs: Vec::new(),

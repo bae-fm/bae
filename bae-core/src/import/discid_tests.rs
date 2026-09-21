@@ -369,11 +369,10 @@ fn test_cue_duration_discid_empty_tracks_is_error() {
     assert!(result.is_err(), "empty track list must return an error");
 }
 
-/// One read of a folder's log yields both halves of what it states: the disc
-/// its table of contents hashes to, and how many other copies of the audio the
-/// rip databases held that agree with this one.
+/// A folder's log carves the disc its table of contents hashes to, and the
+/// row can name the file it was read off.
 #[test]
-fn one_read_of_a_log_yields_the_disc_and_what_the_databases_said() {
+fn a_log_carves_its_disc_and_names_the_file_it_was_read_off() {
     use tempfile::TempDir;
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path();
@@ -390,42 +389,8 @@ fn one_read_of_a_log_yields_the_disc_and_what_the_databases_said() {
     )
     .unwrap();
 
-    let artifacts = read_rip_artifacts(&categorized);
-    let disc_id = artifacts.disc_id.expect("the log carves a disc");
+    let disc_id = read_rip_artifacts(&categorized).expect("the log carves a disc");
     assert_eq!(disc_id.source_file.as_deref(), Some("Album.log"));
-    let verification = artifacts
-        .verification
-        .expect("the log states what the databases answered");
-    assert_eq!(
-        verification.source,
-        crate::import::VerificationSource::Log,
-        "the log itself is what was read"
-    );
-    assert_eq!(verification.matched_copies(), Some(299));
-}
-
-/// A folder with no log states nothing about its bits, however it carves its
-/// disc.
-#[test]
-fn a_folder_with_no_log_states_nothing_about_its_bits() {
-    use tempfile::TempDir;
-    let fixture_dir = fixture("cue_ape");
-    let tmp = TempDir::new().unwrap();
-    let folder = tmp.path();
-    for name in ["Test Album.ape", "Test Album.cue"] {
-        std::fs::copy(fixture_dir.join(name), folder.join(name)).unwrap();
-    }
-
-    let categorized = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
-        folder,
-        crate::import::ReleaseFileScope::Recursive,
-        &crate::import::folder_scanner::StoredCandidateEdits::none(),
-    )
-    .unwrap();
-
-    let artifacts = read_rip_artifacts(&categorized);
-    assert!(artifacts.disc_id.is_some(), "the sheet still carves a disc");
-    assert!(artifacts.verification.is_none());
 }
 
 /// A single-FILE rip with `.cue` + `.ape` produces a disc ID — the
@@ -456,7 +421,7 @@ fn test_compute_discid_routes_cue_ape() {
     let audio_path = folder.join("Test Album.ape");
     let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
     let computed =
-        read_rip_artifacts(&categorized).disc_id.expect("CUE+APE pair must compute a disc ID");
+        read_rip_artifacts(&categorized).expect("CUE+APE pair must compute a disc ID");
     assert_eq!(
         crate::audio_codec::probe_opens_for(&audio_path),
         opens_before,
@@ -513,7 +478,6 @@ fn test_compute_discid_routes_cue_mp3() {
     std::fs::write(&cue_path, cue_body).unwrap();
 
     let disc_id = read_rip_artifacts_from_paths(&[], &[cue_path], &[(mp3_path, 9_000)])
-        .disc_id
         .expect("CUE+MP3 pair must compute a disc ID");
     assert_eq!(
         disc_id.disc_id.len(),

@@ -24,7 +24,6 @@ internal sealed class ImportMetadataSourceSection
     /// <summary>What the rip databases said about the folder's audio, drawn
     /// under the names it states. <c>null</c> until something has read its
     /// log.</summary>
-    internal required BridgeVerification? Verification { get; init; }
     /// <summary>Every catalog that describes the release the draft was read
     /// from, drawn last in the card under a rule of their own. Empty for a
     /// draft read from the files' own tags, or typed in.</summary>
@@ -48,7 +47,6 @@ internal sealed class ImportMetadataSourceSection
     internal required Action<BridgeCandidateEditField, string> OnEditField { get; init; }
     internal required Action<IReadOnlyList<BridgeArtistAssignment>> OnEditArtists { get; init; }
 
-    internal Action<BridgeEvidenceSelection>? OnOpenEvidence { get; init; }
 
     internal Control Build()
     {
@@ -248,10 +246,6 @@ internal sealed class ImportMetadataSourceSection
         body.Children.Add(grid);
         // The names the folder states and what the rip databases said: a
         // block of its own under the cover row, the full width of the card.
-        if (RipMatchLine.Build(Verification, OnOpenEvidence) is { } ripMatch)
-        {
-            body.Children.Add(ripMatch);
-        }
         // Which catalogs describe the release, last in the card under a rule
         // of their own.
         if (Records.Count > 0)

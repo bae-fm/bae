@@ -209,7 +209,6 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
             },
             signals: crate::signals::Signals {
                 disc_id: crate::signals::DiscIdSignal::Absent { track_count: 1 },
-                verification: None,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
                     catalogs: vec![crate::signals::SourcedValue::new(

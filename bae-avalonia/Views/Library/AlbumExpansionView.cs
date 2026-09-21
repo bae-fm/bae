@@ -171,9 +171,7 @@ internal static class AlbumExpansionView
         var factsLine = new ReleaseFactsLine();
         void RenderFacts() => factsLine.Show(
             selectedRelease.FactsLine,
-            selectedRelease.Verification,
-            selectedRelease.Records,
-            selection => _ = dialogs.ShowEvidence(selectedRelease.ReleaseId, selection));
+            selectedRelease.Records);
         RenderFacts();
 
         var totalDuration = new TextBlock { FontSize = 12, Opacity = 0.7 };

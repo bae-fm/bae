@@ -24,7 +24,6 @@ pub(crate) use preparation_rows::{
 };
 pub(super) use rows::{load_matches_on, load_provenance_on, load_states_on};
 use session_rows::load_session_on;
-pub(super) use signal_rows::load_verifications_on;
 use signal_rows::{delete_signals, insert_signals};
 
 use crate::import::folder_scanner::{

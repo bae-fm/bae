@@ -51,7 +51,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     private let previewAudio: PreviewAudio
     private let releaseEditor: ReleaseEditor
     private let importer: Importer
-    private let releaseEvidence: ReleaseEvidenceAction
     private let outputs: Outputs
     private let discogs: Discogs
     private let automation: Automation
@@ -109,12 +108,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             outboxStore: outboxStore
         )
         self.importer = importer
-        releaseEvidence = ReleaseEvidenceAction(
-            read: {
-                try await appHandle.readEvidence(subject: $0, selection: $1)
-            },
-            uiStore: uiStore
-        )
         outputs = Outputs(handle: appHandle)
         discogs = Discogs(handle: appHandle)
         automation = Automation(handle: appHandle)
@@ -213,7 +206,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(previewAudio)
             .environment(releaseEditor)
             .environment(importer)
-            .environment(\.openReleaseEvidence, releaseEvidence)
             .environment(outputs)
             .environment(discogs)
             .environment(automation)

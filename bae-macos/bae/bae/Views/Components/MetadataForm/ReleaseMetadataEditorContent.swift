@@ -26,10 +26,7 @@ struct ReleaseMetadataEditorContent: View {
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 cover: { cover },
-                audioFacts: { sourceAudio },
-                // A library release has no folder behind it any more: the
-                // names it carries live on the expansion's facts line.
-                folderFacts: { EmptyView() }
+                audioFacts: { sourceAudio }
             )
             trackTable
         }

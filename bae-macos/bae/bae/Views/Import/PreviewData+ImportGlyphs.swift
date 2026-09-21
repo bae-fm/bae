@@ -48,8 +48,6 @@
                 reading: readFromRecord
                     ? .identified(records: identifiedFromBothCatalogs)
                     : .prefilled,
-                verification: readFromRecord ? releaseVerification : nil,
-                verified: readFromRecord
             )
         }
 

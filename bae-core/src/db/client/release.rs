@@ -31,9 +31,6 @@ pub(crate) struct ImportRows<'a> {
     pub audio_formats: &'a [DbAudioFormat],
     pub audio_segments: &'a [DbAudioSegment],
     pub records: &'a [crate::import::ReleaseRecord],
-    /// What the rip databases said about the release's audio, one row per
-    /// track. `None` for a release no source verified.
-    pub verification: Option<&'a crate::import::Verification>,
 }
 
 impl Database {
@@ -457,7 +454,6 @@ impl Database {
             .collect();
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let records = rows.records.to_vec();
-        let verification = rows.verification.cloned();
         let replacement_deletes = replacement_deletes.to_vec();
 
         let now_dt = self.inner.clock.now();
@@ -537,23 +533,6 @@ impl Database {
                     // rows for one catalog.
                     for record in &records {
                         insert_release_record_row(tx, &release.id, record, ids.new_id(), &reg, &now)?;
-                    }
-
-                    // One row per track the rip databases answered for, keyed
-                    // on `(release_id, track)`, so a release never carries two
-                    // readings of one track.
-                    if let Some(verification) = &verification {
-                        for track in &verification.tracks {
-                            insert_release_verification_row(
-                                tx,
-                                &release.id,
-                                verification.source,
-                                track,
-                                ids.new_id(),
-                                &reg,
-                                &now,
-                            )?;
-                        }
                     }
 
                     // Works are globally identified; they go in before their links.

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Avalonia;
-using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
@@ -12,12 +11,12 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 /// <summary>
-/// The release's facts, and the way into where they came from.
+/// The release's facts, and the way into the catalogs that describe it.
 ///
-/// At rest the line reads as a line of facts. When the rip databases confirmed
-/// the release's audio or a catalog describes it, pointing at it fills it
-/// softly, and a click toggles a card under it stating them. A release with
-/// neither has nothing behind the line, so it is not a trigger at all.
+/// At rest the line reads as a line of facts. When a catalog describes the
+/// release, pointing at it fills it softly, and a click toggles a card under it
+/// naming them. A release no catalog describes has nothing behind the line, so
+/// it is not a trigger at all.
 ///
 /// The card hangs off the line's leading edge, a little below it, with no
 /// arrow: it is part of the expansion, not a window pointing back at the line.
@@ -26,6 +25,9 @@ internal sealed class ReleaseFactsLine : ContentControl
 {
     /// <summary>How far under the line the card's top sits.</summary>
     private const double CardOffset = 8;
+
+    /// <summary>The card's width, matching the records row it holds.</summary>
+    private const double CardWidth = 320;
 
     private readonly TextBlock _facts = new()
     {
@@ -44,26 +46,16 @@ internal sealed class ReleaseFactsLine : ContentControl
     }
 
     /// <summary>Draw <paramref name="facts"/>, as a trigger when
-    /// <paramref name="verification"/> says the rip databases confirmed the
-    /// release or <paramref name="records"/> names a catalog, and as plain
-    /// text when it has neither.</summary>
-    internal void Show(
-        string facts,
-        BridgeVerification? verification,
-        IReadOnlyList<BridgeReleaseRecord> records,
-        Action<BridgeEvidenceSelection>? openEvidence = null)
+    /// <paramref name="records"/> names a catalog and as plain text when it
+    /// names none.</summary>
+    internal void Show(string facts, IReadOnlyList<BridgeReleaseRecord> records)
     {
         _facts.Text = facts;
         IsVisible = facts.Length > 0;
-        Content = records.Count == 0 && verification?.MatchedCopies is null
-            ? _facts
-            : Trigger(verification, records, openEvidence);
+        Content = records.Count == 0 ? _facts : Trigger(records);
     }
 
-    private Control Trigger(
-        BridgeVerification? verification,
-        IReadOnlyList<BridgeReleaseRecord> records,
-        Action<BridgeEvidenceSelection>? openEvidence = null)
+    private Control Trigger(IReadOnlyList<BridgeReleaseRecord> records)
     {
         var button = new Button
         {
@@ -87,12 +79,19 @@ internal sealed class ReleaseFactsLine : ContentControl
         {
             button.Background = Brushes.Transparent;
         };
+        var padding = new Thickness(12, 10);
+        var card = new Border
+        {
+            Padding = padding,
+            Child = ReleaseRecordsRow.Build(records, ReleaseFactsScale.Card),
+            Width = CardWidth,
+        };
         var flyout = new Flyout
         {
             Placement = PlacementMode.BottomEdgeAlignedLeft,
             VerticalOffset = CardOffset,
             ShowMode = FlyoutShowMode.Standard,
-            Content = ReleaseFactsFlyout.Build(verification, records, openEvidence),
+            Content = card,
         };
         button.Click += (_, _) =>
         {

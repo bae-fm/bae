@@ -1,6 +1,5 @@
 use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::resolve_cue_audio_paths;
-use crate::import::Verification;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::{debug, trace, warn};
@@ -244,67 +243,24 @@ fn calculate_mb_discid_from_cue(
     )
 }
 
-/// What a rip log states: the disc its table of contents hashes to, and what
-/// the rip databases said about the bits. One read of the file yields both —
-/// they are two blocks of one document, and reading it twice to take one each
-/// would be reading it twice.
-struct LogReading {
-    disc_id: Option<String>,
-    verification: Option<Verification>,
-}
-
-/// Read one log file whole. A file that cannot be read, a table of contents
-/// that does not parse, and a log that states no track results each leave
-/// their own half absent rather than taking the other half with them: a log
-/// whose TOC is mangled can still say the rip matched, and one that never
-/// asked a database still carves the disc.
-fn read_log(log_path: &Path) -> LogReading {
+/// The disc a log's table of contents hashes to. `None` for a file that
+/// cannot be read and for a table of contents that does not parse.
+fn read_log(log_path: &Path) -> Option<String> {
     trace!("Reading LOG file: {:?}", log_path);
     let text = match crate::text_encoding::read_text_file(log_path) {
         Ok(read) => read.text,
         Err(e) => {
             debug!("LOG {:?} could not be read: {}", log_path, e);
-            return LogReading {
-                disc_id: None,
-                verification: None,
-            };
+            return None;
         }
     };
-    let disc_id = match discid_from_log_text(&text) {
+    match discid_from_log_text(&text) {
         Ok(id) => Some(id),
         Err(e) => {
             debug!("DiscID from LOG failed for {:?}: {}", log_path, e);
             None
         }
-    };
-    let verification = match crate::import::rip_log::parse_rip_log(&text) {
-        // A log that named no track claims nothing about the bits, whatever
-        // banner it carries, so there is no verification to keep.
-        Ok(log) => {
-            let verification = Verification::of(&log);
-            (!verification.tracks.is_empty()).then_some(verification)
-        }
-        Err(e) => {
-            debug!("LOG {:?} states no rip results: {}", log_path, e);
-            None
-        }
-    };
-    LogReading {
-        disc_id,
-        verification,
     }
-}
-
-/// What the artifacts beside a candidate's audio state about the disc it was
-/// copied from.
-pub struct RipArtifacts {
-    /// The disc ID, from the first artifact that hashes to one. `None` when
-    /// none does.
-    pub disc_id: Option<ComputedDiscId>,
-    /// What the rip databases said about the bits, from the first log that
-    /// states it. `None` when no log does — a folder with no log at all, or
-    /// one whose log never asked.
-    pub verification: Option<Verification>,
 }
 
 /// A disc ID and the file it was derived from — the rip log, or the sheet that
@@ -319,34 +275,20 @@ pub struct ComputedDiscId {
     pub source_file: Option<String>,
 }
 
-/// The rip artifacts of pre-resolved LOG/CUE/audio paths. LOG files come first
-/// for the disc ID — most accurate, since the EAC or XLD log carries the
-/// sector offsets directly — then CUE+audio pairs; verification comes only
-/// from the logs. Failures along the way log at `debug!` so the chain shows up
-/// in traces.
+/// The disc ID of pre-resolved LOG/CUE/audio paths. LOG files come first —
+/// most accurate, since the EAC or XLD log carries the sector offsets
+/// directly — then CUE+audio pairs. Failures along the way log at `debug!` so
+/// the chain shows up in traces.
 pub fn read_rip_artifacts_from_paths(
     log_paths: &[PathBuf],
     cue_paths: &[PathBuf],
     audio_files: &[(PathBuf, u64)],
-) -> RipArtifacts {
-    let mut artifacts = RipArtifacts {
-        disc_id: None,
-        verification: None,
-    };
-    for log_path in log_paths {
-        let reading = read_log(log_path);
-        if artifacts.disc_id.is_none() {
-            artifacts.disc_id = reading.disc_id.map(|disc_id| ComputedDiscId {
-                disc_id,
-                source_file: None,
-            });
-        }
-        if artifacts.verification.is_none() {
-            artifacts.verification = reading.verification;
-        }
-    }
-    if artifacts.disc_id.is_some() {
-        return artifacts;
+) -> Option<ComputedDiscId> {
+    if let Some(disc_id) = log_paths.iter().find_map(|log_path| read_log(log_path)) {
+        return Some(ComputedDiscId {
+            disc_id,
+            source_file: None,
+        });
     }
 
     let audio_paths = audio_files
@@ -376,15 +318,14 @@ pub fn read_rip_artifacts_from_paths(
             })
             .collect();
         if let Some(disc_id) = discid_from_cue_audio(&sheet, &durations, cue_path) {
-            artifacts.disc_id = Some(ComputedDiscId {
+            return Some(ComputedDiscId {
                 disc_id,
                 source_file: None,
             });
-            return artifacts;
         }
     }
 
-    artifacts
+    None
 }
 
 /// A MusicBrainz DiscID from an already-parsed CUE sheet and the lengths the
@@ -404,18 +345,13 @@ fn discid_from_cue_audio(
     }
 }
 
-/// The rip artifacts of already-categorized files, reusing the track sheets the
-/// folder scan parsed — no re-read, no re-parse. LOG first for the disc ID
-/// (most accurate), then the sheets that are bound to their audio; a folder
-/// whose sheet is unbound can still identify itself from its log. Verification
-/// comes only from the logs.
+/// The disc ID of already-categorized files, reusing the track sheets the
+/// folder scan parsed — no re-read, no re-parse. LOG first (most accurate),
+/// then the sheets that are bound to their audio; a folder whose sheet is
+/// unbound can still identify itself from its log.
 pub fn read_rip_artifacts(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
-) -> RipArtifacts {
-    let mut artifacts = RipArtifacts {
-        disc_id: None,
-        verification: None,
-    };
+) -> Option<ComputedDiscId> {
     for doc in categorized.documents() {
         let is_log = doc
             .path
@@ -426,19 +362,12 @@ pub fn read_rip_artifacts(
         if !is_log {
             continue;
         }
-        let reading = read_log(&doc.path);
-        if artifacts.disc_id.is_none() {
-            artifacts.disc_id = reading.disc_id.map(|disc_id| ComputedDiscId {
+        if let Some(disc_id) = read_log(&doc.path) {
+            return Some(ComputedDiscId {
                 disc_id,
                 source_file: Some(doc.relative_path.clone()),
             });
         }
-        if artifacts.verification.is_none() {
-            artifacts.verification = reading.verification;
-        }
-    }
-    if artifacts.disc_id.is_some() {
-        return artifacts;
     }
 
     // Only the sheets that carve: one the user took out of the tracklist
@@ -457,15 +386,14 @@ pub fn read_rip_artifacts(
             })
             .collect();
         if let Some(disc_id) = discid_from_cue_audio(bound.sheet, &durations, &bound.file.path) {
-            artifacts.disc_id = Some(ComputedDiscId {
+            return Some(ComputedDiscId {
                 disc_id,
                 source_file: Some(bound.file.relative_path.clone()),
             });
-            return artifacts;
         }
     }
 
-    artifacts
+    None
 }
 
 #[cfg(test)]
