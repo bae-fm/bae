@@ -319,7 +319,9 @@ public sealed class ImportSectionViewTests
         Assert.Contains(
             row.GetLogicalDescendants().OfType<Control>(),
             control => Equals(ToolTip.GetTip(control), label));
-        Assert.Equal(0.6, row.Opacity);
+        // A run is not the row going inactive: the person can still open and
+        // read it, and the trailing column is what says a run is going.
+        Assert.Equal(1, row.Opacity);
     }
 
     [AvaloniaFact]

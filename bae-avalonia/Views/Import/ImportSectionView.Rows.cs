@@ -126,15 +126,10 @@ internal sealed partial class ImportSectionView
         Grid.SetColumn(trailing, 3);
         grid.Children.Add(trailing);
 
-        // A run the person cannot answer anything into. A write that failed is
-        // not one: the row is answerable again and says what went wrong.
-        var identificationInProgress =
-            row.Identification is not null
-            && row.Identification is not BridgeIdentificationStatus.FinalizationFailed;
         var host = new Border
         {
             Child = grid,
-            Opacity = identificationInProgress || !row.Actionable ? 0.6 : 1,
+            Opacity = row.Actionable ? 1 : 0.6,
             Background = Brushes.Transparent,
             IsEnabled = row.Actionable,
         };

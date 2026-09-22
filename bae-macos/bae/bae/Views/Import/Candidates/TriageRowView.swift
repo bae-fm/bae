@@ -52,7 +52,6 @@ struct TriageRowView: View {
     var body: some View {
         rowContent
             .groupMemberRail(isGroupMember)
-            .opacity(identificationInProgress ? 0.6 : 1)
             .contentShape(Rectangle())
             .contextMenu {
                 if let skipAction = row.skipAction {
@@ -97,17 +96,6 @@ struct TriageRowView: View {
     /// to be read as several again.
     private var combinedBoundaries: [BridgeResolvedFolderReleaseBoundary] {
         row.resolvedBoundaries.filter(isCombined)
-    }
-
-    /// A run the person cannot answer anything into. A write that failed is
-    /// not one: the row is answerable again and says what went wrong.
-    private var identificationInProgress: Bool {
-        switch row.identification {
-        case .queued, .running, .finalizing:
-            return true
-        case .finalizationFailed, nil:
-            return false
-        }
     }
 
     // MARK: - Leading
