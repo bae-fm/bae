@@ -188,6 +188,32 @@ public sealed class ImportSectionViewTests
         Assert.Equal(new[] { "Release 01" }, RowText(view));
     }
 
+    // The arrow after the title says a catalog record is where the row's facts
+    // were read. It is in the line either way so the title never shifts, and a
+    // row that read its facts anywhere else draws it transparent.
+    [AvaloniaFact]
+    public void OnlyARowReadFromARecordDrawsTheArrow()
+    {
+        var placement = new BridgeTriagePlacement.Ready();
+
+        var identified = BuildView(
+            MatchedItems(
+                placement,
+                BridgeTriageSkipAction.Skip,
+                reading: new BridgeTriageReading.Identified(PairedRecords)),
+            MatchedSummary(placement, BridgeTriageTab.Pending));
+        Assert.Contains(ImportPaneUi.OutboundArrow, RowText(identified));
+
+        var prefilled = BuildView(
+            MatchedItems(
+                placement,
+                BridgeTriageSkipAction.Skip,
+                reading: new BridgeTriageReading.Prefilled()),
+            MatchedSummary(placement, BridgeTriageTab.Pending));
+        Assert.DoesNotContain(ImportPaneUi.OutboundArrow, RowText(prefilled));
+        Assert.True(HasGlyph(prefilled, "identified-glyph"));
+    }
+
     private static readonly BridgeTriageMetadataSummary AppliedDraft = new(
         AlbumTitle: "Applied Draft",
         AlbumArtistAssignments:
@@ -224,14 +250,35 @@ public sealed class ImportSectionViewTests
             .OfType<Control>()
             .Single(child => Grid.GetColumn(child) == column);
 
+    /// <summary>The text the row shows. The record arrow sits in every row's
+    /// title line to hold its width and is drawn transparent on a row whose
+    /// facts no catalog record named, so a block nobody can read is not text
+    /// the row shows.</summary>
     private static List<string> TextOf(Control root) =>
         root
             .GetLogicalDescendants()
             .OfType<TextBlock>()
+            .Where(block => IsDrawn(root, block))
             .Select(block => block.Text)
             .Where(value => !string.IsNullOrEmpty(value))
             .Select(value => value!)
             .ToList();
+
+    private static bool IsDrawn(Control root, Control control)
+    {
+        for (ILogical? node = control; node is not null; node = node.LogicalParent)
+        {
+            if (node is Visual visual && (!visual.IsVisible || visual.Opacity <= 0))
+            {
+                return false;
+            }
+            if (ReferenceEquals(node, root))
+            {
+                break;
+            }
+        }
+        return true;
+    }
 
     // A failed attempt is Pending work, and the row says what went wrong. It
     // offers no buttons of its own: retrying is the ordinary import, from the
