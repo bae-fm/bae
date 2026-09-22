@@ -44,6 +44,10 @@ pub struct LookupProvenance {
     pub by_disc_id: bool,
     pub by_barcode: bool,
     pub by_catalog: bool,
+    /// The title search returned it. By construction the search runs only when
+    /// the three identifiers named nothing, so this is never true beside any
+    /// of the others.
+    pub by_search: bool,
 }
 
 /// The pressings agreement left out, as the releases they are made of — every
@@ -114,6 +118,11 @@ type ReleaseKey = (Catalog, String);
 /// either way, since an intersection it emptied would fall through to the
 /// union of the rest.
 ///
+/// The title search is a fourth set on the same footing. It never meets the
+/// other three: it is asked only when all of them came back empty, so it
+/// narrows nothing and nothing narrows it, and a run that reaches it offers
+/// what it found whole.
+///
 /// Every answer the run returned is paired into pressing rows first, and the
 /// two narrowings then read those rows:
 ///
@@ -133,9 +142,15 @@ pub fn combine_results(
     discid_results: Results,
     barcode_results: Results,
     catalog_results: Results,
+    search_results: Results,
     text: &CandidateText,
 ) -> CombineOutcome {
-    let by_signal = [&discid_results, &barcode_results, &catalog_results];
+    let by_signal = [
+        &discid_results,
+        &barcode_results,
+        &catalog_results,
+        &search_results,
+    ];
     let keys: Vec<HashSet<ReleaseKey>> = by_signal.iter().map(|set| release_keys(set)).collect();
 
     let present: Vec<&Results> = by_signal
@@ -165,6 +180,7 @@ pub fn combine_results(
             by_disc_id: keys[0].contains(&key),
             by_barcode: keys[1].contains(&key),
             by_catalog: keys[2].contains(&key),
+            by_search: keys[3].contains(&key),
         }
     };
     let judged: Vec<Judged> = all

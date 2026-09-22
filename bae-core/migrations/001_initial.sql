@@ -1285,6 +1285,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     by_disc_id             INTEGER NOT NULL CHECK (by_disc_id IN (0, 1)),
     by_barcode             INTEGER NOT NULL CHECK (by_barcode IN (0, 1)),
     by_catalog             INTEGER NOT NULL CHECK (by_catalog IN (0, 1)),
+    -- The title search the run falls back on when no identifier named
+    -- anything. Never set beside the three above: the search is asked only
+    -- once they have all come back empty.
+    by_search              INTEGER NOT NULL CHECK (by_search IN (0, 1)),
     narrowed_out           INTEGER NOT NULL DEFAULT 0 CHECK (narrowed_out IN (0, 1)),
     PRIMARY KEY (content_hash, position),
     -- The medium rows reference the match together with its media kind, so a

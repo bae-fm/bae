@@ -48,7 +48,8 @@
                 scanning: false,
                 rows: [],
                 candidates: catalogCandidates
-            )
+            ),
+            search: .notNeeded
         )
 
         /// A run that has only just started: nothing read yet, the artwork
@@ -57,7 +58,8 @@
             providers: [.musicBrainz, .discogs],
             discId: .reading,
             barcode: .rows(scanning: true, rows: []),
-            catalog: .numbers(scanning: true, rows: [], candidates: [])
+            catalog: .numbers(scanning: true, rows: [], candidates: []),
+            search: .notNeeded
         )
 
         /// MusicBrainz switched off, so the run asks Discogs alone: one column,
@@ -89,7 +91,8 @@
                     )
                 ]
             ),
-            catalog: .numbers(scanning: false, rows: [], candidates: [])
+            catalog: .numbers(scanning: false, rows: [], candidates: []),
+            search: .notNeeded
         )
 
         /// The one-source run with its disc ID taken out of the run instead
@@ -105,7 +108,8 @@
                 )
             ),
             barcode: identifyRunOneSource.barcode,
-            catalog: identifyRunOneSource.catalog
+            catalog: identifyRunOneSource.catalog,
+            search: identifyRunOneSource.search
         )
 
         /// Two codes on the sleeve and only one of them the disc's: the box
@@ -137,7 +141,8 @@
                     ),
                 ]
             ),
-            catalog: .numbers(scanning: false, rows: [], candidates: [])
+            catalog: .numbers(scanning: false, rows: [], candidates: []),
+            search: .notNeeded
         )
 
         /// The same two codes with both of them asked about — what the
@@ -168,7 +173,8 @@
                     ),
                 ]
             ),
-            catalog: identifyRunBarcodeLeftOut.catalog
+            catalog: identifyRunBarcodeLeftOut.catalog,
+            search: identifyRunBarcodeLeftOut.search
         )
 
         /// No disc ID; Discogs failed the first barcode while MusicBrainz
@@ -205,7 +211,8 @@
                     )
                 ],
                 candidates: Array(catalogCandidates.dropFirst())
-            )
+            ),
+            search: .notNeeded
         )
 
         /// The provider-failed run with its chosen catalog number back among
@@ -218,7 +225,8 @@
                 scanning: false,
                 rows: [],
                 candidates: catalogCandidates
-            )
+            ),
+            search: identifyRunProviderFailed.search
         )
 
         /// Every lookup answered empty.
@@ -247,6 +255,11 @@
                 scanning: false,
                 rows: [],
                 candidates: Array(catalogCandidates.prefix(2))
+            ),
+            search: .searched(
+                album: "Album Title One",
+                artist: "Artist Name",
+                cells: cells(.noMatch, .noMatch)
             )
         )
 
@@ -278,7 +291,8 @@
                 scanning: false,
                 rows: [],
                 candidates: Array(catalogCandidates.prefix(1))
-            )
+            ),
+            search: .notNeeded
         )
 
         /// Nothing to look up on its own — no LOG, no CUE, no barcode — but
@@ -291,7 +305,8 @@
                 scanning: false,
                 rows: [],
                 candidates: Array(catalogCandidates.prefix(2))
-            )
+            ),
+            search: .noTitle
         )
     }
 #endif

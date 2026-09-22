@@ -111,6 +111,10 @@ impl AppServices {
             crate::signals::ExtractionSource::Release { release_id },
             crate::util::rate_limiter::CallPriority::Interactive,
             choices,
+            // The sheet names a release, not a draft, and reading its title
+            // back is a database round trip this synchronous command does not
+            // take: a re-identify run asks its identifiers and stops there.
+            None,
         ) {
             tracing::warn!("re-identify for {candidate_key} has no source to ask; no run started");
         }

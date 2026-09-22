@@ -341,6 +341,9 @@ pub fn bridge_triage_tab(placement: &BridgeTriagePlacement) -> BridgeTriageTab {
 pub enum BridgeMatchedSignal {
     DiscId,
     Barcode,
+    /// The run searched the catalogs for the candidate's own album title,
+    /// which is what it falls back on when no identifier named anything.
+    TitleSearch,
 }
 
 /// Which provider answered and what matched — the row's trailing evidence.

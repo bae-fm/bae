@@ -307,6 +307,7 @@ mod identify_mirrors {
             disc: Default::default(),
             barcode: Default::default(),
             catalog: Default::default(),
+            search: Default::default(),
             text: Default::default(),
             text_settled: true,
             track_count: 0,
@@ -331,11 +332,13 @@ mod identify_mirrors {
                     by_disc_id: true,
                     by_barcode: false,
                     by_catalog: false,
+                    by_search: false,
                 },
                 LookupProvenance {
                     by_disc_id: false,
                     by_barcode: true,
                     by_catalog: true,
+                    by_search: false,
                 },
             ],
             // Two pressings of one album: each release is its own row.
@@ -393,11 +396,13 @@ mod identify_mirrors {
                     by_disc_id: true,
                     by_barcode: false,
                     by_catalog: false,
+                    by_search: false,
                 },
                 LookupProvenance {
                     by_disc_id: false,
                     by_barcode: true,
                     by_catalog: false,
+                    by_search: false,
                 },
             ],
             // One release each, so each is its own row.
@@ -452,6 +457,7 @@ mod identify_mirrors {
                 ],
             },
             catalog: CatalogProgress::Skipped,
+            search: bae_core::identify::SearchProgress::Pending,
             context: SignalsContext {
                 providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
                 disc: DiscIdEvidence {

@@ -2,6 +2,7 @@ use super::*;
 use crate::db::LibraryStatus;
 use crate::identify::state::{
     step, BarcodeEvidence, BarcodeProgress, DiscIdEvidence, DiscidProgress, IdentifyEvent,
+    SearchProgress,
 };
 use crate::identify::view::{BarcodeStepView, IdentifyStateView, LookupView};
 use crate::identify::{CatalogProgress, ProviderBarcodeLookup};
@@ -24,6 +25,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
         },
         barcode: BarcodeEvidence::default(),
         catalog: Default::default(),
+        search: Default::default(),
         text: Default::default(),
         text_settled: true,
         track_count,
@@ -39,6 +41,7 @@ fn in_flight_states_have_no_terminal_verdict() {
         discid: DiscidProgress::Computing,
         barcode: BarcodeProgress::Scanning,
         catalog: crate::identify::CatalogProgress::Skipped,
+        search: SearchProgress::Pending,
         context: mk_context(0),
     })
     .is_err());
@@ -53,6 +56,7 @@ fn found_state() -> IdentifyState {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
+            by_search: false,
         }],
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
@@ -77,6 +81,7 @@ fn found_drops_library_status_and_keeps_the_rest() {
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
+                by_search: false,
             }],
             pressings: vec![0],
             narrowed_out: Vec::new(),
@@ -110,6 +115,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
                 }],
             },
             catalog: CatalogProgress::Skipped,
+            search: SearchProgress::Pending,
             context,
         },
         IdentifyEvent::BarcodeLookupAnswered {
@@ -143,6 +149,7 @@ fn disc_id_only() -> LookupProvenance {
         by_disc_id: true,
         by_barcode: false,
         by_catalog: false,
+        by_search: false,
     }
 }
 
@@ -269,11 +276,13 @@ fn a_union_of_disagreeing_signals_stores_as_one_match_list() {
                     by_disc_id: true,
                     by_barcode: false,
                     by_catalog: false,
+                    by_search: false,
                 },
                 LookupProvenance {
                     by_disc_id: false,
                     by_barcode: true,
                     by_catalog: false,
+                    by_search: false,
                 },
             ],
             pressings: vec![0, 1],

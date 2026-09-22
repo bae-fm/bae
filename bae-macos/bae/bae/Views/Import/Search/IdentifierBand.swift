@@ -4,8 +4,9 @@ import SwiftUI
 /// The run as one wrapping band of chips: what identification has to go on,
 /// each identifier with where it was read and every provider's answer about
 /// it. The three signals come in order — Disc ID, Barcode, Catalog # — then
-/// the catalog numbers that rank the answers rather than drive a lookup, then
-/// the ones waiting to be looked up.
+/// the title the run searched by once they named nothing, then the catalog
+/// numbers that rank the answers rather than drive a lookup, then the ones
+/// waiting to be looked up.
 ///
 /// Every provider answers on its own, so a person watches the run rather than
 /// waiting for it, and a provider that failed offers its own Retry while the
@@ -31,6 +32,7 @@ struct IdentifierBand: View {
             discIdChip
             barcodeChips
             catalogChips
+            titleChip
             ForEach(catalogAgreements, id: \.value) { agreement in
                 CatalogAgreementChip(
                     agreement: agreement,
@@ -220,6 +222,34 @@ struct IdentifierBand: View {
                 }
                 .buttonStyle(.plain)
                 .help("Take this catalog number out of the run")
+            }
+        }
+    }
+
+    // MARK: - Title
+
+    /// The words the run searched by once its identifiers had named nothing,
+    /// with every provider's answer about them. There is nothing to switch
+    /// here: the search runs when the identifiers leave it to, and it searches
+    /// what the draft says the release is called.
+    ///
+    /// A run whose identifiers answered draws no chip at all — the step was
+    /// never part of what that run did.
+    @ViewBuilder
+    private var titleChip: some View {
+        let label = String(localized: "Title")
+        switch run.search {
+        case .notNeeded:
+            EmptyView()
+        case .noTitle:
+            IdentifierChip(label: label) { IdentifierDash() }
+                .help("No title to search by")
+        case .searched(let album, let artist, let cells):
+            IdentifierChip(
+                label: label,
+                value: artist.isEmpty ? album : "\(album) — \(artist)"
+            ) {
+                capsules(cells)
             }
         }
     }

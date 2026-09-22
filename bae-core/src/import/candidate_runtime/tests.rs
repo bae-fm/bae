@@ -3,8 +3,7 @@ use crate::db::LibraryStatus;
 use crate::import::candidate_search::{CandidateSearch, SourceSearch};
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate, InvalidReason};
 use crate::import::types::{
-    ImportPhase, ImportProgress, Catalog, CatalogAvailability, PrepareStep,
-    SourceAvailability,
+    Catalog, CatalogAvailability, ImportPhase, ImportProgress, PrepareStep, SourceAvailability,
 };
 use crate::util::rate_limiter::CallPriority;
 use std::path::PathBuf;
@@ -58,6 +57,7 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
         },
         barcode: Default::default(),
         catalog: Default::default(),
+        search: Default::default(),
         text: Default::default(),
         text_settled: true,
         track_count,
@@ -82,6 +82,7 @@ fn triangulating() -> crate::identify::IdentifyState {
         discid: crate::identify::DiscidProgress::Computing,
         barcode: crate::identify::BarcodeProgress::Scanning,
         catalog: crate::identify::CatalogProgress::Skipped,
+        search: crate::identify::SearchProgress::Pending,
         context: signals_context(9),
     }
 }
@@ -94,7 +95,10 @@ fn manual_only() -> crate::identify::IdentifyState {
     }
 }
 
-fn identification(runtime: &CandidateRuntime, key: &str) -> Option<crate::import::IdentificationStatus> {
+fn identification(
+    runtime: &CandidateRuntime,
+    key: &str,
+) -> Option<crate::import::IdentificationStatus> {
     crate::import::triage::TriageRuntimeFacts::of(&runtime.get(key)?).identification
 }
 
@@ -318,7 +322,10 @@ fn an_admission_is_published_as_one_current_runtime_snapshot() {
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
 
-    runtime.admit(vec![first.to_string(), second.to_string()], Admission::Automatic);
+    runtime.admit(
+        vec![first.to_string(), second.to_string()],
+        Admission::Automatic,
+    );
 
     let queued = runtime.all();
     assert_eq!(queued.len(), 2);
@@ -740,7 +747,10 @@ fn two_landings_on_one_run_both_stand() {
     let runtime = CandidateRuntime::default();
     let mut changes = runtime.subscribe();
     let key = "/watch/a/rel1";
-    let run = runtime.start_search(key, CandidateSearch::started(search_query(), &every_source_on()));
+    let run = runtime.start_search(
+        key,
+        CandidateSearch::started(search_query(), &every_source_on()),
+    );
 
     assert!(runtime.land_search(
         key,
@@ -781,8 +791,14 @@ fn two_landings_on_one_run_both_stand() {
 fn a_superseded_run_cannot_land() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
-    let first = runtime.start_search(key, CandidateSearch::started(search_query(), &every_source_on()));
-    let second = runtime.start_search(key, CandidateSearch::started(search_query(), &every_source_on()));
+    let first = runtime.start_search(
+        key,
+        CandidateSearch::started(search_query(), &every_source_on()),
+    );
+    let second = runtime.start_search(
+        key,
+        CandidateSearch::started(search_query(), &every_source_on()),
+    );
     assert!(!runtime.search_run_is_current(key, first));
     assert!(runtime.search_run_is_current(key, second));
 
@@ -810,7 +826,10 @@ fn a_superseded_run_cannot_land() {
 fn a_cleared_search_cannot_land() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
-    let run = runtime.start_search(key, CandidateSearch::started(search_query(), &every_source_on()));
+    let run = runtime.start_search(
+        key,
+        CandidateSearch::started(search_query(), &every_source_on()),
+    );
 
     runtime.clear_search(key);
     assert!(runtime.get(key).is_none(), "nothing else was running");
@@ -830,7 +849,10 @@ fn a_cleared_search_cannot_land() {
 fn a_retry_re_asks_only_the_failed_sources_on_a_new_run() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
-    let run = runtime.start_search(key, CandidateSearch::started(search_query(), &every_source_on()));
+    let run = runtime.start_search(
+        key,
+        CandidateSearch::started(search_query(), &every_source_on()),
+    );
     assert!(runtime.land_search(
         key,
         run,
@@ -885,7 +907,10 @@ fn rebinding_a_sheet_drops_the_key_s_search() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
-    let run = runtime.start_search(key, CandidateSearch::started(search_query(), &every_source_on()));
+    let run = runtime.start_search(
+        key,
+        CandidateSearch::started(search_query(), &every_source_on()),
+    );
 
     runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateBindingChanged {
         candidate: folder_candidate(key, "/watch/a"),

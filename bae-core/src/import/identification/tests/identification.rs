@@ -115,11 +115,9 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
             let statuses: Vec<Option<crate::import::IdentificationStatus>> = keys
                 .iter()
                 .map(|key| {
-                    runtimes
-                        .get(key)
-                        .and_then(|runtime| {
-                            crate::import::TriageRuntimeFacts::of(runtime).identification
-                        })
+                    runtimes.get(key).and_then(|runtime| {
+                        crate::import::TriageRuntimeFacts::of(runtime).identification
+                    })
                 })
                 .collect();
             let running = statuses
@@ -364,6 +362,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
+            by_search: false,
         }],
         pressings: vec![0],
         narrowed_out: Vec::new(),
@@ -637,5 +636,72 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
             .expect("the pane shows the stored selection")
             .selection,
         folders_own
+    );
+}
+
+/// A release the catalogs hold under no code of its own — no barcode, no disc
+/// ID — is still found: once the identifiers come back empty the run asks the
+/// providers for the candidate's own album title, and what comes back is the
+/// verdict.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_release_no_identifier_names_is_found_by_its_title() {
+    let fixture = Fixture::new("found-by-title").await;
+    fixture
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: "0123456789012".to_string(),
+        }));
+    // The folder name is what the pre-filled draft calls the release, and so
+    // what the title search asks about.
+    let dir = fixture.barcode_candidate("Album Title");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture
+        .provider
+        .route("query=barcode%3A", 200, r#"{"releases":[]}"#);
+    fixture.provider.route(
+        "query=release%3A",
+        200,
+        search_json("mb-by-title", "rg-by-title"),
+    );
+    fixture.provider.route(
+        "/release/mb-by-title?",
+        200,
+        release_json(
+            "mb-by-title",
+            "rg-by-title",
+            &[probed / 2, probed - probed / 2],
+        ),
+    );
+    fixture.scan(1).await;
+
+    fixture.sweep_once().await;
+
+    let verdict = identify_result(&fixture.stored_for(&dir).await.expect("a verdict is stored"))
+        .verdict
+        .clone();
+    let TerminalVerdict::Found {
+        matches,
+        provenance,
+        ..
+    } = &verdict
+    else {
+        panic!("expected the title search's release, got {verdict:?}");
+    };
+    assert_eq!(matches[0].release_id, "mb-by-title");
+    assert!(
+        provenance[0].by_search,
+        "the row records the title search as what produced it"
+    );
+    assert!(!provenance[0].by_barcode && !provenance[0].by_disc_id);
+    assert_eq!(
+        fixture.provider.count_containing("query=barcode%3A"),
+        1,
+        "the barcode was asked first, and once"
+    );
+    assert_eq!(
+        fixture.provider.count_containing("query=release%3A"),
+        1,
+        "the title was asked once, after it"
     );
 }

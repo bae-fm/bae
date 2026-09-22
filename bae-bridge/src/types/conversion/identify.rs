@@ -306,6 +306,16 @@ mirror_struct! {
     fields: { value, discounted },
 }
 
+mirror_enum! {
+    BridgeSearchStep = bae_core::identify::SearchStepView,
+    from_core: fn,
+    variants: {
+        NotNeeded,
+        NoTitle,
+        Searched { album, artist, cells: (each BridgeProviderCell) },
+    },
+}
+
 mirror_struct! {
     BridgeIdentifyRun = bae_core::identify::IdentifyRunView,
     from_core: fn,
@@ -314,6 +324,7 @@ mirror_struct! {
         disc_id: (BridgeDiscIdStep),
         barcode: (BridgeBarcodeStep),
         catalog: (BridgeCatalogStep),
+        search: (BridgeSearchStep),
     },
 }
 
@@ -557,6 +568,10 @@ fn identify_failure(
             source: BridgeCatalog::from_core(failure.source),
             failure: BridgeLookupFailure::from_core(failure.failure),
         },
+        IdentifyFailure::Search(failure) => crate::types::BridgeIdentifyFailure::Search {
+            source: BridgeCatalog::from_core(failure.source),
+            failure: BridgeLookupFailure::from_core(failure.failure),
+        },
         IdentifyFailure::ReleaseDetails(failure) => {
             crate::types::BridgeIdentifyFailure::ReleaseDetails {
                 failure: BridgeLookupFailure::from_core(failure),
@@ -593,6 +608,7 @@ mod tests {
             discid: DiscidProgress::Skipped { track_count: 9 },
             barcode,
             catalog: CatalogProgress::Skipped,
+            search: bae_core::identify::SearchProgress::Skipped,
             context: SignalsContext {
                 providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
                 artwork: bae_core::signals::ArtworkScan::Absent,
@@ -610,6 +626,7 @@ mod tests {
                     ..Default::default()
                 },
                 catalog: Default::default(),
+                search: Default::default(),
                 text: Default::default(),
                 text_settled: true,
                 track_count: 9,

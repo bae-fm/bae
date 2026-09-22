@@ -33,6 +33,7 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
+            by_search: false,
         })
         .collect();
     let pressings = crate::import::release_group::form_rows(&matches);
@@ -120,6 +121,7 @@ fn what_agreement_narrowed_out_is_not_a_match() {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
+            by_search: false,
         }],
         narrowed_out_pressings: vec![0],
         ledger: None,

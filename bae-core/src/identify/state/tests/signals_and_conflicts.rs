@@ -1,22 +1,21 @@
 use super::*;
 use crate::identify::IdentifyFailure;
-use crate::import::{LookupChoices, Catalog};
+use crate::import::{Catalog, LookupChoices};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
     mk_result_from(Catalog::MusicBrainz, release_id, group_id)
 }
 
-fn mk_result_from(
-    source: Catalog,
-    release_id: &str,
-    group_id: Option<&str>,
-) -> MetadataResult {
+fn mk_result_from(source: Catalog, release_id: &str, group_id: Option<&str>) -> MetadataResult {
     MetadataResult::for_test(source, release_id, group_id)
 }
 
 fn pair(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
-    (mk_result(release_id, group_id), LibraryStatus::absent(release_id))
+    (
+        mk_result(release_id, group_id),
+        LibraryStatus::absent(release_id),
+    )
 }
 
 /// A Discogs result, for runs where both providers answer.
@@ -56,7 +55,11 @@ fn started_with_choices(
 ) -> (IdentifyState, Vec<Effect>) {
     step(
         IdentifyState::Idle,
-        IdentifyEvent::Started { providers, choices },
+        IdentifyEvent::Started {
+            providers,
+            choices,
+            title_search: None,
+        },
     )
 }
 
@@ -231,6 +234,7 @@ fn started_enters_triangulating_awaiting_signals() {
             discid,
             barcode,
             catalog: _,
+            search: _,
             context,
         } => {
             assert!(matches!(discid, DiscidProgress::Computing));
@@ -245,9 +249,7 @@ fn started_enters_triangulating_awaiting_signals() {
 /// The disc-ID lookup is dispatched exactly once, even as snapshots stream.
 #[test]
 fn disc_computed_dispatches_lookup_idempotently() {
-    let snapshot = || {
-        signals(disc("d", 5), BarcodeSignal::Scanning { codes: vec![] }, &[])
-    };
+    let snapshot = || signals(disc("d", 5), BarcodeSignal::Scanning { codes: vec![] }, &[]);
     let (state, effects) = update(started(), snapshot());
     assert!(effects
         .iter()
@@ -427,7 +429,10 @@ fn barcode_walks_start_only_from_settled() {
         ),
     );
     // Every provider is asked about the first code, and nothing else yet.
-    assert_eq!(effects, vec![lookup_barcode(MB, "A"), lookup_barcode(DG, "A")]);
+    assert_eq!(
+        effects,
+        vec![lookup_barcode(MB, "A"), lookup_barcode(DG, "A")]
+    );
 }
 
 #[test]
@@ -554,7 +559,10 @@ fn a_provider_s_walk_stops_at_its_first_match() {
             vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
         ),
     );
-    assert!(effects.is_empty(), "a match ends the walk; C is never asked");
+    assert!(
+        effects.is_empty(),
+        "a match ends the walk; C is never asked"
+    );
     match state {
         IdentifyState::Found {
             provenance,
@@ -583,7 +591,10 @@ fn each_provider_walks_the_codes_on_its_own() {
             &[],
         ),
     );
-    assert_eq!(effects, vec![lookup_barcode(MB, "A"), lookup_barcode(DG, "A")]);
+    assert_eq!(
+        effects,
+        vec![lookup_barcode(MB, "A"), lookup_barcode(DG, "A")]
+    );
 
     // Discogs answers first, with a match. Its answer lands at once; the run
     // stays open for MusicBrainz.
@@ -747,10 +758,7 @@ fn a_failed_provider_does_not_stop_the_other_s_walk() {
     );
     let (state, effects) = step(state, barcode_failed(DG, "A", LookupFailure::Timeout));
     assert!(effects.is_empty());
-    assert!(matches!(
-        state,
-        IdentifyState::Triangulating { .. }
-    ));
+    assert!(matches!(state, IdentifyState::Triangulating { .. }));
 
     let (state, effects) = step(state, barcode_missed(MB, "A"));
     assert_eq!(effects, vec![lookup_barcode(MB, "B")]);
@@ -811,10 +819,7 @@ fn failed_discid_lookup_preserves_track_count() {
 /// on the catalog badge, not a filter the run applies on its own.
 #[test]
 fn an_unchosen_catalog_number_narrows_nothing() {
-    let (state, _) = update(
-        started(),
-        disc_only(&["LBL 001"]),
-    );
+    let (state, _) = update(started(), disc_only(&["LBL 001"]));
     let mut r_a = mk_result("rel-a", Some("g-x"));
     r_a.catalog_number = Some("LBL-001".to_string());
     let mut r_b = mk_result("rel-b", Some("g-y"));
@@ -862,7 +867,6 @@ fn cancellation_returns_to_idle() {
     assert!(matches!(state, IdentifyState::Idle));
     assert!(effects.is_empty());
 }
-
 
 /// One source answers disc IDs, and a run that is not asking it has no
 /// disc-ID lookup to make. Nothing is dispatched, and the step records that

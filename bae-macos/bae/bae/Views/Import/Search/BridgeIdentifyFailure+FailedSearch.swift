@@ -5,7 +5,15 @@ import BaeKit
 /// the other steps, and those matches are on the list.
 struct FailedSearch: Hashable {
     let source: BridgeCatalog
-    let step: BridgeSignalKind
+    let step: Step
+
+    /// The steps a provider answers. Three of them are the identifiers the
+    /// badge row names; the title search is the run's own last step, which has
+    /// no badge because it is not a value the folder carries.
+    enum Step: Hashable {
+        case signal(BridgeSignalKind)
+        case titleSearch
+    }
 }
 
 extension BridgeIdentifyFailure {
@@ -14,11 +22,13 @@ extension BridgeIdentifyFailure {
     /// disc-ID endpoint is MusicBrainz's alone, so a disc-ID failure names it.
     var failedSearch: FailedSearch? {
         switch self {
-        case .discId: FailedSearch(source: .musicBrainz, step: .discId)
+        case .discId: FailedSearch(source: .musicBrainz, step: .signal(.discId))
         case .barcode(let source, _):
-            FailedSearch(source: source, step: .barcode)
+            FailedSearch(source: source, step: .signal(.barcode))
         case .catalog(let source, _):
-            FailedSearch(source: source, step: .catalog)
+            FailedSearch(source: source, step: .signal(.catalog))
+        case .search(let source, _):
+            FailedSearch(source: source, step: .titleSearch)
         case .barcodeScan, .releaseDetails: nil
         }
     }

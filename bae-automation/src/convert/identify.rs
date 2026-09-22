@@ -139,6 +139,17 @@ mirror_struct! {
     fields: { value, discounted },
 }
 
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationSearchStep = bae_core::identify::SearchStepView,
+    from_core: pub(crate) fn,
+    variants: {
+        NotNeeded,
+        NoTitle,
+        Searched { album, artist, cells: (each AutomationProviderCell) },
+    },
+}
+
 mirror_struct! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationIdentifyRun = bae_core::identify::IdentifyRunView,
@@ -148,6 +159,7 @@ mirror_struct! {
         disc_id: (AutomationDiscIdStep),
         barcode: (AutomationBarcodeStep),
         catalog: (AutomationCatalogStep),
+        search: (AutomationSearchStep),
     },
 }
 
@@ -169,6 +181,10 @@ impl AutomationIdentifyFailure {
                 failure: AutomationLookupFailure::from_core(failure.failure),
             },
             IdentifyFailure::Catalog(failure) => Self::Catalog {
+                source: failure.source.into(),
+                failure: AutomationLookupFailure::from_core(failure.failure),
+            },
+            IdentifyFailure::Search(failure) => Self::Search {
                 source: failure.source.into(),
                 failure: AutomationLookupFailure::from_core(failure.failure),
             },

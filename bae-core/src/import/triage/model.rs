@@ -48,9 +48,11 @@ pub enum TriagePlacement {
 impl TriagePlacement {
     pub fn tab(&self) -> TriageTab {
         match self {
-            Self::Pending | Self::Ready | Self::NeedsYou { .. } | Self::Importing | Self::Failed => {
-                TriageTab::Pending
-            }
+            Self::Pending
+            | Self::Ready
+            | Self::NeedsYou { .. }
+            | Self::Importing
+            | Self::Failed => TriageTab::Pending,
             Self::Done => TriageTab::Done,
             Self::Skipped => TriageTab::Skipped,
         }
@@ -94,32 +96,32 @@ pub enum IdentificationStatus {
     FinalizationFailed { error: String },
 }
 
-/// Which signal produced a match — the row's trailing evidence chip, and the
+/// Which lookup produced a match — the row's trailing evidence chip, and the
 /// confidence cue the design leans on.
 ///
-/// Two variants because `combine` builds a `Found`'s matches out of exactly two
-/// result sets. The design's third chip ("matched on text") has no producer
-/// today; it arrives with the code that searches by text.
+/// Named strongest first, because a lead can be claimed by more than one and
+/// the chip names one: a disc ID identifies the pressing, a barcode only the
+/// product, and a title only what the folder calls it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MatchedSignal {
-    /// The disc's table of contents. Named ahead of the barcode when both
-    /// lookups returned the release: a disc ID identifies the pressing, a
-    /// barcode only the product.
+    /// The disc's table of contents.
     DiscId,
     Barcode,
+    /// The run searched the catalogs for the candidate's own album title,
+    /// which is what it falls back on when no identifier named anything.
+    TitleSearch,
 }
 
 impl MatchedSignal {
-    /// `None` when neither lookup claims the result — the row then shows the
-    /// provider alone. `combine` takes every match from one of the two result
-    /// sets, so this does not arise from its output; the booleans are
-    /// independent in the type, and naming a signal for a lead that claims
-    /// none would be worse than admitting there isn't one.
+    /// `None` when no lookup claims the result — a release the person picked
+    /// themselves — and the row then shows the provider alone.
     fn of(lead: &LeadMatch) -> Option<Self> {
         if lead.by_disc_id {
             Some(Self::DiscId)
         } else if lead.by_barcode {
             Some(Self::Barcode)
+        } else if lead.by_search {
+            Some(Self::TitleSearch)
         } else {
             None
         }

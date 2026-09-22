@@ -66,7 +66,9 @@ impl Job {
     }
 
     fn holds(&self, key: &str) -> bool {
-        self.members.iter().any(|member| member.candidate.key() == key)
+        self.members
+            .iter()
+            .any(|member| member.candidate.key() == key)
     }
 
     fn keys(&self) -> Vec<String> {
@@ -132,10 +134,9 @@ impl Queue {
     /// take it from them.
     fn requested(&self, key: &str) -> bool {
         self.index_of_key(key).is_some_and(|index| {
-            self.jobs[index]
-                .members
-                .iter()
-                .any(|member| member.candidate.key() == key && member.admission == Admission::Requested)
+            self.jobs[index].members.iter().any(|member| {
+                member.candidate.key() == key && member.admission == Admission::Requested
+            })
         })
     }
 
@@ -220,7 +221,10 @@ impl Queue {
                     if let Some(representative) = running {
                         context.import.cancel_identification(&representative);
                     }
-                    let job = self.jobs.remove(index).expect("the located job still exists");
+                    let job = self
+                        .jobs
+                        .remove(index)
+                        .expect("the located job still exists");
                     job.mark_waiting(context);
                     let position = self.request_position();
                     self.jobs.insert(position, job);
@@ -275,7 +279,10 @@ impl Queue {
         } else if lost_its_run {
             // The rest of the group have been waiting on an answer that is not
             // coming, so they wait at the head rather than behind the queue.
-            let job = self.jobs.remove(index).expect("the located job still exists");
+            let job = self
+                .jobs
+                .remove(index)
+                .expect("the located job still exists");
             job.mark_waiting(context);
             self.jobs.push_front(job);
         }
@@ -294,7 +301,10 @@ impl Queue {
         let Some(index) = self.index_of_identity(identity) else {
             return;
         };
-        let job = self.jobs.remove(index).expect("the located job still exists");
+        let job = self
+            .jobs
+            .remove(index)
+            .expect("the located job still exists");
         for key in job.keys() {
             context.import.withdraw_identification(&key);
         }
@@ -481,7 +491,11 @@ pub(super) async fn admit(
 ) -> usize {
     let content_hashes = queue.place(context, candidates, admission);
     let opened = content_hashes.len();
-    if let Err(error) = context.import.open_find_online_for_admitted(content_hashes).await {
+    if let Err(error) = context
+        .import
+        .open_find_online_for_admitted(content_hashes)
+        .await
+    {
         warn!("identification: could not open the admitted candidates' panes on Find online ({error})");
     }
     opened
@@ -525,6 +539,7 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
         let CandidateRunStart {
             metadata_revision: expected_metadata_revision,
             choices,
+            title_search,
         } = start;
         info!(
             "identification: identifying {key} at {priority:?} ({} job(s) on the queue)",
@@ -539,6 +554,7 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
             },
             priority,
             choices,
+            title_search,
         ) {
             // No source to ask, so no run and no state to wait for. Held as in
             // flight the job would keep its slot and the queue behind it would

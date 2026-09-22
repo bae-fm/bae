@@ -657,7 +657,8 @@
                             )
                         ]
                     ),
-                    catalog: .noneFound
+                    catalog: .noneFound,
+                    search: .notNeeded
                 ),
                 failures: [
                     .discId(failure: .network),

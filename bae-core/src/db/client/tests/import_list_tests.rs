@@ -59,6 +59,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
+            by_search: false,
         }],
         pressings: vec![0],
         narrowed_out: Vec::new(),
@@ -395,6 +396,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         },
         barcode: crate::identify::BarcodeStepView::Absent,
         catalog: crate::identify::CatalogStepView::NoneFound,
+        search: crate::identify::SearchStepView::NotNeeded,
     };
     save_verdict_with_ledger(&db, &candidate, "mb-verdict", Some(ledger.clone())).await;
 

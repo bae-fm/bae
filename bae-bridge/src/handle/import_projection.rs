@@ -339,7 +339,7 @@ mirror_struct! {
 mirror_enum! {
     crate::types::BridgeMatchedSignal = bae_core::import::MatchedSignal,
     from_core: pub(crate) fn,
-    variants: { DiscId, Barcode },
+    variants: { DiscId, Barcode, TitleSearch },
 }
 
 // ── The paged list ─────────────────────────────────────────────────────────

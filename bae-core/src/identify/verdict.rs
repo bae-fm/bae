@@ -47,6 +47,8 @@ pub enum IdentifyFailure {
     BarcodeScan(LookupFailure),
     Barcode(SourceFailure),
     Catalog(SourceFailure),
+    /// One provider could not answer the title search the run fell back on.
+    Search(SourceFailure),
     ReleaseDetails(LookupFailure),
 }
 
@@ -128,6 +130,7 @@ impl TerminalVerdict {
                 by_disc_id: false,
                 by_barcode: false,
                 by_catalog: false,
+                by_search: false,
             }],
             pressings: vec![0],
             narrowed_out: Vec::new(),

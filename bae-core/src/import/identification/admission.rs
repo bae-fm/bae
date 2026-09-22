@@ -50,27 +50,51 @@ pub(super) struct CandidateRunStart {
     pub(super) metadata_revision: u64,
     /// What the person decided this candidate's identification asks about.
     pub(super) choices: LookupChoices,
+    /// What the candidate's draft calls the release, for the run to search by
+    /// when its identifiers name nothing. `None` when the draft states no
+    /// title.
+    pub(super) title_search: Option<TitleSearch>,
 }
 
-/// Read both in one go, off the one stored row that states them.
+/// Read what a run begins from, off the two rows the candidate's content hash
+/// keys: the choices from its stored state, and the words to search by from
+/// its own draft.
+///
+/// The draft comes from the pane's rows rather than the candidate projection a
+/// surface reads. The projection also resolves whatever release a pick claims,
+/// which fails for a candidate whose documents were cleared — and a run that
+/// could not read a title would then not run at all, where it has three
+/// identifiers to ask about regardless.
 pub(super) async fn candidate_run_start(
     context: &Context,
     candidate: &ReleaseCandidate,
 ) -> Result<CandidateRunStart, crate::library::LibraryError> {
-    context
+    let content_hash = candidate.files().content_hash();
+    let Some(state) = context
         .library_manager
-        .load_import_candidate_state(&candidate.files().content_hash())
+        .load_import_candidate_state(&content_hash)
         .await?
-        .map(|state| CandidateRunStart {
-            metadata_revision: state.metadata_revision,
-            choices: state.lookup_choices,
-        })
-        .ok_or_else(|| {
-            crate::library::LibraryError::Internal(format!(
-                "candidate {} has no persisted state row",
-                candidate.key()
-            ))
-        })
+    else {
+        return Err(crate::library::LibraryError::Internal(format!(
+            "candidate {} has no persisted state row",
+            candidate.key()
+        )));
+    };
+    let draft = context
+        .library_manager
+        .load_import_candidate_pane_rows(&content_hash)
+        .await?
+        .draft;
+    let artist = match draft.album_artist_assignments.first() {
+        Some(crate::import::ArtistAssignment::Existing { artist }) => artist.name.as_str(),
+        Some(crate::import::ArtistAssignment::New { seed }) => seed.name.as_str(),
+        None => "",
+    };
+    Ok(CandidateRunStart {
+        metadata_revision: state.metadata_revision,
+        choices: state.lookup_choices,
+        title_search: TitleSearch::of(&draft.album_title, artist),
+    })
 }
 
 /// Whether the automatic admission still wants this candidate answered: its

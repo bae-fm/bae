@@ -120,6 +120,7 @@ pub struct LeadMatch {
     pub source_tracks: Option<SourceTracks>,
     pub by_disc_id: bool,
     pub by_barcode: bool,
+    pub by_search: bool,
 }
 
 impl LeadMatch {
@@ -141,6 +142,7 @@ impl LeadMatch {
             source_tracks: result.source_tracks.clone(),
             by_disc_id: provenance.is_some_and(|provenance| provenance.by_disc_id),
             by_barcode: provenance.is_some_and(|provenance| provenance.by_barcode),
+            by_search: provenance.is_some_and(|provenance| provenance.by_search),
         }
     }
 }

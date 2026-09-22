@@ -1,11 +1,11 @@
 use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
 };
-use crate::import::types::{ImportCommand, ImportProgress, Catalog, StorageMode};
+use crate::import::types::{Catalog, ImportCommand, ImportProgress, StorageMode};
 use crate::import::watched_folder::WatchedFolder;
-use crate::util::worker_thread::WorkerThread;
 use crate::library::manager::discogs_validation_from_result as validation_from_validate_result;
 use crate::library::LibraryManager;
+use crate::util::worker_thread::WorkerThread;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
@@ -359,11 +359,12 @@ impl ImportServiceHandle {
         source: crate::signals::ExtractionSource,
         priority: crate::util::rate_limiter::CallPriority,
         choices: crate::import::LookupChoices,
+        title_search: Option<crate::identify::TitleSearch>,
     ) -> bool {
         let snapshots = self.extraction.start(run, key.clone(), source, priority);
         if self
             .identify
-            .start(run, key.clone(), priority, choices, snapshots)
+            .start(run, key.clone(), priority, choices, title_search, snapshots)
         {
             return true;
         }

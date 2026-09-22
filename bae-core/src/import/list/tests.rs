@@ -100,6 +100,7 @@ fn lead(release_id: &str) -> LeadMatch {
         }),
         by_disc_id: true,
         by_barcode: false,
+        by_search: false,
     }
 }
 

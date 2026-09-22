@@ -5,8 +5,8 @@
 use super::annotate_with_library_status;
 use super::code::{lookup_code, PrintedCode};
 use super::discid::lookup_and_resolve;
-use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome};
-use crate::import::search::SourceLookup;
+use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, TitleSearch};
+use crate::import::search::{search_source, SearchQuery, SourceLookup};
 use crate::import::{Catalog, ImportEvent, ImportEventBus, LookupChoices};
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionWatch, SignalsSnapshot};
@@ -155,6 +155,10 @@ impl IdentifyServiceHandle {
     /// dispatches is admitted under it, so a candidate a person opened outranks
     /// one the automatic admission picked up.
     ///
+    /// `title_search` is what the candidate's draft says about the release,
+    /// which the run asks every provider once its identifiers have named
+    /// nothing. `None` where the draft states no title.
+    ///
     /// `snapshots` is the watch the extraction feeding this run handed out
     /// at its start. It holds the extraction's latest snapshot, so the driver
     /// reads what was last said whenever it looks — nothing is queued and
@@ -168,12 +172,14 @@ impl IdentifyServiceHandle {
     /// to say so. Nothing will report on `run`, so a caller waiting on it
     /// stops waiting.
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn start(
         &self,
         run: IdentifyRunId,
         key: String,
         priority: CallPriority,
         choices: LookupChoices,
+        title_search: Option<TitleSearch>,
         snapshots: ExtractionWatch,
     ) -> bool {
         // A restart (the user re-selects after a scan refresh, or changes what
@@ -197,7 +203,17 @@ impl IdentifyServiceHandle {
 
         let inner = self.inner.clone();
         self.inner.runtime_handle.spawn(async move {
-            run_driver(inner, run, key, priority, choices, token, snapshots).await;
+            run_driver(
+                inner,
+                run,
+                key,
+                priority,
+                choices,
+                title_search,
+                token,
+                snapshots,
+            )
+            .await;
         });
         true
     }
@@ -247,12 +263,14 @@ fn remove_driver_if_current(inner: &IdentifyServiceInner, key: &str, run: Identi
 /// only the latest: the reducer turns each into lookups and a catalog filter,
 /// and every snapshot is the whole of what was read so far, so the latest is
 /// the only one it needs.
+#[allow(clippy::too_many_arguments)]
 async fn run_driver(
     inner: Arc<IdentifyServiceInner>,
     run: IdentifyRunId,
     key: String,
     priority: CallPriority,
     choices: LookupChoices,
+    title_search: Option<TitleSearch>,
     token: CancellationToken,
     mut snapshots: ExtractionWatch,
 ) {
@@ -265,6 +283,7 @@ async fn run_driver(
     let mut start = Some(IdentifyEvent::Started {
         providers: run_providers(&inner.library_manager),
         choices,
+        title_search,
     });
     // Whether the extraction is still going. Its sender goes with it, and
     // once that is gone its last snapshot has been read: there is nothing
@@ -405,6 +424,32 @@ fn dispatch_effect(
                         outcome,
                     },
                 );
+            });
+        }
+
+        // The one query every provider is asked, once the identifiers have
+        // come back with nothing — the same query the Search section's General
+        // tab sends.
+        Effect::SearchTitle { source, query } => {
+            let library_manager = inner.library_manager.clone();
+            runtime.spawn(async move {
+                let search = SearchQuery::General {
+                    artist: query.artist.clone(),
+                    album: query.album.clone(),
+                };
+                let lookup = search_source(&library_manager, source, &search, priority).await;
+                if token.is_cancelled() {
+                    return;
+                }
+                let outcome = annotate_lookup(lookup, &library_manager).await;
+                if let Err(failure) = &outcome {
+                    debug!(
+                        "{} title search failed for {}: {failure:?}",
+                        source.as_str(),
+                        query.album
+                    );
+                }
+                emit_step(&event_tx, IdentifyEvent::SearchAnswered { source, outcome });
             });
         }
 
@@ -618,6 +663,7 @@ mod tests {
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
+            None,
             watch,
         ));
         // Feed the signals over the watch, as the extraction service would.
@@ -669,6 +715,7 @@ mod tests {
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
+            None,
             watch,
         ));
 
@@ -699,6 +746,7 @@ mod tests {
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
+            None,
             watch,
         ));
         snapshots.send_replace(Some(scanning_snapshot()));
@@ -739,6 +787,7 @@ mod tests {
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
+            None,
             watch,
         ));
         assert!(handle.is_running("k"), "the run is in flight");

@@ -3,8 +3,18 @@ use super::*;
 /// Most of these are about how the sets intersect, which the candidate's
 /// own text takes no part in: a candidate that states nothing offers every
 /// answer, so nothing folds and the order is the one the signals gave.
+///
+/// The title search is not one of the sets here: it is asked only when the
+/// three identifiers came back empty, so every case about how they intersect
+/// is a case where it never ran.
 fn combine(discid: Results, barcode: Results, catalog: Results) -> CombineOutcome {
-    combine_results(discid, barcode, catalog, &CandidateText::default())
+    combine_results(
+        discid,
+        barcode,
+        catalog,
+        Results::new(),
+        &CandidateText::default(),
+    )
 }
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
@@ -295,7 +305,7 @@ fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
         dirty_deeds("rel-2003", 2003),
         dirty_deeds("rel-1976", 1976),
     ];
-    let outcome = combine_results(discid, vec![], vec![], &text);
+    let outcome = combine_results(discid, vec![], vec![], vec![], &text);
     let (matches, provenance, _) = found(outcome);
     assert_eq!(ids(&matches), vec!["rel-1976", "rel-1994", "rel-2003"]);
     assert!(provenance.iter().all(|lookup| lookup.by_disc_id));
@@ -311,6 +321,7 @@ fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
         vec![dirty_deeds("rel-1976", 1976)],
         vec![manu_chao()],
         vec![],
+        vec![],
         &text,
     );
     let (matches, _, _) = found(outcome.clone());
@@ -325,7 +336,13 @@ fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
 #[test]
 fn a_barcode_answering_alone_is_offered_however_little_the_folder_says() {
     let text = folder(&["CD1"]);
-    let (matches, _, _) = found(combine_results(vec![], vec![manu_chao()], vec![], &text));
+    let (matches, _, _) = found(combine_results(
+        vec![],
+        vec![manu_chao()],
+        vec![],
+        vec![],
+        &text,
+    ));
     assert_eq!(ids(&matches), vec!["rel-clandestino"]);
 }
 
@@ -336,6 +353,7 @@ fn a_candidate_with_no_text_narrows_nothing_on_it() {
     let outcome = combine_results(
         vec![dirty_deeds("rel-1976", 1976)],
         vec![manu_chao()],
+        vec![],
         vec![],
         &CandidateText::default(),
     );
@@ -351,7 +369,7 @@ fn the_intersection_s_leftovers_and_the_folder_s_are_one_list() {
     let text = folder(&["AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]"]);
     let discid = vec![dirty_deeds("rel-1976", 1976), dirty_deeds("rel-1994", 1994)];
     let barcode = vec![dirty_deeds("rel-1976", 1976), manu_chao()];
-    let outcome = combine_results(discid, barcode, vec![], &text);
+    let outcome = combine_results(discid, barcode, vec![], vec![], &text);
     let (matches, _, _) = found(outcome.clone());
     assert_eq!(ids(&matches), vec!["rel-1976"]);
     let left_out = narrowed(outcome).matches;
@@ -469,6 +487,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
             van_halen_discogs("dg-undated-b", None),
         ],
         vec![],
+        vec![],
         &text,
     );
     let (matches, provenance, pressings) = found(outcome.clone());
@@ -545,6 +564,7 @@ fn a_pressing_never_splits_across_the_two_lists() {
             van_halen_discogs("dg-1991", Some(1991)),
         ],
         vec![],
+        vec![],
         &text,
     );
     let (_, _, pressings) = found(outcome.clone());
@@ -566,8 +586,33 @@ fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
         vec![dirty_deeds("rel-1976", 1976)],
         vec![manu_chao()],
         vec![],
+        vec![],
         &text,
     );
     let (_, _, pressings) = found(outcome);
     assert_eq!(crate::import::release_group::row_count(&pressings), 1);
+}
+
+/// The title search is the only set that ever answers alone, because it is
+/// asked only once the three identifiers have come back empty. What it found
+/// is offered whole, each row carrying the search as what produced it.
+#[test]
+fn a_search_that_answered_alone_is_offered_whole() {
+    let outcome = combine_results(
+        vec![],
+        vec![],
+        vec![],
+        vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-y"))],
+        &CandidateText::default(),
+    );
+    let (matches, provenance, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-a", "rel-b"]);
+    assert!(provenance.iter().all(|lookup| lookup.by_search));
+    assert!(provenance
+        .iter()
+        .all(|lookup| !lookup.by_disc_id && !lookup.by_barcode && !lookup.by_catalog));
+    assert!(
+        narrowed(outcome).is_empty(),
+        "one set alone narrows nothing"
+    );
 }

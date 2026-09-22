@@ -50,7 +50,7 @@
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use super::release_candidate::ReleaseCandidate;
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
-use crate::identify::{IdentifyRunId, IdentifyState, TerminalVerdict};
+use crate::identify::{IdentifyRunId, IdentifyState, TerminalVerdict, TitleSearch};
 use crate::import::candidates::Admission;
 use crate::import::search::MetadataResult;
 use crate::import::LookupChoices;
@@ -68,8 +68,8 @@ mod handle;
 mod queue;
 mod settle;
 
-pub use handle::IdentificationHandle;
 use admission::*;
+pub use handle::IdentificationHandle;
 use queue::{admit, Queue};
 use settle::*;
 

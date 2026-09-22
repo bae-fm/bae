@@ -28,7 +28,7 @@ use super::agreements::{judged_results, Agreements, CandidateText};
 use super::combine::{combine_results, CombineOutcome, LookupProvenance, NarrowedOut};
 use super::state::{
     BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
-    IdentifyState, LookupResults, LookupState, SignalsContext,
+    IdentifyState, LookupResults, LookupState, SearchProgress, SignalsContext,
 };
 use crate::db::LibraryStatus;
 use crate::import::release_group::{group_formed_rows, group_results, Judgements, ReleaseGroup};
@@ -211,9 +211,29 @@ pub enum CatalogStepView {
     },
 }
 
-/// The run as a ledger: the three signals, each carrying what extraction
-/// produced for it and every provider's lookup of it, so a surface lists the
-/// run row by row and each cell settles on its own.
+/// The title search: the run's last step, asked of every provider at once
+/// when the three identifiers named nothing between them.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum SearchStepView {
+    /// The identifiers answered; no search was needed.
+    NotNeeded,
+    /// Nothing to search by: the draft has no title.
+    NoTitle,
+    /// The words that were searched, and every provider's lookup of them.
+    Searched {
+        album: String,
+        /// Blank where the draft names no album artist; the title alone was
+        /// searched.
+        artist: String,
+        /// One per provider in the run, in the run's provider order.
+        cells: Vec<ProviderCell>,
+    },
+}
+
+/// The run as a ledger: the three identifiers and the title search behind
+/// them, each carrying what extraction produced for it and every provider's
+/// lookup of it, so a surface lists the run row by row and each cell settles
+/// on its own.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct IdentifyRunView {
     /// The providers the run asks, in the order their cells are listed. Named
@@ -222,6 +242,7 @@ pub struct IdentifyRunView {
     pub disc_id: DiscIdStepView,
     pub barcode: BarcodeStepView,
     pub catalog: CatalogStepView,
+    pub search: SearchStepView,
 }
 
 /// The releases agreement left out, as a surface lists them: folded into album
@@ -334,14 +355,15 @@ impl From<IdentifyState> for IdentifyStateView {
                 discid,
                 barcode,
                 catalog,
+                search,
                 context,
             } => {
                 let (matches, library_statuses, provenance, pressings, narrowed_out) =
-                    live_matches(&discid, &barcode, &catalog, &context);
+                    live_matches(&discid, &barcode, &catalog, &search, &context);
                 let (groups, agreements) =
                     fold_matches(matches, provenance, &pressings, &context.text);
                 IdentifyStateView::Triangulating {
-                    run: run_view(&discid, &barcode, &catalog, &context),
+                    run: run_view(&discid, &barcode, &catalog, &search, &context),
                     groups,
                     library_statuses,
                     agreements,
@@ -424,6 +446,7 @@ fn live_matches(
     discid: &DiscidProgress,
     barcode: &BarcodeProgress,
     catalog: &CatalogProgress,
+    search: &SearchProgress,
     context: &SignalsContext,
 ) -> (
     Vec<MetadataResult>,
@@ -436,6 +459,7 @@ fn live_matches(
         discid.results(),
         barcode.results(),
         catalog.results(),
+        search.results(),
         &context.text,
     );
     match outcome {
@@ -568,6 +592,7 @@ pub(super) fn run_view(
     discid: &DiscidProgress,
     barcode: &BarcodeProgress,
     catalog: &CatalogProgress,
+    search: &SearchProgress,
     context: &SignalsContext,
 ) -> IdentifyRunView {
     let scanning = matches!(context.artwork, ArtworkScan::Reading { .. });
@@ -576,6 +601,46 @@ pub(super) fn run_view(
         disc_id: disc_id_step(discid, context),
         barcode: barcode_step(barcode, context, scanning),
         catalog: catalog_step(catalog, context, scanning),
+        search: search_step(search, context),
+    }
+}
+
+/// The title-search step: the words the run searched by, from the context,
+/// and how far each provider's lookup of them has got, from the pipe.
+///
+/// A step that has not run says which of the two reasons applies: the
+/// candidate's draft states no title, or there was a title and the
+/// identifiers answered before it was needed. A step still waiting on the
+/// identifiers reads the same way — nothing has been asked of it yet, and
+/// what the draft states is already known.
+fn search_step(progress: &SearchProgress, context: &SignalsContext) -> SearchStepView {
+    let SearchProgress::Lookups { providers } = progress else {
+        return match context.search.query {
+            Some(_) => SearchStepView::NotNeeded,
+            None => SearchStepView::NoTitle,
+        };
+    };
+    let query = context
+        .search
+        .query
+        .as_ref()
+        .expect("a search runs only on a query");
+    SearchStepView::Searched {
+        album: query.album.clone(),
+        artist: query.artist.clone(),
+        cells: providers
+            .iter()
+            .map(|provider| ProviderCell {
+                source: provider.source,
+                lookup: match &provider.state {
+                    LookupState::LookingUp => LookupView::LookingUp,
+                    LookupState::Done { results } => found_or_no_match(results),
+                    LookupState::Failed { failure } => LookupView::Failed {
+                        failure: failure.clone(),
+                    },
+                },
+            })
+            .collect(),
     }
 }
 

@@ -402,9 +402,8 @@ impl Fixture {
 
     /// The running queue, started on first use.
     fn identification(&self) -> &IdentificationHandle {
-        self.identification.get_or_init(|| {
-            super::start(self.import.clone(), self.manager.clone())
-        })
+        self.identification
+            .get_or_init(|| super::start(self.import.clone(), self.manager.clone()))
     }
 
     /// A candidate folder with two real FLACs, and a rip log so the disc ID
@@ -730,6 +729,7 @@ impl Fixture {
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
+                by_search: false,
             }],
             pressings: vec![0],
             narrowed_out: Vec::new(),

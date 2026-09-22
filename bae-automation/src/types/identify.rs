@@ -139,6 +139,20 @@ pub struct AutomationCatalogAgreement {
     pub discounted: bool,
 }
 
+/// Mirrors bae-core's `identify::SearchStepView` — the title search the run
+/// falls back on when its identifiers name nothing.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationSearchStep {
+    NotNeeded,
+    NoTitle,
+    Searched {
+        album: String,
+        artist: String,
+        cells: Vec<AutomationProviderCell>,
+    },
+}
+
 /// Mirrors bae-core's `identify::IdentifyRunView` — the run as its ledger,
 /// each provider's part of each signal reported on its own.
 #[derive(Debug, Clone, Serialize)]
@@ -147,6 +161,7 @@ pub struct AutomationIdentifyRun {
     pub disc_id: AutomationDiscIdStep,
     pub barcode: AutomationBarcodeStep,
     pub catalog: AutomationCatalogStep,
+    pub search: AutomationSearchStep,
 }
 
 /// Mirrors bae-core's `identify::Agreements`, paired with the release id it
@@ -178,6 +193,11 @@ pub enum AutomationIdentifyFailure {
         failure: AutomationLookupFailure,
     },
     Catalog {
+        source: AutomationCatalog,
+        failure: AutomationLookupFailure,
+    },
+    /// One provider could not answer the title search.
+    Search {
         source: AutomationCatalog,
         failure: AutomationLookupFailure,
     },

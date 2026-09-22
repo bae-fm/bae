@@ -199,6 +199,12 @@ internal static class BridgeDisplay
                 $"{Loc.Chrome("signal.kind.catalog")} · "
                     + $"{BaeBridgeMethods.BridgeCatalogName(catalog.Source)}: "
                     + LocalizedLine(catalog.Failure),
+            // The title search asks every configured provider at once, so it
+            // names the one that did not answer for the same reason.
+            BridgeIdentifyFailure.Search search =>
+                $"{Loc.Chrome("identify.title")} · "
+                    + $"{BaeBridgeMethods.BridgeCatalogName(search.Source)}: "
+                    + LocalizedLine(search.Failure),
             BridgeIdentifyFailure.ReleaseDetails details =>
                 $"{Loc.Chrome("import.error.load_release")}: {LocalizedLine(details.Failure)}",
             _ => throw new ArgumentOutOfRangeException(nameof(failure)),

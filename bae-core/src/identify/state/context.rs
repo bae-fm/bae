@@ -19,7 +19,8 @@
 //! leave out at all — choosing a number is what turns it on.
 
 use super::{
-    BarcodeProgress, CatalogProgress, DiscidProgress, LibraryStatus, MetadataResult, SourceFailure,
+    BarcodeProgress, CatalogProgress, DiscidProgress, LibraryStatus, MetadataResult,
+    SearchProgress, SourceFailure,
 };
 use crate::identify::agreements::CandidateText;
 use crate::identify::IdentifyFailure;
@@ -307,6 +308,62 @@ impl CatalogEvidence {
     }
 }
 
+/// What the candidate says about the release in its own words, as a run
+/// searches by them — the same two fields the Search section's General tab
+/// asks.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TitleSearch {
+    pub album: String,
+    /// The first album artist's name, or blank where the draft names none.
+    /// Both providers answer a title-only query.
+    pub artist: String,
+}
+
+impl TitleSearch {
+    /// What a draft offers a search: its album title, with the first album
+    /// artist's name beside it. `None` when the draft states no title — there
+    /// is then nothing to search by, which is the one thing that leaves the
+    /// step unrun.
+    pub fn of(album: &str, artist: &str) -> Option<Self> {
+        let album = album.trim();
+        (!album.is_empty()).then(|| Self {
+            album: album.to_string(),
+            artist: artist.trim().to_string(),
+        })
+    }
+}
+
+/// The title the run can search by, and what asking every provider about it
+/// produced.
+///
+/// The search is the run's last step: it goes out only once the three
+/// identifier pipes have settled naming nothing, so a run whose identifiers
+/// answered records a query here and no results.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SearchEvidence {
+    /// What the candidate's draft offered when the run started. `None` when it
+    /// stated no title.
+    pub query: Option<TitleSearch>,
+    /// The search's results, once settled.
+    pub results: Vec<(MetadataResult, LibraryStatus)>,
+    /// The providers that did not answer. Independent of `results`, as the
+    /// barcode's are: one provider can answer while another fails.
+    pub failures: Vec<SourceFailure>,
+}
+
+impl SearchEvidence {
+    /// Record what the settled step found.
+    fn record(&mut self, progress: &SearchProgress) {
+        self.results = progress.results();
+        self.failures = progress.failures();
+    }
+
+    /// The search's provider failures. A search that never ran has none.
+    fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
+        into.extend(self.failures.iter().cloned().map(IdentifyFailure::Search));
+    }
+}
+
 /// Each value among `sightings` once, in the order it was first seen.
 fn unique_values(sightings: &[SourcedValue]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
@@ -338,6 +395,9 @@ pub struct SignalsContext {
     pub disc: DiscIdEvidence,
     pub barcode: BarcodeEvidence,
     pub catalog: CatalogEvidence,
+    /// The title the run searches by when the three identifiers name nothing,
+    /// and what that search found.
+    pub search: SearchEvidence,
     /// The candidate's own text, normalized for lookup — what a result is
     /// judged against. The candidate's, not the run's: it is read off the
     /// folder rather than produced by anything the run asked, and a state
@@ -365,6 +425,7 @@ impl Default for SignalsContext {
             disc: DiscIdEvidence::default(),
             barcode: BarcodeEvidence::default(),
             catalog: CatalogEvidence::default(),
+            search: SearchEvidence::default(),
             text: CandidateText::default(),
             text_settled: false,
             track_count: 0,
@@ -377,10 +438,20 @@ impl SignalsContext {
     /// the first `SignalsUpdated`. `providers` is what the run will ask, and
     /// `choices` is what the person decided it asks about: the exclusions are
     /// set and every chosen catalog number is chosen, with nothing found for
-    /// any of them yet.
-    pub(super) fn started(providers: Vec<Catalog>, choices: LookupChoices) -> Self {
+    /// any of them yet. `title_search` is what the candidate's draft says
+    /// about the release, which the run falls back on when the identifiers
+    /// name nothing.
+    pub(super) fn started(
+        providers: Vec<Catalog>,
+        choices: LookupChoices,
+        title_search: Option<TitleSearch>,
+    ) -> Self {
         Self {
             providers,
+            search: SearchEvidence {
+                query: title_search,
+                ..Default::default()
+            },
             disc: DiscIdEvidence {
                 excluded: choices.disc_id_excluded,
                 ..Default::default()
@@ -426,12 +497,20 @@ impl SignalsContext {
         self.catalog.record(catalog);
     }
 
+    /// Record what the title search found. Separate from the three
+    /// identifiers' results because it settles after them: whether it runs at
+    /// all is decided from what they recorded.
+    pub(super) fn record_search(&mut self, search: &SearchProgress) {
+        self.search.record(search);
+    }
+
     /// Failures belonging to evidence the current selection still uses.
     pub(super) fn active_failures(&self) -> Vec<IdentifyFailure> {
         let mut failures = Vec::new();
         self.disc.active_failures(&mut failures);
         self.barcode.active_failures(&mut failures);
         self.catalog.active_failures(&mut failures);
+        self.search.active_failures(&mut failures);
         failures
     }
 

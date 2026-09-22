@@ -4,7 +4,10 @@
 //! parallel — triangulation — and once they settle, `combine` intersects their
 //! results into a terminal `Found` or `NotFoundAnywhere` carrying per-result
 //! provenance. A catalog number the user picks out of the ones extracted is a
-//! third lookup, and joins the same intersection.
+//! third lookup, and joins the same intersection. When all three name nothing,
+//! the run asks every provider the candidate's own album title as a fourth
+//! step, so a release the catalogs hold under no code of its own is still
+//! found.
 //!
 //! The state machine is a pure reducer (`state::step`). The service
 //! (`service::IdentifyServiceHandle`) feeds it the snapshots its extraction
@@ -49,14 +52,14 @@ pub use service::{IdentifyRunId, IdentifyServiceHandle};
 pub use state::{
     BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
     IdentifyEvent, IdentifyState, LookupOutcome, LookupResults, LookupState, ProviderBarcodeLookup,
-    ProviderLookup,
+    ProviderLookup, SearchProgress, TitleSearch,
 };
 pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{
     BarcodeStepView, CatalogAgreementView, CatalogCandidateView, CatalogStepView, DiscIdFile,
     DiscIdFileKind, DiscIdStepView, IdentifyRunView, IdentifyStateView, LookupView,
-    NarrowedOutView, ProviderCell, SignalValueRow, ValueSource,
+    NarrowedOutView, ProviderCell, SearchStepView, SignalValueRow, ValueSource,
 };
 
 use crate::db::{LibraryCheck, LibraryStatus};

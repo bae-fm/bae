@@ -115,19 +115,24 @@ fn insert_matches(
             narrowed_out_pressings,
             ..
         } => {
-            let aligned = |what: &str, results: &[MetadataResult], provenance: &[LookupProvenance]| {
-                if results.len() == provenance.len() {
-                    return Ok(());
-                }
-                Err(DbError::Message(format!(
-                    "a found verdict for {content_hash} carries {} {what} and {} provenance \
+            let aligned =
+                |what: &str, results: &[MetadataResult], provenance: &[LookupProvenance]| {
+                    if results.len() == provenance.len() {
+                        return Ok(());
+                    }
+                    Err(DbError::Message(format!(
+                        "a found verdict for {content_hash} carries {} {what} and {} provenance \
                      entries; they are index-aligned",
-                    results.len(),
-                    provenance.len()
-                )))
-            };
+                        results.len(),
+                        provenance.len()
+                    )))
+                };
             aligned("matches", matches, provenance)?;
-            aligned("narrowed-out releases", narrowed_out, narrowed_out_provenance)?;
+            aligned(
+                "narrowed-out releases",
+                narrowed_out,
+                narrowed_out_provenance,
+            )?;
             let rowed = |what: &str, results: &[MetadataResult], rows: &[u32]| {
                 if results.len() == rows.len() {
                     return Ok(());
@@ -140,7 +145,11 @@ fn insert_matches(
                 )))
             };
             rowed("matches", matches, pressings)?;
-            rowed("narrowed-out releases", narrowed_out, narrowed_out_pressings)?;
+            rowed(
+                "narrowed-out releases",
+                narrowed_out,
+                narrowed_out_pressings,
+            )?;
             let written = matches
                 .iter()
                 .zip(provenance.iter())
@@ -153,8 +162,7 @@ fn insert_matches(
                         .zip(narrowed_out_pressings.iter())
                         .map(|pair| (pair, true)),
                 );
-            for (position, (((result, provenance), pressing), narrowed_out)) in
-                written.enumerate()
+            for (position, (((result, provenance), pressing), narrowed_out)) in written.enumerate()
             {
                 insert_match(
                     sql,
@@ -223,8 +231,8 @@ fn insert_match(
               label, catalog_number, country, media_kind, cover_url, cover_thumbnail_url, \
               cover_label, cover_source, source_group_id, source_tracks_kind, \
               source_tracks_count, source_tracks_total_ms, by_disc_id, by_barcode, by_catalog, \
-              narrowed_out) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              by_search, narrowed_out) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -250,6 +258,7 @@ fn insert_match(
             provenance.by_disc_id,
             provenance.by_barcode,
             provenance.by_catalog,
+            provenance.by_search,
             narrowed_out,
         ],
     )?;
@@ -265,7 +274,13 @@ fn insert_match(
             "INSERT INTO import_candidate_match_medium \
                  (content_hash, position, media_kind, ordinal, format) \
              VALUES (?, ?, ?, ?, ?)",
-            params![content_hash, position, media_kind, ordinal_column(ordinal)?, format],
+            params![
+                content_hash,
+                position,
+                media_kind,
+                ordinal_column(ordinal)?,
+                format
+            ],
         )?;
     }
     for (ordinal, link) in result.links.iter().enumerate() {
@@ -487,6 +502,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             by_disc_id: row.get("by_disc_id")?,
             by_barcode: row.get("by_barcode")?,
             by_catalog: row.get("by_catalog")?,
+            by_search: row.get("by_search")?,
         },
         narrowed_out: row.get("narrowed_out")?,
     })

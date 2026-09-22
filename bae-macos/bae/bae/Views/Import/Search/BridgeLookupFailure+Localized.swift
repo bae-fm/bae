@@ -80,6 +80,10 @@ extension BridgeIdentifyFailure {
             return String(localized: "Catalog number") + " \u{00b7} "
                 + bridgeCatalogName(catalog: source) + ": "
                 + failure.badgeLine
+        case .search(let source, let failure):
+            return String(localized: "Title") + " \u{00b7} "
+                + bridgeCatalogName(catalog: source) + ": "
+                + failure.badgeLine
         case .releaseDetails(let failure):
             return String(
                 localized:

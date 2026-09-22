@@ -58,6 +58,15 @@ enum SignalBadgeStyle {
         }
     }
 
+    /// The same, for a step a provider was asked: the three identifiers, or
+    /// the title the run searched by when none of them named anything.
+    static func sentenceLabel(for step: FailedSearch.Step) -> String {
+        switch step {
+        case .signal(let kind): sentenceLabel(for: kind)
+        case .titleSearch: String(localized: "title search")
+        }
+    }
+
     /// Where a value was read: what a source chip says on hover when it has
     /// no file to name.
     static func originLabel(for origin: BridgeSignalOrigin) -> String {

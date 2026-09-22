@@ -108,6 +108,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
+                by_search: false,
             })
             .collect(),
         // Each release is a pressing of its own: the group lists several, and
@@ -237,12 +238,14 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
         discid: crate::identify::DiscidProgress::Computing,
         barcode: crate::identify::BarcodeProgress::Scanning,
         catalog: crate::identify::CatalogProgress::Skipped,
+        search: crate::identify::SearchProgress::Pending,
         context: crate::identify::state::SignalsContext {
             providers: Vec::new(),
             artwork: crate::signals::ArtworkScan::Absent,
             disc: Default::default(),
             barcode: Default::default(),
             catalog: Default::default(),
+            search: Default::default(),
             text: Default::default(),
             text_settled: false,
             track_count: 0,

@@ -4,9 +4,18 @@
 //! each reporting progress live so the UI can render them side by side. The
 //! barcode and catalog lookups ask every provider in the run, and each provider
 //! answers for itself — MusicBrainz landing never waits on Discogs, and one
-//! failing leaves the other's matches standing. Once every signal settles, the
-//! reducer hands their results to `combine` and lands on `Found`,
-//! `NotFoundAnywhere`, or `Failed`.
+//! failing leaves the other's matches standing.
+//!
+//! The identifiers naming nothing is not the end of the run. A release whose
+//! identifiers no catalog holds — a box set listed with neither a barcode nor
+//! a disc ID — is still found by its title, so once the three settle empty the
+//! run asks every provider the candidate's own album title and artist. That
+//! search is the fourth step, and it runs last because it is the weakest
+//! claim: an exact code beats a name, so a name is only asked when no code
+//! answered.
+//!
+//! Once every step settles, the reducer hands their results to `combine` and
+//! lands on `Found`, `NotFoundAnywhere`, or `Failed`.
 //!
 //! Settling also records the run's ledger — the layout every surface has been
 //! drawing while it ran — onto the terminal state, so what the run showed
@@ -38,14 +47,17 @@ use crate::signals::{
 pub enum IdentifyState {
     Idle,
 
-    /// Lookups in flight. Each signal progresses independently; `settle_if_ready`
-    /// combines them into a terminal state once all three are settled, and
+    /// Lookups in flight. Each identifier signal progresses independently;
+    /// `settle_if_ready` combines them into a terminal state once all three
+    /// are settled and the title search they leave has settled too, and
     /// records the ledger they settled as. The catalog pipe rests at `Skipped`
-    /// until a number is chosen.
+    /// until a number is chosen, and the search rests at `Pending` until the
+    /// three say whether it is needed.
     Triangulating {
         discid: DiscidProgress,
         barcode: BarcodeProgress,
         catalog: CatalogProgress,
+        search: SearchProgress,
         context: SignalsContext,
     },
 
@@ -273,9 +285,15 @@ pub enum IdentifyEvent {
     /// asks about, read from the candidate when the run started. It is the
     /// only way a choice enters a run: nothing changes one while the run is
     /// going, so a different decision is a different run.
+    ///
+    /// `title_search` is what the candidate's draft says about the release —
+    /// read once at the start, like the choices — which the run falls back on
+    /// when the identifiers name nothing. `None` when the draft states no
+    /// title.
     Started {
         providers: Vec<Catalog>,
         choices: LookupChoices,
+        title_search: Option<TitleSearch>,
     },
     Cancelled,
 
@@ -314,6 +332,13 @@ pub enum IdentifyEvent {
         for_catalog: String,
         outcome: LookupOutcome,
     },
+
+    /// One provider answered the title search. There is one query and one
+    /// lookup per provider, so this names no value to land on.
+    SearchAnswered {
+        source: Catalog,
+        outcome: LookupOutcome,
+    },
 }
 
 /// The side effects the service performs — the provider lookups, one per
@@ -322,9 +347,23 @@ pub enum IdentifyEvent {
 /// here.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Effect {
-    LookupDiscid { disc_id: String, track_count: u32 },
-    LookupBarcode { source: Catalog, barcode: String },
-    LookupCatalog { source: Catalog, catalog: String },
+    LookupDiscid {
+        disc_id: String,
+        track_count: u32,
+    },
+    LookupBarcode {
+        source: Catalog,
+        barcode: String,
+    },
+    LookupCatalog {
+        source: Catalog,
+        catalog: String,
+    },
+    /// Ask one provider the same query the Search section's General tab asks.
+    SearchTitle {
+        source: Catalog,
+        query: TitleSearch,
+    },
 }
 
 /// Drive the state machine one step. `Cancelled` always resets to `Idle`.
@@ -334,8 +373,15 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
     }
 
     match (state, event) {
-        (IdentifyState::Idle, IdentifyEvent::Started { providers, choices }) => {
-            let context = SignalsContext::started(providers, choices);
+        (
+            IdentifyState::Idle,
+            IdentifyEvent::Started {
+                providers,
+                choices,
+                title_search,
+            },
+        ) => {
+            let context = SignalsContext::started(providers, choices, title_search);
             // The chosen numbers are the person's decision about this
             // candidate, not something read off a snapshot, so their lookups
             // go out with the run rather than waiting for extraction to offer
@@ -352,6 +398,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                     discid: DiscidProgress::Computing,
                     barcode: BarcodeProgress::Scanning,
                     catalog,
+                    search: SearchProgress::Pending,
                     context,
                 },
                 effects,
@@ -363,10 +410,11 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog,
+                search,
                 context,
             },
             IdentifyEvent::SignalsUpdated { signals, artwork },
-        ) => apply_signals(discid, barcode, catalog, context, signals, artwork),
+        ) => apply_signals(discid, barcode, catalog, search, context, signals, artwork),
 
         // ── DiscID lookup completion ───────────────────────────────────
         (
@@ -374,6 +422,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid: DiscidProgress::Computing | DiscidProgress::LookingUp,
                 barcode,
                 catalog,
+                search,
                 context,
             },
             IdentifyEvent::DiscidLookupFailed {
@@ -387,6 +436,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             },
             barcode,
             catalog,
+            search,
             context,
         }),
 
@@ -395,6 +445,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid: DiscidProgress::LookingUp,
                 barcode,
                 catalog,
+                search,
                 context,
             },
             IdentifyEvent::DiscidLookupCompleted {
@@ -408,6 +459,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             },
             barcode,
             catalog,
+            search,
             context,
         }),
 
@@ -424,6 +476,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                         mut providers,
                     },
                 catalog,
+                search,
                 context,
             },
             IdentifyEvent::BarcodeLookupAnswered {
@@ -445,6 +498,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode: BarcodeProgress::Lookups { codes, providers },
                 catalog,
+                search,
                 context,
             };
             if effects.is_empty() {
@@ -463,6 +517,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog: CatalogProgress::Lookups { mut values },
+                search,
                 context,
             },
             IdentifyEvent::CatalogLookupAnswered {
@@ -490,6 +545,37 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog: CatalogProgress::Lookups { values },
+                search,
+                context,
+            })
+        }
+
+        // ── One provider's answer to the title search ──────────────────
+        // One query, so the answer lands on that provider's one lookup.
+        (
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                search: SearchProgress::Lookups { mut providers },
+                context,
+            },
+            IdentifyEvent::SearchAnswered { source, outcome },
+        ) => {
+            let asked = providers
+                .iter_mut()
+                .find(|l| l.source == source && l.state == LookupState::LookingUp);
+            if let Some(lookup) = asked {
+                lookup.state = match outcome {
+                    Ok(results) => LookupState::Done { results },
+                    Err(failure) => LookupState::Failed { failure },
+                };
+            }
+            settle_if_ready(IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                search: SearchProgress::Lookups { providers },
                 context,
             })
         }
@@ -538,10 +624,12 @@ fn advance_barcode_walk(
 /// walks are started only while still `Scanning` *and* once the codes have
 /// `Settled` — so every provider walks a complete, stable list. The catalog
 /// filter refreshes from every snapshot.
+#[allow(clippy::too_many_arguments)]
 fn apply_signals(
     discid: DiscidProgress,
     barcode: BarcodeProgress,
     catalog: CatalogProgress,
+    search: SearchProgress,
     mut context: SignalsContext,
     signals: Signals,
     artwork: ArtworkScan,
@@ -587,6 +675,7 @@ fn apply_signals(
         discid,
         barcode,
         catalog,
+        search,
         context,
     };
 
@@ -598,13 +687,18 @@ fn apply_signals(
     }
 }
 
-/// Once every signal has settled, record their results into the context and
+/// Once every step has settled, record its results into the context and
 /// combine into a terminal state. Until then, stay in `Triangulating`.
+///
+/// The three identifiers settle first, and what they found decides the fourth:
+/// naming nothing between them is what sends the candidate's own title to
+/// every provider, and the run stays in flight until that answers too.
 fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     let IdentifyState::Triangulating {
         discid,
         barcode,
         catalog,
+        search,
         mut context,
     } = state
     else {
@@ -623,6 +717,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                 discid,
                 barcode,
                 catalog,
+                search,
                 context,
             },
             vec![],
@@ -633,19 +728,54 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     context.track_count = track_count;
     context.record_results(&discid, &barcode, &catalog);
 
+    // The fourth step, decided once the three that feed it are in: either it
+    // goes out now and the run waits on it, or it never runs at all.
+    let search = if matches!(search, SearchProgress::Pending) {
+        let mut effects = Vec::new();
+        let started = start_search_progress(&context, &mut effects);
+        if !effects.is_empty() {
+            return (
+                IdentifyState::Triangulating {
+                    discid,
+                    barcode,
+                    catalog,
+                    search: started,
+                    context,
+                },
+                effects,
+            );
+        }
+        started
+    } else if !search.is_settled() {
+        return (
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                search,
+                context,
+            },
+            vec![],
+        );
+    } else {
+        search
+    };
+    context.record_search(&search);
+
     // The ledger this run showed, as its last frame showed it: the same
     // layout the driver has been publishing, with every lookup now settled.
     // It is computed here and nowhere else — every later reader shows what
     // was recorded rather than standing the pipes back up.
     let ledger = context
         .has_inputs()
-        .then(|| run_view(&discid, &barcode, &catalog, &context));
+        .then(|| run_view(&discid, &barcode, &catalog, &search, &context));
 
-    // Nothing had anything to run. Offer manual search rather than claim we
-    // looked and found nothing.
+    // Nothing had anything to run, the title included. Offer manual search
+    // rather than claim we looked and found nothing.
     if matches!(discid, DiscidProgress::Skipped { .. })
         && matches!(barcode, BarcodeProgress::Skipped)
         && matches!(catalog, CatalogProgress::Skipped)
+        && matches!(search, SearchProgress::Skipped)
     {
         return (
             IdentifyState::ManualOnly {
@@ -675,6 +805,7 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
         context.disc.results.clone(),
         context.barcode.results.clone(),
         context.catalog.active_results(),
+        context.search.results.clone(),
         &context.text,
     );
     let (matches, library_statuses, provenance, pressings, narrowed_out) = match outcome {
@@ -733,16 +864,17 @@ mod context;
 mod progress;
 
 pub use context::{
-    BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence, SignalsContext,
+    BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence, SearchEvidence,
+    SignalsContext, TitleSearch,
 };
 use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
     discid_progress_state, settled_identity_state, settled_track_count, start_barcode_progress,
-    start_catalog_progress, start_discid_progress,
+    start_catalog_progress, start_discid_progress, start_search_progress,
 };
 pub use progress::{
     BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
-    LookupResults, LookupState, ProviderBarcodeLookup, ProviderLookup,
+    LookupResults, LookupState, ProviderBarcodeLookup, ProviderLookup, SearchProgress,
 };
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -767,12 +899,14 @@ pub(crate) fn settle_for_tests(
     discid: DiscidProgress,
     barcode: BarcodeProgress,
     catalog: CatalogProgress,
+    search: SearchProgress,
     context: SignalsContext,
 ) -> IdentifyState {
     settle_if_ready(IdentifyState::Triangulating {
         discid,
         barcode,
         catalog,
+        search,
         context,
     })
     .0

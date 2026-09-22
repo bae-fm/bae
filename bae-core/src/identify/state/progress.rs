@@ -221,6 +221,74 @@ impl BarcodeProgress {
     }
 }
 
+/// The title search's progress — the run's fourth step.
+///
+/// It rests at `Pending` while the three identifier pipes run, because what it
+/// does is decided by what they found: identifiers that named a release leave
+/// nothing to search for, and a candidate whose draft states no title leaves
+/// nothing to search by. Either way it settles as `Skipped`; otherwise every
+/// provider in the run is asked the candidate's own title.
+#[derive(Clone, Debug, PartialEq)]
+pub enum SearchProgress {
+    /// Waiting for the three identifier pipes: nothing decided yet.
+    Pending,
+    /// The identifiers answered, or there was nothing to search by.
+    Skipped,
+    /// One lookup per provider in the run. Settled once every one of them is.
+    Lookups { providers: Vec<ProviderLookup> },
+}
+
+impl SearchProgress {
+    pub fn is_settled(&self) -> bool {
+        match self {
+            SearchProgress::Pending => false,
+            SearchProgress::Skipped => true,
+            SearchProgress::Lookups { providers } => providers.iter().all(|l| l.state.is_settled()),
+        }
+    }
+
+    /// What every provider that answered found, in provider order.
+    pub fn results(&self) -> LookupResults {
+        match self {
+            SearchProgress::Lookups { providers } => providers
+                .iter()
+                .filter_map(|l| match &l.state {
+                    LookupState::Done { results } => Some(results.clone()),
+                    _ => None,
+                })
+                .flatten()
+                .collect(),
+            SearchProgress::Pending | SearchProgress::Skipped => Vec::new(),
+        }
+    }
+
+    /// The providers that failed, whether or not the others answered.
+    pub fn failures(&self) -> Vec<SourceFailure> {
+        match self {
+            SearchProgress::Lookups { providers } => providers
+                .iter()
+                .filter_map(|l| match &l.state {
+                    LookupState::Failed { failure } => Some(SourceFailure {
+                        source: l.source,
+                        failure: failure.clone(),
+                    }),
+                    _ => None,
+                })
+                .collect(),
+            SearchProgress::Pending | SearchProgress::Skipped => Vec::new(),
+        }
+    }
+
+    /// The lookups, in provider order; none while the step is pending or was
+    /// never run.
+    pub fn lookups(&self) -> &[ProviderLookup] {
+        match self {
+            SearchProgress::Lookups { providers } => providers,
+            SearchProgress::Pending | SearchProgress::Skipped => &[],
+        }
+    }
+}
+
 /// One chosen catalog number's lookup: every provider's part of it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CatalogLookup {
@@ -613,6 +681,44 @@ pub(super) fn start_catalog_progress(
         values: chosen
             .iter()
             .map(|value| start_catalog_lookup(value, providers, effects))
+            .collect(),
+    }
+}
+
+/// What the settled identifiers leave the title search to do: ask every
+/// provider the candidate's own title, or nothing at all.
+///
+/// Nothing at all in two cases, and they mean different things to the run that
+/// ends on them: the identifiers named a release, so there is no question
+/// left; or the candidate's draft states no title, so there is nothing to ask.
+/// The second is what leaves a run with nothing run against it.
+pub(super) fn start_search_progress(
+    context: &SignalsContext,
+    effects: &mut Vec<Effect>,
+) -> SearchProgress {
+    let identifiers_answered = !context.disc.results.is_empty()
+        || !context.barcode.results.is_empty()
+        || !context.catalog.active_results().is_empty();
+    let Some(query) = context.search.query.clone() else {
+        return SearchProgress::Skipped;
+    };
+    if identifiers_answered || context.providers.is_empty() {
+        return SearchProgress::Skipped;
+    }
+    SearchProgress::Lookups {
+        providers: context
+            .providers
+            .iter()
+            .map(|&source| {
+                effects.push(Effect::SearchTitle {
+                    source,
+                    query: query.clone(),
+                });
+                ProviderLookup {
+                    source,
+                    state: LookupState::LookingUp,
+                }
+            })
             .collect(),
     }
 }

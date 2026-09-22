@@ -23,6 +23,7 @@ const NO_LOOKUP: LookupProvenance = LookupProvenance {
     by_disc_id: false,
     by_barcode: false,
     by_catalog: false,
+    by_search: false,
 };
 
 /// The separators a catalog number is printed with vary between the sleeve,
@@ -107,6 +108,7 @@ fn the_disc_id_and_the_barcode_come_from_the_lookups_alone() {
             by_disc_id: true,
             by_barcode: true,
             by_catalog: false,
+            by_search: false,
         },
     );
     assert!(judged.disc_id && judged.barcode);
@@ -123,6 +125,7 @@ fn a_catalog_lookup_agrees_whether_or_not_the_text_states_the_number() {
             by_disc_id: false,
             by_barcode: false,
             by_catalog: true,
+            by_search: false,
         },
     );
     assert!(judged.catalog);
@@ -217,6 +220,7 @@ fn striking_out_a_number_a_lookup_asked_leaves_its_agreement() {
             by_disc_id: false,
             by_barcode: false,
             by_catalog: true,
+            by_search: false,
         },
     );
     assert!(judged.catalog);

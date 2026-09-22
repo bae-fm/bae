@@ -49,6 +49,7 @@ fn sample_ledger() -> IdentifyRunView {
         },
         barcode: crate::identify::BarcodeStepView::Absent,
         catalog: crate::identify::CatalogStepView::NoneFound,
+        search: crate::identify::SearchStepView::NotNeeded,
     }
 }
 
@@ -80,6 +81,7 @@ fn sample_verdict() -> TerminalVerdict {
             by_disc_id: true,
             by_barcode: true,
             by_catalog: true,
+            by_search: false,
         }],
         pressings: vec![0],
         narrowed_out: Vec::new(),
@@ -207,6 +209,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
+                by_search: false,
             })
             .collect(),
         pressings: crate::import::release_group::form_rows(&matches),
@@ -238,9 +241,9 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     else {
         panic!("the verdict found releases");
     };
-    let live = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(matches.clone()),
-    );
+    let live = crate::import::release_group::group_results(crate::import::release_group::unranked(
+        matches.clone(),
+    ));
     let replayed = crate::import::release_group::group_results(
         crate::import::release_group::unranked(stored_matches.clone()),
     );
@@ -387,6 +390,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
+            by_search: false,
         }],
         narrowed_out_pressings: vec![0],
         ledger: Some(sample_ledger()),
@@ -829,6 +833,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
         IdentifyEvent::Started {
             providers: vec![crate::import::Catalog::MusicBrainz],
             choices: crate::import::LookupChoices::default(),
+            title_search: None,
         },
     );
     let (state, _) = identify_step(

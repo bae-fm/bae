@@ -2,7 +2,7 @@ use super::*;
 use crate::db::LibraryStatus;
 use crate::identify::state::{
     step, BarcodeEvidence, BarcodeLookupState, CatalogEvidence, ChosenCatalog, DiscIdEvidence,
-    IdentifyEvent, ProviderBarcodeLookup, ProviderLookup,
+    IdentifyEvent, ProviderBarcodeLookup, ProviderLookup, SearchEvidence, SearchProgress,
 };
 use crate::identify::{IdentifyFailure, TerminalVerdict};
 use crate::import::release_group::unranked;
@@ -34,6 +34,7 @@ fn context() -> SignalsContext {
             ..Default::default()
         },
         catalog: CatalogEvidence::default(),
+        search: SearchEvidence::default(),
         text: Default::default(),
         text_settled: true,
         track_count: 9,
@@ -60,6 +61,7 @@ fn in_flight(context: SignalsContext) -> IdentifyState {
             ],
         },
         catalog: CatalogProgress::Skipped,
+        search: SearchProgress::Pending,
         context,
     }
 }
@@ -128,6 +130,7 @@ fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
             }],
         },
         catalog: CatalogProgress::Skipped,
+        search: SearchProgress::Pending,
         context,
     };
     let run = run_of(state);
@@ -161,6 +164,7 @@ fn every_code_left_out_lists_them_all_unasked() {
             codes: vec!["BOXSET".to_string(), "DISC".to_string()],
         },
         catalog: CatalogProgress::Skipped,
+        search: SearchProgress::Pending,
         context,
     };
     let run = run_of(state);
@@ -188,6 +192,7 @@ fn a_left_out_disc_id_reads_apart_from_one_no_provider_answers() {
             discid: DiscidProgress::NotAsked { track_count: 9 },
             barcode: BarcodeProgress::NoCodes,
             catalog: CatalogProgress::Skipped,
+            search: SearchProgress::Pending,
             context,
         })
         .disc_id
@@ -243,6 +248,7 @@ fn a_provider_s_walk_fills_one_cell_per_code() {
             ],
         },
         catalog: CatalogProgress::Skipped,
+        search: SearchProgress::Pending,
         context,
     };
     let run = run_of(state);
@@ -288,6 +294,7 @@ fn a_failed_walk_warns_on_the_code_it_failed_at() {
             }],
         },
         catalog: CatalogProgress::Skipped,
+        search: SearchProgress::Pending,
         context,
     };
     let run = run_of(state);
@@ -353,6 +360,7 @@ fn codes_read_so_far_wait_while_the_artwork_is_still_being_read() {
         discid: DiscidProgress::Skipped { track_count: 9 },
         barcode: BarcodeProgress::Scanning,
         catalog: CatalogProgress::Skipped,
+        search: SearchProgress::Pending,
         context,
     };
     let run = run_of(state);
@@ -415,6 +423,7 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
                 ],
             }],
         },
+        search: SearchProgress::Pending,
         context,
     };
     let run = run_of(state);
@@ -472,6 +481,7 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
             ],
         },
         catalog: CatalogProgress::Skipped,
+        search: SearchProgress::Pending,
         context,
     };
     let last_frame = run_of(in_flight.clone());
@@ -514,6 +524,7 @@ fn a_run_with_no_inputs_records_no_ledger() {
         DiscidProgress::Skipped { track_count: 9 },
         BarcodeProgress::Skipped,
         CatalogProgress::Skipped,
+        SearchProgress::Skipped,
         blank,
     );
     assert!(matches!(
@@ -539,6 +550,7 @@ fn a_manual_only_folder_with_catalog_numbers_offers_them() {
         DiscidProgress::Skipped { track_count: 9 },
         BarcodeProgress::Skipped,
         CatalogProgress::Skipped,
+        SearchProgress::Skipped,
         context,
     );
     let IdentifyStateView::ManualOnly { run: Some(run), .. } = IdentifyStateView::from(settled)
@@ -569,6 +581,7 @@ fn a_found_lookup_names_its_releases() {
         },
         barcode: BarcodeProgress::NoCodes,
         catalog: CatalogProgress::Skipped,
+        search: SearchProgress::Pending,
         context,
     };
     let run = run_of(state);
@@ -645,6 +658,7 @@ fn recorded_ledger() -> IdentifyRunView {
             }],
         },
         catalog: CatalogStepView::NoneFound,
+        search: SearchStepView::NotNeeded,
     }
 }
 
@@ -664,6 +678,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
             by_disc_id: true,
             by_barcode: false,
             by_catalog: false,
+            by_search: false,
         }],
         pressings: vec![0],
         narrowed_out: vec![MetadataResult::for_test(DG, "dg-1", Some("g"))],
@@ -671,6 +686,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
             by_disc_id: false,
             by_barcode: true,
             by_catalog: false,
+            by_search: false,
         }],
         narrowed_out_pressings: vec![0],
         ledger: Some(recorded_ledger()),
@@ -822,6 +838,7 @@ fn resumed(
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
+                by_search: false,
             };
             count
         ]
@@ -957,6 +974,7 @@ fn a_number_an_offered_release_carries_is_a_chip_rather_than_a_tile() {
                 },
             ],
         },
+        search: SearchStepView::NotNeeded,
     };
     let view = resumed(
         vec![pressing("rel-a", "rg-a", Some("16033-2"), None, None, None)],

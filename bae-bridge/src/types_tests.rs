@@ -41,6 +41,7 @@ mod triage_tests {
             },
             barcode: Default::default(),
             catalog: Default::default(),
+            search: Default::default(),
             text: Default::default(),
             text_settled: true,
             track_count: 9,
