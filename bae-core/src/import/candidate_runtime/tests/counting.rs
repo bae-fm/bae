@@ -31,7 +31,7 @@ fn a_lookup_started_by_hand_opens_a_batch() {
     let (runtime, mut events) = counted_runtime();
     let key = "/watch/a/rel1";
 
-    runtime.admit(key, Admission::Requested);
+    runtime.admit(vec![key.to_string()], Admission::Requested);
     assert_eq!(counts(&mut events), vec![(0, 1)]);
 
     runtime.record_event(&identify(key, 1, triangulating()));
@@ -64,7 +64,7 @@ fn a_run_reporting_takes_its_key_off_the_queue() {
     let (runtime, mut events) = counted_runtime();
     let key = "/watch/a/rel1";
 
-    runtime.admit(key, Admission::Requested);
+    runtime.admit(vec![key.to_string()], Admission::Requested);
     assert_eq!(
         runtime.get(key).and_then(|state| state.queued),
         Some(Admission::Requested)
@@ -85,7 +85,7 @@ fn the_sweeps_queue_is_counted_and_drains_to_nothing() {
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
 
-    runtime.admit_all(vec![first.to_string(), second.to_string()], Admission::Automatic);
+    runtime.admit(vec![first.to_string(), second.to_string()], Admission::Automatic);
     assert_eq!(counts(&mut events), vec![(0, 2)]);
 
     runtime.record_event(&identify(first, 1, manual_only()));
@@ -105,7 +105,7 @@ fn a_key_dropped_from_the_queue_before_it_ran_is_over() {
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
 
-    runtime.admit_all(vec![first.to_string(), second.to_string()], Admission::Automatic);
+    runtime.admit(vec![first.to_string(), second.to_string()], Admission::Automatic);
     assert_eq!(counts(&mut events), vec![(0, 2)]);
 
     runtime.withdraw(second);
@@ -126,7 +126,7 @@ fn a_lookup_that_never_ran_ends_when_its_mark_is_cleared() {
     let (runtime, mut events) = counted_runtime();
     let key = "/watch/a/rel1";
 
-    runtime.admit(key, Admission::Requested);
+    runtime.admit(vec![key.to_string()], Admission::Requested);
     runtime.withdraw(key);
     assert_eq!(counts(&mut events), vec![(0, 1), (0, 0)]);
 }
@@ -138,7 +138,7 @@ fn a_failed_write_ends_the_identification() {
     let (runtime, mut events) = counted_runtime();
     let key = "/watch/a/rel1";
 
-    runtime.admit(key, Admission::Requested);
+    runtime.admit(vec![key.to_string()], Admission::Requested);
     runtime.record_event(&identify(key, 1, manual_only()));
     assert_eq!(counts(&mut events), vec![(0, 1)]);
 
@@ -158,7 +158,7 @@ fn a_candidate_that_leaves_the_scan_ends_its_identification() {
     let (runtime, mut events) = counted_runtime();
     let key = "/watch/a/rel1";
 
-    runtime.admit(key, Admission::Requested);
+    runtime.admit(vec![key.to_string()], Admission::Requested);
     runtime.record_event(&identify(key, 1, triangulating()));
     assert_eq!(counts(&mut events), vec![(0, 1)]);
 
@@ -176,12 +176,12 @@ fn a_batch_after_a_drain_starts_from_zero() {
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
 
-    runtime.admit_all(vec![first.to_string(), second.to_string()], Admission::Automatic);
+    runtime.admit(vec![first.to_string(), second.to_string()], Admission::Automatic);
     runtime.withdraw(first);
     runtime.withdraw(second);
     assert_eq!(counts(&mut events), vec![(0, 2), (1, 2), (0, 0)]);
 
-    runtime.admit(first, Admission::Requested);
+    runtime.admit(vec![first.to_string()], Admission::Requested);
     assert_eq!(counts(&mut events), vec![(0, 1)]);
 }
 

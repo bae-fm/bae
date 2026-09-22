@@ -70,7 +70,7 @@ mod settle;
 
 pub use handle::IdentificationHandle;
 use admission::*;
-use queue::Queue;
+use queue::{admit, Queue};
 use settle::*;
 
 /// How many candidates are identified at once.
@@ -79,10 +79,10 @@ use settle::*;
 /// duration probing, artwork OCR — is CPU and disk work that parallelises, and
 /// the network half is serialised by the provider rate limiter however many run
 /// at once. So the cap exists to keep OCR off every core, not to pace the
-/// network. It applies to the automatic admission alone: a person waiting on a
-/// candidate they asked for is not made to wait behind a queue nobody is
-/// watching. A constant, not configuration: there is no setting a user could
-/// meaningfully choose here.
+/// network. It applies to every job: a request goes to the front of the queue
+/// and takes the next slot, but a batch of requests does not put a run on
+/// every core at once. A constant, not configuration: there is no setting a
+/// user could meaningfully choose here.
 const MAX_IN_FLIGHT: usize = 4;
 
 /// What one candidate's identity is for identification: the bytes it holds and

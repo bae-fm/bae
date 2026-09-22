@@ -84,6 +84,53 @@ pub(super) fn load_session_on(
 }
 
 impl Database {
+    /// Open the pane on Find online for every one of these candidates, leaving
+    /// the rest of each session as it is. A candidate with no session yet gets
+    /// the one its pane opens on, with this surface showing.
+    ///
+    /// One statement per candidate in one call, so an admission is one act
+    /// and the pane of a candidate a person is looking at follows it in the
+    /// same read as the rest.
+    pub async fn open_import_candidate_sessions_on_find_online(
+        &self,
+        content_hashes: Vec<String>,
+    ) -> Result<(), DbError> {
+        if content_hashes.is_empty() {
+            return Ok(());
+        }
+        let opened = CandidateSession {
+            presentation: MetadataPresentation::FindOnline,
+            search: SearchForm::default(),
+            error: None,
+        };
+        self.call(move |sql| {
+            for content_hash in &content_hashes {
+                sql.execute(
+                    "INSERT INTO import_candidate_session (\
+                         content_hash, presentation, search_tab, search_artist, \
+                         search_album, search_catalog, search_barcode, error) \
+                     SELECT ?, ?, ?, ?, ?, ?, ?, ? \
+                     WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = ?) \
+                     ON CONFLICT (content_hash) DO UPDATE SET \
+                         presentation = excluded.presentation",
+                    params![
+                        content_hash,
+                        presentation_column(opened.presentation),
+                        tab_column(opened.search.tab),
+                        opened.search.artist,
+                        opened.search.album,
+                        opened.search.catalog,
+                        opened.search.barcode,
+                        opened.error,
+                        content_hash,
+                    ],
+                )?;
+            }
+            Ok(())
+        })
+        .await
+    }
+
     /// Record the pane's state for a candidate, whole: the row is the session,
     /// and the caller hands over the next value of all of it.
     pub async fn save_import_candidate_session(

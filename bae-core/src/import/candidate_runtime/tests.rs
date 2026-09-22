@@ -318,7 +318,7 @@ fn an_admission_is_published_as_one_current_runtime_snapshot() {
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
 
-    runtime.admit_all(vec![first.to_string(), second.to_string()], Admission::Automatic);
+    runtime.admit(vec![first.to_string(), second.to_string()], Admission::Automatic);
 
     let queued = runtime.all();
     assert_eq!(queued.len(), 2);
@@ -639,7 +639,7 @@ fn every_field_yields_its_own_status_in_one_order() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
 
-    runtime.admit(key, Admission::Automatic);
+    runtime.admit(vec![key.to_string()], Admission::Automatic);
     assert_eq!(
         identification(&runtime, key),
         Some(crate::import::IdentificationStatus::Queued)

@@ -84,6 +84,17 @@ impl LibraryManager {
             .await?)
     }
 
+    /// Open the pane on Find online for every one of these candidates.
+    pub(crate) async fn open_import_candidate_sessions_on_find_online(
+        &self,
+        content_hashes: Vec<String>,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .open_import_candidate_sessions_on_find_online(content_hashes)
+            .await?)
+    }
+
     /// Record what a candidate's identification asks about.
     pub(crate) async fn save_import_candidate_lookup_choices(
         &self,

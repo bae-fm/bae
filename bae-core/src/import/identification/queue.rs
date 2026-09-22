@@ -96,10 +96,9 @@ impl Job {
     /// this the candidate whose run was superseded would read as neither
     /// waiting nor running while it waits for the run that replaced it.
     fn mark_waiting(&self, context: &Context) {
-        let admission = self.admission();
-        for key in self.keys() {
-            context.import.admit_identification(&key, admission);
-        }
+        context
+            .import
+            .admit_identification(self.keys(), self.admission());
     }
 }
 
@@ -153,126 +152,98 @@ impl Queue {
             .any(|job| job.admission() == Admission::Automatic)
     }
 
-    /// How many automatic jobs hold a slot. A settle holds one too: it is the
-    /// same candidate's local work finishing.
-    fn automatic_in_flight(&self) -> usize {
-        self.jobs
-            .iter()
-            .filter(|job| job.admission() == Admission::Automatic && job.in_flight())
-            .count()
+    /// How many jobs hold a slot. A settle holds one too: it is the same
+    /// candidate's local work finishing.
+    fn in_flight_count(&self) -> usize {
+        self.jobs.iter().filter(|job| job.in_flight()).count()
     }
 
-    /// Put `candidate` in the job for its identity, or open one for it.
-    /// Reports whether the key was new to the queue.
+    /// Put every candidate on the queue under `admission`, and mark the keys
+    /// new to it in one change, so what a surface draws and what the
+    /// identification count opens with is the admission entire rather than
+    /// one key at a time. Reports how many keys were new.
+    ///
+    /// The one way onto the queue. The admission decides the rest:
+    ///
+    /// - where the job stands — an automatic job at the back; a requested one
+    ///   ahead of every waiting automatic job and behind earlier requests, so
+    ///   a batch of requests runs in the order it was made;
+    /// - what a candidate the queue already holds as this shape gets — an
+    ///   automatic admission leaves it where it is, and a request restarts
+    ///   it: the run answering its identity took its inputs before the person
+    ///   asked, and the person's candidate becomes the one whose files the
+    ///   new run reads.
+    ///
+    /// A candidate held as a different shape than it has now is taken out
+    /// first, whoever admits it: the run answering the old shape answers a
+    /// question that is gone.
+    ///
+    /// A requested key's queue mark stands throughout — the handle put it
+    /// there before this was reached, and a mark taken off and put back would
+    /// read as one identification ending and another starting.
+    ///
+    /// Reached through [`admit`], which also opens each admitted candidate's
+    /// pane on the page its run reports on.
     fn place(
-        &mut self,
-        context: &Context,
-        candidate: ReleaseCandidate,
-        admission: Admission,
-    ) -> bool {
-        let key = candidate.key().into_owned();
-        let identity = candidate_identity(&candidate);
-        if let Some(index) = self.index_of_key(&key) {
-            if self.jobs[index].identity == identity {
-                return false;
-            }
-            // A different shape than the queue holds: the run answering the old
-            // one is answering a question that is gone.
-            self.take_out(context, &key);
-        }
-        match self.index_of_identity(&identity) {
-            Some(index) => self.jobs[index]
-                .members
-                .push(Entry { candidate, admission }),
-            None => self.jobs.push_back(Job {
-                identity,
-                members: vec![Entry { candidate, admission }],
-                state: JobState::Waiting,
-            }),
-        }
-        true
-    }
-
-    /// Admit one candidate and mark it waiting.
-    pub(super) fn admit(
-        &mut self,
-        context: &Context,
-        candidate: ReleaseCandidate,
-        admission: Admission,
-    ) {
-        let key = candidate.key().into_owned();
-        if self.place(context, candidate, admission) {
-            context.import.admit_identification(&key, admission);
-        }
-    }
-
-    /// Admit a whole set, marking every key new to the queue in one change, so
-    /// what a surface draws and what the identification count opens with is the
-    /// admission entire rather than one key at a time.
-    pub(super) fn admit_all(
         &mut self,
         context: &Context,
         candidates: Vec<ReleaseCandidate>,
         admission: Admission,
-    ) -> usize {
-        let mut admitted = Vec::new();
+    ) -> Vec<String> {
+        let mut marked = Vec::new();
+        let mut content_hashes = Vec::new();
         for candidate in candidates {
             let key = candidate.key().into_owned();
-            if self.place(context, candidate, admission) {
-                admitted.push(key);
+            let identity = candidate_identity(&candidate);
+            if let Some(index) = self.index_of_key(&key) {
+                if admission == Admission::Automatic && self.jobs[index].identity == identity {
+                    continue;
+                }
+                self.take_out(context, &key);
             }
-        }
-        let opened = admitted.len();
-        context.import.admit_identifications(admitted, admission);
-        opened
-    }
-
-    /// Admit `candidate` because a person asked for it: at the head of the
-    /// queue, at interactive priority, and superseding whatever was answering
-    /// its identity.
-    ///
-    /// Its queue mark stays throughout — the handle put it there before this
-    /// was reached, and a mark taken off and put back would read as one
-    /// identification ending and another starting.
-    pub(super) fn request(&mut self, context: &Context, candidate: ReleaseCandidate) {
-        let key = candidate.key().into_owned();
-        let identity = candidate_identity(&candidate);
-        self.take_out(context, &key);
-        let index = match self.index_of_identity(&identity) {
-            Some(index) => index,
-            None => {
-                self.jobs.push_front(Job {
-                    identity,
-                    members: Vec::new(),
-                    state: JobState::Waiting,
-                });
-                0
-            }
-        };
-        let job = &mut self.jobs[index];
-        // At the head of its own job as well: the person's candidate is the one
-        // whose files the run reads.
-        job.members.insert(
-            0,
-            Entry {
+            content_hashes.push(identity.0.clone());
+            let entry = Entry {
                 candidate,
-                admission: Admission::Requested,
-            },
-        );
-        // Whatever was answering this identity was answering the question just
-        // re-asked, from inputs taken before it was.
-        let running = job.running_representative();
-        job.state = JobState::Waiting;
-        if let Some(representative) = running {
-            context.import.cancel_identification(&representative);
+                admission,
+            };
+            match (self.index_of_identity(&identity), admission) {
+                (Some(index), Admission::Automatic) => self.jobs[index].members.push(entry),
+                (Some(index), Admission::Requested) => {
+                    let job = &mut self.jobs[index];
+                    // At the head of its own job as well: the person's
+                    // candidate is the one whose files the run reads.
+                    job.members.insert(0, entry);
+                    // Whatever was answering this identity was answering the
+                    // question just re-asked, from inputs taken before it was.
+                    let running = job.running_representative();
+                    job.state = JobState::Waiting;
+                    if let Some(representative) = running {
+                        context.import.cancel_identification(&representative);
+                    }
+                    let job = self.jobs.remove(index).expect("the located job still exists");
+                    job.mark_waiting(context);
+                    let position = self.request_position();
+                    self.jobs.insert(position, job);
+                }
+                (None, _) => {
+                    let job = Job {
+                        identity,
+                        members: vec![entry],
+                        state: JobState::Waiting,
+                    };
+                    match admission {
+                        Admission::Automatic => self.jobs.push_back(job),
+                        Admission::Requested => {
+                            let position = self.request_position();
+                            self.jobs.insert(position, job);
+                        }
+                    }
+                }
+            }
+            marked.push(key);
         }
-        let job = self.jobs.remove(index).expect("the located job still exists");
-        job.mark_waiting(context);
-        self.jobs.push_front(job);
-        // Last, so the request's own mark is the one that stands.
-        context
-            .import
-            .admit_identification(&key, Admission::Requested);
+        context.import.admit_identification(marked, admission);
+        content_hashes
     }
 
     /// Remove `key` from whatever job holds it, ending the run that was
@@ -329,13 +300,28 @@ impl Queue {
         }
     }
 
-    /// The job to start next: the one nearest the front that is waiting. A
-    /// request runs whatever the cap says — the person is waiting on it.
-    fn next_waiting(&self, automatic_has_room: bool) -> Option<usize> {
-        self.jobs.iter().position(|job| {
-            matches!(job.state, JobState::Waiting)
-                && (job.admission() == Admission::Requested || automatic_has_room)
-        })
+    /// The job to start next, while there is a slot for it: the one nearest
+    /// the front that is waiting. Requests stand ahead of automatic jobs, so
+    /// they take the slots first.
+    fn next_waiting(&self) -> Option<usize> {
+        if self.in_flight_count() >= MAX_IN_FLIGHT {
+            return None;
+        }
+        self.jobs
+            .iter()
+            .position(|job| matches!(job.state, JobState::Waiting))
+    }
+
+    /// Where a request stands: behind every earlier request still waiting,
+    /// ahead of every automatic job that is. A batch of requests runs in the
+    /// order it was made.
+    fn request_position(&self) -> usize {
+        self.jobs
+            .iter()
+            .position(|job| {
+                matches!(job.state, JobState::Waiting) && job.admission() == Admission::Automatic
+            })
+            .unwrap_or(self.jobs.len())
     }
 
     /// Stop every run the queue has going. For shutdown: what is left dies
@@ -346,28 +332,6 @@ impl Queue {
                 context.import.cancel_identification(representative);
             }
         }
-    }
-
-    /// Withdraw everything the automatic admission put on the queue, and stop
-    /// the runs it has going. A job whose answer is already being written keeps
-    /// it: the write lands and the row states its result.
-    fn withdraw_automatic(&mut self, context: &Context) {
-        let mut kept = VecDeque::with_capacity(self.jobs.len());
-        while let Some(job) = self.jobs.pop_front() {
-            if job.admission() == Admission::Requested
-                || matches!(job.state, JobState::Settling { .. })
-            {
-                kept.push_back(job);
-                continue;
-            }
-            if let JobState::Running { representative, .. } = &job.state {
-                context.import.cancel_identification(representative);
-            }
-            for key in job.keys() {
-                context.import.withdraw_identification(&key);
-            }
-        }
-        self.jobs = kept;
     }
 
     /// Give every running job back to the queue and run it again. Nothing
@@ -460,11 +424,16 @@ pub(super) async fn run(
                 if changed.is_err() {
                     return;
                 }
+                // Off means no further automatic admissions. What the setting
+                // already admitted runs to its answer: the queue is work the
+                // person can see, and a preference is not a cancel.
                 if automatic_is_on(config) {
                     admit_automatically(context, &mut queue).await;
                 } else {
-                    info!("identification: automatic identification was turned off");
-                    queue.withdraw_automatic(context);
+                    info!(
+                        "identification: automatic identification was turned off; \
+                         what is already on the queue finishes"
+                    );
                 }
             }
             Some(command) = commands.recv() => match command {
@@ -496,6 +465,28 @@ fn automatic_is_on(config: &watch::Receiver<crate::config::Config>) -> bool {
     config.borrow().prefs.identify_automatically
 }
 
+/// The one way onto the queue: place every candidate under `admission`, and
+/// open each admitted candidate's pane on Find online — the page its run
+/// reports on, whether a person opens the candidate while it is identified or
+/// after. Reports how many were new to the queue.
+///
+/// The pane write follows the mark rather than preceding it so a row shows
+/// waiting the instant it is admitted; the pane a person has open reads the
+/// session live and follows within the same admission.
+pub(super) async fn admit(
+    context: &Context,
+    queue: &mut Queue,
+    candidates: Vec<ReleaseCandidate>,
+    admission: Admission,
+) -> usize {
+    let content_hashes = queue.place(context, candidates, admission);
+    let opened = content_hashes.len();
+    if let Err(error) = context.import.open_find_online_for_admitted(content_hashes).await {
+        warn!("identification: could not open the admitted candidates' panes on Find online ({error})");
+    }
+    opened
+}
+
 /// A person asked for this candidate to be identified now.
 async fn request(context: &Context, queue: &mut Queue, candidate_key: String) {
     let Some(candidate) = answerable_candidate(context, &candidate_key).await else {
@@ -505,13 +496,13 @@ async fn request(context: &Context, queue: &mut Queue, candidate_key: String) {
         context.import.withdraw_identification(&candidate_key);
         return;
     };
-    queue.request(context, candidate);
+    admit(context, queue, vec![candidate], Admission::Requested).await;
 }
 
 /// Start what the queue has room for. Reports nothing: what it did is the
 /// queue's state and the runtime's marks.
 async fn fill_slots(context: &Context, queue: &mut Queue) {
-    while let Some(index) = queue.next_waiting(queue.automatic_in_flight() < MAX_IN_FLIGHT) {
+    while let Some(index) = queue.next_waiting() {
         let job = &queue.jobs[index];
         let identity = job.identity.clone();
         let candidate = job.members[0].candidate.clone();
@@ -873,6 +864,6 @@ async fn admit_as_it_stands(
         return;
     }
     if wants_an_answer(context, &candidate).await {
-        queue.admit(context, candidate, Admission::Automatic);
+        admit(context, queue, vec![candidate], Admission::Automatic).await;
     }
 }

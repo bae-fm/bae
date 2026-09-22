@@ -3,12 +3,13 @@
 // What a request and the automatic admission do to each other: the front of
 // the queue, the cap, the identity group, and the count.
 
-/// A request on a candidate the automatic admission has waiting starts it now,
-/// at interactive priority: the person is waiting on it, so it does not sit
-/// behind the cap, and it is the same entry rather than a second one.
+/// A request on a candidate the automatic admission has waiting moves it to
+/// the front of the queue as the same entry, and it takes the next slot at
+/// interactive priority — it does not open a fifth slot: the cap bounds local
+/// work whoever asked for it.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_request_on_a_waiting_candidate_starts_it_ahead_of_the_cap() {
+async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     let fixture = Fixture::new("request-upgrades-waiting").await;
     fixture
         .import
@@ -16,7 +17,11 @@ async fn a_request_on_a_waiting_candidate_starts_it_ahead_of_the_cap() {
     let mut dirs = Vec::new();
     for index in 0..MAX_IN_FLIGHT + 1 {
         let dir = fixture.barcode_candidate(&format!("Album {index}"));
-        std::fs::write(dir.join(format!("playlist-{index}.m3u")), format!("{index}")).unwrap();
+        std::fs::write(
+            dir.join(format!("playlist-{index}.m3u")),
+            format!("{index}"),
+        )
+        .unwrap();
         dirs.push(dir);
     }
     fixture.provider.route("/release?", 200, "{}");
@@ -40,12 +45,27 @@ async fn a_request_on_a_waiting_candidate_starts_it_ahead_of_the_cap() {
 
     fixture.start_explicit_lookup(&waiting);
 
+    // Still waiting: every slot is held, and a request is not a fifth one.
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(
+        fixture.identification_status(&waiting_key),
+        Some(crate::import::IdentificationStatus::Queued),
+        "the request waits for a slot like any other job"
+    );
+    assert_eq!(
+        fixture.provider.count_containing("query=barcode"),
+        MAX_IN_FLIGHT,
+        "no lookup went out past the cap: {:?}",
+        fixture.provider.requests()
+    );
+
+    fixture.provider.release();
     let priority = await_run_priority(&mut events, &waiting_key).await;
     assert_eq!(
         priority,
         CallPriority::Interactive,
-        "the requested candidate starts at the priority a person waiting on it \
-         deserves, without waiting for the cap to free"
+        "the requested candidate takes the next slot at the priority a person \
+         waiting on it deserves"
     );
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT + 1).await;
     assert_eq!(
@@ -56,7 +76,6 @@ async fn a_request_on_a_waiting_candidate_starts_it_ahead_of_the_cap() {
     );
 
     fixture.identification().shut_down();
-    fixture.provider.release();
     let _ = tokio::time::timeout(Duration::from_secs(20), sweep).await;
 }
 
@@ -164,13 +183,13 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
     .expect("the stored answer retires every candidate it covers");
 }
 
-/// Switching automatic identification off takes back what the automatic
-/// admission put on the queue, and leaves a candidate a person asked for
-/// running: the setting is about what nobody asked for.
+/// Switching automatic identification off admits nothing further, and takes
+/// nothing back: what is on the queue — asked for or admitted on its own —
+/// runs to its answer. A preference is not a cancel.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn automatic_off_leaves_a_requested_candidate_running() {
-    let fixture = Fixture::new("automatic-off-keeps-request").await;
+async fn automatic_off_leaves_the_queue_to_finish() {
+    let fixture = Fixture::new("automatic-off-keeps-queue").await;
     let requested = fixture.disc_id_candidate("Requested");
     let automatic = fixture.disc_id_candidate("Automatic");
     std::fs::write(automatic.join("notes.txt"), "distinct candidate").unwrap();
@@ -180,30 +199,32 @@ async fn automatic_off_leaves_a_requested_candidate_running() {
     fixture.provider.hold("/discid/");
     fixture.scan(2).await;
 
-    fixture.start_explicit_lookup_and_await_run(&requested).await;
+    fixture
+        .start_explicit_lookup_and_await_run(&requested)
+        .await;
     let sweep = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 2).await;
 
     fixture.manager.set_identify_automatically(false).unwrap();
 
-    tokio::time::timeout(Duration::from_secs(20), sweep)
-        .await
-        .expect("the automatic admission gives up what it admitted")
-        .unwrap();
-    assert_eq!(
-        fixture.identification_status(&automatic_key),
-        None,
-        "the candidate nobody asked for is off the queue"
-    );
     assert!(
-        !fixture.import.is_identifying(&automatic_key),
-        "and its run is cancelled"
+        fixture.import.is_identifying(&automatic_key),
+        "the candidate the setting admitted keeps running after it turns off"
     );
     assert!(
         fixture.import.is_identifying(&requested_key),
         "the candidate a person asked for is still being answered"
     );
     fixture.provider.release();
+    tokio::time::timeout(Duration::from_secs(20), sweep)
+        .await
+        .expect("the automatic admission's queue finishes what it admitted")
+        .unwrap();
+    assert!(
+        fixture.identified_for(&automatic).await.is_some(),
+        "the run the setting admitted stores its answer"
+    );
+    assert_eq!(fixture.identification_status(&automatic_key), None);
 }
 
 /// A run a person asked for is counted like any other: it opens a batch of its
@@ -253,4 +274,46 @@ async fn a_requested_run_is_counted() {
         Some(&(0, 1)),
         "the request opens a batch of one: {progress:?}"
     );
+}
+
+/// Admitting a candidate opens its pane on Find online — the page its run
+/// reports on — whoever admitted it, so a person who clicks into a candidate
+/// while it is being identified is on the run rather than on the draft it
+/// started from.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn an_admitted_candidate_opens_on_find_online() {
+    let fixture = Fixture::new("admitted-opens-on-find-online").await;
+    let dir = fixture.disc_id_candidate("Candidate");
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.provider.hold("/discid/");
+    fixture.scan(1).await;
+    assert_eq!(
+        fixture
+            .pane(&dir)
+            .await
+            .expect("scanned")
+            .session
+            .presentation,
+        crate::import::MetadataPresentation::Draft,
+        "a scanned candidate nobody has touched opens on its draft"
+    );
+
+    let sweep = fixture.sweep();
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
+
+    assert_eq!(
+        fixture
+            .pane(&dir)
+            .await
+            .expect("still scanned")
+            .session
+            .presentation,
+        crate::import::MetadataPresentation::FindOnline,
+        "the admission moved the pane to the page its run reports on"
+    );
+
+    fixture.identification().shut_down();
+    fixture.provider.release();
+    let _ = tokio::time::timeout(Duration::from_secs(20), sweep).await;
 }

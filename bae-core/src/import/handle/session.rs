@@ -16,6 +16,24 @@ impl ImportServiceHandle {
         .await
     }
 
+    /// Open the pane on Find online for every candidate whose identification
+    /// was just admitted — the page its run reports on, so a person who opens
+    /// the candidate while it is being identified, or after, is on the answer.
+    ///
+    /// Under the commit lock like every other session write, so a
+    /// read-modify-write of the rest of a session in flight cannot put the
+    /// draft back over this.
+    pub(crate) async fn open_find_online_for_admitted(
+        &self,
+        content_hashes: Vec<String>,
+    ) -> Result<(), crate::import::ImportError> {
+        let _commit = self.folder_state_commit.lock().await;
+        self.library_manager
+            .open_import_candidate_sessions_on_find_online(content_hashes)
+            .await?;
+        Ok(())
+    }
+
     /// The typed-search form as the person left it.
     pub async fn set_candidate_search_form(
         &self,

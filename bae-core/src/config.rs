@@ -361,9 +361,11 @@ pub struct Preferences {
     /// and failing at play time. Rides the loudness decode, so it adds no work.
     /// Defaults to `true`.
     pub verify_decode_on_import: bool,
-    /// Whether identification starts on its own: the queue-wide sweep runs
-    /// every candidate that has no result for its current files. Defaults to
-    /// `true`; off means a person starts each run themselves.
+    /// Whether identification starts on its own: the automatic admission
+    /// queues every candidate that has no result for its current files.
+    /// Defaults to `true`; off means no new candidate is queued on its own —
+    /// what is already queued finishes, and a person starts each run
+    /// themselves.
     pub identify_automatically: bool,
     /// Whether a candidate's draft is created from the folder's file tags.
     /// Defaults to `true`; off means the draft starts blank.

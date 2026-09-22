@@ -67,7 +67,7 @@ impl IdentificationHandle {
         }
         self.context
             .import
-            .admit_identification(&candidate_key, Admission::Requested);
+            .admit_identification(vec![candidate_key.clone()], Admission::Requested);
         let sent = self.commands.send(Command::Request {
             candidate_key: candidate_key.clone(),
         });

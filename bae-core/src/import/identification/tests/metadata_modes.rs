@@ -291,34 +291,45 @@ async fn changed_files_retire_the_result_and_identification_runs_again() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn disabling_automatic_lookup_cancels_running_background_identification() {
-    let fixture = Fixture::new("disable-running-background").await;
+async fn disabling_automatic_lookup_lets_what_it_queued_finish() {
+    let fixture = Fixture::new("disable-lets-queued-finish").await;
     let dir = fixture.disc_id_candidate("Candidate");
     let key = dir.to_string_lossy().into_owned();
-    fixture.provider.route("/discid/", 200, "{}");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-finishes", "rg-finishes", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-finishes?",
+        200,
+        release_json("mb-finishes", "rg-finishes", &[probed, 0]),
+    );
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
 
     let pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
+    // A preference is not a cancel: the run the setting admitted is still
+    // running after it turns off, and answers.
     fixture
         .manager
         .set_identify_automatically(false)
         .unwrap();
-    tokio::time::timeout(Duration::from_secs(10), pass)
-        .await
-        .expect("disabling automatic lookup stops the pass")
-        .unwrap();
+    assert!(fixture.import.is_identifying(&key));
     fixture.provider.release();
+    tokio::time::timeout(Duration::from_secs(20), pass)
+        .await
+        .expect("the queued run finishes after the setting turns off")
+        .unwrap();
 
-    assert!(!fixture.import.is_identifying(&key));
-    assert_eq!(
-        fixture.identification_status(&key),
-        None,
-        "the queue withdrew what the automatic admission had put on it"
+    assert!(
+        fixture.identified_for(&dir).await.is_some(),
+        "the run the setting admitted stores its answer"
     );
-    assert!(fixture.identified_for(&dir).await.is_none());
+    assert_eq!(fixture.identification_status(&key), None);
 }
 
 #[tokio::test(flavor = "multi_thread")]

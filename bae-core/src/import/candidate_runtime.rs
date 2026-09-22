@@ -568,7 +568,7 @@ impl CandidateRuntime {
     /// of it, and the identification count opens at its total — so it publishes
     /// once rather than a key at a time. Keys it does not name are untouched:
     /// the queue says what leaves it.
-    pub(super) fn admit_all(&self, keys: Vec<String>, admission: Admission) {
+    pub(super) fn admit(&self, keys: Vec<String>, admission: Admission) {
         if keys.is_empty() {
             return;
         }
@@ -595,13 +595,6 @@ impl CandidateRuntime {
         if let Some(progress) = progress {
             self.announce(progress);
         }
-    }
-
-    /// This key is waiting on `admission` for a run that has not started yet.
-    pub(super) fn admit(&self, candidate_key: &str, admission: Admission) {
-        self.set(candidate_key, |_, runtime| {
-            runtime.queued = Some(admission);
-        });
     }
 
     /// This key is not waiting any more: its run started, or nothing came of

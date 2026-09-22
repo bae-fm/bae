@@ -485,19 +485,10 @@ impl ImportServiceHandle {
     /// This key is waiting on `admission` for a run that has not started yet.
     pub(crate) fn admit_identification(
         &self,
-        candidate_key: &str,
-        admission: crate::import::Admission,
-    ) {
-        self.runtime.admit(candidate_key, admission);
-    }
-
-    /// The same for a whole set, published as one change.
-    pub(crate) fn admit_identifications(
-        &self,
         candidate_keys: Vec<String>,
         admission: crate::import::Admission,
     ) {
-        self.runtime.admit_all(candidate_keys, admission);
+        self.runtime.admit(candidate_keys, admission);
     }
 
     /// This key is not waiting any more.

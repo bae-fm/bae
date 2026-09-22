@@ -148,7 +148,7 @@ pub(super) async fn admit_automatically(context: &Context, queue: &mut Queue) {
         })
         .collect();
     let planned = admitted.len();
-    let opened = queue.admit_all(context, admitted, Admission::Automatic);
+    let opened = admit(context, queue, admitted, Admission::Automatic).await;
     info!(
         "identification: the automatic admission wants {planned} candidate(s) answered, \
          {opened} of them new to the queue"
