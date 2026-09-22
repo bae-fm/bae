@@ -102,7 +102,7 @@ pub fn discogs_release(release_id: impl Into<String>) -> bae_core::import::Metad
 /// ```ignore
 /// ImportCommand {
 ///     storage_mode: StorageMode::Remote,
-///     ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags)
+///     ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileMetadata)
 /// }
 /// ```
 pub fn folder_import(

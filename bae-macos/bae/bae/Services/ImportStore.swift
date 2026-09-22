@@ -207,7 +207,7 @@ class ImportStore {
             incoming = incoming.withSessionState(from: existing)
         }
         if let pick = picks[key],
-            pick.audioIdentity != incoming.files.fileTagsIdentity
+            pick.audioIdentity != incoming.files.fileMetadataIdentity
         {
             cancelMetadataApplication(forKey: key)
         }
@@ -260,7 +260,7 @@ class ImportStore {
         )
         clearPaneError(forKey: key)
         picks[key] = Pick(
-            audioIdentity: candidate.files.fileTagsIdentity,
+            audioIdentity: candidate.files.fileMetadataIdentity,
             state: .applying(session)
         )
         return session

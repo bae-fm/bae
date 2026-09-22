@@ -158,7 +158,7 @@ pub(super) fn insert_item(
     watched_folder_path: &str,
     generation: i64,
     item: &ScanItem,
-    file_tags: Option<&crate::import::file_tags_seed::FileTagsSeed>,
+    file_metadata: Option<&crate::import::file_metadata_seed::FileMetadataSeed>,
 ) -> Result<(), DbError> {
     match item {
         ScanItem::Discovered(candidate) => insert_candidate(
@@ -167,7 +167,7 @@ pub(super) fn insert_item(
             generation,
             "tentative",
             candidate,
-            file_tags,
+            file_metadata,
         ),
         ScanItem::Valid(candidate) => insert_candidate(
             sql,
@@ -175,7 +175,7 @@ pub(super) fn insert_item(
             generation,
             "valid",
             candidate,
-            file_tags,
+            file_metadata,
         ),
         ScanItem::Invalid(candidate) => {
             insert_invalid(sql, watched_folder_path, generation, candidate)
@@ -192,7 +192,7 @@ fn insert_candidate(
     generation: i64,
     kind: &str,
     candidate: &FolderCandidate,
-    file_tags: Option<&crate::import::file_tags_seed::FileTagsSeed>,
+    file_metadata: Option<&crate::import::file_metadata_seed::FileMetadataSeed>,
 ) -> Result<(), DbError> {
     let path = candidate.path.to_string_lossy().into_owned();
     sql.execute(
@@ -222,8 +222,8 @@ fn insert_candidate(
         ],
     )?;
     let blank;
-    let seed = match file_tags {
-        Some(seed) => CandidateStateSeed::FileTags(seed),
+    let seed = match file_metadata {
+        Some(seed) => CandidateStateSeed::FileMetadata(seed),
         None => {
             blank = crate::import::pane::blank_candidate_source(&candidate.files);
             CandidateStateSeed::Blank(&blank)
@@ -237,7 +237,7 @@ fn insert_candidate(
     // takes the stored reading with it, and the draft it once seeded — a
     // person's or the pre-fill's — still commits from one. So a seed always
     // stores its reading, while the draft is seeded only where there is none.
-    if let Some(seed) = file_tags {
+    if let Some(seed) = file_metadata {
         replace_candidate_file_tag_snapshot(sql, watched_folder_path, &path, &seed.snapshot)?;
     }
     insert_resolved_boundaries(
@@ -256,7 +256,7 @@ pub(crate) enum CandidateStateSeed<'a> {
     Blank(&'a crate::import::pane::CandidateSourceDraft),
     /// The folder read as its own files describe it, with the reading it was
     /// projected from and the cover those tags embed.
-    FileTags(&'a crate::import::file_tags_seed::FileTagsSeed),
+    FileMetadata(&'a crate::import::file_metadata_seed::FileMetadataSeed),
 }
 
 pub(crate) fn ensure_candidate_state(
@@ -296,7 +296,7 @@ pub(crate) fn ensure_candidate_state(
             CandidateStateSeed::Blank(source) => {
                 super::super::import_state::insert_draft(sql, &content_hash, &source.draft)?;
             }
-            CandidateStateSeed::FileTags(seed) => {
+            CandidateStateSeed::FileMetadata(seed) => {
                 super::super::import_state::insert_file_tags_draft(
                     sql,
                     &content_hash,
@@ -320,11 +320,9 @@ pub(crate) fn ensure_candidate_state(
     if !has_cover {
         let embedded = match seed {
             CandidateStateSeed::Blank(_) => None,
-            CandidateStateSeed::FileTags(seed) => seed.cover.clone(),
+            CandidateStateSeed::FileMetadata(seed) => seed.cover.clone(),
         };
-        if let Some(cover) =
-            crate::import::local_artwork::folder_cover(embedded, files.artwork())
-        {
+        if let Some(cover) = crate::import::local_artwork::folder_cover(embedded, files.artwork()) {
             super::super::candidate_state_rows::save_cover(sql, &content_hash, &cover)?;
         }
     }

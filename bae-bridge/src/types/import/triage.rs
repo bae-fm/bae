@@ -249,7 +249,7 @@ pub enum BridgeCandidateAction {
     ImportReady,
     Identify,
     RetryIdentification,
-    ResetToTags,
+    ResetToFileMetadata,
     ClearMetadata,
     Skip,
     Restore,
@@ -407,7 +407,7 @@ pub enum BridgeMetadataProvenance {
         /// pick claims them all.
         partners: Vec<crate::types::BridgeMetadataRef>,
     },
-    FileTags,
+    FileMetadata,
 }
 
 /// Who wrote the candidate's metadata. Mirror of
@@ -436,7 +436,7 @@ mirror_enum! {
             record: (crate::types::BridgeMetadataRef),
             partners: (each crate::types::BridgeMetadataRef),
         },
-        FileTags,
+        FileMetadata,
     },
 }
 

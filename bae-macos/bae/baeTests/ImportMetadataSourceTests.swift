@@ -35,7 +35,7 @@ private final class MetadataSourceRecorder {
                 }
                 return 1
             },
-            applyCandidateFileTags: { [self] key in
+            applyCandidateFileMetadata: { [self] key in
                 await MainActor.run {
                     fileTagApplications.append(key)
                     return UInt64(fileTagApplications.count)
@@ -163,14 +163,16 @@ extension ImportMetadataSourceTests {
     /// Resetting to tags is one command: it replaces the draft with what the
     /// candidate's own files say and leaves the pane on the draft it wrote.
     /// There is no surface to review the tags on first.
-    @Test("resetting to tags applies the files' tags to the draft")
-    func resetToTagsAppliesTheFilesTags() async throws {
+    @Test(
+        "resetting to file metadata applies the folder's own metadata to the draft"
+    )
+    func resetToFileMetadataAppliesTheFoldersOwnMetadata() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
         let recorder = MetadataSourceRecorder()
 
-        ImportMappingFlow.resetToTags(
+        ImportMappingFlow.resetToFileMetadata(
             key: MappingFixtures.candidateKey,
             services: recorder.services(store)
         )
@@ -348,7 +350,7 @@ struct ImportReleaseEntryTests {
                     identifyAutomatically: {},
                     searchForRelease: {},
                     reset: {},
-                    resetToTags: {},
+                    resetToFileMetadata: {},
                     clearMetadata: {}
                 ),
                 localCoverSelections: [:],
@@ -390,7 +392,7 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
         let services = recorder.services(store)
 
         for applications in 1...2 {
-            ImportMappingFlow.resetToTags(key: key, services: services)
+            ImportMappingFlow.resetToFileMetadata(key: key, services: services)
             try await waitUntil {
                 recorder.fileTagApplications.count == applications
             }
@@ -398,7 +400,7 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
                 key: key,
                 detail: MappingFixtures.detail(
                     mapping: MappingFixtures.fileTagsTable,
-                    metadataProvenance: .fileTags,
+                    metadataProvenance: .fileMetadata,
                     metadataRevision: UInt64(applications)
                 )
             )
@@ -411,7 +413,7 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
         XCTAssertEqual(recorder.fileTagApplications, [key, key])
         XCTAssertEqual(
             store.candidate(forKey: key)?.metadataProvenance,
-            .fileTags
+            .fileMetadata
         )
     }
 
@@ -429,7 +431,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         NSApplication.shared.finishLaunching()
         let provenances: [BridgeMetadataProvenance?] = [
             nil,
-            .fileTags,
+            .fileMetadata,
         ]
         for provenance in provenances {
             try await assertCardLayout(provenance: provenance)
@@ -585,7 +587,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 identifyAutomatically: { recorder.identifyCount += 1 },
                 searchForRelease: { recorder.searchCount += 1 },
                 reset: { recorder.resetCount += 1 },
-                resetToTags: { recorder.tagsCount += 1 },
+                resetToFileMetadata: { recorder.tagsCount += 1 },
                 clearMetadata: { recorder.clearCount += 1 }
             ),
             localCoverSelections: [:],
@@ -735,7 +737,7 @@ extension ImportMetadataCardLayoutTests {
         }
         await SnapshotTestSupport.settle(host)
         let menu = try sourceMenu(in: host)
-        for title in ["Reset", "Reset to tags", "Clear metadata"] {
+        for title in ["Reset", "Reset to file metadata", "Clear metadata"] {
             XCTAssertNotNil(
                 menu.item(withTitle: title),
                 "Missing \(title); menu contains \(menu.items.map(\.title))"

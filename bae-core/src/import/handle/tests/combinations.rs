@@ -65,7 +65,10 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .to_string()
         .contains("separate an existing combination before combining its folders again"));
     handle
-        .set_candidate_metadata_provenance(key.clone(), crate::import::MetadataProvenance::FileTags)
+        .set_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::FileMetadata,
+        )
         .await
         .unwrap();
     handle

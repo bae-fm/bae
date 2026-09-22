@@ -6,7 +6,12 @@ use crate::import::MetadataAuthor;
 /// identification's without inferring it from anything else.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_the_person_made_names_them_as_the_author() {
-    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate().await;
     assert_eq!(
         pane(&handle, &key).await.metadata_author,
         MetadataAuthor::Nobody,
@@ -16,7 +21,7 @@ async fn a_pick_the_person_made_names_them_as_the_author() {
     handle
         .select_candidate_metadata_provenance(
             key.clone(),
-            crate::import::MetadataProvenance::FileTags,
+            crate::import::MetadataProvenance::FileMetadata,
         )
         .await
         .unwrap();

@@ -319,7 +319,7 @@ internal sealed class ReleaseActionDialogs
             var skip = new Button { Content = Loc.Chrome("identify.skip") };
             skip.Click += async (_, _) =>
             {
-                var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(releaseId, new BridgeReleaseReseed.FileTags());
+                var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(releaseId, new BridgeReleaseReseed.FileMetadata());
                 if (!current)
                 {
                     return;

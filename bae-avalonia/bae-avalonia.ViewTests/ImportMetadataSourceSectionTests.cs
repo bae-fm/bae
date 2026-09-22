@@ -135,7 +135,7 @@ public sealed class ImportMetadataSourceSectionTests
         var findOnline = ButtonNamed(
             section,
             Loc.Chrome("settings.import.identify_automatically"));
-        var reset = ButtonNamed(section, Loc.Chrome("import.metadata.reset_to_tags"));
+        var reset = ButtonNamed(section, Loc.Chrome("import.metadata.reset_to_file_metadata"));
         var clear = ButtonNamed(section, Loc.Chrome("import.metadata.clear"));
 
         // Identifying the candidate leads; the two commands that rewrite the
@@ -157,17 +157,17 @@ public sealed class ImportMetadataSourceSectionTests
 
     /// The card offers the two commands that rewrite the draft where it
     /// stands, and each dispatches its own. There is no surface to review the
-    /// tags on first: choosing Reset to tags is the whole command.
+    /// file metadata on first: choosing Reset to file metadata is the whole command.
     [AvaloniaFact]
-    public void TheCardOffersResetToTagsAndClearMetadata()
+    public void TheCardOffersResetToFileMetadataAndClearMetadata()
     {
         var resets = 0;
         var clears = 0;
         var section = Build(
-            onResetToTags: () => resets++,
+            onResetToFileMetadata: () => resets++,
             onClearMetadata: () => clears++);
 
-        Click(section, Loc.Chrome("import.metadata.reset_to_tags"));
+        Click(section, Loc.Chrome("import.metadata.reset_to_file_metadata"));
         Click(section, Loc.Chrome("import.metadata.clear"));
 
         Assert.Equal(1, resets);
@@ -176,12 +176,12 @@ public sealed class ImportMetadataSourceSectionTests
 
     /// The draft and Find online are the only surfaces the slot shows.
     [AvaloniaFact]
-    public void TheSlotOffersNoFileTagsBrowser()
+    public void TheSlotOffersNoFileMetadataBrowser()
     {
         var section = Build();
 
         Assert.DoesNotContain(
-            Loc.Core("ui.import.metadata.file_tags") + "…",
+            Loc.Core("ui.import.metadata.file_metadata") + "…",
             Texts(section));
         Assert.Equal(
             new[] { ImportMetadataPresentation.Draft, ImportMetadataPresentation.FindOnline },
@@ -236,7 +236,7 @@ public sealed class ImportMetadataSourceSectionTests
         Action<ImportMetadataPresentation>? onPresent = null,
         Action? onIdentify = null,
         Action? onSearchForRelease = null,
-        Action? onResetToTags = null,
+        Action? onResetToFileMetadata = null,
         Action? onClearMetadata = null,
         Action<BridgeCandidateEditField, string>? onEditField = null,
         string? title = null,
@@ -260,7 +260,7 @@ public sealed class ImportMetadataSourceSectionTests
             OnPresent = onPresent ?? (_ => { }),
             OnIdentify = onIdentify ?? (() => { }),
             OnSearchForRelease = onSearchForRelease ?? (() => { }),
-            OnResetToTags = onResetToTags ?? (() => { }),
+            OnResetToFileMetadata = onResetToFileMetadata ?? (() => { }),
             OnClearMetadata = onClearMetadata ?? (() => { }),
             OnEditCover = () => { },
             OnSelectCover = _ => { },

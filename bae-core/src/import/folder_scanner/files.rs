@@ -657,7 +657,7 @@ impl CategorizedFiles {
     }
 
     /// The bound sheets that carve the release's tracks — the ones the
-    /// tracklist, the disc IDs and the File Tags seed are all read from.
+    /// tracklist, the disc IDs and the file-metadata seed are all read from.
     pub fn carving_sheets(&self) -> Vec<BoundTrackSheet<'_>> {
         self.bound_sheets()
             .into_iter()
@@ -671,7 +671,7 @@ impl CategorizedFiles {
             .expect("release track count fits u32")
     }
 
-    /// This release's audio file paths, in `relative_path` order. The File Tags
+    /// This release's audio file paths, in `relative_path` order. The file metadata
     /// import path reads embedded cover art from these.
     pub fn audio_paths(&self) -> Vec<PathBuf> {
         self.audio().map(|file| file.path.clone()).collect()
@@ -702,9 +702,9 @@ impl CategorizedFiles {
         content_hash_of(self.release_files())
     }
 
-    /// Identity of the files whose tags populate the File Tags preview.
+    /// Identity of the files whose tags populate the file-metadata preview.
     /// Changing file metadata or which files have the audio role changes it.
-    pub fn file_tags_identity(&self) -> String {
+    pub fn file_metadata_identity(&self) -> String {
         content_hash_of(self.audio())
     }
 

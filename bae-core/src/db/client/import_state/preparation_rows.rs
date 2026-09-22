@@ -77,7 +77,7 @@ impl CandidateScanExpectation {
 /// checked against, and the choices a pick in the save confirms.
 #[derive(Debug, Clone)]
 pub(crate) struct CandidateSaveExtras {
-    /// The File Tags reading the draft was projected from, stored under the
+    /// The file metadata reading the draft was projected from, stored under the
     /// scan stamp the save was prepared against.
     pub file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
     /// Every folder candidate sharing the hash, with its files settled to

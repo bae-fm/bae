@@ -82,7 +82,7 @@ struct ImportSettingsTabTests {
         )
 
         for label in [
-            String(localized: "Pre-fill with tags"),
+            String(localized: "Pre-fill from file metadata"),
             String(localized: "Identify automatically"),
         ] {
             #expect(
@@ -218,7 +218,7 @@ private final class ImportSettingRecorder {
     var importer: Importer {
         Importer(
             setIdentifyAutomatically: { [self] in identifyWrites.append($0) },
-            setPrefillWithTags: { [self] in prefillWrites.append($0) },
+            setPrefillWithFileMetadata: { [self] in prefillWrites.append($0) },
             setMetadataSourceEnabled: { [self] source, enabled in
                 sourceWrites.append((source: source, enabled: enabled))
             }

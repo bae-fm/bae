@@ -232,7 +232,7 @@ struct LibrarySessionOpenerTests {
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,
-            prefillWithTags: true,
+            prefillWithFileMetadata: true,
             lookupCatalogs: [
                 BridgeLookupCatalogSetting(
                     catalog: .musicBrainz,

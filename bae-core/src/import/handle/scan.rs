@@ -41,11 +41,11 @@ impl ImportServiceHandle {
                 if skipped {
                     self.cancel_identification(&path);
                 }
-                self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+                self.event_tx
+                    .send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
                         candidate_key: path,
                         skipped,
-                    }),
-                );
+                    }));
             }
             return Ok(());
         };
@@ -62,11 +62,11 @@ impl ImportServiceHandle {
             if skipped {
                 self.cancel_identification(&path);
             }
-            self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+            self.event_tx
+                .send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
                     candidate_key: path,
                     skipped,
-                }),
-            );
+                }));
         }
         Ok(())
     }
@@ -405,7 +405,7 @@ impl ImportServiceHandle {
         let expected_metadata_revision = current.metadata_revision;
         let durations = crate::import::probe::source_durations(candidate.files())?;
         match &provenance {
-            crate::import::MetadataProvenance::FileTags => {
+            crate::import::MetadataProvenance::FileMetadata => {
                 // The snapshot is read under the lock the write holds: a scan
                 // that lands between the two restamps the candidate's
                 // generation, and the write refuses a snapshot stamped with
@@ -419,7 +419,7 @@ impl ImportServiceHandle {
                     )
                     .await?;
                 let (snapshot_candidate, snapshot) = self.file_tag_snapshot(&candidate_key).await?;
-                let seed = crate::import::file_tags_seed::FileTagsSeed::project(
+                let seed = crate::import::file_metadata_seed::FileMetadataSeed::project(
                     &snapshot_candidate,
                     snapshot,
                     &durations,
@@ -429,7 +429,7 @@ impl ImportServiceHandle {
                 )?;
                 return Ok(self
                     .preparations
-                    .apply_file_tags(
+                    .apply_file_metadata(
                         snapshot_candidate.watched_folder_path(),
                         &candidate_key,
                         &crate::import::CandidateAsRead {
@@ -571,8 +571,10 @@ impl ImportServiceHandle {
 
     /// Tell the surfaces a candidate's metadata provenance changed.
     pub(crate) fn announce_metadata_provenance(&self, candidate_key: String) {
-        self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }),
-        );
+        self.event_tx
+            .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
+                candidate_key,
+            }));
     }
 
     /// Put one of a candidate's files in a role, or put it back in the one the
@@ -732,7 +734,12 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("file decision produced no settled candidate for {candidate_key}"),
             })?;
-        let initialized = if self.library_manager.get_config().prefs.prefill_with_tags {
+        let initialized = if self
+            .library_manager
+            .get_config()
+            .prefs
+            .prefill_with_file_metadata
+        {
             let stored = self
                 .library_manager
                 .load_candidate_file_tag_snapshot(
@@ -749,7 +756,7 @@ impl ImportServiceHandle {
             let clock = self.clock.clone();
             let ids = self.ids.clone();
             tokio::task::spawn_blocking(move || {
-                crate::import::file_tags_seed::FileTagsSeed::read(
+                crate::import::file_metadata_seed::FileMetadataSeed::read(
                     &replacement,
                     stored.scan_generation,
                     reader.as_ref(),
@@ -875,4 +882,3 @@ impl ImportServiceHandle {
         out_rx
     }
 }
-

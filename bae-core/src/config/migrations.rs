@@ -14,7 +14,7 @@
 
 use super::ConfigError;
 use serde_yaml::{Mapping, Value};
-use tracing::info;
+use tracing::{debug, info};
 
 /// The key a file records its version under, and the first key `config.yaml`
 /// writes.
@@ -33,11 +33,18 @@ pub(crate) struct ConfigMigration {
 
 /// The ordered migration ladder. Versions are 1-based and contiguous.
 pub(crate) fn all() -> Vec<ConfigMigration> {
-    vec![ConfigMigration {
-        version: 1,
-        name: "snapshot_threshold_and_prefill_with_tags",
-        up: snapshot_threshold_and_prefill_with_tags,
-    }]
+    vec![
+        ConfigMigration {
+            version: 1,
+            name: "snapshot_threshold_and_prefill_with_tags",
+            up: snapshot_threshold_and_prefill_with_tags,
+        },
+        ConfigMigration {
+            version: 2,
+            name: "prefill_with_tags_becomes_file_metadata",
+            up: prefill_with_tags_becomes_file_metadata,
+        },
+    ]
 }
 
 /// The `config_version` this build reads: the ladder's length.
@@ -87,7 +94,9 @@ fn recorded_version(mapping: &Mapping) -> Result<u32, ConfigError> {
 
 const SNAPSHOT_COMMIT_THRESHOLD_KEY: &str = "snapshot_commit_threshold";
 const IMPORT_METADATA_SOURCE_KEY: &str = "default_import_metadata_source";
+/// What version 1 called the pre-fill setting, and what version 2 renames.
 const PREFILL_WITH_TAGS_KEY: &str = "prefill_with_tags";
+const PREFILL_WITH_FILE_METADATA_KEY: &str = "prefill_with_file_metadata";
 
 /// Covers a file that carries `identify_automatically` and `metadata_sources`
 /// but no `config_version`. That shape records no snapshot policy, and it names
@@ -126,6 +135,22 @@ fn snapshot_threshold_and_prefill_with_tags(mapping: &mut Mapping) -> Result<(),
         }
     };
     mapping.insert(Value::from(PREFILL_WITH_TAGS_KEY), Value::from(prefill));
+    Ok(())
+}
+
+/// The setting is named for what it reads. What a candidate's draft is
+/// pre-filled from is the folder's own metadata — its files' tags, its sheets,
+/// and its name — so the key says that rather than naming tags alone.
+///
+/// A file that records neither key is one that predates both, and the strict
+/// read is what names the key it lacks; inventing a value here would answer a
+/// question the file never answered.
+fn prefill_with_tags_becomes_file_metadata(mapping: &mut Mapping) -> Result<(), ConfigError> {
+    let Some(value) = mapping.remove(PREFILL_WITH_TAGS_KEY) else {
+        debug!("config.yaml records no {PREFILL_WITH_TAGS_KEY} to rename");
+        return Ok(());
+    };
+    mapping.insert(Value::from(PREFILL_WITH_FILE_METADATA_KEY), value);
     Ok(())
 }
 

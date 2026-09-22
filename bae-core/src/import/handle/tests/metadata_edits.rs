@@ -58,7 +58,7 @@ async fn assert_every_mutation_refused(
         handle
             .select_candidate_metadata_provenance(
                 key.to_string(),
-                crate::import::MetadataProvenance::FileTags,
+                crate::import::MetadataProvenance::FileMetadata,
             )
             .await
             .map(drop),
@@ -754,7 +754,7 @@ async fn metadata_source_changes_preserve_explicit_track_file_mappings() {
     handle
         .select_candidate_metadata_provenance(
             key.clone(),
-            crate::import::MetadataProvenance::FileTags,
+            crate::import::MetadataProvenance::FileMetadata,
         )
         .await
         .unwrap();
@@ -808,7 +808,7 @@ async fn a_file_decision_after_a_drop_preserves_every_mapping_identity() {
     shut_down(handle).await;
 }
 
-/// Folder artwork remains the effective cover when File Tags has no embedded
+/// Folder artwork remains the effective cover when file metadata has no embedded
 /// image to select.
 #[tokio::test(flavor = "multi_thread")]
 async fn file_tags_uses_the_conventional_folder_cover() {
@@ -816,7 +816,7 @@ async fn file_tags_uses_the_conventional_folder_cover() {
     let cover = pane(&handle, &key)
         .await
         .cover
-        .expect("File Tags applies its deterministic default cover");
+        .expect("file metadata applies its deterministic default cover");
     assert_eq!(
         cover.selection,
         crate::import::CoverSelection::Local("cover.jpg".to_string())
@@ -849,7 +849,7 @@ async fn file_tags_persists_embedded_artwork_ahead_of_the_folder_cover() {
     handle
         .select_candidate_metadata_provenance(
             key.clone(),
-            crate::import::MetadataProvenance::FileTags,
+            crate::import::MetadataProvenance::FileMetadata,
         )
         .await
         .unwrap();

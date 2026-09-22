@@ -474,14 +474,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>清除元数据</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>候选项的文件和映射选择将保持不变。</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>清除元数据？</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>重置为标签</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>重置为标签？</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>草稿将被文件标签替换。 候选项的文件和映射选择将保持不变。</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>重置为文件元数据</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>重置为文件元数据？</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>草稿将被文件、CUE 表单和文件夹对该版本的描述替换。 候选项的文件和映射选择将保持不变。</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>搜索版本</value></data>
   <data name="import.search.general" xml:space="preserve"><value>常规</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>自动识别</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>用标签预填充</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>新候选项以从其文件标签读取的草稿开始。</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>用文件元数据预填充</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>新候选项以从其文件、CUE 表单和文件夹名称读取的草稿开始。</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>新候选项在被添加时识别。</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>搜索 {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>“在线查找”会询问此处勾选的来源。</value></data>

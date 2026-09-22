@@ -42,7 +42,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
         .import
         .select_candidate_metadata_provenance(
             picked_key.clone(),
-            crate::import::MetadataProvenance::FileTags,
+            crate::import::MetadataProvenance::FileMetadata,
         )
         .await
         .expect("the pick lands");
@@ -67,7 +67,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
         .expect("the pick is stored");
     assert_eq!(
         picked_row.metadata_provenance,
-        Some(crate::import::MetadataProvenance::FileTags)
+        Some(crate::import::MetadataProvenance::FileMetadata)
     );
     assert!(
         picked_row.identify.is_none(),
@@ -301,10 +301,7 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     let mut pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/release/mb-settling?", 1).await;
 
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).unwrap();
 
     assert!(
         tokio::time::timeout(Duration::from_secs(1), &mut pass)
@@ -336,4 +333,3 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
         "and the write that landed reports no failure: {runtime:?}"
     );
 }
-

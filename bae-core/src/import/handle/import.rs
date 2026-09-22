@@ -130,7 +130,7 @@ impl ImportServiceHandle {
     /// values the pane drew. The caller says only where the files should live.
     ///
     /// The worker sources the release itself from the persisted provider
-    /// documents for an external release, or the stored snapshot for File Tags.
+    /// documents for an external release, or the stored snapshot for file metadata.
     ///
     /// The claim ends the candidate's identification: an imported candidate
     /// has no question left for a run to answer.
@@ -175,7 +175,7 @@ impl ImportServiceHandle {
         let metadata_provenance = preparation.metadata_provenance.clone();
         let needs_file_tag_snapshot = matches!(
             metadata_provenance,
-            Some(crate::import::MetadataProvenance::FileTags)
+            Some(crate::import::MetadataProvenance::FileMetadata)
         ) || matches!(
             preparation.cover,
             Some(crate::import::CoverSelection::Embedded(_))
@@ -207,7 +207,7 @@ impl ImportServiceHandle {
             let Some(snapshot) = snapshot else {
                 return Err(crate::import::ImportError::FileTags {
                     detail: format!(
-                        "{candidate_key}'s file tags have not been read; open File Tags again"
+                        "{candidate_key}'s file tags have not been read; open it again"
                     ),
                 });
             };
@@ -489,7 +489,7 @@ impl ImportServiceHandle {
             .metadata_revision;
         let file_tag_snapshot = if matches!(
             command.metadata_provenance,
-            Some(crate::import::MetadataProvenance::FileTags)
+            Some(crate::import::MetadataProvenance::FileMetadata)
         ) || matches!(
             command.selected_cover,
             Some(crate::import::CoverSelection::Embedded(_))
@@ -503,7 +503,7 @@ impl ImportServiceHandle {
                 .await?
                 .and_then(|stored| stored.snapshot)
                 .ok_or_else(|| crate::import::ImportError::FileTags {
-                    detail: "test import has no prepared File Tags snapshot".into(),
+                    detail: "test import has no prepared file-tag snapshot".into(),
                 })?;
             Some(snapshot)
         } else {

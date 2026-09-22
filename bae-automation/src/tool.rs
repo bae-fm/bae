@@ -84,7 +84,7 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::ImportCandidateMetadataProvenanceSelect,
             name: "import_candidate_metadata_provenance_select",
-            description: "Select external release, file tags, or manual entry as a candidate's metadata source",
+            description: "Select external release, file metadata, or manual entry as a candidate's metadata source",
             schema: Some(schema_object::<CandidateMetadataProvenanceInput>),
         },
         AutomationToolDescriptor {

@@ -118,7 +118,7 @@ impl BridgeCandidateFiles {
         let source_audio = files
             .source_audio()
             .map(BridgeCandidateSourceAudio::from_core);
-        let file_tags_identity = files.file_tags_identity();
+        let file_metadata_identity = files.file_metadata_identity();
         let cover_files = files
             .cover_files()
             .map(|entry| {
@@ -130,7 +130,7 @@ impl BridgeCandidateFiles {
             .collect();
         let bae_core::import::folder_scanner::CategorizedFiles { files } = files;
         BridgeCandidateFiles {
-            file_tags_identity,
+            file_metadata_identity,
             cover_files,
             files: files
                 .into_iter()

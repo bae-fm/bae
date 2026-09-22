@@ -85,9 +85,9 @@ impl LibraryManager {
     }
 
     pref_setter!(
-        /// Whether a candidate's draft is created from the folder's file tags.
-        set_prefill_with_tags,
-        prefill_with_tags: bool
+        /// Whether a candidate's draft is created from the folder's own metadata.
+        set_prefill_with_file_metadata,
+        prefill_with_file_metadata: bool
     );
 
     pref_setter!(

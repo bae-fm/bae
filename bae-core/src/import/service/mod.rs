@@ -73,7 +73,7 @@ struct PreparedMetadata {
     selected_cover: Option<CoverSelection>,
     /// The exact prepared bytes of a picked remote cover.
     remote_cover_image: Option<cover_image::CoverCandidate>,
-    /// The artwork the File Tags snapshot carried, with the content type the
+    /// The artwork the file-tag snapshot carried, with the content type the
     /// download reported — checked at read time and dropped by the resize.
     embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
     existing_album_id: Option<String>,
@@ -85,7 +85,7 @@ struct PreparedMetadata {
     artists: Vec<crate::db::DbArtist>,
     artist_external_id_updates: Vec<(String, crate::db::DbArtist)>,
     artist_images: Vec<(crate::db::DbLibraryImage, Vec<u8>)>,
-    /// Every catalog's description of this release. Empty for File Tags and
+    /// Every catalog's description of this release. Empty for file metadata and
     /// direct entry, which name no catalog. Commit writes one
     /// record row per element.
     records: Vec<crate::import::ReleaseRecord>,
@@ -105,7 +105,6 @@ fn storage_mode_label(mode: &StorageMode) -> &'static str {
         StorageMode::Local => "local",
     }
 }
-
 
 /// What the import worker thread receives: an import to run, or the teardown
 /// signal `ImportServiceHandle::stop_and_join` sends. The explicit signal (vs

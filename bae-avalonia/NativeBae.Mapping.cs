@@ -152,7 +152,7 @@ internal static partial class NativeBae
             SyncAccount = config.Sync?.CloudAccountDisplay,
             PauseBetweenSides = config.PauseBetweenSides,
             IdentifyAutomatically = config.IdentifyAutomatically,
-            PrefillWithTags = config.PrefillWithTags,
+            PrefillWithFileMetadata = config.PrefillWithFileMetadata,
             LookupCatalogs = config.LookupCatalogs.ToList(),
             ShowRemainingTime = config.ShowRemainingTime,
             LibraryFullWidth = config.LibraryFullWidth,

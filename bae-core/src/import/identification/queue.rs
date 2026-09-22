@@ -621,7 +621,7 @@ async fn handle_event(
             observe(context, queue, config, &key).await;
         }
         // The folder is a different shape now, or a person decided the
-        // candidate: they picked a release, said File Tags, or cleared what it
+        // candidate: they picked a release, said file metadata, or cleared what it
         // had. The command that decided ended its run as part of its own write.
         // What the decision left is what the queue takes the candidate as: a
         // pick answers it, and a clear puts it back on the queue rather than

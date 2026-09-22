@@ -10,10 +10,7 @@ async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
         }));
     let dir = fixture.barcode_candidate("Candidate");
     fixture.scan(1).await;
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).unwrap();
 
     fixture.sweep_once().await;
 
@@ -51,7 +48,7 @@ async fn a_file_tags_draft_is_still_run() {
                 .import
                 .select_candidate_metadata_provenance(
                     dir.to_string_lossy().into_owned(),
-                    crate::import::MetadataProvenance::FileTags,
+                    crate::import::MetadataProvenance::FileMetadata,
                 )
                 .await
                 .unwrap();
@@ -62,7 +59,7 @@ async fn a_file_tags_draft_is_still_run() {
                 .await
                 .expect("the candidate is stored")
                 .metadata_provenance,
-            Some(crate::import::MetadataProvenance::FileTags),
+            Some(crate::import::MetadataProvenance::FileMetadata),
             "{name} starts from its file tags"
         );
 
@@ -88,7 +85,9 @@ async fn a_pick_stores_the_result_and_the_sweep_leaves_it_alone() {
     fixture.scan(1).await;
     // Nothing is routed: the pick reads the archived document, and a sweep
     // that decided to run this candidate would have to look the disc ID up.
-    fixture.archive("mb-chosen", "rg-chosen", &[probed, 0]).await;
+    fixture
+        .archive("mb-chosen", "rg-chosen", &[probed, 0])
+        .await;
     assert!(fixture.identified_for(&dir).await.is_none());
 
     fixture
@@ -96,18 +95,20 @@ async fn a_pick_stores_the_result_and_the_sweep_leaves_it_alone() {
         .select_candidate_metadata_provenance(
             key.clone(),
             crate::import::MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-chosen".to_string()),
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::MusicBrainz,
+                    "mb-chosen".to_string(),
+                ),
                 partners: Vec::new(),
             },
         )
         .await
         .expect("the pick lands");
 
-    let picked = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the pick is stored");
-    let result = picked.identify.expect("the choice is the candidate's result");
+    let picked = fixture.stored_for(&dir).await.expect("the pick is stored");
+    let result = picked
+        .identify
+        .expect("the choice is the candidate's result");
     assert!(
         matches!(
             &result.verdict,
@@ -136,7 +137,10 @@ async fn a_pick_stores_the_result_and_the_sweep_leaves_it_alone() {
             .expect("the candidate is still stored")
             .metadata_provenance,
         Some(crate::import::MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-chosen".to_string()),
+            record: crate::import::MetadataRef::new(
+                crate::import::Catalog::MusicBrainz,
+                "mb-chosen".to_string()
+            ),
             partners: Vec::new(),
         })
     );
@@ -206,13 +210,12 @@ async fn a_draft_write_leaves_the_result_and_starts_no_run() {
 
         if name == "clear-metadata" {
             fixture.import.clear_candidate_metadata(key).await.unwrap();
-        }
-        else {
+        } else {
             fixture
                 .import
                 .select_candidate_metadata_provenance(
                     key,
-                    crate::import::MetadataProvenance::FileTags,
+                    crate::import::MetadataProvenance::FileMetadata,
                 )
                 .await
                 .unwrap();
@@ -314,10 +317,7 @@ async fn disabling_automatic_lookup_lets_what_it_queued_finish() {
 
     // A preference is not a cancel: the run the setting admitted is still
     // running after it turns off, and answers.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).unwrap();
     assert!(fixture.import.is_identifying(&key));
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(20), pass)
@@ -355,10 +355,7 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
         .await
         .expect("identification stores its settled result");
 
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).unwrap();
     fixture.sweep_once().await;
 
     let after = fixture
@@ -372,10 +369,7 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
 #[serial(musicbrainz)]
 async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
     let fixture = Fixture::new("enable-schedules-unresolved").await;
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).unwrap();
     // Started while automatic identification is off, so it admits nothing
     // until the setting turns on.
     fixture.identification();
@@ -394,10 +388,7 @@ async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
     fixture.scan(1).await;
     assert!(fixture.provider.requests().is_empty());
 
-    fixture
-        .manager
-        .set_identify_automatically(true)
-        .unwrap();
+    fixture.manager.set_identify_automatically(true).unwrap();
 
     tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
         .await

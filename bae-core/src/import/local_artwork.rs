@@ -4,7 +4,7 @@ use super::folder_scanner::ScannedFile;
 use crate::util::content_type_hint::ContentTypeHint;
 
 /// The cover a folder holds for itself: the artwork its own audio embeds —
-/// `embedded`, the selection the File Tags snapshot names — and failing that
+/// `embedded`, the selection the file-tag snapshot names — and failing that
 /// the folder's own image default. `None` when the folder has neither.
 ///
 /// One rule, run wherever a candidate's cover is filled in: a scan, a reset,

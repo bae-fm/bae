@@ -11,7 +11,7 @@ fn bae_core_fixtures() -> std::path::PathBuf {
 }
 
 /// Write one tagged FLAC into `dir` (copied from the test fixture) with the
-/// given `title`, so an Unknown-identity import can map it from file tags.
+/// given `title`, so an Unknown-identity import can map it from file metadata.
 /// Returns the on-disk bytes after tagging.
 pub fn write_tagged_flac(dir: &std::path::Path, filename: &str, title: &str) -> Vec<u8> {
     use lofty::config::WriteOptions;

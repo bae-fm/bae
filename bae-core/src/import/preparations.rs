@@ -11,8 +11,9 @@ mod pane_edits;
 mod reset;
 
 use crate::db::{
-    CandidateLookupUpdate, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, Database,
-    DbCandidateIdentifyResult, NewImportCandidateVerdict, ScannedCandidateKey,
+    CandidateLookupUpdate, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
+    CandidateScanExpectation, Database, DbCandidateIdentifyResult, NewImportCandidateVerdict,
+    ScannedCandidateKey,
 };
 use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
@@ -289,11 +290,11 @@ impl CandidatePreparations {
             .await
     }
 
-    /// Store the exact File Tags reading and replace the candidate metadata it
+    /// Store the exact file metadata reading and replace the candidate metadata it
     /// projects in one transaction. The scan stamp is checked inside that
     /// transaction, so no draft can be committed from facts about an older
     /// candidate shape.
-    pub(crate) async fn apply_file_tags(
+    pub(crate) async fn apply_file_metadata(
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
@@ -310,7 +311,7 @@ impl CandidatePreparations {
         let metadata = crate::import::CandidateMetadataDraft {
             draft: draft.clone(),
             source_discogs_artist_ids: Default::default(),
-            provenance: Some(crate::import::MetadataProvenance::FileTags),
+            provenance: Some(crate::import::MetadataProvenance::FileMetadata),
             cover: cover.cloned(),
             assets: crate::import::CandidatePreparedAssets::default(),
         };

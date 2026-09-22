@@ -59,13 +59,16 @@ enum ImportMappingFlow {
     /// read and applied in one command — there is no surface to review them on
     /// first, so nothing here decides whether the read is worth applying.
     @MainActor
-    static func resetToTags(key: String, services: ImportMappingServices) {
+    static func resetToFileMetadata(
+        key: String,
+        services: ImportMappingServices
+    ) {
         ImportSearchFlow.applyMetadata(
             importer: services.importer,
             importStore: services.importStore,
             endEditing: services.endEditing,
             key: key,
-            provenance: .fileTags
+            provenance: .fileMetadata
         )
     }
 

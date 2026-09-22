@@ -689,7 +689,7 @@ async fn the_scan_stores_the_folders_own_cover() {
 }
 
 #[tokio::test]
-async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
+async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     let hash = candidate.files.content_hash();
@@ -723,7 +723,7 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
         }),
     };
     crate::import::CandidatePreparations::new(db.clone())
-        .apply_file_tags(
+        .apply_file_metadata(
             &root,
             &candidate.path.to_string_lossy(),
             &crate::import::CandidateAsRead {
@@ -746,7 +746,7 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
         .unwrap();
     let row = rows(&projection).remove(0);
     row.metadata_summary
-        .expect("the row carries its File Tags draft");
+        .expect("the row carries its file-metadata draft");
     assert_eq!(
         row.cover_thumbnail,
         Some(crate::import::CoverImageSource::Bytes { data: bytes })

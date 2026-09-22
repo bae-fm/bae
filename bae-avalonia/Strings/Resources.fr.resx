@@ -474,14 +474,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Effacer les métadonnées</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Les fichiers du candidat et les choix de correspondance resteront inchangés.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Effacer les métadonnées ?</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Réinitialiser aux tags</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Réinitialiser aux tags ?</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Le brouillon est remplacé par les tags des fichiers. Les fichiers du candidat et les choix de correspondance resteront inchangés.</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>Réinitialiser aux métadonnées des fichiers</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>Réinitialiser aux métadonnées des fichiers ?</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>Le brouillon est remplacé par ce que les fichiers, les feuilles et le dossier disent de l’édition. Les fichiers du candidat et les choix de correspondance resteront inchangés.</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>Rechercher une édition</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Général</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifier automatiquement</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Préremplir avec les tags</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Les nouveaux candidats démarrent sur un brouillon lu dans les tags de leurs fichiers.</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>Préremplir avec les métadonnées des fichiers</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>Les nouveaux candidats démarrent sur un brouillon lu dans leurs fichiers, leurs feuilles et le nom du dossier.</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Les nouveaux candidats sont identifiés dès leur ajout.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Rechercher dans {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Rechercher en ligne interroge les sources cochées ici.</value></data>

@@ -350,7 +350,7 @@ pub enum BridgeReleaseReseed {
         /// The other sources' releases the picked pressing paired with.
         partners: Vec<BridgeMetadataRef>,
     },
-    FileTags,
+    FileMetadata,
 }
 
 #[cfg(feature = "desktop")]
@@ -368,7 +368,7 @@ impl BridgeReleaseReseed {
                     .map(BridgeMetadataRef::into_core)
                     .collect(),
             },
-            Self::FileTags => bae_core::import::ReleaseReseed::FileTags,
+            Self::FileMetadata => bae_core::import::ReleaseReseed::FileMetadata,
         }
     }
 
@@ -388,7 +388,7 @@ impl BridgeReleaseReseed {
                     .map(BridgeMetadataRef::from_core)
                     .collect(),
             },
-            bae_core::import::ReleaseReseed::FileTags => Self::FileTags,
+            bae_core::import::ReleaseReseed::FileMetadata => Self::FileMetadata,
         }
     }
 }

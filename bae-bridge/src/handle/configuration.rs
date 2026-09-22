@@ -42,8 +42,8 @@ forward! { sync this => {
             .set_metadata_source_enabled(source.into_core(), enabled)?)
     }
 
-    fn set_prefill_with_tags(enabled: bool) -> Result<(), BridgeError> {
-        Ok(this.services.set_prefill_with_tags(enabled)?)
+    fn set_prefill_with_file_metadata(enabled: bool) -> Result<(), BridgeError> {
+        Ok(this.services.set_prefill_with_file_metadata(enabled)?)
     }
 
     fn set_show_remaining_time(enabled: bool) -> Result<(), BridgeError> {

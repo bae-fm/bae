@@ -474,14 +474,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>清除中繼資料</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>候選項目的檔案和對應選擇將維持不變。</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>清除中繼資料？</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>重設為標籤</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>重設為標籤？</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>草稿將被檔案標籤取代。 候選項目的檔案和對應選擇將維持不變。</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>重設為檔案中繼資料</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>重設為檔案中繼資料？</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>草稿將被檔案、CUE 表單和資料夾對該版本的描述取代。 候選項目的檔案和對應選擇將維持不變。</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>搜尋版本</value></data>
   <data name="import.search.general" xml:space="preserve"><value>一般</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>自動識別</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>以標籤預先填入</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>新候選項目以從其檔案標籤讀取的草稿開始。</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>以檔案中繼資料預先填入</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>新候選項目以從其檔案、CUE 表單和資料夾名稱讀取的草稿開始。</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>新候選項目在被加入時識別。</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>搜尋 {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>「在線上尋找」會詢問此處勾選的來源。</value></data>

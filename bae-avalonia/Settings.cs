@@ -30,7 +30,7 @@ public sealed class Settings
 
     /// <summary>Whether a newly added candidate's draft is created from the
     /// folder's file tags, or starts blank.</summary>
-    internal bool PrefillWithTags { get; set; } = true;
+    internal bool PrefillWithFileMetadata { get; set; } = true;
 
     /// <summary>Which metadata sources Find online asks, one entry per source in
     /// core's order. Core folds the person's choice and the source's credentials

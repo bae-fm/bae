@@ -474,14 +474,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Izbriši metapodatke</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Datoteke kandidata i odabiri mapiranja ostat će nepromijenjeni.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Izbrisati metapodatke?</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Vrati na oznake</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Vratiti na oznake?</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Nacrt se zamjenjuje oznakama datoteka. Datoteke kandidata i odabiri mapiranja ostat će nepromijenjeni.</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>Vrati na metapodatke datoteka</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>Vratiti na metapodatke datoteka?</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>Nacrt se zamjenjuje onime što datoteke, listovi i mapa govore o izdanju. Datoteke kandidata i odabiri mapiranja ostat će nepromijenjeni.</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>Traži izdanje</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Općenito</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Automatski identificiraj</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Unaprijed popuni iz oznaka</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Novi kandidati počinju s nacrtom pročitanim iz oznaka njihovih datoteka.</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>Unaprijed popuni iz metapodataka datoteka</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>Novi kandidati počinju s nacrtom pročitanim iz njihovih datoteka, listova i naziva mape.</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Novi kandidati identificiraju se čim se dodaju.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Pretraži {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Pronađi na internetu pita izvore označene ovdje.</value></data>

@@ -501,14 +501,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Rensa metadata</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Kandidatens filer och kopplingar lämnas oförändrade.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Rensa metadata?</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Återställ till taggar</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Återställa till taggar?</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Utkastet ersätts av filernas taggar. Kandidatens filer och kopplingar lämnas oförändrade.</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>Återställ till filmetadata</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>Återställa till filmetadata?</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>Utkastet ersätts av det som filerna, arken och mappen säger om utgåvan. Kandidatens filer och kopplingar lämnas oförändrade.</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>Sök efter utgåva</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Allmänt</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifiera automatiskt</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Förifyll från taggar</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Nya kandidater börjar med ett utkast som lästs från filernas taggar.</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>Förifyll från filmetadata</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>Nya kandidater börjar med ett utkast som lästs från deras filer, ark och mappnamn.</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nya kandidater identifieras när de läggs till.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Sök på {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Sök på nätet frågar de källor som är ikryssade här.</value></data>

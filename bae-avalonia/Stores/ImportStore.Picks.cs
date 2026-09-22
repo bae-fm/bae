@@ -49,7 +49,7 @@ internal sealed partial class ImportStore
         {
             return null;
         }
-        var pick = new ImportMetadataPick(provenance, candidate.Files?.FileTagsIdentity);
+        var pick = new ImportMetadataPick(provenance, candidate.Files?.FileMetadataIdentity);
         _picks[key] = pick;
         Changed?.Invoke();
         return pick;

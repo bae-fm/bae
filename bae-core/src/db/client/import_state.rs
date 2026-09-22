@@ -70,7 +70,7 @@ pub(crate) fn insert_file_tags_draft(
     insert_provenance(
         sql,
         content_hash,
-        &crate::import::MetadataProvenance::FileTags,
+        &crate::import::MetadataProvenance::FileMetadata,
         author,
     )?;
     Ok(())

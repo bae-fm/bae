@@ -29,9 +29,9 @@ internal sealed class SettingsService
         = _ => throw new InvalidOperationException(
             "SettingsService stub: SetIdentifyAutomatically not wired");
 
-    public Func<bool, (bool Current, string? Error)> SetPrefillWithTags { get; init; }
+    public Func<bool, (bool Current, string? Error)> SetPrefillWithFileMetadata { get; init; }
         = _ => throw new InvalidOperationException(
-            "SettingsService stub: SetPrefillWithTags not wired");
+            "SettingsService stub: SetPrefillWithFileMetadata not wired");
 
     /// <summary>Ask, or stop asking, one metadata source. Core refuses to switch
     /// off the last source there is to ask and returns the sentence to show.</summary>
@@ -47,9 +47,9 @@ internal sealed class SettingsService
         SetIdentifyAutomatically = enabled =>
             session.WithCurrentHandle(handle =>
                 NativeBae.SetIdentifyAutomatically(handle, enabled)),
-        SetPrefillWithTags = enabled =>
+        SetPrefillWithFileMetadata = enabled =>
             session.WithCurrentHandle(handle =>
-                NativeBae.SetPrefillWithTags(handle, enabled)),
+                NativeBae.SetPrefillWithFileMetadata(handle, enabled)),
         SetMetadataSourceEnabled = (source, enabled) =>
             session.WithCurrentHandle(handle =>
                 NativeBae.SetMetadataSourceEnabled(handle, source, enabled)),

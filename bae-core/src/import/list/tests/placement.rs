@@ -384,7 +384,10 @@ fn a_metadata_provenance_answers_whatever_the_verdict_asked() {
         assert_eq!(
             row.metadata_provenance,
             Some(MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked".to_string()),
+                record: crate::import::MetadataRef::new(
+                    Catalog::MusicBrainz,
+                    "mb-picked".to_string()
+                ),
                 partners: vec![],
             }),
             "{name}: the row carries what a bulk import would commit"
@@ -400,7 +403,7 @@ fn a_file_tags_seed_answers_the_row() {
     rows.states.insert(
         "hash-Release".to_string(),
         CandidateStateListRow {
-            metadata_provenance: Some(MetadataProvenance::FileTags),
+            metadata_provenance: Some(MetadataProvenance::FileMetadata),
             ..several_matches_state()
         },
     );
@@ -408,7 +411,10 @@ fn a_file_tags_seed_answers_the_row() {
     let flat = flattened(&rows, &view(TriageTab::Pending));
     let row = row_for(&flat, "Release");
     assert_eq!(row.placement, TriagePlacement::Ready);
-    assert_eq!(row.metadata_provenance, Some(MetadataProvenance::FileTags));
+    assert_eq!(
+        row.metadata_provenance,
+        Some(MetadataProvenance::FileMetadata)
+    );
 }
 /// A seed belongs to the file shape it was chosen against. Editing the folder
 /// moves the candidate past that shape, so the seed is not its answer any more

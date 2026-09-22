@@ -97,7 +97,7 @@ async fn an_imported_folder_is_refused_a_second_import() {
         &album_dir,
         None,
         StorageMode::Local,
-        MetadataProvenance::FileTags,
+        MetadataProvenance::FileMetadata,
     )
     .await
     .expect("initial import succeeds");
@@ -129,7 +129,7 @@ async fn an_imported_folder_is_refused_a_second_import() {
             &album_dir,
             cover,
             storage_mode,
-            MetadataProvenance::FileTags,
+            MetadataProvenance::FileMetadata,
         )
         .await
         .expect_err("an imported folder is refused a second import");
@@ -176,7 +176,7 @@ async fn a_remote_imported_folder_is_refused_a_second_import() {
         &album_dir,
         None,
         StorageMode::Remote,
-        MetadataProvenance::FileTags,
+        MetadataProvenance::FileMetadata,
     )
     .await
     .expect("initial remote import queues upload");
@@ -185,7 +185,10 @@ async fn a_remote_imported_folder_is_refused_a_second_import() {
         .drain_uploads_expecting_work()
         .await
         .unwrap();
-    assert_eq!(upload_count, 1, "initial remote import should upload one file");
+    assert_eq!(
+        upload_count, 1,
+        "initial remote import should upload one file"
+    );
     let prior_release =
         f.db.find_release_by_id(&prior_release_id)
             .await
@@ -198,7 +201,7 @@ async fn a_remote_imported_folder_is_refused_a_second_import() {
         &album_dir,
         None,
         StorageMode::Local,
-        MetadataProvenance::FileTags,
+        MetadataProvenance::FileMetadata,
     )
     .await
     .expect_err("an imported folder is refused a second import");
@@ -251,7 +254,7 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
         &prior_dir,
         None,
         StorageMode::Local,
-        MetadataProvenance::FileTags,
+        MetadataProvenance::FileMetadata,
     )
     .await
     .expect("prior local import succeeds");
@@ -276,7 +279,7 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
     f.handle
         .send_command(ImportCommand {
             storage_mode: StorageMode::Remote,
-            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags)
+            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileMetadata)
         })
         .await
         .unwrap();

@@ -1,6 +1,6 @@
 use super::*;
+use crate::import::file_metadata_seed::FileMetadataSeed;
 use crate::import::file_tag_snapshot::extract_file_tag_snapshot;
-use crate::import::file_tags_seed::FileTagsSeed;
 use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::release_candidate::ReleaseCandidate;
 use crate::import::{
@@ -58,7 +58,10 @@ impl ImportServiceHandle {
                 stored.scan_generation,
                 state.lookup_choices,
                 matching_folders,
-                self.library_manager.get_config().prefs.prefill_with_tags,
+                self.library_manager
+                    .get_config()
+                    .prefs
+                    .prefill_with_file_metadata,
             )
         };
         let next_revision =
@@ -110,7 +113,7 @@ impl ImportServiceHandle {
                     extract_file_tag_snapshot(&audio, generation, next_revision, reader.as_ref())?;
                 let durations =
                     crate::import::probe::source_durations(initialized_candidate.files())?;
-                let seed = FileTagsSeed::project(
+                let seed = FileMetadataSeed::project(
                     &initialized_candidate,
                     snapshot,
                     &durations,
@@ -120,7 +123,7 @@ impl ImportServiceHandle {
                 )?;
                 (
                     seed.draft,
-                    Some(crate::import::MetadataProvenance::FileTags),
+                    Some(crate::import::MetadataProvenance::FileMetadata),
                     seed.cover,
                     Some(seed.snapshot),
                 )

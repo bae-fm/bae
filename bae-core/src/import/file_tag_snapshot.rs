@@ -332,7 +332,7 @@ pub(crate) fn extract_file_tag_snapshot(
     })
 }
 
-/// Embedded artwork is a File Tags selection because its bytes belong to the
+/// Embedded artwork is a file-metadata selection because its bytes belong to the
 /// snapshot. Folder artwork remains the candidate's source-neutral fallback.
 pub(crate) fn embedded_cover_selection(
     snapshot: &FileTagSnapshot,

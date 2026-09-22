@@ -122,16 +122,16 @@ fn a_new_library_pre_fills_with_tags_and_identifies_automatically() {
     let config = make_test_config("lib", tmp.path().to_path_buf());
 
     assert!(config.prefs.identify_automatically);
-    assert!(config.prefs.prefill_with_tags);
+    assert!(config.prefs.prefill_with_file_metadata);
 }
 
 #[test]
-fn prefill_with_tags_and_identify_automatically_roundtrip_independently() {
+fn prefill_with_file_metadata_and_identify_automatically_roundtrip_independently() {
     for (prefill, identify) in [(false, true), (true, false), (false, false)] {
         let tmp = TempDir::new().unwrap();
         let mut config = make_test_config("lib", tmp.path().to_path_buf());
         config.prefs.identify_automatically = identify;
-        config.prefs.prefill_with_tags = prefill;
+        config.prefs.prefill_with_file_metadata = prefill;
         config.save_to_config_yaml().unwrap();
 
         let yaml = parse_config(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
@@ -139,7 +139,7 @@ fn prefill_with_tags_and_identify_automatically_roundtrip_independently() {
         let loaded = yaml.into_config("device".to_string(), tmp.path().to_path_buf());
 
         assert_eq!(loaded.prefs.identify_automatically, identify);
-        assert_eq!(loaded.prefs.prefill_with_tags, prefill);
+        assert_eq!(loaded.prefs.prefill_with_file_metadata, prefill);
     }
 }
 
@@ -157,7 +157,7 @@ fn a_config_carrying_an_unrecognized_key_loads() {
 
     let loaded = ConfigYaml::from_value(&value).expect("an unknown key is ignored");
 
-    assert!(loaded.prefs.prefill_with_tags);
+    assert!(loaded.prefs.prefill_with_file_metadata);
     assert!(loaded.prefs.identify_automatically);
 }
 
@@ -291,7 +291,7 @@ fn config_yaml_requires_every_bae_field() {
         "library_full_width",
         "verify_decode_on_import",
         "identify_automatically",
-        "prefill_with_tags",
+        "prefill_with_file_metadata",
         "metadata_sources",
         "cast_enabled",
     ] {
@@ -313,7 +313,7 @@ fn config_yaml_pins_the_on_disk_file() {
 
     assert_eq!(
         written,
-        r#"config_version: 1
+        r#"config_version: 2
 library_id: abc-123
 library_name: Test Library
 device_id: test-device-id
@@ -352,7 +352,7 @@ show_remaining_time: false
 library_full_width: false
 verify_decode_on_import: true
 identify_automatically: true
-prefill_with_tags: true
+prefill_with_file_metadata: true
 metadata_sources:
   musicbrainz: true
   discogs: true

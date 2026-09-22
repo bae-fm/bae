@@ -375,7 +375,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
         async throws
     {
         for provenance in [
-            BridgeMetadataProvenance.fileTags,
+            BridgeMetadataProvenance.fileMetadata,
             .externalRelease(
                 record: BridgeMetadataRef(
                     catalog: .musicBrainz,
@@ -495,7 +495,7 @@ private final class MetadataApplicationEditingModel {
                 await apply()
                 return 1
             },
-            applyCandidateFileTags: { [self] _ in
+            applyCandidateFileMetadata: { [self] _ in
                 await apply()
                 return 1
             }

@@ -169,7 +169,7 @@ fn prefilled_from_tags_state() -> CandidateStateListRow {
         edit_revision: 0,
         verdict: None,
         probed_total_duration_ms: 0,
-        metadata_provenance: Some(MetadataProvenance::FileTags),
+        metadata_provenance: Some(MetadataProvenance::FileMetadata),
         metadata_draft_valid: true,
         metadata_summary: None,
         selected_cover: None,

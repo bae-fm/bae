@@ -6,7 +6,7 @@
 //! confirmation page lets the user correct anything the tags got wrong.
 //!
 //! File tags name no catalog, so a release seeded from them carries no
-//! records. The release provenance is `FileTags`. Lookup signals such as OCR,
+//! records. The release provenance is `FileMetadata`. Lookup signals such as OCR,
 //! DiscID, and barcode are not part of this path.
 //!
 //! Year comes from any tag carrying a date. Source codecs are physical audio
@@ -197,7 +197,7 @@ fn file_tag_credit_events(artist: Option<&str>) -> Vec<TrackEvent> {
 }
 
 /// The [`ReleaseIr`] shared by the file-tag and CUE-sheet seeders. Provenance
-/// is `FileTags`; `album_artist_scope` is `FullPool` so a divergent per-track
+/// is `FileMetadata`; `album_artist_scope` is `FullPool` so a divergent per-track
 /// artist also becomes an album artist.
 fn file_tag_release_ir(
     album_title: String,
@@ -219,14 +219,14 @@ fn file_tag_release_ir(
             country: None,
             barcode: None,
         },
-        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
+        metadata_provenance: Some(crate::import::MetadataProvenance::FileMetadata),
         album_artist_scope: AlbumArtistScope::FullPool,
         release_roles: Vec::new(),
         tracks,
     }
 }
 
-pub(crate) fn map_file_tag_snapshot_to_db(
+pub(crate) fn map_file_metadata_to_db(
     categorized: &CategorizedFiles,
     snapshot: &FileTagSnapshot,
     folder_name: Option<&str>,
@@ -313,8 +313,8 @@ pub(crate) fn map_file_tag_snapshot_to_db(
     Ok(assemble_parsed_album(release, clock, ids))
 }
 
-/// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the File Tags
-/// path. Where [`map_file_tags_to_db`] seeds one track per file, here the track
+/// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the
+/// file-metadata path. Where [`map_file_tags_to_db`] seeds one track per file, here the track
 /// structure comes from the playable CUE `TRACK` entries: title from each
 /// `TITLE`, per-track artist from each `PERFORMER`. Album-level fields come from
 /// the sheet header (`TITLE` / `PERFORMER` / `REM DATE`), the title falling back
@@ -344,7 +344,7 @@ fn cue_sheets_ir(
         });
     }
 
-    // Blank is allowed — the editable File Tags form gates save on a title.
+    // Blank is allowed — the editable file-metadata form gates save on a title.
     let album_title = sheets
         .iter()
         .find_map(|s| non_empty(s.title.clone()))

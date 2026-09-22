@@ -59,7 +59,6 @@ async fn local_folder_import() {
     assert!(album_dir.join("01 Track One.flac").exists());
     assert!(album_dir.join("02 Track Two.flac").exists());
     assert!(album_dir.join("03 Track Three.flac").exists());
-
 }
 
 #[tokio::test]
@@ -88,7 +87,11 @@ async fn import_progress_names_every_operation_before_loudness() {
 
     let import_id = f.ids.new_id();
     f.handle
-        .send_command(support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags))
+        .send_command(support::folder_import(
+            &import_id,
+            album_dir,
+            MetadataProvenance::FileMetadata,
+        ))
         .await
         .unwrap();
 
@@ -111,7 +114,10 @@ async fn import_progress_names_every_operation_before_loudness() {
         let step = match progress {
             ImportProgress::Preparing { step, .. } => Some(ImportStep::Preparing(step)),
             ImportProgress::Progress { phase, .. } => Some(ImportStep::Running(phase)),
-            ImportProgress::Complete { import_id: completed, .. } if completed == import_id => {
+            ImportProgress::Complete {
+                import_id: completed,
+                ..
+            } if completed == import_id => {
                 break;
             }
             ImportProgress::Failed { error, .. } => panic!("import failed: {error}"),
@@ -290,9 +296,7 @@ async fn loudness_pass_emits_within_track_progress() {
             progress: ImportProgress::Progress { percent, phase, .. },
         } = event
         {
-            if candidate_key == expected_candidate_key
-                && phase == ImportPhase::MeasuringLoudness
-            {
+            if candidate_key == expected_candidate_key && phase == ImportPhase::MeasuringLoudness {
                 percents.extend(percent);
             }
         }

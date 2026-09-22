@@ -415,7 +415,12 @@ impl ImportServiceHandle {
 
         // Snapshot extraction and provider preparation run without the commit
         // lock. The final locked write refuses either revision moving meanwhile.
-        let initialized = if self.library_manager.get_config().prefs.prefill_with_tags {
+        let initialized = if self
+            .library_manager
+            .get_config()
+            .prefs
+            .prefill_with_file_metadata
+        {
             let (snapshot_candidate, snapshot) = self.file_tag_snapshot(candidate_key).await?;
             if snapshot_candidate.files().content_hash() != read.content_hash
                 || snapshot_candidate.file_edit_revision() != read.file_edit_revision
@@ -425,7 +430,7 @@ impl ImportServiceHandle {
                 });
             }
             let durations = crate::import::probe::source_durations(snapshot_candidate.files())?;
-            crate::import::file_tags_seed::FileTagsSeed::project(
+            crate::import::file_metadata_seed::FileMetadataSeed::project(
                 &snapshot_candidate,
                 snapshot,
                 &durations,

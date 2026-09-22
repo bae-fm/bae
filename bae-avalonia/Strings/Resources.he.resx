@@ -474,14 +474,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>ניקוי המטא־נתונים</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>קובצי המועמד ובחירות המיפוי יישארו ללא שינוי.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>לנקות את המטא־נתונים?</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>איפוס לתגיות</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>לאפס לתגיות?</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>הטיוטה תוחלף בתגיות הקבצים. קובצי המועמד ובחירות המיפוי יישארו ללא שינוי.</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>איפוס לנתוני הקבצים</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>לאפס לנתוני הקבצים?</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>הטיוטה תוחלף במה שהקבצים, הגיליונות והתיקייה אומרים על הגרסה. קובצי המועמד ובחירות המיפוי יישארו ללא שינוי.</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>חיפוש גרסה</value></data>
   <data name="import.search.general" xml:space="preserve"><value>כללי</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>זיהוי אוטומטי</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>מילוי מראש מהתגיות</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>מועמדים חדשים מתחילים מטיוטה שנקראה מתגיות הקבצים שלהם.</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>מילוי מראש מנתוני הקבצים</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>מועמדים חדשים מתחילים מטיוטה שנקראה מהקבצים שלהם, מהגיליונות ומשם התיקייה.</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>מועמדים חדשים מזוהים עם הוספתם.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>חיפוש ב-{source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>חיפוש באינטרנט פונה למקורות המסומנים כאן.</value></data>

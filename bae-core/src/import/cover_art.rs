@@ -189,7 +189,7 @@ pub fn musicbrainz_album_cover(
 }
 
 /// Where a cover's bytes are read from — a remote address, a file the folder
-/// holds, or the candidate's stored File Tags snapshot.
+/// holds, or the candidate's stored file-tag snapshot.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoverImageSource {
@@ -238,7 +238,7 @@ impl CoverChoice {
         }
     }
 
-    /// Artwork stored in the candidate's File Tags snapshot. The source file
+    /// Artwork stored in the candidate's file-tag snapshot. The source file
     /// identifies the selection; the snapshot owns the exact bytes rendered
     /// by both the pane and the sidebar.
     pub fn embedded(source_file_id: String, data: Vec<u8>) -> Self {

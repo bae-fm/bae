@@ -41,7 +41,7 @@ struct ImportMappingPane: View {
     let onIdentify: () -> Void
     let onSearchForRelease: () -> Void
     let onReset: () -> Void
-    let onResetToTags: () -> Void
+    let onResetToFileMetadata: () -> Void
     let onClearMetadata: () -> Void
     let onEditCover: () -> Void
     let onSelectCover: (BridgeCoverSelection) -> Void
@@ -130,7 +130,7 @@ struct ImportMappingPane: View {
             onIdentify: onIdentify,
             onSearchForRelease: onSearchForRelease,
             onReset: onReset,
-            onResetToTags: onResetToTags,
+            onResetToFileMetadata: onResetToFileMetadata,
             onClearMetadata: onClearMetadata,
             onEditCover: onEditCover,
             onSelectCover: onSelectCover,

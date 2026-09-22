@@ -520,175 +520,175 @@
         }
       }
     },
-    "Replace metadata with the files’ tags. Tracks and audio assignments will remain unchanged.": {
-      "comment": "Import metadata: reset-to-tags confirmation message",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Replace metadata with the files’ tags. Tracks and audio assignments will remain unchanged."
+    "Replace metadata with what the files, sheets and folder say about the release. Tracks and audio assignments will remain unchanged." : {
+      "comment" : "Import metadata: reset-to-file-metadata confirmation message",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace metadata with what the files, sheets and folder say about the release. Tracks and audio assignments will remain unchanged."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "استبدال البيانات الوصفية بوسوم الملفات. ستبقى المقاطع وتعيينات الصوت دون تغيير."
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استبدال البيانات الوصفية بما تقوله الملفات وأوراق المسارات والمجلد عن الإصدار. ستبقى المقاطع وتعيينات الصوت دون تغيير."
           }
         },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Замяна на метаданните с етикетите на файловете. Песните и аудио съпоставянията ще останат непроменени."
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Замяна на метаданните с това, което файловете, листовете и папката казват за изданието. Песните и аудио съпоставянията ще останат непроменени."
           }
         },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nahradit metadata značkami souborů. Skladby a přiřazení zvuku zůstanou beze změny."
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nahradit metadata tím, co o vydání říkají soubory, listy a složka. Skladby a přiřazení zvuku zůstanou beze změny."
           }
         },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erstat metadata med filernes mærker. Numre og lydtilknytninger forbliver uændrede."
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erstat metadata med det, filerne, arkene og mappen siger om udgivelsen. Numre og lydtilknytninger forbliver uændrede."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Metadaten durch die Tags der Dateien ersetzen. Titel und Audiozuordnungen bleiben unverändert."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadaten durch das ersetzen, was Dateien, Cue-Sheets und Ordner über die Veröffentlichung sagen. Titel und Audiozuordnungen bleiben unverändert."
           }
         },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Αντικατάσταση των μεταδεδομένων με τις ετικέτες των αρχείων. Τα κομμάτια και οι αντιστοιχίσεις ήχου θα παραμείνουν αμετάβλητα."
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αντικατάσταση των μεταδεδομένων με όσα λένε τα αρχεία, τα φύλλα και ο φάκελος για την κυκλοφορία. Τα κομμάτια και οι αντιστοιχίσεις ήχου θα παραμείνουν αμετάβλητα."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sustituir los metadatos por las etiquetas de los archivos. Las pistas y las asignaciones de audio no cambiarán."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sustituir los metadatos por lo que los archivos, las hojas y la carpeta dicen de la edición. Las pistas y las asignaciones de audio no cambiarán."
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Korvaa metatiedot tiedostojen tunnisteilla. Kappaleet ja äänikytkennät säilyvät ennallaan."
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Korvaa metatiedot sillä, mitä tiedostot, cue-arkit ja kansio kertovat julkaisusta. Kappaleet ja äänikytkennät säilyvät ennallaan."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remplacer les métadonnées par les tags des fichiers. Les pistes et les associations audio resteront inchangées."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remplacer les métadonnées par ce que les fichiers, les feuilles et le dossier disent de l’édition. Les pistes et les associations audio resteront inchangées."
           }
         },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "החלפת המטא־נתונים בתגיות הקבצים. הרצועות ושיוכי השמע יישארו ללא שינוי."
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החלפת המטא־נתונים במה שהקבצים, הגיליונות והתיקייה אומרים על הגרסה. הרצועות ושיוכי השמע יישארו ללא שינוי."
           }
         },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zamijeni metapodatke oznakama datoteka. Pjesme i dodjele zvuka ostat će nepromijenjene."
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zamijeni metapodatke onime što datoteke, listovi i mapa govore o izdanju. Pjesme i dodjele zvuka ostat će nepromijenjene."
           }
         },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A metaadatok cseréje a fájlok címkéire. A számok és a hanghozzárendelések változatlanok maradnak."
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A metaadatok cseréje arra, amit a fájlok, a lemezlapok és a mappa mond a kiadásról. A számok és a hanghozzárendelések változatlanok maradnak."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sostituisci i metadati con i tag dei file. Le tracce e le associazioni audio rimarranno invariate."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sostituisci i metadati con ciò che i file, i fogli e la cartella dicono dell’edizione. Le tracce e le associazioni audio rimarranno invariate."
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "メタデータをファイルのタグに置き換えます。トラックと音声の割り当ては変更されません。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メタデータを、ファイル・CUE シート・フォルダがリリースについて示す内容に置き換えます。トラックと音声の割り当ては変更されません。"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "메타데이터를 파일 태그로 대체합니다. 트랙과 오디오 할당은 변경되지 않습니다."
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "메타데이터를 파일과 CUE 시트, 폴더가 릴리스에 대해 말하는 내용으로 대체합니다. 트랙과 오디오 할당은 변경되지 않습니다."
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erstatt metadata med filenes merkelapper. Spor og lydkoblinger forblir uendret."
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erstatt metadata med det filene, arkene og mappen sier om utgivelsen. Spor og lydkoblinger forblir uendret."
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vervang metadata door de tags van de bestanden. Nummers en audiotoewijzingen blijven ongewijzigd."
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vervang metadata door wat de bestanden, sheets en map over de uitgave zeggen. Nummers en audiotoewijzingen blijven ongewijzigd."
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zastąp metadane tagami plików. Utwory i przypisania dźwięku pozostaną bez zmian."
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zastąp metadane tym, co o wydaniu mówią pliki, arkusze i folder. Utwory i przypisania dźwięku pozostaną bez zmian."
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Substitua os metadados pelas tags dos arquivos. As faixas e as associações de áudio permanecerão inalteradas."
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Substitua os metadados pelo que os arquivos, as folhas e a pasta dizem sobre o lançamento. As faixas e as associações de áudio permanecerão inalteradas."
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Substituir os metadados pelas etiquetas dos ficheiros. As faixas e as associações de áudio mantêm-se inalteradas."
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Substituir os metadados pelo que os ficheiros, as folhas e a pasta dizem sobre a edição. As faixas e as associações de áudio mantêm-se inalteradas."
           }
         },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Înlocuiește metadatele cu etichetele fișierelor. Piesele și asocierile audio rămân neschimbate."
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Înlocuiește metadatele cu ceea ce spun fișierele, fișele și folderul despre ediție. Piesele și asocierile audio rămân neschimbate."
           }
         },
-        "sk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nahradiť metadáta značkami súborov. Skladby a priradenia zvuku zostanú nezmenené."
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nahradiť metadáta tým, čo o vydaní hovoria súbory, hárky a priečinok. Skladby a priradenia zvuku zostanú nezmenené."
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ersätt metadata med filernas taggar. Spår och ljudkopplingar lämnas oförändrade."
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ersätt metadata med det som filerna, arken och mappen säger om utgåvan. Spår och ljudkopplingar lämnas oförändrade."
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Meta verileri dosya etiketleriyle değiştir. Parçalar ve ses atamaları değişmeden kalır."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meta verileri; dosyaların, CUE sayfalarının ve klasörün sürüm hakkında söyledikleriyle değiştir. Parçalar ve ses atamaları değişmeden kalır."
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Замінити метадані тегами файлів. Композиції та зіставлення аудіо залишаться без змін."
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Замінити метадані тим, що про видання кажуть файли, аркуші та тека. Композиції та зіставлення аудіо залишаться без змін."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用文件标签替换元数据。曲目和音频分配将保持不变。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用文件、CUE 表单和文件夹对该版本的描述替换元数据。曲目和音频分配将保持不变。"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "以檔案標籤取代中繼資料。曲目和音訊指派將維持不變。"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以檔案、CUE 表單和資料夾對該版本的描述取代中繼資料。曲目和音訊指派將維持不變。"
           }
         }
       }
@@ -101932,348 +101932,348 @@
         }
       }
     },
-    "Pre-fill with tags" : {
-      "comment" : "Import settings: whether a newly added candidate's draft is created from its files' tags",
+    "Pre-fill from file metadata" : {
+      "comment" : "Import settings: whether a newly added candidate's draft is created from its folder's own metadata",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pre-fill from file metadata"
+          }
+        },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "التعبئة المسبقة من الوسوم"
+            "value" : "التعبئة المسبقة من بيانات الملفات"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Предварително попълване от етикетите"
+            "value" : "Предварително попълване от данните на файловете"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Předvyplnit ze značek"
+            "value" : "Předvyplnit z metadat souborů"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Udfyld på forhånd fra mærker"
+            "value" : "Udfyld på forhånd fra filmetadata"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aus Tags vorausfüllen"
+            "value" : "Aus Datei-Metadaten vorausfüllen"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Προσυμπλήρωση από ετικέτες"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pre-fill with tags"
+            "value" : "Προσυμπλήρωση από μεταδεδομένα αρχείων"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rellenar con las etiquetas"
+            "value" : "Rellenar con los metadatos de los archivos"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esitäytä tunnisteista"
+            "value" : "Esitäytä tiedostojen metatiedoista"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Préremplir avec les tags"
+            "value" : "Préremplir avec les métadonnées des fichiers"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מילוי מראש מהתגיות"
+            "value" : "מילוי מראש מנתוני הקבצים"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unaprijed popuni iz oznaka"
+            "value" : "Unaprijed popuni iz metapodataka datoteka"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Előkitöltés a címkékből"
+            "value" : "Előkitöltés a fájlok metaadataiból"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Precompila dai tag"
+            "value" : "Precompila dai metadati dei file"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タグから事前入力"
+            "value" : "ファイルのメタデータから事前入力"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "태그로 미리 채우기"
+            "value" : "파일 메타데이터로 미리 채우기"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Forhåndsutfyll fra merkelapper"
+            "value" : "Forhåndsutfyll fra filmetadata"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vooraf invullen met tags"
+            "value" : "Vooraf invullen met bestandsmetagegevens"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wypełniaj wstępnie tagami"
+            "value" : "Wypełniaj wstępnie metadanymi plików"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pré-preencher com as tags"
+            "value" : "Pré-preencher com os metadados dos arquivos"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pré-preencher com as etiquetas"
+            "value" : "Pré-preencher com os metadados dos ficheiros"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Precompletează din etichete"
+            "value" : "Precompletează din metadatele fișierelor"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Predvyplniť zo značiek"
+            "value" : "Predvyplniť z metadát súborov"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Förifyll från taggar"
+            "value" : "Förifyll från filmetadata"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etiketlerden ön doldur"
+            "value" : "Dosya meta verilerinden ön doldur"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Попередньо заповнювати з тегів"
+            "value" : "Попередньо заповнювати з метаданих файлів"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "用标签预填充"
+            "value" : "用文件元数据预填充"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "以標籤預先填入"
+            "value" : "以檔案中繼資料預先填入"
           }
         }
       }
     },
-    "New candidates start from a draft read from their files' tags." : {
-      "comment" : "Import settings: what pre-filling with tags does when a candidate is added",
+    "New candidates start from a draft read from their files, sheets and folder name." : {
+      "comment" : "Import settings: what pre-filling from file metadata does when a candidate is added",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New candidates start from a draft read from their files, sheets and folder name."
+          }
+        },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يبدأ المرشحون الجدد بمسودة مقروءة من وسوم ملفاتهم."
+            "value" : "يبدأ المرشحون الجدد بمسودة مقروءة من ملفاتهم وأوراق المسارات واسم المجلد."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Новите кандидати започват с чернова, прочетена от етикетите на файловете им."
+            "value" : "Новите кандидати започват с чернова, прочетена от файловете им, листовете и името на папката."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noví kandidáti začínají s konceptem načteným ze značek jejich souborů."
+            "value" : "Noví kandidáti začínají s konceptem načteným z jejich souborů, listů a názvu složky."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nye kandidater starter med et udkast, der er læst fra deres filers mærker."
+            "value" : "Nye kandidater starter med et udkast, der er læst fra deres filer, ark og mappenavn."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neue Kandidaten beginnen mit einem Entwurf aus den Tags ihrer Dateien."
+            "value" : "Neue Kandidaten beginnen mit einem Entwurf aus ihren Dateien, Cue-Sheets und dem Ordnernamen."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Οι νέοι υποψήφιοι ξεκινούν με ένα προσχέδιο από τις ετικέτες των αρχείων τους."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "New candidates start from a draft read from their files' tags."
+            "value" : "Οι νέοι υποψήφιοι ξεκινούν με ένα προσχέδιο από τα αρχεία τους, τα φύλλα και το όνομα του φακέλου."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los candidatos nuevos empiezan con un borrador leído de las etiquetas de sus archivos."
+            "value" : "Los candidatos nuevos empiezan con un borrador leído de sus archivos, sus hojas y el nombre de la carpeta."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uudet ehdokkaat aloittavat luonnoksesta, joka on luettu niiden tiedostojen tunnisteista."
+            "value" : "Uudet ehdokkaat aloittavat luonnoksesta, joka on luettu niiden tiedostoista, cue-arkeista ja kansion nimestä."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les nouveaux candidats démarrent sur un brouillon lu dans les tags de leurs fichiers."
+            "value" : "Les nouveaux candidats démarrent sur un brouillon lu dans leurs fichiers, leurs feuilles et le nom du dossier."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מועמדים חדשים מתחילים מטיוטה שנקראה מתגיות הקבצים שלהם."
+            "value" : "מועמדים חדשים מתחילים מטיוטה שנקראה מהקבצים שלהם, מהגיליונות ומשם התיקייה."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Novi kandidati počinju s nacrtom pročitanim iz oznaka njihovih datoteka."
+            "value" : "Novi kandidati počinju s nacrtom pročitanim iz njihovih datoteka, listova i naziva mape."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Az új jelöltek a fájljaik címkéiből beolvasott piszkozattal indulnak."
+            "value" : "Az új jelöltek a fájljaikból, a lemezlapokból és a mappa nevéből beolvasott piszkozattal indulnak."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I nuovi candidati partono da una bozza letta dai tag dei loro file."
+            "value" : "I nuovi candidati partono da una bozza letta dai loro file, dai fogli e dal nome della cartella."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新しい候補は、ファイルのタグから読み取った下書きから始まります。"
+            "value" : "新しい候補は、ファイル・CUE シート・フォルダ名から読み取った下書きから始まります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 후보는 파일 태그에서 읽어 온 초안으로 시작합니다."
+            "value" : "새 후보는 파일과 CUE 시트, 폴더 이름에서 읽어 온 초안으로 시작합니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nye kandidater starter med et utkast lest fra merkelappene til filene deres."
+            "value" : "Nye kandidater starter med et utkast lest fra filene, arkene og mappenavnet."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nieuwe kandidaten beginnen met een concept dat uit hun bestandstags is gelezen."
+            "value" : "Nieuwe kandidaten beginnen met een concept dat uit hun bestanden, sheets en mapnaam is gelezen."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nowi kandydaci zaczynają od szkicu odczytanego z tagów ich plików."
+            "value" : "Nowi kandydaci zaczynają od szkicu odczytanego z ich plików, arkuszy i nazwy folderu."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Novos candidatos começam com um rascunho lido das tags dos seus arquivos."
+            "value" : "Novos candidatos começam com um rascunho lido dos seus arquivos, das folhas e do nome da pasta."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Os novos candidatos começam com um rascunho lido das etiquetas dos seus ficheiros."
+            "value" : "Os novos candidatos começam com um rascunho lido dos seus ficheiros, das folhas e do nome da pasta."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Candidații noi pornesc de la o schiță citită din etichetele fișierelor lor."
+            "value" : "Candidații noi pornesc de la o schiță citită din fișierele lor, din fișe și din numele folderului."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noví kandidáti začínajú konceptom načítaným zo značiek ich súborov."
+            "value" : "Noví kandidáti začínajú konceptom načítaným z ich súborov, hárkov a názvu priečinka."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nya kandidater börjar med ett utkast som lästs från filernas taggar."
+            "value" : "Nya kandidater börjar med ett utkast som lästs från deras filer, ark och mappnamn."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yeni adaylar, dosyalarının etiketlerinden okunan bir taslakla başlar."
+            "value" : "Yeni adaylar; dosyalarından, CUE sayfalarından ve klasör adından okunan bir taslakla başlar."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нові кандидати починають із чернетки, прочитаної з тегів їхніх файлів."
+            "value" : "Нові кандидати починають із чернетки, прочитаної з їхніх файлів, аркушів і назви теки."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新候选项以从其文件标签读取的草稿开始。"
+            "value" : "新候选项以从其文件、CUE 表单和文件夹名称读取的草稿开始。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新候選項目以從其檔案標籤讀取的草稿開始。"
+            "value" : "新候選項目以從其檔案、CUE 表單和資料夾名稱讀取的草稿開始。"
           }
         }
       }
@@ -102970,348 +102970,348 @@
         }
       }
     },
-    "Reset to tags" : {
-      "comment" : "Import metadata: replace the draft with what the candidate's own files say",
+    "Reset to file metadata" : {
+      "comment" : "Import metadata: replace the draft with what the candidate's own files, sheets and folder say",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset to file metadata"
+          }
+        },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إعادة التعيين إلى الوسوم"
+            "value" : "إعادة التعيين إلى بيانات الملفات"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Връщане към етикетите"
+            "value" : "Връщане към данните от файловете"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obnovit ze značek"
+            "value" : "Obnovit z metadat souborů"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nulstil til mærker"
+            "value" : "Nulstil til filmetadata"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Auf Tags zurücksetzen"
+            "value" : "Auf Datei-Metadaten zurücksetzen"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Επαναφορά στις ετικέτες"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reset to tags"
+            "value" : "Επαναφορά στα μεταδεδομένα αρχείων"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restablecer a las etiquetas"
+            "value" : "Restablecer a los metadatos de los archivos"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Palauta tunnisteisiin"
+            "value" : "Palauta tiedostojen metatietoihin"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réinitialiser aux tags"
+            "value" : "Réinitialiser aux métadonnées des fichiers"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "איפוס לתגיות"
+            "value" : "איפוס לנתוני הקבצים"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vrati na oznake"
+            "value" : "Vrati na metapodatke datoteka"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visszaállítás a címkékre"
+            "value" : "Visszaállítás a fájlok metaadataira"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina dai tag"
+            "value" : "Ripristina dai metadati dei file"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タグにリセット"
+            "value" : "ファイルのメタデータにリセット"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "태그로 재설정"
+            "value" : "파일 메타데이터로 재설정"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tilbakestill til merkelapper"
+            "value" : "Tilbakestill til filmetadata"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terugzetten naar tags"
+            "value" : "Terugzetten naar bestandsmetagegevens"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przywróć z tagów"
+            "value" : "Przywróć z metadanych plików"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Redefinir para as tags"
+            "value" : "Redefinir para os metadados dos arquivos"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Repor para as etiquetas"
+            "value" : "Repor para os metadados dos ficheiros"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resetează la etichete"
+            "value" : "Resetează la metadatele fișierelor"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obnoviť zo značiek"
+            "value" : "Obnoviť z metadát súborov"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Återställ till taggar"
+            "value" : "Återställ till filmetadata"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etiketlere sıfırla"
+            "value" : "Dosya meta verilerine sıfırla"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скинути до тегів"
+            "value" : "Скинути до метаданих файлів"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重置为标签"
+            "value" : "重置为文件元数据"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重設為標籤"
+            "value" : "重設為檔案中繼資料"
           }
         }
       }
     },
-    "Reset to tags?" : {
-      "comment" : "Import metadata: reset-to-tags confirmation title",
+    "Reset to file metadata?" : {
+      "comment" : "Import metadata: reset-to-file-metadata confirmation title",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset to file metadata?"
+          }
+        },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إعادة التعيين إلى الوسوم؟"
+            "value" : "إعادة التعيين إلى بيانات الملفات؟"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Връщане към етикетите?"
+            "value" : "Връщане към данните от файловете?"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obnovit ze značek?"
+            "value" : "Obnovit z metadat souborů?"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nulstil til mærker?"
+            "value" : "Nulstil til filmetadata?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Auf Tags zurücksetzen?"
+            "value" : "Auf Datei-Metadaten zurücksetzen?"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Επαναφορά στις ετικέτες;"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reset to tags?"
+            "value" : "Επαναφορά στα μεταδεδομένα αρχείων;"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Restablecer a las etiquetas?"
+            "value" : "¿Restablecer a los metadatos de los archivos?"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Palautetaanko tunnisteisiin?"
+            "value" : "Palautetaanko tiedostojen metatietoihin?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réinitialiser aux tags ?"
+            "value" : "Réinitialiser aux métadonnées des fichiers ?"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לאפס לתגיות?"
+            "value" : "לאפס לנתוני הקבצים?"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vratiti na oznake?"
+            "value" : "Vratiti na metapodatke datoteka?"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visszaállítod a címkékre?"
+            "value" : "Visszaállítod a fájlok metaadataira?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristinare dai tag?"
+            "value" : "Ripristinare dai metadati dei file?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タグにリセットしますか？"
+            "value" : "ファイルのメタデータにリセットしますか？"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "태그로 재설정할까요?"
+            "value" : "파일 메타데이터로 재설정할까요?"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tilbakestille til merkelapper?"
+            "value" : "Tilbakestille til filmetadata?"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terugzetten naar tags?"
+            "value" : "Terugzetten naar bestandsmetagegevens?"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przywrócić z tagów?"
+            "value" : "Przywrócić z metadanych plików?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Redefinir para as tags?"
+            "value" : "Redefinir para os metadados dos arquivos?"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Repor para as etiquetas?"
+            "value" : "Repor para os metadados dos ficheiros?"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resetezi la etichete?"
+            "value" : "Resetezi la metadatele fișierelor?"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obnoviť zo značiek?"
+            "value" : "Obnoviť z metadát súborov?"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Återställa till taggar?"
+            "value" : "Återställa till filmetadata?"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etiketlere sıfırlansın mı?"
+            "value" : "Dosya meta verilerine sıfırlansın mı?"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скинути до тегів?"
+            "value" : "Скинути до метаданих файлів?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重置为标签？"
+            "value" : "重置为文件元数据？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重設為標籤？"
+            "value" : "重設為檔案中繼資料？"
           }
         }
       }

@@ -133,7 +133,7 @@ struct SyncStatusStoreTests {
             maxConcurrentUploads: 1,
             maxConcurrentDownloads: 1,
             identifyAutomatically: true,
-            prefillWithTags: true,
+            prefillWithFileMetadata: true,
             lookupCatalogs: [
                 BridgeLookupCatalogSetting(
                     catalog: .musicBrainz,

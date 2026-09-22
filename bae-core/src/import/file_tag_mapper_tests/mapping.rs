@@ -76,7 +76,7 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
             .unwrap()
             .with_timezone(&chrono::Utc),
     );
-    let parsed = map_file_tag_snapshot_to_db(
+    let parsed = map_file_metadata_to_db(
         &files,
         &snapshot,
         Some("Folder"),
@@ -159,7 +159,7 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
     let ids = SequentialIdProvider::new("snapshot");
 
     let parsed =
-        map_file_tag_snapshot_to_db(&files, &snapshot, Some("Folder Alpha"), &clock, &ids).unwrap();
+        map_file_metadata_to_db(&files, &snapshot, Some("Folder Alpha"), &clock, &ids).unwrap();
 
     assert_eq!(parsed.album.title, "Album Alpha");
     assert_eq!(parsed.tracks[0].title, "Track Alpha");
@@ -631,7 +631,7 @@ fn partial_track_numbers_default_to_order() {
 /// The album-title ladder (ALBUM tag → folder name → empty) and the
 /// album-artist ladder (ALBUMARTIST → ARTIST → empty), with blank and
 /// whitespace-only tags dropping to `None` and taking the same ladder.
-/// The File Tags path never hard-fails on a missing album-level tag — the
+/// The file-metadata path never hard-fails on a missing album-level tag — the
 /// editable form gates save on the non-empty fields.
 #[test]
 fn album_and_artist_fallback_ladder() {

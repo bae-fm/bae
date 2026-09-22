@@ -11,7 +11,7 @@ extension BridgeCandidateAction {
         case .identify: String(localized: "Identify selected")
         case .retryIdentification:
             String(localized: "Retry failed identification")
-        case .resetToTags: String(localized: "Reset to tags")
+        case .resetToFileMetadata: String(localized: "Reset to file metadata")
         case .clearMetadata: String(localized: "Clear metadata")
         case .skip: String(localized: "Skip selected")
         case .restore: String(localized: "Restore to Pending")
@@ -30,7 +30,7 @@ extension BridgeCandidateAction {
         case .importReady: "square.and.arrow.down"
         case .identify: "magnifyingglass"
         case .retryIdentification: "arrow.clockwise"
-        case .resetToTags: "doc.text"
+        case .resetToFileMetadata: "doc.text"
         case .clearMetadata: "eraser"
         case .skip: "minus.circle"
         case .restore: "arrow.uturn.backward"

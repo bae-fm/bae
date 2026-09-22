@@ -120,11 +120,9 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
         200,
         discogs_search_json("70000201", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
     );
-    fixture.provider.route(
-        "/releases/70000201",
-        200,
-        discogs_release_json("70000201"),
-    );
+    fixture
+        .provider
+        .route("/releases/70000201", 200, discogs_release_json("70000201"));
     crate::musicbrainz::seed_discogs_url_lookup("70000201", None);
     // Hold MusicBrainz's answer, so the run is genuinely still asking when the
     // source is switched off rather than racing a run that already settled.
@@ -150,7 +148,10 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
         panic!("expected a Found verdict, got {verdict:?}");
     };
     assert_eq!(
-        matches.iter().map(|result| result.source).collect::<Vec<_>>(),
+        matches
+            .iter()
+            .map(|result| result.source)
+            .collect::<Vec<_>>(),
         vec![crate::import::Catalog::MusicBrainz],
         "the run that stored the answer asked only the source still switched on"
     );
@@ -289,10 +290,7 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
         release_json("mb-interactive-off", "rg-interactive-off", &[probed, 0]),
     );
     fixture.scan(1).await;
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).unwrap();
 
     fixture.start_explicit_lookup(&dir);
 
@@ -524,7 +522,7 @@ async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
         .import
         .select_candidate_metadata_provenance(
             key.clone(),
-            crate::import::MetadataProvenance::FileTags,
+            crate::import::MetadataProvenance::FileMetadata,
         )
         .await
         .expect("the pick lands");
@@ -539,13 +537,10 @@ async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
     .await;
     fixture.provider.release();
 
-    let stored = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the pick is stored");
+    let stored = fixture.stored_for(&dir).await.expect("the pick is stored");
     assert_eq!(
         stored.metadata_provenance,
-        Some(crate::import::MetadataProvenance::FileTags)
+        Some(crate::import::MetadataProvenance::FileMetadata)
     );
     assert!(
         stored.identify.is_none(),
@@ -567,12 +562,20 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     fixture.provider.route(
         "/discid/",
         200,
-        discid_json("mb-super-1", "rg-super-1", &[probed / 2, probed - probed / 2]),
+        discid_json(
+            "mb-super-1",
+            "rg-super-1",
+            &[probed / 2, probed - probed / 2],
+        ),
     );
     fixture.provider.route(
         "/release/mb-super-1?",
         200,
-        release_json("mb-super-1", "rg-super-1", &[probed / 2, probed - probed / 2]),
+        release_json(
+            "mb-super-1",
+            "rg-super-1",
+            &[probed / 2, probed - probed / 2],
+        ),
     );
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
@@ -655,9 +658,11 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
 #[serial(musicbrainz)]
 async fn a_candidate_the_queue_failed_then_the_user_reran_is_left_alone() {
     let fixture = Fixture::new("failed-then-looked-up").await;
-    fixture.import.register_artwork_analyzer(Arc::new(SlowAnalyzer {
-        delay: Duration::from_millis(2_000),
-    }));
+    fixture
+        .import
+        .register_artwork_analyzer(Arc::new(SlowAnalyzer {
+            delay: Duration::from_millis(2_000),
+        }));
     let dir = fixture.disc_id_candidate("Album");
     // One image, so the user's run stays in flight on a slow OCR pass while the
     // second sweep pass runs.
@@ -683,7 +688,10 @@ async fn a_candidate_the_queue_failed_then_the_user_reran_is_left_alone() {
     })
     .await
     .expect("identify registers the explicit rerun");
-    assert!(fixture.import.is_identifying(&key), "their run is in flight");
+    assert!(
+        fixture.import.is_identifying(&key),
+        "their run is in flight"
+    );
 
     let lookups_before = fixture.provider.count_containing("/discid/");
     fixture.sweep_once().await;

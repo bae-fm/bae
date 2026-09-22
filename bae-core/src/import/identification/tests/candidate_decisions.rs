@@ -3,7 +3,10 @@
 async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
     for prefill in [false, true] {
         let fixture = Fixture::new("cue-audio-replacement").await;
-        fixture.manager.set_prefill_with_tags(prefill).unwrap();
+        fixture
+            .manager
+            .set_prefill_with_file_metadata(prefill)
+            .unwrap();
         let dir = fixture.seed_cue_album("Album");
         fixture.scan(1).await;
         let hash = fixture.content_hash(&dir);
@@ -263,7 +266,7 @@ async fn deleting_audio_removes_the_row_and_metadata_cannot_restore_it() {
     assert!(after.tracks.iter().all(|track| track.edit.id != removed));
     fixture
         .import
-        .select_candidate_metadata_provenance(key, crate::import::MetadataProvenance::FileTags)
+        .select_candidate_metadata_provenance(key, crate::import::MetadataProvenance::FileMetadata)
         .await
         .unwrap();
     let reapplied = fixture

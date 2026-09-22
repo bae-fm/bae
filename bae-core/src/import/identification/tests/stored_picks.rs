@@ -59,20 +59,20 @@ async fn a_pick_reads_back_as_the_same_answer() {
         }
     );
 
-    // A person deciding File Tags replaces the record, and the pane reads the
+    // A person deciding file metadata replaces the record, and the pane reads the
     // folder's own files instead of a release.
     fixture
         .import
         .select_candidate_metadata_provenance(
             key.clone(),
-            crate::import::MetadataProvenance::FileTags,
+            crate::import::MetadataProvenance::FileMetadata,
         )
         .await
-        .expect("deciding File Tags succeeds");
+        .expect("deciding file metadata succeeds");
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
     assert!(
         resumed.release.is_none(),
-        "File Tags names no external release"
+        "file metadata names no external release"
     );
     assert_eq!(
         resumed.metadata_author,

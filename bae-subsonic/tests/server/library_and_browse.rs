@@ -8,9 +8,7 @@ use bae_core::config::SubsonicCredential;
 use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::release_candidate::CandidateSource;
-use bae_core::import::{
-    ImportCommand, MetadataProvenance, Catalog, ReleaseFileScope, StorageMode,
-};
+use bae_core::import::{Catalog, ImportCommand, MetadataProvenance, ReleaseFileScope, StorageMode};
 use bae_core::library::{AppServices, LibraryManager};
 use bae_test_support as support;
 use coven::StoreDir;
@@ -164,7 +162,7 @@ struct Library {
 async fn seed_library() -> Library {
     let (manager, db_temp) = new_manager().await;
 
-    // Per-track release, imported from file tags (no network).
+    // Per-track release, imported from file metadata (no network).
     let pt_temp = TempDir::new().unwrap();
     let pt_dir = pt_temp.path().join("solo album");
     std::fs::create_dir_all(&pt_dir).unwrap();
@@ -206,7 +204,7 @@ async fn seed_library() -> Library {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
+            metadata_provenance: Some(MetadataProvenance::FileMetadata),
             user_edit: None,
         })
         .await

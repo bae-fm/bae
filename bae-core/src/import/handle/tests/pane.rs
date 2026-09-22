@@ -1,12 +1,12 @@
-mod metadata_application;
-mod metadata_edits;
-mod track_restoration;
-mod reset;
-mod pick_partners;
 mod candidate_mutation_race;
-mod session;
 mod lookup_choices;
+mod metadata_application;
 mod metadata_author;
+mod metadata_edits;
+mod pick_partners;
+mod reset;
+mod session;
+mod track_restoration;
 // The pane's own controls, from the handle down to the next read.
 //
 // Every one of these writes a row and returns; nothing is handed back to the
@@ -80,9 +80,7 @@ async fn picked_candidate(
         path: folder.clone(),
         file_root: folder.clone(),
         name: folder_name.to_string(),
-        files: CategorizedFiles {
-            files,
-        },
+        files: CategorizedFiles { files },
         watched_folder_path: root.to_string_lossy().into_owned(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
@@ -99,7 +97,7 @@ async fn picked_candidate(
     // preview, the stored snapshot, and what a person's pick does to the
     // draft. A draft the pre-fill already wrote would answer those questions
     // before the test asked them.
-    manager.set_prefill_with_tags(false).unwrap();
+    manager.set_prefill_with_file_metadata(false).unwrap();
     rescan_into(manager, candidate.clone()).await;
 
     let key = folder.to_string_lossy().into_owned();
@@ -168,7 +166,7 @@ async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
     let revision = handle
         .select_candidate_metadata_provenance(
             key.clone(),
-            crate::import::MetadataProvenance::FileTags,
+            crate::import::MetadataProvenance::FileMetadata,
         )
         .await
         .unwrap();
@@ -193,13 +191,21 @@ async fn shut_down(handle: ImportServiceHandle) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_candidate_without_metadata() {
-    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate().await;
     let gallery = handle
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Candidate(key))
         .await
         .unwrap();
     shut_down(handle).await;
-    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Unlinked);
+    assert_eq!(
+        gallery,
+        crate::import::cover_art::RemoteCoverGallery::Unlinked
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -210,7 +216,10 @@ async fn unlinked_cover_gallery_for_file_tags() {
         .await
         .unwrap();
     shut_down(handle).await;
-    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Unlinked);
+    assert_eq!(
+        gallery,
+        crate::import::cover_art::RemoteCoverGallery::Unlinked
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -219,9 +228,7 @@ async fn unlinked_cover_gallery_for_library_release() {
     let album = make_album("Album Title");
     let release = make_release(&album.id);
     manager
-        .insert_album_with_release_and_tracks(
-            &album, &release, &[make_track(&release.id, 1)], &[],
-        )
+        .insert_album_with_release_and_tracks(&album, &release, &[make_track(&release.id, 1)], &[])
         .await
         .unwrap();
     let handle = manager
@@ -233,7 +240,10 @@ async fn unlinked_cover_gallery_for_library_release() {
         .await
         .unwrap();
     shut_down(handle).await;
-    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Unlinked);
+    assert_eq!(
+        gallery,
+        crate::import::cover_art::RemoteCoverGallery::Unlinked
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -248,7 +258,10 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Release(release.id))
         .await;
     shut_down(handle).await;
-    assert!(matches!(result, Err(crate::import::ImportError::DiscogsNotConfigured)));
+    assert!(matches!(
+        result,
+        Err(crate::import::ImportError::DiscogsNotConfigured)
+    ));
 }
 
 struct CountingFileTagReader {
@@ -311,9 +324,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
         &self,
         _path: &std::path::Path,
     ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
-        let index = self
-            .reads
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let index = self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         if index == 0 {
             if let Some((entered, resume)) = &self.first_read {
                 entered.send(()).unwrap();
@@ -334,9 +345,9 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
             track_number: Some(u32::try_from(index + 1).unwrap()),
             disc_number: Some(1),
             embedded_cover: if index == 0 {
-                self.embedded_cover.clone().map(|data| {
-                    (data, crate::util::content_type::ContentType::Jpeg)
-                })
+                self.embedded_cover
+                    .clone()
+                    .map(|data| (data, crate::util::content_type::ContentType::Jpeg))
             } else {
                 None
             },
@@ -346,7 +357,13 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn one_unreadable_file_stores_no_partial_tag_snapshot() {
-    let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        candidate,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::failing(1));
 
     let error = handle
@@ -371,7 +388,12 @@ async fn one_unreadable_file_stores_no_partial_tag_snapshot() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
-    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
 
     let first = handle
@@ -395,7 +417,13 @@ async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn changed_file_observations_replace_the_complete_tag_snapshot() {
-    let StoredCandidate { handle, manager, mut candidate, key, tmp } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        manager,
+        mut candidate,
+        key,
+        tmp,
+    } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
 
     handle
@@ -410,9 +438,8 @@ async fn changed_file_observations_replace_the_complete_tag_snapshot() {
         .unwrap();
     audio
         .set_times(
-            std::fs::FileTimes::new().set_modified(
-                std::time::SystemTime::now() + std::time::Duration::from_secs(5),
-            ),
+            std::fs::FileTimes::new()
+                .set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(5)),
         )
         .unwrap();
 
@@ -469,7 +496,13 @@ async fn changed_file_observations_replace_the_complete_tag_snapshot() {
 /// makes the candidate a different shape and replaces it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_file_decision_replaces_the_complete_tag_snapshot() {
-    let StoredCandidate { handle, manager, candidate, key, tmp: _tmp } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        manager,
+        candidate,
+        key,
+        tmp: _tmp,
+    } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     handle
         .file_tag_snapshot_with_reader(&key, reader.clone())
@@ -494,7 +527,12 @@ async fn a_file_decision_replaces_the_complete_tag_snapshot() {
     );
     shut_down(handle).await;
 
-    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     handle
         .file_tag_snapshot_with_reader(&key, reader.clone())
@@ -517,7 +555,10 @@ async fn a_file_decision_replaces_the_complete_tag_snapshot() {
         .1;
     assert_eq!(reader.read_count(), 3);
     assert_eq!(after_file_edit.files.len(), 1);
-    assert_eq!(after_file_edit.files[0].title.as_deref(), Some("Track Title 3"));
+    assert_eq!(
+        after_file_edit.files[0].title.as_deref(),
+        Some("Track Title 3")
+    );
     shut_down(handle).await;
 }
 
@@ -547,7 +588,9 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         .unwrap();
     let root = tmp.path().join("watched").to_string_lossy().into_owned();
 
-    let error = handle.preparations.apply_file_tags(
+    let error = handle
+        .preparations
+        .apply_file_metadata(
             &root,
             &key,
             &crate::import::CandidateAsRead {
@@ -619,9 +662,8 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
         .unwrap();
     audio
         .set_times(
-            std::fs::FileTimes::new().set_modified(
-                std::time::SystemTime::now() + std::time::Duration::from_secs(5),
-            ),
+            std::fs::FileTimes::new()
+                .set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(5)),
         )
         .unwrap();
 
@@ -655,21 +697,20 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_scan_that_moves_during_tag_reading_refuses_the_snapshot() {
-    let StoredCandidate { handle, manager, candidate, key, tmp: _tmp } = stored_candidate().await;
+    let StoredCandidate {
+        handle,
+        manager,
+        candidate,
+        key,
+        tmp: _tmp,
+    } = stored_candidate().await;
     let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
     let resume = std::sync::Arc::new(std::sync::Barrier::new(2));
-    let reader = std::sync::Arc::new(CountingFileTagReader::blocking(
-        entered_tx,
-        resume.clone(),
-    ));
+    let reader = std::sync::Arc::new(CountingFileTagReader::blocking(entered_tx, resume.clone()));
     let operation = tokio::spawn({
         let handle = handle.clone();
         let key = key.clone();
-        async move {
-            handle
-                .file_tag_snapshot_with_reader(&key, reader)
-                .await
-        }
+        async move { handle.file_tag_snapshot_with_reader(&key, reader).await }
     });
     entered_rx
         .recv_timeout(std::time::Duration::from_secs(2))
@@ -683,7 +724,9 @@ async fn a_scan_that_moves_during_tag_reading_refuses_the_snapshot() {
         .unwrap()
         .expect_err("the earlier scan stamp cannot land after a newer scan");
     assert!(
-        error.to_string().contains("changed while its file tags were being read"),
+        error
+            .to_string()
+            .contains("changed while its file tags were being read"),
         "the refusal names the changed candidate: {error}"
     );
     shut_down(handle).await;
@@ -725,7 +768,7 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
     {
         let mut pick = std::pin::pin!(handle.select_candidate_metadata_provenance(
             key.clone(),
-            crate::import::MetadataProvenance::FileTags,
+            crate::import::MetadataProvenance::FileMetadata,
         ));
         let first_poll =
             std::future::poll_fn(|cx| std::task::Poll::Ready(pick.as_mut().poll(cx))).await;
@@ -752,7 +795,7 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
     .expect("the pick is announced");
     assert_eq!(
         pane(&handle, &key).await.metadata_provenance,
-        Some(crate::import::MetadataProvenance::FileTags),
+        Some(crate::import::MetadataProvenance::FileMetadata),
         "the pick landed"
     );
     shut_down(handle).await;

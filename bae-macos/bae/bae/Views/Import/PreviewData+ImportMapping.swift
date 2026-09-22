@@ -142,7 +142,7 @@
         )
 
         static let moreTracksCandidateFiles = BridgeCandidateFiles(
-            fileTagsIdentity: "more-tracks-audio",
+            fileMetadataIdentity: "more-tracks-audio",
             files: [moreTracksAudio],
             coverFiles: [],
             sourceAudio: BridgeCandidateSourceAudio(
@@ -337,7 +337,7 @@
 
         /// What the folder's own tags say it is: nine tracks, and no release to
         /// tally them against.
-        static let fileTagsMappingTable = BridgeMappingTable(
+        static let fileMetadataMappingTable = BridgeMappingTable(
             images: [],
             trackSections: [
                 BridgeMappingTrackSection(
@@ -414,7 +414,7 @@
                 actions: (metadataProvenance == nil
                     && edit.albumTitle.isEmpty ? [] : [.importReady])
                     + [
-                        .identify, .resetToTags, .clearMetadata,
+                        .identify, .resetToFileMetadata, .clearMetadata,
                         .skip,
                     ],
                 matched: nil,
@@ -688,14 +688,14 @@
         /// The folder read as its own file tags: no release, and a table with
         /// no tally to state.
         @MainActor
-        static let fileTagsMappingCandidate: Candidate = paneCandidate(
+        static let fileMetadataMappingCandidate: Candidate = paneCandidate(
             folder: mappingFolder(
                 name: "Album Title One",
                 files: candidateFilesTracks
             ),
-            metadataProvenance: .fileTags,
+            metadataProvenance: .fileMetadata,
             edit: confirmEditValues,
-            mapping: fileTagsMappingTable,
+            mapping: fileMetadataMappingTable,
         )
 
         /// Direct entry starts with blank editable metadata while retaining the

@@ -134,8 +134,8 @@ extension ImportView {
                     services: mappingServices
                 )
             },
-            onResetToTags: {
-                ImportMappingFlow.resetToTags(
+            onResetToFileMetadata: {
+                ImportMappingFlow.resetToFileMetadata(
                     key: candidate.key,
                     services: mappingServices
                 )

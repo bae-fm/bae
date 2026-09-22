@@ -271,7 +271,7 @@ object BridgeFixtures {
             maxConcurrentUploads = 3u,
             maxConcurrentDownloads = 3u,
             identifyAutomatically = true,
-            prefillWithTags = true,
+            prefillWithFileMetadata = true,
             // Every source in core's order, matching this fixture's Discogs
             // state below: MusicBrainz is asked and, as the only source still
             // being asked, cannot be switched off; Discogs holds no key, so its

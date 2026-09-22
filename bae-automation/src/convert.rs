@@ -176,7 +176,7 @@ pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
                 .map(AutomationMetadataRef::into_core)
                 .collect(),
         },
-        AutomationReleaseReseed::FileTags => ReleaseReseed::FileTags,
+        AutomationReleaseReseed::FileMetadata => ReleaseReseed::FileMetadata,
     }
 }
 
@@ -222,7 +222,7 @@ mirror_enum! {
             record: (AutomationMetadataRef),
             partners: (each AutomationMetadataRef),
         },
-        FileTags,
+        FileMetadata,
     },
 }
 

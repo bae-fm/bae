@@ -12,24 +12,24 @@ internal sealed partial class SettingsWindow
     {
         content.Children.Add(SectionLabel(Loc.Core("ui.import.metadata.title")));
 
-        var prefillWithTags = new CheckBox
+        var prefillWithFileMetadata = new CheckBox
         {
-            Content = Loc.Chrome("settings.import.prefill_with_tags"),
+            Content = Loc.Chrome("settings.import.prefill_with_file_metadata"),
         };
-        prefillWithTags.IsCheckedChanged += (_, _) =>
+        prefillWithFileMetadata.IsCheckedChanged += (_, _) =>
         {
             if (_refreshingSettings)
             {
                 return;
             }
             WriteSetting(
-                () => _app.Settings.SetPrefillWithTags(
-                    prefillWithTags.IsChecked == true),
+                () => _app.Settings.SetPrefillWithFileMetadata(
+                    prefillWithFileMetadata.IsChecked == true),
                 () => RenderCurrent(renderers));
         };
-        content.Children.Add(prefillWithTags);
+        content.Children.Add(prefillWithFileMetadata);
         content.Children.Add(SecondaryLabel(
-            Loc.Chrome("settings.import.prefill_with_tags_help")));
+            Loc.Chrome("settings.import.prefill_with_file_metadata_help")));
 
         var identifyAutomatically = new CheckBox
         {
@@ -59,7 +59,7 @@ internal sealed partial class SettingsWindow
         renderers.Add(fresh =>
         {
             _refreshingSettings = true;
-            prefillWithTags.IsChecked = fresh.PrefillWithTags;
+            prefillWithFileMetadata.IsChecked = fresh.PrefillWithFileMetadata;
             identifyAutomatically.IsChecked = fresh.IdentifyAutomatically;
             RenderSourceSwitches(sources, fresh, renderers);
             _refreshingSettings = false;

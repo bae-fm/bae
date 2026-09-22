@@ -498,7 +498,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
             track_files_candidate(&[("01 Track.flac", 100_002)]).content_hash(),
             &host_root("/music/Candidate B"),
             100_002,
-            crate::import::MetadataProvenance::FileTags,
+            crate::import::MetadataProvenance::FileMetadata,
         ),
     ];
 

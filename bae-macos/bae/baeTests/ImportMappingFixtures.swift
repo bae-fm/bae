@@ -421,7 +421,7 @@ extension MappingFixtures {
     )
 
     static let emptyFiles = BridgeCandidateFiles(
-        fileTagsIdentity: "empty-audio-files",
+        fileMetadataIdentity: "empty-audio-files",
         files: [],
         coverFiles: [],
         sourceAudio: nil
@@ -509,7 +509,7 @@ extension MappingFixtures {
             identification: nil,
             skipAction: .skip,
             actions: (undecided ? [] : [.importReady])
-                + [.identify, .resetToTags, .clearMetadata, .skip],
+                + [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: nil,
             metadataSummary: nil,
             coverThumbnail: nil,
@@ -533,7 +533,7 @@ extension MappingFixtures {
             sourceFolderName: name,
             watchedFolderPath: "/Music/Downloads",
             files: BridgeCandidateFiles(
-                fileTagsIdentity: audioIdentity,
+                fileMetadataIdentity: audioIdentity,
                 files: emptyFiles.files,
                 coverFiles: emptyFiles.coverFiles,
                 sourceAudio: emptyFiles.sourceAudio

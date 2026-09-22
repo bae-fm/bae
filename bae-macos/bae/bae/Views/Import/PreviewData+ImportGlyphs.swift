@@ -30,7 +30,8 @@
                 placement: placement,
                 skipAction: .skip,
                 actions: [
-                    .importReady, .identify, .resetToTags, .clearMetadata,
+                    .importReady, .identify, .resetToFileMetadata,
+                    .clearMetadata,
                     .skip,
                 ],
                 matched: nil,

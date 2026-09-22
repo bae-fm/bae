@@ -29,16 +29,16 @@ private func makeStatus(albumId: String) -> BridgeLibraryStatus {
 
 private func emptyBridgeFiles() -> BridgeCandidateFiles {
     BridgeCandidateFiles(
-        fileTagsIdentity: "empty-audio-files",
+        fileMetadataIdentity: "empty-audio-files",
         files: [],
         coverFiles: [],
         sourceAudio: nil
     )
 }
 
-private func bridgeFiles(fileTagsIdentity: String) -> BridgeCandidateFiles {
+private func bridgeFiles(fileMetadataIdentity: String) -> BridgeCandidateFiles {
     BridgeCandidateFiles(
-        fileTagsIdentity: fileTagsIdentity,
+        fileMetadataIdentity: fileMetadataIdentity,
         files: [
             BridgeCandidateFile(
                 file: BridgeFileInfo(
@@ -157,7 +157,8 @@ private func readyRow(
         identification: nil,
         skipAction: .skip,
         actions: [
-            .importReady, .identify, .resetToTags, .clearMetadata, .skip,
+            .importReady, .identify, .resetToFileMetadata, .clearMetadata,
+            .skip,
         ],
         matched: matchedRelease(
             releaseId: "rel-\(key)",

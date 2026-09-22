@@ -394,7 +394,7 @@ pub enum AutomationReleaseReseed {
         /// The other sources' releases the picked pressing paired with.
         partners: Vec<AutomationMetadataRef>,
     },
-    FileTags,
+    FileMetadata,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -632,7 +632,7 @@ pub enum AutomationMetadataProvenance {
         /// pick claims these too.
         partners: Vec<AutomationMetadataRef>,
     },
-    FileTags,
+    FileMetadata,
 }
 
 /// One catalog's key for an entity, whose kind is stated by its containing field.

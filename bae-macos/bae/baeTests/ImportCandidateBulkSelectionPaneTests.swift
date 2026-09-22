@@ -56,7 +56,7 @@ struct ImportCandidateBulkSelectionPaneTests {
         #expect(card.rows(in: .importing).map(\.action) == [.importReady, nil])
         #expect(
             card.rows(in: .metadata).map(\.action) == [
-                .identify, .resetToTags, .clearMetadata,
+                .identify, .resetToFileMetadata, .clearMetadata,
             ]
         )
         #expect(card.rows(in: .placement).map(\.action) == [.skip])
@@ -143,7 +143,7 @@ struct ImportCandidateBulkSelectionPaneTests {
     // MARK: - Staging
 
     private static let everyAction: [BridgeCandidateAction] = [
-        .importReady, .identify, .retryIdentification, .resetToTags,
+        .importReady, .identify, .retryIdentification, .resetToFileMetadata,
         .clearMetadata, .skip, .restore,
     ]
 

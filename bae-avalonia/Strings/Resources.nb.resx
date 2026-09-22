@@ -501,14 +501,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Tøm metadata</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Kandidatens filer og koblinger forblir uendret.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Tømme metadata?</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Tilbakestill til merkelapper</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Tilbakestille til merkelapper?</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Utkastet erstattes av merkelappene til filene. Kandidatens filer og koblinger forblir uendret.</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>Tilbakestill til filmetadata</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>Tilbakestille til filmetadata?</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>Utkastet erstattes av det filene, arkene og mappen sier om utgivelsen. Kandidatens filer og koblinger forblir uendret.</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>Søk etter utgivelse</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Generelt</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifiser automatisk</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Forhåndsutfyll fra merkelapper</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Nye kandidater starter med et utkast lest fra merkelappene til filene deres.</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>Forhåndsutfyll fra filmetadata</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>Nye kandidater starter med et utkast lest fra filene, arkene og mappenavnet.</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nye kandidater identifiseres etter hvert som de legges til.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Søk på {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Slå opp på nettet spør kildene som er avkrysset her.</value></data>

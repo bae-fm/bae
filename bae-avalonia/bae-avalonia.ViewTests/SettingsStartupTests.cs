@@ -11,7 +11,7 @@ public sealed class SettingsStartupTests
         var config = new BridgeConfig(
             LibraryId: "test-library", LibraryName: "Test library", LibraryPath: "/test/library",
             PauseBetweenSides: false, MaxConcurrentUploads: 2, MaxConcurrentDownloads: 2,
-            IdentifyAutomatically: true, PrefillWithTags: true, LookupCatalogs: [],
+            IdentifyAutomatically: true, PrefillWithFileMetadata: true, LookupCatalogs: [],
             ShowRemainingTime: true, LibraryFullWidth: true, SavePresets: [],
             DefaultTrackSavePreset: "flac", DefaultReleaseSavePreset: "flac", CastEnabled: false,
             Mcp: new(true, 7890), Subsonic: new(true, 7891, "listener", "127.0.0.1"),

@@ -385,7 +385,7 @@ internal static class ShotCapture
             OnPresent = _ => { },
             OnIdentify = () => { },
             OnSearchForRelease = () => { },
-            OnResetToTags = () => { },
+            OnResetToFileMetadata = () => { },
             OnClearMetadata = () => { },
             OnEditCover = () => { },
             OnSelectCover = _ => { },

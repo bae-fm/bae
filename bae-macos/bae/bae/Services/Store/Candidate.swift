@@ -396,7 +396,7 @@ struct Candidate: Equatable, Identifiable {
         // Re-identify candidates read their files from the DB, not the
         // scanner's scan-event channel, so they start with an empty set.
         files = BridgeCandidateFiles(
-            fileTagsIdentity:
+            fileMetadataIdentity:
                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
             files: [],
             coverFiles: [],

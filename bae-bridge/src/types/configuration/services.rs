@@ -16,8 +16,9 @@ pub struct BridgeConfig {
     /// candidate starts its identification.
     pub identify_automatically: bool,
     /// Whether a newly discovered candidate's draft is created from the
-    /// folder's file tags, or starts blank.
-    pub prefill_with_tags: bool,
+    /// folder's own metadata — its files' tags, its sheets and its name — or
+    /// starts blank.
+    pub prefill_with_file_metadata: bool,
     /// Which catalogs Find online asks, one entry per catalog in core's
     /// order — what the switches on the Find online header and in Settings
     /// render, those being two views of one setting. Core folds the person's

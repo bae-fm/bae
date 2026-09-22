@@ -39,7 +39,7 @@ struct ImportOnlineBrowserTests {
             onIdentify: {},
             onSearchForRelease: {},
             onReset: {},
-            onResetToTags: {},
+            onResetToFileMetadata: {},
             onClearMetadata: {},
             onEditCover: {},
             onSelectCover: { _ in }

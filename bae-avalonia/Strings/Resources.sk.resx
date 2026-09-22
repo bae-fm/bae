@@ -501,14 +501,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Vymazať metadáta</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Súbory kandidáta a priradenia zostanú nezmenené.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Vymazať metadáta?</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Obnoviť zo značiek</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Obnoviť zo značiek?</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Koncept nahradia značky súborov. Súbory kandidáta a priradenia zostanú nezmenené.</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>Obnoviť z metadát súborov</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>Obnoviť z metadát súborov?</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>Koncept nahradí to, čo o vydaní hovoria súbory, hárky a priečinok. Súbory kandidáta a priradenia zostanú nezmenené.</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>Vyhľadať vydanie</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Všeobecné</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifikovať automaticky</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Predvyplniť zo značiek</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Noví kandidáti začínajú konceptom načítaným zo značiek ich súborov.</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>Predvyplniť z metadát súborov</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>Noví kandidáti začínajú konceptom načítaným z ich súborov, hárkov a názvu priečinka.</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Noví kandidáti sa identifikujú hneď po pridaní.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Hľadať v {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Nájsť online sa pýta zdrojov, ktoré sú zaškrtnuté tu.</value></data>

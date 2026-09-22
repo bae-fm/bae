@@ -501,14 +501,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Limpar metadados</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Os ficheiros do candidato e as opções de correspondência mantêm-se inalterados.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Limpar os metadados?</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Repor para as etiquetas</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Repor para as etiquetas?</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>O rascunho é substituído pelas etiquetas dos ficheiros. Os ficheiros do candidato e as opções de correspondência mantêm-se inalterados.</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>Repor para os metadados dos ficheiros</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>Repor para os metadados dos ficheiros?</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>O rascunho é substituído pelo que os ficheiros, as folhas e a pasta dizem sobre a edição. Os ficheiros do candidato e as opções de correspondência mantêm-se inalterados.</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>Procurar edição</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Geral</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identificar automaticamente</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Pré-preencher com as etiquetas</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Os novos candidatos começam com um rascunho lido das etiquetas dos seus ficheiros.</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>Pré-preencher com os metadados dos ficheiros</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>Os novos candidatos começam com um rascunho lido dos seus ficheiros, das folhas e do nome da pasta.</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Os novos candidatos são identificados à medida que vão sendo adicionados.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Pesquisar em {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Procurar online consulta as fontes assinaladas aqui.</value></data>

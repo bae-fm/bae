@@ -367,9 +367,9 @@ pub struct Preferences {
     /// what is already queued finishes, and a person starts each run
     /// themselves.
     pub identify_automatically: bool,
-    /// Whether a candidate's draft is created from the folder's file tags.
+    /// Whether a candidate's draft is created from the folder's own metadata.
     /// Defaults to `true`; off means the draft starts blank.
-    pub prefill_with_tags: bool,
+    pub prefill_with_file_metadata: bool,
     /// Which metadata sources Find online asks — the automatic run, the typed
     /// search, and every retry. All on by default.
     pub metadata_sources: LookupCatalogPreferences,
@@ -401,7 +401,7 @@ impl Default for Preferences {
             library_full_width: false,
             verify_decode_on_import: true,
             identify_automatically: true,
-            prefill_with_tags: true,
+            prefill_with_file_metadata: true,
             metadata_sources: LookupCatalogPreferences::default(),
             cast_enabled: false,
             mcp: McpConfig::disabled_default(),

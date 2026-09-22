@@ -22,7 +22,7 @@ desktop_only! {
     mod file_identity;
     pub mod file_tag_mapper;
     pub(crate) mod file_tag_snapshot;
-    pub(crate) mod file_tags_seed;
+    pub(crate) mod file_metadata_seed;
     mod file_validation;
     pub mod folder_scanner;
     pub(crate) mod volume;

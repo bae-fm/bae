@@ -250,11 +250,11 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         temp: tmp,
     } = setup_import_service().await;
     // The import under test commits a draft it was handed, not one the folder's
-    // tags wrote: the pre-fill would give the candidate a File Tags draft whose
+    // tags wrote: the pre-fill would give the candidate a file-metadata draft whose
     // stored reading this import is not carrying.
     service
         .library_manager
-        .set_prefill_with_tags(false)
+        .set_prefill_with_file_metadata(false)
         .unwrap();
     let folder = tmp.path().join("release");
     std::fs::create_dir(&folder).unwrap();
@@ -383,9 +383,7 @@ async fn unreadable_selected_cover_is_an_error() {
         1,
     )];
 
-    let result = test
-        .service
-        .pick_folder_cover(&discovered, "cover.jpg");
+    let result = test.service.pick_folder_cover(&discovered, "cover.jpg");
 
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
     let err = result.unwrap_err();
@@ -674,7 +672,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
         .expect("the candidate is stored");
     assert_eq!(
         detail.metadata_provenance,
-        Some(crate::import::MetadataProvenance::FileTags)
+        Some(crate::import::MetadataProvenance::FileMetadata)
     );
     assert_eq!(detail.metadata_draft.album_title, "Test Album");
     assert_eq!(
@@ -733,7 +731,7 @@ async fn without_pre_fill_the_discovered_candidate_starts_blank() {
     let test = setup_import_service().await;
     test.service
         .library_manager
-        .set_prefill_with_tags(false)
+        .set_prefill_with_file_metadata(false)
         .unwrap();
     let root = test.temp.path().join("watched");
     let album = root.join("Candidate");

@@ -20,8 +20,8 @@ use super::*;
 /// by any `bridge_*_key` fn. Kept in sync with the catalog by
 /// `no_orphan_core_keys`.
 const DIRECT_KEYS: &[&str] = &[
-    // The import summary names metadata read from file tags.
-    "core.import.metadata.file_tags",
+    // The import summary names a draft read from the folder's own metadata.
+    "core.import.metadata.file_metadata",
     // Storage queue summary (UI composes counts).
     "core.queue.uploading",
     "core.queue.downloading",

@@ -170,10 +170,10 @@ internal sealed class ImportService
 
     /// <summary>Replace the draft from the candidate's file tags.</summary>
     public Func<string, Task<(bool Current, (ulong? Revision, string? Error) Result)>>
-        ApplyCandidateFileTags
+        ApplyCandidateFileMetadata
     { get; init; }
         = _ => throw new InvalidOperationException(
-            "ImportService stub: ApplyCandidateFileTags not wired");
+            "ImportService stub: ApplyCandidateFileMetadata not wired");
 
     /// <summary>Clear the draft while preserving file mapping decisions.</summary>
     public Func<string, Task<(bool Current, (ulong? Revision, string? Error) Result)>>
@@ -305,9 +305,9 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle =>
                 NativeBae.ApplyCandidateExternalMetadata(
                     handle, candidateKey, provenance)),
-        ApplyCandidateFileTags = candidateKey =>
+        ApplyCandidateFileMetadata = candidateKey =>
             session.RunForCurrentHandle(handle =>
-                NativeBae.ApplyCandidateFileTags(handle, candidateKey)),
+                NativeBae.ApplyCandidateFileMetadata(handle, candidateKey)),
         ClearCandidateMetadata = candidateKey =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.ClearCandidateMetadata(handle, candidateKey)),

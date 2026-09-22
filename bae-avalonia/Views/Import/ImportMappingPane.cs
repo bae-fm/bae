@@ -334,8 +334,8 @@ internal sealed partial class ImportMappingPane : UserControl
             {
                 BridgeMetadataProvenance.ExternalRelease external =>
                     await _import.ApplyCandidateExternalMetadata(key, external),
-                BridgeMetadataProvenance.FileTags =>
-                    await _import.ApplyCandidateFileTags(key),
+                BridgeMetadataProvenance.FileMetadata =>
+                    await _import.ApplyCandidateFileMetadata(key),
                 _ => throw new ArgumentOutOfRangeException(
                     nameof(provenance), provenance, "Unknown metadata provenance"),
             };
@@ -554,7 +554,7 @@ internal sealed partial class ImportMappingPane : UserControl
         OnIdentify = Identify,
         OnSearchForRelease = () =>
             PresentMetadata(ImportMetadataPresentation.FindOnline),
-        OnResetToTags = () => _ = ResetToTags(),
+        OnResetToFileMetadata = () => _ = ResetToFileMetadata(),
         OnClearMetadata = () => _ = ClearMetadata(),
         OnEditCover = () => _ = ChooseCover(),
         OnSelectCover = selection => _ = SetCover(selection),
@@ -577,15 +577,15 @@ internal sealed partial class ImportMappingPane : UserControl
 
     /// Replace the draft with what the candidate's own files say. Destructive
     /// like clearing is — it replaces what the draft holds — so it asks first.
-    private async Task ResetToTags()
+    private async Task ResetToFileMetadata()
     {
         if (_key is not { } key)
         {
             return;
         }
-        await _dialogs.ConfirmResetToTags(async () =>
+        await _dialogs.ConfirmResetToFileMetadata(async () =>
         {
-            await ApplyMetadata(new BridgeMetadataProvenance.FileTags());
+            await ApplyMetadata(new BridgeMetadataProvenance.FileMetadata());
         });
     }
 

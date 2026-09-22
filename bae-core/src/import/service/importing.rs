@@ -111,11 +111,11 @@ impl ImportService {
                 error!("could not record the failed import of {candidate_key}: {write}");
             }
 
-            self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
+            self.event_tx
+                .send(crate::import::handle::ImportEvent::ImportProgress {
                     candidate_key,
                     progress: ImportProgress::Failed { error, import_id },
-                },
-            );
+                });
         }
     }
 
@@ -154,7 +154,8 @@ impl ImportService {
         let expected_edit_revision = expectation.candidate.file_edit_revision;
 
         let import_start = std::time::Instant::now();
-        self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
+        self.event_tx
+            .send(crate::import::handle::ImportEvent::ImportProgress {
                 candidate_key: candidate_key.clone(),
                 progress: ImportProgress::Preparing {
                     import_id: import_id.clone(),
@@ -162,8 +163,7 @@ impl ImportService {
                     album_title: String::new(),
                     artist_name: String::new(),
                 },
-            },
-        );
+            });
 
         let stored_candidate = match library_manager
             .load_release_candidate(&candidate_key)
@@ -238,11 +238,11 @@ impl ImportService {
         }
         if matches!(
             metadata_provenance,
-            Some(crate::import::MetadataProvenance::FileTags)
+            Some(crate::import::MetadataProvenance::FileMetadata)
         ) && file_tag_snapshot.is_none()
         {
             return Err(crate::import::ImportError::Internal {
-                detail: format!("{candidate_key}'s File Tags import has no metadata snapshot"),
+                detail: format!("{candidate_key}'s file-metadata import has no metadata snapshot"),
             });
         }
         if matches!(selected_cover, Some(CoverSelection::Embedded(_)))
@@ -292,16 +292,16 @@ impl ImportService {
                 )?;
                 parsed
             }
-            Some(crate::import::MetadataProvenance::FileTags) => {
+            Some(crate::import::MetadataProvenance::FileMetadata) => {
                 let folder_name = source_name.clone();
                 let clock = self.clock.clone();
                 let ids = self.ids.clone();
                 let categorized_for_seed = categorized.clone();
                 let snapshot = file_tag_snapshot
-                    .expect("File Tags was paired with its snapshot above")
+                    .expect("file metadata was paired with its snapshot above")
                     .clone();
                 let parsed = tokio::task::spawn_blocking(move || {
-                    crate::import::file_tag_mapper::map_file_tag_snapshot_to_db(
+                    crate::import::file_tag_mapper::map_file_metadata_to_db(
                         &categorized_for_seed,
                         &snapshot,
                         Some(&folder_name),
@@ -311,9 +311,9 @@ impl ImportService {
                 })
                 .await
                 .map_err(|e| crate::import::ImportError::Internal {
-                    detail: format!("File Tags mapping task failed: {e}"),
+                    detail: format!("file-metadata mapping task failed: {e}"),
                 })??;
-                // A File Tags import claims no source release, so there is no
+                // A file-metadata import claims no source release, so there is no
                 // release cover to derive: its art comes from the folder or the
                 // files' own tags.
                 parsed
@@ -389,7 +389,7 @@ impl ImportService {
             &categorized,
         )?;
 
-        // File Tags captured its embedded image in the same snapshot that
+        // File metadata captured its embedded image in the same snapshot that
         // seeded the pane, so the worker never opens the tags a second time.
         // A stored embedded selection names the source audio exactly; no
         // different snapshot image may silently stand in for it.
@@ -412,7 +412,7 @@ impl ImportService {
                 (Some(CoverSelection::Embedded(source_file_id)), None) => {
                     return Err(crate::import::ImportError::Internal {
                         detail: format!(
-                            "Selected embedded cover {source_file_id} is absent from the File Tags snapshot"
+                            "Selected embedded cover {source_file_id} is absent from the file-tag snapshot"
                         ),
                     })
                 }
@@ -833,11 +833,11 @@ impl ImportService {
                 album_id: album_id.to_string(),
             }
         };
-        self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
+        self.event_tx
+            .send(crate::import::handle::ImportEvent::ImportProgress {
                 candidate_key: candidate_key.to_string(),
                 progress,
-            },
-        );
+            });
 
         info!("Import complete for release {}", db_release.id);
         Ok(())

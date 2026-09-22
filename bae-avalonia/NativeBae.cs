@@ -575,8 +575,8 @@ internal static partial class NativeBae
     internal static string? SetIdentifyAutomatically(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetIdentifyAutomatically(enabled));
 
-    internal static string? SetPrefillWithTags(AppHandle handle, bool enabled) =>
-        CaptureError(() => handle.SetPrefillWithTags(enabled));
+    internal static string? SetPrefillWithFileMetadata(AppHandle handle, bool enabled) =>
+        CaptureError(() => handle.SetPrefillWithFileMetadata(enabled));
 
     internal static string? SetMetadataSourceEnabled(
         AppHandle handle, BridgeCatalog source, bool enabled) =>
@@ -860,7 +860,7 @@ internal static partial class NativeBae
         return (revision, error);
     }
 
-    internal static (ulong? Revision, string? Error) ApplyCandidateFileTags(
+    internal static (ulong? Revision, string? Error) ApplyCandidateFileMetadata(
         AppHandle handle,
         string candidateKey)
     {
@@ -868,7 +868,7 @@ internal static partial class NativeBae
         var error = CaptureError(() =>
             revision = Await(() => handle.SelectCandidateMetadataProvenance(
                 candidateKey,
-                new BridgeMetadataProvenance.FileTags())));
+                new BridgeMetadataProvenance.FileMetadata())));
         return (revision, error);
     }
 

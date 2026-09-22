@@ -34,7 +34,7 @@ public sealed class ReleaseCandidateChoice
         BridgeMetadataProvenance.ExternalRelease external =>
             new BridgeReleaseReseed.ExternalRelease(
                 external.Record.Key, external.Record.Catalog, external.Partners),
-        BridgeMetadataProvenance.FileTags => new BridgeReleaseReseed.FileTags(),
+        BridgeMetadataProvenance.FileMetadata => new BridgeReleaseReseed.FileMetadata(),
         _ => throw new ArgumentOutOfRangeException(
             nameof(Provenance), Provenance, "Unknown metadata provenance"),
     };

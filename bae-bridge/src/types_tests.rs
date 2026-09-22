@@ -160,11 +160,11 @@ mod conversion_roundtrip {
     }
 
     #[test]
-    fn config_exposes_prefill_with_tags_and_identify_automatically_independently() {
+    fn config_exposes_prefill_with_file_metadata_and_identify_automatically_independently() {
         use bae_core::config::Config;
 
         for identify_automatically in [true, false] {
-            for prefill_with_tags in [true, false] {
+            for prefill_with_file_metadata in [true, false] {
                 let mut config = Config::with_defaults(
                     "library".to_string(),
                     "device".to_string(),
@@ -172,11 +172,14 @@ mod conversion_roundtrip {
                     "Library".to_string(),
                 );
                 config.prefs.identify_automatically = identify_automatically;
-                config.prefs.prefill_with_tags = prefill_with_tags;
+                config.prefs.prefill_with_file_metadata = prefill_with_file_metadata;
 
                 let bridge = BridgeConfig::from_core(&config);
                 assert_eq!(bridge.identify_automatically, identify_automatically);
-                assert_eq!(bridge.prefill_with_tags, prefill_with_tags);
+                assert_eq!(
+                    bridge.prefill_with_file_metadata,
+                    prefill_with_file_metadata
+                );
             }
         }
     }

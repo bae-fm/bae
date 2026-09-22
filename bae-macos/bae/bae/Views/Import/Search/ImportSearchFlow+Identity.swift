@@ -36,8 +36,8 @@ extension ImportSearchFlow {
                         key,
                         provenance: provenance
                     )
-                case .fileTags:
-                    _ = try await importer.applyCandidateFileTags(key)
+                case .fileMetadata:
+                    _ = try await importer.applyCandidateFileMetadata(key)
                 }
                 guard let session else { return }
                 importStore.metadataApplicationSucceeded(
@@ -99,7 +99,7 @@ extension ImportSearchFlow {
             line = String(
                 localized: "Failed to load release details: \(displayed.line)"
             )
-        case .fileTags:
+        case .fileMetadata:
             line = String(
                 localized: "Couldn't read file tags: \(displayed.line)"
             )

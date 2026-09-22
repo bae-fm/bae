@@ -474,14 +474,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Metagegevens wissen</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>De bestanden en toewijzingen van de kandidaat blijven ongewijzigd.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Metagegevens wissen?</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Terugzetten naar tags</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Terugzetten naar tags?</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Het concept wordt vervangen door de tags van de bestanden. De bestanden en toewijzingen van de kandidaat blijven ongewijzigd.</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>Terugzetten naar bestandsmetagegevens</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>Terugzetten naar bestandsmetagegevens?</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>Het concept wordt vervangen door wat de bestanden, sheets en map over de uitgave zeggen. De bestanden en toewijzingen van de kandidaat blijven ongewijzigd.</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>Uitgave zoeken</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Algemeen</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Automatisch identificeren</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Vooraf invullen met tags</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Nieuwe kandidaten beginnen met een concept dat uit hun bestandstags is gelezen.</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>Vooraf invullen met bestandsmetagegevens</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>Nieuwe kandidaten beginnen met een concept dat uit hun bestanden, sheets en mapnaam is gelezen.</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nieuwe kandidaten worden geïdentificeerd zodra ze worden toegevoegd.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>In {source} zoeken</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Online zoeken raadpleegt de hier aangevinkte bronnen.</value></data>

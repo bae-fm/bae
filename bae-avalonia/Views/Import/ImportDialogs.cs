@@ -109,17 +109,17 @@ internal sealed class ImportDialogs
     /// <summary>Ask before replacing the draft with what the candidate's own
     /// files say — the same shape as clearing, which is the other command that
     /// rewrites the draft in place.</summary>
-    internal Task ConfirmResetToTags(Func<Task> reset) => _host.Show(close =>
+    internal Task ConfirmResetToFileMetadata(Func<Task> reset) => _host.Show(close =>
     {
         var column = DialogUi.Column();
         column.Children.Add(DialogUi.Title(
-            Loc.Chrome("import.metadata.reset_to_tags_title")));
+            Loc.Chrome("import.metadata.reset_to_file_metadata_title")));
         column.Children.Add(DialogUi.Body(
-            Loc.Chrome("import.metadata.reset_to_tags_body")));
+            Loc.Chrome("import.metadata.reset_to_file_metadata_body")));
 
         var cancel = new Button { Content = Loc.Chrome("action.cancel") };
         cancel.Click += (_, _) => close();
-        var confirm = DialogUi.Primary(Loc.Chrome("import.metadata.reset_to_tags"));
+        var confirm = DialogUi.Primary(Loc.Chrome("import.metadata.reset_to_file_metadata"));
         confirm.Click += async (_, _) =>
         {
             confirm.IsEnabled = false;

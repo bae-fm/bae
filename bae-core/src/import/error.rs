@@ -95,7 +95,7 @@ pub enum ImportError {
     #[error("release disc or side boundaries disagree with the draft")]
     MetadataGrouping,
 
-    /// Local file-tag evidence can't seed a File Tags import (no audio files,
+    /// Local file-tag evidence can't seed a file-metadata import (no audio files,
     /// a file failed to open / parse, embedded-cover read failure).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("file tags cannot be read: {detail}")]

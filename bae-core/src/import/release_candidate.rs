@@ -46,7 +46,7 @@ impl ReleaseCandidate {
         clock: &dyn coven::Clock,
         ids: &dyn coven::IdProvider,
     ) -> Result<super::ReleaseUserEdit, super::ImportError> {
-        let parsed = super::file_tag_mapper::map_file_tag_snapshot_to_db(
+        let parsed = super::file_tag_mapper::map_file_metadata_to_db(
             self.files(),
             snapshot,
             Some(self.name()),

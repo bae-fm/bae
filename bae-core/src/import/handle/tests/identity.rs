@@ -535,7 +535,7 @@ async fn test_no_match_returns_none() {
     let incoming = vec![mb_identity("mb-rg-999", "mb-rel-999")];
     assert_eq!(album_for_import(&manager, &incoming).await, None);
 
-    // Empty identity vec (File Tags or direct entry) → skip lookup.
+    // Empty identity vec (file metadata or direct entry) → skip lookup.
     assert_eq!(album_for_import(&manager, &[]).await, None);
 }
 
@@ -597,7 +597,7 @@ async fn test_cross_source_merge_via_path_2_inverse() {
 
 #[tokio::test]
 async fn test_file_tags_import_skips_lookup() {
-    // File Tags imports never deduplicate against existing releases —
+    // File-metadata imports never deduplicate against existing releases —
     // they always create a fresh album.
     let (manager, _tmp, _album, _release) =
         album_with("Existing Album", &[mb_identity("mb-rg-1", "mb-rel-1")]).await;

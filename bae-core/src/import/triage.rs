@@ -215,7 +215,7 @@ mod tests {
             TriageReading::Unidentified
         );
         assert_eq!(
-            TriageReading::of(None, Some(&MetadataProvenance::FileTags), Vec::new()),
+            TriageReading::of(None, Some(&MetadataProvenance::FileMetadata), Vec::new()),
             TriageReading::Unidentified,
             "a blank draft leads with its folder whatever once wrote it"
         );
@@ -226,7 +226,7 @@ mod tests {
         assert_eq!(
             TriageReading::of(
                 Some(&a_draft()),
-                Some(&MetadataProvenance::FileTags),
+                Some(&MetadataProvenance::FileMetadata),
                 Vec::new()
             ),
             TriageReading::Prefilled

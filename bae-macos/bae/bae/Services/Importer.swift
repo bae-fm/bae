@@ -50,7 +50,7 @@ private struct ImportOperations: Sendable {
         @Sendable (String, String, String, String?) async throws -> Void
     let applyCandidateExternalMetadata:
         @Sendable (String, BridgeMetadataProvenance) async throws -> UInt64
-    let applyCandidateFileTags: @Sendable (String) async throws -> UInt64
+    let applyCandidateFileMetadata: @Sendable (String) async throws -> UInt64
     let resetCandidateSetup: @Sendable (String) async throws -> Void
     let clearCandidateMetadata: @Sendable (String) async throws -> UInt64
     let setSheetDisc:
@@ -93,7 +93,7 @@ private struct ImportOperations: Sendable {
     let mergeCandidateArtistIdentityConflict:
         @Sendable (String, String) async throws -> Void
     let setIdentifyAutomatically: @MainActor @Sendable (Bool) throws -> Void
-    let setPrefillWithTags: @MainActor @Sendable (Bool) throws -> Void
+    let setPrefillWithFileMetadata: @MainActor @Sendable (Bool) throws -> Void
     let setMetadataSourceEnabled:
         @MainActor @Sendable (BridgeCatalog, Bool) throws -> Void
 }
@@ -144,10 +144,10 @@ extension ImportOperations {
                     provenance: $1
                 )
             },
-            applyCandidateFileTags: {
+            applyCandidateFileMetadata: {
                 try await handle.selectCandidateMetadataProvenance(
                     candidateKey: $0,
-                    provenance: .fileTags
+                    provenance: .fileMetadata
                 )
             },
             resetCandidateSetup: {
@@ -279,8 +279,8 @@ extension ImportOperations {
             setIdentifyAutomatically: {
                 try handle.setIdentifyAutomatically(enabled: $0)
             },
-            setPrefillWithTags: {
-                try handle.setPrefillWithTags(enabled: $0)
+            setPrefillWithFileMetadata: {
+                try handle.setPrefillWithFileMetadata(enabled: $0)
             },
             setMetadataSourceEnabled: {
                 try handle.setMetadataSourceEnabled(source: $0, enabled: $1)
@@ -340,7 +340,7 @@ final class Importer: Sendable, Observable {
             async throws -> UInt64 = { _, _ in
                 throw StubError.notImplemented
             },
-        applyCandidateFileTags:
+        applyCandidateFileMetadata:
             @escaping @Sendable (String) async throws -> UInt64 = { _ in
                 throw StubError.notImplemented
             },
@@ -430,7 +430,7 @@ final class Importer: Sendable, Observable {
             },
         setIdentifyAutomatically:
             @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
-        setPrefillWithTags:
+        setPrefillWithFileMetadata:
             @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
         setMetadataSourceEnabled:
             @escaping @MainActor @Sendable (
@@ -448,7 +448,7 @@ final class Importer: Sendable, Observable {
             setCandidateSkipped: setCandidateSkipped,
             setSheetBinding: setSheetBinding,
             applyCandidateExternalMetadata: applyCandidateExternalMetadata,
-            applyCandidateFileTags: applyCandidateFileTags,
+            applyCandidateFileMetadata: applyCandidateFileMetadata,
             resetCandidateSetup: resetCandidateSetup,
             clearCandidateMetadata: clearCandidateMetadata,
             setSheetDisc: setSheetDisc,
@@ -476,7 +476,7 @@ final class Importer: Sendable, Observable {
                 throw StubError.notImplemented
             },
             setIdentifyAutomatically: setIdentifyAutomatically,
-            setPrefillWithTags: setPrefillWithTags,
+            setPrefillWithFileMetadata: setPrefillWithFileMetadata,
             setMetadataSourceEnabled: setMetadataSourceEnabled
         )
     }
@@ -548,8 +548,10 @@ extension Importer {
         )
     }
 
-    func applyCandidateFileTags(_ candidateKey: String) async throws -> UInt64 {
-        try await operations.applyCandidateFileTags(candidateKey)
+    func applyCandidateFileMetadata(_ candidateKey: String) async throws
+        -> UInt64
+    {
+        try await operations.applyCandidateFileMetadata(candidateKey)
     }
 
     func resetCandidateSetup(_ candidateKey: String) async throws {
@@ -739,8 +741,8 @@ extension Importer {
     }
 
     @MainActor
-    func setPrefillWithTags(_ enabled: Bool) throws {
-        try operations.setPrefillWithTags(enabled)
+    func setPrefillWithFileMetadata(_ enabled: Bool) throws {
+        try operations.setPrefillWithFileMetadata(enabled)
     }
 
     /// Ask, or stop asking, one metadata source — the same write behind the

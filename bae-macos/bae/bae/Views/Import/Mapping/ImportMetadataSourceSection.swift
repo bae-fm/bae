@@ -25,7 +25,7 @@ struct ImportMetadataSourceSection: View {
     /// Open the pane on its typed search, starting nothing.
     let onSearchForRelease: () -> Void
     let onReset: () -> Void
-    let onResetToTags: () -> Void
+    let onResetToFileMetadata: () -> Void
     let onClearMetadata: () -> Void
     let onEditCover: () -> Void
     let onSelectCover: (BridgeCoverSelection) -> Void
@@ -69,7 +69,7 @@ struct ImportMetadataSourceSection: View {
                     identifyAutomatically: onIdentify,
                     searchForRelease: onSearchForRelease,
                     reset: onReset,
-                    resetToTags: onResetToTags,
+                    resetToFileMetadata: onResetToFileMetadata,
                     clearMetadata: onClearMetadata
                 ),
                 localCoverSelections: candidate.localCoverSelections,

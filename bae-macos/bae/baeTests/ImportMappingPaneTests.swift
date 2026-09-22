@@ -65,7 +65,7 @@ private final class Recorder {
                     return 1
                 }
             },
-            applyCandidateFileTags: { [self] _ in
+            applyCandidateFileMetadata: { [self] _ in
                 try await MainActor.run {
                     fileTagsApplications += 1
                     if let pickFailure { throw pickFailure }
@@ -707,7 +707,7 @@ extension ImportMappingPaneTests {
     // 8. Applying each source writes that source. Browsing either source does
     //    not replace the draft and is covered separately.
     @MainActor
-    @Test("applying File Tags and an online release writes both sources")
+    @Test("applying file metadata and an online release writes both sources")
     func applyingMetadataSourcesWritesBothSources() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
@@ -719,7 +719,7 @@ extension ImportMappingPaneTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: .fileTags
+            provenance: .fileMetadata
         )
         try await Task.sleep(for: .milliseconds(50))
         #expect(recorder.fileTagsApplications == 1)
@@ -728,13 +728,13 @@ extension ImportMappingPaneTests {
             key: MappingFixtures.candidateKey,
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.fileTagsTable,
-                metadataProvenance: .fileTags
+                metadataProvenance: .fileMetadata
             )
         )
         var candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
-        #expect(candidate.metadataProvenance == .fileTags)
+        #expect(candidate.metadataProvenance == .fileMetadata)
         #expect(candidate.mapping.trackMappings.count == 2)
         #expect(candidate.mapping.reconciliation == nil)
         #expect(candidate.pickedRelease == nil)

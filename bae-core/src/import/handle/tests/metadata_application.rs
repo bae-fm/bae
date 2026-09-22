@@ -52,7 +52,7 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
     handle
         .select_candidate_metadata_provenance(
             key.clone(),
-            crate::import::MetadataProvenance::FileTags,
+            crate::import::MetadataProvenance::FileMetadata,
         )
         .await
         .unwrap();

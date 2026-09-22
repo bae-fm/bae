@@ -35,9 +35,9 @@ struct ImportReleaseSummary {
                 values.pressing.catalogNumber,
                 trackText,
             ])
-        case .fileTags:
+        case .fileMetadata:
             factsLine = Self.factsLine([
-                coreString("core.import.metadata.file_tags"), trackText,
+                coreString("core.import.metadata.file_metadata"), trackText,
             ])
         case nil:
             factsLine = trackText

@@ -183,7 +183,7 @@ fn push_artist(
 ///   - else (no source ids) → a case-insensitive name match. For
 ///     MusicBrainz provenance the match is restricted to existing
 ///     artists that also lack a musicbrainz id (an id-less credit never merges
-///     into an id-bearing artist); Discogs / FileTags match any artist by name.
+///     into an id-bearing artist); Discogs / file metadata match any artist by name.
 fn find_or_push_artist(
     artists: &mut Vec<DbArtist>,
     artist_ref: &ArtistRef,
@@ -407,7 +407,7 @@ pub(crate) fn assemble_parsed_album(
     let now = clock.now();
     let artist_source = match &ir.metadata_provenance {
         Some(MetadataProvenance::ExternalRelease { record, .. }) => Some(record.catalog),
-        Some(MetadataProvenance::FileTags) | None => None,
+        Some(MetadataProvenance::FileMetadata) | None => None,
     };
 
     // Release-level artists: primary then additional, minted in order, no dedup.
@@ -433,7 +433,10 @@ pub(crate) fn assemble_parsed_album(
         album_id: album.id.clone(),
         release_name: None,
         pressing: ir.pressing,
-        draft_from_tags: matches!(ir.metadata_provenance, Some(MetadataProvenance::FileTags)),
+        draft_from_tags: matches!(
+            ir.metadata_provenance,
+            Some(MetadataProvenance::FileMetadata)
+        ),
         // Which lookup found the record is the candidate's answer, not this
         // assembly's; `run_import` stamps it onto the row it writes.
         // Imports land local; the upload observer flips `remote` true once the

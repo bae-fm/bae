@@ -39,8 +39,8 @@ struct Pressing: Equatable, Identifiable {
                 source: record.catalog,
                 partners: partners
             )
-        case .fileTags:
-            .fileTags
+        case .fileMetadata:
+            .fileMetadata
         }
     }
 

@@ -2,7 +2,7 @@
 //
 // Exact / Approximate fetch through MB / Discogs, so these tests seed the
 // release documents and the cover-art lookups first and `prepare_release` reads
-// them instead of hitting the network. The File Tags path makes no external
+// them instead of hitting the network. The file-metadata path makes no external
 // source claim, so it needs no seeding.
 //
 // A seeded answer is keyed by the URL its request goes to, base address
@@ -24,7 +24,7 @@ async fn archived_for(
 }
 
 #[tokio::test]
-async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
+async fn re_identify_with_file_metadata_clears_identities_and_moves_album() {
     use lofty::config::WriteOptions;
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
@@ -96,7 +96,7 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
         .unwrap();
 
     manager
-        .re_identify_release(&release.id, crate::import::ReleaseReseed::FileTags)
+        .re_identify_release(&release.id, crate::import::ReleaseReseed::FileMetadata)
         .await
         .unwrap();
 
@@ -116,7 +116,7 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
         .unwrap();
     assert_ne!(new_album_id, album.id);
 
-    // Identity rows are cleared and the metadata provenance becomes File Tags.
+    // Identity rows are cleared and the metadata provenance becomes file metadata.
     let records = manager
         .database
         .get_release_records(&release.id)
@@ -425,10 +425,10 @@ async fn re_identify_release_followed_by_reset_succeeds() {
 }
 
 #[tokio::test]
-async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
+async fn re_identify_with_file_metadata_reseeds_rows_from_file_tags() {
     // A release carrying MusicBrainz-shaped rows, with local audio
     // files whose embedded tags say something different. Re-identifying
-    // as File Tags must reseed the album/track rows from those tags — not
+    // as file metadata must reseed the album/track rows from those tags — not
     // leave the old MB metadata displayed under a "use my files" claim.
     use crate::import::ReleaseReseed;
     use lofty::config::WriteOptions;
@@ -514,7 +514,7 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
     }
 
     manager
-        .re_identify_release(&release.id, ReleaseReseed::FileTags)
+        .re_identify_release(&release.id, ReleaseReseed::FileMetadata)
         .await
         .unwrap();
 
@@ -561,7 +561,7 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
 /// Applying file tags replaces edited fields, including clearing values
 /// absent from the tags.
 #[tokio::test]
-async fn re_identify_with_file_tags_replaces_previously_edited_fields() {
+async fn re_identify_with_file_metadata_replaces_previously_edited_fields() {
     use crate::import::ReleaseReseed;
     use lofty::config::WriteOptions;
     use lofty::prelude::*;
@@ -625,7 +625,7 @@ async fn re_identify_with_file_tags_replaces_previously_edited_fields() {
         .unwrap();
 
     manager
-        .re_identify_release(&release.id, ReleaseReseed::FileTags)
+        .re_identify_release(&release.id, ReleaseReseed::FileMetadata)
         .await
         .unwrap();
 

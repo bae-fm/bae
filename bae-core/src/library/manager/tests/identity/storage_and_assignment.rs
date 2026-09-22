@@ -85,7 +85,7 @@ async fn seed_grouped_releases(
 }
 
 #[tokio::test]
-async fn set_records_to_file_tags_moves_release_to_fresh_album() {
+async fn set_records_to_file_metadata_moves_release_to_fresh_album() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let album = create_test_album();
@@ -157,11 +157,7 @@ async fn set_records_replaces_rows_when_the_new_records_fit_the_current_album() 
     // Re-point release1 at another pressing within g1. The new row still
     // agrees with release2's group, so release1 stays put.
     manager
-        .set_records(
-            &release1.id,
-            vec![mb_identity("g1", "mb-rel-99")],
-            false,
-        )
+        .set_records(&release1.id, vec![mb_identity("g1", "mb-rel-99")], false)
         .await
         .unwrap();
 
@@ -220,11 +216,7 @@ async fn set_records_creates_a_new_album_when_no_existing_album_fits() {
     // album (album_a) holds release_beta on g1, so it can't stay.
     // No other album holds g2 either → fresh album.
     manager
-        .set_records(
-            &release_alpha.id,
-            vec![mb_identity("g2", "g2-rel")],
-            false,
-        )
+        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")], false)
         .await
         .unwrap();
 
@@ -308,11 +300,7 @@ async fn set_records_keeps_the_vacated_album_when_other_releases_remain() {
     let release_beta = &releases[1];
 
     manager
-        .set_records(
-            &release_alpha.id,
-            vec![mb_identity("g2", "g2-rel")],
-            false,
-        )
+        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")], false)
         .await
         .unwrap();
 
@@ -457,11 +445,7 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
     // release_alpha takes a different group → can't stay in album_a
     // (g1 disagrees with g2), no other album holds g2 → fresh album.
     manager
-        .set_records(
-            &release_alpha.id,
-            vec![mb_identity("g2", "g2-rel")],
-            false,
-        )
+        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")], false)
         .await
         .unwrap();
 
@@ -524,11 +508,7 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
         .unwrap();
 
     manager
-        .set_records(
-            &release_alpha.id,
-            vec![mb_identity("g2", "g2-rel")],
-            false,
-        )
+        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")], false)
         .await
         .unwrap();
 

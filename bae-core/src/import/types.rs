@@ -224,7 +224,7 @@ pub enum MetadataProvenance {
         /// alone.
         partners: Vec<MetadataRef>,
     },
-    FileTags,
+    FileMetadata,
 }
 
 /// One candidate's editable metadata, independent of the source that last
@@ -389,8 +389,9 @@ impl ReleaseRecord {
 ///   `key = release_ref.key`, pressing-level metadata (year, format, label,
 ///   catalog number, country) seeds from the picked release, and the release
 ///   records that exact external provenance.
-/// - **FileTags** — no catalog claim. No records, File Tags
-///   provenance, and a fresh album. Metadata seeds from embedded file tags.
+/// - **FileMetadata** — no catalog claim. No records, file-metadata
+///   provenance, and a fresh album. Metadata seeds from what the folder's own
+///   files, sheets and name say.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ReleaseReseed {
@@ -400,7 +401,7 @@ pub enum ReleaseReseed {
         /// same claim [`MetadataProvenance`] records for an import candidate.
         partners: Vec<MetadataRef>,
     },
-    FileTags,
+    FileMetadata,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -414,7 +415,7 @@ impl ReleaseReseed {
                 record: release_ref.clone(),
                 partners: partners.clone(),
             },
-            Self::FileTags => MetadataProvenance::FileTags,
+            Self::FileMetadata => MetadataProvenance::FileMetadata,
         }
     }
 }
@@ -497,7 +498,7 @@ pub struct ReleaseUserEdit {
 
 /// Per-pressing fields a release carries. Grouped because they share one
 /// identity-claim rule: either all six come from a picked release, or the user
-/// starts with all six blank and fills in what they know (File Tags or direct
+/// starts with all six blank and fills in what they know (file metadata or direct
 /// entry).
 /// A per-field `None` means "not known yet" within whichever case the editor
 /// is in; the whole-block "no pressing claim" is [`PressingEdit::blank()`], so
@@ -514,7 +515,7 @@ pub struct PressingEdit {
 
 impl PressingEdit {
     /// All fields `None`. Pre-fill for editors where the user hasn't
-    /// claimed a specific pressing yet (File Tags and direct-entry imports).
+    /// claimed a specific pressing yet (file metadata and direct-entry imports).
     pub fn blank() -> Self {
         Self {
             year: None,
@@ -575,7 +576,7 @@ pub struct TrackUserEdit {
 
 /// The current raw edit form for a library release, together with whether its
 /// stored metadata provenance can be projected again. Source-less releases
-/// have no source payload to project; File Tags and external releases do.
+/// have no source payload to project; file metadata and external releases do.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,

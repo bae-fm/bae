@@ -31,12 +31,12 @@ fn to_yaml(mapping: &Mapping) -> String {
 
 /// That file rewritten into the last unversioned shape: no `config_version`, no
 /// `snapshot_commit_threshold`, and the draft's origin written as the retired
-/// source picker instead of `prefill_with_tags`.
+/// source picker instead of the pre-fill setting.
 fn unversioned(config: &Config, source: &str) -> Mapping {
     let mut mapping = to_mapping(config);
     mapping.remove(CONFIG_VERSION_KEY).unwrap();
     mapping.remove(SNAPSHOT_COMMIT_THRESHOLD_KEY).unwrap();
-    mapping.remove(PREFILL_WITH_TAGS_KEY).unwrap();
+    mapping.remove(PREFILL_WITH_FILE_METADATA_KEY).unwrap();
     mapping.insert(
         Value::from(IMPORT_METADATA_SOURCE_KEY),
         Value::from(source.to_string()),
@@ -151,7 +151,7 @@ fn migration_one_drops_the_retired_key_over_a_recorded_prefill() {
 }
 
 #[test]
-fn migration_one_leaves_a_file_that_records_only_the_current_key_alone() {
+fn migration_one_leaves_a_file_that_records_only_the_key_it_writes_alone() {
     let mut mapping = Mapping::new();
     mapping.insert(Value::from(PREFILL_WITH_TAGS_KEY), Value::from(false));
 
@@ -172,7 +172,10 @@ fn a_file_older_than_the_shape_the_step_covers_fails_on_the_key_it_lacks() {
 
     let error = parse_config_yaml(&to_yaml(&mapping)).unwrap_err();
 
-    assert!(error.to_string().contains("prefill_with_tags"), "{error}");
+    assert!(
+        error.to_string().contains("prefill_with_file_metadata"),
+        "{error}"
+    );
 }
 
 /// The typed read requires `config_version` like every other key; what makes an
@@ -189,7 +192,7 @@ fn the_ladder_stamps_the_version_the_strict_read_requires() {
     let parsed = parse_config_yaml(&to_yaml(&mapping)).unwrap();
     assert_eq!(parsed.upgraded_from, Some(0));
     assert_eq!(parsed.config.config_version, current_version());
-    assert!(parsed.config.prefs.prefill_with_tags);
+    assert!(parsed.config.prefs.prefill_with_file_metadata);
 }
 
 /// The whole file a library at the unversioned shape has on disk: it opens, and
@@ -206,9 +209,9 @@ fn an_unversioned_library_keeps_every_setting_it_recorded() {
     let parsed = parse_config_yaml(&to_yaml(&unversioned(&config, "none"))).unwrap();
 
     assert_eq!(parsed.upgraded_from, Some(0));
-    assert_eq!(parsed.config.config_version, 1);
+    assert_eq!(parsed.config.config_version, current_version());
     assert_eq!(parsed.config.snapshot_commit_threshold.get(), 100);
-    assert!(!parsed.config.prefs.prefill_with_tags);
+    assert!(!parsed.config.prefs.prefill_with_file_metadata);
     assert_eq!(parsed.config.identity.library_name, "Shelf");
     assert!(!parsed.config.prefs.pause_between_sides);
     assert_eq!(parsed.config.prefs.max_concurrent_uploads.get(), 6);
@@ -221,11 +224,66 @@ fn an_unversioned_library_keeps_every_setting_it_recorded() {
 #[test]
 fn a_file_at_the_current_version_still_fails_on_a_missing_key() {
     let mut mapping = to_mapping(&make_config("lib-current"));
-    mapping.remove(PREFILL_WITH_TAGS_KEY).unwrap();
+    mapping.remove(PREFILL_WITH_FILE_METADATA_KEY).unwrap();
 
     let error = parse_config_yaml(&to_yaml(&mapping)).unwrap_err();
 
-    assert!(error.to_string().contains("prefill_with_tags"), "{error}");
+    assert!(
+        error.to_string().contains("prefill_with_file_metadata"),
+        "{error}"
+    );
+}
+
+/// Version 2 renames the pre-fill setting and keeps the value the file
+/// records: a person who turned it off stays turned off.
+#[test]
+fn migration_two_renames_the_pre_fill_setting_keeping_its_value() {
+    for recorded in [true, false] {
+        let mut mapping = Mapping::new();
+        mapping.insert(Value::from(PREFILL_WITH_TAGS_KEY), Value::from(recorded));
+
+        prefill_with_tags_becomes_file_metadata(&mut mapping).unwrap();
+
+        assert!(!mapping.contains_key(PREFILL_WITH_TAGS_KEY), "{recorded}");
+        assert_eq!(
+            mapping
+                .get(PREFILL_WITH_FILE_METADATA_KEY)
+                .unwrap()
+                .as_bool(),
+            Some(recorded)
+        );
+    }
+}
+
+/// A file recording neither key gets neither invented: what it lacks is the
+/// strict read's to name.
+#[test]
+fn migration_two_invents_nothing_for_a_file_that_records_neither_key() {
+    let mut mapping = Mapping::new();
+
+    prefill_with_tags_becomes_file_metadata(&mut mapping).unwrap();
+
+    assert!(mapping.is_empty());
+}
+
+/// The whole ladder run end to end: a version-1 file names the setting the way
+/// version 1 did, and opening it carries that value onto the current key.
+#[test]
+fn a_version_one_file_arrives_with_the_setting_under_its_new_name() {
+    let mut mapping = to_mapping(&make_config("lib-v1"));
+    let recorded = mapping.remove(PREFILL_WITH_FILE_METADATA_KEY).unwrap();
+    mapping.insert(Value::from(PREFILL_WITH_TAGS_KEY), Value::from(false));
+    assert_eq!(recorded.as_bool(), Some(true), "a new library pre-fills");
+    mapping.insert(Value::from(CONFIG_VERSION_KEY), Value::from(1u32));
+
+    let parsed = parse_config_yaml(&to_yaml(&mapping)).unwrap();
+
+    assert_eq!(parsed.upgraded_from, Some(1));
+    assert_eq!(parsed.config.config_version, current_version());
+    assert!(
+        !parsed.config.prefs.prefill_with_file_metadata,
+        "the value the person set is what the new key carries"
+    );
 }
 
 #[test]
@@ -296,7 +354,7 @@ fn opening_an_unversioned_library_writes_the_upgraded_file_back() {
         &coven::SequentialIdProvider::new("device"),
     )
     .unwrap();
-    assert!(loaded.prefs.prefill_with_tags);
+    assert!(loaded.prefs.prefill_with_file_metadata);
 
     let written = std::fs::read_to_string(&config_path).unwrap();
     assert!(

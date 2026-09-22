@@ -24,13 +24,13 @@ public sealed class SettingsImportTests
 
         var boxes = content.GetLogicalDescendants().OfType<CheckBox>().ToList();
         Assert.Equal(2, boxes.Count);
-        Assert.Equal(Loc.Chrome("settings.import.prefill_with_tags"), boxes[0].Content);
+        Assert.Equal(Loc.Chrome("settings.import.prefill_with_file_metadata"), boxes[0].Content);
         Assert.Equal(
             Loc.Chrome("settings.import.identify_automatically"),
             boxes[1].Content);
         foreach (var help in new[]
         {
-            "settings.import.prefill_with_tags_help",
+            "settings.import.prefill_with_file_metadata_help",
             "settings.import.identify_automatically_help",
         })
         {
@@ -48,7 +48,7 @@ public sealed class SettingsImportTests
         {
             Render(renderers, new Settings
             {
-                PrefillWithTags = prefill,
+                PrefillWithFileMetadata = prefill,
                 IdentifyAutomatically = identify,
             });
             Assert.Equal(prefill, boxes[0].IsChecked);

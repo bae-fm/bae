@@ -162,7 +162,7 @@ impl WindowItemRows {
                             records,
                         );
                     }
-                    // File Tags names no external release, so nothing leads
+                    // File metadata names no external release, so nothing leads
                     // the row: the verdict's lead does not stand in for a pick.
                     None if row.metadata_provenance.is_some() => row.matched = None,
                     None => {}
@@ -258,7 +258,7 @@ fn row_cover_source(
             .and_then(|stored| stored.snapshot)
             .ok_or_else(|| {
                 DbError::Message(format!(
-                    "candidate {} selects embedded cover without a File Tags snapshot",
+                    "candidate {} selects embedded cover without a file-tag snapshot",
                     candidate.path
                 ))
             })?;
@@ -410,7 +410,7 @@ pub(super) fn load_candidate_detail_on(
             .and_then(|stored| stored.snapshot)
             .ok_or_else(|| {
                 DbError::Message(format!(
-                    "candidate {} selects embedded cover without a File Tags snapshot",
+                    "candidate {} selects embedded cover without a file-tag snapshot",
                     candidate.key()
                 ))
             })?;
@@ -589,7 +589,10 @@ fn chosen_cover(
                 .artwork()
                 .find(|image| &image.relative_path == file_id);
             if image.is_none() {
-                tracing::warn!(file_id, "the selected cover is no longer among the candidate's images");
+                tracing::warn!(
+                    file_id,
+                    "the selected cover is no longer among the candidate's images"
+                );
             }
             image.map(|image| CoverChoice::local(file_id.clone(), image.path.clone()))
         }

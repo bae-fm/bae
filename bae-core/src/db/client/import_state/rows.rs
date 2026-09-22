@@ -29,7 +29,7 @@ fn provenance_columns<'a>(
     author: &'static str,
 ) -> ProvenanceColumns<'a> {
     match provenance {
-        MetadataProvenance::FileTags => ProvenanceColumns {
+        MetadataProvenance::FileMetadata => ProvenanceColumns {
             kind: "file_tags",
             source: None,
             release_id: None,
@@ -155,7 +155,7 @@ pub(crate) fn load_provenance_rows_on(
         for (content_hash, kind, source, release_id, author) in rows {
             let partners = partners.remove(&content_hash).unwrap_or_default();
             let provenance = match kind.as_str() {
-                "file_tags" => MetadataProvenance::FileTags,
+                "file_tags" => MetadataProvenance::FileMetadata,
                 "external_release" => {
                     let missing = |what: &str| {
                         DbError::Message(format!(

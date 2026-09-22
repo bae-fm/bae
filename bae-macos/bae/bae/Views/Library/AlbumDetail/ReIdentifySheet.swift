@@ -100,8 +100,9 @@ struct ReIdentifySheet: View {
             // A rip identifies itself when no source knows it. The escape
             // belongs beside Close: it commits the release outright rather
             // than picking anything on the page below.
-            Button(coreString("ui.import.metadata.file_tags") + "\u{2026}") {
-                commit(.fileTags)
+            Button(coreString("ui.import.metadata.file_metadata") + "\u{2026}")
+            {
+                commit(.fileMetadata)
             }
             .buttonStyle(.link)
             Button("Close") { closeAndNavigate() }
@@ -218,7 +219,7 @@ struct ReIdentifySheet: View {
 
     // MARK: - Refresh prompt
 
-    // Only reachable after a source-backed commit. A File Tags commit reseeds
+    // Only reachable after a source-backed commit. A file metadata commit reseeds
     // its rows from the rip's file tags inside `re_identify_release`, so it has
     // nothing to confirm and never lands here.
     private var refreshPrompt: some View {
@@ -249,7 +250,7 @@ struct ReIdentifySheet: View {
 
     /// Close the sheet, then navigate the album grid to whichever album
     /// the release lives on now. set_identity may have moved it: a
-    /// cross-source merge lands it on a sibling album, a File Tags commit
+    /// cross-source merge lands it on a sibling album, a file metadata commit
     /// always opens a fresh one. The grid follows the release so the
     /// user lands looking at the same content they re-identified. When
     /// the user dismisses before any commit landed (`landingAlbumId`
@@ -336,9 +337,9 @@ extension ReIdentifySheet {
                 )
                 landingAlbumId = albumId
                 switch choice {
-                case .fileTags:
+                case .fileMetadata:
                     // `re_identify_release` reseeds the rows from the rip's
-                    // file tags as part of a File Tags commit, so there's
+                    // file tags as part of a file metadata commit, so there's
                     // nothing to confirm — go straight to the new album.
                     closeAndNavigate()
                 case .externalRelease:

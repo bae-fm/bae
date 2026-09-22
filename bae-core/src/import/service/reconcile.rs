@@ -43,14 +43,14 @@ impl ImportService {
     /// import, and remap parsed artist IDs to their real DB IDs. Pure DB work and
     /// string remapping — no network. The caller has already run the mapper its
     /// selected metadata provenance calls for, so the input is a mapped `ParsedAlbum` plus its
-    /// raw external metadata pairs (empty for File Tags and direct entry).
+    /// raw external metadata pairs (empty for file metadata and direct entry).
     ///
     /// The mapper's output carries the identity rows as they stand: a
     /// **External Release** keeps the selected pressing's `source_release_id`,
-    /// and **File Tags and direct entry** arrive with an empty identity vec, so the
+    /// and **file metadata and direct entry** arrive with an empty identity vec, so the
     /// album lookup is skipped and the release lands on a fresh album.
     ///
-    /// The mapped release also carries the matching external, File Tags, or
+    /// The mapped release also carries the matching external, file metadata, or
     /// absent metadata provenance.
     ///
     /// The confirmation-page `user_edit` overlay applies last, so the user's

@@ -96,7 +96,7 @@ fn record_read_from(catalog: Catalog, key: &str, group: &str) -> ReleaseRecord {
 /// tags, or nothing.
 enum DraftSource {
     Record(ReleaseRecord),
-    FileTags,
+    FileMetadata,
     Nothing,
 }
 
@@ -119,7 +119,7 @@ async fn edit_seed_exposes_reset_eligibility_from_where_the_draft_was_read() {
             DraftSource::Record(record_read_from(Catalog::Discogs, "discogs-release", "909")),
             true,
         ),
-        (DraftSource::FileTags, true),
+        (DraftSource::FileMetadata, true),
         (DraftSource::Nothing, false),
     ]
     .into_iter()
@@ -127,7 +127,7 @@ async fn edit_seed_exposes_reset_eligibility_from_where_the_draft_was_read() {
     {
         let album = make_album(&artist.id, &format!("Album {index}"));
         let mut release = make_release(&album.id);
-        release.draft_from_tags = matches!(source, DraftSource::FileTags);
+        release.draft_from_tags = matches!(source, DraftSource::FileMetadata);
         db.insert_album(&album).await.unwrap();
         db.insert_release(&release).await.unwrap();
         if let DraftSource::Record(record) = &source {
@@ -438,7 +438,7 @@ fn fixtures_dir() -> PathBuf {
 }
 
 #[tokio::test]
-async fn reset_file_tags_unknown_returns_tags_from_disk() {
+async fn reset_file_metadata_unknown_returns_tags_from_disk() {
     let (lm, db, tmp) = support::setup_test_library().await;
 
     // Create real audio files inside a local folder so the release

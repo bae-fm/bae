@@ -26,7 +26,7 @@ struct ImportReleaseSourceActions {
     /// Replace the draft with what the candidate's own files say. Not a
     /// surface to browse: the tags are read and applied, and the card redraws
     /// on the draft they wrote.
-    let resetToTags: () -> Void
+    let resetToFileMetadata: () -> Void
     let clearMetadata: () -> Void
 }
 
@@ -131,17 +131,17 @@ struct ImportReleaseHeader: View {
             )
         }
         .confirmationDialog(
-            "Reset to tags?",
+            "Reset to file metadata?",
             isPresented: $confirmsResetToTags,
             titleVisibility: .visible
         ) {
-            Button("Reset to tags", role: .destructive) {
-                sourceActions.resetToTags()
+            Button("Reset to file metadata", role: .destructive) {
+                sourceActions.resetToFileMetadata()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "Replace metadata with the files’ tags. Tracks and audio assignments will remain unchanged."
+                "Replace metadata with what the files, sheets and folder say about the release. Tracks and audio assignments will remain unchanged."
             )
         }
         .confirmationDialog(
@@ -234,7 +234,7 @@ struct ImportReleaseHeader: View {
             Button("Reset", role: .destructive) {
                 confirmsReset = true
             }
-            Button("Reset to tags", role: .destructive) {
+            Button("Reset to file metadata", role: .destructive) {
                 confirmsResetToTags = true
             }
             Button("Clear metadata", role: .destructive) {
@@ -374,7 +374,7 @@ struct ImportCoverWell: View {
                 identifyAutomatically: {},
                 searchForRelease: {},
                 reset: {},
-                resetToTags: {},
+                resetToFileMetadata: {},
                 clearMetadata: {}
             ),
             localCoverSelections: [:],

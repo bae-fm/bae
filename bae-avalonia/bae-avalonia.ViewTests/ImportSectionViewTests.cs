@@ -685,10 +685,10 @@ public sealed class ImportSectionViewTests
                     ? [BridgeCandidateAction.Skip]
                     : placement switch
                 {
-                    BridgeTriagePlacement.Ready => [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToTags, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
-                    BridgeTriagePlacement.Pending => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToTags, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
-                    BridgeTriagePlacement.NeedsYou => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToTags, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
-                    BridgeTriagePlacement.Failed => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToTags, BridgeCandidateAction.ClearMetadata],
+                    BridgeTriagePlacement.Ready => [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
+                    BridgeTriagePlacement.Pending => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
+                    BridgeTriagePlacement.NeedsYou => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
+                    BridgeTriagePlacement.Failed => [BridgeCandidateAction.Identify, BridgeCandidateAction.ResetToFileMetadata, BridgeCandidateAction.ClearMetadata],
                     BridgeTriagePlacement.Skipped => [BridgeCandidateAction.Restore],
                     BridgeTriagePlacement.Done or BridgeTriagePlacement.Importing => [],
                     _ => throw new ArgumentOutOfRangeException(nameof(placement)),

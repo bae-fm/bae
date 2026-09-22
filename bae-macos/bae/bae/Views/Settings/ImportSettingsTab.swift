@@ -16,14 +16,17 @@ struct ImportSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Pre-fill with tags", isOn: prefillWithTags)
+                Toggle(
+                    "Pre-fill from file metadata",
+                    isOn: prefillWithFileMetadata
+                )
                 Toggle("Identify automatically", isOn: identifyAutomatically)
             } header: {
                 Text("Metadata")
             } footer: {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(
-                        "New candidates start from a draft read from their files' tags."
+                        "New candidates start from a draft read from their files, sheets and folder name."
                     )
                     Text("New candidates are identified as they are added.")
                 }
@@ -122,12 +125,12 @@ struct ImportSettingsTab: View {
         )
     }
 
-    private var prefillWithTags: Binding<Bool> {
+    private var prefillWithFileMetadata: Binding<Bool> {
         Binding(
-            get: { configStore.config.prefillWithTags },
+            get: { configStore.config.prefillWithFileMetadata },
             set: { enabled in
                 do {
-                    try importer.setPrefillWithTags(enabled)
+                    try importer.setPrefillWithFileMetadata(enabled)
                 }
                 catch {
                     uiStore.showError(error)

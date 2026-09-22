@@ -40,7 +40,7 @@ struct ImportCandidateBulkSelectionPane: View {
                         storageCloud: $storageCloud,
                         storagePinned: $storagePinned,
                         onPerform: { offer in
-                            if offer.action == .resetToTags
+                            if offer.action == .resetToFileMetadata
                                 || offer.action == .clearMetadata
                             {
                                 confirmation = offer
@@ -288,7 +288,10 @@ enum ImportBulkActionGroup: CaseIterable, Identifiable {
         switch self {
         case .importing: [.importReady]
         case .metadata:
-            [.identify, .retryIdentification, .resetToTags, .clearMetadata]
+            [
+                .identify, .retryIdentification, .resetToFileMetadata,
+                .clearMetadata,
+            ]
         case .placement: [.skip, .restore]
         }
     }

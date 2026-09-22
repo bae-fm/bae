@@ -80,7 +80,7 @@ mod tests {
             MetadataPresentation::Draft
         );
         assert_eq!(
-            CandidateSession::initial(Some(&MetadataProvenance::FileTags), false).presentation,
+            CandidateSession::initial(Some(&MetadataProvenance::FileMetadata), false).presentation,
             MetadataPresentation::Draft
         );
         let picked = MetadataProvenance::ExternalRelease {

@@ -395,7 +395,7 @@ internal sealed partial class ImportStore : IDisposable
         _details[key] = detail;
         var candidate = _import.ProjectFolderCandidate(detail);
         if (_picks.TryGetValue(key, out var pick)
-            && pick.AudioIdentity != candidate.Files?.FileTagsIdentity)
+            && pick.AudioIdentity != candidate.Files?.FileMetadataIdentity)
         {
             _picks.Remove(key);
         }
@@ -426,8 +426,8 @@ internal sealed partial class ImportStore : IDisposable
         await WriteRevision(() =>
             _import.ApplyCandidateExternalMetadata(key, provenance));
 
-    public async Task<ulong?> ApplyCandidateFileTags(string key) =>
-        await WriteRevision(() => _import.ApplyCandidateFileTags(key));
+    public async Task<ulong?> ApplyCandidateFileMetadata(string key) =>
+        await WriteRevision(() => _import.ApplyCandidateFileMetadata(key));
 
     public async Task<bool> ClearCandidateMetadata(string key) =>
         await WriteRevision(() => _import.ClearCandidateMetadata(key)) is not null;

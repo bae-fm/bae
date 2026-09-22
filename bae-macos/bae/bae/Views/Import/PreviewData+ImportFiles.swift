@@ -142,7 +142,7 @@
         }
 
         static let bridgeCandidateFiles = BridgeCandidateFiles(
-            fileTagsIdentity: "cue-backed-preview-audio",
+            fileMetadataIdentity: "cue-backed-preview-audio",
             files: [
                 backImage,
                 boundTrackSheet,
@@ -220,7 +220,7 @@
             }
 
         static let candidateFilesTracks = BridgeCandidateFiles(
-            fileTagsIdentity: "file-backed-preview-audio",
+            fileMetadataIdentity: "file-backed-preview-audio",
             files: trackAudioFiles
                 + [
                     coverImage,

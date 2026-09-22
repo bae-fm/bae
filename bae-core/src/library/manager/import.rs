@@ -253,9 +253,10 @@ impl LibraryManager {
         folder_date: Option<crate::import::folder_scanner::FolderDate>,
         reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
-        let prefill_with_tags = self.config_handle.config().prefs.prefill_with_tags;
-        let file_tags = match prefill_with_tags {
-            true => self.file_tags_seed(item, generation, reader).await?,
+        let prefill_with_file_metadata =
+            self.config_handle.config().prefs.prefill_with_file_metadata;
+        let file_metadata = match prefill_with_file_metadata {
+            true => self.file_metadata_seed(item, generation, reader).await?,
             false => None,
         };
         Ok(self
@@ -264,7 +265,7 @@ impl LibraryManager {
                 watched_folder_path,
                 generation,
                 item,
-                file_tags,
+                file_metadata,
                 folder_date,
             )
             .await?)
@@ -276,12 +277,12 @@ impl LibraryManager {
     /// A folder whose tags cannot be read gets the blank draft instead: the
     /// pre-fill is a default, not a command, so a folder nobody can read tags
     /// from still joins the queue and says so in the log.
-    async fn file_tags_seed(
+    async fn file_metadata_seed(
         &self,
         item: &crate::import::folder_scanner::ScanItem,
         generation: u64,
         reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
-    ) -> Result<Option<crate::import::file_tags_seed::FileTagsSeed>, LibraryError> {
+    ) -> Result<Option<crate::import::file_metadata_seed::FileMetadataSeed>, LibraryError> {
         use crate::import::folder_scanner::ScanItem;
         let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
             return Ok(None);
@@ -297,7 +298,7 @@ impl LibraryManager {
             return Ok(None);
         }
         let folder = candidate.path.display().to_string();
-        let read = crate::import::file_tags_seed::FileTagsSeed::read(
+        let read = crate::import::file_metadata_seed::FileMetadataSeed::read(
             candidate,
             generation,
             reader,

@@ -8,7 +8,7 @@ pub enum CandidateAction {
     ImportReady,
     Identify,
     RetryIdentification,
-    ResetToTags,
+    ResetToFileMetadata,
     ClearMetadata,
     Skip,
     Restore,
@@ -51,7 +51,7 @@ pub(crate) fn candidate_actions(
             ) {
                 actions.push(A::RetryIdentification);
             }
-            actions.extend([A::ResetToTags, A::ClearMetadata]);
+            actions.extend([A::ResetToFileMetadata, A::ClearMetadata]);
             actions
         }
     };

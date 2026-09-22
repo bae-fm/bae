@@ -267,7 +267,7 @@ impl Database {
     /// when `generation` is no longer the root's: the generation check and all
     /// changes share one transaction, so a cancelled scan cannot write over
     /// its successor.
-    /// `file_tags` seeds a candidate this scan is storing for the first time:
+    /// `file_metadata` seeds a candidate this scan is storing for the first time:
     /// the draft the folder's own tags project, the reading it came from, and
     /// the cover those tags embed. A candidate that already has a draft keeps
     /// it — a rescan re-reads files, not decisions.
@@ -276,7 +276,7 @@ impl Database {
         watched_folder_path: &str,
         generation: u64,
         item: &ScanItem,
-        file_tags: Option<crate::import::file_tags_seed::FileTagsSeed>,
+        file_metadata: Option<crate::import::file_metadata_seed::FileMetadataSeed>,
         folder_date: Option<crate::import::folder_scanner::FolderDate>,
     ) -> Result<Option<ScanItemWrite>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
@@ -342,7 +342,7 @@ impl Database {
             // and one whose audio changed holds other files; either way the
             // reading describes what the row no longer is, and it goes with the
             // row it belonged to.
-            let carried = match file_tags.is_some() {
+            let carried = match file_metadata.is_some() {
                 true => None,
                 false => read::load_file_tag_snapshot(sql, &watched_folder_path, &entry_key)?
                     .filter(|snapshot| item_was_read_for(&item, snapshot)),
@@ -378,7 +378,7 @@ impl Database {
                 &watched_folder_path,
                 generation,
                 &item,
-                file_tags.as_ref(),
+                file_metadata.as_ref(),
             )?;
             if let Some(snapshot) = carried {
                 write::replace_candidate_file_tag_snapshot(

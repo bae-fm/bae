@@ -201,7 +201,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,
-            prefillWithTags: true,
+            prefillWithFileMetadata: true,
             lookupCatalogs: [
                 BridgeLookupCatalogSetting(
                     catalog: .musicBrainz,

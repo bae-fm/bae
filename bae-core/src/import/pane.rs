@@ -276,7 +276,7 @@ pub(crate) fn source_discogs_artist_ids(
 }
 
 /// The pane for a folder committed as its stored file-tag snapshot describes it.
-pub(crate) fn file_tags_pane(
+pub(crate) fn file_metadata_pane(
     candidate: &super::release_candidate::ReleaseCandidate,
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
     durations: &SourceDurations,

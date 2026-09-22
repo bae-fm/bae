@@ -70,7 +70,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::FileTags,
+            MetadataProvenance::FileMetadata,
         ))
         .await
         .unwrap();

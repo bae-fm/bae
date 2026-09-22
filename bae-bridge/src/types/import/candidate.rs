@@ -246,8 +246,8 @@ pub struct BridgeCandidateSourceAudio {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateFiles {
-    /// Core-derived identity of the audio files behind a File Tags preview.
-    pub file_tags_identity: String,
+    /// Core-derived identity of the audio files behind a file-metadata preview.
+    pub file_metadata_identity: String,
     /// Every file in the folder, each exactly once, in release-relative path
     /// order.
     pub files: Vec<BridgeCandidateFile>,

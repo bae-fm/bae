@@ -501,14 +501,14 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Șterge metadatele</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Fișierele candidatului și alegerile de asociere rămân neschimbate.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Ștergi metadatele?</value></data>
-  <data name="import.metadata.reset_to_tags" xml:space="preserve"><value>Resetează la etichete</value></data>
-  <data name="import.metadata.reset_to_tags_title" xml:space="preserve"><value>Resetezi la etichete?</value></data>
-  <data name="import.metadata.reset_to_tags_body" xml:space="preserve"><value>Schița este înlocuită de etichetele fișierelor. Fișierele candidatului și alegerile de asociere rămân neschimbate.</value></data>
+  <data name="import.metadata.reset_to_file_metadata" xml:space="preserve"><value>Resetează la metadatele fișierelor</value></data>
+  <data name="import.metadata.reset_to_file_metadata_title" xml:space="preserve"><value>Resetezi la metadatele fișierelor?</value></data>
+  <data name="import.metadata.reset_to_file_metadata_body" xml:space="preserve"><value>Schița este înlocuită de ceea ce spun fișierele, fișele și folderul despre ediție. Fișierele candidatului și alegerile de asociere rămân neschimbate.</value></data>
   <data name="import.metadata.search_for_release" xml:space="preserve"><value>Caută ediția</value></data>
   <data name="import.search.general" xml:space="preserve"><value>General</value></data>
   <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifică automat</value></data>
-  <data name="settings.import.prefill_with_tags" xml:space="preserve"><value>Precompletează din etichete</value></data>
-  <data name="settings.import.prefill_with_tags_help" xml:space="preserve"><value>Candidații noi pornesc de la o schiță citită din etichetele fișierelor lor.</value></data>
+  <data name="settings.import.prefill_with_file_metadata" xml:space="preserve"><value>Precompletează din metadatele fișierelor</value></data>
+  <data name="settings.import.prefill_with_file_metadata_help" xml:space="preserve"><value>Candidații noi pornesc de la o schiță citită din fișierele lor, din fișe și din numele folderului.</value></data>
   <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Candidații noi sunt identificați pe măsură ce sunt adăugați.</value></data>
   <data name="settings.import.search_source" xml:space="preserve"><value>Caută pe {source}</value></data>
   <data name="settings.import.sources_help" xml:space="preserve"><value>Caută online interoghează sursele bifate aici.</value></data>

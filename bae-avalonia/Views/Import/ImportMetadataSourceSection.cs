@@ -40,7 +40,7 @@ internal sealed class ImportMetadataSourceSection
     internal required Action OnIdentify { get; init; }
     /// <summary>Open the same page on its typed search, starting nothing.</summary>
     internal required Action OnSearchForRelease { get; init; }
-    internal required Action OnResetToTags { get; init; }
+    internal required Action OnResetToFileMetadata { get; init; }
     internal required Action OnClearMetadata { get; init; }
     internal required Action OnEditCover { get; init; }
     internal required Action<BridgeCoverSelection> OnSelectCover { get; init; }
@@ -144,7 +144,7 @@ internal sealed class ImportMetadataSourceSection
         };
         foreach (var (label, run) in new (string, Action)[]
         {
-            (Loc.Chrome("import.metadata.reset_to_tags"), OnResetToTags),
+            (Loc.Chrome("import.metadata.reset_to_file_metadata"), OnResetToFileMetadata),
             (Loc.Chrome("import.metadata.clear"), OnClearMetadata),
         })
         {

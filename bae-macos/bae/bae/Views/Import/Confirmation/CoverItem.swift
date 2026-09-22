@@ -50,7 +50,7 @@ struct CoverItem: LightboxImage {
         case .remoteCover(let remote):
             bridgeCatalogName(catalog: remote.source)
         case .releaseImage: String(localized: "Release Files")
-        case .embeddedCover: coreString("ui.import.metadata.file_tags")
+        case .embeddedCover: coreString("ui.import.metadata.file_metadata")
         case nil: String(localized: "Library")
         }
     }

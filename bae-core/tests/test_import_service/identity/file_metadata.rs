@@ -1,4 +1,4 @@
-// ── File Tags metadata source ────────────────────────────────────────────────
+// ── File metadata as a metadata source ──────────────────────────────────────
 
 fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
     ArtistAssignment::New {
@@ -11,11 +11,11 @@ fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
     }
 }
 
-/// File Tags commit reads embedded tags, writes zero `release_records`
-/// rows, stores File Tags provenance, and seeds the album / tracks
+/// A file-metadata commit reads embedded tags, writes zero `release_records`
+/// rows, stores file-metadata provenance, and seeds the album / tracks
 /// from what's on disk. No external source consulted.
 #[tokio::test]
-async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
+async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -45,7 +45,7 @@ async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::FileTags,
+            MetadataProvenance::FileMetadata,
         ))
         .await
         .unwrap();
@@ -136,7 +136,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     f.handle
         .send_command(ImportCommand {
             candidate_key: "cue".to_string(),
-            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags)
+            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileMetadata)
         })
         .await
         .unwrap();
@@ -196,7 +196,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
 /// A tagged rip whose only artwork is embedded in the audio (no folder
 /// image, no remote selection) gets that embedded picture as its cover.
 #[tokio::test]
-async fn file_tags_import_seeds_embedded_cover_when_no_folder_image() {
+async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -218,7 +218,7 @@ async fn file_tags_import_seeds_embedded_cover_when_no_folder_image() {
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::FileTags,
+            MetadataProvenance::FileMetadata,
         ))
         .await
         .unwrap();
@@ -251,9 +251,9 @@ async fn file_tags_import_seeds_embedded_cover_when_no_folder_image() {
     assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
-/// Embedded artwork leads the folder's images when File Tags supplies both.
+/// Embedded artwork leads the folder's images when file metadata supplies both.
 #[tokio::test]
-async fn file_tags_import_embedded_cover_wins_over_folder_image() {
+async fn file_metadata_import_embedded_cover_wins_over_folder_image() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -270,7 +270,7 @@ async fn file_tags_import_embedded_cover_wins_over_folder_image() {
         }],
     );
     // A folder image alongside the embedded-cover audio. No explicit
-    // selection — File Tags' embedded artwork still leads.
+    // selection — file metadata's embedded artwork still leads.
     let scans = album_dir.join("scans");
     fs::create_dir_all(&scans).unwrap();
     fs::write(scans.join("cover.jpg"), embedded_cover_jpeg()).unwrap();
@@ -280,7 +280,7 @@ async fn file_tags_import_embedded_cover_wins_over_folder_image() {
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::FileTags,
+            MetadataProvenance::FileMetadata,
         ))
         .await
         .unwrap();
@@ -300,11 +300,11 @@ async fn file_tags_import_embedded_cover_wins_over_folder_image() {
     );
 }
 
-/// File Tags imports never deduplicate against existing releases — even
+/// File-metadata imports never deduplicate against existing releases — even
 /// when an identified release with the same album title is already in
-/// the library, a File Tags import lands on a fresh album.
+/// the library, a file-metadata import lands on a fresh album.
 #[tokio::test]
-async fn file_tags_import_always_creates_a_fresh_album() {
+async fn file_metadata_import_always_creates_a_fresh_album() {
     support::tracing_init();
 
     // First import: identified, lands on its own album.
@@ -331,7 +331,7 @@ async fn file_tags_import_always_creates_a_fresh_album() {
     let mut rx = f.handle.subscribe_import(import_id);
     let (_, identified_album_id) = support::wait_for_import_complete(&mut rx).await;
 
-    // Second import: File Tags, same album title in tags. Must NOT
+    // Second import: file metadata, same album title in tags. Must NOT
     // attach to the identified album.
     let file_tags_dir = f.temp_path().join("file-tags");
     fs::create_dir_all(&file_tags_dir).unwrap();
@@ -351,7 +351,7 @@ async fn file_tags_import_always_creates_a_fresh_album() {
     f.handle
         .send_command(ImportCommand {
             candidate_key: "file-tags".to_string(),
-            ..support::folder_import(&import_id2, file_tags_dir, MetadataProvenance::FileTags)
+            ..support::folder_import(&import_id2, file_tags_dir, MetadataProvenance::FileMetadata)
         })
         .await
         .unwrap();
@@ -360,7 +360,7 @@ async fn file_tags_import_always_creates_a_fresh_album() {
 
     assert_ne!(
         identified_album_id, file_tags_album_id,
-        "File Tags import must land on a fresh album",
+        "file-metadata import must land on a fresh album",
     );
 }
 
@@ -369,7 +369,7 @@ async fn file_tags_import_always_creates_a_fresh_album() {
 /// titles via the editor before commit. Persisted metadata reflects
 /// the edits.
 #[tokio::test]
-async fn file_tags_import_with_user_edit_overlay() {
+async fn file_metadata_import_with_user_edit_overlay() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -414,7 +414,7 @@ async fn file_tags_import_with_user_edit_overlay() {
     f.handle
         .send_command(ImportCommand {
             user_edit: Some(edit),
-            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileTags)
+            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileMetadata)
         })
         .await
         .unwrap();
@@ -445,11 +445,11 @@ async fn file_tags_import_with_user_edit_overlay() {
     assert_eq!(tracks[0].title, "Edited Track Title");
 }
 
-/// File Tags preparation of a rip with no usable album-level tags seeds the
+/// File metadata preparation of a rip with no usable album-level tags seeds the
 /// album title from the containing folder name. The artist stays empty until
 /// the user fills it, and the completed preparation is what import commits.
 #[tokio::test]
-async fn file_tags_import_with_no_tags_seeds_title_from_folder_name() {
+async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -469,7 +469,10 @@ async fn file_tags_import_with_no_tags_seeds_title_from_folder_name() {
         .await
         .unwrap();
     f.handle
-        .select_candidate_metadata_provenance(candidate_key.clone(), MetadataProvenance::FileTags)
+        .select_candidate_metadata_provenance(
+            candidate_key.clone(),
+            MetadataProvenance::FileMetadata,
+        )
         .await
         .unwrap();
     let pane = f
@@ -477,7 +480,7 @@ async fn file_tags_import_with_no_tags_seeds_title_from_folder_name() {
         .candidate_pane(&candidate_key)
         .await
         .unwrap()
-        .expect("the prepared File Tags candidate reads back");
+        .expect("the prepared file-metadata candidate reads back");
     assert_eq!(pane.metadata_draft.album_title, "Mystery Rip");
     assert!(pane.metadata_draft.album_artist_assignments.is_empty());
 

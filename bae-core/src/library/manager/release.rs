@@ -85,7 +85,7 @@ impl LibraryManager {
     ///    record is reachable from a later Discogs-rooted import of the same
     ///    master.
     ///
-    /// Empty `records` skips both lookups — File Tags and direct-entry imports
+    /// Empty `records` skips both lookups — file metadata and direct-entry imports
     /// always get a fresh album.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn find_existing_album_for_import(
@@ -185,7 +185,7 @@ impl LibraryManager {
                 )?
             }
             (None, true) => {
-                project_file_tags(
+                project_file_metadata(
                     &self.database,
                     &release,
                     self.clock.clone(),
@@ -220,10 +220,10 @@ impl LibraryManager {
     ///   picked document inferred about that catalog. Album/release/track row
     ///   data is not touched: the records change; the rows stay as the user
     ///   last had them.
-    /// - **File Tags** — no records, and the draft reads the files' own tags; the release always
+    /// - **File metadata** — no records, and the draft reads what the folder's own files say; the release always
     ///   lands on a fresh album. The old source's album/release/track rows would
     ///   still show its metadata, so the same call reseeds them from the local file
-    ///   tags, projecting through the new `FileTags` seed with
+    ///   tags, projecting through the new `FileMetadata` seed with
     ///   [`Self::reset_metadata_to_source`] and writing the result with
     ///   [`Self::apply_release_metadata_user_edit`]. A tag-sparse rip reseeds to a
     ///   blank-but-editable title/artist rather than erroring.
@@ -277,23 +277,23 @@ impl LibraryManager {
 
                 crate::import::service::records_for_commit(&payloads, &prepared_partners)?
             }
-            ReleaseReseed::FileTags => Vec::new(),
+            ReleaseReseed::FileMetadata => Vec::new(),
         };
 
         self.set_records(
             release_id,
             new_records,
-            matches!(reseed, ReleaseReseed::FileTags),
+            matches!(reseed, ReleaseReseed::FileMetadata),
         )
         .await?;
 
-        // File Tags changes the seed but leaves the old source's rows
+        // File metadata changes the seed but leaves the old source's rows
         // in place, still showing the prior metadata. Reseed them here by projecting
-        // through the new File Tags seed. A tag-sparse rip projects to a
+        // through the new file-metadata seed. A tag-sparse rip projects to a
         // blank-but-editable title/artist — the prompt the user answers in the
         // editor — so this writes through the ungated path. The blank is not a user
         // edit, and the user-edit gate would reject it.
-        if matches!(reseed, ReleaseReseed::FileTags) {
+        if matches!(reseed, ReleaseReseed::FileMetadata) {
             let edit = self.reset_metadata_to_source(release_id).await?;
             self.write_release_metadata(release_id, &edit).await?;
         }
@@ -838,10 +838,10 @@ fn stored_track_durations(tracks: &[DbTrack]) -> Result<Vec<u64>, LibraryError> 
 }
 
 /// Project the embedded tags of a release's local audio files into a `ParsedAlbum`,
-/// as the File Tags import path does. Errors if any audio file is unreachable on disk
+/// as the file-metadata import path does. Errors if any audio file is unreachable on disk
 /// (a cloud-only release with no local copy).
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-async fn project_file_tags(
+async fn project_file_metadata(
     database: &Database,
     release: &DbRelease,
     clock: ClockRef,

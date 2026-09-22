@@ -10,7 +10,7 @@ bae's catalog is ordinary SQLite, declared to [coven](https://coven.bae.fm) tabl
 The synced heart of the schema:
 
 - **`artists`**, **`albums`**, **`works`**: the grouping layer. An album aggregates its releases and points at a primary one; works form a parent/child graph for classical structure.
-- **`releases`**: the central entity, one row per pressing. Carries the pressing facts (label, catalog number, barcode, country, format, year), optional metadata provenance, a content hash of the imported folder, and measured album loudness. No provenance means the metadata was entered directly; external provenance names the exact source release, while File tags records a local snapshot source.
+- **`releases`**: the central entity, one row per pressing. Carries the pressing facts (label, catalog number, barcode, country, format, year), optional metadata provenance, a content hash of the imported folder, and measured album loudness. No provenance means the metadata was entered directly; external provenance names the exact source release, while file metadata records a local snapshot source.
 - **`release_identities`**: exact external identities for what a release *is*. No rows means no external identity. Each row names a MusicBrainz or Discogs release and release group, and a release can hold identities in both sources at once. This is separate from provenance: identity can change without claiming that the current editable metadata was reset from that source.
 - **`tracks`** with **`track_artists`**, plus **`release_artist_roles`** and **`track_artist_roles`**: track lists and credits, each credit tagged with its source.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: recordings linked to the works they perform.

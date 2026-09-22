@@ -694,9 +694,9 @@ public sealed class ImportMappingPaneTests
                 }
                 return (true, ((ulong?)applicationRevision, (string?)null));
             },
-            ApplyCandidateFileTags = async _ =>
+            ApplyCandidateFileMetadata = async _ =>
             {
-                appliedProvenances?.Add(new BridgeMetadataProvenance.FileTags());
+                appliedProvenances?.Add(new BridgeMetadataProvenance.FileMetadata());
                 if (applicationGate is not null)
                 {
                     await applicationGate.Task;

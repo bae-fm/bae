@@ -84,7 +84,7 @@ impl ExportFixture {
 }
 
 /// Import a one-track album from `album_dir` as Local with Unknown
-/// identity (file tags only — no network), then flip it to cloud-only:
+/// identity (file metadata only — no network), then flip it to cloud-only:
 /// remote with no local copy, encrypted blobs seeded in the mock cloud,
 /// originals deleted. This is the state export must handle: no local bytes,
 /// audio only in the cloud.
@@ -94,7 +94,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
         .send_command(support::folder_import(
             &import_id,
             album_dir.to_path_buf(),
-            MetadataProvenance::FileTags,
+            MetadataProvenance::FileMetadata,
         ))
         .await
         .unwrap();
@@ -118,7 +118,7 @@ async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
         .send_command(support::folder_import(
             &import_id,
             album_dir.to_path_buf(),
-            MetadataProvenance::FileTags,
+            MetadataProvenance::FileMetadata,
         ))
         .await
         .unwrap();

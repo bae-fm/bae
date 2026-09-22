@@ -186,7 +186,7 @@ pub struct MatchedRelease {
 
 /// The candidate's stored editable metadata as one compact sidebar value.
 ///
-/// This is independent of the verdict's lead: applying File Tags or editing a
+/// This is independent of the verdict's lead: applying file metadata or editing a
 /// chosen release changes the draft without changing what identification once
 /// matched. The list owns this projection so every row keeps showing the
 /// applied values when its detail subscription closes.
@@ -322,7 +322,7 @@ impl TriageReading {
         }
         match provenance {
             Some(MetadataProvenance::ExternalRelease { .. }) => Self::Identified { records },
-            Some(MetadataProvenance::FileTags) | None => Self::Prefilled,
+            Some(MetadataProvenance::FileMetadata) | None => Self::Prefilled,
         }
     }
 }

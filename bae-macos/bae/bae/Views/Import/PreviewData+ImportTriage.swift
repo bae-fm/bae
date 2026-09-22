@@ -281,13 +281,13 @@
             for: importTabUnidentifiedCandidate,
             placement: .pending,
             skipAction: .skip,
-            actions: [.identify, .resetToTags, .skip],
+            actions: [.identify, .resetToFileMetadata, .skip],
             matched: nil,
             metadataSummary: nil,
             coverThumbnail: .local(path: previewArtPath("Front.png"))
         )
 
-        /// A draft read off the files' tags — a title and an artist, and no
+        /// A draft read off the folder's own metadata — a title and an artist, and no
         /// source to name.
         static let triageRowPrefilledFromTags = triageRow(
             for: importTabTaggedCandidate,
@@ -300,7 +300,7 @@
                 albumArtistAssignments: [newArtist("Artist Name")]
             ),
             coverThumbnail: .local(path: previewArtPath("Front.png")),
-            metadataProvenance: .fileTags,
+            metadataProvenance: .fileMetadata,
             reading: .prefilled
         )
 
@@ -324,7 +324,8 @@
             placement: .ready,
             skipAction: .skip,
             actions: [
-                .importReady, .identify, .resetToTags, .clearMetadata, .skip,
+                .importReady, .identify, .resetToFileMetadata, .clearMetadata,
+                .skip,
             ],
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
@@ -355,7 +356,7 @@
                 reason: .severalMatches(count: 2)
             ),
             skipAction: .skip,
-            actions: [.identify, .resetToTags, .clearMetadata, .skip],
+            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Fourteen",
@@ -383,7 +384,7 @@
             placement: .ready,
             skipAction: .skip,
             actions: [
-                .importReady, .identify, .resetToTags, .clearMetadata,
+                .importReady, .identify, .resetToFileMetadata, .clearMetadata,
                 .skip,
             ],
             matched: triageMatch(
@@ -410,7 +411,7 @@
                 reason: .severalMatches(count: 2)
             ),
             skipAction: .skip,
-            actions: [.identify, .resetToTags, .clearMetadata, .skip],
+            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             // Several matches — the pressing is exactly what's unsettled, so
             // there is no `pressing` to show yet, only the lead's title and
             // artist.
@@ -437,7 +438,7 @@
                 reason: .severalMatches(count: 2)
             ),
             skipAction: .skip,
-            actions: [.identify, .resetToTags, .clearMetadata, .skip],
+            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: nil,
             metadataSummary: nil
         )
@@ -448,7 +449,7 @@
                 reason: .trackCountDisagrees(local: 1, source: 10)
             ),
             skipAction: .skip,
-            actions: [.identify, .resetToTags, .clearMetadata, .skip],
+            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: triageMatch(
                 releaseId: "rel-track-mismatch",
                 title: "Album Title Seven",
@@ -464,7 +465,7 @@
                 reason: .alreadyInLibrary
             ),
             skipAction: .skip,
-            actions: [.identify, .resetToTags, .clearMetadata, .skip],
+            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: "Album Title (Reissue)",
@@ -481,7 +482,7 @@
                 reason: .noMatch
             ),
             skipAction: .skip,
-            actions: [.identify, .resetToTags, .clearMetadata, .skip],
+            actions: [.identify, .resetToFileMetadata, .clearMetadata, .skip],
             matched: nil,
             metadataSummary: nil
         )
@@ -551,7 +552,7 @@
             for: importTabFailedCandidate,
             placement: .failed,
             skipAction: nil,
-            actions: [.identify, .resetToTags, .clearMetadata],
+            actions: [.identify, .resetToFileMetadata, .clearMetadata],
             matched: triageMatch(
                 releaseId: "rel-failed",
                 title: importTabFailedCandidate.displayName,
@@ -575,7 +576,8 @@
                 placement: .ready,
                 skipAction: .skip,
                 actions: [
-                    .importReady, .identify, .resetToTags, .clearMetadata,
+                    .importReady, .identify, .resetToFileMetadata,
+                    .clearMetadata,
                     .skip,
                 ],
                 matched: triageMatch(
@@ -601,7 +603,9 @@
                     reason: .noMatch
                 ),
                 skipAction: .skip,
-                actions: [.identify, .resetToTags, .clearMetadata, .skip],
+                actions: [
+                    .identify, .resetToFileMetadata, .clearMetadata, .skip,
+                ],
                 matched: nil,
                 metadataSummary: nil
             ),

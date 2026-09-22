@@ -61,7 +61,7 @@
                 onIdentify: {},
                 onSearchForRelease: {},
                 onReset: {},
-                onResetToTags: {},
+                onResetToFileMetadata: {},
                 onClearMetadata: {},
                 onEditCover: {},
                 onSelectCover: { _ in },
@@ -277,7 +277,7 @@
         @State
         var storagePinned = true
         ImportMappingPreview.make(
-            candidate: PreviewData.fileTagsMappingCandidate,
+            candidate: PreviewData.fileMetadataMappingCandidate,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
