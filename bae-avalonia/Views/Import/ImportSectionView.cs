@@ -40,7 +40,6 @@ internal sealed partial class ImportSectionView : UserControl
     private readonly ImportStore _import;
     private readonly StorageStore _storage;
     private readonly ImportMappingPane _pane;
-    private readonly ImportDialogs _dialogs;
 
     // The candidate the pane is holding, so a re-render of the list can accent
     // its row without asking the pane.
@@ -101,7 +100,6 @@ internal sealed partial class ImportSectionView : UserControl
     public ImportSectionView(AppService app, ImportDialogs dialogs)
     {
         _app = app;
-        _dialogs = dialogs;
         _import = app.ImportStore;
         _storage = app.StorageStore;
         _pane = new ImportMappingPane(app, dialogs);
