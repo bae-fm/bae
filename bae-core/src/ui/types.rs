@@ -139,12 +139,14 @@ pub enum UiBusEvent {
         key: String,
         signals: crate::signals::Signals,
     },
-    /// How much of the import queue the background sweep has answered. The
-    /// sidebar header renders it as a line and a bar. Both numbers are the
-    /// queue's, not the list's — the sidebar is filtered, so a view counting
-    /// the rows it holds would report a different, wrong total.
+    /// How far the identifications running right now have got: how many have
+    /// ended, out of how many there are, whoever started them. The sidebar
+    /// header renders it as a ring, a line and a bar. Both numbers are the
+    /// runtime's, not the list's — the sidebar is filtered, so a view counting
+    /// the rows it holds would report a different, wrong total. `(0, 0)` is
+    /// none running, which the header shows nothing for.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    ImportQueueIdentifyProgress {
+    ImportIdentificationProgress {
         identified: u32,
         total: u32,
     },

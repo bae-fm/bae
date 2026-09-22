@@ -88,11 +88,13 @@ pub enum BridgeUiEvent {
         key: String,
         signals: BridgeSignals,
     },
-    /// How much of the import queue the background sweep has answered — the
-    /// sidebar header's line and bar. Both numbers are the queue's; a view
-    /// must not derive `total` from the rows it holds, which are filtered.
+    /// How far the identifications running right now have got: how many have
+    /// ended, out of how many there are, whoever started them — the sidebar
+    /// header's ring, line and bar. Both numbers are core's; a view must not
+    /// derive `total` from the rows it holds, which are filtered. `(0, 0)` is
+    /// none running.
     #[cfg(feature = "desktop")]
-    ImportQueueIdentifyProgress {
+    ImportIdentificationProgress {
         identified: u32,
         total: u32,
     },

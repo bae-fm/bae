@@ -7,9 +7,9 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 // Session state for the import flow: the sidebar's paged list of core-placed
-// items, the chrome around it, the sweep's identify progress, and the
+// items, the chrome around it, the identification progress, and the
 // preview-position label. The list and its summary are core-driven and arrive
-// one window at a time; QueueIdentifyProgress is driven by progress events;
+// one window at a time; IdentificationProgress is driven by progress events;
 // ActiveTab/FilterText/SortOrder/SelectedReady are view state the sidebar sets,
 // and each of the first three travels to core in the list's view request
 // because it changes which item sits at which offset. Unlike macOS's per-field
@@ -51,10 +51,11 @@ internal sealed partial class ImportStore : IDisposable
     private IDisposable? _observedCandidate;
     private string? _observedKey;
 
-    // The queue sweep's identified-count over total, for the header's progress
-    // line and bar. Null before the first tick of a session — the header hides
-    // rather than opening on a bar frozen at zero.
-    public (uint Identified, uint Total)? QueueIdentifyProgress { get; private set; }
+    // How far the identifications running right now have got — how many have
+    // ended, out of how many there are, whoever started them — for the filter
+    // row's ring and the progress line it opens. Null before core has said
+    // anything this session; (0, 0) once nothing is running.
+    public (uint Identified, uint Total)? IdentificationProgress { get; private set; }
 
     // The active tab; resets to Pending on each section entry and on teardown.
     public BridgeTriageTab ActiveTab { get; private set; } = BridgeTriageTab.Pending;
@@ -533,11 +534,11 @@ internal sealed partial class ImportStore : IDisposable
         Changed?.Invoke();
     }
 
-    // The identify-progress event updates only the queue-wide header; candidate
-    // rows arrive through the triage subscription.
-    public void ApplyQueueIdentifyProgress(uint identified, uint total)
+    // The identification-progress event updates only the header above the
+    // list; candidate rows arrive through the triage subscription.
+    public void ApplyIdentificationProgress(uint identified, uint total)
     {
-        QueueIdentifyProgress = (identified, total);
+        IdentificationProgress = (identified, total);
         Changed?.Invoke();
     }
 
@@ -739,8 +740,8 @@ internal sealed partial class ImportStore : IDisposable
                 // suggested — so there is nothing here for extraction's
                 // snapshots to reach.
                 break;
-            case BridgeUiEvent.ImportQueueIdentifyProgress progress:
-                ApplyQueueIdentifyProgress(progress.Identified, progress.Total);
+            case BridgeUiEvent.ImportIdentificationProgress progress:
+                ApplyIdentificationProgress(progress.Identified, progress.Total);
                 break;
             default:
                 // The router forwards only these variants here; any other one
@@ -815,7 +816,7 @@ internal sealed partial class ImportStore : IDisposable
         ListFailure = null;
         Summary = EmptySummary;
         WatchedFolders = new List<BridgeWatchedFolder>();
-        QueueIdentifyProgress = null;
+        IdentificationProgress = null;
         ActiveTab = BridgeTriageTab.Pending;
         FilterText = string.Empty;
         SelectedReady.Clear();

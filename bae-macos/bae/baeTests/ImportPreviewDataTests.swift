@@ -75,8 +75,8 @@ struct ImportPreviewDataTests {
             smoke.store.summary.counts.pending
             + smoke.store.summary.counts.done
             + smoke.store.summary.counts.skipped
-        #expect(smoke.store.queueIdentifyProgress?.total == queue)
-        #expect(smoke.store.queueIdentifyProgress?.identified == queue - 1)
+        #expect(smoke.store.identificationProgress?.total == queue)
+        #expect(smoke.store.identificationProgress?.identified == queue - 1)
     }
 
     @MainActor

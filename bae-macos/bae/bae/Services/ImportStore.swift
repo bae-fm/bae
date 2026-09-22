@@ -107,10 +107,11 @@ class ImportStore {
         summary.watchedFolders
     }
 
-    /// The queue sweep's identified-count over total, for the header's
-    /// progress line and bar. `nil` before the first tick of a session — the
-    /// header hides rather than opening on a bar frozen at zero.
-    var queueIdentifyProgress: (identified: UInt32, total: UInt32)?
+    /// How far the identifications running right now have got — how many
+    /// have ended, out of how many there are, whoever started them — for the
+    /// filter row's ring and the progress line it opens. `nil` before core
+    /// has said anything this session; `(0, 0)` once nothing is running.
+    var identificationProgress: (identified: UInt32, total: UInt32)?
 
     var previewState: BridgePreviewState = .idle
 

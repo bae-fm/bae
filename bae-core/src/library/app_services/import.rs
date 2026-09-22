@@ -105,13 +105,15 @@ impl AppServices {
         choices: crate::import::LookupChoices,
     ) {
         let run = self.inner.import.new_identification_run();
-        self.inner.import.start_identification(
+        if !self.inner.import.start_identification(
             run,
-            candidate_key,
+            candidate_key.clone(),
             crate::signals::ExtractionSource::Release { release_id },
             crate::util::rate_limiter::CallPriority::Interactive,
             choices,
-        );
+        ) {
+            tracing::warn!("re-identify for {candidate_key} has no source to ask; no run started");
+        }
     }
 
     /// Stop a candidate's identification: both the identify driver and the

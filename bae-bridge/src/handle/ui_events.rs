@@ -21,15 +21,15 @@ pub(super) fn convert_ui_event(
             })
         }
         #[cfg(feature = "desktop")]
-        UiBusEvent::ImportQueueIdentifyProgress { identified, total } => {
-            Some(BridgeUiEvent::ImportQueueIdentifyProgress { identified, total })
+        UiBusEvent::ImportIdentificationProgress { identified, total } => {
+            Some(BridgeUiEvent::ImportIdentificationProgress { identified, total })
         }
         #[cfg(all(
             not(feature = "desktop"),
             not(any(target_os = "ios", target_os = "android"))
         ))]
         UiBusEvent::CandidateSignalsUpdated { .. }
-        | UiBusEvent::ImportQueueIdentifyProgress { .. } => None,
+        | UiBusEvent::ImportIdentificationProgress { .. } => None,
         UiBusEvent::Error { error } => Some(BridgeUiEvent::Error {
             error: crate::types::BridgeError::from_core(error),
         }),

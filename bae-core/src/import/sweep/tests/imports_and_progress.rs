@@ -102,18 +102,26 @@ async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress()
     let progress: Vec<_> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
-            ImportEvent::QueueIdentifyProgress { identified, total } => Some((identified, total)),
+            ImportEvent::IdentificationProgress { identified, total } => Some((identified, total)),
             _ => None,
         })
         .collect();
-    assert_eq!(progress.last(), Some(&(1, 1)), "{progress:?}");
+    assert!(
+        progress.contains(&(1, 2)),
+        "the candidate the import took is no longer waited on: {progress:?}"
+    );
+    assert_eq!(
+        progress.last(),
+        Some(&(0, 0)),
+        "and the batch is over once the other one has its answer: {progress:?}"
+    );
 }
 
 /// A re-scan lands while an import owns a candidate. The scan announces every
-/// candidate it walks, import or no import, and the pass must not count one
-/// back in that an import has taken away — the queue's total would climb back
-/// past what the sweep is responsible for and never come down, because nothing
-/// announces the candidate again once the import finishes with it.
+/// candidate it walks, import or no import, and the pass must not queue one
+/// again that an import has taken away — the batch's total would climb past
+/// the identifications it holds and never come down, because nothing ends an
+/// identification that never started.
 ///
 /// This is the same sequence CI hits on every non-macOS runner: the OS watcher
 /// delivers the folder's own change events late enough that the re-scan they
@@ -176,11 +184,15 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     let progress: Vec<_> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
-            ImportEvent::QueueIdentifyProgress { identified, total } => Some((identified, total)),
+            ImportEvent::IdentificationProgress { identified, total } => Some((identified, total)),
             _ => None,
         })
         .collect();
-    assert_eq!(progress.last(), Some(&(1, 1)), "{progress:?}");
+    assert!(
+        progress.iter().all(|(_, total)| *total <= 2),
+        "the re-scan does not put the importing candidate back in the batch: {progress:?}"
+    );
+    assert_eq!(progress.last(), Some(&(0, 0)), "{progress:?}");
 }
 
 /// The same import start, one step later in the candidate's life — and the
@@ -241,10 +253,11 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     );
 }
 
-/// Progress crosses as an event carrying both numbers. The total is the sweep's
-/// own count of what it is responsible for, so a view renders "n of m" without
-/// counting the rows it happens to be holding — and the second pass opens at the
-/// full count rather than starting over at zero.
+/// Progress crosses as an event carrying both numbers, so a view renders
+/// "n of m" without counting the rows it happens to be holding. The batch is
+/// what the pass identifies: it opens at the whole of it, and ends at `(0, 0)`
+/// — which is what a surface draws nothing for — once every identification is
+/// over. A pass with nothing to identify says nothing at all.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn progress_carries_both_counts() {
@@ -271,36 +284,37 @@ async fn progress_carries_both_counts() {
     fixture.sweep_once().await;
     let mut progress = Vec::new();
     for event in drain_events(&mut events) {
-        if let ImportEvent::QueueIdentifyProgress { identified, total } = event {
+        if let ImportEvent::IdentificationProgress { identified, total } = event {
             progress.push((identified, total));
         }
     }
     assert_eq!(
         progress.first(),
         Some(&(0, 2)),
-        "planning announces the whole queue before any of it is answered"
+        "planning announces the whole batch before any of it is answered"
+    );
+    assert!(
+        progress.contains(&(1, 2)),
+        "and every verdict advances the count: {progress:?}"
     );
     assert_eq!(
         progress.last(),
-        Some(&(2, 2)),
-        "and every verdict advances the count: {progress:?}"
+        Some(&(0, 0)),
+        "the batch is over once both have their answers: {progress:?}"
     );
 
     let mut events = fixture.import.subscribe_events();
     fixture.sweep_once().await;
-    let replanned = loop {
-        match events.try_recv() {
-            Ok(ImportEvent::QueueIdentifyProgress { identified, total }) => {
-                break (identified, total)
-            }
-            Ok(_) => continue,
-            Err(e) => panic!("the second pass must announce progress too: {e}"),
-        }
-    };
-    assert_eq!(
-        replanned,
-        (2, 2),
-        "a pass over an answered queue opens at the full count"
+    let replanned: Vec<_> = drain_events(&mut events)
+        .into_iter()
+        .filter_map(|event| match event {
+            ImportEvent::IdentificationProgress { identified, total } => Some((identified, total)),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        replanned.is_empty(),
+        "a pass over an answered queue identifies nothing, so there is no batch: {replanned:?}"
     );
 }
 
@@ -327,23 +341,28 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
     let token = CancellationToken::new();
     let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
 
+    let mut opened = false;
     loop {
         let event = tokio::time::timeout(Duration::from_secs(10), events.recv())
             .await
-            .expect("identified progress arrives")
+            .expect("identification progress arrives")
             .expect("event bus remains open");
-        if matches!(
-            event,
-            ImportEvent::QueueIdentifyProgress {
-                identified: 1,
-                total: 1
+        match event {
+            ImportEvent::IdentificationProgress {
+                identified: 0,
+                total: 1,
+            } => opened = true,
+            ImportEvent::IdentificationProgress {
+                identified: 0,
+                total: 0,
+            } if opened => {
+                assert!(
+                    fixture.identified_for(&dir).await.is_some(),
+                    "the identification result must be readable before the batch ends"
+                );
+                break;
             }
-        ) {
-            assert!(
-                fixture.identified_for(&dir).await.is_some(),
-                "the identification result must be readable before progress exposes it"
-            );
-            break;
+            _ => continue,
         }
     }
 

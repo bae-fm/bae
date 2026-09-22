@@ -451,13 +451,13 @@ fn extracted_signals_are_retained_without_publishing_a_runtime() {
     assert!(runtime.signals(key).is_none());
 }
 
-/// The queue's own count belongs to the header, not to any one candidate, so it
-/// never reaches here.
+/// The identification count is about every key at once, not about any one
+/// candidate, so it changes no row when it comes back round.
 #[test]
-fn queue_progress_never_touches_the_runtime() {
+fn the_identification_count_never_touches_a_row() {
     let runtime = CandidateRuntime::default();
     let mut changes = runtime.subscribe();
-    runtime.record_event(&ImportEvent::QueueIdentifyProgress {
+    runtime.record_event(&ImportEvent::IdentificationProgress {
         identified: 1,
         total: 9,
     });
@@ -957,3 +957,5 @@ fn a_landing_for_a_switched_off_source_goes_nowhere() {
     );
     assert!(search.groups.is_empty());
 }
+
+include!("tests/counting.rs");

@@ -396,7 +396,7 @@
                     ready: readyRows(releaseQueueRows)
                 )
             )
-            scene.store.queueIdentifyProgress = (identified: 27, total: 40)
+            scene.store.identificationProgress = (identified: 27, total: 40)
             return scene
         }
 
@@ -441,7 +441,7 @@
             // queue that is not there.
             let queue =
                 base.counts.pending + base.counts.done + base.counts.skipped
-            scene.store.queueIdentifyProgress = (
+            scene.store.identificationProgress = (
                 identified: queue - 1, total: queue
             )
             return ImportPreviewFixture(

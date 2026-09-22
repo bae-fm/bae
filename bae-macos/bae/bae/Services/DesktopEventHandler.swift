@@ -18,8 +18,8 @@ final class DesktopEventHandler {
                 )
             )
 
-        case .importQueueIdentifyProgress(let identified, let total):
-            importStore.queueIdentifyProgress = (
+        case .importIdentificationProgress(let identified, let total):
+            importStore.identificationProgress = (
                 identified: identified, total: total
             )
 

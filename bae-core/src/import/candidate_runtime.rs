@@ -10,6 +10,23 @@
 //! another, and nothing depends on the order two producers happened to reach
 //! it in.
 //!
+//! The one place two producers meet is the handover from waiting to running:
+//! a key stops waiting because its run started, and the run that started is
+//! what says so, in its first broadcast. Whoever queued the key clears the
+//! mark only when no run came of it. Told from the queue side instead, the
+//! mark went before the first broadcast arrived and the key read as nothing
+//! at all in between — which is a candidate that shows as idle mid-flight,
+//! and an identification count that drops the key and picks it up again.
+//!
+//! **Every identification of an import candidate is counted here**, in one
+//! batch that is whatever is being identified right now however it was
+//! started — see [`batch::IdentificationBatch`]. The count belongs here
+//! because this is what holds it: the queue sweep knows only its own passes,
+//! and a person starting a Lookup by hand is not one of them. A key joins the
+//! batch when it is admitted to identification, which is what `queued` says
+//! and what both of those do first; it leaves when it is neither waiting,
+//! running, nor having its answer written.
+//!
 //! One entry per key that has any of them, and no entry at all otherwise.
 //! Everything an entry used to outlive itself carrying has a table now: the
 //! verdict the run settled on, the signals a settled run stored, the release
@@ -46,11 +63,16 @@ use crate::identify::{IdentifyRunId, IdentifyState};
 use crate::signals::{LookupFailure, Signals};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use tokio::sync::broadcast;
+use tracing::info;
+
+mod batch;
 
 #[cfg(test)]
 mod tests;
+
+use batch::IdentificationBatch;
 
 /// One key's runtime after a change, or its removal.
 #[derive(Debug, Clone, PartialEq)]
@@ -121,8 +143,9 @@ struct FailedSave {
 /// draws them.
 #[derive(Clone, Default, PartialEq)]
 struct CandidateRuntimeState {
-    /// Written by the sweep when it plans a run, cleared when that run starts
-    /// or the sweep gives the candidate up.
+    /// Written by the sweep when it plans a run — by its passes and by the
+    /// Lookup a person starts. Cleared by the first broadcast of the run that
+    /// was waited for, or by whoever queued it when no run came of it.
     queued: Option<IdentifyQueueOwner>,
     /// Written from the driver's broadcasts. Never terminal and never `Idle`:
     /// both of those end the run rather than being a state it sits at.
@@ -134,6 +157,33 @@ struct CandidateRuntimeState {
     save_failed: Option<FailedSave>,
     import: Option<ImportInFlight>,
     search: Option<RunningSearch>,
+}
+
+/// Where a key stands in identification, as the count reads it.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+struct Identifying {
+    /// It has been admitted to identification and its run has not reported
+    /// yet. This is what joins a key to the batch: both ways an import
+    /// candidate's identification begins — a sweep pass and a person's Lookup
+    /// — mark it here first, and a library release being re-identified in its
+    /// own sheet is marked by neither, so the import pane's count is the
+    /// import queue's work and nothing else.
+    queued: bool,
+    /// Something is still to come for the key: it is waiting, running, or
+    /// having its answer written. A failed write is not one — that run is over
+    /// and the row says how it went.
+    in_flight: bool,
+}
+
+impl Identifying {
+    fn of(state: &CandidateRuntimeState) -> Self {
+        Self {
+            queued: state.queued.is_some(),
+            in_flight: state.queued.is_some()
+                || state.running.is_some()
+                || state.saving.is_some(),
+        }
+    }
 }
 
 impl CandidateRuntimeState {
@@ -187,6 +237,9 @@ struct Inner {
     /// a run a key has moved off — superseded, or cleared and started again —
     /// can never be mistaken for the run it is on now.
     next_search_run: u64,
+    /// The identifications in flight, counted for the surfaces that draw how
+    /// far along they are.
+    batch: IdentificationBatch,
 }
 
 impl Inner {
@@ -195,12 +248,37 @@ impl Inner {
         self.next_search_run += 1;
         run
     }
+
+    /// Carry what a key's change did to its identification into the batch, and
+    /// report whether that moved the counts.
+    fn count_identification(&mut self, key: &str, was: Identifying, is: Identifying) -> bool {
+        if !was.queued && is.queued {
+            return self.batch.admit(key);
+        }
+        if was.in_flight && !is.in_flight {
+            return self.batch.end(key);
+        }
+        false
+    }
+
+    /// What every key's identification is doing right now.
+    fn identifying(&self) -> HashMap<String, Identifying> {
+        self.runtime
+            .iter()
+            .map(|(key, state)| (key.clone(), Identifying::of(state)))
+            .collect()
+    }
 }
 
 #[derive(Clone)]
 pub struct CandidateRuntime {
     inner: Arc<Mutex<Inner>>,
     changes: broadcast::Sender<CandidateRuntimeChange>,
+    /// Where the identification count is announced: the import bus this
+    /// runtime records into. Handed over once, by the bus that owns it, so a
+    /// runtime constructed on its own — a unit test's — has nobody to tell
+    /// and says nothing.
+    events: Arc<OnceLock<broadcast::Sender<ImportEvent>>>,
 }
 
 impl Default for CandidateRuntime {
@@ -209,6 +287,7 @@ impl Default for CandidateRuntime {
         Self {
             inner: Arc::new(Mutex::new(Inner::default())),
             changes,
+            events: Arc::new(OnceLock::new()),
         }
     }
 }
@@ -240,10 +319,34 @@ impl CandidateRuntime {
         self.changes.subscribe()
     }
 
+    /// Take the bus this runtime announces its identification count on. The
+    /// bus calls this as it is built, and one runtime records into one bus.
+    pub(super) fn announce_on(&self, events: broadcast::Sender<ImportEvent>) {
+        assert!(
+            self.events.set(events).is_ok(),
+            "a candidate runtime records into one import bus"
+        );
+    }
+
     fn publish(&self, change: CandidateRuntimeChange) {
         // No receivers is the designed state before any subscriber exists;
         // a change nobody is listening for is not an error.
         let _ = self.changes.send(change);
+    }
+
+    /// Say how far the identifications in flight have got.
+    ///
+    /// Sent straight onto the bus rather than back through it: the bus
+    /// records every event here before broadcasting it, so a change recorded
+    /// here announces from inside that recording, and going round again would
+    /// record the announcement as well.
+    fn announce(&self, (identified, total): (u32, u32)) {
+        let Some(events) = self.events.get() else {
+            return;
+        };
+        info!("identification progress at {identified}/{total}");
+        // No receivers is the designed state before any subscriber exists.
+        let _ = events.send(ImportEvent::IdentificationProgress { identified, total });
     }
 
     /// Apply `mutate` to the key's entry, creating one if it has none, and
@@ -258,12 +361,14 @@ impl CandidateRuntime {
         key: &str,
         mutate: impl FnOnce(&mut Inner, &mut CandidateRuntimeState) -> R,
     ) -> R {
-        let (result, change) = {
+        let (result, change, progress) = {
             let mut inner = self.inner.lock().unwrap();
             let entry = inner.runtime.get(key);
             let previous = entry.map(CandidateRuntimeState::snapshot);
+            let was_identifying = entry.map(Identifying::of).unwrap_or_default();
             let mut next = entry.cloned().unwrap_or_default();
             let result = mutate(&mut inner, &mut next);
+            let is_identifying = Identifying::of(&next);
             let change = if next.is_idle() {
                 inner.runtime.remove(key);
                 previous.is_some().then(|| CandidateRuntimeChange::Removed {
@@ -277,10 +382,16 @@ impl CandidateRuntime {
                     runtime: snapshot,
                 })
             };
-            (result, change)
+            let progress = inner
+                .count_identification(key, was_identifying, is_identifying)
+                .then(|| inner.batch.progress());
+            (result, change, progress)
         };
         if let Some(change) = change {
             self.publish(change);
+        }
+        if let Some(progress) = progress {
+            self.announce(progress);
         }
         result
     }
@@ -394,15 +505,27 @@ impl CandidateRuntime {
     /// Drop everything held for a key: what is in flight and the signals that
     /// described its files. Both are answers about a candidate that is gone.
     fn remove(&self, key: &str) {
-        let removed = {
+        let (removed, progress) = {
             let mut inner = self.inner.lock().unwrap();
             inner.signals.remove(key);
-            inner.runtime.remove(key).is_some()
+            let was_identifying = inner
+                .runtime
+                .get(key)
+                .map(Identifying::of)
+                .unwrap_or_default();
+            let removed = inner.runtime.remove(key).is_some();
+            let progress = inner
+                .count_identification(key, was_identifying, Identifying::default())
+                .then(|| inner.batch.progress());
+            (removed, progress)
         };
         if removed {
             self.publish(CandidateRuntimeChange::Removed {
                 key: key.to_string(),
             });
+        }
+        if let Some(progress) = progress {
+            self.announce(progress);
         }
     }
 
@@ -414,9 +537,10 @@ impl CandidateRuntime {
         queued_keys: impl IntoIterator<Item = String>,
     ) {
         let queued_keys: std::collections::HashSet<String> = queued_keys.into_iter().collect();
-        let reset = {
+        let (reset, progress) = {
             let mut inner = self.inner.lock().unwrap();
             let previous = snapshots(&inner.runtime);
+            let was_identifying = inner.identifying();
             for runtime in inner.runtime.values_mut() {
                 if runtime.queued == Some(IdentifyQueueOwner::AutomaticSweep) {
                     runtime.queued = None;
@@ -430,10 +554,41 @@ impl CandidateRuntime {
                 }
             }
             let next = snapshots(&inner.runtime);
-            (next != previous).then_some(next)
+            let is_identifying = inner.identifying();
+            // The keys this change took out are counted before the ones it
+            // brought in: a queue replaced wholesale ends the batch it
+            // emptied, and what it queues instead is a batch of its own
+            // rather than a total carrying finished work forward.
+            let touched: std::collections::HashSet<&String> = was_identifying
+                .keys()
+                .chain(is_identifying.keys())
+                .collect();
+            let mut ended = Vec::new();
+            let mut admitted = Vec::new();
+            for key in touched {
+                let was = was_identifying.get(key).copied().unwrap_or_default();
+                let is = is_identifying.get(key).copied().unwrap_or_default();
+                if was.in_flight && !is.in_flight {
+                    ended.push(key.clone());
+                } else if !was.queued && is.queued {
+                    admitted.push(key.clone());
+                }
+            }
+            let mut counted = false;
+            for key in ended {
+                counted |= inner.batch.end(&key);
+            }
+            for key in admitted {
+                counted |= inner.batch.admit(&key);
+            }
+            let progress = counted.then(|| inner.batch.progress());
+            ((next != previous).then_some(next), progress)
         };
         if let Some(runtimes) = reset {
             self.publish(CandidateRuntimeChange::Reset { runtimes });
+        }
+        if let Some(progress) = progress {
+            self.announce(progress);
         }
     }
 
@@ -523,6 +678,11 @@ impl CandidateRuntime {
     ///
     /// A state from a run this key was not already on is a fresh attempt, so
     /// it clears whatever the previous attempt's write failed with.
+    ///
+    /// A run reporting is also the end of the wait that preceded it: the key
+    /// is not queued any more, because the thing it was queued for is
+    /// happening. Said here rather than at the call that started the run, so
+    /// there is no instant in which the key is neither waiting nor running.
     fn record_identify_state(&self, candidate_key: &str, run: IdentifyRunId, state: &IdentifyState) {
         self.set(candidate_key, |_, runtime| {
             if matches!(state, IdentifyState::Idle) {
@@ -535,6 +695,7 @@ impl CandidateRuntime {
                 }
                 return;
             }
+            runtime.queued = None;
             if !runtime
                 .running
                 .as_ref()
@@ -665,9 +826,9 @@ impl CandidateRuntime {
                     .signals
                     .insert(candidate_key.clone(), signals.clone());
             }
-            // Queue progress is a queue-wide number with no candidate to
-            // record it against, and the remaining scan events change rows,
-            // not runtime.
+            // The identification count is this map's own announcement about
+            // every key at once, with no candidate to record it against, and
+            // the remaining scan events change rows, not runtime.
             ImportEvent::Scan(
                 ScanEvent::WatchedFoldersChanged { .. }
                 | ScanEvent::CandidateSkipChanged { .. }
@@ -675,7 +836,7 @@ impl CandidateRuntime {
                 | ScanEvent::FolderScanStatusChanged { .. }
                 | ScanEvent::Finished,
             )
-            | ImportEvent::QueueIdentifyProgress { .. } => {}
+            | ImportEvent::IdentificationProgress { .. } => {}
         }
     }
 }

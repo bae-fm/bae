@@ -614,12 +614,12 @@ internal sealed partial class ImportSectionView : UserControl
         row.Children.Add(button);
     }
 
-    // The sweep's progress, updated in place: the indicator leaves the filter
-    // row when there is nothing left to identify, and the line inside its
-    // flyout is kept current so an open flyout does not freeze mid-sweep.
+    // The identification progress, updated in place: the indicator leaves the
+    // filter row when nothing is being identified, and the line inside its
+    // flyout is kept current so an open flyout does not freeze mid-run.
     private void RenderProgressIndicator()
     {
-        if (_import.QueueIdentifyProgress is not { } progress
+        if (_import.IdentificationProgress is not { } progress
             || progress.Total == 0
             || progress.Identified >= progress.Total)
         {

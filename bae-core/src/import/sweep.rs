@@ -201,7 +201,6 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Qu
                             run_pass(&loop_context, &loop_token, &mut event_rx, &mut config).await;
                         } else {
                             loop_context.release_all();
-                            announce_empty_queue(&loop_context);
                         }
                         continue;
                     }
@@ -381,7 +380,6 @@ async fn take_candidate_as_it_stands(
     } else {
         pass.enqueue(context, candidate);
     }
-    pass.announce(context);
     Ok(())
 }
 
@@ -396,7 +394,6 @@ async fn run_pass(
     if !config.borrow().prefs.identify_automatically {
         info!("sweep: no pass — automatic identification is off");
         context.release_all();
-        announce_empty_queue(context);
         return;
     }
     let candidates = match new_candidates(context).await {
@@ -421,7 +418,6 @@ async fn run_pass(
     };
 
     let mut pass = Pass::new(candidates, &stored);
-    pass.announce(context);
     pass.publish_queue(context);
     if pass.is_idle() {
         info!("sweep: pass over — every candidate already holds an answer");
@@ -440,7 +436,6 @@ async fn run_pass(
                 info!("sweep: pass over — automatic identification was turned off");
                 context.release_all();
                 drain(context, &mut finishing).await;
-                announce_empty_queue(context);
                 return;
             }
             let Some(mut job) = pass.next_job() else {
@@ -484,7 +479,7 @@ async fn run_pass(
             );
             context.ours.lock().unwrap().insert(key.clone());
             let run = context.import.new_identification_run();
-            context.import.start_identification(
+            if !context.import.start_identification(
                 run,
                 key.clone(),
                 ExtractionSource::Candidate {
@@ -492,11 +487,20 @@ async fn run_pass(
                 },
                 CallPriority::Background,
                 choices,
-            );
-            // The job is running now, so it is not waiting for a slot. The
-            // members it shares an identity with still are: they are waiting
-            // for the answer this run stores.
-            context.import.clear_automatic_identification(&key);
+            ) {
+                // No source to ask, so no run and no state to wait for. Held
+                // as in flight the job would hold its slot for the rest of the
+                // pass and the queue behind it would never move.
+                warn!("sweep: no source to ask about {key}; leaving its job unanswered");
+                context.disown(&key);
+                for member_key in job.candidate_keys() {
+                    context.import.clear_automatic_identification(&member_key);
+                }
+                continue;
+            }
+            // The job's run reports it is running, and that is what takes the
+            // key off the queue. The members it shares an identity with stay
+            // on it: they are waiting for the answer this run stores.
             pass.track(key, job, run, expected_metadata_revision);
         }
 
@@ -524,7 +528,6 @@ async fn run_pass(
                     // is in flight keeps its write and its row lands.
                     context.release_all();
                     drain(context, &mut finishing).await;
-                    announce_empty_queue(context);
                     return;
                 }
             }
@@ -575,7 +578,7 @@ async fn run_pass(
                                 }
                             }
                         }
-                        if !(stored && pass.answer_identity(context, &done.identity)) {
+                        if !(stored && pass.answer_identity(&done.identity)) {
                             debug!(
                                 "sweep: {} finished without a current stored verdict",
                                 done.representative_key
@@ -660,7 +663,6 @@ async fn run_pass(
                     } else {
                         pass.defer_or_enqueue(context, &identity, candidate);
                     }
-                    pass.announce(context);
                 }
                 Some(Ok(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
                     candidate_key,
@@ -689,7 +691,6 @@ async fn run_pass(
                     let identity = candidate_identity(&candidate);
                     pass.recount(context, &candidate_key, identity.clone());
                     pass.defer_or_enqueue(context, &identity, candidate);
-                    pass.announce(context);
                 }
                 Some(Ok(ImportEvent::ImportProgress { candidate_key, .. })) => {
                     pass.drop_candidate(context, &candidate_key);
@@ -793,13 +794,6 @@ async fn candidate_run_start(
                 candidate.key()
             ))
         })
-}
-
-/// Announce that the sweep is answering nothing: automatic identification is
-/// off, or the pass gave up before it counted a queue. [`Pass::announce`] is
-/// what reports a queue it does have.
-fn announce_empty_queue(context: &SweepContext) {
-    context.import.announce_queue_identify_progress(0, 0);
 }
 
 #[cfg(test)]

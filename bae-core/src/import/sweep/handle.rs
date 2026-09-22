@@ -50,8 +50,10 @@ impl QueueSweepHandle {
     /// run's.
     ///
     /// The key is marked as queued for the whole time this is deciding, so a
-    /// person who pressed sees their candidate waiting rather than nothing —
-    /// and the mark goes whether or not a run comes of it.
+    /// person who pressed sees their candidate waiting rather than nothing.
+    /// A run that starts takes the mark off itself, in its first broadcast;
+    /// the mark is cleared here only when no run came of it, so there is no
+    /// instant in which the candidate is neither waiting nor running.
     pub fn rerun_for_explicit_lookup(&self, candidate_key: String) {
         if self.token.is_cancelled() {
             return;
@@ -63,27 +65,29 @@ impl QueueSweepHandle {
                 this.context
                     .import
                     .queue_explicit_identification(&candidate_key);
-                this.rerun_explicit_lookup(&candidate_key).await;
-                this.context
-                    .import
-                    .clear_explicit_identification(&candidate_key);
+                if !this.rerun_explicit_lookup(&candidate_key).await {
+                    this.context
+                        .import
+                        .clear_explicit_identification(&candidate_key);
+                }
             },
             &self.runtime_handle,
         );
     }
 
-    async fn rerun_explicit_lookup(&self, candidate_key: &str) {
+    /// Whether a run started for the candidate.
+    async fn rerun_explicit_lookup(&self, candidate_key: &str) -> bool {
         let Some(candidate) = actionable_candidate(&self.context, candidate_key).await else {
             warn!(
                 "cannot re-run Lookup for {candidate_key}: \
                  it is not a folder candidate"
             );
-            return;
+            return false;
         };
         let Some(start) = run_start(&self.context, &candidate).await else {
-            return;
+            return false;
         };
-        self.start_explicit_lookup_run(candidate_key.to_string(), candidate, start);
+        self.start_explicit_lookup_run(candidate_key.to_string(), candidate, start)
     }
 
     fn start_explicit_lookup_run(
@@ -91,21 +95,28 @@ impl QueueSweepHandle {
         candidate_key: String,
         candidate: ReleaseCandidate,
         start: CandidateRunStart,
-    ) {
+    ) -> bool {
         let run = self.context.import.new_identification_run();
+        let recording = self.token.child_token();
         self.record_explicit_lookup(
             run,
             candidate_key.clone(),
             candidate.clone(),
             start.metadata_revision,
+            recording.clone(),
         );
-        self.context.import.start_identification(
+        if self.context.import.start_identification(
             run,
             candidate_key,
             ExtractionSource::Candidate { candidate },
             CallPriority::Interactive,
             start.choices,
-        );
+        ) {
+            return true;
+        }
+        // No run, so nothing will ever reach the recorder waiting for one.
+        recording.cancel();
+        false
     }
 
     /// Persist the verdict of an explicit Lookup after its lead documents have
@@ -116,9 +127,9 @@ impl QueueSweepHandle {
         candidate_key: String,
         candidate: ReleaseCandidate,
         expected_metadata_revision: u64,
+        token: CancellationToken,
     ) {
         let context = self.context.clone();
-        let token = self.token.child_token();
         if self.token.is_cancelled() {
             return;
         }

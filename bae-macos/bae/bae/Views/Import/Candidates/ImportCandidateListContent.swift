@@ -321,11 +321,11 @@ struct ImportCandidateListContent: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        if let progress = importStore.queueIdentifyProgress,
+                        if let progress = importStore.identificationProgress,
                             progress.total > 0,
                             progress.identified < progress.total
                         {
-                            QueueProgressIndicator(
+                            IdentificationProgressIndicator(
                                 identified: progress.identified,
                                 total: progress.total,
                                 onGoToUnidentified: goToFirstUnidentified(

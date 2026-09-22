@@ -46,8 +46,13 @@ pub struct ImportEventBus {
 impl ImportEventBus {
     /// A bus whose subscribers may fall `capacity` events behind, recording
     /// into `runtime`.
+    ///
+    /// The runtime announces its identification count on this same bus, so it
+    /// takes the sender as the bus is built — one bus per runtime, handed
+    /// over once.
     pub fn new(capacity: usize, runtime: CandidateRuntime) -> Self {
         let (sender, _) = broadcast::channel(capacity);
+        runtime.announce_on(sender.clone());
         Self { sender, runtime }
     }
 
@@ -111,11 +116,14 @@ pub enum ImportEvent {
         /// [`ImportEvent::IdentifyStateChanged`]'s.
         priority: crate::util::rate_limiter::CallPriority,
     },
-    /// How much of the import queue the background sweep has answered. Both
-    /// counts are the sweep's own: `total` is how many candidates it is
-    /// responsible for, which is a fact about the queue rather than something a
-    /// view can infer from the rows it happens to hold.
-    QueueIdentifyProgress {
+    /// How far the identifications running right now have got: how many have
+    /// ended, out of how many are in the batch. Announced by the candidate
+    /// runtime, which holds every identification whoever started it — a
+    /// sweep's pass, or a person's own Lookup. `(0, 0)` is none running.
+    ///
+    /// Both counts are the runtime's, not a view's: a view counting the rows
+    /// it happens to hold is counting a filtered list.
+    IdentificationProgress {
         identified: u32,
         total: u32,
     },
@@ -337,6 +345,12 @@ impl ImportServiceHandle {
     /// watch the driver reads its snapshots off: the watch holds the latest
     /// snapshot, so nothing the extraction says before the driver is up is
     /// lost, and nothing another extraction says reaches it.
+    ///
+    /// Reports whether a run started. A candidate with no source to ask gets
+    /// none, and nothing will ever report on `run`, so whoever asked for it
+    /// has to stop waiting for it — and the extraction started to feed that
+    /// run is stopped here, since nothing is left to read it.
+    #[must_use]
     pub(crate) fn start_identification(
         &self,
         run: crate::identify::IdentifyRunId,
@@ -344,9 +358,16 @@ impl ImportServiceHandle {
         source: crate::signals::ExtractionSource,
         priority: crate::util::rate_limiter::CallPriority,
         choices: crate::import::LookupChoices,
-    ) {
+    ) -> bool {
         let snapshots = self.extraction.start(run, key.clone(), source, priority);
-        self.identify.start(run, key, priority, choices, snapshots);
+        if self
+            .identify
+            .start(run, key.clone(), priority, choices, snapshots)
+        {
+            return true;
+        }
+        self.extraction.cancel(&key);
+        false
     }
 
     /// Stop identifying this candidate: the run and the extraction feeding it.
@@ -423,11 +444,6 @@ impl ImportServiceHandle {
                 tracing::warn!("import command channel closed before shutdown");
             }
         });
-    }
-
-    pub(crate) fn announce_queue_identify_progress(&self, identified: u32, total: u32) {
-        self.event_tx
-            .send(ImportEvent::QueueIdentifyProgress { identified, total });
     }
 
     #[cfg(any(test, feature = "test-utils"))]

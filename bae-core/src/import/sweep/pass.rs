@@ -1,23 +1,26 @@
 use super::*;
 
-/// Everything one pass keeps: how much of the queue it counts as answered, and
-/// the jobs it runs to answer the rest.
+/// Everything one pass keeps: which candidates it holds answers for, and the
+/// jobs it runs to answer the rest.
 ///
 /// The two halves move together. A candidate that stops being the pass's —
 /// removed, skipped, imported, or claimed by someone else — leaves the jobs and
-/// the count in the same breath, which is what [`Pass::drop_candidate`] is, and
-/// every count that changes is announced from here.
+/// the answered set in the same breath, which is what [`Pass::drop_candidate`]
+/// is.
+///
+/// What a surface draws is not here: the number of identifications in flight
+/// is the candidate runtime's, which holds the ones a person started by hand
+/// as well as the pass's own. This is the pass's own bookkeeping about the
+/// queue it planned.
 #[derive(Default)]
 pub(super) struct Pass {
-    /// The identity every counted candidate had when the pass last looked.
+    /// The identity every candidate the pass holds had when it last looked.
     known_identities: HashMap<String, CandidateIdentity>,
-    /// Counted candidates that hold an answer.
+    /// Candidates that hold an answer.
     answered_keys: HashSet<String>,
     /// The identities those answers cover: a candidate hashing the same is
     /// answered by them without being identified again.
     answered_identities: HashSet<CandidateIdentity>,
-    identified: u32,
-    total: u32,
     /// Jobs waiting for a slot.
     pending: VecDeque<IdentifyJob>,
     /// Jobs holding a slot, by representative key.
@@ -29,17 +32,15 @@ pub(super) struct Pass {
 
 impl Pass {
     /// What the pass is responsible for, decided against the stored rows before
-    /// any of it starts: every candidate counted, the ones that already hold
-    /// applied metadata provenance or a usable verdict counted as answered, and
+    /// any of it starts: every candidate held, the ones that already hold
+    /// applied metadata provenance or a usable verdict held as answered, and
     /// the rest queued as jobs grouped by identity.
     pub(super) fn new(
         candidates: Vec<ReleaseCandidate>,
         stored: &HashMap<String, DbImportCandidateState>,
     ) -> Self {
-        let mut pass = Self {
-            total: candidates.len() as u32,
-            ..Self::default()
-        };
+        let mut pass = Self::default();
+        let planned = candidates.len();
         for candidate in candidates {
             let key = candidate.key().into_owned();
             let identity = candidate_identity(&candidate);
@@ -47,38 +48,17 @@ impl Pass {
             if usable_stored_answer(stored, &candidate).is_some() {
                 pass.answered_identities.insert(identity);
                 pass.answered_keys.insert(key);
-                pass.identified += 1;
             } else {
                 pass.queue(candidate);
             }
         }
         info!(
-            "sweep: pass planned over {} candidates: {} already answered, {} queued as {} jobs",
-            pass.total,
-            pass.identified,
-            pass.total.saturating_sub(pass.identified),
+            "sweep: pass planned over {planned} candidates: {} already answered, {} queued as {} jobs",
+            pass.answered_keys.len(),
+            planned.saturating_sub(pass.answered_keys.len()),
             pass.pending.len()
         );
         pass
-    }
-
-    /// Announce how much of the queue has been answered.
-    ///
-    /// Both numbers are the sweep's, not the UI's: the total is how many
-    /// candidates the sweep is responsible for, which is a domain fact about the
-    /// queue and not something a view can infer from the rows it happens to be
-    /// holding.
-    pub(super) fn announce(&self, context: &SweepContext) {
-        let identified = self.identified.min(self.total);
-        info!(
-            "sweep: queue identification at {identified}/{} ({} queued, {} running)",
-            self.total,
-            self.pending.len(),
-            self.in_flight.len()
-        );
-        context
-            .import
-            .announce_queue_identify_progress(identified, self.total);
     }
 
     /// Tell the import runtime exactly which keys this pass has queued.
@@ -112,16 +92,14 @@ impl Pass {
         self.answered_identities.contains(identity)
     }
 
-    /// Count a candidate the pass was not responsible for when it planned.
+    /// Hold a candidate the pass was not responsible for when it planned.
     pub(super) fn count(&mut self, key: String, identity: CandidateIdentity) {
-        if self.known_identities.insert(key, identity).is_none() {
-            self.total = self.total.saturating_add(1);
-        }
+        self.known_identities.insert(key, identity);
     }
 
-    /// The candidate is a different shape than the pass counted. Drop the job
-    /// answering the old shape and count it afresh; the caller announces once it
-    /// has decided what the new shape needs.
+    /// The candidate is a different shape than the pass held. Drop the job
+    /// answering the old shape and take its new shape; the caller decides what
+    /// that shape needs.
     pub(super) fn recount(
         &mut self,
         context: &SweepContext,
@@ -133,32 +111,22 @@ impl Pass {
         self.count(key.to_string(), identity);
     }
 
-    /// The candidate is not the pass's any more: drop its job and stop counting
-    /// it.
+    /// The candidate is not the pass's any more: drop its job and let it go.
     pub(super) fn drop_candidate(&mut self, context: &SweepContext, key: &str) {
         self.detach(context, key);
-        if self.forget(key) {
-            self.announce(context);
-        }
+        self.forget(key);
     }
 
     /// This candidate holds an answer for `identity` now.
     pub(super) fn mark_answered(&mut self, key: String, identity: CandidateIdentity) {
         self.answered_identities.insert(identity);
-        if self.answered_keys.insert(key) {
-            self.identified = self.identified.saturating_add(1).min(self.total);
-        }
+        self.answered_keys.insert(key);
     }
 
     /// A job settled with a stored verdict: drop the jobs still queued for its
-    /// identity, and count every candidate that shares it as answered.
-    /// Announces, and reports whether that answered anything the pass was still
-    /// waiting on.
-    pub(super) fn answer_identity(
-        &mut self,
-        context: &SweepContext,
-        identity: &CandidateIdentity,
-    ) -> bool {
+    /// identity, and hold every candidate that shares it as answered. Reports
+    /// whether that answered anything the pass was still waiting on.
+    pub(super) fn answer_identity(&mut self, identity: &CandidateIdentity) -> bool {
         self.pending.retain(|job| &job.identity != identity);
         self.answered_identities.insert(identity.clone());
         let covered = self
@@ -167,32 +135,19 @@ impl Pass {
             .filter(|(_, known)| *known == identity)
             .map(|(key, _)| key.clone())
             .collect::<Vec<_>>();
-        let mut newly_answered = 0;
+        let mut newly_answered = false;
         for key in covered {
-            if self.answered_keys.insert(key) {
-                newly_answered += 1;
-            }
+            newly_answered |= self.answered_keys.insert(key);
         }
-        if newly_answered == 0 {
-            return false;
-        }
-        self.identified = self
-            .identified
-            .saturating_add(newly_answered)
-            .min(self.total);
-        self.announce(context);
-        true
+        newly_answered
     }
 
-    /// Stop counting `key`, and report whether it was counted at all.
-    fn forget(&mut self, key: &str) -> bool {
+    /// Let `key` go.
+    fn forget(&mut self, key: &str) {
         let Some(identity) = self.known_identities.remove(key) else {
-            return false;
+            return;
         };
-        self.total = self.total.saturating_sub(1);
-        if self.answered_keys.remove(key) {
-            self.identified = self.identified.saturating_sub(1);
-        }
+        self.answered_keys.remove(key);
         if !self
             .known_identities
             .values()
@@ -200,7 +155,6 @@ impl Pass {
         {
             self.answered_identities.remove(&identity);
         }
-        true
     }
 
     /// The next job to start, in queue order.
@@ -445,9 +399,10 @@ impl Pass {
         &self.pending
     }
 
+    /// How many of the candidates the pass holds already have an answer.
     #[cfg(test)]
-    pub(super) fn identified(&self) -> u32 {
-        self.identified
+    pub(super) fn answered_count(&self) -> usize {
+        self.answered_keys.len()
     }
 
     /// Add the candidate to the job for its identity, or open one for it.

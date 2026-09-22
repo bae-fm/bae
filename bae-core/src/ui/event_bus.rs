@@ -104,14 +104,14 @@ impl UiEventBus {
                                     signals,
                                 });
                             }
-                            // The sidebar header's line and bar. It crosses as
-                            // its own event rather than as a catalog value:
-                            // it is two numbers, it changes once per candidate
-                            // answered, and nothing about the row list changes
-                            // with it.
+                            // The sidebar header's ring, line and bar. It
+                            // crosses as its own event rather than as a
+                            // catalog value: it is two numbers, it changes
+                            // once per identification started or ended, and
+                            // nothing about the row list changes with it.
                             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::QueueIdentifyProgress { identified, total } => {
-                                bus.emit(UiBusEvent::ImportQueueIdentifyProgress {
+                            ImportEvent::IdentificationProgress { identified, total } => {
+                                bus.emit(UiBusEvent::ImportIdentificationProgress {
                                     identified,
                                     total,
                                 });

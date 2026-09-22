@@ -46,7 +46,7 @@ internal sealed class UiEventRouter
                 }
                 break;
             case BridgeUiEvent.CandidateSignalsUpdated:
-            case BridgeUiEvent.ImportQueueIdentifyProgress:
+            case BridgeUiEvent.ImportIdentificationProgress:
                 _importEvents(evt);
                 break;
             default:

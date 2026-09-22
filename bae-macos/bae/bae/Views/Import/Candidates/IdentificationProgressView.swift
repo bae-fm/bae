@@ -1,18 +1,18 @@
 import BaeKit
 import SwiftUI
 
-/// The "Identifying [bar] N / total" line, fed by the queue sweep's progress
-/// event. Reached through `QueueProgressIndicator`'s popover: a
-/// sweep that finishes on its own does not earn a permanent row above every
-/// tab. The caller shows this only while there is something left to say —
-/// see `ImportCandidateListContent` — rather than this view deciding that
-/// for itself.
+/// The "Identifying [bar] N / total" line, fed by core's identification
+/// progress event. Reached through `IdentificationProgressIndicator`'s
+/// popover: identifications that finish on their own do not earn a permanent
+/// row above every tab. The caller shows this only while there is something
+/// left to say — see `ImportCandidateListContent` — rather than this view
+/// deciding that for itself.
 ///
 /// The line is a control, not a label. The candidates the count is waiting on
 /// are rows somewhere in the queue, and a number that sits still while giving
 /// no way to reach what it is waiting on is the frustrating half of this pane.
 /// Tapping it goes to the first one.
-struct QueueProgressView: View {
+struct IdentificationProgressView: View {
     let identified: UInt32
     let total: UInt32
     /// Go to the first candidate with no verdict yet. Nil when there is none
@@ -41,9 +41,9 @@ struct QueueProgressView: View {
     }
 }
 
-/// The filter row's compact stand-in for the line above: a ring at the sweep's
-/// fraction, opening the counts on click.
-struct QueueProgressIndicator: View {
+/// The filter row's compact stand-in for the line above: a ring at the
+/// identifications' fraction, opening the counts on click.
+struct IdentificationProgressIndicator: View {
     let identified: UInt32
     let total: UInt32
     let onGoToUnidentified: (() -> Void)?
@@ -66,7 +66,7 @@ struct QueueProgressIndicator: View {
         .buttonStyle(.plain)
         .help("Identifying")
         .popover(isPresented: $lineShown, arrowEdge: .bottom) {
-            QueueProgressView(
+            IdentificationProgressView(
                 identified: identified,
                 total: total,
                 onGoToUnidentified: onGoToUnidentified
@@ -149,8 +149,8 @@ struct FolderScanProgressIndicator: View {
 #if DEBUG
     // MARK: - Previews
 
-    #Preview("Queue progress indicator") {
-        QueueProgressIndicator(
+    #Preview("Identification progress indicator") {
+        IdentificationProgressIndicator(
             identified: 112,
             total: 130,
             onGoToUnidentified: {}
@@ -159,8 +159,8 @@ struct FolderScanProgressIndicator: View {
         .windowBackground()
     }
 
-    #Preview("Queue progress") {
-        QueueProgressView(
+    #Preview("Identification progress") {
+        IdentificationProgressView(
             identified: 112,
             total: 130,
             onGoToUnidentified: {}

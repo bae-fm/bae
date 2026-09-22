@@ -715,7 +715,7 @@
                 candidate.row = rows[candidate.key]
                 store.selectedCandidates[candidate.key] = candidate
             }
-            store.queueIdentifyProgress = (identified: 112, total: 130)
+            store.identificationProgress = (identified: 112, total: 130)
             return ImportPreviewFixture(
                 store: store,
                 itemsByTab: [

@@ -159,12 +159,15 @@ impl IdentifyServiceHandle {
     /// at its start. It holds the extraction's latest snapshot, so the driver
     /// reads what was last said whenever it looks — nothing is queued and
     /// nothing is missed — and reads only its own extraction.
-    /// A run with no source to ask does not start. Every source is switched
-    /// off or missing its credential, so there is nothing to dispatch — and a
-    /// run that dispatched nothing would settle as "found nothing anywhere",
-    /// storing a verdict about a lookup that never happened. The candidate is
-    /// left as it was; what to do about it is a settings question, and the
-    /// surface reads the availability list to say so.
+    /// A run with no source to ask does not start, and this reports that it
+    /// did not. Every source is switched off or missing its credential, so
+    /// there is nothing to dispatch — and a run that dispatched nothing would
+    /// settle as "found nothing anywhere", storing a verdict about a lookup
+    /// that never happened. The candidate is left as it was; what to do about
+    /// it is a settings question, and the surface reads the availability list
+    /// to say so. Nothing will report on `run`, so a caller waiting on it
+    /// stops waiting.
+    #[must_use]
     pub fn start(
         &self,
         run: IdentifyRunId,
@@ -172,7 +175,7 @@ impl IdentifyServiceHandle {
         priority: CallPriority,
         choices: LookupChoices,
         snapshots: ExtractionWatch,
-    ) {
+    ) -> bool {
         // A restart (the user re-selects after a scan refresh, or changes what
         // the run asks about) supersedes the prior run — a candidate is
         // identified once at a time.
@@ -180,7 +183,7 @@ impl IdentifyServiceHandle {
 
         if run_providers(&self.inner.library_manager).is_empty() {
             debug!("identify: {key} has no source to ask; not starting a run");
-            return;
+            return false;
         }
 
         let token = CancellationToken::new();
@@ -196,6 +199,7 @@ impl IdentifyServiceHandle {
         self.inner.runtime_handle.spawn(async move {
             run_driver(inner, run, key, priority, choices, token, snapshots).await;
         });
+        true
     }
 
     /// Whether a run is in flight for `key`. A run that reached its verdict
@@ -610,13 +614,13 @@ mod tests {
         let mut bus_rx = inner.event_tx.subscribe();
 
         let (snapshots, watch) = tokio::sync::watch::channel(None);
-        handle.start(
+        assert!(handle.start(
             handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
             watch,
-        );
+        ));
         // Feed the signals over the watch, as the extraction service would.
         snapshots.send_replace(Some(settled_snapshot()));
 
@@ -661,13 +665,13 @@ mod tests {
         let (snapshots, watch) = tokio::sync::watch::channel(None);
         snapshots.send_replace(Some(scanning_snapshot()));
         snapshots.send_replace(Some(settled_snapshot()));
-        handle.start(
+        assert!(handle.start(
             handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
             watch,
-        );
+        ));
 
         assert!(
             await_state(&mut bus_rx, |state| {
@@ -691,13 +695,13 @@ mod tests {
         let mut bus_rx = inner.event_tx.subscribe();
 
         let (snapshots, watch) = tokio::sync::watch::channel(None);
-        handle.start(
+        assert!(handle.start(
             handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
             watch,
-        );
+        ));
         snapshots.send_replace(Some(scanning_snapshot()));
         drop(snapshots);
 
@@ -731,13 +735,13 @@ mod tests {
         let mut bus_rx = inner.event_tx.subscribe();
 
         let (_snapshots, watch) = tokio::sync::watch::channel(None);
-        handle.start(
+        assert!(handle.start(
             handle.new_run(),
             "k".to_string(),
             CallPriority::Interactive,
             LookupChoices::default(),
             watch,
-        );
+        ));
         assert!(handle.is_running("k"), "the run is in flight");
         assert_eq!(handle.running_keys(), vec!["k".to_string()]);
 

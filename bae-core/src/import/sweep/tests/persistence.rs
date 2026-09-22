@@ -10,7 +10,7 @@ fn duplicate_content_hashes_share_one_identify_job() {
     );
     assert_eq!(planned.queued().len(), 1);
     assert_eq!(planned.queued()[0].candidates.len(), 2);
-    assert_eq!(planned.identified(), 0);
+    assert_eq!(planned.answered_count(), 0);
 
     let stored = HashMap::from([(
         first.files.content_hash(),
@@ -18,7 +18,7 @@ fn duplicate_content_hashes_share_one_identify_job() {
     )]);
     let planned = Pass::new(vec![first.into(), second.into()], &stored);
     assert!(planned.queued().is_empty());
-    assert_eq!(planned.identified(), 2);
+    assert_eq!(planned.answered_count(), 2);
 }
 
 // ── Synthetic candidates, for the pure planning tests ───────────────────────

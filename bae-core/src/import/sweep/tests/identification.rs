@@ -665,7 +665,7 @@ async fn a_skipped_candidate_is_not_swept() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn unskipping_a_stored_candidate_mid_pass_counts_it_immediately() {
+async fn unskipping_a_stored_candidate_mid_pass_does_not_identify_it_again() {
     let fixture = Fixture::new("unskip-mid-pass").await;
     fixture
         .import
@@ -732,15 +732,16 @@ async fn unskipping_a_stored_candidate_mid_pass_counts_it_immediately() {
     let progress: Vec<_> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
-            ImportEvent::QueueIdentifyProgress { identified, total } => Some((identified, total)),
+            ImportEvent::IdentificationProgress { identified, total } => Some((identified, total)),
             _ => None,
         })
         .collect();
     assert!(
-        progress.contains(&(1, 2)),
-        "the stored unskipped candidate is counted immediately: {progress:?}"
+        progress.iter().all(|(_, total)| *total <= 1),
+        "the unskipped candidate already holds its answer, so the batch stays \
+         the one candidate the pass identifies: {progress:?}"
     );
-    assert_eq!(progress.last(), Some(&(2, 2)), "{progress:?}");
+    assert_eq!(progress.last(), Some(&(0, 0)), "{progress:?}");
 }
 
 /// An identification that settles on a release the catalogs hold no artwork
