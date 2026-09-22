@@ -619,9 +619,7 @@ internal sealed partial class ImportSectionView : UserControl
     // flyout is kept current so an open flyout does not freeze mid-run.
     private void RenderProgressIndicator()
     {
-        if (_import.IdentificationProgress is not { } progress
-            || progress.Total == 0
-            || progress.Identified >= progress.Total)
+        if (_import.IdentificationProgress is not { } progress || progress.Total == 0)
         {
             _progressButton.IsVisible = false;
             _progressGoToKey = null;

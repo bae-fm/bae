@@ -322,8 +322,7 @@ struct ImportCandidateListContent: View {
                             .buttonStyle(.plain)
                         }
                         if let progress = importStore.identificationProgress,
-                            progress.total > 0,
-                            progress.identified < progress.total
+                            progress.total > 0
                         {
                             IdentificationProgressIndicator(
                                 identified: progress.identified,
