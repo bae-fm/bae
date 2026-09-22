@@ -30,7 +30,7 @@ enum FormatKind {
 /// A display and playback classifier over free text: it answers whether a
 /// release has sides or discs, and its answer is no evidence about a
 /// pressing. What a catalog states a release's media to be is read from that
-/// catalog's own list of format names, by [`crate::import::medium`].
+/// catalog's own list of format names, by `crate::import::medium`.
 pub fn physical_medium(format: Option<&str>) -> Option<PhysicalMedium> {
     let lowered = format?.to_lowercase();
     [

@@ -100,7 +100,7 @@ impl MetadataResult {
 /// What a record says a pressing is made of.
 ///
 /// Each stated word is read in its own catalog's list of format names by
-/// [`crate::import::medium`]; what the shape adds is whether the record
+/// `crate::import::medium`; what the shape adds is whether the record
 /// lists its media one by one, and so can account for all of them, or only
 /// names what it is made of.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
