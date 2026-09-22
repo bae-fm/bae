@@ -29,9 +29,7 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
     );
     fixture.provider.hold("/discid/");
 
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     assert!(
         fixture.preparations.store_verdict(&NewImportCandidateVerdict {

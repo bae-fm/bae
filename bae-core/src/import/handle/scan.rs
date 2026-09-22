@@ -109,7 +109,7 @@ impl ImportServiceHandle {
     /// binding a sheet turns a one-track image into a twelve-track disc with a
     /// computable disc ID, so the verdict was an answer about a folder that no
     /// longer exists. The event that follows makes the view read the candidate
-    /// again and the queue sweep identify it again.
+    /// again and the identification queue answer it again.
     pub async fn set_sheet_binding(
         &self,
         candidate_key: String,
@@ -460,7 +460,7 @@ impl ImportServiceHandle {
                 // A release the person chose answers the candidate. Where a run
                 // has already answered it, that run's own result is the record
                 // of what it found and stands; where none has, the choice is
-                // the result, and it is stored as one so the queue sweep stops
+                // the result, and it is stored as one so the automatic admission stops
                 // asking.
                 let audio_durations =
                     crate::import::track_slots::audio_durations(candidate.files(), &durations)?;
@@ -508,7 +508,7 @@ impl ImportServiceHandle {
     ///
     /// A clear is a decision about the candidate like a pick is: it ends
     /// whatever identification the candidate had going, and announces the
-    /// change, so the pane and the queue sweep both read the candidate afresh.
+    /// change, so the pane and the identification queue both read the candidate afresh.
     pub(crate) async fn clear_candidate_metadata(
         &self,
         candidate_key: String,

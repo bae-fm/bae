@@ -203,7 +203,7 @@ desktop_only! {
 pub use lookup_choices::{ChoiceChange, LookupChoices};
 pub use session::{CandidateSession, MetadataPresentation, SearchForm, SearchTab};
 desktop_only! {
-    pub use identification::QueueSweepHandle;
+    pub use identification::IdentificationHandle;
     pub use track_slots::{
         lengths_disagree, SlotFile, SlotReconciliation, SlotSpan, SlotTable, SourceTrack, TrackSlot,
     };

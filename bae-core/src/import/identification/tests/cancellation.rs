@@ -34,10 +34,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
 
     let picked_key = picked.to_string_lossy().into_owned();
     let other_key = other.to_string_lossy().into_owned();
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass_token = token.clone();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &pass_token).await });
+    let pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     let mut events = fixture.import.subscribe_events();
 
@@ -95,7 +92,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
         "the pick must not tear down the run of a candidate it does not name"
     );
 
-    token.cancel();
+    fixture.identification().shut_down();
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(10), pass)
         .await
@@ -215,9 +212,7 @@ async fn clearing_a_candidates_metadata_mid_pass_puts_it_back_in_the_queue() {
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
 
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
     fixture
@@ -303,9 +298,7 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     fixture.provider.hold("/release/mb-settling?");
     fixture.scan(1).await;
 
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let mut pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let mut pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/release/mb-settling?", 1).await;
 
     fixture
@@ -344,51 +337,3 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     );
 }
 
-/// A person's own run is ended by their decision the same way a sweep's is:
-/// the run stops at `Idle` and the watcher hanging off it stores nothing.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
-    let fixture = Fixture::new("pick-ends-explicit-run").await;
-    let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
-    fixture.provider.route("/discid/", 200, "{}");
-    fixture.provider.hold("/discid/");
-    fixture.scan(1).await;
-
-    let mut events = fixture.import.subscribe_events();
-    fixture.start_explicit_lookup_and_await_run(&dir).await;
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
-
-    fixture
-        .import
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileTags,
-        )
-        .await
-        .expect("the pick lands");
-
-    assert!(
-        !fixture.import.is_identifying(&key),
-        "the pick ends the person's own run before it returns"
-    );
-    await_run_state(&mut events, &key, |_, state| {
-        matches!(state, IdentifyState::Idle)
-    })
-    .await;
-    fixture.provider.release();
-
-    let stored = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the pick is stored");
-    assert_eq!(
-        stored.metadata_provenance,
-        Some(crate::import::MetadataProvenance::FileTags)
-    );
-    assert!(
-        stored.identify.is_none(),
-        "the watcher on a cancelled run writes nothing"
-    );
-}

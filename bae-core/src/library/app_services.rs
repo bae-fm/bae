@@ -1,8 +1,8 @@
 use super::manager::LibraryManager;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::import::ImportServiceHandle;
+use crate::import::IdentificationHandle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::import::QueueSweepHandle;
+use crate::import::ImportServiceHandle;
 use crate::playback::PlaybackHandle;
 use std::sync::Arc;
 
@@ -30,10 +30,10 @@ struct AppServicesInner {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     import: ImportServiceHandle,
     /// Queue-wide identification. Built here rather than handed in, so that a
-    /// library cannot exist without one: the sweep runs whether or not anyone
+    /// library cannot exist without one: the queue runs whether or not anyone
     /// has the Import section open, and opening a view is not what starts it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    sweep: QueueSweepHandle,
+    identification: IdentificationHandle,
 }
 
 impl Drop for AppServicesInner {
@@ -50,9 +50,10 @@ impl Drop for AppServicesInner {
         self.playback.stop_and_join();
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         {
-            // Before the import worker's join: the sweep's in-flight candidates
-            // are cancelled here, and a cancelled candidate writes no row.
-            self.sweep.stop();
+            // Before the import worker's join: the queue's in-flight
+            // candidates are cancelled here, and a cancelled candidate writes
+            // no row.
+            self.identification.stop();
             self.import.stop_and_join();
         }
     }
@@ -155,7 +156,7 @@ impl AppServices {
         #[cfg(not(any(target_os = "ios", target_os = "android")))] import: ImportServiceHandle,
     ) -> Self {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let sweep = crate::import::identification::start(import.clone(), manager.clone());
+        let identification = crate::import::identification::start(import.clone(), manager.clone());
         AppServices {
             inner: Arc::new(AppServicesInner {
                 manager,
@@ -163,7 +164,7 @@ impl AppServices {
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
                 import,
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                sweep,
+                identification,
             }),
         }
     }
@@ -716,10 +717,11 @@ impl AppServices {
                 // one of them, not only the candidate whose pane the switch was
                 // flicked on, because a background run waiting on a source
                 // nobody asks is exactly as wrong as the open one. A candidate
-                // that already settled has no run to supersede; the sweep
-                // re-plans those when its own config watcher fires.
+                // that already settled has no run to supersede; the automatic
+                // admission reads those again when its own config watcher
+                // fires.
                 for key in self.inner.import.identifying_keys() {
-                    self.inner.sweep.rerun_for_explicit_lookup(key);
+                    self.inner.identification.rerun_identify(key);
                 }
             }
         }

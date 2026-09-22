@@ -397,35 +397,31 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
 }
 
 /// A terminal state without its settled signals cannot be committed, and the
-/// finalizer reports that failure instead of pretending the candidate remains
-/// queued for another pass.
+/// settle reports that failure instead of pretending the candidate remains
+/// queued for another run.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
     let fixture = Fixture::new("verdict-without-signals").await;
-    let candidate = synthetic_candidate("/missing-signals", 321);
-    let entry = InFlight {
-        job: IdentifyJob {
-            identity: candidate_identity(&candidate.clone().into()),
-            candidates: vec![candidate.into()],
-        },
-        run: IdentifyRunId::for_test(1),
-        signals: None,
-        expected_metadata_revision: 0,
-    };
+    let candidate: crate::import::release_candidate::ReleaseCandidate =
+        synthetic_candidate("/missing-signals", 321).into();
 
-    let outcome = finish_candidate(
-        &fixture.context(),
-        &entry,
+    let finished = settle_answer(
+        fixture.context(),
+        candidate_identity(&candidate),
+        candidate,
+        IdentifyRunId::for_test(1),
+        0,
         TerminalVerdict::NotFoundAnywhere { ledger: None }.resume_state(
             &|_| unreachable!("a no-match verdict names no release"),
             Default::default(),
         ),
-        &CancellationToken::new(),
+        CallPriority::Background,
+        CancellationToken::new(),
     )
     .await;
 
-    assert!(matches!(outcome, FinishCandidateOutcome::Failed { .. }));
+    assert!(matches!(finished.settled, Settled::Unwritable { .. }));
     assert!(fixture.stored().await.is_empty());
 }
 

@@ -1,11 +1,11 @@
-//! Sweep tests.
+//! Identification-queue tests.
 //!
 //! Every one of them drives the real pipeline — folder scan, extraction,
 //! identify reducer, the shared rate limiter, the real MusicBrainz client — and
 //! fakes only the provider, at the wire. `set_for_test` points the
 //! client at a local server that answers the same URLs the live service does and
-//! counts what was asked for, so "did the sweep re-fetch this?" is answered by
-//! request counts rather than by a stub the sweep was handed.
+//! counts what was asked for, so "did the queue re-fetch this?" is answered by
+//! request counts rather than by a stub the queue was handed.
 //!
 //! The MusicBrainz base URL, its rate limiter, and its release cache are all
 //! process-wide, so these tests are `#[serial]`.
@@ -25,7 +25,7 @@ use serial_test::serial;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Barrier, Mutex};
+use std::sync::{Arc, Barrier, Mutex, OnceLock};
 use std::time::Duration;
 use tempfile::TempDir;
 
@@ -307,12 +307,15 @@ struct Fixture {
     preparations: crate::import::CandidatePreparations,
     import: ImportServiceHandle,
     provider: FakeProvider,
-    /// One context for the fixture's whole life, so consecutive `sweep_once`
-    /// calls are the same sweep — which is what a second pass after a failed
-    /// first one actually is.
-    context: SweepContext,
-    /// The handle over that same context, for the selection entry point.
-    sweep: QueueSweepHandle,
+    /// The services the queue runs on, for the tests that drive one step of it
+    /// directly.
+    context: Context,
+    /// The queue itself, started the first time a test reaches for it.
+    ///
+    /// Started late on purpose: the loop admits candidates as the scan
+    /// announces them, so a fixture that started one in `new` would identify
+    /// every test's fixtures before the test had said what it was testing.
+    identification: OnceLock<IdentificationHandle>,
     root: PathBuf,
     _temp: TempDir,
 }
@@ -381,38 +384,27 @@ impl Fixture {
         let root = temp.path().join("watched");
         std::fs::create_dir_all(&root).unwrap();
 
-        let context = SweepContext {
+        let context = Context {
             import: import.clone(),
             library_manager: manager.clone(),
-            ours: Arc::new(Mutex::new(HashSet::new())),
         };
-        let tasks = tokio_util::task::TaskTracker::new();
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        let runtime_handle = runtime.handle().clone();
-        let completion_tasks = tasks.clone();
-        let executor_thread = std::thread::spawn(move || {
-            runtime.block_on(completion_tasks.wait());
-        });
-        let sweep = QueueSweepHandle::new(
-            context.clone(),
-            CancellationToken::new(),
-            tasks,
-            runtime_handle,
-            executor_thread,
-        );
         Fixture {
             manager,
             preparations,
             import,
             provider,
             context,
-            sweep,
+            identification: OnceLock::new(),
             root,
             _temp: temp,
         }
+    }
+
+    /// The running queue, started on first use.
+    fn identification(&self) -> &IdentificationHandle {
+        self.identification.get_or_init(|| {
+            super::start(self.import.clone(), self.manager.clone())
+        })
     }
 
     /// A candidate folder with two real FLACs, and a rip log so the disc ID
@@ -523,8 +515,8 @@ impl Fixture {
     /// Ask to identify `dir`, through the one entry point a person's request
     /// reaches.
     fn start_explicit_lookup(&self, dir: &Path) {
-        self.sweep
-            .rerun_for_explicit_lookup(dir.to_string_lossy().into_owned());
+        self.identification()
+            .rerun_identify(dir.to_string_lossy().into_owned());
     }
 
     /// Open `dir` and wait until identify has registered the driver for it.
@@ -573,21 +565,32 @@ impl Fixture {
             .count_containing(&format!("/release/{release_id}?"))
     }
 
-    fn context(&self) -> SweepContext {
+    fn context(&self) -> Context {
         self.context.clone()
     }
 
-    /// Run one sweep pass to completion. Calling `run_pass` directly rather than
-    /// through the bus-driven loop keeps the test's assertions after a finished
-    /// pass rather than after a sleep.
+    /// Run the automatic admission and wait for everything it is responsible
+    /// for to end — the whole of what one pass over the queue was. Assertions
+    /// land after finished work rather than after a sleep.
     async fn sweep_once(&self) {
-        let token = CancellationToken::new();
         tokio::time::timeout(
             Duration::from_secs(30),
-            run_pass_for_test(&self.context(), &token),
+            self.identification().identify_the_queue_for_test(),
         )
         .await
-        .expect("a sweep pass finishes");
+        .expect("the automatic admission's queue drains");
+    }
+
+    /// The same, as a task a test can watch while it acts on the queue.
+    fn sweep(&self) -> tokio::task::JoinHandle<()> {
+        let identification = self.identification().clone();
+        tokio::spawn(async move { identification.identify_the_queue_for_test().await })
+    }
+
+    /// Whether the queue holds `key` — what the runtime says about it, which is
+    /// the queue's published state and the only thing outside it can read.
+    fn identification_status(&self, key: &str) -> Option<crate::import::IdentificationStatus> {
+        crate::import::TriageRuntimeFacts::of(&self.import.candidate_runtime(key)?).identification
     }
 
     async fn stored(&self) -> BTreeMap<String, DbImportCandidateState> {
@@ -801,8 +804,8 @@ impl Fixture {
     }
 }
 
-/// The identify half of a stored row, which every sweep assertion is about. A
-/// row the sweep wrote always has one; a row with none was written by the
+/// The identify half of a stored row, which every assertion here is about. A
+/// row identification wrote always has one; a row with none was written by the
 /// binding editor, which these tests never invoke.
 fn identify_result(row: &DbImportCandidateState) -> &crate::db::DbCandidateIdentifyResult {
     row.identify
@@ -817,7 +820,9 @@ impl Drop for Fixture {
         crate::musicbrainz::BASE_URL.set_for_test(None);
         crate::import::cover_art::ARCHIVE.set_for_test(None);
         crate::discogs::client::API_BASE_URL.set_for_test(None);
-        self.sweep.stop();
+        if let Some(identification) = self.identification.get() {
+            identification.stop();
+        }
         self.import.stop_and_join();
     }
 }
@@ -834,3 +839,5 @@ include!("tests/stored_picks.rs");
 include!("tests/persistence_late.rs");
 include!("tests/candidate_decisions.rs");
 include!("tests/cancellation.rs");
+include!("tests/requested.rs");
+include!("tests/admissions.rs");

@@ -31,7 +31,7 @@ fn a_lookup_started_by_hand_opens_a_batch() {
     let (runtime, mut events) = counted_runtime();
     let key = "/watch/a/rel1";
 
-    runtime.queue_explicit_identification(key);
+    runtime.admit(key, Admission::Requested);
     assert_eq!(counts(&mut events), vec![(0, 1)]);
 
     runtime.record_event(&identify(key, 1, triangulating()));
@@ -48,7 +48,7 @@ fn a_lookup_started_by_hand_opens_a_batch() {
         "and so is the answer waiting on its write"
     );
 
-    runtime.finish_identification_save(key, run(1));
+    runtime.end_identification_answer(key, run(1));
     assert_eq!(
         counts(&mut events),
         vec![(0, 0)],
@@ -64,7 +64,7 @@ fn a_run_reporting_takes_its_key_off_the_queue() {
     let (runtime, mut events) = counted_runtime();
     let key = "/watch/a/rel1";
 
-    runtime.queue_explicit_identification(key);
+    runtime.admit(key, Admission::Requested);
     assert_eq!(
         runtime.get(key).and_then(|state| state.queued),
         Some(Admission::Requested)
@@ -85,15 +85,15 @@ fn the_sweeps_queue_is_counted_and_drains_to_nothing() {
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
 
-    runtime.replace_automatic_identification_queue([first.to_string(), second.to_string()]);
+    runtime.admit_all(vec![first.to_string(), second.to_string()], Admission::Automatic);
     assert_eq!(counts(&mut events), vec![(0, 2)]);
 
     runtime.record_event(&identify(first, 1, manual_only()));
-    runtime.finish_identification_save(first, run(1));
+    runtime.end_identification_answer(first, run(1));
     assert_eq!(counts(&mut events), vec![(1, 2)]);
 
     runtime.record_event(&identify(second, 2, manual_only()));
-    runtime.finish_identification_save(second, run(2));
+    runtime.end_identification_answer(second, run(2));
     assert_eq!(counts(&mut events), vec![(0, 0)]);
 }
 
@@ -105,17 +105,17 @@ fn a_key_dropped_from_the_queue_before_it_ran_is_over() {
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
 
-    runtime.replace_automatic_identification_queue([first.to_string(), second.to_string()]);
+    runtime.admit_all(vec![first.to_string(), second.to_string()], Admission::Automatic);
     assert_eq!(counts(&mut events), vec![(0, 2)]);
 
-    runtime.replace_automatic_identification_queue([first.to_string()]);
+    runtime.withdraw(second);
     assert_eq!(
         counts(&mut events),
         vec![(1, 2)],
         "the dropped key is counted as ended, not taken out of the total"
     );
 
-    runtime.clear_automatic_identification(first);
+    runtime.withdraw(first);
     assert_eq!(counts(&mut events), vec![(0, 0)]);
 }
 
@@ -126,8 +126,8 @@ fn a_lookup_that_never_ran_ends_when_its_mark_is_cleared() {
     let (runtime, mut events) = counted_runtime();
     let key = "/watch/a/rel1";
 
-    runtime.queue_explicit_identification(key);
-    runtime.clear_explicit_identification(key);
+    runtime.admit(key, Admission::Requested);
+    runtime.withdraw(key);
     assert_eq!(counts(&mut events), vec![(0, 1), (0, 0)]);
 }
 
@@ -138,7 +138,7 @@ fn a_failed_write_ends_the_identification() {
     let (runtime, mut events) = counted_runtime();
     let key = "/watch/a/rel1";
 
-    runtime.queue_explicit_identification(key);
+    runtime.admit(key, Admission::Requested);
     runtime.record_event(&identify(key, 1, manual_only()));
     assert_eq!(counts(&mut events), vec![(0, 1)]);
 
@@ -158,7 +158,7 @@ fn a_candidate_that_leaves_the_scan_ends_its_identification() {
     let (runtime, mut events) = counted_runtime();
     let key = "/watch/a/rel1";
 
-    runtime.queue_explicit_identification(key);
+    runtime.admit(key, Admission::Requested);
     runtime.record_event(&identify(key, 1, triangulating()));
     assert_eq!(counts(&mut events), vec![(0, 1)]);
 
@@ -176,12 +176,12 @@ fn a_batch_after_a_drain_starts_from_zero() {
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
 
-    runtime.replace_automatic_identification_queue([first.to_string(), second.to_string()]);
-    runtime.clear_automatic_identification(first);
-    runtime.clear_automatic_identification(second);
+    runtime.admit_all(vec![first.to_string(), second.to_string()], Admission::Automatic);
+    runtime.withdraw(first);
+    runtime.withdraw(second);
     assert_eq!(counts(&mut events), vec![(0, 2), (1, 2), (0, 0)]);
 
-    runtime.queue_explicit_identification(first);
+    runtime.admit(first, Admission::Requested);
     assert_eq!(counts(&mut events), vec![(0, 1)]);
 }
 

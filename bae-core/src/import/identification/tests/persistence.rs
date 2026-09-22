@@ -1,24 +1,48 @@
-#[test]
-fn duplicate_content_hashes_share_one_identify_job() {
-    let first = synthetic_candidate("/first", 321);
-    let second = synthetic_candidate("/second", 321);
-    assert_eq!(first.files.content_hash(), second.files.content_hash());
-
-    let planned = Pass::new(
-        vec![first.clone().into(), second.clone().into()],
-        &HashMap::new(),
+/// Candidates hashing the same are one job, and the answer one of them stores
+/// answers all of them: the next admission finds both settled and asks nothing.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn one_answer_covers_every_candidate_that_hashes_the_same() {
+    let fixture = Fixture::new("shared-hash-answered").await;
+    let first = fixture.disc_id_candidate("First");
+    let second = fixture.disc_id_candidate("Second");
+    assert_eq!(
+        fixture.content_hash(&first),
+        fixture.content_hash(&second),
+        "the two folders hold the same bytes"
     );
-    assert_eq!(planned.queued().len(), 1);
-    assert_eq!(planned.queued()[0].candidates.len(), 2);
-    assert_eq!(planned.answered_count(), 0);
+    let probed = fixture.probed_total_ms(&first);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-shared-1", "rg-shared-1", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-shared-1?",
+        200,
+        release_json("mb-shared-1", "rg-shared-1", &[probed, 0]),
+    );
+    fixture.scan(2).await;
 
-    let stored = HashMap::from([(
-        first.files.content_hash(),
-        row_with_verdict(&first, TerminalVerdict::NotFoundAnywhere { ledger: None }),
-    )]);
-    let planned = Pass::new(vec![first.into(), second.into()], &stored);
-    assert!(planned.queued().is_empty());
-    assert_eq!(planned.answered_count(), 2);
+    fixture.sweep_once().await;
+
+    let asked = fixture.provider.count_containing("/discid/");
+    assert_eq!(
+        asked,
+        1,
+        "one run answered both: {:?}",
+        fixture.provider.requests()
+    );
+    assert!(fixture.identified_for(&first).await.is_some());
+    assert!(fixture.identified_for(&second).await.is_some());
+
+    fixture.sweep_once().await;
+
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        asked,
+        "and a second admission finds both of them answered"
+    );
 }
 
 // ── Synthetic candidates, for the pure planning tests ───────────────────────
@@ -48,27 +72,6 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
         display_path: path.trim_start_matches('/').to_string(),
         resolved_boundaries: Vec::new(),
         combine_ancestor_key: None,
-    }
-}
-
-fn row_with_verdict(
-    candidate: &FolderCandidate,
-    verdict: TerminalVerdict,
-) -> DbImportCandidateState {
-    DbImportCandidateState {
-        content_hash: candidate.files.content_hash(),
-        folder_path: candidate.path.to_string_lossy().into_owned(),
-        identify: Some(crate::db::DbCandidateIdentifyResult {
-            verdict,
-            probed_total_duration_ms: 0,
-            identified_at: fixed_now(),
-        }),
-        signals: None,
-        lookup_choices: Default::default(),
-        file_edits: Default::default(),
-        metadata_provenance: None,
-        metadata_author: crate::import::MetadataAuthor::Nobody,
-        metadata_revision: 0,
     }
 }
 
@@ -160,133 +163,6 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
             .unwrap(),
         "a claimed candidate refuses a verdict"
     );
-}
-
-/// Asking to identify an answered candidate runs it again: the person asked
-/// for a run, and a stored result is what they are asking to replace. The
-/// sweep is the only reader that treats a result as a reason not to run.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
-    let fixture = Fixture::new("resume-answered").await;
-    let dir = fixture.disc_id_candidate("Album");
-    let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-asked-again", "rg-asked-again", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/release/mb-asked-again?",
-        200,
-        release_json("mb-asked-again", "rg-asked-again", &[probed, 0]),
-    );
-    fixture.scan(1).await;
-
-    let verdict = multi_match_verdict(&["mb-resume-1", "mb-resume-2"], "rg-resume-1");
-    let wrote = fixture
-        .import
-        .save_candidate_verdict_if_current(
-            &dir.to_string_lossy(),
-            IdentifyRunId::for_test(1),
-            &NewImportCandidateVerdict {
-                candidate: crate::import::CandidateAsRead {
-                    content_hash: fixture.content_hash(&dir),
-                    file_edit_revision: 0,
-                    metadata_revision: 0,
-                },
-                folder_path: dir.to_string_lossy().into_owned(),
-                verdict,
-                signals: settled_signals(fixture.probed_durations(&dir)),
-                metadata: None,
-            },
-        )
-        .await
-        .unwrap();
-    assert!(wrote, "the seeded verdict lands");
-
-    fixture.start_explicit_lookup(&dir);
-
-    tokio::time::timeout(Duration::from_secs(20), async {
-        while !fixture.identified_for(&dir).await.is_some_and(|result| {
-            matches!(
-                &result.verdict,
-                TerminalVerdict::Found { matches, .. }
-                    if matches.iter().any(|m| m.release_id == "mb-asked-again")
-            )
-        }) {
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("the run the person asked for replaces the stored result");
-    assert!(fixture.provider.count_containing("/discid/") > 0);
-}
-
-/// Asking again while a run is going supersedes it: the person asked for a
-/// run that reads the candidate as it is now, so the one in flight is
-/// cancelled before the new one starts and its result can never land.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn explicit_lookup_during_an_active_run_supersedes_it() {
-    let fixture = Fixture::new("explicit-supersedes-active-run").await;
-    let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
-    fixture.provider.route("/discid/", 200, "{}");
-    fixture.provider.hold("/discid/");
-    fixture.scan(1).await;
-    let mut events = fixture.import.subscribe_events();
-
-    fixture.start_explicit_lookup_and_await_run(&dir).await;
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
-    let first_run = loop {
-        let event = tokio::time::timeout(Duration::from_secs(10), events.recv())
-            .await
-            .expect("the active run broadcasts its state")
-            .expect("the import event bus remains open");
-        if let ImportEvent::IdentifyStateChanged {
-            candidate_key, run, ..
-        } = event
-        {
-            if candidate_key == key {
-                break run;
-            }
-        }
-    };
-
-    // The person presses again while the first run is still at the provider.
-    fixture.start_explicit_lookup(&dir);
-
-    let replacement = tokio::time::timeout(Duration::from_secs(10), async {
-        loop {
-            if let ImportEvent::IdentifyStateChanged {
-                candidate_key, run, ..
-            } = events
-                .recv()
-                .await
-                .expect("the import event bus remains open")
-            {
-                if candidate_key == key && run != first_run {
-                    return run;
-                }
-            }
-        }
-    })
-    .await;
-    fixture.provider.release();
-
-    let replacement = replacement.expect("pressing again starts a run of its own");
-    assert_ne!(
-        replacement, first_run,
-        "the run in flight was superseded rather than joined"
-    );
-    assert!(
-        fixture.import.is_identifying(&key),
-        "and the candidate is identifying under the new run"
-    );
-    // The superseded run reached the provider and was cancelled there; nothing
-    // it would have concluded is stored.
-    assert!(fixture.identified_for(&dir).await.is_none());
 }
 
 /// An ending ends the run it names and nothing else. A run's own terminal
@@ -393,7 +269,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
     // nothing is happening for the key at all.
     fixture
         .import
-        .finish_identification_save(&key, crate::identify::IdentifyRunId::for_test(1));
+        .end_identification_answer(&key, crate::identify::IdentifyRunId::for_test(1));
     let Ok(Some(ImportCandidateSnapshot::Folder { runtime, .. })) =
         fixture.import.get_candidate(&key).await
     else {
@@ -403,37 +279,6 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
         runtime.is_none(),
         "the finished write leaves nothing behind, got {runtime:?}"
     );
-}
-
-/// Re-run on a candidate whose driver is gone starts a fresh interactive run
-/// instead of no-op'ing — the stored answer is what a re-run exists to
-/// replace, so it is not consulted.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn a_rerun_with_no_driver_runs_identification_again() {
-    let fixture = Fixture::new("rerun-no-driver").await;
-    let dir = fixture.disc_id_candidate("Album");
-    let probed = fixture.probed_total_ms(&dir);
-    fixture.scan(1).await;
-    fixture
-        .store_settled_verdict(&dir, "mb-rerun-1", "rg-rerun-1", probed)
-        .await;
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-rerun-2", "rg-rerun-2", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/release/mb-rerun-2?",
-        200,
-        release_json("mb-rerun-2", "rg-rerun-2", &[probed, 0]),
-    );
-
-    fixture
-        .sweep
-        .rerun_for_explicit_lookup(dir.to_string_lossy().into_owned());
-
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
 }
 
 // ── 11. Re-stating a file decision changes nothing ──────────────────────────

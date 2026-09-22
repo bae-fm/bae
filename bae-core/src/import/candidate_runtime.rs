@@ -3,12 +3,12 @@
 //! write that failed, the import running, the search a person typed.
 //!
 //! **Each field has one writer and is never inferred from another.** The
-//! queue sweep owns `queued` — both its passes and the Lookup entry point it
-//! exposes; the identify driver's broadcasts own `running`; the verdict write
-//! owns `saving` and `save_failed`; the import worker owns `import`; and a
-//! candidate's search owns `search`. Nothing here reads one field to decide
-//! another, and nothing depends on the order two producers happened to reach
-//! it in.
+//! identification queue owns `queued`, for both of its admissions; the
+//! identify driver's broadcasts own the run and the state it reached; the
+//! write of that run's answer owns the end of it and `save_failed`; the import
+//! worker owns `import`; and a candidate's search owns `search`. Nothing here
+//! reads one field to decide another, and nothing depends on the order two
+//! producers happened to reach it in.
 //!
 //! The one place two producers meet is the handover from waiting to running:
 //! a key stops waiting because its run started, and the run that started is
@@ -21,11 +21,9 @@
 //! **Every identification of an import candidate is counted here**, in one
 //! batch that is whatever is being identified right now however it was
 //! started — see [`batch::IdentificationBatch`]. The count belongs here
-//! because this is what holds it: the queue sweep knows only its own passes,
-//! and a person starting a Lookup by hand is not one of them. A key joins the
-//! batch when it is admitted to identification, which is what `queued` says
-//! and what both of those do first; it leaves when it is neither waiting,
-//! running, nor having its answer written.
+//! because this is what holds it: a key joins the batch when it is admitted to
+//! identification, which is what `queued` says and what both admissions do
+//! first; it leaves when it is neither waiting nor holding a run.
 //!
 //! One entry per key that has any of them, and no entry at all otherwise.
 //! Everything an entry used to outlive itself carrying has a table now: the
@@ -44,11 +42,13 @@
 //! reads back, and the run numbers that tell a current landing from a
 //! superseded one are kept beside it under the same lock.
 //!
-//! Extraction's [`Signals`](crate::signals::Signals) are held here too, and
-//! deliberately *not* in the published snapshot: they change at extraction's
-//! own cadence, one form reads them, and that form is fed by its own UI-bus
-//! event. What they share with the rest of this map is a lifetime — they
-//! describe the same key's current files and are dropped by the same events —
+//! Extraction's [`Signals`](crate::signals::Signals) are held here too, beside
+//! the run they were extracted for, and deliberately *not* in the published
+//! snapshot: they change at extraction's own cadence, one form reads them, and
+//! that form is fed by its own UI-bus event. A settle takes the pair for its
+//! own run rather than keeping a second copy of the snapshots as they arrive.
+//! What they share with the rest of this map is a lifetime — they describe the
+//! same key's current files and are dropped by the same events —
 //! which is why they live here rather than in a second map somebody would
 //! have to remember to clear.
 
@@ -143,17 +143,23 @@ struct FailedSave {
 /// draws them.
 #[derive(Clone, Default, PartialEq)]
 struct CandidateRuntimeState {
-    /// Written by the sweep when it plans a run — by its passes and by the
-    /// Lookup a person starts. Cleared by the first broadcast of the run that
-    /// was waited for, or by whoever queued it when no run came of it.
+    /// Written by the identification queue when it admits a candidate, on
+    /// either admission. Cleared by the first broadcast of the run that was
+    /// waited for, or by the queue when no run came of it.
     queued: Option<Admission>,
     /// Written from the driver's broadcasts. Never terminal and never `Idle`:
     /// both of those end the run rather than being a state it sits at.
     running: Option<RunState>,
-    /// Written when a run broadcasts its terminal state, cleared when that
-    /// run's write lands, is refused, or is abandoned. Always terminal.
-    saving: Option<RunState>,
-    /// Written when a write fails, cleared by the next run of this key.
+    /// The answer a run reached, held until whoever asked for it says what
+    /// became of it — the verdict write for a candidate, and for a library
+    /// release being re-identified, the sheet closing. Always terminal.
+    ///
+    /// Separate from a write being under way: a re-identify sheet's run writes
+    /// no verdict at all, and an answer that is nobody's to write would
+    /// otherwise sit here for the life of the process.
+    answered: Option<RunState>,
+    /// Written when a write of an answer fails, cleared by the next run of this
+    /// key.
     save_failed: Option<FailedSave>,
     import: Option<ImportInFlight>,
     search: Option<RunningSearch>,
@@ -163,15 +169,14 @@ struct CandidateRuntimeState {
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 struct Identifying {
     /// It has been admitted to identification and its run has not reported
-    /// yet. This is what joins a key to the batch: both ways an import
-    /// candidate's identification begins — a sweep pass and a person's Lookup
-    /// — mark it here first, and a library release being re-identified in its
-    /// own sheet is marked by neither, so the import pane's count is the
-    /// import queue's work and nothing else.
+    /// yet. This is what joins a key to the batch: both admissions mark it
+    /// here first, and a library release being re-identified in its own sheet
+    /// is marked by neither, so the import pane's count is the import queue's
+    /// work and nothing else.
     queued: bool,
     /// Something is still to come for the key: it is waiting, running, or
-    /// having its answer written. A failed write is not one — that run is over
-    /// and the row says how it went.
+    /// holding an answer nobody has disposed of yet. A failed write is not one
+    /// — that run is over and the row says how it went.
     in_flight: bool,
 }
 
@@ -181,7 +186,7 @@ impl Identifying {
             queued: state.queued.is_some(),
             in_flight: state.queued.is_some()
                 || state.running.is_some()
-                || state.saving.is_some(),
+                || state.answered.is_some(),
         }
     }
 }
@@ -194,7 +199,7 @@ impl CandidateRuntimeState {
     fn is_idle(&self) -> bool {
         self.queued.is_none()
             && self.running.is_none()
-            && self.saving.is_none()
+            && self.answered.is_none()
             && self.save_failed.is_none()
             && self.import.is_none()
             && self.search.is_none()
@@ -204,12 +209,21 @@ impl CandidateRuntimeState {
         CandidateRuntimeSnapshot {
             queued: self.queued,
             running: self.running.as_ref().map(|run| run.state.clone()),
-            saving: self.saving.as_ref().map(|run| run.state.clone()),
+            saving: self.answered.as_ref().map(|run| run.state.clone()),
             save_failed: self.save_failed.as_ref().map(|failed| failed.error.clone()),
             import: self.import.clone(),
             search: self.search.as_ref().map(|running| running.search.clone()),
         }
     }
+}
+
+/// Whether the answer the key holds is `run`'s. A newer run's answer is not an
+/// older disposal's to take.
+fn answered_on(runtime: &CandidateRuntimeState, run: IdentifyRunId) -> bool {
+    runtime
+        .answered
+        .as_ref()
+        .is_some_and(|answered| answered.run == run)
 }
 
 fn snapshots(
@@ -229,10 +243,11 @@ struct Inner {
     /// The shape last reported for each scanned key, whether or not the key
     /// has runtime, so a reshape can be told from a repeat.
     shapes: HashMap<String, CandidateShape>,
-    /// The latest signals extraction reported for each key. Read by a form
-    /// that opens partway through a run; every later value reaches it on the
-    /// UI bus.
-    signals: HashMap<String, Signals>,
+    /// The latest signals extraction reported for each key, and the run it
+    /// reported them for. Read by a form that opens partway through a run —
+    /// every later value reaches it on the UI bus — and by the settle of that
+    /// run's answer, which takes only its own run's snapshot.
+    signals: HashMap<String, (IdentifyRunId, Signals)>,
     /// The number the next search run takes. One counter across every key, so
     /// a run a key has moved off — superseded, or cleared and started again —
     /// can never be mistaken for the run it is on now.
@@ -312,7 +327,25 @@ impl CandidateRuntime {
     /// The signals extraction has found for a key so far, or `None` before it
     /// has reported any.
     pub fn signals(&self, key: &str) -> Option<Signals> {
-        self.inner.lock().unwrap().signals.get(key).cloned()
+        self.inner
+            .lock()
+            .unwrap()
+            .signals
+            .get(key)
+            .map(|(_, signals)| signals.clone())
+    }
+
+    /// The settled snapshot `run` was judged against, or `None` once the key
+    /// has moved on to another run — whose snapshot answers a different
+    /// question and is not this run's to store.
+    pub(super) fn run_signals(&self, key: &str, run: IdentifyRunId) -> Option<Signals> {
+        self.inner
+            .lock()
+            .unwrap()
+            .signals
+            .get(key)
+            .filter(|(extracted, _)| *extracted == run)
+            .map(|(_, signals)| signals.clone())
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<CandidateRuntimeChange> {
@@ -529,57 +562,29 @@ impl CandidateRuntime {
         }
     }
 
-    /// Replace the automatic sweep's queued keys in one atomic change.
-    /// Explicit Lookup queues and every other field belong to their own
-    /// producers and are preserved.
-    pub(super) fn replace_automatic_identification_queue(
-        &self,
-        queued_keys: impl IntoIterator<Item = String>,
-    ) {
-        let queued_keys: std::collections::HashSet<String> = queued_keys.into_iter().collect();
+    /// Mark every one of `keys` as waiting on `admission`, in one change.
+    ///
+    /// An admission that opens a batch is one act — a surface draws the whole
+    /// of it, and the identification count opens at its total — so it publishes
+    /// once rather than a key at a time. Keys it does not name are untouched:
+    /// the queue says what leaves it.
+    pub(super) fn admit_all(&self, keys: Vec<String>, admission: Admission) {
+        if keys.is_empty() {
+            return;
+        }
         let (reset, progress) = {
             let mut inner = self.inner.lock().unwrap();
             let previous = snapshots(&inner.runtime);
             let was_identifying = inner.identifying();
-            for runtime in inner.runtime.values_mut() {
-                if runtime.queued == Some(Admission::Automatic) {
-                    runtime.queued = None;
-                }
-            }
-            inner.runtime.retain(|_, runtime| !runtime.is_idle());
-            for key in queued_keys {
-                let runtime = inner.runtime.entry(key).or_default();
-                if runtime.queued.is_none() {
-                    runtime.queued = Some(Admission::Automatic);
-                }
+            for key in &keys {
+                inner.runtime.entry(key.clone()).or_default().queued = Some(admission);
             }
             let next = snapshots(&inner.runtime);
-            let is_identifying = inner.identifying();
-            // The keys this change took out are counted before the ones it
-            // brought in: a queue replaced wholesale ends the batch it
-            // emptied, and what it queues instead is a batch of its own
-            // rather than a total carrying finished work forward.
-            let touched: std::collections::HashSet<&String> = was_identifying
-                .keys()
-                .chain(is_identifying.keys())
-                .collect();
-            let mut ended = Vec::new();
-            let mut admitted = Vec::new();
-            for key in touched {
-                let was = was_identifying.get(key).copied().unwrap_or_default();
-                let is = is_identifying.get(key).copied().unwrap_or_default();
-                if was.in_flight && !is.in_flight {
-                    ended.push(key.clone());
-                } else if !was.queued && is.queued {
-                    admitted.push(key.clone());
-                }
-            }
             let mut counted = false;
-            for key in ended {
-                counted |= inner.batch.end(&key);
-            }
-            for key in admitted {
-                counted |= inner.batch.admit(&key);
+            for key in &keys {
+                if !was_identifying.get(key).copied().unwrap_or_default().queued {
+                    counted |= inner.batch.admit(key);
+                }
             }
             let progress = counted.then(|| inner.batch.progress());
             ((next != previous).then_some(next), progress)
@@ -592,50 +597,31 @@ impl CandidateRuntime {
         }
     }
 
-    /// This key has been admitted to an explicit Lookup and its run has not
-    /// started yet.
-    pub(super) fn queue_explicit_identification(&self, candidate_key: &str) {
+    /// This key is waiting on `admission` for a run that has not started yet.
+    pub(super) fn admit(&self, candidate_key: &str, admission: Admission) {
         self.set(candidate_key, |_, runtime| {
-            runtime.queued = Some(Admission::Requested);
+            runtime.queued = Some(admission);
         });
     }
 
-    /// The explicit Lookup that queued this key has started its run, or given
-    /// up before starting one. Either way it is not waiting any more.
-    pub(super) fn clear_explicit_identification(&self, candidate_key: &str) {
-        self.set(candidate_key, |_, runtime| {
-            if runtime.queued == Some(Admission::Requested) {
-                runtime.queued = None;
-            }
-        });
+    /// This key is not waiting any more: its run started, or nothing came of
+    /// the admission that put it here.
+    pub(super) fn withdraw(&self, candidate_key: &str) {
+        self.set(candidate_key, |_, runtime| runtime.queued = None);
     }
 
-    /// A sweep-owned job is waiting for a slot.
-    pub(super) fn requeue_automatic_identification(&self, candidate_key: &str) {
-        self.set(candidate_key, |_, runtime| {
-            runtime.queued = Some(Admission::Automatic);
-        });
-    }
-
-    /// Remove this key only when it is waiting in the automatic sweep.
-    pub(super) fn clear_automatic_identification(&self, candidate_key: &str) {
-        self.set(candidate_key, |_, runtime| {
-            if runtime.queued == Some(Admission::Automatic) {
-                runtime.queued = None;
-            }
-        });
-    }
-
-    /// `run`'s save is over: its row landed, was refused as stale, or was
-    /// abandoned because the candidate moved on. Left in place, it would read
-    /// as a commit still pending, for good.
+    /// `run`'s answer is over: its row landed, was refused as stale, failed to
+    /// be written, or no write was ever asked for it. Left in place, it would
+    /// read as a commit still pending, for good.
     ///
-    /// By run id, so a write that lands after a newer run has already answered
-    /// takes only its own save with it.
-    pub(super) fn finish_identification_save(&self, candidate_key: &str, run: IdentifyRunId) {
+    /// By run id, so a disposal that lands after a newer run has already
+    /// answered takes only its own answer with it. Said by whoever was
+    /// responsible for the answer: the verdict write for the runs it ran, and
+    /// the settle that never reached one for the rest.
+    pub(super) fn end_identification_answer(&self, candidate_key: &str, run: IdentifyRunId) {
         self.set(candidate_key, |_, runtime| {
-            if runtime.saving.as_ref().is_some_and(|saving| saving.run == run) {
-                runtime.saving = None;
+            if answered_on(runtime, run) {
+                runtime.answered = None;
             }
         });
     }
@@ -649,32 +635,34 @@ impl CandidateRuntime {
         error: String,
     ) {
         self.set(candidate_key, |_, runtime| {
-            if runtime.saving.as_ref().is_some_and(|saving| saving.run == run) {
-                runtime.saving = None;
+            if answered_on(runtime, run) {
+                runtime.answered = None;
             }
             runtime.save_failed = Some(FailedSave { run, error });
         });
     }
 
-    /// Whether a terminal answer for this key is waiting on its durable write
-    /// — the interval in which the run has ended but no row states its result
-    /// yet, and nothing else may take the candidate over.
-    pub(super) fn is_saving_identification(&self, candidate_key: &str) -> bool {
-        self.inner
-            .lock()
-            .unwrap()
-            .runtime
-            .get(candidate_key)
-            .is_some_and(|state| state.saving.is_some())
+    /// Identification of this key is over, whatever it had reached: the run is
+    /// cancelled and nothing is going to write what it found.
+    ///
+    /// The counterpart of a cancellation, and the only ending a library release
+    /// re-identified in its own sheet ever gets — its run stores no verdict, so
+    /// no write would end it.
+    pub(super) fn end_identification(&self, candidate_key: &str) {
+        self.set(candidate_key, |_, runtime| {
+            runtime.running = None;
+            runtime.answered = None;
+        });
     }
 
     /// Record what `run` published for `candidate_key`.
     ///
-    /// Three states, three facts. A non-terminal state is the run in flight.
-    /// A terminal state is its answer, which ends the run and starts the save
-    /// the write step owns. `Idle` is a cancellation, and ends only the run
-    /// that broadcast it — a superseded run announces its ending after the run
-    /// that replaced it has already reported.
+    /// Three states, three facts. A non-terminal state is the run in flight. A
+    /// terminal state is its answer, which ends the run and stands until
+    /// whoever asked for it disposes of it. `Idle` is a cancellation, and ends
+    /// only the run that broadcast it — a superseded run announces its ending
+    /// after the run that replaced it has already reported, and a run's own
+    /// terminal state has already left `running` for the answer.
     ///
     /// A state from a run this key was not already on is a fresh attempt, so
     /// it clears whatever the previous attempt's write failed with.
@@ -705,7 +693,7 @@ impl CandidateRuntime {
             }
             if state.is_terminal() {
                 runtime.running = None;
-                runtime.saving = Some(RunState {
+                runtime.answered = Some(RunState {
                     run,
                     state: state.clone(),
                 });
@@ -725,7 +713,7 @@ impl CandidateRuntime {
     /// records the same fact, but far too late to gate anything on: it is
     /// emitted after the worker has dequeued the command and re-walked the
     /// folder — behind however many imports are already queued ahead of it.
-    /// The queue sweep reads this field to decide whether a candidate still
+    /// The automatic admission reads this field to decide whether a candidate still
     /// wants a verdict, and "the user has committed to importing it" has to be
     /// true here from the moment they commit.
     pub(super) fn claim_for_import(&self, candidate_key: &str) {
@@ -815,7 +803,7 @@ impl CandidateRuntime {
             // runtime consumer for something none of them draws.
             ImportEvent::SignalsUpdated {
                 candidate_key,
-                run: _,
+                run,
                 signals,
                 artwork: _,
                 priority: _,
@@ -824,7 +812,7 @@ impl CandidateRuntime {
                     .lock()
                     .unwrap()
                     .signals
-                    .insert(candidate_key.clone(), signals.clone());
+                    .insert(candidate_key.clone(), (*run, signals.clone()));
             }
             // The identification count is this map's own announcement about
             // every key at once, with no candidate to record it against, and

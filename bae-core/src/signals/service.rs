@@ -24,8 +24,8 @@
 //! and nothing else: however far behind the run looks, it sees what its own
 //! extraction last said. The bus carries the same snapshot, named for the
 //! run, to everything that watches candidates rather than drives one — the
-//! sweep pass and the explicit-lookup recorder storing a verdict beside its
-//! snapshot, the candidate runtime, the UI.
+//! candidate runtime, which holds the snapshot beside the run it was extracted
+//! for so that run's verdict stores with it, and the UI.
 //!
 //! An extraction that cannot gather its inputs — a blocking task that died,
 //! a folder whose timing does not read, a library release whose files do not
@@ -221,7 +221,7 @@ impl ExtractionServiceHandle {
     /// emits nothing: its snapshots would name a run that is over.
     /// `priority` is the run's, not a call's — extraction makes no provider
     /// calls. It rides the `SignalsUpdated` snapshots so a consumer can tell a
-    /// candidate a person opened from one the background sweep picked up.
+    /// candidate a person opened from one the automatic admission picked up.
     pub fn start(
         &self,
         run: IdentifyRunId,

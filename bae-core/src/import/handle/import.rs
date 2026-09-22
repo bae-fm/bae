@@ -525,7 +525,7 @@ impl ImportServiceHandle {
     /// the candidate is claimed for it.
     ///
     /// The claim goes first and is the reason this is async: it is taken under
-    /// the folder-state commit lock, so a queue-sweep verdict for this
+    /// the folder-state commit lock, so an identification verdict for this
     /// candidate either landed before the user committed to importing it or is
     /// refused. A command that never reaches the worker releases the claim
     /// again rather than leaving a candidate owned by an import that does not

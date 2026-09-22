@@ -89,8 +89,8 @@ pub enum ImportEvent {
         run: crate::identify::IdentifyRunId,
         state: crate::identify::IdentifyState,
         /// The run's own priority, carried so a consumer can tell a candidate
-        /// a person opened from one the background sweep picked up. The UI bus
-        /// re-renders for the first and not the second.
+        /// a person opened from one the automatic admission picked up. The UI
+        /// bus re-renders for the first and not the second.
         priority: crate::util::rate_limiter::CallPriority,
     },
     /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
@@ -118,8 +118,9 @@ pub enum ImportEvent {
     },
     /// How far the identifications running right now have got: how many have
     /// ended, out of how many are in the batch. Announced by the candidate
-    /// runtime, which holds every identification whoever started it — a
-    /// sweep's pass, or a person's own Lookup. `(0, 0)` is none running.
+    /// runtime, which holds every identification whoever started it — the
+    /// automatic admission, or a person's own Lookup. `(0, 0)` is none
+    /// running.
     ///
     /// Both counts are the runtime's, not a view's: a view counting the rows
     /// it happens to hold is counting a filtered list.
@@ -234,7 +235,7 @@ pub enum ScanEvent {
     /// replaces its copy from this rather than keeping stale ones.
     ///
     /// It also says the candidate's stored identify verdict was cleared, which
-    /// is what brings it back to the queue sweep.
+    /// is what brings it back to the identification queue.
     CandidateBindingChanged {
         candidate: FolderCandidate,
     },
@@ -384,6 +385,12 @@ impl ImportServiceHandle {
     pub(crate) fn cancel_identification(&self, candidate_key: &str) {
         self.identify.cancel(candidate_key);
         self.extraction.cancel(candidate_key);
+        // Nothing is going to write what the cancelled run reached, including
+        // when it had already answered: a run left holding an answer nobody
+        // disposes of reads as a commit still pending, for good. It is also the
+        // only ending a library release re-identified in its own sheet gets —
+        // its run stores no verdict, so no write would end it.
+        self.runtime.end_identification(candidate_key);
     }
 
     /// Stop only the extraction behind `key`, for a run that reached its
@@ -396,7 +403,12 @@ impl ImportServiceHandle {
     /// Whether a run is in flight for `key`. A run that reached its verdict
     /// and one that was cancelled are both gone: the driver deregisters itself
     /// the moment it stops working.
-    pub(crate) fn is_identifying(&self, key: &str) -> bool {
+    ///
+    /// Nothing in the app asks: the identification queue is the only thing that
+    /// starts a candidate's run, and its own entry says what that run is doing.
+    /// A test asks to check that from the outside.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn is_identifying(&self, key: &str) -> bool {
         self.identify.is_running(key)
     }
 
@@ -470,28 +482,27 @@ impl ImportServiceHandle {
         self.runtime.get(key)
     }
 
-    pub(crate) fn replace_automatic_identification_queue(
+    /// This key is waiting on `admission` for a run that has not started yet.
+    pub(crate) fn admit_identification(
         &self,
-        queued_keys: impl IntoIterator<Item = String>,
+        candidate_key: &str,
+        admission: crate::import::Admission,
     ) {
-        self.runtime
-            .replace_automatic_identification_queue(queued_keys);
+        self.runtime.admit(candidate_key, admission);
     }
 
-    pub(crate) fn queue_explicit_identification(&self, candidate_key: &str) {
-        self.runtime.queue_explicit_identification(candidate_key);
+    /// The same for a whole set, published as one change.
+    pub(crate) fn admit_identifications(
+        &self,
+        candidate_keys: Vec<String>,
+        admission: crate::import::Admission,
+    ) {
+        self.runtime.admit_all(candidate_keys, admission);
     }
 
-    pub(crate) fn clear_explicit_identification(&self, candidate_key: &str) {
-        self.runtime.clear_explicit_identification(candidate_key);
-    }
-
-    pub(crate) fn requeue_automatic_identification(&self, candidate_key: &str) {
-        self.runtime.requeue_automatic_identification(candidate_key);
-    }
-
-    pub(crate) fn clear_automatic_identification(&self, candidate_key: &str) {
-        self.runtime.clear_automatic_identification(candidate_key);
+    /// This key is not waiting any more.
+    pub(crate) fn withdraw_identification(&self, candidate_key: &str) {
+        self.runtime.withdraw(candidate_key);
     }
 
     /// A terminal result `run` reached could not be committed.
@@ -504,21 +515,24 @@ impl ImportServiceHandle {
         self.runtime.fail_identification(candidate_key, run, error);
     }
 
-    /// `run`'s answer is not being written any more: its row landed, was
-    /// refused as stale, or was abandoned because the candidate moved on.
-    pub(crate) fn finish_identification_save(
+    /// `run`'s answer is disposed of: its row landed, was refused as stale, or
+    /// no write was ever asked for it.
+    pub(crate) fn end_identification_answer(
         &self,
         candidate_key: &str,
         run: crate::identify::IdentifyRunId,
     ) {
-        self.runtime
-            .finish_identification_save(candidate_key, run);
+        self.runtime.end_identification_answer(candidate_key, run);
     }
 
-    /// Whether a terminal answer for this key is still waiting on its durable
-    /// write.
-    pub(crate) fn is_saving_identification(&self, candidate_key: &str) -> bool {
-        self.runtime.is_saving_identification(candidate_key)
+    /// The settled snapshot `run` was judged against — what a settle of that
+    /// run's answer stores beside its verdict.
+    pub(crate) fn candidate_run_signals(
+        &self,
+        candidate_key: &str,
+        run: crate::identify::IdentifyRunId,
+    ) -> Option<crate::signals::Signals> {
+        self.runtime.run_signals(candidate_key, run)
     }
 
     /// The signals extraction has found for one key so far. `None` before the
@@ -742,7 +756,7 @@ impl ImportServiceHandle {
     ///
     /// The write runs as a task of the import runtime, and this only waits on
     /// it, so whatever happens to the caller's future — a UniFFI call the
-    /// bridge drops because the person looked at another candidate, a sweep
+    /// bridge drops because the person looked at another candidate, a settle
     /// task the app's teardown drops — ends the wait for the outcome and
     /// nothing else. Coven commits a write on its writer thread whether or not
     /// the future that asked for it survives, so a write the caller could
@@ -776,8 +790,8 @@ impl ImportServiceHandle {
     /// happened rather than a commit that never resolves.
     ///
     /// The default metadata source plays no part: it decides which candidates
-    /// the sweep picks up on its own, not whether an answer a run reached —
-    /// a person's explicit lookup included — is worth keeping.
+    /// the automatic admission picks up on its own, not whether an answer a
+    /// run reached — one a person asked for included — is worth keeping.
     ///
     /// The commit lock spans the check and the write, and everything that can
     /// invalidate a verdict — a scan, a file re-decision, a skip, an import
@@ -800,7 +814,7 @@ impl ImportServiceHandle {
                 .save_candidate_verdict_if_current_write(&candidate_key, &row)
                 .await;
             match &wrote {
-                Ok(_) => this.runtime.finish_identification_save(&candidate_key, run),
+                Ok(_) => this.runtime.end_identification_answer(&candidate_key, run),
                 Err(error) => {
                     this.runtime
                         .fail_identification(&candidate_key, run, error.to_string())

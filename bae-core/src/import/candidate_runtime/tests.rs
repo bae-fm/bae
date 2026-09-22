@@ -308,14 +308,17 @@ fn a_preparing_step_has_no_progress_fraction() {
     );
 }
 
+/// An admission is one act: the whole of what it opened is published at once,
+/// so a surface draws the batch rather than watching it appear key by key.
+/// Withdrawing is per key, because that is how the queue lets keys go.
 #[test]
-fn the_automatic_queue_is_published_as_one_current_runtime_snapshot() {
+fn an_admission_is_published_as_one_current_runtime_snapshot() {
     let runtime = CandidateRuntime::default();
     let mut changes = runtime.subscribe();
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
 
-    runtime.replace_automatic_identification_queue([first.to_string(), second.to_string()]);
+    runtime.admit_all(vec![first.to_string(), second.to_string()], Admission::Automatic);
 
     let queued = runtime.all();
     assert_eq!(queued.len(), 2);
@@ -330,13 +333,21 @@ fn the_automatic_queue_is_published_as_one_current_runtime_snapshot() {
         [CandidateRuntimeChange::Reset { runtimes }] if runtimes == &queued
     ));
 
-    runtime.replace_automatic_identification_queue(std::iter::empty());
+    runtime.withdraw(first);
+    runtime.withdraw(second);
 
     assert!(runtime.all().is_empty());
-    assert!(matches!(
-        drain(&mut changes).as_slice(),
-        [CandidateRuntimeChange::Reset { runtimes }] if runtimes.is_empty()
-    ));
+    assert_eq!(
+        drain(&mut changes),
+        vec![
+            CandidateRuntimeChange::Removed {
+                key: first.to_string()
+            },
+            CandidateRuntimeChange::Removed {
+                key: second.to_string()
+            },
+        ]
+    );
 }
 
 #[test]
@@ -520,7 +531,7 @@ fn a_write_ends_the_save_it_ran_for_and_no_other() {
     let key = "/watch/a/rel1";
     runtime.record_event(&identify(key, 1, manual_only()));
 
-    runtime.finish_identification_save(key, run(2));
+    runtime.end_identification_answer(key, run(2));
     assert!(
         runtime
             .get(key)
@@ -528,7 +539,7 @@ fn a_write_ends_the_save_it_ran_for_and_no_other() {
         "another run's write says nothing about this save"
     );
 
-    runtime.finish_identification_save(key, run(1));
+    runtime.end_identification_answer(key, run(1));
     assert!(runtime.get(key).is_none());
 }
 
@@ -589,7 +600,7 @@ fn a_finished_save_keeps_a_key_whose_import_is_running() {
     runtime.record_event(&identify(key, 1, manual_only()));
     runtime.claim_for_import(key);
 
-    runtime.finish_identification_save(key, run(1));
+    runtime.end_identification_answer(key, run(1));
 
     let recorded = runtime.get(key).expect("the claim keeps the key");
     assert!(recorded.saving.is_none());
@@ -615,7 +626,7 @@ fn discarding_an_unstorable_answer_leaves_nothing_in_flight() {
         .get(key)
         .is_some_and(|runtime| runtime.saving.is_some()));
 
-    runtime.finish_identification_save(key, run(1));
+    runtime.end_identification_answer(key, run(1));
 
     assert!(runtime.get(key).is_none());
 }
@@ -628,7 +639,7 @@ fn every_field_yields_its_own_status_in_one_order() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
 
-    runtime.requeue_automatic_identification(key);
+    runtime.admit(key, Admission::Automatic);
     assert_eq!(
         identification(&runtime, key),
         Some(crate::import::IdentificationStatus::Queued)

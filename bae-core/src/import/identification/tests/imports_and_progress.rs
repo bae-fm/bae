@@ -78,9 +78,7 @@ async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress()
     fixture.provider.hold("/discid/");
 
     let mut events = fixture.import.subscribe_events();
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     // Starting an import, in the order the import service really does it: the
     // candidate is claimed before the command is queued, and the worker's
@@ -150,9 +148,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     fixture.provider.hold("/discid/");
 
     let mut events = fixture.import.subscribe_events();
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     start_import_for(&fixture, &importing).await;
     // …and then the scan re-announces it, exactly as a watcher-triggered pass
@@ -231,9 +227,7 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     // the window between a settled verdict and its row.
     fixture.provider.hold("/release/mb-mid-write?");
 
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/release/mb-mid-write?", 1).await;
     start_import_for(&fixture, &dir).await;
     fixture.provider.release();
@@ -337,9 +331,7 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
     fixture.scan(1).await;
 
     let mut events = fixture.import.subscribe_events();
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
 
     let mut opened = false;
     loop {
@@ -402,9 +394,7 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
 
     // Start the pass and hold extraction inside OCR, so the candidate is
     // genuinely mid-flight when the folder goes.
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
     tokio::task::spawn_blocking(move || {
         analyzer_started.wait();
     })
@@ -453,10 +443,10 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
     fixture.sweep_once().await;
 }
 
-/// A candidate the sweep is done with leaves nothing of the sweep's behind.
+/// A candidate the queue is done with leaves nothing of the queue's behind.
 ///
 /// The driver ends at its own verdict, so nothing has to cancel it, and the
-/// sweep gives the key up in the same breath. A driver left registered past its
+/// queue gives the key up in the same breath. A driver left registered past its
 /// answer would park a task, a bus-relay task, and a live broadcast receiver
 /// that every later `IdentifyStateChanged` — a whole `IdentifyState`, result
 /// vectors and all — is deep-cloned into; over a queue swept unattended on
@@ -490,118 +480,11 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
         !fixture.import.is_identifying(&key),
         "and its driver is gone: the run ended at the verdict it reached"
     );
-    assert!(
-        fixture.context().ours.lock().unwrap().is_empty(),
-        "the sweep holds no ownership of a candidate it has finished with"
-    );
-}
-
-/// The case the ownership guard exists for, end to end: the sweep stores a
-/// failed candidate, the user explicitly reruns it, and the next pass must not
-/// take it back.
-///
-/// `identify.start` supersedes, so taking it would cancel their Interactive run
-/// and restart it in the background. This only holds because the sweep gives up
-/// ownership when it finishes with a candidate — a set that only ever grows
-/// would claim this one forever.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn a_candidate_the_sweep_failed_then_the_user_reran_is_left_alone() {
-    let fixture = Fixture::new("failed-then-looked-up").await;
-    fixture.import.register_artwork_analyzer(Arc::new(SlowAnalyzer {
-        delay: Duration::from_millis(2_000),
-    }));
-    let dir = fixture.disc_id_candidate("Album");
-    // One image, so the user's run stays in flight on a slow OCR pass while the
-    // second sweep pass runs.
-    std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
-    fixture
-        .provider
-        .set_routes(vec![("/discid/", 400, "{}".to_string())]);
-    fixture.scan(1).await;
-    let key = dir.to_string_lossy().into_owned();
-
-    fixture.sweep_once().await;
-    assert!(matches!(
-        fixture.identified_for(&dir).await.map(|row| row.verdict),
-        Some(TerminalVerdict::Failed { .. })
-    ));
-
-    // The user explicitly reruns the stored failure.
-    fixture.sweep.rerun_for_explicit_lookup(key.clone());
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while !fixture.import.is_identifying(&key) {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .expect("identify registers the explicit rerun");
-    assert!(fixture.import.is_identifying(&key), "their run is in flight");
-
-    let lookups_before = fixture.provider.count_containing("/discid/");
-    fixture.sweep_once().await;
-    assert!(
-        fixture.context().ours.lock().unwrap().is_empty(),
-        "and claimed no ownership of it: it did not take the candidate back"
-    );
     assert_eq!(
-        fixture.provider.count_containing("/discid/"),
-        lookups_before,
-        "nor spent a background lookup on it"
+        fixture.identification_status(&key),
+        None,
+        "and the queue holds nothing for a candidate it has finished with"
     );
-    assert!(
-        fixture.import.is_identifying(&key),
-        "their run is still the one registered — it was not cancelled and \
-         restarted underneath them"
-    );
-}
-
-/// The guard the priority exists for. A candidate someone is looking up is
-/// left alone — `identify.start` supersedes, so taking it would cancel their
-/// Interactive run and restart it in the background.
-///
-/// The held lookup is what makes the run in flight rather than merely recent:
-/// a driver is registered for exactly as long as its run is working, so the
-/// pass has to be timed against a lookup that has not come back yet.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn the_sweep_leaves_a_candidate_the_user_is_looking_up_alone() {
-    let fixture = Fixture::new("user-owns-it").await;
-    let dir = fixture.disc_id_candidate("Opened");
-    let key = dir.to_string_lossy().into_owned();
-    let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-opened-1", "rg-opened-1", &[probed, 0]),
-    );
-    fixture.provider.hold("/discid/");
-    fixture.scan(1).await;
-
-    // Explicit Lookup registers the user's driver before the sweep plans.
-    fixture.start_explicit_lookup_and_await_run(&dir).await;
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
-    assert!(
-        fixture.import.is_identifying(&key),
-        "the user's run is in flight"
-    );
-
-    fixture.sweep_once().await;
-
-    assert!(
-        !fixture.context().ours.lock().unwrap().contains(&key),
-        "the sweep never took ownership of a candidate it does not own"
-    );
-    assert!(
-        fixture.import.is_identifying(&key),
-        "and it did not cancel the run out from under them"
-    );
-    assert_eq!(
-        fixture.provider.count_containing("/discid/"),
-        1,
-        "nor asked the provider a second time for the same candidate"
-    );
-    fixture.provider.release();
 }
 
 /// Teardown writes nothing. The token is re-checked immediately before the
@@ -629,16 +512,13 @@ async fn a_cancelled_candidate_writes_no_row() {
     // finished.
     fixture.provider.hold("/discid/");
 
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass_token = token.clone();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &pass_token).await });
+    let pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
-    token.cancel();
+    fixture.identification().shut_down();
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(10), pass)
         .await
-        .expect("a cancelled pass returns")
+        .expect("a cancelled queue returns")
         .unwrap();
 
     assert!(
@@ -647,7 +527,8 @@ async fn a_cancelled_candidate_writes_no_row() {
         fixture.stored().await.keys().collect::<Vec<_>>()
     );
 
-    // `save` itself refuses under a cancelled token, whatever reached it.
+    // `save` itself asks for no write under a cancelled token, whatever
+    // reached it.
     let verdict = TerminalVerdict::NotFoundAnywhere { ledger: None };
     let cancelled = CancellationToken::new();
     cancelled.cancel();
@@ -677,7 +558,7 @@ async fn a_cancelled_candidate_writes_no_row() {
             None,
         )
         .await,
-        FinishCandidateOutcome::Superseded
+        Settled::Abandoned
     ));
     let stored = fixture.stored().await;
     assert!(

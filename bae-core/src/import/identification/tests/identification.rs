@@ -68,9 +68,7 @@ async fn a_planned_candidate_is_queued_before_its_driver_reports() {
     fixture.scan(1).await;
     let mut changes = fixture.import.subscribe_candidate_runtime().1;
 
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
 
     let change = tokio::time::timeout(Duration::from_secs(10), changes.recv())
         .await
@@ -109,9 +107,7 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
     fixture.provider.hold("/discid/");
     fixture.scan(2).await;
 
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
 
     if tokio::time::timeout(Duration::from_secs(10), async {
         loop {
@@ -203,163 +199,6 @@ async fn a_stored_verdict_is_not_re_fetched() {
 }
 
 // ── 3. A transport failure is stored until an explicit rerun ────────────────
-
-/// The failing response is a 400 rather than a 5xx so the client's own retry
-/// policy stays out of it; what is under test is what the sweep does with a
-/// failure, not how many times the client repeats one.
-/// A verdict is where its run ends, and a re-run afterwards is a run of its
-/// own: its own id, its own inputs, its own answer. The run it replaces says
-/// nothing further — no driver lingers to re-broadcast the terminal state it
-/// already reached, so nothing a later watcher hears can be mistaken for the
-/// re-run's answer.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
-    let fixture = Fixture::new("rerun-is-its-own-run").await;
-    let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
-    let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .provider
-        .set_routes(vec![("/discid/", 400, "{}".to_string())]);
-    fixture.scan(1).await;
-
-    let mut events = fixture.import.subscribe_events();
-    fixture.sweep_once().await;
-    assert!(matches!(
-        fixture.identified_for(&dir).await.map(|row| row.verdict),
-        Some(TerminalVerdict::Failed { .. })
-    ));
-    assert!(
-        !fixture.import.is_identifying(&key),
-        "the failed run ended at its verdict rather than parking on its inbox"
-    );
-    let failed_run = drain_events(&mut events)
-        .into_iter()
-        .filter_map(|event| match event {
-            ImportEvent::IdentifyStateChanged {
-                candidate_key, run, ..
-            } if candidate_key == key => Some(run),
-            _ => None,
-        })
-        .next_back()
-        .expect("the failed run broadcast its states");
-
-    fixture.provider.set_routes(vec![
-        (
-            "/discid/",
-            200,
-            discid_json("mb-retry-2", "rg-retry-2", &[probed, 0]),
-        ),
-        (
-            "/release/mb-retry-2?",
-            200,
-            release_json("mb-retry-2", "rg-retry-2", &[probed, 0]),
-        ),
-    ]);
-    fixture.sweep.rerun_for_explicit_lookup(key.clone());
-    tokio::time::timeout(Duration::from_secs(15), async {
-        loop {
-            if matches!(
-                fixture.identified_for(&dir).await.map(|row| row.verdict),
-                Some(TerminalVerdict::Found { .. })
-            ) {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("the explicit re-run stores its own answer, not the previous run's");
-    let runs: Vec<IdentifyRunId> = drain_events(&mut events)
-        .into_iter()
-        .filter_map(|event| match event {
-            ImportEvent::IdentifyStateChanged {
-                candidate_key, run, ..
-            } if candidate_key == key => Some(run),
-            _ => None,
-        })
-        .collect();
-    assert!(
-        !runs.is_empty() && runs.iter().all(|run| *run != failed_run),
-        "the run that already answered broadcast nothing further: {runs:?}"
-    );
-}
-
-/// A run reads the sources this library asks once, at its start. So the run
-/// that replaces it is what a switched-off source reaches — the replacement
-/// asks what is left, and the source nobody asks any more is not asked again.
-/// This is the restart `AppServices::set_metadata_source_enabled` starts for
-/// every key `IdentifyServiceHandle::running_keys` names.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
-    let fixture = Fixture::new("restart-drops-a-source").await;
-    fixture.use_discogs();
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
-    let dir = fixture.barcode_candidate("From Barcode");
-    let key = dir.to_string_lossy().into_owned();
-    let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/release?",
-        200,
-        barcode_search_json(&[("mb-drop-1", "rg-drop-1", PAIRED_BARCODE)]),
-    );
-    fixture.provider.route(
-        "/release/mb-drop-1?",
-        200,
-        release_json("mb-drop-1", "rg-drop-1", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/database/search",
-        200,
-        discogs_search_json("70000201", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
-    );
-    fixture.provider.route(
-        "/releases/70000201",
-        200,
-        discogs_release_json("70000201"),
-    );
-    crate::musicbrainz::seed_discogs_url_lookup("70000201", None);
-    // Hold MusicBrainz's answer, so the run is genuinely still asking when the
-    // source is switched off rather than racing a run that already settled.
-    fixture.provider.hold("/release?");
-    fixture.scan(1).await;
-
-    let mut events = fixture.import.subscribe_events();
-    fixture.start_explicit_lookup_and_await_run(&dir).await;
-    let asked_both = await_run_state(&mut events, &key, |_, _| true).await;
-    wait_for_request(&fixture.provider, "/database/search", 1).await;
-
-    fixture
-        .manager
-        .set_metadata_source_enabled(crate::import::Catalog::Discogs, false)
-        .expect("MusicBrainz is still asked, so Discogs can be switched off");
-    fixture.sweep.rerun_for_explicit_lookup(key.clone());
-    await_run_state(&mut events, &key, |run, _| run != asked_both).await;
-    fixture.provider.release();
-
-    let row = fixture.await_identified_row(&dir).await;
-    let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { matches, .. } = &verdict else {
-        panic!("expected a Found verdict, got {verdict:?}");
-    };
-    assert_eq!(
-        matches.iter().map(|result| result.source).collect::<Vec<_>>(),
-        vec![crate::import::Catalog::MusicBrainz],
-        "the run that stored the answer asked only the source still switched on"
-    );
-    assert_eq!(
-        fixture.provider.count_containing("/database/search"),
-        1,
-        "and Discogs was asked once, by the run that started while it was on: {:?}",
-        fixture.provider.requests()
-    );
-}
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
@@ -455,10 +294,7 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
         .route("/release?", 200, search_json("mb-typed", "rg-typed"));
     fixture.scan(8).await;
 
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let sweep_token = token.clone();
-    let sweep = tokio::spawn(async move { run_pass_for_test(&context, &sweep_token).await });
+    let sweep = fixture.sweep();
 
     // Let the sweep take the first slot and stack the rest behind it.
     tokio::time::sleep(Duration::from_millis(1_200)).await;
@@ -491,7 +327,7 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
         "the sweep must still be mid-pass across the measurement — a sweep that \
          died would make this pass by doing nothing"
     );
-    token.cancel();
+    fixture.identification().shut_down();
     let _ = tokio::time::timeout(Duration::from_secs(20), sweep).await;
 
     assert_eq!(typed.len(), 1);
@@ -707,9 +543,7 @@ async fn unskipping_a_stored_candidate_mid_pass_does_not_identify_it_again() {
 
     fixture.provider.hold("/discid/");
     let mut events = fixture.import.subscribe_events();
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     fixture
         .import

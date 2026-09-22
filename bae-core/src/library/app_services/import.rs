@@ -86,7 +86,7 @@ impl AppServices {
             .set_candidate_lookup_choices(&candidate_key, choices)
             .await?;
         if change == crate::import::ChoiceChange::Lookups {
-            self.inner.sweep.rerun_for_explicit_lookup(candidate_key);
+            self.inner.identification.rerun_identify(candidate_key);
         }
         Ok(())
     }
@@ -94,8 +94,8 @@ impl AppServices {
     /// Identify an existing library release after the person opens the
     /// re-identify sheet. Extraction resolves the disc ID and artwork from the
     /// library rather than from a scanned folder, so — unlike
-    /// [`Self::rerun_identify`] — this does not go through the
-    /// sweep: there is no candidate folder to key a stored verdict by, and so
+    /// [`Self::rerun_identify`] — this does not go through the identification
+    /// queue: there is no candidate folder to key a stored verdict by, and so
     /// nowhere to store what the run asks about. The sheet holds `choices`
     /// itself and hands them back with each run it starts.
     pub fn identify_release_for_lookup(
@@ -135,7 +135,7 @@ impl AppServices {
     /// again; the response cache answers the ones that had already succeeded,
     /// so what is bought is exactly what failed.
     pub fn rerun_identify(&self, candidate_key: String) {
-        self.inner.sweep.rerun_for_explicit_lookup(candidate_key);
+        self.inner.identification.rerun_identify(candidate_key);
     }
 
     /// Every key with something in flight right now.

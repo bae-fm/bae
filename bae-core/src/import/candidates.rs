@@ -106,7 +106,8 @@ pub struct CandidateRuntimeSnapshot {
     /// The latest state a run in flight published. Never terminal — a run's
     /// terminal state is its answer, and answering ends it.
     pub running: Option<IdentifyState>,
-    /// The terminal state whose durable write is under way. Always terminal.
+    /// The answer a run reached, held until whoever asked for it says what
+    /// became of it. Always terminal.
     pub saving: Option<IdentifyState>,
     /// Why the last write of a terminal state did not land. Cleared by the
     /// next run of this key.

@@ -241,11 +241,11 @@ async fn a_draft_write_leaves_the_result_and_starts_no_run() {
     }
 }
 
-/// Files that changed retire the result they were read from, so the sweep
-/// asks again for the candidate as it now is.
+/// Files that changed retire the result they were read from, so the queue asks
+/// again for the candidate as it now is.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn changed_files_retire_the_result_and_the_sweep_runs_again() {
+async fn changed_files_retire_the_result_and_identification_runs_again() {
     let fixture = Fixture::new("changed-files-run-again").await;
     let dir = fixture.disc_id_candidate("Candidate");
     let probed = fixture.probed_total_ms(&dir);
@@ -263,96 +263,30 @@ async fn changed_files_retire_the_result_and_the_sweep_runs_again() {
     fixture.sweep_once().await;
     assert!(fixture.identified_for(&dir).await.is_some());
 
+    let answered = fixture.content_hash(&dir);
+
     std::fs::write(dir.join("notes.txt"), "the folder changed").unwrap();
     fixture.import.scan_watched_folders().unwrap();
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.stored_for(&dir).await.is_none_or(|row| row.identify.is_some()) {
+
+    // The scan writes the changed folder with no result for the files it now
+    // has, and the queue hears the same scan and answers it. Read for the
+    // answer rather than for the gap between them: the queue closes that gap
+    // on its own, which is the whole of what it is for.
+    let reshaped = tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            let hash = fixture.content_hash(&dir);
+            if hash != answered && fixture.identified_for(&dir).await.is_some() {
+                return hash;
+            }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
     })
     .await
-    .expect("the changed folder is stored with no result for the files it now has");
-
-    fixture.sweep_once().await;
-
-    assert!(
-        fixture.identified_for(&dir).await.is_some(),
-        "the sweep answered the candidate its changed files made of it"
+    .expect("the queue answered the candidate its changed files made of it");
+    assert_ne!(
+        reshaped, answered,
+        "the answer is keyed on the files the candidate has now"
     );
-}
-
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
-    let fixture = Fixture::new("interactive-with-automatic-off").await;
-    let dir = fixture.disc_id_candidate("Candidate");
-    let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-interactive-off", "rg-interactive-off", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/release/mb-interactive-off?",
-        200,
-        release_json("mb-interactive-off", "rg-interactive-off", &[probed, 0]),
-    );
-    fixture.scan(1).await;
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .unwrap();
-
-    fixture.start_explicit_lookup(&dir);
-
-    tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
-        .await
-        .expect("interactive lookup stores its verdict");
-    assert!(fixture.provider.count_containing("/discid/") > 0);
-}
-
-/// A run a person asked for stores its verdict for a candidate whose draft is
-/// already filled, and leaves nothing pending on the key once it has.
-#[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
-async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
-    let fixture = Fixture::new("explicit-with-pre-filled-draft").await;
-    let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
-    let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-default-none", "rg-default-none", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/release/mb-default-none?",
-        200,
-        release_json("mb-default-none", "rg-default-none", &[probed, 0]),
-    );
-    fixture.scan(1).await;
-
-    fixture.start_explicit_lookup(&dir);
-
-    tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
-        .await
-        .expect("an explicit lookup stores its verdict over a pre-filled draft");
-    tokio::time::timeout(Duration::from_secs(5), async {
-        while fixture
-            .import
-            .candidate_runtimes()
-            .get(&key)
-            .is_some_and(|runtime| {
-                crate::import::triage::TriageRuntimeFacts::of(runtime)
-                    .identification
-                    .is_some()
-            })
-        {
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("a stored verdict leaves nothing pending on the key");
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -365,9 +299,7 @@ async fn disabling_automatic_lookup_cancels_running_background_identification() 
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
 
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    let pass = fixture.sweep();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
     fixture
@@ -381,7 +313,11 @@ async fn disabling_automatic_lookup_cancels_running_background_identification() 
     fixture.provider.release();
 
     assert!(!fixture.import.is_identifying(&key));
-    assert!(fixture.context.ours.lock().unwrap().is_empty());
+    assert_eq!(
+        fixture.identification_status(&key),
+        None,
+        "the queue withdrew what the automatic admission had put on it"
+    );
     assert!(fixture.identified_for(&dir).await.is_none());
 }
 
@@ -429,7 +365,9 @@ async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
         .manager
         .set_identify_automatically(false)
         .unwrap();
-    let sweep = start(fixture.import.clone(), fixture.manager.clone());
+    // Started while automatic identification is off, so it admits nothing
+    // until the setting turns on.
+    fixture.identification();
     let dir = fixture.disc_id_candidate("Candidate");
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
@@ -454,5 +392,4 @@ async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
         .await
         .expect("enabling automatic Lookup stores a verdict");
     assert!(fixture.provider.count_containing("/discid/") > 0);
-    sweep.stop();
 }

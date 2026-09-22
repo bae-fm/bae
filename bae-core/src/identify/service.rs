@@ -153,7 +153,7 @@ impl IdentifyServiceHandle {
     ///
     /// `priority` is the run's, not the call's: every provider lookup this run
     /// dispatches is admitted under it, so a candidate a person opened outranks
-    /// one a sweep picked up.
+    /// one the automatic admission picked up.
     ///
     /// `snapshots` is the watch the extraction feeding this run handed out
     /// at its start. It holds the extraction's latest snapshot, so the driver
@@ -206,10 +206,9 @@ impl IdentifyServiceHandle {
     /// and one that was cancelled are both gone: the driver deregisters
     /// itself the moment it stops working.
     ///
-    /// The queue sweep asks before starting one, because
-    /// [`IdentifyServiceHandle::start`] supersedes: sweeping a candidate the
-    /// user has open would cancel their interactive run and restart it at
-    /// background priority, which is the opposite of what the priority is for.
+    /// Nothing in the app asks: the identification queue is the only thing
+    /// that starts a candidate's run, and its own entry says what that run is
+    /// doing. A test asks to check that from the outside.
     pub fn is_running(&self, key: &str) -> bool {
         self.inner.drivers.lock().unwrap().contains_key(key)
     }

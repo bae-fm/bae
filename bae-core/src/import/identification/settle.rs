@@ -1,10 +1,38 @@
+//! Turning one run's terminal answer into a stored row: the documents of the
+//! pressing it matched, the draft they project into, and the write.
+//!
+//! One shape for both admissions. What differs between a candidate a person
+//! asked for and one the automatic admission picked up is the priority its
+//! lookups are dispatched at, and that is a parameter.
+
 use super::*;
 
+/// What became of one run's answer.
 #[derive(Debug)]
-pub(super) enum FinishCandidateOutcome {
+pub(super) enum Settled {
+    /// The write ran and the row landed.
     Stored,
-    Superseded,
-    Failed { error: String },
+    /// The write ran and refused the answer: the candidate has moved on from
+    /// the shape the answer describes.
+    Refused,
+    /// The write ran and did not land.
+    WriteFailed { error: String },
+    /// No write was asked for: the queue gave the answer up before one could
+    /// be.
+    Abandoned,
+    /// No write was asked for: the answer could not be turned into a row.
+    Unwritable { error: String },
+}
+
+/// What one settled answer reports back to the driver loop.
+pub(super) struct Finished {
+    /// The identity the answer covers — every member of the job it settles.
+    pub(super) identity: CandidateIdentity,
+    pub(super) representative_key: String,
+    /// The run whose answer this is. What the write it asked for leaves in the
+    /// candidate runtime is recorded against it.
+    pub(super) run: IdentifyRunId,
+    pub(super) settled: Settled,
 }
 
 enum FinalizationError {
@@ -21,8 +49,127 @@ enum SettledLead {
     },
 }
 
+/// Settle one run's terminal answer and say what became of it.
+///
+/// The one place an answer that never reached a write ends: the write ends the
+/// ones it ran for, and a run left saying a commit is still coming would say it
+/// for good.
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn settle_answer(
+    context: Context,
+    identity: CandidateIdentity,
+    candidate: ReleaseCandidate,
+    run: IdentifyRunId,
+    expected_metadata_revision: u64,
+    state: IdentifyState,
+    priority: CallPriority,
+    token: CancellationToken,
+) -> Finished {
+    let representative_key = candidate.key().into_owned();
+    let settled = settle_verdict(
+        &context,
+        &candidate,
+        run,
+        expected_metadata_revision,
+        state,
+        priority,
+        &token,
+    )
+    .await;
+    match &settled {
+        // The write ran, and what it left in the runtime is its own to end.
+        Settled::Stored | Settled::Refused | Settled::WriteFailed { .. } => {}
+        Settled::Abandoned => context
+            .import
+            .end_identification_answer(&representative_key, run),
+        Settled::Unwritable { error } => {
+            context
+                .import
+                .fail_identification(&representative_key, run, error.clone())
+        }
+    }
+    Finished {
+        identity,
+        representative_key,
+        run,
+        settled,
+    }
+}
+
+/// Turn one candidate's terminal state into a stored row, a refused answer, or
+/// an answer that never reached a write.
+#[allow(clippy::too_many_arguments)]
+async fn settle_verdict(
+    context: &Context,
+    candidate: &ReleaseCandidate,
+    run: IdentifyRunId,
+    expected_metadata_revision: u64,
+    state: IdentifyState,
+    priority: CallPriority,
+    token: &CancellationToken,
+) -> Settled {
+    let text = state.candidate_text();
+    let mut verdict = TerminalVerdict::try_from(state)
+        .expect("the queue settles only terminal identify states");
+
+    // The snapshot the run was judged against, taken by run rather than by key:
+    // a snapshot of another run of the same candidate answers a different
+    // question.
+    let Some(signals) = context
+        .import
+        .candidate_run_signals(&candidate.key(), run)
+    else {
+        return Settled::Unwritable {
+            error: format!(
+                "{} reached a verdict with no settled signals",
+                candidate.key()
+            ),
+        };
+    };
+    let settled_lead = match settle_lead(
+        context,
+        &mut verdict,
+        &text,
+        candidate,
+        &signals.durations,
+        priority,
+        token,
+    )
+    .await
+    {
+        Ok(settled) => settled,
+        Err(FinalizationError::Superseded) => return Settled::Abandoned,
+        Err(FinalizationError::Failed(error)) => return Settled::Unwritable { error },
+    };
+
+    let metadata = metadata_or_failed_verdict(
+        context,
+        candidate,
+        &signals.durations,
+        settled_lead,
+        &mut verdict,
+    )
+    .await;
+    save(
+        context,
+        token,
+        &candidate.key(),
+        run,
+        crate::import::CandidateAsRead {
+            content_hash: candidate.files().content_hash(),
+            file_edit_revision: candidate.file_edit_revision(),
+            metadata_revision: expected_metadata_revision,
+        },
+        &candidate.key(),
+        &verdict,
+        signals,
+        metadata,
+    )
+    .await
+}
+
 async fn metadata_for_settled_lead(
-    context: &SweepContext,
+    context: &Context,
     candidate: &ReleaseCandidate,
     durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
@@ -52,7 +199,7 @@ async fn metadata_for_settled_lead(
 }
 
 async fn metadata_or_failed_verdict(
-    context: &SweepContext,
+    context: &Context,
     candidate: &ReleaseCandidate,
     durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
@@ -62,7 +209,7 @@ async fn metadata_or_failed_verdict(
         Ok(metadata) => metadata,
         Err(error) => {
             warn!(
-                "sweep: could not project metadata for {} ({error}); storing the failure",
+                "identification: could not project metadata for {} ({error}); storing the failure",
                 candidate.key()
             );
             // The lookups ran and showed what they showed; what could not be
@@ -100,78 +247,13 @@ async fn metadata_or_failed_verdict(
     }
 }
 
-/// Turn one candidate's terminal state into a stored row, a superseded result,
-/// or an explicit commit failure.
-pub(super) async fn finish_candidate(
-    context: &SweepContext,
-    entry: &InFlight,
-    state: IdentifyState,
-    token: &CancellationToken,
-) -> FinishCandidateOutcome {
-    let text = state.candidate_text();
-    let mut verdict = TerminalVerdict::try_from(state)
-        .expect("the sweep finalizes only terminal identify states");
-
-    let Some(signals) = entry.signals.as_ref() else {
-        return FinishCandidateOutcome::Failed {
-            error: format!(
-                "{} reached a verdict with no settled signals",
-                entry.job.representative().key()
-            ),
-        };
-    };
-    let candidate = entry.job.representative();
-    let settled_lead = match settle_lead(
-        context,
-        &mut verdict,
-        &text,
-        candidate,
-        &signals.durations,
-        CallPriority::Background,
-        token,
-    )
-    .await
-    {
-        Ok(settled) => settled,
-        Err(FinalizationError::Superseded) => return FinishCandidateOutcome::Superseded,
-        Err(FinalizationError::Failed(error)) => {
-            return FinishCandidateOutcome::Failed { error };
-        }
-    };
-
-    let metadata = metadata_or_failed_verdict(
-        context,
-        candidate,
-        &signals.durations,
-        settled_lead,
-        &mut verdict,
-    )
-    .await;
-    save(
-        context,
-        token,
-        &candidate.key(),
-        entry.run,
-        crate::import::CandidateAsRead {
-            content_hash: candidate.files().content_hash(),
-            file_edit_revision: candidate.file_edit_revision(),
-            metadata_revision: entry.expected_metadata_revision,
-        },
-        &candidate.key(),
-        &verdict,
-        signals.clone(),
-        metadata,
-    )
-    .await
-}
-
 /// Write one row. Cancellation is re-checked immediately before the write, not
 /// only before the lookup that precedes it: teardown during that lookup must
 /// leave nothing behind, and "a cancelled candidate writes no row" is only true
 /// if the last thing checked before writing is the token.
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn save(
-    context: &SweepContext,
+    context: &Context,
     token: &CancellationToken,
     candidate_key: &str,
     run: IdentifyRunId,
@@ -180,12 +262,9 @@ pub(super) async fn save(
     verdict: &TerminalVerdict,
     signals: crate::signals::Signals,
     metadata: Option<crate::import::CandidateMetadataDraft>,
-) -> FinishCandidateOutcome {
+) -> Settled {
     if token.is_cancelled() {
-        context
-            .import
-            .finish_identification_save(candidate_key, run);
-        return FinishCandidateOutcome::Superseded;
+        return Settled::Abandoned;
     }
     let row = NewImportCandidateVerdict {
         candidate,
@@ -201,7 +280,7 @@ pub(super) async fn save(
     {
         Ok(wrote) => wrote,
         Err(e) => {
-            return FinishCandidateOutcome::Failed {
+            return Settled::WriteFailed {
                 error: e.to_string(),
             };
         }
@@ -210,12 +289,12 @@ pub(super) async fn save(
         // Info rather than debug: a candidate whose answer is refused is run
         // again, so a queue that never finishes reads as this line repeating.
         info!(
-            "sweep: discarded stale verdict for {} at file-edit revision {} and metadata revision {}",
+            "identification: discarded stale verdict for {} at file-edit revision {} and metadata revision {}",
             row.folder_path, row.candidate.file_edit_revision, row.candidate.metadata_revision
         );
-        return FinishCandidateOutcome::Superseded;
+        return Settled::Refused;
     }
-    FinishCandidateOutcome::Stored
+    Settled::Stored
 }
 
 /// The one pressing a verdict's matches describe, or `None` when they describe
@@ -264,11 +343,11 @@ fn sole_pressing(
 /// A release some other candidate already settled costs nothing: its documents
 /// are read back and the tracklist re-derived from them.
 ///
-/// `priority` is the run's own: a person's explicit lookup fetches its lead
-/// ahead of the sweep's queued calls, so the verdict they are watching for
+/// `priority` is the run's own: a candidate a person asked for fetches its lead
+/// ahead of the queue's background calls, so the verdict they are watching for
 /// does not wait behind a queue nobody is watching.
 async fn settle_lead(
-    context: &SweepContext,
+    context: &Context,
     verdict: &mut TerminalVerdict,
     text: &crate::identify::CandidateText,
     candidate: &ReleaseCandidate,
@@ -315,7 +394,7 @@ async fn settle_lead(
         Ok(payloads) => payloads,
         Err(error) => {
             debug!(
-                "sweep: could not settle {} ({error}); storing the failure",
+                "identification: could not settle {} ({error}); storing the failure",
                 primary.key
             );
             *verdict = TerminalVerdict::Failed {
@@ -356,7 +435,7 @@ async fn settle_lead(
         }
         Err(error) => {
             debug!(
-                "sweep: {} states no readable tracklist ({error}); storing the failure",
+                "identification: {} states no readable tracklist ({error}); storing the failure",
                 primary.key
             );
             *verdict = TerminalVerdict::Failed {
@@ -369,173 +448,6 @@ async fn settle_lead(
                 ledger: ledger.take(),
             };
             Ok(SettledLead::NoExternalRelease)
-        }
-    }
-}
-
-/// Watch one run a person started and store the verdict it reaches.
-///
-/// **This run's verdict, and then the watch ends.** A person changing what
-/// their candidate's identification asks about does not steer this run — it
-/// supersedes it, with a run of its own and a recorder of its own — so this
-/// one has exactly one answer to store.
-pub(super) async fn record_explicit_lookup_verdict(
-    context: &SweepContext,
-    run: IdentifyRunId,
-    candidate_key: String,
-    candidate: ReleaseCandidate,
-    expected_metadata_revision: u64,
-    token: &CancellationToken,
-) {
-    let mut bus = context.import.subscribe_events();
-    let mut entry = ExplicitLookupInFlight {
-        candidate,
-        signals: None,
-        expected_metadata_revision,
-    };
-
-    loop {
-        let event = tokio::select! {
-            biased;
-            _ = token.cancelled() => return,
-            event = bus.recv() => event,
-        };
-        match event {
-            Ok(ImportEvent::SignalsUpdated {
-                candidate_key: key,
-                run: snapshot_run,
-                signals,
-                ..
-            }) if key == candidate_key && snapshot_run == run => {
-                entry.signals = Some(signals);
-            }
-            Ok(ImportEvent::IdentifyStateChanged {
-                candidate_key: key,
-                run: event_run,
-                state,
-                ..
-            }) if key == candidate_key && event_run == run => {
-                if matches!(state, IdentifyState::Idle) {
-                    // The run was cancelled — the user dismissed the candidate,
-                    // or the sweep took it over. Either way this watch is done.
-                    return;
-                }
-                if !state.is_terminal() {
-                    continue;
-                }
-                let text = state.candidate_text();
-                let mut verdict = TerminalVerdict::try_from(state)
-                    .expect("a terminal identify state always has a verdict");
-                // Settles here too: a row a person's own run wrote is a row the
-                // queue treats as answered, and the promise that an answered
-                // lead opens offline holds however the answer was reached.
-                let Some(signals) = entry.signals.as_ref() else {
-                    context.import.fail_identification(
-                        &candidate_key,
-                        run,
-                        format!("{candidate_key} reached a verdict with no settled signals"),
-                    );
-                    return;
-                };
-                let settled_lead = match settle_lead(
-                    context,
-                    &mut verdict,
-                    &text,
-                    &entry.candidate,
-                    &signals.durations,
-                    CallPriority::Interactive,
-                    token,
-                )
-                .await
-                {
-                    Ok(settled) => settled,
-                    Err(FinalizationError::Superseded) => {
-                        context
-                            .import
-                            .finish_identification_save(&candidate_key, run);
-                        return;
-                    }
-                    Err(FinalizationError::Failed(error)) => {
-                        context
-                            .import
-                            .fail_identification(&candidate_key, run, error);
-                        return;
-                    }
-                };
-                let metadata = metadata_or_failed_verdict(
-                    context,
-                    &entry.candidate,
-                    &signals.durations,
-                    settled_lead,
-                    &mut verdict,
-                )
-                .await;
-                match save(
-                    context,
-                    token,
-                    &candidate_key,
-                    run,
-                    crate::import::CandidateAsRead {
-                        content_hash: entry.candidate.files().content_hash(),
-                        file_edit_revision: entry.candidate.file_edit_revision(),
-                        metadata_revision: entry.expected_metadata_revision,
-                    },
-                    &entry.candidate.key(),
-                    &verdict,
-                    signals.clone(),
-                    metadata,
-                )
-                .await
-                {
-                    FinishCandidateOutcome::Stored => return,
-                    FinishCandidateOutcome::Superseded => {
-                        info!(
-                            "lookup: {candidate_key} changed while its answer was being \
-                             stored; the answer is discarded"
-                        );
-                        return;
-                    }
-                    FinishCandidateOutcome::Failed { error } => {
-                        context
-                            .import
-                            .fail_identification(&candidate_key, run, error);
-                        return;
-                    }
-                }
-            }
-            // The candidate is gone, or is a different shape than the run was
-            // answering. Either way this watch has nothing left to store: a
-            // verdict written now would describe the folder as it was before
-            // the binding changed, which is exactly the stale answer the change
-            // cleared.
-            Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key: key }))
-                if key == candidate_key =>
-            {
-                context
-                    .import
-                    .finish_identification_save(&candidate_key, run);
-                return;
-            }
-            Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }))
-                if candidate.path.to_string_lossy() == candidate_key.as_str() =>
-            {
-                context
-                    .import
-                    .finish_identification_save(&candidate_key, run);
-                return;
-            }
-            Ok(_) => {}
-            Err(broadcast::error::RecvError::Lagged(n)) => {
-                context.import.fail_identification(
-                    &candidate_key,
-                    run,
-                    format!(
-                        "the identification event stream dropped {n} events before the result could be stored"
-                    ),
-                );
-                return;
-            }
-            Err(broadcast::error::RecvError::Closed) => return,
         }
     }
 }
