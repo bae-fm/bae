@@ -70,14 +70,26 @@ pub(crate) fn catalog_numbers_sourced(lines: &[SourcedLine]) -> Vec<SourcedValue
 fn find_catalogs_in_line(line: &str) -> Vec<String> {
     static MULTI_LETTER: OnceLock<Regex> = OnceLock::new();
     static SINGLE_LETTER_DIGIT: OnceLock<Regex> = OnceLock::new();
+    static COUNTED_PREFIX: OnceLock<Regex> = OnceLock::new();
     let multi = MULTI_LETTER.get_or_init(|| Regex::new(r"\b[A-Z]{2,6}[- ]?\d{3,7}\b").unwrap());
     let single =
         SINGLE_LETTER_DIGIT.get_or_init(|| Regex::new(r"\b[A-Z]\d[- ]?\d{4,7}\b").unwrap());
+    // A prefix that counts its discs before the separator — `MD6-233`,
+    // `CDP7-46437` — which neither shape above admits: the first wants the
+    // digits to start after the letters, the second wants four of them after
+    // the separator.
+    let counted =
+        COUNTED_PREFIX.get_or_init(|| Regex::new(r"\b[A-Z]{1,6}\d{1,2}[- ]\d{3,7}\b").unwrap());
 
-    // Order is all multi-letter matches, then all single-letter-digit ones —
-    // the two regexes run independently, not interleaved by position.
+    // Order is all multi-letter matches, then all single-letter-digit ones,
+    // then the counted prefixes — the regexes run independently, not
+    // interleaved by position.
     let mut out: Vec<String> = Vec::new();
-    for m in multi.find_iter(line).chain(single.find_iter(line)) {
+    for m in multi
+        .find_iter(line)
+        .chain(single.find_iter(line))
+        .chain(counted.find_iter(line))
+    {
         let s = m.as_str().to_string();
         if is_zip_false_positive(&s, line) {
             continue;
@@ -129,9 +141,12 @@ pub(crate) fn should_reject_line(line: &str) -> bool {
 fn is_catalog_line(line: &str) -> bool {
     static MULTI: OnceLock<Regex> = OnceLock::new();
     static SINGLE: OnceLock<Regex> = OnceLock::new();
+    static COUNTED: OnceLock<Regex> = OnceLock::new();
     let multi = MULTI.get_or_init(|| Regex::new(r"^\s*[A-Z]{2,6}[- ]?\d{3,7}\s*$").unwrap());
     let single = SINGLE.get_or_init(|| Regex::new(r"^\s*[A-Z]\d[- ]?\d{4,7}\s*$").unwrap());
-    multi.is_match(line) || single.is_match(line)
+    let counted =
+        COUNTED.get_or_init(|| Regex::new(r"^\s*[A-Z]{1,6}\d{1,2}[- ]\d{3,7}\s*$").unwrap());
+    multi.is_match(line) || single.is_match(line) || counted.is_match(line)
 }
 
 fn is_out_of_length_band(line: &str) -> bool {

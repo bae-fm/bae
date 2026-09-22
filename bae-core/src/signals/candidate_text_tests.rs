@@ -91,6 +91,20 @@ fn catalogs_multi_disc_tilde_suffix() {
     );
 }
 
+/// A prefix that counts its discs — the digit sits before the separator and
+/// only three digits follow it.
+#[test]
+fn catalogs_counted_prefix() {
+    assert_eq!(
+        cats(&["LABEL MD6-233".to_string()]),
+        vec!["MD6-233".to_string()],
+    );
+    assert_eq!(
+        cats(&["CDP7-46437".to_string()]),
+        vec!["CDP7-46437".to_string()],
+    );
+}
+
 #[test]
 fn catalogs_two_internal_separators_rejected() {
     let empty: Vec<String> = Vec::new();
