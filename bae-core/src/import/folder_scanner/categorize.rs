@@ -238,6 +238,33 @@ pub(super) fn settle_sheet_bindings(
                 info!("sheet {sheet_id} has no audio for FILE {reference}");
             }
         }
+        // The last resort, for a sheet whose references name nothing here —
+        // the audio was renamed after the rip. A sheet beside exactly as many
+        // audio files as it has references, with nobody having bound any of
+        // them by hand, takes those files in name order, one per reference.
+        // Whether they fit is what the boundary check below decides.
+        if !references.is_empty()
+            && resolved.len() != references.len()
+            && edits.get(sheet_id).is_none()
+        {
+            let sheet_dir = entry.file.path.parent();
+            let mut beside: Vec<&ScannedFile> = audio
+                .values()
+                .filter(|file| file.path.parent() == sheet_dir)
+                .copied()
+                .collect();
+            if beside.len() == references.len() {
+                beside.sort_by(|a, b| {
+                    natord::compare_ignore_case(&a.relative_path, &b.relative_path)
+                });
+                info!(
+                    "sheet {sheet_id} names no audio here; taking the {} audio files beside it \
+                     in name order",
+                    beside.len()
+                );
+                resolved = references.iter().copied().zip(beside).collect();
+            }
+        }
         let named_files = || {
             resolved
                 .iter()
@@ -311,44 +338,67 @@ pub(super) fn settle_sheet_bindings(
 }
 
 /// Settle every parsed sheet's disc assignment: the user's decision where they
-/// made one, and the sheet's own position among the folder's bound sheets where
-/// they made none.
+/// made one, and the sheet's own position among the folder's carving sheets
+/// where they made none.
 ///
 /// Total over the folder's parsed sheets, and run after
 /// [`settle_sheet_bindings`] at every call site, because the position it hands
-/// out is a position among the sheets that are *bound*. A sheet nobody bound
+/// out is a position among the sheets that *carve*. A sheet nobody bound
 /// carves nothing either way, so it takes disc one and says nothing by it.
+///
+/// One sheet per audio file. A rip commonly leaves two sheets for one image
+/// (`X.cue` beside `X.flac.cue`), so when several bound sheets describe the
+/// same audio the first in the folder's file order carves it and the rest are
+/// ignored — a sheet the user assigned a disc to claims its audio ahead of
+/// any the scan proposed, and one the user ignored claims none.
 pub(super) fn settle_sheet_discs(files: &mut [CandidateFile], edits: &SheetDiscEdits) {
-    let mut owners: HashMap<&str, Vec<&str>> = HashMap::new();
+    let mut claimed: std::collections::HashSet<&str> = std::collections::HashSet::new();
     for entry in files.iter() {
         if let FileRole::TrackSheet {
             binding: SheetBinding::Resolved { files: audio },
             ..
         } = &entry.role
         {
-            if edits.get(&entry.file.relative_path) == Some(&SheetDisc::Ignored) {
-                continue;
-            }
-            for file in audio {
-                owners
-                    .entry(&file.file_id)
-                    .or_default()
-                    .push(&entry.file.relative_path);
+            if matches!(
+                edits.get(&entry.file.relative_path),
+                Some(SheetDisc::Disc { .. })
+            ) {
+                claimed.extend(audio.iter().map(|file| file.file_id.as_str()));
             }
         }
     }
-    let competing: BTreeSet<String> = owners
-        .values()
-        .filter(|sheets| sheets.len() > 1)
-        .flatten()
-        .map(|id| id.to_string())
-        .collect();
+    let mut ignored: BTreeSet<String> = BTreeSet::new();
+    for entry in files.iter() {
+        let FileRole::TrackSheet {
+            binding: SheetBinding::Resolved { files: audio },
+            ..
+        } = &entry.role
+        else {
+            continue;
+        };
+        match edits.get(&entry.file.relative_path) {
+            Some(SheetDisc::Disc { .. }) => continue,
+            Some(SheetDisc::Ignored) => {
+                ignored.insert(entry.file.relative_path.clone());
+                continue;
+            }
+            None => {}
+        }
+        if audio
+            .iter()
+            .any(|file| claimed.contains(file.file_id.as_str()))
+        {
+            ignored.insert(entry.file.relative_path.clone());
+        } else {
+            claimed.extend(audio.iter().map(|file| file.file_id.as_str()));
+        }
+    }
     let mut bound_so_far = 0u32;
     for entry in files.iter_mut() {
         let FileRole::TrackSheet { binding, disc, .. } = &mut entry.role else {
             continue;
         };
-        if !binding.is_resolved() || competing.contains(&entry.file.relative_path) {
+        if !binding.is_resolved() || ignored.contains(&entry.file.relative_path) {
             *disc = SheetDisc::Ignored;
             continue;
         }

@@ -71,6 +71,120 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
     );
 }
 
+/// A sheet written on another machine names the path the audio had there —
+/// folders this folder does not have, `\\` for a separator, and the WAV the
+/// FLAC was encoded from. The reference is tried from the whole path down to
+/// the bare file name, and the same-stem audio beside the sheet answers.
+#[test]
+fn a_reference_with_foreign_folders_resolves_by_its_file_name() {
+    let (_tmp, album) = album_dir();
+    copy_cue_flac(&album, "cd.flac");
+    let cue = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+    )
+    .unwrap()
+    .replace("Test Album.flac", "Artist\\Album\\cd.wav");
+    std::fs::write(album.join("cd.cue"), cue).unwrap();
+
+    let files = scan_files(&album);
+
+    assert_eq!(files.track_count(), 3);
+    assert_eq!(
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Resolved {
+            files: vec![SheetAudioFile {
+                file_reference: "Artist\\Album\\cd.wav".to_string(),
+                file_id: "cd.flac".to_string(),
+            }],
+        },
+    );
+}
+
+/// A sheet moved into a subfolder of the release still names the audio beside
+/// where it used to be: its own folder is tried first, then each folder above
+/// it, so the audio at the release root answers.
+#[test]
+fn a_sheet_in_a_subfolder_resolves_audio_above_it() {
+    let (_tmp, album) = album_dir();
+    copy_cue_flac(&album, "cd.flac");
+    std::fs::create_dir(album.join("extras")).unwrap();
+    let cue = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+    )
+    .unwrap()
+    .replace("Test Album.flac", "cd.wav");
+    std::fs::write(album.join("extras").join("cd.cue"), cue).unwrap();
+
+    let files = scan_files(&album);
+
+    assert_eq!(files.track_count(), 3);
+    assert_eq!(
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Resolved {
+            files: vec![SheetAudioFile {
+                file_reference: "cd.wav".to_string(),
+                file_id: "cd.flac".to_string(),
+            }],
+        },
+    );
+}
+
+/// A per-track sheet whose references name nothing here — the tracks were
+/// renamed after the rip — takes the audio files beside it in name order when
+/// there are exactly as many of them as it has references.
+#[test]
+fn a_sheet_naming_nothing_takes_the_audio_beside_it_in_name_order() {
+    let (_tmp, album) = album_dir();
+    for name in ["01. Track One.flac", "02. Track Two.flac"] {
+        copy_cue_flac(&album, name);
+    }
+    std::fs::write(
+        album.join("album.cue"),
+        "FILE \"01 -First.wav\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n\
+         FILE \"02 -Second.wav\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 00:00:00\n",
+    )
+    .unwrap();
+
+    let files = scan_files(&album);
+
+    assert_eq!(
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Resolved {
+            files: vec![
+                SheetAudioFile {
+                    file_reference: "01 -First.wav".to_string(),
+                    file_id: "01. Track One.flac".to_string(),
+                },
+                SheetAudioFile {
+                    file_reference: "02 -Second.wav".to_string(),
+                    file_id: "02. Track Two.flac".to_string(),
+                },
+            ],
+        },
+    );
+    assert_eq!(files.track_count(), 2);
+}
+
+/// The last resort needs the count to match: one reference beside two audio
+/// files is not a pairing anyone asked for.
+#[test]
+fn a_sheet_naming_nothing_beside_a_different_count_stays_unbound() {
+    let (_tmp, album) = album_dir();
+    for name in ["01. Track One.flac", "02. Track Two.flac"] {
+        copy_cue_flac(&album, name);
+    }
+    std::fs::write(
+        album.join("album.cue"),
+        "FILE \"Range.wav\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
+    )
+    .unwrap();
+
+    let files = scan_files(&album);
+
+    assert!(files.carving_sheets().is_empty());
+    assert_eq!(files.track_count(), 2);
+}
+
 #[test]
 fn same_stem_audio_is_not_guessed_when_more_than_one_file_matches() {
     let (_tmp, album) = cue_flac_album("cd.flac", "cd.wav", 3);
@@ -87,26 +201,6 @@ fn same_stem_audio_is_not_guessed_when_more_than_one_file_matches() {
         &SheetBinding::Unresolved { files: Vec::new() },
     );
     assert_eq!(files.track_count(), 2);
-}
-
-#[test]
-fn same_stem_audio_outside_the_cue_directory_is_not_guessed() {
-    let (_tmp, album) = album_dir();
-    std::fs::create_dir_all(album.join("sheets")).unwrap();
-    copy_cue_flac(&album, "cd.flac");
-    std::fs::write(
-        album.join("sheets/cd.cue"),
-        make_cue_content_n_tracks("cd.wav", "Album Title", 3),
-    )
-    .unwrap();
-
-    let files = scan_files(&album);
-
-    assert_eq!(
-        files.track_sheets().next().unwrap().binding,
-        &SheetBinding::Unresolved { files: Vec::new() },
-    );
-    assert_eq!(files.track_count(), 1);
 }
 
 #[test]
@@ -260,13 +354,14 @@ fn a_binding_whose_audio_disappears_is_not_kept() {
     .expect("scan");
     assert_eq!(
         after.track_sheets().next().unwrap().binding,
-        &SheetBinding::Unresolved { files: Vec::new() },
-        "the folder derives from what is on disk, with no memory of the removed pairing",
-    );
-    assert_eq!(
-        after.track_count(),
-        1,
-        "one standalone track is all that is left"
+        &SheetBinding::Resolved {
+            files: vec![SheetAudioFile {
+                file_reference: "cd.wav".to_string(),
+                file_id: "bonus.flac".to_string(),
+            }],
+        },
+        "the folder derives from what is on disk, with no memory of the removed pairing: \
+         the one audio file left beside the sheet is what it takes",
     );
 }
 
@@ -509,8 +604,10 @@ fn files_list_in_case_insensitive_natural_order() {
     );
 }
 
+/// Two sheets for one image is the usual rip leftover, so the first in file
+/// order carves it and the other is ignored rather than both being set aside.
 #[test]
-fn competing_cues_require_a_choice_before_carving_audio() {
+fn the_first_of_competing_cues_carves_the_audio() {
     let (_tmp, album) = cue_flac_album("cd.flac", "cd.flac", 3);
     std::fs::write(
         album.join("alternative.cue"),
@@ -518,8 +615,12 @@ fn competing_cues_require_a_choice_before_carving_audio() {
     )
     .unwrap();
     let files = scan_files(&album);
-    assert_eq!(files.track_count(), 1);
-    assert!(files.carving_sheets().is_empty());
+    assert_eq!(
+        files.track_count(),
+        2,
+        "alternative.cue sorts first and carves"
+    );
+    assert_eq!(files.carving_sheets().len(), 1);
     assert_eq!(files.bound_sheets().len(), 2);
 }
 

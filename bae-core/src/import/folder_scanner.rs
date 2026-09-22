@@ -42,9 +42,9 @@ const PARTIAL_MARKER_EXTENSIONS: &[&str] = &["part", "crdownload", "download", "
 
 // ── Candidate file index ────────────────────────────────────────────────────
 
-/// Resolve every audio path a CUE names. Each `FILE` uses the same rule: its
-/// literal path wins, otherwise the unique audio beside the referenced path
-/// with the same stem wins. Every reference must resolve to a different file.
+/// Resolve every audio path a CUE names. Each `FILE` uses the same rule
+/// ([`resolve_cue_audio_path`]), and every reference must resolve to a
+/// different file.
 pub(crate) fn resolve_cue_audio_paths<'sheet, 'audio>(
     cue_path: &Path,
     sheet: &'sheet CueSheet,
@@ -70,35 +70,63 @@ pub(crate) fn resolve_cue_audio_paths<'sheet, 'audio>(
     Some(resolved)
 }
 
+/// The audio one `FILE` reference names, as far as the folder can say.
+///
+/// A sheet's reference is the path the ripper wrote, which is the path on the
+/// ripper's machine: folders that are not here, `\\` where this system reads
+/// `/`, the WAV the audio was encoded from rather than the FLAC it became, and
+/// a sheet since moved into a subfolder of the release. So the reference is
+/// read as its components and tried against the sheet's own folder first — a
+/// reference is relative to its sheet by convention, which is what tells
+/// `CD1/01.wav` from `CD2/01.wav` — then against each folder above it up to
+/// the candidate's root. In each folder it is tried from the whole path down
+/// to the bare file name, dropping one leading folder at a time; at each
+/// length the literal path wins, otherwise the unique audio beside it with the
+/// same stem, whatever its extension. The first try that names something is
+/// the answer.
 fn resolve_cue_audio_path<'a>(
     cue_path: &Path,
     file_reference: &str,
     audio_files: &'a [PathBuf],
 ) -> Option<&'a PathBuf> {
     let cue_dir = cue_path.parent()?;
-    let exact_path = cue_dir.join(file_reference);
-    if let Some(exact) = audio_files
-        .iter()
-        .find(|path| path.as_path() == exact_path && ContentTypeHint::path_is_audio(path))
-    {
-        return Some(exact);
+    let components: Vec<&str> = file_reference
+        .split(['/', '\\'])
+        .filter(|component| !component.is_empty() && *component != ".")
+        .collect();
+    let file_name = *components.last()?;
+    let file_stem = Path::new(file_name).file_stem()?.to_str()?;
+    for base in cue_dir.ancestors() {
+        for start in 0..components.len() {
+            let mut referenced = base.to_path_buf();
+            for component in &components[start..] {
+                referenced.push(component);
+            }
+            if let Some(exact) = audio_files
+                .iter()
+                .find(|path| path.as_path() == referenced && ContentTypeHint::path_is_audio(path))
+            {
+                return Some(exact);
+            }
+            let reference_dir = referenced.parent()?;
+            let mut matches = audio_files.iter().filter(|path| {
+                ContentTypeHint::path_is_audio(path)
+                    && path.parent() == Some(reference_dir)
+                    && path.file_stem().and_then(|stem| stem.to_str()) == Some(file_stem)
+            });
+            if let Some(matched) = matches.next() {
+                if matches.next().is_some() {
+                    debug!(
+                        "CUE {:?} has more than one same-stem audio file beside referenced path {:?}",
+                        cue_path, referenced
+                    );
+                    return None;
+                }
+                return Some(matched);
+            }
+        }
     }
-    let file_stem = Path::new(file_reference).file_stem()?.to_str()?;
-    let reference_dir = exact_path.parent()?;
-    let mut matches = audio_files.iter().filter(|path| {
-        ContentTypeHint::path_is_audio(path)
-            && path.parent() == Some(reference_dir)
-            && path.file_stem().and_then(|stem| stem.to_str()) == Some(file_stem)
-    });
-    let matched = matches.next()?;
-    if matches.next().is_some() {
-        debug!(
-            "CUE {:?} has more than one same-stem audio file beside referenced path {:?}",
-            cue_path, exact_path
-        );
-        return None;
-    }
-    Some(matched)
+    None
 }
 
 /// A single file entry in a candidate's selected file set.

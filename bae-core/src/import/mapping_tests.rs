@@ -1,11 +1,11 @@
 use super::*;
-use crate::import::TrackUserEdit;
 use crate::import::folder_scanner::{
-    CandidateFileEdits, SheetBindingOffer, SheetBindingOption, SheetDiscEdits,
-    StoredCandidateEdits, collect_release_candidate_files_with_scope,
+    collect_release_candidate_files_with_scope, CandidateFileEdits, SheetBindingOffer,
+    SheetBindingOption, SheetDiscEdits, StoredCandidateEdits,
 };
-use crate::import::probe::{SourceDurations, source_durations};
-use crate::import::track_slots::{SourceTrack, slot_table};
+use crate::import::probe::{source_durations, SourceDurations};
+use crate::import::track_slots::{slot_table, SourceTrack};
+use crate::import::TrackUserEdit;
 use std::fs;
 use std::path::Path;
 
@@ -233,12 +233,10 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
     );
     // A directory of images is not collapsed away from the gallery — its
     // files are in it, each with the path a thumbnail reads.
-    assert!(
-        table
-            .images
-            .iter()
-            .any(|image| image.file_id == "scans/scan1.jpg" && image.path.exists())
-    );
+    assert!(table
+        .images
+        .iter()
+        .any(|image| image.file_id == "scans/scan1.jpg" && image.path.exists()));
     assert_eq!(table.track_sections.len(), 1);
     assert_eq!(track_file(mappings(&table)[0]).name, "01.flac");
 }
@@ -535,7 +533,10 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
 #[test]
 fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
+    // Two audio files beside a one-file sheet: nothing for it to take as a
+    // last resort, so it describes nothing.
     write_flac(&tmp.path().join("01.flac"));
+    write_flac(&tmp.path().join("02.flac"));
     fs::write(
         tmp.path().join("CDImage.cue"),
         cue_sheet_text("CDImage.wav", 3),
@@ -965,26 +966,34 @@ fn codec_refusal_does_not_invent_a_current_assignment() {
 }
 
 #[test]
-fn competing_sheets_retain_current_assignments_without_contributing_tracks() {
+fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
     let tmp = tempfile::TempDir::new().unwrap();
     write_flac(&tmp.path().join("disc.flac"));
     for name in ["first.cue", "second.cue"] {
         fs::write(tmp.path().join(name), cue_sheet_text("disc.flac", 2)).unwrap();
     }
     let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
-    assert_eq!(mappings(&table).len(), 1);
-    assert_eq!(table.files.len(), 2);
-    for row in &table.files {
-        let MappingFileRow::Sheet(sheet) = row else {
-            panic!("competing CUE remains listed");
-        };
-        assert_eq!(sheet.assignment, SheetDisc::Ignored);
-        assert!(
-            matches!(&sheet.bound, SheetBound::Describes(container) if container.file_id == "disc.flac")
-        );
-        assert_eq!(
-            sheet.reference_options[0].file_id.as_deref(),
-            Some("disc.flac")
-        );
-    }
+    assert!(matches!(
+        table.track_sections.as_slice(),
+        [MappingTrackSection {
+            content: MappingTrackSectionContent::Sheet { sheet, entries },
+            ..
+        }]
+            if sheet.sheet_id == "first.cue" && entries.len() == 2
+    ));
+    // The sheet that lost the container stays listed, ignored, still bound
+    // to it and still offering it, so a person can make it the one that
+    // carves instead.
+    let [MappingFileRow::Sheet(sheet)] = table.files.as_slice() else {
+        panic!("the competing CUE remains listed: {:?}", table.files);
+    };
+    assert_eq!(sheet.sheet_id, "second.cue");
+    assert_eq!(sheet.assignment, SheetDisc::Ignored);
+    assert!(
+        matches!(&sheet.bound, SheetBound::Describes(container) if container.file_id == "disc.flac")
+    );
+    assert_eq!(
+        sheet.reference_options[0].file_id.as_deref(),
+        Some("disc.flac")
+    );
 }
