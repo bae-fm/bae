@@ -67,7 +67,7 @@ fn a_run_reporting_takes_its_key_off_the_queue() {
     runtime.queue_explicit_identification(key);
     assert_eq!(
         runtime.get(key).and_then(|state| state.queued),
-        Some(IdentifyQueueOwner::ExplicitLookup)
+        Some(Admission::Requested)
     );
 
     runtime.record_event(&identify(key, 1, triangulating()));

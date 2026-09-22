@@ -61,7 +61,7 @@ desktop_only! {
 pub mod lookup_choices;
 pub mod session;
 desktop_only! {
-    pub mod sweep;
+    pub mod identification;
     pub mod track_slots;
     pub mod triage;
 }
@@ -160,7 +160,7 @@ desktop_only! {
     pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
     pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
     pub use candidates::{
-        CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus, IdentifyQueueOwner,
+        Admission, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
         ImportCandidateSnapshot, ImportInFlight, ImportedRelease, WatchedFolderScanStatus,
     };
     pub use cover_art::{CoverChoice, CoverImageSource};
@@ -203,7 +203,7 @@ desktop_only! {
 pub use lookup_choices::{ChoiceChange, LookupChoices};
 pub use session::{CandidateSession, MetadataPresentation, SearchForm, SearchTab};
 desktop_only! {
-    pub use sweep::QueueSweepHandle;
+    pub use identification::QueueSweepHandle;
     pub use track_slots::{
         lengths_disagree, SlotFile, SlotReconciliation, SlotSpan, SlotTable, SourceTrack, TrackSlot,
     };

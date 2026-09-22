@@ -155,7 +155,7 @@ impl AppServices {
         #[cfg(not(any(target_os = "ios", target_os = "android")))] import: ImportServiceHandle,
     ) -> Self {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let sweep = crate::import::sweep::start(import.clone(), manager.clone());
+        let sweep = crate::import::identification::start(import.clone(), manager.clone());
         AppServices {
             inner: Arc::new(AppServicesInner {
                 manager,

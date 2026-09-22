@@ -102,7 +102,7 @@ pub enum ImportCandidateSnapshot {
 pub struct CandidateRuntimeSnapshot {
     /// Identification is planned for this key and has not started. `None` once
     /// its run starts, and for a key nobody queued.
-    pub queued: Option<IdentifyQueueOwner>,
+    pub queued: Option<Admission>,
     /// The latest state a run in flight published. Never terminal — a run's
     /// terminal state is its answer, and answering ends it.
     pub running: Option<IdentifyState>,
@@ -125,13 +125,12 @@ pub struct CandidateRuntimeSnapshot {
     pub search: Option<super::candidate_search::CandidateSearch>,
 }
 
-/// Who admitted a candidate to identification. Both mark the same waiting, and
-/// each clears only its own: a pass replanning must not drop the marker a
-/// person's Lookup put there, or the other way round.
+/// How a candidate was admitted to identification: by the automatic policy
+/// that answers the whole queue, or because a person asked for this one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IdentifyQueueOwner {
-    AutomaticSweep,
-    ExplicitLookup,
+pub enum Admission {
+    Automatic,
+    Requested,
 }
 
 /// How far a running import has got. It ends with the import: a finished one

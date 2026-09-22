@@ -53,7 +53,7 @@
 //! have to remember to clear.
 
 use super::candidate_search::CandidateSearch;
-use super::candidates::{CandidateRuntimeSnapshot, IdentifyQueueOwner, ImportInFlight};
+use super::candidates::{Admission, CandidateRuntimeSnapshot, ImportInFlight};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
@@ -146,7 +146,7 @@ struct CandidateRuntimeState {
     /// Written by the sweep when it plans a run — by its passes and by the
     /// Lookup a person starts. Cleared by the first broadcast of the run that
     /// was waited for, or by whoever queued it when no run came of it.
-    queued: Option<IdentifyQueueOwner>,
+    queued: Option<Admission>,
     /// Written from the driver's broadcasts. Never terminal and never `Idle`:
     /// both of those end the run rather than being a state it sits at.
     running: Option<RunState>,
@@ -542,7 +542,7 @@ impl CandidateRuntime {
             let previous = snapshots(&inner.runtime);
             let was_identifying = inner.identifying();
             for runtime in inner.runtime.values_mut() {
-                if runtime.queued == Some(IdentifyQueueOwner::AutomaticSweep) {
+                if runtime.queued == Some(Admission::Automatic) {
                     runtime.queued = None;
                 }
             }
@@ -550,7 +550,7 @@ impl CandidateRuntime {
             for key in queued_keys {
                 let runtime = inner.runtime.entry(key).or_default();
                 if runtime.queued.is_none() {
-                    runtime.queued = Some(IdentifyQueueOwner::AutomaticSweep);
+                    runtime.queued = Some(Admission::Automatic);
                 }
             }
             let next = snapshots(&inner.runtime);
@@ -596,7 +596,7 @@ impl CandidateRuntime {
     /// started yet.
     pub(super) fn queue_explicit_identification(&self, candidate_key: &str) {
         self.set(candidate_key, |_, runtime| {
-            runtime.queued = Some(IdentifyQueueOwner::ExplicitLookup);
+            runtime.queued = Some(Admission::Requested);
         });
     }
 
@@ -604,7 +604,7 @@ impl CandidateRuntime {
     /// up before starting one. Either way it is not waiting any more.
     pub(super) fn clear_explicit_identification(&self, candidate_key: &str) {
         self.set(candidate_key, |_, runtime| {
-            if runtime.queued == Some(IdentifyQueueOwner::ExplicitLookup) {
+            if runtime.queued == Some(Admission::Requested) {
                 runtime.queued = None;
             }
         });
@@ -613,14 +613,14 @@ impl CandidateRuntime {
     /// A sweep-owned job is waiting for a slot.
     pub(super) fn requeue_automatic_identification(&self, candidate_key: &str) {
         self.set(candidate_key, |_, runtime| {
-            runtime.queued = Some(IdentifyQueueOwner::AutomaticSweep);
+            runtime.queued = Some(Admission::Automatic);
         });
     }
 
     /// Remove this key only when it is waiting in the automatic sweep.
     pub(super) fn clear_automatic_identification(&self, candidate_key: &str) {
         self.set(candidate_key, |_, runtime| {
-            if runtime.queued == Some(IdentifyQueueOwner::AutomaticSweep) {
+            if runtime.queued == Some(Admission::Automatic) {
                 runtime.queued = None;
             }
         });
