@@ -42,10 +42,7 @@ struct IdentifierChip<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(label)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.tertiary)
-                .fixedSize()
+            IdentifierLabel(text: label)
             tagChips
             if let value {
                 Text(value)
@@ -361,3 +358,16 @@ struct LookupReleaseLine: View {
             .importPreviewEnvironment()
     }
 #endif
+
+/// The caption naming what the value after it is — the one a chip opens
+/// with, and the one before each further value a chip carries.
+struct IdentifierLabel: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.tertiary)
+            .fixedSize()
+    }
+}

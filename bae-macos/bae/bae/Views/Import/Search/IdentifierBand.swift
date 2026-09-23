@@ -293,10 +293,10 @@ struct IdentifierBand: View {
     }
 }
 
-/// The title chip: the album title and artist name the run searches by, each
-/// a field, with the providers' answers beside them. Leaving a field with
-/// its words changed commits both — the whole query goes back, since a
-/// title without its artist is a different search.
+/// The title chip: the artist name and album title the run searches by, each
+/// a labeled field, with the providers' answers beside them. Leaving either
+/// field with its words changed commits both — the whole query goes back,
+/// since a title without its artist is a different search.
 private struct TitleSearchChip<Trailing: View>: View {
     let album: String
     let artist: String
@@ -330,29 +330,31 @@ private struct TitleSearchChip<Trailing: View>: View {
     }
 
     var body: some View {
-        IdentifierChip(label: String(localized: "Title")) {
-            field("Album", text: $albumText, field: .album)
-            Text(verbatim: "—")
-                .font(.system(size: 10.5, design: .monospaced))
-                .foregroundStyle(.quaternary)
+        IdentifierChip(label: String(localized: "Artist")) {
             field("Artist", text: $artistText, field: .artist)
+            IdentifierLabel(text: String(localized: "Title"))
+            field("Title", text: $albumText, field: .album)
             trailing
         }
         // A new run's words replace what was typed: what the chip shows is
         // what was searched.
         .onChange(of: album) { _, now in albumText = now }
         .onChange(of: artist) { _, now in artistText = now }
+        // Leaving a field searches, including moving from one field to the
+        // other.
         .onChange(of: focused) { was, now in
-            if was != nil, now == nil { commit() }
+            if was != nil, was != now { commit() }
         }
     }
 
+    /// A field its label already names, so it shows no placeholder; `name`
+    /// is what accessibility reads.
     private func field(
-        _ placeholder: LocalizedStringKey,
+        _ name: LocalizedStringKey,
         text: Binding<String>,
         field: Field
     ) -> some View {
-        TextField(placeholder, text: text)
+        TextField(name, text: text, prompt: Text(verbatim: ""))
             .textFieldStyle(.plain)
             .font(.system(size: 10.5, design: .monospaced))
             .foregroundStyle(.secondary)
