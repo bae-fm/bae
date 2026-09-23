@@ -80,13 +80,14 @@ pub fn mb_release(
 /// release id. The release document is `response`'s own serialization, so what
 /// the import parses and what it archives cannot disagree.
 pub fn seed_mb_release(
+    musicbrainz: &bae_core::musicbrainz::MusicBrainz,
     response: bae_core::musicbrainz::MbReleaseResponse,
     release_group_id: &str,
 ) -> String {
     let release_id = response.id.clone();
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    bae_core::musicbrainz::seed_release_cache(&release_id, raw_json);
-    bae_core::musicbrainz::seed_release_group_json_cache(
+    musicbrainz.seed_release_cache(&release_id, raw_json);
+    musicbrainz.seed_release_group_json_cache(
         release_group_id,
         serde_json::json!({ "id": release_group_id }).to_string(),
     );

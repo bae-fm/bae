@@ -188,6 +188,8 @@ impl DocumentTraversal {
 }
 
 struct FetchDocuments<'a> {
+    musicbrainz: &'a crate::musicbrainz::MusicBrainz,
+    wikidata: &'a crate::wikidata::Wikidata,
     discogs: Option<&'a DiscogsClient>,
     priority: CallPriority,
     documents: HashMap<DocumentKey, String>,
@@ -195,7 +197,7 @@ struct FetchDocuments<'a> {
 }
 
 impl FetchDocuments<'_> {
-    async fn musicbrainz(
+    async fn musicbrainz_document(
         &mut self,
         source: PayloadSource,
         id: &str,
@@ -209,12 +211,15 @@ impl FetchDocuments<'_> {
         }
         let json = match source {
             PayloadSource::MusicBrainz => {
-                crate::musicbrainz::lookup_release_by_id(id, self.priority)
+                self.musicbrainz
+                    .lookup_release_by_id(id, self.priority)
                     .await?
                     .1
             }
             PayloadSource::MusicBrainzReleaseGroup => {
-                crate::musicbrainz::fetch_release_group_json(id, self.priority).await?
+                self.musicbrainz
+                    .fetch_release_group_json(id, self.priority)
+                    .await?
             }
             _ => unreachable!("MusicBrainz entity fetch requires a release or group"),
         };
@@ -232,7 +237,7 @@ impl FetchDocuments<'_> {
         }
         let json = match source {
             PayloadSource::MusicBrainz | PayloadSource::MusicBrainzReleaseGroup => {
-                return self.musicbrainz(source, id).await
+                return self.musicbrainz_document(source, id).await
             }
             PayloadSource::Discogs => {
                 let Some(client) = self.discogs else {
@@ -249,11 +254,13 @@ impl FetchDocuments<'_> {
             PayloadSource::MusicBrainzDiscogsXref | PayloadSource::MusicBrainzDiscogsMasterXref => {
                 let found = match source {
                     PayloadSource::MusicBrainzDiscogsXref => {
-                        crate::musicbrainz::lookup_releases_by_discogs_release(id, self.priority)
+                        self.musicbrainz
+                            .lookup_releases_by_discogs_release(id, self.priority)
                             .await?
                     }
                     PayloadSource::MusicBrainzDiscogsMasterXref => {
-                        crate::musicbrainz::lookup_groups_by_discogs_master(id, self.priority)
+                        self.musicbrainz
+                            .lookup_groups_by_discogs_master(id, self.priority)
                             .await?
                     }
                     _ => unreachable!(),
@@ -291,12 +298,14 @@ impl FetchDocuments<'_> {
                         "URL lookup returns only MusicBrainz targets of the requested kind"
                     ),
                 };
-                let Some(json) = self.musicbrainz(canonical.0, canonical.1).await? else {
+                let Some(json) = self.musicbrainz_document(canonical.0, canonical.1).await? else {
                     return Ok(None);
                 };
                 json
             }
-            PayloadSource::Wikidata => crate::wikidata::fetch_entity(id, self.priority)
+            PayloadSource::Wikidata => self
+                .wikidata
+                .fetch_entity(id, self.priority)
                 .await
                 .map_err(|error| ImportError::SourceData {
                     catalog: Catalog::Wikidata,
@@ -308,13 +317,20 @@ impl FetchDocuments<'_> {
     }
 }
 
-pub(super) async fn fetch_documents(
+/// The documents `release` links to, asked of MusicBrainz, Wikidata and —
+/// when a client is given — Discogs. `stored` is what is archived already,
+/// which is read rather than asked for again.
+pub(crate) async fn fetch_documents(
+    musicbrainz: &crate::musicbrainz::MusicBrainz,
+    wikidata: &crate::wikidata::Wikidata,
     discogs: Option<&DiscogsClient>,
     release: &MetadataRef,
     stored: Option<&ReleasePayloads>,
     priority: CallPriority,
 ) -> Result<ReleasePayloads, ImportError> {
     let mut fetcher = FetchDocuments {
+        musicbrainz,
+        wikidata,
         discogs,
         priority,
         documents: HashMap::new(),

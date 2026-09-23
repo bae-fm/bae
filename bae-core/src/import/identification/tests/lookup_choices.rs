@@ -2,7 +2,6 @@
 /// out, no provider is asked about the codes the artwork carries — the disc ID
 /// is asked about and answers alone.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
     let fixture = Fixture::new("choices-leave-out-barcode").await;
     fixture

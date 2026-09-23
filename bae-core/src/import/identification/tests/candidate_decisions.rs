@@ -1,5 +1,4 @@
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
     for prefill in [false, true] {
         let fixture = Fixture::new("cue-audio-replacement").await;
@@ -99,7 +98,6 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_claimed_candidate_refuses_sheet_and_role_decisions() {
     let fixture = Fixture::new("claimed-file-decisions").await;
     let dir = fixture.seed_cue_album("Album");
@@ -151,7 +149,6 @@ async fn a_claimed_candidate_refuses_sheet_and_role_decisions() {
 /// way back from "Describes nothing". The second decision lands like the
 /// first: the sheet carves its container again and the pane redraws from it.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_cleared_sheet_can_be_bound_again() {
     let fixture = Fixture::new("rebind-after-clear").await;
     let dir = fixture.seed_cue_album("Album");
@@ -235,7 +232,6 @@ async fn a_cleared_sheet_can_be_bound_again() {
     assert_eq!(preparation.draft.tracks.len(), 5);
 }
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn deleting_audio_removes_the_row_and_metadata_cannot_restore_it() {
     let fixture = Fixture::new("delete-audio-row").await;
     let dir = fixture.seed_cue_album("Album");
@@ -284,7 +280,6 @@ async fn deleting_audio_removes_the_row_and_metadata_cannot_restore_it() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
     let fixture = Fixture::new("cue-disc-change").await;
     let dir = fixture.seed_cue_album("Album");

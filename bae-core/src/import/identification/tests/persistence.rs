@@ -1,7 +1,6 @@
 /// Candidates hashing the same are one job, and the answer one of them stores
 /// answers all of them: the next admission finds both settled and asks nothing.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn one_answer_covers_every_candidate_that_hashes_the_same() {
     let fixture = Fixture::new("shared-hash-answered").await;
     let first = fixture.disc_id_candidate("First");
@@ -127,7 +126,6 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
 /// candidate the user has already committed to importing — and a verdict that
 /// did land would describe files the import is in the middle of consuming.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_verdict_is_refused_for_a_claimed_candidate() {
     let fixture = Fixture::new("verdict-refused-when-claimed").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -171,7 +169,6 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
 /// cannot blank the answer waiting to be written — while a mid-run `Idle`,
 /// which is the run being abandoned, empties the key.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
     let fixture = Fixture::new("teardown-keeps-state").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -292,7 +289,6 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
 /// would re-identify a folder whose shape did not change and blank the pane
 /// over it.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn restating_a_file_decision_changes_nothing() {
     let fixture = Fixture::new("edit-noop").await;
     let dir = fixture.seed_cue_album("Album");

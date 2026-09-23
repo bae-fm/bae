@@ -55,7 +55,7 @@ async fn build_remote_multi_window_template(
         .await?;
 
     let runtime_handle = tokio::runtime::Handle::current();
-    let release_id_key = seed_discogs_test_release(create_multi_window_cue_album());
+    let release_id_key = seed_discogs_test_release(library_manager.providers(), create_multi_window_cue_album());
     generate_multi_window_cue_flac_files(&album_dir);
 
     let import_ids = SequentialIdProvider::new("multi-window-remote-template");

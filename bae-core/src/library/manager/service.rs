@@ -40,6 +40,8 @@ impl LibraryManager {
         runtime_handle: tokio::runtime::Handle,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
         remote_images: crate::import::cover_art::RemoteImageCache,
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        providers: crate::providers::Providers,
     ) -> Result<Self, coven::DbError> {
         let uploads = UploadObserver::new();
         // coven holds only a `Weak` to the observer (via `WeakUploadObserver`);
@@ -79,6 +81,8 @@ impl LibraryManager {
             diagnostics,
             runtime_handle,
             remote_images,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            providers,
             cloudkit_ops,
             uploads,
         ))
@@ -97,6 +101,8 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: crate::import::cover_art::RemoteImageCache,
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        providers: crate::providers::Providers,
     ) -> Self {
         Self::assemble(
             database,
@@ -106,6 +112,8 @@ impl LibraryManager {
             diagnostics,
             runtime_handle,
             remote_images,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            providers,
             None,
             UploadObserver::new(),
         )
@@ -123,6 +131,8 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: crate::import::cover_art::RemoteImageCache,
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        providers: crate::providers::Providers,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
         uploads: UploadObserver,
     ) -> Self {
@@ -141,6 +151,10 @@ impl LibraryManager {
             database,
             config_handle,
             remote_images,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            providers,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            discogs_client: Arc::new(std::sync::Mutex::new(None)),
             clock,
             ids,
             diagnostics,
@@ -279,6 +293,57 @@ impl LibraryManager {
 
     pub(crate) fn record_telemetry(&self, event: TelemetryEvent) {
         self.diagnostics.event(event);
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn search_musicbrainz(
+        &self,
+        params: crate::musicbrainz::ReleaseSearchParams,
+        priority: crate::util::rate_limiter::CallPriority,
+    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
+        self.providers.search_musicbrainz(params, priority).await
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn lookup_musicbrainz_discid(
+        &self,
+        discid: &str,
+        priority: crate::util::rate_limiter::CallPriority,
+    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::signals::LookupFailure> {
+        self.providers
+            .lookup_musicbrainz_discid(discid, priority)
+            .await
+    }
+
+    /// The Cover Art Archive's images of a MusicBrainz release, then of its
+    /// group.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn musicbrainz_gallery(
+        &self,
+        release_id: &str,
+        group_id: Option<&str>,
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+        self.providers
+            .musicbrainz_gallery(release_id, group_id)
+            .await
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn musicbrainz_group_gallery(
+        &self,
+        group_id: &str,
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+        self.providers.musicbrainz_group_gallery(group_id).await
+    }
+
+    /// Every image one pick's releases offer, the primary's first.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn pick_gallery_covers(
+        &self,
+        primary: &crate::import::payloads::ReleasePayloads,
+        partners: &[crate::import::payloads::ReleasePayloads],
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+        self.providers.pick_gallery_covers(primary, partners).await
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -545,5 +610,18 @@ mod tests {
                 && logs.contains("panicked"),
             "the task failure must be named in the log, got: {logs}"
         );
+    }
+}
+
+/// The providers a library asks, for a test to seed their answers.
+#[cfg(all(
+    any(test, feature = "test-utils"),
+    not(any(target_os = "ios", target_os = "android"))
+))]
+mod test_access {
+    impl super::LibraryManager {
+        pub fn providers(&self) -> &crate::providers::Providers {
+            &self.providers
+        }
     }
 }

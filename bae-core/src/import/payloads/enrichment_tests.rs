@@ -1,7 +1,6 @@
 use super::*;
 use coven::{FixedClock, SequentialIdProvider};
 use serde_json::json;
-use serial_test::serial;
 use std::sync::Arc;
 
 fn instant() -> DateTime<Utc> {
@@ -64,7 +63,6 @@ async fn database() -> (Database, tempfile::TempDir) {
 }
 
 #[tokio::test]
-#[serial(musicbrainz)]
 async fn master_backlink_enriches_an_archived_release_and_replays_offline() {
     let stored = ReleasePayloads {
         release: MetadataRef::new(Catalog::Discogs, "7811"),
@@ -75,11 +73,12 @@ async fn master_backlink_enriches_an_archived_release_and_replays_offline() {
             master(),
         )],
     };
-    crate::musicbrainz::seed_discogs_url_lookup("7811", None);
-    crate::musicbrainz::seed_discogs_master_url_lookup("7822", Some("album-group".into()));
-    crate::musicbrainz::seed_release_group_json_cache("album-group", group());
-    let client = DiscogsClient::new("test-token".into());
-    let enriched = enrich(Some(&client), &stored, CallPriority::Interactive)
+    let providers = crate::providers::Providers::offline();
+    providers.musicbrainz().seed_discogs_url_lookup("7811", None);
+    providers.musicbrainz().seed_discogs_master_url_lookup("7822", Some("album-group".into()));
+    providers.musicbrainz().seed_release_group_json_cache("album-group", group());
+    let client = DiscogsClient::new(providers.discogs().clone(), "test-token".into());
+    let enriched = providers.enrich_payloads(Some(&client), &stored, CallPriority::Interactive)
         .await
         .unwrap();
     let records = enriched.records().unwrap();

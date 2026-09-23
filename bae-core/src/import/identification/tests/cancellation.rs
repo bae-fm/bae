@@ -9,7 +9,6 @@
 /// A pick names one candidate, so it ends one candidate's run. The pass keeps
 /// answering everything else it had going.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_pick_ends_only_the_picked_candidates_run() {
     let fixture = Fixture::new("pick-ends-one-run").await;
     fixture
@@ -103,7 +102,6 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
 /// Skipping is a decision about the candidate, so it ends its run. Unskipping
 /// makes it the sweep's again, and the next pass answers it.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn skipping_a_candidate_ends_its_run_and_unskipping_plans_it_again() {
     let fixture = Fixture::new("skip-ends-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -148,7 +146,6 @@ async fn skipping_a_candidate_ends_its_run_and_unskipping_plans_it_again() {
 /// candidate as it was ends, and the change is announced so the pane and the
 /// queue sweep both read the candidate afresh.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() {
     let fixture = Fixture::new("clear-ends-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -193,7 +190,6 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
 /// pass it was running in takes it back: the run the clear ended is replaced,
 /// in the same pass, by one reading the candidate as it now is.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn clearing_a_candidates_metadata_mid_pass_puts_it_back_in_the_queue() {
     let fixture = Fixture::new("clear-requeues").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -244,7 +240,6 @@ async fn clearing_a_candidates_metadata_mid_pass_puts_it_back_in_the_queue() {
 /// An import claims the candidate, so nothing is left for identification to
 /// answer. The run ends at the command that claimed it, and the import goes on.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn starting_an_import_ends_the_candidates_run() {
     let fixture = Fixture::new("import-ends-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -279,7 +274,6 @@ async fn starting_an_import_ends_the_candidates_run() {
 /// keeps its write, so the row lands and nothing is left saying a commit is
 /// still pending.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     let fixture = Fixture::new("disable-during-settle").await;
     let dir = fixture.disc_id_candidate("Candidate");

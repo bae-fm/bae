@@ -2,9 +2,9 @@ use crate::import::{Catalog, ImportError};
 use crate::retry::{exponential_backoff, is_transient_status, retry_classified, ClassifiedAttempt};
 use crate::signals::LookupFailure;
 use crate::util::content_type::ContentType;
-use crate::util::test_base_url::TestBaseUrl;
+use crate::util::http::Http;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing::{debug, warn};
 
@@ -33,86 +33,7 @@ pub enum RemoteCoverGallery {
 /// Where the Cover Art Archive serves images from. Every path under it is fixed
 /// by the entity's MusicBrainz id, so an image's address is knowable without
 /// asking the archive anything.
-#[cfg(not(any(test, feature = "test-utils")))]
-pub(crate) static ARCHIVE: TestBaseUrl = TestBaseUrl::new("https://coverartarchive.org");
-
-/// Test builds start at a port nothing listens on rather than the live archive:
-/// a cover address is derived from a release id, so any fixture whose release
-/// document says the archive holds a front image would otherwise reach the real
-/// service. A test that wants bytes served answers them itself, after pointing
-/// this at its own server.
-#[cfg(any(test, feature = "test-utils"))]
-pub(crate) static ARCHIVE: TestBaseUrl = TestBaseUrl::new("http://127.0.0.1:9");
-
-/// Point every Cover Art Archive address at `url` (`None` restores the unserved
-/// default), so a test outside this crate can answer image requests from a local
-/// server.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn set_base_url_for_test(url: Option<String>) {
-    ARCHIVE.set_for_test(url);
-}
-
-/// Point the archive at a stand-in that holds nothing: every address answers
-/// 404, which is what the archive itself answers for a release group it has
-/// no image for.
-///
-/// A test whose subject offers an archive address — the album address a
-/// release group's cover is offered at is a guess by construction —
-/// otherwise reads a connection failure rather than the archive's answer.
-///
-/// The stand-in is started once and the archive is pointed at it on every
-/// call, because another test's fixture restores the unserved default when it
-/// ends. Calling this is serialized with every other test that points the
-/// archive somewhere, as the base address requires.
-#[cfg(test)]
-pub(crate) fn serve_empty_archive_for_test() {
-    static STAND_IN: OnceLock<String> = OnceLock::new();
-    let address = STAND_IN.get_or_init(|| {
-        let (address_tx, address_rx) = std::sync::mpsc::channel();
-        // Its own runtime on its own thread: the stand-in outlives each
-        // `#[tokio::test]` that reaches it, so it lives on no one test's
-        // runtime.
-        std::thread::spawn(move || {
-            let runtime = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("the stand-in archive's runtime builds");
-            runtime.block_on(async move {
-                let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-                    .await
-                    .expect("the stand-in archive binds");
-                address_tx
-                    .send(
-                        listener
-                            .local_addr()
-                            .expect("the stand-in archive has an address"),
-                    )
-                    .expect("the starting thread is waiting for the address");
-                while let Ok((mut stream, _)) = listener.accept().await {
-                    tokio::spawn(async move {
-                        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-                        let mut request = [0u8; 1024];
-                        if let Err(error) = stream.read(&mut request).await {
-                            debug!("the stand-in archive could not read a request: {error}");
-                            return;
-                        }
-                        if let Err(error) = stream
-                            .write_all(
-                                b"HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n",
-                            )
-                            .await
-                        {
-                            debug!("the stand-in archive could not answer: {error}");
-                        }
-                    });
-                }
-            });
-        });
-        let address = address_rx.recv().expect("the stand-in archive starts");
-        format!("http://{address}")
-    });
-    set_base_url_for_test(Some(address.clone()));
-}
+pub(crate) const ARCHIVE: &str = "https://coverartarchive.org";
 
 /// A remote cover art option from an external source: where the full image and
 /// its thumbnail live, and which service is offering them.
@@ -149,10 +70,9 @@ impl RemoteCover {
     }
 
     fn cover_art_archive(entity: &str, id: &str, label: impl FnOnce(&str) -> String) -> Self {
-        let base = ARCHIVE.get();
         Self {
-            url: format!("{base}/{entity}/{id}/front"),
-            thumbnail_url: format!("{base}/{entity}/{id}/front-250"),
+            url: format!("{ARCHIVE}/{entity}/{id}/front"),
+            thumbnail_url: format!("{ARCHIVE}/{entity}/{id}/front-250"),
             label: label(Catalog::MusicBrainz.cover_source_label()),
             source: Catalog::MusicBrainz,
         }
@@ -268,21 +188,6 @@ const RETRY_BASE_DELAY: Duration = Duration::from_secs(1);
 
 /// Encoded provider images retained across launches.
 const REMOTE_IMAGE_DISK_BUDGET: u64 = 128 * 1024 * 1024;
-
-fn image_download_client() -> Result<reqwest::Client, ImportError> {
-    // The build error is stored as a String because `reqwest::Client`'s builder
-    // error is not `Clone` and the cell is cloned on every read; each call
-    // re-wraps it in the typed `Internal` error.
-    static CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
-    CLIENT
-        .get_or_init(|| {
-            crate::util::http::client_builder()
-                .build()
-                .map_err(|e| format!("Failed to create HTTP client: {e:?}"))
-        })
-        .clone()
-        .map_err(|detail| ImportError::Internal { detail })
-}
 
 /// One decoded provider image's original bytes and detected content type.
 #[derive(Debug, Clone, PartialEq)]
@@ -537,6 +442,7 @@ type InFlightImages = HashMap<String, Arc<tokio::sync::OnceCell<Option<RemoteIma
 /// Tokio's blocking pool rather than its async workers.
 #[derive(Clone)]
 pub struct RemoteImageCache {
+    http: Http,
     in_flight: Arc<Mutex<InFlightImages>>,
     disk: Arc<DiskImageCache>,
     retry_base_delay: Duration,
@@ -545,8 +451,9 @@ pub struct RemoteImageCache {
 }
 
 impl RemoteImageCache {
-    pub fn new(library_path: &std::path::Path) -> Self {
+    pub fn new(library_path: &std::path::Path, http: Http) -> Self {
         Self::in_dir(
+            http,
             library_path.join("cache").join("remote-images-v2"),
             REMOTE_IMAGE_DISK_BUDGET,
             RETRY_BASE_DELAY,
@@ -554,10 +461,11 @@ impl RemoteImageCache {
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn for_test() -> Self {
+    pub fn for_test(http: Http) -> Self {
         let directory =
             tempfile::TempDir::new().expect("a temp directory for the remote image cache");
         let mut cache = Self::in_dir(
+            http,
             directory.path().to_path_buf(),
             REMOTE_IMAGE_DISK_BUDGET,
             Duration::from_millis(1),
@@ -566,8 +474,14 @@ impl RemoteImageCache {
         cache
     }
 
-    fn in_dir(dir: std::path::PathBuf, budget: u64, retry_base_delay: Duration) -> Self {
+    fn in_dir(
+        http: Http,
+        dir: std::path::PathBuf,
+        budget: u64,
+        retry_base_delay: Duration,
+    ) -> Self {
         Self {
+            http,
             in_flight: Arc::new(Mutex::new(HashMap::new())),
             disk: Arc::new(DiskImageCache::new(dir, budget)),
             retry_base_delay,
@@ -593,6 +507,7 @@ impl RemoteImageCache {
                 .clone()
         };
         let retry_base_delay = self.retry_base_delay;
+        let http = self.http.clone();
         let disk = Arc::clone(&self.disk);
         let owned_url = url.to_string();
 
@@ -603,22 +518,26 @@ impl RemoteImageCache {
                 }
 
                 debug!("Downloading remote image from {owned_url}");
-                let entry =
-                    match send_image_request(&owned_url, "Cover art download", retry_base_delay)
-                        .await?
-                    {
-                        ImageResponse::Body {
-                            bytes,
-                            content_type,
-                        } => DiskImageEntry::Image(RemoteImage {
-                            bytes,
-                            content_type,
-                        }),
-                        ImageResponse::Nothing => {
-                            debug!("No image is served at {owned_url}");
-                            DiskImageEntry::Nothing
-                        }
-                    };
+                let entry = match send_image_request(
+                    &http,
+                    &owned_url,
+                    "Cover art download",
+                    retry_base_delay,
+                )
+                .await?
+                {
+                    ImageResponse::Body {
+                        bytes,
+                        content_type,
+                    } => DiskImageEntry::Image(RemoteImage {
+                        bytes,
+                        content_type,
+                    }),
+                    ImageResponse::Nothing => {
+                        debug!("No image is served at {owned_url}");
+                        DiskImageEntry::Nothing
+                    }
+                };
                 let image = entry.clone().into_image();
                 write_disk(Arc::clone(&disk), owned_url.clone(), entry).await?;
                 Ok(image)
@@ -698,11 +617,12 @@ enum ImageResponse {
 /// GET an image URL. Retries transient failures (network errors, 5xx) up to
 /// `MAX_RETRIES` times.
 async fn send_image_request(
+    http: &Http,
     image_url: &str,
     operation: &str,
     base_delay: Duration,
 ) -> Result<ImageResponse, ImportError> {
-    match send_artwork_request(image_url, operation, base_delay).await? {
+    match send_artwork_request(http, image_url, operation, base_delay).await? {
         Some(response) => read_image_response(response, image_url).await,
         None => Ok(ImageResponse::Nothing),
     }
@@ -710,22 +630,30 @@ async fn send_image_request(
 
 /// Shared transport policy for image bytes and artwork-list documents.
 async fn send_artwork_request(
+    http: &Http,
     url: &str,
     operation: &str,
     base_delay: Duration,
 ) -> Result<Option<reqwest::Response>, ImportError> {
-    let client = image_download_client()?;
     retry_classified(
         MAX_RETRIES + 1,
         operation,
         |attempt| exponential_backoff(base_delay, attempt),
         || async {
-            let response = match client
+            let request = match http
                 .get(url)
                 .timeout(crate::util::http::READ_TIMEOUT)
-                .send()
-                .await
+                .build()
             {
+                Ok(request) => request,
+                Err(error) => {
+                    return ClassifiedAttempt::Permanent(artwork_request_error(
+                        error,
+                        "Failed to fetch image",
+                    ));
+                }
+            };
+            let response = match http.execute(request).await {
                 Ok(response) => response,
                 Err(error) if is_permanent_request_error(&error) => {
                     return ClassifiedAttempt::Permanent(artwork_request_error(

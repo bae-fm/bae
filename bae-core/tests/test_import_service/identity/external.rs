@@ -19,9 +19,10 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
 async fn a_picked_release_writes_its_id_and_pressing_fields() {
     support::tracing_init();
 
-    let release = discogs_release_rich("Album Title", "master-exact", &["Track One"]);
-    let release_id_key = seed_discogs_test_release(release);
     let f = ImportFixture::new().await;
+
+    let release = discogs_release_rich("Album Title", "master-exact", &["Track One"]);
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -70,9 +71,10 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
 async fn a_user_edit_overlays_the_picked_release() {
     support::tracing_init();
 
-    let release = discogs_release_rich("Album Title", "master-edit", &["Track One"]);
-    let release_id_key = seed_discogs_test_release(release);
     let f = ImportFixture::new().await;
+
+    let release = discogs_release_rich("Album Title", "master-edit", &["Track One"]);
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -153,11 +155,12 @@ async fn a_user_edit_overlays_the_picked_release() {
 /// later projection replays from the archived bytes rather than from anything
 /// handed over beside them. `master_id` is the fixture's own spelling, rendered
 /// numerically as the endpoint numbers its ids.
-fn seed_discogs_for_xref(release_id: &str, master_id: &str, title: &str) -> String {
-    support::point_discogs_at_dead_port();
+fn seed_discogs_for_xref(
+    f: &ImportFixture,
+    release_id: &str, master_id: &str, title: &str) -> String {
     let rendered_master = support::discogs_fixture_id(master_id);
-    bae_core::discogs::client::seed_artist_image_response("1", None);
-    bae_core::discogs::client::seed_master_cache(
+    f.library_manager.providers().discogs().seed_artist_image_response("1", None);
+    f.library_manager.providers().discogs().seed_master_cache(
         &rendered_master,
         serde_json::json!({ "id": rendered_master.parse::<u64>().expect("a rendered master id is numeric"), "year": 1996 }).to_string(),
     );
@@ -181,13 +184,14 @@ fn seed_discogs_for_xref(release_id: &str, master_id: &str, title: &str) -> Stri
     .to_string();
     bae_core::discogs::client::parse_discogs_release_json(&raw_json)
         .expect("the rendered Discogs release parses");
-    bae_core::discogs::client::seed_release_cache(release_id, raw_json);
+    f.library_manager.providers().discogs().seed_release_cache(release_id, raw_json);
     release_id.to_string()
 }
 
 /// Seed an MB release whose url-rels carry a Discogs release URL.
 /// Returns the MB release id.
 fn seed_mb_with_discogs_xref(
+    f: &ImportFixture,
     mb_release_id: &str,
     mb_group_id: &str,
     discogs_release_id: &str,
@@ -203,8 +207,8 @@ fn seed_mb_with_discogs_xref(
         ..MbRelation::default()
     }];
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    bae_core::musicbrainz::seed_release_cache(mb_release_id, raw_json);
-    bae_core::musicbrainz::seed_release_group_json_cache(
+    f.library_manager.providers().musicbrainz().seed_release_cache(mb_release_id, raw_json);
+    f.library_manager.providers().musicbrainz().seed_release_group_json_cache(
         mb_group_id,
         serde_json::json!({ "id": mb_group_id }).to_string(),
     );
@@ -217,20 +221,21 @@ fn seed_mb_with_discogs_xref(
 async fn a_cross_link_writes_both_catalogs_records() {
     support::tracing_init();
 
-    let discogs_id = seed_discogs_for_xref("90000001", "xref-d-master-exact", "Album Title");
+    let f = ImportFixture::new().await;
+
+    let discogs_id = seed_discogs_for_xref(&f, "90000001", "xref-d-master-exact", "Album Title");
     // MB needs to know about the Discogs URL → release id mapping for
     // the `fetch_mb_xref` path; this test goes the other direction
     // (MB → Discogs via url-rels); the reverse cache must not contain a stale
     // answer from another test.
-    bae_core::musicbrainz::seed_discogs_url_lookup(&discogs_id, None);
-    let mb_id = seed_mb_with_discogs_xref(
+    f.library_manager.providers().musicbrainz().seed_discogs_url_lookup(&discogs_id, None);
+    let mb_id = seed_mb_with_discogs_xref(&f,
         "xref-mb-rel-exact",
         "xref-mb-group-exact",
         &discogs_id,
         "Album Title",
     );
 
-    let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
@@ -288,11 +293,12 @@ async fn a_cross_link_writes_both_catalogs_records() {
 async fn a_pick_with_a_partner_writes_both_records() {
     support::tracing_init();
 
-    let discogs_id = seed_discogs_for_xref("90000101", "partner-d-master", "Album Title");
-    bae_core::musicbrainz::seed_discogs_url_lookup(&discogs_id, None);
-    let mb_id = seed_mb_without_xref("partner-mb-rel", "partner-mb-group", "Album Title");
-
     let f = ImportFixture::new().await;
+
+    let discogs_id = seed_discogs_for_xref(&f, "90000101", "partner-d-master", "Album Title");
+    f.library_manager.providers().musicbrainz().seed_discogs_url_lookup(&discogs_id, None);
+    let mb_id = seed_mb_without_xref(&f, "partner-mb-rel", "partner-mb-group", "Album Title");
+
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
@@ -349,18 +355,19 @@ async fn a_pick_with_a_partner_writes_both_records() {
 async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
     support::tracing_init();
 
-    let inferred_id = seed_discogs_for_xref("90000201", "inferred-d-master", "Album Title");
-    let picked_id = seed_discogs_for_xref("90000202", "picked-d-master", "Album Title");
-    bae_core::musicbrainz::seed_discogs_url_lookup(&inferred_id, None);
-    bae_core::musicbrainz::seed_discogs_url_lookup(&picked_id, None);
-    let mb_id = seed_mb_with_discogs_xref(
+    let f = ImportFixture::new().await;
+
+    let inferred_id = seed_discogs_for_xref(&f, "90000201", "inferred-d-master", "Album Title");
+    let picked_id = seed_discogs_for_xref(&f, "90000202", "picked-d-master", "Album Title");
+    f.library_manager.providers().musicbrainz().seed_discogs_url_lookup(&inferred_id, None);
+    f.library_manager.providers().musicbrainz().seed_discogs_url_lookup(&picked_id, None);
+    let mb_id = seed_mb_with_discogs_xref(&f,
         "partner-override-mb-rel",
         "partner-override-mb-group",
         &inferred_id,
         "Album Title",
     );
 
-    let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
@@ -402,8 +409,11 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
 }
 
 /// Seed an MB release with no Discogs url-rel. Returns the MB release id.
-fn seed_mb_without_xref(mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
+fn seed_mb_without_xref(
+    f: &ImportFixture,
+    mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
     support::seed_mb_release(
+        f.library_manager.providers().musicbrainz(),
         support::mb_release(mb_release_id, mb_group_id, title),
         mb_group_id,
     )

@@ -1,6 +1,6 @@
 //! Discogs operations owned by [`LibraryManager`].
 //!
-//! The configured client and its validation callback stay inside a
+//! The client for the stored key and its validation callback stay inside a
 //! [`DiscogsSession`]. Callers ask the manager for search results, payloads,
 //! covers, or images; no caller receives the client or the config handle the
 //! callback updates.
@@ -12,49 +12,22 @@ use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsKeySignal, Disc
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::util::rate_limiter::CallPriority;
 
+/// Nothing panics while the stored key's client is locked, so a poisoned lock
+/// is a bug and fails loudly.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+const DISCOGS_CLIENT_LOCK: &str = "the Discogs client lock is never held across a panic";
+
+/// One operation's view of Discogs: the client for the stored key, when there
+/// is one Discogs may be asked with, and the other providers a release fetch
+/// follows links into.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 struct DiscogsSession {
-    client: Option<DiscogsClient>,
+    client: Option<Arc<DiscogsClient>>,
+    providers: crate::providers::Providers,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl DiscogsSession {
-    fn open(config_handle: &Arc<ConfigHandle>, database: &Database) -> Result<Self, LibraryError> {
-        let validation = config_handle.config().prefs.discogs;
-        if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
-            return Ok(Self { client: None });
-        }
-
-        let config_handle = Arc::clone(config_handle);
-        let observer = Arc::new(move |signal| {
-            Self::record_validation_signal(&config_handle, signal);
-        });
-        let client = database
-            .host_secret(crate::keys::DISCOGS_API_KEY)?
-            .map(|key| DiscogsClient::with_observer(key, observer));
-        Ok(Self { client })
-    }
-
-    fn record_validation_signal(config_handle: &ConfigHandle, signal: DiscogsKeySignal) {
-        let Some(current) = config_handle.config().prefs.discogs else {
-            debug!("discogs validation signal ignored: no key stored");
-            return;
-        };
-        let next = match signal {
-            DiscogsKeySignal::Rejected => DiscogsValidation::Rejected,
-            DiscogsKeySignal::Accepted if current == DiscogsValidation::Unvalidated => {
-                DiscogsValidation::Valid
-            }
-            _ => return,
-        };
-        if current == next {
-            return;
-        }
-        if let Err(error) = config_handle.update(|config| config.prefs.discogs = Some(next)) {
-            warn!("failed to persist discogs validation {next:?}: {error}");
-        }
-    }
-
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn search(
         &self,
@@ -77,9 +50,15 @@ impl DiscogsSession {
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
         match stored {
             Some(stored) => {
-                crate::import::payloads::enrich(self.client.as_ref(), stored, priority).await
+                self.providers
+                    .enrich_payloads(self.client.as_deref(), stored, priority)
+                    .await
             }
-            None => crate::import::payloads::fetch(self.client.as_ref(), release, priority).await,
+            None => {
+                self.providers
+                    .fetch_payloads(self.client.as_deref(), release, priority)
+                    .await
+            }
         }
     }
 
@@ -143,6 +122,29 @@ impl DiscogsSession {
     }
 }
 
+/// Fold one Discogs call's outcome into the stored key's validation: a 401
+/// rejects it, and a success confirms a key nothing had confirmed yet.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn record_discogs_validation_signal(config_handle: &ConfigHandle, signal: DiscogsKeySignal) {
+    let Some(current) = config_handle.config().prefs.discogs else {
+        debug!("discogs validation signal ignored: no key stored");
+        return;
+    };
+    let next = match signal {
+        DiscogsKeySignal::Rejected => DiscogsValidation::Rejected,
+        DiscogsKeySignal::Accepted if current == DiscogsValidation::Unvalidated => {
+            DiscogsValidation::Valid
+        }
+        _ => return,
+    };
+    if current == next {
+        return;
+    }
+    if let Err(error) = config_handle.update(|config| config.prefs.discogs = Some(next)) {
+        warn!("failed to persist discogs validation {next:?}: {error}");
+    }
+}
+
 /// What a token-validation request proves about a key. Provider failures that
 /// say nothing about the key leave it unvalidated.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -178,8 +180,17 @@ impl LibraryManager {
         token: &str,
         validation: DiscogsValidation,
     ) -> Result<(), LibraryError> {
+        // Held across the writes, so no call builds a client from a key
+        // halfway through being replaced.
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let mut client = self.discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
         self.database
             .set_host_secret(crate::keys::DISCOGS_API_KEY, token)?;
+        // The cached client asks with the key just replaced.
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        {
+            *client = None;
+        }
         self.config_handle
             .update(|config| config.prefs.discogs = Some(validation))?;
         Ok(())
@@ -188,8 +199,14 @@ impl LibraryManager {
     /// Clear the config state before deleting the keyring bytes, so a failure
     /// between the writes leaves Discogs disabled rather than half-enabled.
     pub fn clear_discogs_key(&self) -> Result<(), LibraryError> {
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let mut client = self.discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
         self.config_handle
             .update(|config| config.prefs.discogs = None)?;
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        {
+            *client = None;
+        }
         self.database
             .delete_host_secret(crate::keys::DISCOGS_API_KEY)?;
         Ok(())
@@ -216,9 +233,7 @@ impl LibraryManager {
         params: DiscogsSearchParams,
         priority: CallPriority,
     ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
-        DiscogsSession::open(&self.config_handle, &self.database)?
-            .search(params, priority)
-            .await
+        self.discogs_session()?.search(params, priority).await
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -228,7 +243,7 @@ impl LibraryManager {
         stored: Option<&crate::import::payloads::ReleasePayloads>,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        match DiscogsSession::open(&self.config_handle, &self.database) {
+        match self.discogs_session() {
             Ok(session) => session.fetch_payloads(release, stored, priority).await,
             Err(error) if release.catalog == crate::import::Catalog::MusicBrainz => {
                 warn!(
@@ -236,8 +251,8 @@ impl LibraryManager {
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
                 );
                 match stored {
-                    Some(stored) => crate::import::payloads::enrich(None, stored, priority).await,
-                    None => crate::import::payloads::fetch(None, release, priority).await,
+                    Some(stored) => self.providers.enrich_payloads(None, stored, priority).await,
+                    None => self.providers.fetch_payloads(None, release, priority).await,
                 }
             }
             Err(error) => Err(error.into()),
@@ -250,7 +265,7 @@ impl LibraryManager {
         release_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
-        DiscogsSession::open(&self.config_handle, &self.database)?
+        self.discogs_session()?
             .release_covers(release_id, priority)
             .await
     }
@@ -261,7 +276,7 @@ impl LibraryManager {
         master_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
-        DiscogsSession::open(&self.config_handle, &self.database)?
+        self.discogs_session()?
             .master_covers(master_id, priority)
             .await
     }
@@ -277,7 +292,7 @@ impl LibraryManager {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
-        let session = DiscogsSession::open(&self.config_handle, &self.database)?;
+        let session = self.discogs_session()?;
         let mut answers = Vec::with_capacity(ids.len());
         for discogs_artist_id in ids {
             let Some(source_url) = session.artist_image_url(&discogs_artist_id).await? else {
@@ -357,22 +372,66 @@ impl LibraryManager {
         if self.discogs_validation() != Some(DiscogsValidation::Unvalidated) {
             return Ok(());
         }
-        let validation = DiscogsSession::open(&self.config_handle, &self.database)?
-            .validate()
-            .await?;
+        let validation = self.discogs_session()?.validate().await?;
         self.set_discogs_validation(validation)?;
         Ok(())
     }
 
     #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
     pub(super) fn discogs_available_for_test(&self) -> Result<bool, LibraryError> {
-        Ok(DiscogsSession::open(&self.config_handle, &self.database)?
-            .client
-            .is_some())
+        Ok(self.discogs_session()?.client.is_some())
     }
 
     #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
     pub(super) fn record_discogs_validation_for_test(&self, signal: DiscogsKeySignal) {
-        DiscogsSession::record_validation_signal(&self.config_handle, signal);
+        record_discogs_validation_signal(&self.config_handle, signal);
+    }
+
+    /// Discogs as this library may ask it right now. No client while no key is
+    /// stored or the stored one was rejected. Otherwise the one client for the
+    /// stored key, built the first time it is needed — reading the key off the
+    /// keyring once rather than on every call — and reused until the key is
+    /// set or cleared.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    fn discogs_session(&self) -> Result<DiscogsSession, LibraryError> {
+        let providers = self.providers.clone();
+        // Held while the stored key is read, so a key being set or cleared is
+        // seen whole or not at all.
+        let mut cached = self.discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
+        let validation = self.config_handle.config().prefs.discogs;
+        if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
+            return Ok(DiscogsSession {
+                client: None,
+                providers,
+            });
+        }
+        if cached.is_none() {
+            let config_handle = Arc::clone(&self.config_handle);
+            let observer = Arc::new(move |signal| {
+                record_discogs_validation_signal(&config_handle, signal);
+            });
+            *cached = self
+                .database
+                .host_secret(crate::keys::DISCOGS_API_KEY)?
+                .map(|key| Arc::new(providers.discogs_client(key, Some(observer))));
+        }
+        Ok(DiscogsSession {
+            client: cached.clone(),
+            providers,
+        })
+    }
+
+    /// Ask Discogs whether it accepts `key`, which this library does not
+    /// store: how a key is tried before it is saved.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn try_discogs_key(
+        &self,
+        key: &str,
+        priority: CallPriority,
+    ) -> Result<(), DiscogsError> {
+        self.providers
+            .discogs_client(key.to_string(), None)
+            .validate_token(priority)
+            .await
     }
 }

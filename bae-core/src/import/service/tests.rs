@@ -53,7 +53,8 @@ async fn setup_import_service() -> TestService {
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(),
+        crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
+        crate::providers::Providers::offline(),
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
     let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());

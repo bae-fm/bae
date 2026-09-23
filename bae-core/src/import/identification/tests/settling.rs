@@ -10,7 +10,6 @@
 /// the release group, the cover options. A lead is settled by fetching the
 /// release itself, once, and both candidates in this pass cost exactly that.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
     let fixture = Fixture::new("settle-lead").await;
     fixture
@@ -69,7 +68,6 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
 /// without storing partial release documents, and automatic passes leave it
 /// alone until an explicit re-run.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_failed_settle_is_stored_without_partial_documents() {
     let fixture = Fixture::new("settle-ordering").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -127,7 +125,6 @@ async fn a_failed_settle_is_stored_without_partial_documents() {
 /// Explicitly applying a settled release keeps its archived pressing and fetches
 /// a missing parent. Opening the resulting candidate reads both documents offline.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn applying_a_settled_candidate_fetches_missing_parent_then_reads_offline() {
     let fixture = Fixture::new("offline-open").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -202,7 +199,7 @@ async fn applying_a_settled_candidate_fetches_missing_parent_then_reads_offline(
             .collect::<Vec<_>>(),
         vec![format!(
             "{}/release-group/rg-offline-1/front",
-            crate::import::cover_art::ARCHIVE.get()
+            crate::import::cover_art::ARCHIVE
         )],
         "the pressing states no front image of its own, so the album's is the \
          only option — and it is read off the stored document, not asked for"
@@ -210,7 +207,7 @@ async fn applying_a_settled_candidate_fetches_missing_parent_then_reads_offline(
     assert_eq!(
         &fixture.provider.requests()[before..],
         &[
-            "/release-group/rg-offline-1?inc=artist-credits+url-rels&fmt=json".to_string(),
+            "/ws/2/release-group/rg-offline-1?inc=artist-credits+url-rels&fmt=json".to_string(),
             "/release-group/rg-offline-1/front".to_string(),
         ],
         "selection fetches the missing parent and cover without re-fetching the pressing"
@@ -221,7 +218,6 @@ async fn applying_a_settled_candidate_fetches_missing_parent_then_reads_offline(
 /// cache. Picking it fails loudly, and stores no pick — so nothing is left
 /// naming a release the pane could not draw.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_settled_lead_with_no_documents_fails_loud() {
     let fixture = Fixture::new("offline-miss").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -257,7 +253,6 @@ async fn a_settled_lead_with_no_documents_fails_loud() {
 /// search hit — fetches, and archives what it fetched, so opening it again is
 /// local too.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     let fixture = Fixture::new("manual-pick").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -318,7 +313,6 @@ const PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT: &str = "012 345 678901 2";
 /// draft is read from and the Discogs release beside it, and both sources'
 /// documents are archived, so opening this candidate needs no network.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     let fixture = Fixture::new("paired-settle").await;
     fixture.use_discogs();
@@ -349,7 +343,11 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         .route("/releases/70000101", 200, discogs_release_json("70000101"));
     // Nothing links this synthetic Discogs release to a MusicBrainz one, which
     // is the answer the cross-reference lookup would come back with.
-    crate::musicbrainz::seed_discogs_url_lookup("70000101", None);
+    fixture
+        .manager
+        .providers()
+        .musicbrainz()
+        .seed_discogs_url_lookup("70000101", None);
     fixture.scan(1).await;
 
     fixture.sweep_once().await;
@@ -407,7 +405,6 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
 /// one pressing survive the narrowing together, and the pick the sweep stores
 /// claims both sources.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     let fixture = Fixture::new("disc-id-partner").await;
     fixture.use_discogs();
@@ -443,7 +440,11 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     fixture
         .provider
         .route("/releases/70000102", 200, discogs_release_json("70000102"));
-    crate::musicbrainz::seed_discogs_url_lookup("70000102", None);
+    fixture
+        .manager
+        .providers()
+        .musicbrainz()
+        .seed_discogs_url_lookup("70000102", None);
     fixture.scan(1).await;
 
     fixture.sweep_once().await;
@@ -501,7 +502,6 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
 /// the Discogs record leads its row, the pick claims MusicBrainz beside it, and
 /// the draft is read from the Discogs document.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     let fixture = Fixture::new("evidence-lead").await;
     fixture.use_discogs();
@@ -539,7 +539,11 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
             release.to_string()
         },
     );
-    crate::musicbrainz::seed_discogs_url_lookup("70000103", None);
+    fixture
+        .manager
+        .providers()
+        .musicbrainz()
+        .seed_discogs_url_lookup("70000103", None);
     fixture.scan(1).await;
 
     fixture.sweep_once().await;
@@ -596,7 +600,6 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
 /// user's call, and buying every pressing's documents would settle nothing. The
 /// verdict stores with no pick and no release lookups behind it.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn two_distinct_pressings_do_not_settle() {
     let fixture = Fixture::new("two-pressings").await;
     fixture
@@ -651,7 +654,6 @@ async fn two_distinct_pressings_do_not_settle() {
 /// carries a number the folder prints lands with that number chosen, in the
 /// folder's spelling, with nobody touching the toolbar.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn settling_a_lead_chooses_the_number_the_folder_prints() {
     let fixture = Fixture::new("settle-chooses-catalog").await;
     let dir = fixture.disc_id_candidate("NJ-8255");

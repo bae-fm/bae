@@ -307,10 +307,11 @@ async fn file_metadata_import_embedded_cover_wins_over_folder_image() {
 async fn file_metadata_import_always_creates_a_fresh_album() {
     support::tracing_init();
 
+    let f = ImportFixture::new().await;
+
     // First import: identified, lands on its own album.
     let release = discogs_release_rich("Album Title", "master-existing", &["Track One"]);
-    let release_id_key = seed_discogs_test_release(release);
-    let f = ImportFixture::new().await;
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
     let identified_dir = f.temp_path().join("identified");
     fs::create_dir_all(&identified_dir).unwrap();

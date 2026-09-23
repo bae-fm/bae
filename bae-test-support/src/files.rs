@@ -99,21 +99,87 @@ pub fn cover_png() -> Vec<u8> {
     bytes.into_inner()
 }
 
-/// A local stand-in for the Cover Art Archive, shared by every test in a
-/// binary.
+/// The host a test's own image addresses are on. It resolves nowhere; only a
+/// transport routed to [`RemoteImageHost::origin`] reaches it.
+pub const TEST_IMAGE_HOST: &str = "images.bae.test";
+
+/// A local stand-in for the hosts provider images come from: the Cover Art
+/// Archive, and whatever address a test hands out for an image of its own.
 ///
-/// Cover addresses are derived from a release's MusicBrainz ids rather than
-/// looked up, so any fixture whose release document says the archive holds a
-/// front image sends the commit to one of those addresses. This answers them on
-/// localhost. An address no test registered answers 404 — the archive holding
-/// nothing there, which is both what an unregistered release means and what
-/// keeps the rest of the suite from reaching the real service.
+/// One per test, started on that test's runtime and gone with it, and reached
+/// only through the transport it is routed into. Cover addresses are derived
+/// from a release's MusicBrainz ids rather than looked up, so any fixture whose
+/// release document says the archive holds a front image sends the commit to
+/// one of those addresses; this answers them. An address no test registered
+/// answers 404 — the archive holding nothing there.
 pub struct RemoteImageHost {
-    routes: std::sync::Mutex<std::collections::HashMap<String, (u16, Vec<u8>)>>,
-    base_url: std::sync::OnceLock<String>,
+    routes: ImageRoutes,
+    origin: String,
 }
 
+/// The status and body each registered path answers with.
+type ImageRoutes =
+    std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, (u16, Vec<u8>)>>>;
+
 impl RemoteImageHost {
+    pub async fn start() -> Self {
+        use axum::extract::{Request, State};
+        use axum::http::StatusCode;
+
+        async fn handler(
+            State(routes): State<ImageRoutes>,
+            request: Request,
+        ) -> (
+            StatusCode,
+            [(axum::http::HeaderName, &'static str); 1],
+            Vec<u8>,
+        ) {
+            let answer = routes
+                .lock()
+                .expect("image host routes mutex poisoned")
+                .get(request.uri().path())
+                .cloned();
+            let (status, bytes) = answer.unwrap_or((404, Vec::new()));
+            (
+                StatusCode::from_u16(status).expect("a valid stub status"),
+                [(axum::http::header::CONTENT_TYPE, "image/png")],
+                bytes,
+            )
+        }
+
+        let routes: ImageRoutes = std::sync::Arc::default();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("the test image host binds");
+        let origin = format!(
+            "http://{}",
+            listener
+                .local_addr()
+                .expect("the test image host has an address")
+        );
+        let app = axum::Router::new()
+            .fallback(handler)
+            .with_state(routes.clone());
+        tokio::spawn(async move {
+            let _ = axum::serve(listener, app).await;
+        });
+        Self { routes, origin }
+    }
+
+    /// Where this host listens. bae-core's own unit tests route their
+    /// transport here by hand, since the transport type this crate sees is
+    /// not the one those tests build.
+    pub fn origin(&self) -> &str {
+        &self.origin
+    }
+
+    /// `http` with the Cover Art Archive and this test's own image host sent
+    /// here.
+    pub fn route(&self, http: bae_core::util::http::Http) -> bae_core::util::http::Http {
+        http.serve("coverartarchive.org", &self.origin)
+            .serve(TEST_IMAGE_HOST, &self.origin)
+    }
+
     /// Serve `bytes` as a MusicBrainz release's front image, at both the full
     /// and the thumbnail address.
     pub fn serve_front(&self, release_id: &str, bytes: Vec<u8>) {
@@ -126,22 +192,22 @@ impl RemoteImageHost {
         self.answer_front(release_id, status, Vec::new());
     }
 
-    /// Serve image bytes at an arbitrary provider URL path and return its URL.
+    /// Serve image bytes at `path` on this test's image host and return the
+    /// address.
     pub fn serve_image(&self, path: &str, bytes: Vec<u8>) -> String {
         assert!(path.starts_with('/'), "test image path must be absolute");
         self.routes
             .lock()
             .expect("image host routes mutex poisoned")
             .insert(path.to_string(), (200, bytes));
-        format!(
-            "{}{}",
-            self.base_url.get().expect("test image host has started"),
-            path
-        )
+        format!("https://{TEST_IMAGE_HOST}{path}")
     }
 
     fn answer_front(&self, release_id: &str, status: u16, bytes: Vec<u8>) {
-        let mut routes = self.routes.lock().expect("archive routes mutex poisoned");
+        let mut routes = self
+            .routes
+            .lock()
+            .expect("image host routes mutex poisoned");
         for suffix in ["front", "front-250"] {
             routes.insert(
                 format!("/release/{release_id}/{suffix}"),
@@ -149,77 +215,6 @@ impl RemoteImageHost {
             );
         }
     }
-}
-
-/// The binary's stand-in archive, started and pointed at on first use.
-pub fn cover_art_archive() -> &'static RemoteImageHost {
-    static ARCHIVE: std::sync::OnceLock<&'static RemoteImageHost> = std::sync::OnceLock::new();
-    ARCHIVE.get_or_init(start_cover_art_archive)
-}
-
-fn start_cover_art_archive() -> &'static RemoteImageHost {
-    use axum::extract::{Request, State};
-    use axum::http::StatusCode;
-
-    let archive: &'static RemoteImageHost = Box::leak(Box::new(RemoteImageHost {
-        routes: std::sync::Mutex::new(std::collections::HashMap::new()),
-        base_url: std::sync::OnceLock::new(),
-    }));
-
-    async fn handler(
-        State(archive): State<&'static RemoteImageHost>,
-        request: Request,
-    ) -> (
-        StatusCode,
-        [(axum::http::HeaderName, &'static str); 1],
-        Vec<u8>,
-    ) {
-        let answer = archive
-            .routes
-            .lock()
-            .expect("archive routes mutex poisoned")
-            .get(request.uri().path())
-            .cloned();
-        let (status, bytes) = answer.unwrap_or((404, Vec::new()));
-        (
-            StatusCode::from_u16(status).expect("a valid stub status"),
-            [(axum::http::header::CONTENT_TYPE, "image/png")],
-            bytes,
-        )
-    }
-
-    // Its own runtime on its own thread: the archive outlives each `#[tokio::test]`
-    // that reaches it, so it cannot live on any one test's runtime.
-    let (address_tx, address_rx) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("the stub archive's runtime builds");
-        runtime.block_on(async move {
-            let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-                .await
-                .expect("the stub archive binds");
-            address_tx
-                .send(
-                    listener
-                        .local_addr()
-                        .expect("the stub archive has an address"),
-                )
-                .expect("the starting thread is waiting for the address");
-            let app = axum::Router::new().fallback(handler).with_state(archive);
-            let _ = axum::serve(listener, app).await;
-        });
-    });
-
-    let address = address_rx.recv().expect("the stub archive starts");
-    let base_url = format!("http://{address}");
-    archive
-        .base_url
-        .set(base_url.clone())
-        .expect("the test image host URL is set once");
-    bae_core::import::cover_art::set_base_url_for_test(Some(base_url));
-    archive
 }
 
 pub async fn read_cover_image_blob(

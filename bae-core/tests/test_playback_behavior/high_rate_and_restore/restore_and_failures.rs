@@ -2,7 +2,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
     let (library_manager, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
-    let release_id_key = seed_discogs_test_release(create_test_album());
+    let release_id_key = seed_discogs_test_release(library_manager.providers(), create_test_album());
     support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
     let releases = library_manager
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
@@ -39,7 +39,10 @@ async fn empty_test_library() -> (LibraryManager, tokio::runtime::Handle, TempDi
 async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>, TempDir) {
     let source = TempDir::new().unwrap();
     generate_cue_flac_files(source.path());
-    let release_key = seed_discogs_test_release(create_cue_flac_test_album());
+    let release_key = seed_discogs_test_release(
+        lib.library_manager.providers(),
+        create_cue_flac_test_album(),
+    );
     let import_handle =
         start_test_import(lib.runtime_handle.clone(), lib.library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -288,7 +291,7 @@ impl CloudOnlyPlaybackFixture {
 
         let runtime_handle = tokio::runtime::Handle::current();
         let discogs_release = create_test_album();
-        let release_id_key = seed_discogs_test_release(discogs_release);
+        let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
         generate_test_flac_files(&album_dir);
 
         let import_handle =

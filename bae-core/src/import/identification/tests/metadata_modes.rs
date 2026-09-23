@@ -1,5 +1,4 @@
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
     let fixture = Fixture::new("automatic-off").await;
     let calls = Arc::new(AtomicUsize::new(0));
@@ -26,7 +25,6 @@ async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
 /// answer: the sweep runs the candidate whether the pre-fill wrote that draft
 /// at discovery or a person asked for it afterwards.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_file_tags_draft_is_still_run() {
     for (name, reset_by_hand) in [("prefilled", false), ("reset-to-tags", true)] {
         let fixture = Fixture::new(name).await;
@@ -76,7 +74,6 @@ async fn a_file_tags_draft_is_still_run() {
 /// result for the files it has right now — and the sweep, which reads results
 /// and nothing about who reached them, leaves it alone.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_pick_stores_the_result_and_the_sweep_leaves_it_alone() {
     let fixture = Fixture::new("pick-is-a-result").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -149,7 +146,6 @@ async fn a_pick_stores_the_result_and_the_sweep_leaves_it_alone() {
 /// A result for the files a candidate has right now is the whole reason not to
 /// run it again: a second pass over the same queue asks nothing.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_candidate_with_a_result_for_its_files_is_not_run_again() {
     let fixture = Fixture::new("result-stops-the-sweep").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -183,7 +179,6 @@ async fn a_candidate_with_a_result_for_its_files_is_not_run_again() {
 /// nothing about what identification concluded: the result stands, the file
 /// revision it is keyed on does not move, and no new run starts.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_draft_write_leaves_the_result_and_starts_no_run() {
     for name in ["clear-metadata", "reset-to-tags"] {
         let fixture = Fixture::new(name).await;
@@ -247,7 +242,6 @@ async fn a_draft_write_leaves_the_result_and_starts_no_run() {
 /// Files that changed retire the result they were read from, so the queue asks
 /// again for the candidate as it now is.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn changed_files_retire_the_result_and_identification_runs_again() {
     let fixture = Fixture::new("changed-files-run-again").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -293,7 +287,6 @@ async fn changed_files_retire_the_result_and_identification_runs_again() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn disabling_automatic_lookup_lets_what_it_queued_finish() {
     let fixture = Fixture::new("disable-lets-queued-finish").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -333,7 +326,6 @@ async fn disabling_automatic_lookup_lets_what_it_queued_finish() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn disabling_automatic_lookup_preserves_a_settled_result() {
     let fixture = Fixture::new("disable-preserves-settled").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -366,7 +358,6 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
     let fixture = Fixture::new("enable-schedules-unresolved").await;
     fixture.manager.set_identify_automatically(false).unwrap();

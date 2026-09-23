@@ -82,6 +82,164 @@ pub(crate) fn client_builder() -> reqwest::ClientBuilder {
         .redirect(Policy::limited(MAX_REDIRECTS))
 }
 
+/// How bae's outbound requests reach the network: one client with bae's user
+/// agent, timeouts and redirect policy, whose connection pool every provider
+/// shares. Built once when the app starts and handed to each provider.
+///
+/// Requests are always built against the real addresses. A test builds one
+/// whose requests go to local servers instead — [`Http::for_test`] sends every
+/// host to a port nothing listens on, and [`Http::serve`] routes a host to a
+/// fake — so a test never reaches the network, and the URLs a response is
+/// cached under, or a cover is stored under, are the ones production uses.
+#[derive(Clone)]
+pub struct Http {
+    client: reqwest::Client,
+    #[cfg(any(test, feature = "test-utils"))]
+    routes: Option<std::sync::Arc<TestRoutes>>,
+}
+
+/// Where a test's requests go, by host: a host with a route goes to its
+/// origin, and every other host to `unrouted`.
+#[cfg(any(test, feature = "test-utils"))]
+#[derive(Clone)]
+struct TestRoutes {
+    by_host: std::collections::HashMap<String, reqwest::Url>,
+    unrouted: reqwest::Url,
+}
+
+impl Http {
+    pub fn new() -> Result<Self, reqwest::Error> {
+        Ok(Self {
+            client: client_builder().build()?,
+            #[cfg(any(test, feature = "test-utils"))]
+            routes: None,
+        })
+    }
+
+    /// A transport whose every request goes to a port nothing listens on, so
+    /// it fails fast and locally until [`Self::serve`] routes its host.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn for_test() -> Self {
+        Self {
+            client: client_builder()
+                .build()
+                .expect("the test HTTP client builds"),
+            routes: Some(std::sync::Arc::new(TestRoutes {
+                by_host: std::collections::HashMap::new(),
+                unrouted: reqwest::Url::parse("http://127.0.0.1:9").expect("the dead port parses"),
+            })),
+        }
+    }
+
+    /// This transport with requests for `host` sent to `origin`, a local
+    /// server's scheme, host and port.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn serve(mut self, host: &str, origin: &str) -> Self {
+        let routes = std::sync::Arc::make_mut(
+            self.routes
+                .as_mut()
+                .expect("only a test transport routes hosts"),
+        );
+        routes.by_host.insert(
+            host.to_string(),
+            reqwest::Url::parse(origin).expect("a test origin parses"),
+        );
+        self
+    }
+
+    /// This transport with every host not routed on its own sent to `origin`.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn serve_every_host(mut self, origin: &str) -> Self {
+        let routes = std::sync::Arc::make_mut(
+            self.routes
+                .as_mut()
+                .expect("only a test transport routes hosts"),
+        );
+        routes.unrouted = reqwest::Url::parse(origin).expect("a test origin parses");
+        self
+    }
+
+    pub(crate) fn get(&self, url: &str) -> reqwest::RequestBuilder {
+        self.client.get(url)
+    }
+
+    /// Send `request`. The URL it was built with is the one it is known by;
+    /// only where it is sent changes in a test.
+    pub(crate) async fn execute(
+        &self,
+        request: reqwest::Request,
+    ) -> reqwest::Result<reqwest::Response> {
+        #[cfg(any(test, feature = "test-utils"))]
+        let request = self.routed(request);
+        self.client.execute(request).await
+    }
+
+    /// `request` sent to the origin its host is routed to. A transport built
+    /// with [`Self::new`] routes nothing.
+    #[cfg(any(test, feature = "test-utils"))]
+    fn routed(&self, mut request: reqwest::Request) -> reqwest::Request {
+        let Some(routes) = &self.routes else {
+            return request;
+        };
+        let origin = request
+            .url()
+            .host_str()
+            .and_then(|host| routes.by_host.get(host))
+            .unwrap_or(&routes.unrouted)
+            .clone();
+        let url = request.url_mut();
+        url.set_scheme(origin.scheme())
+            .expect("a test origin's scheme applies");
+        url.set_host(origin.host_str())
+            .expect("a test origin's host applies");
+        url.set_port(origin.port())
+            .expect("a test origin's port applies");
+        request
+    }
+}
+
+/// The origin of a local server that answers every request 404: a host with
+/// nothing at any address a test reaches. It runs on the calling test's
+/// runtime and ends with it.
+#[cfg(test)]
+pub(crate) async fn serve_not_found() -> String {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("the not-found server binds");
+    let origin = format!(
+        "http://{}",
+        listener
+            .local_addr()
+            .expect("the not-found server has an address")
+    );
+    tokio::spawn(async move {
+        while let Ok((mut stream, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                // Read the whole request head before answering, so the client
+                // is not answered mid-send.
+                let mut head = Vec::new();
+                let mut chunk = [0u8; 1024];
+                while !head.windows(4).any(|window| window == b"\r\n\r\n") {
+                    let read = stream
+                        .read(&mut chunk)
+                        .await
+                        .expect("the not-found server reads a request");
+                    assert!(read > 0, "the client closed before sending a request");
+                    head.extend_from_slice(&chunk[..read]);
+                }
+                stream
+                    .write_all(
+                        b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    )
+                    .await
+                    .expect("the not-found server answers");
+            });
+        }
+    });
+    origin
+}
+
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum HttpBodyError {
     #[error("HTTP body too large (limit {limit} bytes)")]

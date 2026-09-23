@@ -2,10 +2,9 @@
 
 use super::*;
 use crate::import::CandidateEditField;
-use serial_test::serial;
 
 /// A Discogs release with pressing metadata and no barcode.
-fn seed_discogs_pressing(release_id: &str, label: &str, catalog_number: &str) {
+fn seed_discogs_pressing(providers: &crate::providers::Providers, release_id: &str, label: &str, catalog_number: &str) {
     let raw_release = serde_json::json!({
         "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
         "title": "Album Title",
@@ -27,9 +26,9 @@ fn seed_discogs_pressing(release_id: &str, label: &str, catalog_number: &str) {
     .to_string();
     crate::discogs::client::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
-    crate::discogs::client::seed_release_cache(release_id, raw_release);
-    crate::discogs::client::seed_artist_image_response("1", None);
-    crate::musicbrainz::seed_discogs_url_lookup(release_id, None);
+    providers.discogs().seed_release_cache(release_id, raw_release);
+    providers.discogs().seed_artist_image_response("1", None);
+    providers.musicbrainz().seed_discogs_url_lookup(release_id, None);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -71,7 +70,6 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
@@ -87,7 +85,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
         .unwrap();
 
     let release_id = "70000101";
-    seed_discogs_pressing(release_id, "Label Name", "CAT-1");
+    seed_discogs_pressing(handle.library_manager.providers(), release_id, "Label Name", "CAT-1");
     handle
         .select_candidate_metadata_provenance(
             key.clone(),

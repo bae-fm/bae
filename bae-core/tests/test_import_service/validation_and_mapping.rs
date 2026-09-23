@@ -43,7 +43,8 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(bae_core::util::http::Http::for_test()),
+        bae_core::providers::Providers::offline(),
     );
     let handle = library_manager
         .start_import_service(tokio::runtime::Handle::current())
@@ -109,7 +110,9 @@ async fn verify_decode_on_import_gates_a_broken_track() {
 // ── album artists survive the confirmation editor ────────────────────────
 
 /// A MusicBrainz release credited to two artists, one CD track.
-fn seed_two_credit_mb_release(mb_release_id: &str, mb_group_id: &str) -> String {
+fn seed_two_credit_mb_release(
+    f: &ImportFixture,
+    mb_release_id: &str, mb_group_id: &str) -> String {
     let credit = |id: &str, name: &str| MbArtistCredit {
         name: name.to_string(),
         artist: Some(MbArtistRef {
@@ -130,8 +133,8 @@ fn seed_two_credit_mb_release(mb_release_id: &str, mb_group_id: &str) -> String 
         },
         ..support::mb_release(mb_release_id, mb_group_id, "Split Album")
     };
-    let mb_release_id = support::seed_mb_release(response, mb_group_id);
-    support::cover_art_archive().serve_front(&mb_release_id, support::cover_png());
+    let mb_release_id = support::seed_mb_release(f.library_manager.providers().musicbrainz(), response, mb_group_id);
+    f.images.serve_front(&mb_release_id, support::cover_png());
     mb_release_id
 }
 
@@ -148,7 +151,7 @@ fn seed_two_credit_mb_release(mb_release_id: &str, mb_group_id: &str) -> String 
 async fn two_credit_mb_release_keeps_both_album_artists() {
     support::tracing_init();
     let f = ImportFixture::new().await;
-    let mb_id = seed_two_credit_mb_release("two-credit-mb-rel", "two-credit-mb-group");
+    let mb_id = seed_two_credit_mb_release(&f, "two-credit-mb-rel", "two-credit-mb-group");
 
     // Scan the album in so the prefetch runs against a candidate key the
     // service actually knows — the key is what core reads the identify evidence
@@ -204,6 +207,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
 /// Seed a plain MusicBrainz release of `track_count` tracks on one CD, credited
 /// to one artist. The tracklist a folder's audio gets mapped against.
 fn seed_mb_release_with_track_count(
+    f: &ImportFixture,
     mb_release_id: &str,
     mb_group_id: &str,
     track_count: usize,
@@ -234,8 +238,8 @@ fn seed_mb_release_with_track_count(
         },
         ..support::mb_release(mb_release_id, mb_group_id, "Album Title")
     };
-    let mb_release_id = support::seed_mb_release(response, mb_group_id);
-    support::cover_art_archive().serve_front(&mb_release_id, support::cover_png());
+    let mb_release_id = support::seed_mb_release(f.library_manager.providers().musicbrainz(), response, mb_group_id);
+    f.images.serve_front(&mb_release_id, support::cover_png());
     mb_release_id
 }
 
@@ -293,7 +297,7 @@ async fn incompatible_source_counts_preserve_every_audio_backed_track() {
     support::tracing_init();
     for source_count in [12, 14] {
         let f = ImportFixture::new().await;
-        let mb_id = seed_mb_release_with_track_count(
+        let mb_id = seed_mb_release_with_track_count(&f,
             &format!("mb-rel-count-{source_count}"),
             &format!("mb-group-count-{source_count}"),
             source_count,
@@ -359,7 +363,7 @@ async fn incompatible_source_counts_preserve_every_audio_backed_track() {
 async fn a_corrected_pairing_survives_the_commit() {
     support::tracing_init();
     let f = ImportFixture::new().await;
-    let mb_id = seed_mb_release_with_track_count("mb-rel-repair", "mb-group-repair", 3);
+    let mb_id = seed_mb_release_with_track_count(&f, "mb-rel-repair", "mb-group-repair", 3);
 
     let collection = f.temp_path().join("collection-repair");
     let album_dir = collection.join("album");
@@ -407,7 +411,9 @@ async fn a_corrected_pairing_survives_the_commit() {
 /// Seed a MusicBrainz release whose document says the Cover Art Archive holds a
 /// front image for it, so the commit has an address to fetch and a statement
 /// that there is something at it.
-fn seed_mb_release_with_front_cover(mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
+fn seed_mb_release_with_front_cover(
+    f: &ImportFixture,
+    mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
     let response = MbReleaseResponse {
         country: None,
         artist_credit: vec![MbArtistCredit {
@@ -425,7 +431,7 @@ fn seed_mb_release_with_front_cover(mb_release_id: &str, mb_group_id: &str, titl
         },
         ..support::mb_release(mb_release_id, mb_group_id, title)
     };
-    support::seed_mb_release(response, mb_group_id)
+    support::seed_mb_release(f.library_manager.providers().musicbrainz(), response, mb_group_id)
 }
 
 /// A commit that carries no cover pick lands the cover the confirmation pane
@@ -437,12 +443,13 @@ fn seed_mb_release_with_front_cover(mb_release_id: &str, mb_group_id: &str, titl
 async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
     support::tracing_init();
 
+    let f = ImportFixture::new().await;
+
     let mb_id = "mb-rel-derived-cover";
     let release_id_key =
-        seed_mb_release_with_front_cover(mb_id, "mb-group-derived-cover", "Derived Cover Album");
-    support::cover_art_archive().serve_front(mb_id, support::cover_png());
+        seed_mb_release_with_front_cover(&f, mb_id, "mb-group-derived-cover", "Derived Cover Album");
+    f.images.serve_front(mb_id, support::cover_png());
 
-    let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     // No folder art: the only cover this release can end up with is the one its
@@ -485,15 +492,16 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
 async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
     support::tracing_init();
 
+    let f = ImportFixture::new().await;
+
     let mb_id = "mb-rel-unreachable-cover";
-    let release_id_key = seed_mb_release_with_front_cover(
+    let release_id_key = seed_mb_release_with_front_cover(&f,
         mb_id,
         "mb-group-unreachable-cover",
         "Unreachable Cover Album",
     );
-    support::cover_art_archive().fail_front(mb_id, 503);
+    f.images.fail_front(mb_id, 503);
 
-    let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track.flac"]);

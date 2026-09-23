@@ -34,21 +34,27 @@ struct ImportFixture {
     handle: bae_core::import::ImportServiceHandle,
     library_manager: LibraryManager,
     ids: Arc<dyn coven::IdProvider>,
+    /// The Cover Art Archive and image host this library's requests reach.
+    /// Every MusicBrainz release group offers a derived cover address, and an
+    /// address no test registered answers 404.
+    images: support::RemoteImageHost,
     _temp: TempDir,
 }
 
 impl ImportFixture {
     async fn new() -> Self {
-        // Every MusicBrainz release group offers a derived cover address. Route
-        // unseeded addresses to the local archive's 404 response rather than
-        // depending on another test to start the archive first.
-        support::cover_art_archive();
-
+        let images = support::RemoteImageHost::start().await;
         let temp = TempDir::new().unwrap();
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
 
-        let (library_manager, db) = support::open_test_library(&db_dir).await;
+        let (library_manager, db) = support::open_test_library_with(
+            &db_dir,
+            bae_core::providers::Providers::for_test(
+                images.route(bae_core::util::http::Http::for_test()),
+            ),
+        )
+        .await;
         let ids: Arc<dyn coven::IdProvider> = Arc::new(coven::UuidProvider);
         support::configure_test_discogs(&library_manager);
 
@@ -62,6 +68,7 @@ impl ImportFixture {
             handle,
             library_manager,
             ids,
+            images,
             _temp: temp,
         }
     }

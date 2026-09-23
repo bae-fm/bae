@@ -163,6 +163,7 @@ allowed_capability_outputs=(
   AudioDataReader
   AudioStream
   BlobStream
+  DiscogsClient
   ExtractionServiceHandle
   IdentifyServiceHandle
   ImportServiceHandle

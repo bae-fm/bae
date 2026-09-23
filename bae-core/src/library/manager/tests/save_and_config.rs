@@ -210,7 +210,8 @@ async fn setup_forget_library_manager_at(
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(),
+        crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
+        crate::providers::Providers::offline(),
     );
     manager
         .connect_test_cloud_home(

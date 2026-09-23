@@ -1,5 +1,4 @@
 use super::*;
-use serial_test::serial;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -186,11 +185,7 @@ fn a_darkened_release_serves_no_front_cover() {
 
 // ── Provider response fixtures ─────────────────────────────────────────────
 //
-// Seeded responses, so no test hits the network. A seeded answer is keyed by
-// the URL its request goes to, base address included, and that address is
-// process-wide — so these are `#[serial(musicbrainz)]` against every test that
-// points it somewhere else. Each test also uses ids of its own, to keep
-// another test's seed from answering for it.
+// Seeded responses, so no test hits the network.
 
 /// A bare MusicBrainz release document — no credits, no media, no cover art —
 /// for the fetch paths, which only read its id and release group. Shared by
@@ -352,23 +347,9 @@ async fn mb_recording_server(
     (url, request_count, paths)
 }
 
-/// Points MusicBrainz at a local server and restores the live address when the
-/// test ends, panic included. The base URL and the rate limiter are both
-/// process-wide, so every test holding one of these is `#[serial(musicbrainz)]`.
-struct TestBase;
-
-impl TestBase {
-    fn point_at(url: &str) -> Self {
-        BASE_URL.set_for_test(Some(url.to_string()));
-        reset_rate_limiter_for_test();
-        TestBase
-    }
-}
-
-impl Drop for TestBase {
-    fn drop(&mut self) {
-        BASE_URL.set_for_test(None);
-    }
+/// A client whose MusicBrainz requests go to the local server at `origin`.
+fn served_by(origin: &str) -> MusicBrainz {
+    MusicBrainz::for_test(Http::for_test().serve("musicbrainz.org", origin))
 }
 
 /// A disc-ID response body carrying one release.
@@ -381,13 +362,13 @@ fn discid_body(release_id: &str) -> String {
 }
 
 #[tokio::test]
-#[serial(musicbrainz)]
 async fn release_lookup_fetches_only_the_requested_document() {
     let raw = mb_release_json(&mb_release("release-only", Some("parent-group")));
     let (url, requests) = mb_response_server(vec![(200, raw.clone())]).await;
-    let _base = TestBase::point_at(&url);
+    let musicbrainz = served_by(&url);
 
-    let (release, archived) = lookup_release_by_id("release-only", CallPriority::Interactive)
+    let (release, archived) = musicbrainz
+        .lookup_release_by_id("release-only", CallPriority::Interactive)
         .await
         .expect("the release fetch succeeds independently of its parent");
 
@@ -442,7 +423,6 @@ fn discogs_url_answers_keep_all_matching_targets_and_their_entity_kind() {
 }
 
 #[tokio::test]
-#[serial(musicbrainz)]
 async fn reverse_release_and_master_lookups_preserve_raw_answers() {
     for (master, target) in [(false, "release"), (true, "release-group")] {
         let raw = serde_json::json!({"relations": [{
@@ -450,11 +430,15 @@ async fn reverse_release_and_master_lookups_preserve_raw_answers() {
         }]})
         .to_string();
         let (url, requests, paths) = mb_recording_server(vec![(200, raw.clone())]).await;
-        let _base = TestBase::point_at(&url);
+        let musicbrainz = served_by(&url);
         let result = if master {
-            lookup_groups_by_discogs_master("510001", CallPriority::Interactive).await
+            musicbrainz
+                .lookup_groups_by_discogs_master("510001", CallPriority::Interactive)
+                .await
         } else {
-            lookup_releases_by_discogs_release("510001", CallPriority::Interactive).await
+            musicbrainz
+                .lookup_releases_by_discogs_release("510001", CallPriority::Interactive)
+                .await
         }
         .unwrap()
         .expect("a URL document exists");
@@ -469,7 +453,7 @@ async fn reverse_release_and_master_lookups_preserve_raw_answers() {
         let requested = reqwest::Url::parse(&format!("{url}{path}")).unwrap();
         let query: std::collections::BTreeMap<_, _> =
             requested.query_pairs().into_owned().collect();
-        assert_eq!(requested.path(), "/url");
+        assert_eq!(requested.path(), "/ws/2/url");
         assert_eq!(
             query["resource"],
             if master {
@@ -491,7 +475,6 @@ async fn reverse_release_and_master_lookups_preserve_raw_answers() {
 }
 
 #[tokio::test]
-#[serial(musicbrainz)]
 async fn reverse_lookup_distinguishes_absence_empty_answers_and_failures() {
     for master in [false, true] {
         for (status, body, expected) in [
@@ -501,11 +484,15 @@ async fn reverse_lookup_distinguishes_absence_empty_answers_and_failures() {
             (200, "broken JSON", "parse"),
         ] {
             let (url, requests) = mb_response_server(vec![(status, body.into())]).await;
-            let _base = TestBase::point_at(&url);
+            let musicbrainz = served_by(&url);
             let result = if master {
-                lookup_groups_by_discogs_master("510002", CallPriority::Interactive).await
+                musicbrainz
+                    .lookup_groups_by_discogs_master("510002", CallPriority::Interactive)
+                    .await
             } else {
-                lookup_releases_by_discogs_release("510002", CallPriority::Interactive).await
+                musicbrainz
+                    .lookup_releases_by_discogs_release("510002", CallPriority::Interactive)
+                    .await
             };
             match expected {
                 "missing" => assert!(result.unwrap().is_none()),
@@ -523,7 +510,6 @@ async fn reverse_lookup_distinguishes_absence_empty_answers_and_failures() {
 }
 
 #[tokio::test]
-#[serial(musicbrainz)]
 async fn reverse_lookup_retries_transient_failures_and_caches_the_answer() {
     for master in [false, true] {
         let (url, requests) = mb_response_server(vec![
@@ -531,12 +517,16 @@ async fn reverse_lookup_retries_transient_failures_and_caches_the_answer() {
             (200, r#"{"relations":[]}"#.into()),
         ])
         .await;
-        let _base = TestBase::point_at(&url);
+        let musicbrainz = served_by(&url);
         for _ in 0..2 {
             let answer = if master {
-                lookup_groups_by_discogs_master("510003", CallPriority::Interactive).await
+                musicbrainz
+                    .lookup_groups_by_discogs_master("510003", CallPriority::Interactive)
+                    .await
             } else {
-                lookup_releases_by_discogs_release("510003", CallPriority::Interactive).await
+                musicbrainz
+                    .lookup_releases_by_discogs_release("510003", CallPriority::Interactive)
+                    .await
             }
             .unwrap()
             .expect("the retry obtains the URL document");
@@ -591,16 +581,17 @@ fn blank_pressing_fields_are_absent_in_musicbrainz_documents() {
 }
 
 #[tokio::test]
-#[serial(musicbrainz)]
 async fn a_repeated_request_is_answered_without_a_second_round_trip() {
     let (url, requests) =
         mb_response_server(vec![(200, r#"{"id":"rg-repeat"}"#.to_string())]).await;
-    let _base = TestBase::point_at(&url);
+    let musicbrainz = served_by(&url);
 
-    let first = fetch_release_group_json("rg-repeat", CallPriority::Interactive)
+    let first = musicbrainz
+        .fetch_release_group_json("rg-repeat", CallPriority::Interactive)
         .await
         .expect("the release-group fetch succeeds");
-    let second = fetch_release_group_json("rg-repeat", CallPriority::Interactive)
+    let second = musicbrainz
+        .fetch_release_group_json("rg-repeat", CallPriority::Interactive)
         .await
         .expect("the repeated fetch is answered");
 
@@ -610,13 +601,13 @@ async fn a_repeated_request_is_answered_without_a_second_round_trip() {
 }
 
 #[tokio::test]
-#[serial(musicbrainz)]
 async fn a_not_found_answer_is_kept() {
     let (url, requests) = mb_response_server(vec![(404, String::new())]).await;
-    let _base = TestBase::point_at(&url);
+    let musicbrainz = served_by(&url);
 
     for _ in 0..2 {
-        let error = lookup_by_discid("disc-not-found", CallPriority::Interactive)
+        let error = musicbrainz
+            .lookup_by_discid("disc-not-found", CallPriority::Interactive)
             .await
             .expect_err("the disc is not in MusicBrainz");
         assert!(matches!(error, MusicBrainzError::NotFound(_)));
@@ -628,7 +619,6 @@ async fn a_not_found_answer_is_kept() {
 /// A rate limit and a server error are the provider's momentary state, not its
 /// answer: every retry goes to the wire, and so does the next call.
 #[tokio::test]
-#[serial(musicbrainz)]
 async fn transient_failures_are_not_kept() {
     let (url, requests) = mb_response_server(vec![
         (429, String::new()),
@@ -637,9 +627,10 @@ async fn transient_failures_are_not_kept() {
         (200, discid_body("mb-after-transient")),
     ])
     .await;
-    let _base = TestBase::point_at(&url);
+    let musicbrainz = served_by(&url);
 
-    let error = lookup_by_discid("disc-transient", CallPriority::Interactive)
+    let error = musicbrainz
+        .lookup_by_discid("disc-transient", CallPriority::Interactive)
         .await
         .expect_err("three transient answers exhaust the retries");
     assert!(matches!(
@@ -652,7 +643,8 @@ async fn transient_failures_are_not_kept() {
         "each retry asked the server again"
     );
 
-    let releases = lookup_by_discid("disc-transient", CallPriority::Interactive)
+    let releases = musicbrainz
+        .lookup_by_discid("disc-transient", CallPriority::Interactive)
         .await
         .expect("the provider recovered");
     assert_eq!(releases[0].id, "mb-after-transient");
@@ -663,28 +655,23 @@ async fn transient_failures_are_not_kept() {
     );
 }
 
-/// The key is the whole URL, so the same path under two base addresses is two
-/// answers — which is what keeps one test's fake provider out of another's.
+/// Each client keeps its own answers: two clients asking the same URL each
+/// ask their own server.
 #[tokio::test]
-#[serial(musicbrainz)]
-async fn the_same_path_under_two_base_urls_is_two_answers() {
+async fn two_clients_keep_their_own_answers() {
     let (first_url, first_requests) =
         mb_response_server(vec![(200, r#"{"id":"first"}"#.to_string())]).await;
     let (second_url, second_requests) =
         mb_response_server(vec![(200, r#"{"id":"second"}"#.to_string())]).await;
 
-    let first = {
-        let _base = TestBase::point_at(&first_url);
-        fetch_release_group_json("rg-two-bases", CallPriority::Interactive)
-            .await
-            .expect("the first server answers")
-    };
-    let second = {
-        let _base = TestBase::point_at(&second_url);
-        fetch_release_group_json("rg-two-bases", CallPriority::Interactive)
-            .await
-            .expect("the second server answers")
-    };
+    let first = served_by(&first_url)
+        .fetch_release_group_json("rg-two-bases", CallPriority::Interactive)
+        .await
+        .expect("the first server answers");
+    let second = served_by(&second_url)
+        .fetch_release_group_json("rg-two-bases", CallPriority::Interactive)
+        .await
+        .expect("the second server answers");
 
     assert_eq!(first, r#"{"id":"first"}"#);
     assert_eq!(second, r#"{"id":"second"}"#);
@@ -694,7 +681,9 @@ async fn the_same_path_under_two_base_urls_is_two_answers() {
 
 #[tokio::test]
 async fn invalid_request_is_diagnostic_not_a_network_outage() {
-    let error = mb_get(http_client().get("not a URL"), CallPriority::Interactive)
+    let musicbrainz = MusicBrainz::for_test(Http::for_test());
+    let error = musicbrainz
+        .get("not a URL", CallPriority::Interactive)
         .await
         .unwrap_err();
     assert!(matches!(&error, MusicBrainzError::Other(_)), "{error}");

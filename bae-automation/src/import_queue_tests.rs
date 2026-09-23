@@ -74,7 +74,10 @@ pub(super) async fn automation_over() -> Fixture {
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         None,
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(
+            bae_core::util::http::Http::for_test(),
+        ),
+        bae_core::providers::Providers::offline(),
     )
     .expect("the library opens");
     let services = AppServices::for_test(manager.clone())

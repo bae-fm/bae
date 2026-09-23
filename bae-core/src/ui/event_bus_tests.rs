@@ -40,7 +40,8 @@ async fn services() -> (AppServices, TempDir) {
         Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(),
+        crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
+        crate::providers::Providers::offline(),
     );
     let services = AppServices::for_test(manager)
         .await

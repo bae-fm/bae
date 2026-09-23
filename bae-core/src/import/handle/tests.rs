@@ -28,6 +28,11 @@ fn test_config(library_dir: &coven::StoreDir) -> std::sync::Arc<crate::config::C
 }
 
 async fn setup_test_manager() -> (LibraryManager, TempDir) {
+    setup_test_manager_with(crate::util::http::Http::for_test()).await
+}
+
+/// A manager whose providers and image downloads send requests through `http`.
+async fn setup_test_manager_with(http: crate::util::http::Http) -> (LibraryManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
     let database = Database::new_test(
@@ -46,7 +51,8 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
         std::sync::Arc::new(coven::UuidProvider),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(),
+        crate::import::cover_art::RemoteImageCache::for_test(http.clone()),
+        crate::providers::Providers::for_test(http),
     );
     (manager, temp_dir)
 }

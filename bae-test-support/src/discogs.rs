@@ -1,20 +1,6 @@
 //! Synthetic Discogs releases, and putting them where an import's requests
 //! look instead of the network.
 
-/// Point every Discogs client built after this call at a port nothing listens
-/// on. No test has any business reaching api.discogs.com: the seeded responses
-/// answer what the tests actually assert on, and anything else fails fast and
-/// locally instead of spending a fixture's fake key on a real auth check —
-/// which comes back 401 and marks the stored key rejected for every later call
-/// in the process.
-///
-/// Seeded answers are keyed by the URL the request will go to, so this has to
-/// be in force before anything is seeded. Both the library fixtures and the
-/// seed helpers call it, and it is idempotent.
-pub fn point_discogs_at_dead_port() {
-    bae_core::discogs::client::set_base_url_for_test(Some("http://127.0.0.1:9".to_string()));
-}
-
 /// The id [`seed_discogs_test_release`] renders for a fixture's own spelling of
 /// a release or master id.
 ///
@@ -153,8 +139,10 @@ fn discogs_fixture_artist_ids(
 ///
 /// The rendered ids are numeric, as the endpoint's are, so the returned id is
 /// not the (arbitrary) one the caller wrote on the fixture.
-pub fn seed_discogs_test_release(release: bae_core::discogs::DiscogsRelease) -> String {
-    point_discogs_at_dead_port();
+pub fn seed_discogs_test_release(
+    providers: &bae_core::providers::Providers,
+    release: bae_core::discogs::DiscogsRelease,
+) -> String {
     let numeric = |value: &str| -> u64 {
         discogs_fixture_id(value)
             .parse()
@@ -172,21 +160,21 @@ pub fn seed_discogs_test_release(release: bae_core::discogs::DiscogsRelease) -> 
     let master_id = release.master_id.as_deref().map(numeric);
 
     for artist_id in discogs_fixture_artist_ids(&release) {
-        bae_core::discogs::client::seed_artist_image_response(
-            &numeric(&artist_id).to_string(),
-            None,
-        );
+        providers
+            .discogs()
+            .seed_artist_image_response(&numeric(&artist_id).to_string(), None);
     }
 
     if let Some(master_id) = master_id {
         // Keyed by the rendered id, which is the one the parsed release names
         // and therefore the one the master fetch asks for.
         let master_json = serde_json::json!({ "id": master_id, "year": release.year });
-        bae_core::discogs::client::seed_master_cache(
-            &master_id.to_string(),
-            master_json.to_string(),
-        );
-        bae_core::musicbrainz::seed_discogs_master_url_lookup(&master_id.to_string(), None);
+        providers
+            .discogs()
+            .seed_master_cache(&master_id.to_string(), master_json.to_string());
+        providers
+            .musicbrainz()
+            .seed_discogs_master_url_lookup(&master_id.to_string(), None);
     }
 
     let raw_json = serde_json::json!({
@@ -226,7 +214,7 @@ pub fn seed_discogs_test_release(release: bae_core::discogs::DiscogsRelease) -> 
     let parsed = bae_core::discogs::client::parse_discogs_release_json(&raw_json)
         .expect("the rendered test release parses as the endpoint's own JSON");
     let id = parsed.id.clone();
-    bae_core::discogs::client::seed_release_cache(&id, raw_json);
-    bae_core::musicbrainz::seed_discogs_url_lookup(&id, None);
+    providers.discogs().seed_release_cache(&id, raw_json);
+    providers.musicbrainz().seed_discogs_url_lookup(&id, None);
     id
 }

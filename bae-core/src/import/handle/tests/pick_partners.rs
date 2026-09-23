@@ -2,10 +2,8 @@
 //! from, and every other source's record of the same pressing beside it.
 
 use super::*;
-use serial_test::serial;
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn linked_cover_gallery_can_be_empty() {
     let (handle, _tmp, key, _) = pane_fixture().await;
     handle
@@ -16,7 +14,7 @@ async fn linked_cover_gallery_can_be_empty() {
         )
         .unwrap();
     let release_id = "70000003";
-    seed_discogs_release(release_id);
+    seed_discogs_release(handle.library_manager.providers(), release_id);
     handle
         .select_candidate_metadata_provenance(
             key.clone(),
@@ -46,12 +44,14 @@ async fn linked_cover_gallery_can_be_empty() {
 /// opening the candidate, importing it, or re-reading its identity later needs
 /// no network.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
-    crate::import::cover_art::serve_empty_archive_for_test();
-    let (handle, _tmp, key, hash) = pane_fixture().await;
+    let archive = crate::util::http::serve_not_found().await;
+    let (handle, _tmp, key, hash) = pane_fixture_with(
+        crate::util::http::Http::for_test().serve("coverartarchive.org", &archive),
+    )
+    .await;
     handle
         .library_manager
         .set_discogs_key(
@@ -61,9 +61,9 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         .unwrap();
 
     let discogs_release_id = "70000001";
-    seed_discogs_release(discogs_release_id);
+    seed_discogs_release(handle.library_manager.providers(), discogs_release_id);
     let mb_release_id = "partner-mb-rel-1";
-    seed_mb_release(mb_release_id, "partner-mb-group-1");
+    seed_mb_release(handle.library_manager.providers(), mb_release_id, "partner-mb-group-1");
     let partner = crate::import::MetadataRef::new(
         crate::import::Catalog::MusicBrainz,
         mb_release_id.to_string(),
@@ -129,12 +129,11 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
 /// with no documents behind it. Here Discogs has no key, so the partner is
 /// unreachable while the primary reads fine.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_partner_that_will_not_prepare_fails_the_apply() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
 
     let mb_release_id = "unpaired-mb-rel-1";
-    seed_mb_release(mb_release_id, "unpaired-mb-group-1");
+    seed_mb_release(handle.library_manager.providers(), mb_release_id, "unpaired-mb-group-1");
 
     let before = handle
         .library_manager
@@ -179,12 +178,11 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
 /// already names is two answers to one question, and it would silently replace
 /// the identity the primary document states, so it is refused.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_partner_repeating_the_primary_source_is_refused() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
 
     let mb_release_id = "repeat-mb-rel-1";
-    seed_mb_release(mb_release_id, "repeat-mb-group-1");
+    seed_mb_release(handle.library_manager.providers(), mb_release_id, "repeat-mb-group-1");
 
     let before = handle
         .library_manager
@@ -226,7 +224,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
 }
 
 /// A two-track Discogs release with no master, seeded into the release cache.
-fn seed_discogs_release(release_id: &str) {
+fn seed_discogs_release(providers: &crate::providers::Providers, release_id: &str) {
     let raw_release = serde_json::json!({
         "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
         "title": "Album Title",
@@ -246,14 +244,18 @@ fn seed_discogs_release(release_id: &str) {
     .to_string();
     crate::discogs::client::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
-    crate::discogs::client::seed_release_cache(release_id, raw_release);
-    crate::discogs::client::seed_artist_image_response("1", None);
-    crate::musicbrainz::seed_discogs_url_lookup(release_id, None);
+    providers.discogs().seed_release_cache(release_id, raw_release);
+    providers.discogs().seed_artist_image_response("1", None);
+    providers.musicbrainz().seed_discogs_url_lookup(release_id, None);
 }
 
 /// A two-track MusicBrainz release, seeded into the caches the fetch path
 /// reads, so a partner resolves without a network call.
-fn seed_mb_release(release_id: &str, release_group_id: &str) {
+fn seed_mb_release(
+    providers: &crate::providers::Providers,
+    release_id: &str,
+    release_group_id: &str,
+) {
     let response = crate::musicbrainz::MbReleaseResponse {
         id: release_id.to_string(),
         title: "Album Title".to_string(),
@@ -300,19 +302,22 @@ fn seed_mb_release(release_id: &str, release_group_id: &str) {
         },
     };
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    crate::musicbrainz::seed_release_cache(release_id, raw_json);
-    crate::musicbrainz::seed_release_group_json_cache(
+    providers.musicbrainz().seed_release_cache(release_id, raw_json);
+    providers.musicbrainz().seed_release_group_json_cache(
         release_group_id,
         serde_json::json!({ "id": release_group_id }).to_string(),
     );
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let release_id = "numeric-vinyl-release";
-    crate::musicbrainz::seed_release_cache(release_id, serde_json::json!({
+    handle
+        .library_manager
+        .providers()
+        .musicbrainz()
+        .seed_release_cache(release_id, serde_json::json!({
         "id": release_id, "title": "Numbered Record",
         "artist-credit": [{ "name": "Record Artist", "artist": { "id": "record-artist", "name": "Record Artist" } }],
         "media": [{ "format": "12\" Vinyl", "tracks": [
@@ -376,12 +381,14 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn applied_partner_identity_survives_archive_replacement() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
-    crate::import::cover_art::serve_empty_archive_for_test();
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let archive = crate::util::http::serve_not_found().await;
+    let (handle, _tmp, key, _hash) = pane_fixture_with(
+        crate::util::http::Http::for_test().serve("coverartarchive.org", &archive),
+    )
+    .await;
     handle
         .library_manager
         .set_discogs_key(
@@ -392,12 +399,16 @@ async fn applied_partner_identity_survives_archive_replacement() {
     let primary = "70000004";
     let partner = "frozen-partner-release";
     let group = "frozen-partner-group";
-    seed_discogs_release(primary);
-    seed_mb_release(partner, group);
+    seed_discogs_release(handle.library_manager.providers(), primary);
+    seed_mb_release(handle.library_manager.providers(), partner, group);
     let group_json = |allmusic: &str| {
         serde_json::json!({"id":group,"relations":[{"url":{"resource":format!("https://www.allmusic.com/album/{allmusic}")}}]}).to_string()
     };
-    crate::musicbrainz::seed_release_group_json_cache(group, group_json("mw111"));
+    handle
+        .library_manager
+        .providers()
+        .musicbrainz()
+        .seed_release_group_json_cache(group, group_json("mw111"));
     handle
         .select_candidate_metadata_provenance(
             key.clone(),

@@ -405,11 +405,14 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
 /// so nothing here states whether the archive holds one — the thumbnail fetch
 /// the result card makes is what answers that, and it is the same request the
 /// card would make anyway.
-pub async fn search_mb(
+pub(crate) async fn search_mb(
+    musicbrainz: &musicbrainz::MusicBrainz,
     params: ReleaseSearchParams,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, ImportError> {
-    let releases = musicbrainz::search_releases_with_params(&params, priority).await?;
+    let releases = musicbrainz
+        .search_releases_with_params(&params, priority)
+        .await?;
 
     Ok(releases
         .into_iter()
@@ -546,7 +549,11 @@ pub async fn search_provider(
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, ImportError> {
     match source {
-        Catalog::MusicBrainz => search_mb(query.musicbrainz_params(), priority).await,
+        Catalog::MusicBrainz => {
+            library_manager
+                .search_musicbrainz(query.musicbrainz_params(), priority)
+                .await
+        }
         Catalog::Discogs => {
             library_manager
                 .search_discogs(query.discogs_params(), priority)
@@ -572,11 +579,12 @@ pub async fn search_source(
 /// The releases MusicBrainz has for a disc ID, each with its cover art. Empty
 /// when the disc is unknown to MB — a settled lookup with no matches, which is
 /// what `NotFound` means on this endpoint too.
-pub async fn lookup_by_discid(
+pub(crate) async fn lookup_by_discid(
+    musicbrainz: &musicbrainz::MusicBrainz,
     discid: &str,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, LookupFailure> {
-    let releases = match musicbrainz::lookup_by_discid(discid, priority).await {
+    let releases = match musicbrainz.lookup_by_discid(discid, priority).await {
         Ok(releases) => releases,
         Err(musicbrainz::MusicBrainzError::NotFound(_)) => return Ok(Vec::new()),
         Err(e) => return Err(mb_error_to_lookup_failure(&e)),

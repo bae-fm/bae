@@ -1,5 +1,4 @@
 use super::*;
-use serial_test::serial;
 
 /// Every preparation mutation the pane offers, each refused with the error
 /// `is_expected` names, and the whole set left unwritten. The values passed in
@@ -364,9 +363,12 @@ async fn a_track_edit_that_keeps_artist_ids_keeps_the_prepared_artist_image() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by_import() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
+    let images = bae_test_support::RemoteImageHost::start().await;
+    let (handle, _tmp, key, hash) = pane_fixture_with(
+        crate::util::http::Http::for_test().serve(bae_test_support::TEST_IMAGE_HOST, images.origin()),
+    )
+    .await;
     handle
         .library_manager
         .set_discogs_key(
@@ -398,16 +400,16 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
     .to_string();
     crate::discogs::client::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
-    crate::discogs::client::seed_release_cache(&source_release_id, raw_release);
-    crate::musicbrainz::seed_discogs_url_lookup(&source_release_id, None);
-    crate::discogs::client::seed_artist_image_response(&album_artist_id.to_string(), None);
+    handle.library_manager.providers().discogs().seed_release_cache(&source_release_id, raw_release);
+    handle.library_manager.providers().musicbrainz().seed_discogs_url_lookup(&source_release_id, None);
+    handle.library_manager.providers().discogs().seed_artist_image_response(&album_artist_id.to_string(), None);
     let prepared_artist_id = track_artist_id.to_string();
     let expected_bytes = bae_test_support::cover_png();
-    let source_url = bae_test_support::cover_art_archive().serve_image(
+    let source_url = images.serve_image(
         &format!("/discogs-artist-{}.png", uuid::Uuid::new_v4()),
         expected_bytes.clone(),
     );
-    crate::discogs::client::seed_artist_image_response(
+    handle.library_manager.providers().discogs().seed_artist_image_response(
         &prepared_artist_id,
         Some(source_url.clone()),
     );

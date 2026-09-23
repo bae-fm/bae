@@ -3,7 +3,7 @@
 //! scan, release re-identify resolution) lives in `crate::signals`.
 
 use crate::db::LibraryStatus;
-use crate::import::search::{lookup_by_discid, MetadataResult};
+use crate::import::search::MetadataResult;
 use crate::signals::LookupFailure;
 use crate::util::rate_limiter::CallPriority;
 
@@ -16,7 +16,9 @@ pub async fn lookup_and_resolve(
     priority: CallPriority,
 ) -> Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure> {
     // The MB lookup's failure is already typed — pass it through structured.
-    let matches: Vec<MetadataResult> = lookup_by_discid(disc_id, priority).await?;
+    let matches: Vec<MetadataResult> = library_manager
+        .lookup_musicbrainz_discid(disc_id, priority)
+        .await?;
 
     // The in-library check is a local DB read, so its failure is diagnostic
     // detail, never a provider verdict.

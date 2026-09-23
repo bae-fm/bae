@@ -3,9 +3,10 @@
 async fn local_folder_import() {
     support::tracing_init();
 
-    let release = discogs_release("Test Album", &["Track One", "Track Two", "Track Three"]);
-    let release_id_key = seed_discogs_test_release(release);
     let f = ImportFixture::new().await;
+
+    let release = discogs_release("Test Album", &["Track One", "Track Two", "Track Three"]);
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -151,9 +152,10 @@ async fn import_progress_names_every_operation_before_loudness() {
 async fn import_produces_audio_format_records() {
     support::tracing_init();
 
-    let release = discogs_release("Format Album", &["Track"]);
-    let release_id_key = seed_discogs_test_release(release);
     let f = ImportFixture::new().await;
+
+    let release = discogs_release("Format Album", &["Track"]);
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -194,8 +196,8 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
         (2, "placeholder-dsd.dff", "01 Track.dff"),
     ] {
         let release = discogs_release(&format!("DSD Format Album {index}"), &["Track"]);
-        let release_id_key = seed_discogs_test_release(release);
         let f = ImportFixture::new().await;
+        let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
         let album_dir = f.temp_path().join("album");
         fs::create_dir_all(&album_dir).unwrap();
@@ -249,14 +251,15 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
 /// once per track, so the import UI bar advances during a track's measure span.
 #[tokio::test]
 async fn loudness_pass_emits_within_track_progress() {
+    let f = ImportFixture::new().await;
+
     use bae_core::import::ImportEvent;
     use bae_core::import::{ImportPhase, ImportProgress};
 
     support::tracing_init();
 
     let release = discogs_release("Loudness Album", &["Track One", "Track Two", "Track Three"]);
-    let release_id_key = seed_discogs_test_release(release);
-    let f = ImportFixture::new().await;
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
     // Subscribe to the full import event stream before the import runs; the
     // 1024-slot broadcast buffer holds every tick until we drain it below.
@@ -379,13 +382,14 @@ fn write_flac(path: &Path, samples: &[i32], sample_rate: u32) {
 /// derivation (`ResolvedTrackAudio::replay_gain_linear`), not reconstructions.
 #[tokio::test]
 async fn loudness_measured_at_import_drives_playback_gain() {
+    let f = ImportFixture::new().await;
+
     use bae_core::config::ReplayGainMode;
 
     support::tracing_init();
 
     let release = discogs_release("Loudness Album", &["Quiet Track", "Loud Track"]);
-    let release_id_key = seed_discogs_test_release(release);
-    let f = ImportFixture::new().await;
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -532,13 +536,14 @@ async fn loudness_measured_at_import_drives_playback_gain() {
 /// advances instead of sitting at 0 until the phase ends.
 #[tokio::test]
 async fn loudness_pass_advances_the_candidate_rows_percent() {
+    let f = ImportFixture::new().await;
+
     use bae_core::import::{ImportEvent, ImportPhase, ImportProgress};
 
     support::tracing_init();
 
     let release = discogs_release("Loudness Album", &["Track One", "Track Two", "Track Three"]);
-    let release_id_key = seed_discogs_test_release(release);
-    let f = ImportFixture::new().await;
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
     let mut event_rx = f.handle.subscribe_events();
 

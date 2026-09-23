@@ -1,5 +1,4 @@
 use super::*;
-use crate::discogs::DiscogsClient;
 use crate::util::rate_limiter::CallPriority;
 
 #[derive(PartialEq, Eq)]
@@ -290,9 +289,10 @@ impl ImportServiceHandle {
     ) -> Result<DiscogsSaveOutcome, crate::import::ImportError> {
         use crate::config::DiscogsValidation;
 
-        let client = DiscogsClient::new(token.to_string());
         match validation_from_validate_result(
-            client.validate_token(CallPriority::Interactive).await,
+            self.library_manager
+                .try_discogs_key(token, CallPriority::Interactive)
+                .await,
         ) {
             DiscogsValidation::Valid => {
                 self.persist_discogs_key(token, DiscogsValidation::Valid)?;

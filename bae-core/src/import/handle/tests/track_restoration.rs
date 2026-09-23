@@ -570,7 +570,6 @@ async fn removing_all_cue_tracks_keeps_the_sheet_and_individual_sources_visible(
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial_test::serial(musicbrainz)]
 async fn restoring_audio_keeps_the_applied_release_without_claiming_its_removed_source_track() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     handle
@@ -581,7 +580,7 @@ async fn restoring_audio_keeps_the_applied_release_without_claiming_its_removed_
         )
         .unwrap();
     let release_id = "70000106";
-    crate::discogs::client::seed_release_cache(release_id, serde_json::json!({
+    handle.library_manager.providers().discogs().seed_release_cache(release_id, serde_json::json!({
         "id": 70000106, "title": "Selected Album", "year": 1996,
         "artists": [{ "id": 70000106, "name": "Selected Artist" }],
         "formats": [{ "name": "CD" }],
@@ -590,8 +589,8 @@ async fn restoring_audio_keeps_the_applied_release_without_claiming_its_removed_
             { "position": "2", "title": "Selected Second", "duration": "0:01", "type_": "track" }
         ]
     }).to_string());
-    crate::musicbrainz::seed_discogs_url_lookup(release_id, None);
-    crate::discogs::client::seed_artist_image_response("70000106", None);
+    handle.library_manager.providers().musicbrainz().seed_discogs_url_lookup(release_id, None);
+    handle.library_manager.providers().discogs().seed_artist_image_response("70000106", None);
     handle
         .select_candidate_metadata_provenance(
             key.clone(),

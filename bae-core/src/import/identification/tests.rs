@@ -1,14 +1,12 @@
 //! Identification-queue tests.
 //!
 //! Every one of them drives the real pipeline — folder scan, extraction,
-//! identify reducer, the shared rate limiter, the real MusicBrainz client — and
-//! fakes only the provider, at the wire. `set_for_test` points the
-//! client at a local server that answers the same URLs the live service does and
-//! counts what was asked for, so "did the queue re-fetch this?" is answered by
-//! request counts rather than by a stub the queue was handed.
-//!
-//! The MusicBrainz base URL, its rate limiter, and its release cache are all
-//! process-wide, so these tests are `#[serial]`.
+//! identify reducer, the real MusicBrainz client — and fakes only the provider,
+//! at the wire. Each fixture's providers send MusicBrainz, Cover Art Archive and
+//! Discogs requests to its own local server, which answers the same URLs the
+//! live services do and counts what was asked for, so "did the queue re-fetch
+//! this?" is answered by request counts rather than by a stub the queue was
+//! handed. Nothing is shared between fixtures, so the tests run in parallel.
 
 use super::*;
 use crate::config::{Config, ConfigHandle};
@@ -21,7 +19,6 @@ use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use crate::library::LibraryManager;
 use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, DetectedBarcode};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
-use serial_test::serial;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -355,6 +352,13 @@ impl Fixture {
             "Test Library".to_string(),
         );
         crate::config::install_test_keyring();
+        let provider = FakeProvider::start().await;
+        // Discogs goes to the fake whether or not this test enables it, so no
+        // fixture can spend its fake key on the real API.
+        let http = crate::util::http::Http::for_test()
+            .serve("musicbrainz.org", &provider.base_url)
+            .serve("coverartarchive.org", &provider.base_url)
+            .serve("api.discogs.com", &provider.base_url);
         // No Discogs key is seeded, so Discogs operations are unavailable and a
         // lookup asks MusicBrainz alone. A test about a pressing both sources
         // carry seeds one with `use_discogs`.
@@ -365,21 +369,16 @@ impl Fixture {
             ids,
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            crate::import::cover_art::RemoteImageCache::for_test(),
+            crate::import::cover_art::RemoteImageCache::for_test(http.clone()),
+            // The production request spacing: the queue's admission order is
+            // part of what these tests measure.
+            crate::providers::Providers::new(http),
         );
 
         let import = manager
             .start_import_service(tokio::runtime::Handle::current())
             .await
             .unwrap();
-
-        let provider = FakeProvider::start().await;
-        crate::musicbrainz::BASE_URL.set_for_test(Some(provider.base_url.clone()));
-        crate::import::cover_art::ARCHIVE.set_for_test(Some(provider.base_url.clone()));
-        // Pointed at the fake whether or not this test enables Discogs, so no
-        // fixture can spend its fake key on the real API.
-        crate::discogs::client::API_BASE_URL.set_for_test(Some(provider.base_url.clone()));
-        crate::musicbrainz::reset_rate_limiter_for_test();
 
         let root = temp.path().join("watched");
         std::fs::create_dir_all(&root).unwrap();
@@ -815,11 +814,6 @@ fn identify_result(row: &DbImportCandidateState) -> &crate::db::DbCandidateIdent
 
 impl Drop for Fixture {
     fn drop(&mut self) {
-        // The base URL is process-wide; leaving it pointed at a dead port would
-        // make the next test's live-service assumption silently wrong.
-        crate::musicbrainz::BASE_URL.set_for_test(None);
-        crate::import::cover_art::ARCHIVE.set_for_test(None);
-        crate::discogs::client::API_BASE_URL.set_for_test(None);
         if let Some(identification) = self.identification.get() {
             identification.stop();
         }

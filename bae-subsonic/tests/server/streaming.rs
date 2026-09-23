@@ -321,7 +321,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         .join("bae-core/test-fixtures/audio-format/placeholder-opus.opus");
     std::fs::copy(&fixture, dir.join("track.opus")).unwrap();
 
-    let discogs_key = support::seed_discogs_test_release(DiscogsRelease {
+    let discogs_key = support::seed_discogs_test_release(manager.providers(), DiscogsRelease {
         country: None,
         label: vec![],
         artists: vec![support::discogs_artist(

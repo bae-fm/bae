@@ -4,7 +4,6 @@
 /// "resume" — with the provider gone. A settled single match wrote the same
 /// record, so a Ready candidate reads identically.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_pick_reads_back_as_the_same_answer() {
     let fixture = Fixture::new("pick-answer").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -105,7 +104,6 @@ async fn a_pick_reads_back_as_the_same_answer() {
 /// goes on showing the folder name and a placeholder while the pane shows the
 /// release, with nothing to move it off.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_picked_release_is_what_the_row_leads_with() {
     let fixture = Fixture::new("pick-row").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -209,7 +207,6 @@ async fn a_picked_release_is_what_the_row_leads_with() {
 /// same pressing after a restart — while the evidence keeps saying what
 /// identified it, here a disc ID that matched that one release.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_pick_reads_back_as_the_identity_it_commits() {
     let fixture = Fixture::new("pick-reads-back").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -258,7 +255,6 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
 /// the row owns the answer, and Lookup serves it from there. Nothing in memory
 /// is left to shadow a row that later changes.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
     let fixture = Fixture::new("verdict-takes-over").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -346,7 +342,6 @@ async fn queue_row(fixture: &Fixture, key: &str) -> crate::import::TriageRow {
 /// folder's audio units plays for, and the signals it settled on. The pane
 /// reads those back instead of opening the folder or extracting again.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_stored_verdict_carries_its_durations_and_signals() {
     let fixture = Fixture::new("verdict-carries-signals").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -400,7 +395,6 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
 /// settle reports that failure instead of pretending the candidate remains
 /// queued for another run.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
     let fixture = Fixture::new("verdict-without-signals").await;
     let candidate: crate::import::release_candidate::ReleaseCandidate =
@@ -433,7 +427,6 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
 /// stating what happened, or the row reads as a commit still pending, for
 /// good, and offers the candidate nothing but Skip.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     use std::future::Future;
 
@@ -547,7 +540,6 @@ fn discogs_release_json_stating_pressing(release_id: &str, label: &str, year: u3
 /// one pressing and claims both, so the row lists both — each stating its own
 /// document's label and year, which need not agree.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_picked_row_states_what_each_claimed_source_says() {
     let fixture = Fixture::new("pick-reading").await;
     fixture.use_discogs();
@@ -572,7 +564,11 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         200,
         discogs_release_json_stating_pressing("70000301", "Other Label", 1988),
     );
-    crate::musicbrainz::seed_discogs_url_lookup("70000301", None);
+    fixture
+        .manager
+        .providers()
+        .musicbrainz()
+        .seed_discogs_url_lookup("70000301", None);
 
     fixture
         .import

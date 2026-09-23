@@ -1,5 +1,5 @@
 use std::num::NonZeroUsize;
-use std::sync::{Mutex, OnceLock};
+use std::sync::Mutex;
 
 use lru::LruCache;
 
@@ -9,21 +9,23 @@ use lru::LruCache;
 /// start.
 pub const PROVIDER_RESPONSE_CAPACITY: usize = 512;
 
+/// A bounded map of values kept for as long as its owner lives, least
+/// recently used first out.
 pub struct SessionCache<V> {
     name: &'static str,
-    /// How many entries the cache holds before it starts evicting. Sized per
-    /// cache by what it holds and how much of it one session touches, since
-    /// eviction costs whatever producing the value cost.
-    capacity: usize,
-    inner: OnceLock<Mutex<LruCache<String, V>>>,
+    inner: Mutex<LruCache<String, V>>,
 }
 
 impl<V> SessionCache<V> {
-    pub const fn new(name: &'static str, capacity: usize) -> Self {
+    /// `capacity` is how many entries it holds before it starts evicting,
+    /// sized by what it holds and how much of it one session touches, since
+    /// eviction costs whatever producing the value cost.
+    pub fn new(name: &'static str, capacity: usize) -> Self {
+        let capacity = NonZeroUsize::new(capacity)
+            .unwrap_or_else(|| panic!("{name} capacity must be greater than zero"));
         Self {
             name,
-            capacity,
-            inner: OnceLock::new(),
+            inner: Mutex::new(LruCache::new(capacity)),
         }
     }
 
@@ -32,7 +34,6 @@ impl<V> SessionCache<V> {
         V: Clone,
     {
         self.inner
-            .get_or_init(|| new_cache(self.name, self.capacity))
             .lock()
             .unwrap_or_else(|_| panic!("{} mutex poisoned", self.name))
             .get(key)
@@ -41,15 +42,8 @@ impl<V> SessionCache<V> {
 
     pub fn put(&self, key: impl Into<String>, value: V) {
         self.inner
-            .get_or_init(|| new_cache(self.name, self.capacity))
             .lock()
             .unwrap_or_else(|_| panic!("{} mutex poisoned", self.name))
             .put(key.into(), value);
     }
-}
-
-fn new_cache<V>(name: &str, capacity: usize) -> Mutex<LruCache<String, V>> {
-    Mutex::new(LruCache::new(NonZeroUsize::new(capacity).unwrap_or_else(
-        || panic!("{name} capacity must be greater than zero"),
-    )))
 }

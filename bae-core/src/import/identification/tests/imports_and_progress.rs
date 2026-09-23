@@ -22,7 +22,6 @@ async fn start_import_for(fixture: &Fixture, candidate: &Path) {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn claiming_an_import_publishes_queued_status_immediately() {
     let fixture = Fixture::new("import-queued-status").await;
     let candidate = fixture.disc_id_candidate("Album Title");
@@ -56,7 +55,6 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
 /// draft gains no identification result, and it stops counting towards the
 /// queue's total.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress() {
     let fixture = Fixture::new("import-mid-pass").await;
     let remaining = fixture.disc_id_candidate("Remaining");
@@ -127,7 +125,6 @@ async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress()
 /// bus instead of the filesystem, so the ordering is the test's and not the
 /// watcher backend's.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     let fixture = Fixture::new("import-rescan").await;
     let remaining = fixture.disc_id_candidate("Remaining");
@@ -201,7 +198,6 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
 /// folder-state commit lock the claim was taken under, re-reads the candidate,
 /// and finds an import owns it.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     let fixture = Fixture::new("import-mid-write").await;
     fixture
@@ -253,7 +249,6 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
 /// — which is what a surface draws nothing for — once every identification is
 /// over. A pass with nothing to identify says nothing at all.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn progress_carries_both_counts() {
     let fixture = Fixture::new("progress").await;
     let first = fixture.disc_id_candidate("Album One");
@@ -313,7 +308,6 @@ async fn progress_carries_both_counts() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
     let fixture = Fixture::new("progress-after-commit").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -379,7 +373,6 @@ fn drain_events(events: &mut tokio::sync::broadcast::Receiver<ImportEvent>) -> V
 /// `ScanEvent::Finished` between passes, a stalled pass silently ends sweeping
 /// for the whole session.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
     let fixture = Fixture::new("removed-mid-flight").await;
     let analyzer_started = Arc::new(Barrier::new(2));
@@ -452,7 +445,6 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
 /// vectors and all — is deep-cloned into; over a queue swept unattended on
 /// every launch that fan-out is quadratic in its size.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_finished_candidate_leaves_no_driver_behind() {
     let fixture = Fixture::new("no-driver-left").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -491,7 +483,6 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
 /// write, so a cancellation landing during the settle lookup that precedes it
 /// cannot leave a row behind.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_cancelled_candidate_writes_no_row() {
     let fixture = Fixture::new("cancelled-writes-nothing").await;
     let dir = fixture.disc_id_candidate("Album");

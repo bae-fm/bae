@@ -140,7 +140,11 @@ struct StoredCandidate {
 }
 
 async fn stored_candidate() -> StoredCandidate {
-    let (manager, tmp) = setup_test_manager().await;
+    stored_candidate_with(crate::util::http::Http::for_test()).await
+}
+
+async fn stored_candidate_with(http: crate::util::http::Http) -> StoredCandidate {
+    let (manager, tmp) = setup_test_manager_with(http).await;
     let (candidate, key, _hash) = picked_candidate(&manager, &tmp, "Album").await;
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
@@ -159,7 +163,14 @@ async fn stored_candidate() -> StoredCandidate {
 /// under — with the folder's own tags already picked, which is what draws the
 /// edit form and the mapping table.
 async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
-    let fixture = stored_candidate().await;
+    pane_fixture_with(crate::util::http::Http::for_test()).await
+}
+
+/// [`pane_fixture`] whose requests go through `http`.
+async fn pane_fixture_with(
+    http: crate::util::http::Http,
+) -> (ImportServiceHandle, TempDir, String, String) {
+    let fixture = stored_candidate_with(http).await;
     let hash = fixture.candidate.files.content_hash();
     let handle = fixture.handle;
     let key = fixture.key;

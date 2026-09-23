@@ -5,13 +5,14 @@
 async fn two_sequential_imports() {
     support::tracing_init();
 
+    let f = ImportFixture::new().await;
+
     let titles = ["First Album", "Second Album"];
     let mut release_keys = vec![];
     for title in &titles {
         let release = discogs_release(title, &["Track"]);
-        release_keys.push(seed_discogs_test_release(release));
+        release_keys.push(seed_discogs_test_release(f.library_manager.providers(), release));
     }
-    let f = ImportFixture::new().await;
 
     let mut release_ids = vec![];
     for (i, title) in titles.iter().enumerate() {

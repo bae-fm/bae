@@ -1,10 +1,9 @@
 use super::*;
 use crate::import::Catalog;
-use serial_test::serial;
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const SEARCH_OK_EMPTY: &str = concat!(
@@ -19,9 +18,11 @@ const UNAUTHORIZED: &str = "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\n\r
 const NOT_FOUND: &str = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
 const BAD_REQUEST: &str = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
 
-fn discogs_test_guard() -> &'static tokio::sync::Mutex<()> {
-    static GUARD: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
-    GUARD.get_or_init(|| tokio::sync::Mutex::new(()))
+/// A Discogs transport whose requests go to the local server at `origin`.
+fn served_by(origin: &str) -> Arc<Discogs> {
+    Arc::new(Discogs::for_test(
+        Http::for_test().serve("api.discogs.com", origin),
+    ))
 }
 
 async fn discogs_response_server(responses: Vec<&'static str>) -> (String, Arc<AtomicUsize>) {
@@ -290,10 +291,7 @@ fn master_parser_retains_album_metadata_without_pressing_or_track_defaults() {
 }
 
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn master_fetch_returns_its_own_document_without_following_main_release() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let raw =
         r#"{"id":510005,"title":"Album Title","year":1982,"main_release":510006}"#.to_string();
     let (url, requests) = scripted_server(vec![(200, raw.clone())]).await;
@@ -342,7 +340,11 @@ fn observe_signals_only_on_rejection_or_success() {
             DiscogsKeySignal::Accepted => "accepted",
         });
     });
-    let client = DiscogsClient::with_observer("token".to_string(), observer);
+    let client = DiscogsClient::with_observer(
+        Arc::new(Discogs::for_test(Http::for_test())),
+        "token".to_string(),
+        observer,
+    );
 
     client.observe::<()>(&Ok(()));
     client.observe::<()>(&Err(DiscogsError::InvalidApiKey));
@@ -354,13 +356,9 @@ fn observe_signals_only_on_rejection_or_success() {
 }
 
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn transport_error_display_does_not_include_discogs_token() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let token = "secret-discogs-token";
-    let mut client = DiscogsClient::new(token.to_string());
-    client.base_url = "http://127.0.0.1:1".to_string();
+    let client = DiscogsClient::new(served_by("http://127.0.0.1:1"), token.to_string());
 
     let error = client
         .validate_token(CallPriority::Interactive)
@@ -371,10 +369,7 @@ async fn transport_error_display_does_not_include_discogs_token() {
 }
 
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn validate_token_sends_token_in_authorization_header() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let token = "secret-discogs-token";
     let listener = TcpListener::bind("127.0.0.1:0").expect("test listener should bind");
     let url = format!(
@@ -394,8 +389,7 @@ async fn validate_token_sends_token_in_authorization_header() {
             .expect("test response should write");
         String::from_utf8(buffer[..read].to_vec()).expect("request should be UTF-8")
     });
-    let mut client = DiscogsClient::new(token.to_string());
-    client.base_url = url;
+    let client = DiscogsClient::new(served_by(&url), token.to_string());
 
     client
         .validate_token(CallPriority::Interactive)
@@ -413,13 +407,9 @@ async fn validate_token_sends_token_in_authorization_header() {
 }
 
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn search_retries_rate_limit_then_returns_success() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let (url, request_count) = discogs_response_server(vec![RATE_LIMITED, SEARCH_OK_EMPTY]).await;
-    let mut client = DiscogsClient::new("token".to_string());
-    client.base_url = url;
+    let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let releases = client
         .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
@@ -431,14 +421,10 @@ async fn search_retries_rate_limit_then_returns_success() {
 }
 
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn search_returns_persistent_rate_limit_after_retry_attempts() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let (url, request_count) =
         discogs_response_server(vec![RATE_LIMITED, RATE_LIMITED, RATE_LIMITED]).await;
-    let mut client = DiscogsClient::new("token".to_string());
-    client.base_url = url;
+    let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let error = client
         .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
@@ -450,13 +436,9 @@ async fn search_returns_persistent_rate_limit_after_retry_attempts() {
 }
 
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn search_does_not_retry_invalid_api_key() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let (url, request_count) = discogs_response_server(vec![UNAUTHORIZED]).await;
-    let mut client = DiscogsClient::new("token".to_string());
-    client.base_url = url;
+    let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let error = client
         .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
@@ -471,13 +453,9 @@ async fn search_does_not_retry_invalid_api_key() {
 /// answer to this request — it must be tried once, not retried. Before the
 /// error split it landed in `Request` and was retried like a transport failure.
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn search_does_not_retry_client_error() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let (url, request_count) = discogs_response_server(vec![BAD_REQUEST]).await;
-    let mut client = DiscogsClient::new("token".to_string());
-    client.base_url = url;
+    let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let error = client
         .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
@@ -514,13 +492,9 @@ fn retry_policy_repeats_only_transient_failures() {
 }
 
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn search_does_not_retry_not_found() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let (url, request_count) = discogs_response_server(vec![NOT_FOUND]).await;
-    let mut client = DiscogsClient::new("token".to_string());
-    client.base_url = url;
+    let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let error = client
         .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
@@ -532,10 +506,7 @@ async fn search_does_not_retry_not_found() {
 }
 
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn search_observer_records_one_signal_after_internal_retry() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let (url, request_count) = discogs_response_server(vec![RATE_LIMITED, SEARCH_OK_EMPTY]).await;
     let signals = Arc::new(Mutex::new(Vec::<&'static str>::new()));
     let recorded = signals.clone();
@@ -545,8 +516,7 @@ async fn search_observer_records_one_signal_after_internal_retry() {
             DiscogsKeySignal::Accepted => "accepted",
         });
     });
-    let mut client = DiscogsClient::with_observer("token".to_string(), observer);
-    client.base_url = url;
+    let client = DiscogsClient::with_observer(served_by(&url), "token".to_string(), observer);
 
     client
         .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
@@ -606,16 +576,11 @@ fn release_body(id: u64) -> String {
 }
 
 fn client_at(url: String) -> DiscogsClient {
-    let mut client = DiscogsClient::new("token".to_string());
-    client.base_url = url;
-    client
+    DiscogsClient::new(served_by(&url), "token".to_string())
 }
 
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn a_repeated_request_is_answered_without_a_second_round_trip() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let (url, requests) = scripted_server(vec![(200, release_body(510001))]).await;
     let client = client_at(url);
 
@@ -634,10 +599,7 @@ async fn a_repeated_request_is_answered_without_a_second_round_trip() {
 }
 
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn a_not_found_answer_is_kept() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let (url, requests) = scripted_server(vec![(404, String::new())]).await;
     let client = client_at(url);
 
@@ -655,10 +617,7 @@ async fn a_not_found_answer_is_kept() {
 /// A rate limit and a server error are the provider's momentary state, not its
 /// answer: every retry goes to the wire, and so does the next call.
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
 async fn transient_failures_are_not_kept() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
     let (url, requests) = scripted_server(vec![
         (429, String::new()),
         (503, String::new()),
@@ -691,13 +650,10 @@ async fn transient_failures_are_not_kept() {
     );
 }
 
-/// The key is the whole URL, so the same path under two base addresses is two
-/// answers — which is what keeps one test's fake provider out of another's.
+/// Each transport keeps its own answers: two asking the same URL each ask
+/// their own server.
 #[tokio::test]
-#[serial(discogs_rate_limiter)]
-async fn the_same_path_under_two_base_urls_is_two_answers() {
-    let _guard = discogs_test_guard().lock().await;
-    RATE_LIMITER.reset();
+async fn two_transports_keep_their_own_answers() {
     let (first_url, first_requests) = scripted_server(vec![(200, release_body(510004))]).await;
     let (second_url, second_requests) = scripted_server(vec![(200, release_body(510004))]).await;
 

@@ -1,7 +1,6 @@
 use super::*;
 use crate::db::DbSourceReleasePayload;
 use coven::{FixedClock, SequentialIdProvider};
-use serial_test::serial;
 use std::sync::Arc;
 
 #[test]
@@ -781,25 +780,26 @@ async fn an_archived_item_reads_back_with_the_set_offline() {
 /// name, which is what lets the records it adds be read back later without a
 /// second round trip to Wikidata.
 #[tokio::test]
-#[serial(musicbrainz)]
 async fn identification_archives_the_item_musicbrainz_names() {
+    let providers = crate::providers::Providers::offline();
     let release_id = "archives-item-mb-release";
     let group_id = "archives-item-mb-group";
-    crate::musicbrainz::seed_release_cache(
+    providers.musicbrainz().seed_release_cache(
         release_id,
         mb_release_with_relations(release_id, group_id, &[]).to_string(),
     );
-    crate::musicbrainz::seed_release_group_json_cache(
+    providers.musicbrainz().seed_release_group_json_cache(
         group_id,
         wikidata_linked_release_group(group_id, "Q424242"),
     );
-    crate::wikidata::seed_entity_cache("Q424242", Some(wikidata_item("Q424242")));
+    providers.wikidata().seed_entity_cache("Q424242", Some(wikidata_item("Q424242")));
 
-    let payloads = fetch(
-        None,
-        &MetadataRef::new(Catalog::MusicBrainz, release_id),
-        CallPriority::Interactive,
-    )
+    let payloads = providers
+        .fetch_payloads(
+            None,
+            &MetadataRef::new(Catalog::MusicBrainz, release_id),
+            CallPriority::Interactive,
+        )
     .await
     .expect("the release's documents fetch");
 
@@ -827,25 +827,26 @@ async fn identification_archives_the_item_musicbrainz_names() {
 /// every record its own catalogs' documents state, including the item the
 /// url-rel named, and the next identification asks for the item again.
 #[tokio::test]
-#[serial(musicbrainz)]
 async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
+    let providers = crate::providers::Providers::offline();
     let release_id = "missing-item-mb-release";
     let group_id = "missing-item-mb-group";
-    crate::musicbrainz::seed_release_cache(
+    providers.musicbrainz().seed_release_cache(
         release_id,
         mb_release_with_relations(release_id, group_id, &[]).to_string(),
     );
-    crate::musicbrainz::seed_release_group_json_cache(
+    providers.musicbrainz().seed_release_group_json_cache(
         group_id,
         wikidata_linked_release_group(group_id, "Q909090"),
     );
-    crate::wikidata::seed_entity_cache("Q909090", None);
+    providers.wikidata().seed_entity_cache("Q909090", None);
 
-    let payloads = fetch(
-        None,
-        &MetadataRef::new(Catalog::MusicBrainz, release_id),
-        CallPriority::Interactive,
-    )
+    let payloads = providers
+        .fetch_payloads(
+            None,
+            &MetadataRef::new(Catalog::MusicBrainz, release_id),
+            CallPriority::Interactive,
+        )
     .await
     .expect("a release whose item will not fetch still identifies");
 

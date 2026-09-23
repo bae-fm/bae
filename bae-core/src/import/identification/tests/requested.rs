@@ -14,7 +14,6 @@
 /// already reached, so nothing a later watcher hears can be mistaken for the
 /// re-run's answer.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
     let fixture = Fixture::new("rerun-is-its-own-run").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -93,7 +92,6 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
 /// This is the restart `AppServices::set_metadata_source_enabled` starts for
 /// every key `IdentifyServiceHandle::running_keys` names.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
     let fixture = Fixture::new("restart-drops-a-source").await;
     fixture.use_discogs();
@@ -123,7 +121,11 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
     fixture
         .provider
         .route("/releases/70000201", 200, discogs_release_json("70000201"));
-    crate::musicbrainz::seed_discogs_url_lookup("70000201", None);
+    fixture
+        .manager
+        .providers()
+        .musicbrainz()
+        .seed_discogs_url_lookup("70000201", None);
     // Hold MusicBrainz's answer, so the run is genuinely still asking when the
     // source is switched off rather than racing a run that already settled.
     fixture.provider.hold("/release?");
@@ -167,7 +169,6 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 /// candidate for good, and "answered" means the next launch opens it with no
 /// network — so the same step runs here, before the verdict is written.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
     let fixture = Fixture::new("interactive-settles").await;
     fixture
@@ -229,7 +230,6 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
 /// release-details failure instead of waiting for another state event that
 /// will never arrive.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn explicit_lookup_stores_a_metadata_projection_failure() {
     let fixture = Fixture::new("interactive-projection-failure").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -274,7 +274,6 @@ async fn explicit_lookup_stores_a_metadata_projection_failure() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
     let fixture = Fixture::new("interactive-with-automatic-off").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -303,7 +302,6 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
 /// A run a person asked for stores its verdict for a candidate whose draft is
 /// already filled, and leaves nothing pending on the key once it has.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
     let fixture = Fixture::new("explicit-with-pre-filled-draft").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -348,7 +346,6 @@ async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
 /// for a run, and a stored result is what they are asking to replace. The
 /// sweep is the only reader that treats a result as a reason not to run.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
     let fixture = Fixture::new("resume-answered").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -409,7 +406,6 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
 /// run that reads the candidate as it is now, so the one in flight is
 /// cancelled before the new one starts and its result can never land.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn explicit_lookup_during_an_active_run_supersedes_it() {
     let fixture = Fixture::new("explicit-supersedes-active-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -475,7 +471,6 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
 /// instead of no-op'ing — the stored answer is what a re-run exists to
 /// replace, so it is not consulted.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_rerun_with_no_driver_runs_identification_again() {
     let fixture = Fixture::new("rerun-no-driver").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -505,7 +500,6 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
 /// A person's own run is ended by their decision the same way a sweep's is:
 /// the run stops at `Idle` and the watcher hanging off it stores nothing.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
     let fixture = Fixture::new("pick-ends-explicit-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -553,7 +547,6 @@ async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
 /// new id, and the queue gives up the slot instead of waiting on a run that is
 /// never coming back.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     let fixture = Fixture::new("choices-supersede-run").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -656,7 +649,6 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
 /// and restart it in the background. Nothing keeps a second set of keys to
 /// remember whose run it is: the entry on the queue says so.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_candidate_the_queue_failed_then_the_user_reran_is_left_alone() {
     let fixture = Fixture::new("failed-then-looked-up").await;
     fixture
@@ -723,7 +715,6 @@ async fn a_candidate_the_queue_failed_then_the_user_reran_is_left_alone() {
 /// a driver is registered for exactly as long as its run is working, so the
 /// admission has to be timed against a lookup that has not come back yet.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn the_automatic_admission_leaves_a_candidate_being_looked_up_alone() {
     let fixture = Fixture::new("user-owns-it").await;
     let dir = fixture.disc_id_candidate("Opened");

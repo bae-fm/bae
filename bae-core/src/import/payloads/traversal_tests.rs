@@ -1,19 +1,21 @@
 use super::*;
-use serial_test::serial;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+/// A local server answering MusicBrainz and Discogs requests by path, and the
+/// providers whose requests reach it.
 struct ProviderServer {
     requests: Arc<Mutex<HashMap<String, usize>>>,
     task: tokio::task::JoinHandle<()>,
-    previous_musicbrainz: String,
-    previous_discogs: String,
+    providers: crate::providers::Providers,
 }
 
 impl ProviderServer {
+    /// Answers are keyed by request path, and a MusicBrainz URL lookup by
+    /// `url:` and the resource it asks about. Anything else is answered 599.
     async fn start(answers: HashMap<String, (u16, String)>) -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let base = format!("http://{}", listener.local_addr().unwrap());
+        let origin = format!("http://{}", listener.local_addr().unwrap());
         let requests = Arc::new(Mutex::new(HashMap::new()));
         let recorded = requests.clone();
         let task = tokio::spawn(async move {
@@ -24,7 +26,7 @@ impl ProviderServer {
                 let request = std::str::from_utf8(&buffer[..length]).unwrap();
                 let path = request.split_whitespace().nth(1).unwrap();
                 let url = reqwest::Url::parse(&format!("http://fixture.example{path}")).unwrap();
-                let key = if url.path() == "/url" {
+                let key = if url.path() == "/ws/2/url" {
                     let resource = url
                         .query_pairs()
                         .find(|(key, _)| key == "resource")
@@ -44,16 +46,13 @@ impl ProviderServer {
                 stream.write_all(response.as_bytes()).await.unwrap();
             }
         });
-        let previous_musicbrainz = crate::musicbrainz::BASE_URL.get();
-        let previous_discogs = crate::discogs::client::API_BASE_URL.get();
-        crate::musicbrainz::BASE_URL.set_for_test(Some(base.clone()));
-        crate::musicbrainz::reset_rate_limiter_for_test();
-        crate::discogs::client::set_base_url_for_test(Some(base));
+        let http = crate::util::http::Http::for_test()
+            .serve("musicbrainz.org", &origin)
+            .serve("api.discogs.com", &origin);
         Self {
             requests,
             task,
-            previous_musicbrainz,
-            previous_discogs,
+            providers: crate::providers::Providers::for_test(http),
         }
     }
 
@@ -65,8 +64,6 @@ impl ProviderServer {
 impl Drop for ProviderServer {
     fn drop(&mut self) {
         self.task.abort();
-        crate::musicbrainz::BASE_URL.set_for_test(Some(self.previous_musicbrainz.clone()));
-        crate::discogs::client::set_base_url_for_test(Some(self.previous_discogs.clone()));
     }
 }
 
@@ -80,16 +77,15 @@ fn release_json(id: &str, group: Option<&str>, urls: &[&str]) -> String {
 }
 
 #[tokio::test]
-#[serial(musicbrainz, discogs_rate_limiter)]
 async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
     // A 400 is neither cached nor retried by the provider, so its HTTP count
     // measures traversal's own duplicate-request protection.
     let server = ProviderServer::start(HashMap::from([(
-        "/release-group/shared-group".into(),
+        "/ws/2/release-group/shared-group".into(),
         (400, "Rejected group request".into()),
     )]))
     .await;
-    crate::musicbrainz::seed_release_cache(
+    server.providers.musicbrainz().seed_release_cache(
         "selected",
         release_json(
             "selected",
@@ -101,28 +97,23 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
         ),
     );
     for id in [910001, 910002] {
-        crate::discogs::client::seed_master_cache(
+        server.providers.discogs().seed_master_cache(
             &id.to_string(),
             serde_json::json!({"id":id}).to_string(),
         );
-        crate::musicbrainz::seed_discogs_master_url_lookup(
+        server.providers.musicbrainz().seed_discogs_master_url_lookup(
             &id.to_string(),
             Some("shared-group".into()),
         );
     }
-    let discogs = DiscogsClient::new("fixture-token".into());
-    let payloads = fetch_documents(
-        Some(&discogs),
-        &MetadataRef::new(Catalog::MusicBrainz, "selected"),
-        None,
-        CallPriority::Interactive,
-    )
+    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let payloads = server.providers.fetch_payloads(Some(&discogs), &MetadataRef::new(Catalog::MusicBrainz, "selected"), CallPriority::Interactive)
     .await
     .unwrap();
 
     assert_eq!(
         server.requests(),
-        HashMap::from([("/release-group/shared-group".into(), 1)])
+        HashMap::from([("/ws/2/release-group/shared-group".into(), 1)])
     );
     assert_eq!(payloads.supporting.len(), 2);
     assert!(payloads
@@ -149,7 +140,6 @@ impl ArchivedDocuments for MemoryArchive {
 }
 
 #[tokio::test]
-#[serial(musicbrainz, discogs_rate_limiter)]
 async fn cyclic_release_and_album_links_fetch_each_document_once_and_replay() {
     let release = release_json(
         "cycle-release",
@@ -165,8 +155,8 @@ async fn cyclic_release_and_album_links_fetch_each_document_once_and_replay() {
     ]})
     .to_string();
     let answers = HashMap::from([
-        ("/release/cycle-release".into(), (200, release)),
-        ("/release-group/cycle-group".into(), (200, group)),
+        ("/ws/2/release/cycle-release".into(), (200, release)),
+        ("/ws/2/release-group/cycle-group".into(), (200, group)),
         ("/releases/920001".into(), (200, serde_json::json!({"id":920001,"title":"Album Title","master_id":920002}).to_string())),
         ("/masters/920002".into(), (200, serde_json::json!({"id":920002,"title":"Album Title"}).to_string())),
         ("url:https://www.discogs.com/release/920001".into(), (200, serde_json::json!({"relations":[
@@ -178,11 +168,11 @@ async fn cyclic_release_and_album_links_fetch_each_document_once_and_replay() {
     ]);
     let expected: HashMap<_, _> = answers.keys().cloned().map(|key| (key, 1)).collect();
     let server = ProviderServer::start(answers).await;
-    let discogs = DiscogsClient::new("fixture-token".into());
+    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
     let selected = MetadataRef::new(Catalog::MusicBrainz, "cycle-release");
     let payloads = tokio::time::timeout(
         std::time::Duration::from_secs(15),
-        fetch_documents(Some(&discogs), &selected, None, CallPriority::Interactive),
+        server.providers.fetch_payloads(Some(&discogs), &selected, CallPriority::Interactive),
     )
     .await
     .unwrap()
@@ -217,7 +207,6 @@ async fn cyclic_release_and_album_links_fetch_each_document_once_and_replay() {
 }
 
 #[tokio::test]
-#[serial(musicbrainz, discogs_rate_limiter)]
 async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
     let server = ProviderServer::start(HashMap::from([(
         "url:https://www.discogs.com/master/930002".into(),
@@ -231,18 +220,18 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
         ),
     )]))
     .await;
-    crate::discogs::client::seed_release_cache(
+    server.providers.discogs().seed_release_cache(
         "930001",
         serde_json::json!({"id":930001,"title":"Album Title","master_id":930002}).to_string(),
     );
-    crate::discogs::client::seed_master_cache(
+    server.providers.discogs().seed_master_cache(
         "930002",
         serde_json::json!({"id":930002}).to_string(),
     );
-    crate::musicbrainz::seed_discogs_url_lookup("930001", None);
-    let discogs = DiscogsClient::new("fixture-token".into());
+    server.providers.musicbrainz().seed_discogs_url_lookup("930001", None);
+    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
     let selected = MetadataRef::new(Catalog::Discogs, "930001");
-    let payloads = fetch_documents(Some(&discogs), &selected, None, CallPriority::Interactive)
+    let payloads = server.providers.fetch_payloads(Some(&discogs), &selected, CallPriority::Interactive)
         .await
         .unwrap();
 
@@ -260,22 +249,21 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
 }
 
 #[tokio::test]
-#[serial(musicbrainz, discogs_rate_limiter)]
 async fn malformed_optional_group_is_skipped_online_and_from_the_archive() {
     let selected = MetadataRef::new(Catalog::MusicBrainz, "optional-shape-release");
     let anchor = release_json(&selected.key, Some("optional-shape-group"), &[]);
     let server = ProviderServer::start(HashMap::from([
         (
-            "/release/optional-shape-release".into(),
+            "/ws/2/release/optional-shape-release".into(),
             (200, anchor.clone()),
         ),
         (
-            "/release-group/optional-shape-group".into(),
+            "/ws/2/release-group/optional-shape-group".into(),
             (200, "{}".into()),
         ),
     ]))
     .await;
-    let fetched = fetch_documents(None, &selected, None, CallPriority::Interactive)
+    let fetched = server.providers.fetch_payloads(None, &selected, CallPriority::Interactive)
         .await
         .unwrap();
     assert!(fetched.supporting.is_empty());
@@ -305,26 +293,20 @@ async fn malformed_optional_group_is_skipped_online_and_from_the_archive() {
     };
     let stored: ReleasePayloads =
         serde_json::from_str(&serde_json::to_string(&stored).unwrap()).unwrap();
-    let enriched = fetch_documents(
-        None,
-        &stored.release,
-        Some(&stored),
-        CallPriority::Interactive,
-    )
+    let enriched = server.providers.enrich_payloads(None, &stored, CallPriority::Interactive)
     .await
     .unwrap();
     assert_eq!(enriched, fetched);
     assert_eq!(
         server.requests(),
         HashMap::from([
-            ("/release/optional-shape-release".into(), 1),
-            ("/release-group/optional-shape-group".into(), 1),
+            ("/ws/2/release/optional-shape-release".into(), 1),
+            ("/ws/2/release-group/optional-shape-group".into(), 1),
         ])
     );
 }
 
 #[tokio::test]
-#[serial(musicbrainz, discogs_rate_limiter)]
 async fn malformed_archived_reverse_alias_does_not_block_enrichment() {
     let stored = ReleasePayloads {
         release: MetadataRef::new(Catalog::Discogs, "940001"),
@@ -336,7 +318,7 @@ async fn malformed_archived_reverse_alias_does_not_block_enrichment() {
         )],
     };
     let server = ProviderServer::start(HashMap::new()).await;
-    crate::musicbrainz::seed_discogs_url_lookup("940001", None);
+    server.providers.musicbrainz().seed_discogs_url_lookup("940001", None);
     let archive = MemoryArchive(HashMap::from([
         (
             (PayloadSource::Discogs, stored.release.key.clone()),
@@ -351,12 +333,7 @@ async fn malformed_archived_reverse_alias_does_not_block_enrichment() {
     assert!(replayed.supporting.is_empty());
     let stored: ReleasePayloads =
         serde_json::from_str(&serde_json::to_string(&stored).unwrap()).unwrap();
-    let enriched = fetch_documents(
-        None,
-        &stored.release,
-        Some(&stored),
-        CallPriority::Interactive,
-    )
+    let enriched = server.providers.enrich_payloads(None, &stored, CallPriority::Interactive)
     .await
     .unwrap();
     assert!(enriched.supporting.is_empty());
@@ -365,16 +342,15 @@ async fn malformed_archived_reverse_alias_does_not_block_enrichment() {
 }
 
 #[tokio::test]
-#[serial(musicbrainz, discogs_rate_limiter)]
 async fn malformed_required_anchor_is_rejected_online_and_from_the_archive() {
     let selected = MetadataRef::new(Catalog::MusicBrainz, "required-shape-release");
     let server = ProviderServer::start(HashMap::from([(
-        "/release/required-shape-release".into(),
+        "/ws/2/release/required-shape-release".into(),
         (200, "{}".into()),
     )]))
     .await;
     assert!(
-        fetch_documents(None, &selected, None, CallPriority::Interactive)
+        server.providers.fetch_payloads(None, &selected, CallPriority::Interactive)
             .await
             .is_err()
     );
@@ -385,6 +361,6 @@ async fn malformed_required_anchor_is_rejected_online_and_from_the_archive() {
     assert!(load_documents(&archive, &selected).is_err());
     assert_eq!(
         server.requests(),
-        HashMap::from([("/release/required-shape-release".into(), 1)])
+        HashMap::from([("/ws/2/release/required-shape-release".into(), 1)])
     );
 }

@@ -302,7 +302,7 @@ impl ReleasePayloads {
     /// On-demand picker artwork. The archived documents supply Discogs images;
     /// the archive supplies the MusicBrainz release and release-group galleries.
     /// This does not change the offline metadata projection or automatic cover.
-    async fn gallery_covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
+    async fn gallery_covers(&self, http: &crate::util::http::Http) -> Result<Vec<RemoteCover>, ImportError> {
         let mut covers = self.covers()?;
         covers.retain(|cover| cover.source != Catalog::MusicBrainz);
         let musicbrainz = match self.release.catalog {
@@ -316,6 +316,7 @@ impl ReleasePayloads {
             .map(|group| group.id.clone());
         if let Some(release) = musicbrainz {
             let mut gallery = crate::import::cover_art::musicbrainz_gallery(
+                http,
                 &release.id,
                 release
                     .release_group
@@ -336,7 +337,7 @@ impl ReleasePayloads {
             if catalog != Catalog::MusicBrainz || covered_group.as_deref() == Some(key) {
                 continue;
             }
-            for cover in crate::import::cover_art::musicbrainz_group_gallery(key).await? {
+            for cover in crate::import::cover_art::musicbrainz_group_gallery(http, key).await? {
                 crate::import::cover_art::push_unique_cover(&mut covers, cover);
             }
         }
@@ -480,13 +481,14 @@ pub fn pick_covers(
 
 /// The complete galleries behind [`pick_covers`], for the picker: the same
 /// claimed documents, each asked what the Cover Art Archive holds for it.
-pub async fn pick_gallery_covers(
+pub(crate) async fn pick_gallery_covers(
+    http: &crate::util::http::Http,
     primary: &ReleasePayloads,
     partners: &[ReleasePayloads],
 ) -> Result<Vec<RemoteCover>, ImportError> {
     let mut covers = Vec::new();
     for release in std::iter::once(primary).chain(partners) {
-        for cover in release.gallery_covers().await? {
+        for cover in release.gallery_covers(http).await? {
             crate::import::cover_art::push_unique_cover(&mut covers, cover);
         }
     }
@@ -542,24 +544,7 @@ pub fn claimed_records(
     Ok(records)
 }
 
-/// Fetch the selected release and its explicitly related metadata documents.
-pub async fn fetch(
-    discogs_client: Option<&DiscogsClient>,
-    release: &MetadataRef,
-    priority: CallPriority,
-) -> Result<ReleasePayloads, ImportError> {
-    traversal::fetch_documents(discogs_client, release, None, priority).await
-}
-
-/// Expand an archived release when the user applies its metadata. Frozen
-/// applied snapshots and ordinary reads continue to use their archived set.
-pub async fn enrich(
-    discogs_client: Option<&DiscogsClient>,
-    stored: &ReleasePayloads,
-    priority: CallPriority,
-) -> Result<ReleasePayloads, ImportError> {
-    traversal::fetch_documents(discogs_client, &stored.release, Some(stored), priority).await
-}
+pub(crate) use traversal::fetch_documents;
 
 /// Store a set, replacing whatever was under the same entities.
 pub async fn store(

@@ -24,8 +24,8 @@ pub enum CallPriority {
     Background,
 }
 
-/// Enforces a minimum interval between calls. Each provider client holds one
-/// `static` instance, shared by every call to that provider.
+/// Enforces a minimum interval between calls. Each provider object owns one,
+/// shared by every call it makes.
 ///
 /// Admission order is the limiter's decision, not the caller's: an
 /// `Interactive` waiter is handed the next slot ahead of every `Background`
@@ -39,12 +39,11 @@ pub enum CallPriority {
 ///
 /// Nobody drives admission but the waiters themselves: each holds a ticket in
 /// its class's queue and wakes to check whether the slot is its own. That is
-/// load-bearing, not incidental — the limiter is a process-wide `static` that
-/// outlives every runtime in the process (the import worker builds and drops
-/// its own), and anything a runtime owns dies with it. A separate admitter task
-/// would take the queue's only mover with it and wedge the limiter for the
-/// life of the process. Here the state a waiter owns is torn down with the
-/// waiter's future.
+/// load-bearing, not incidental — a provider is asked from more than one
+/// runtime (the import worker builds and drops its own), and anything a
+/// runtime owns dies with it. A separate admitter task would take the queue's
+/// only mover with it and wedge the limiter for as long as its provider lives.
+/// Here the state a waiter owns is torn down with the waiter's future.
 pub struct RateLimiter {
     interval: Duration,
     inner: Mutex<Inner>,
@@ -66,7 +65,7 @@ struct Inner {
 }
 
 impl Inner {
-    const fn new() -> Self {
+    fn new() -> Self {
         Self {
             last_call: None,
             interactive: VecDeque::new(),
@@ -122,11 +121,11 @@ enum Turn {
 }
 
 impl RateLimiter {
-    pub const fn new(interval: Duration) -> Self {
+    pub fn new(interval: Duration) -> Self {
         Self {
             interval,
             inner: Mutex::new(Inner::new()),
-            advanced: Notify::const_new(),
+            advanced: Notify::new(),
         }
     }
 
@@ -164,35 +163,6 @@ impl RateLimiter {
                 Turn::Behind => advanced.await,
             }
         }
-    }
-
-    /// Restore the limiter to its freshly-constructed state, so the next `wait`
-    /// returns immediately. Tests sharing a static limiter reset it so one
-    /// test's requests don't delay the next's.
-    ///
-    /// Waiters hold ticket ids, so a reset underneath them would either strand
-    /// them or admit them all at once in breach of the interval. Neither is a
-    /// reset, so this refuses instead.
-    #[cfg(test)]
-    pub fn reset(&self) {
-        // Refuse outside the lock: panicking while holding it would poison a
-        // limiter that every later test shares.
-        let had_waiters = {
-            let mut inner = self
-                .inner
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
-            let had_waiters = inner.has_waiters();
-            if !had_waiters {
-                *inner = Inner::new();
-            }
-            had_waiters
-        };
-        assert!(
-            !had_waiters,
-            "rate limiter reset while calls are still queued on it — serialize \
-             the tests that share it"
-        );
     }
 
     fn hold_until(&self, last_call: Option<Instant>) -> Option<Instant> {
@@ -323,7 +293,7 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn wait_spaces_calls_and_reset_clears_the_stamp() {
+    async fn wait_spaces_calls_by_the_interval() {
         let limiter = RateLimiter::new(INTERVAL);
 
         // First call returns immediately — no previous stamp.
@@ -335,12 +305,6 @@ mod tests {
         let start = Instant::now();
         limiter.wait(CallPriority::Interactive).await;
         assert!(start.elapsed() >= Duration::from_millis(900));
-
-        // After reset the next call is immediate again.
-        limiter.reset();
-        let start = Instant::now();
-        limiter.wait(CallPriority::Interactive).await;
-        assert!(start.elapsed() < Duration::from_millis(100));
     }
 
     /// The one that fails if the priority is removed: with a single FIFO the
@@ -476,13 +440,14 @@ mod tests {
         assert!(!limiter.has_waiters_for_test());
     }
 
-    /// The limiters are `static`s that outlive any one runtime — the import
-    /// worker builds and drops its own while the app's keeps going. A waiter
-    /// dying with its runtime must leave nothing behind that a later runtime
-    /// waits on, which is why admission cannot belong to a spawned task.
+    /// A provider's limiter outlives any one runtime that asks through it —
+    /// the import worker builds and drops its own while the app's keeps going.
+    /// A waiter dying with its runtime must leave nothing behind that a later
+    /// runtime waits on, which is why admission cannot belong to a spawned
+    /// task.
     #[test]
     fn a_dropped_runtime_leaves_the_limiter_usable() {
-        static LIMITER: RateLimiter = RateLimiter::new(INTERVAL);
+        let limiter = Arc::new(RateLimiter::new(INTERVAL));
 
         fn runtime() -> tokio::runtime::Runtime {
             tokio::runtime::Builder::new_current_thread()
@@ -495,16 +460,16 @@ mod tests {
         let first = runtime();
         first.block_on(async {
             // Spend the free slot, then leave a waiter queued behind it.
-            LIMITER.wait(CallPriority::Interactive).await;
-            tokio::spawn(LIMITER.wait(CallPriority::Background));
-            queued_reaches(&LIMITER, CallPriority::Background, 1).await;
+            limiter.wait(CallPriority::Interactive).await;
+            spawn_wait(&limiter, CallPriority::Background);
+            queued_reaches(&limiter, CallPriority::Background, 1).await;
         });
         drop(first);
 
         let second = runtime();
         second.block_on(async {
             let start = Instant::now();
-            tokio::time::timeout(INTERVAL * 5, LIMITER.wait(CallPriority::Interactive))
+            tokio::time::timeout(INTERVAL * 5, limiter.wait(CallPriority::Interactive))
                 .await
                 .expect("the dropped runtime wedged the limiter");
             assert!(

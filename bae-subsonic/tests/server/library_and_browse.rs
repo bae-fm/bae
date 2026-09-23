@@ -122,7 +122,8 @@ async fn new_manager() -> (LibraryManager, TempDir) {
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(bae_core::util::http::Http::for_test()),
+        bae_core::providers::Providers::offline(),
     );
     (manager, temp)
 }
@@ -227,7 +228,7 @@ async fn seed_library() -> Library {
         cue_dir.join("Test Album.cue"),
     )
     .unwrap();
-    let discogs_key = support::seed_discogs_test_release(cue_discogs_release());
+    let discogs_key = support::seed_discogs_test_release(manager.providers(), cue_discogs_release());
     let cue_import =
         support::start_test_import(tokio::runtime::Handle::current(), manager.clone()).await;
     let cue_id = "cue".to_string();

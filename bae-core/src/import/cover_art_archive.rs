@@ -1,8 +1,10 @@
 //! Complete Cover Art Archive galleries, fetched only when a picker opens.
 
 use super::{
-    push_unique_cover, send_artwork_request, Catalog, ImportError, RemoteCover, RETRY_BASE_DELAY,
+    push_unique_cover, send_artwork_request, Catalog, ImportError, RemoteCover, ARCHIVE,
+    RETRY_BASE_DELAY,
 };
+use crate::util::http::Http;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -23,39 +25,30 @@ struct ArchiveImage {
 /// Release images first, followed by the release group's representative
 /// gallery. Shared image URLs appear once even when both endpoints list them.
 pub async fn musicbrainz_gallery(
+    http: &Http,
     release_id: &str,
     group_id: Option<&str>,
 ) -> Result<Vec<RemoteCover>, ImportError> {
-    let base = super::ARCHIVE.get();
-    fetch_gallery_set(&base, release_id, group_id).await
-}
-
-/// A known album identity requests only its release-group gallery.
-pub async fn musicbrainz_group_gallery(group_id: &str) -> Result<Vec<RemoteCover>, ImportError> {
-    fetch_gallery(&format!(
-        "{}/release-group/{group_id}/",
-        super::ARCHIVE.get()
-    ))
-    .await
-}
-
-async fn fetch_gallery_set(
-    base: &str,
-    release_id: &str,
-    group_id: Option<&str>,
-) -> Result<Vec<RemoteCover>, ImportError> {
-    let mut covers = fetch_gallery(&format!("{base}/release/{release_id}/")).await?;
+    let mut covers = fetch_gallery(http, &format!("{ARCHIVE}/release/{release_id}/")).await?;
     if let Some(group_id) = group_id {
-        for cover in fetch_gallery(&format!("{base}/release-group/{group_id}/")).await? {
+        for cover in musicbrainz_group_gallery(http, group_id).await? {
             push_unique_cover(&mut covers, cover);
         }
     }
     Ok(covers)
 }
 
-async fn fetch_gallery(url: &str) -> Result<Vec<RemoteCover>, ImportError> {
+/// A known album identity requests only its release-group gallery.
+pub async fn musicbrainz_group_gallery(
+    http: &Http,
+    group_id: &str,
+) -> Result<Vec<RemoteCover>, ImportError> {
+    fetch_gallery(http, &format!("{ARCHIVE}/release-group/{group_id}/")).await
+}
+
+async fn fetch_gallery(http: &Http, url: &str) -> Result<Vec<RemoteCover>, ImportError> {
     let Some(response) =
-        send_artwork_request(url, "Cover Art Archive gallery", RETRY_BASE_DELAY).await?
+        send_artwork_request(http, url, "Cover Art Archive gallery", RETRY_BASE_DELAY).await?
     else {
         return Ok(Vec::new());
     };
@@ -142,16 +135,17 @@ mod tests {
         );
         let server =
             tokio::spawn(async move { axum::serve(listener, app).await.expect("server runs") });
-        let covers = fetch_gallery_set(&base, "release-1", Some("group-1"))
+        let http = Http::for_test().serve("coverartarchive.org", &base);
+        let covers = musicbrainz_gallery(&http, "release-1", Some("group-1"))
             .await
             .expect("both galleries load");
         assert_eq!(covers.len(), 3);
         assert_eq!(covers[2].url, "https://images.example/booklet.jpg");
-        assert!(fetch_gallery_set(&base, "missing", None)
+        assert!(musicbrainz_gallery(&http, "missing", None)
             .await
             .expect("404 means no artwork")
             .is_empty());
-        assert!(fetch_gallery_set(&base, "failed", None).await.is_err());
+        assert!(musicbrainz_gallery(&http, "failed", None).await.is_err());
         server.abort();
     }
 
@@ -177,7 +171,8 @@ mod tests {
     #[tokio::test]
     async fn gallery_interrupted_body_is_a_network_failure() {
         let url = super::super::tests::truncated_body_url().await;
-        let error = fetch_gallery(&url).await.unwrap_err();
+        let http = Http::new().expect("the test HTTP client builds");
+        let error = fetch_gallery(&http, &url).await.unwrap_err();
         assert_eq!(
             crate::import::search::import_error_to_lookup_failure(&error),
             crate::signals::LookupFailure::Network

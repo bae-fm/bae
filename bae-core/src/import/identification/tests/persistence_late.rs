@@ -2,7 +2,6 @@
 /// verdict joins it as answered: the pass counts it and finishes, and nothing
 /// re-buys the answer it has.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
     let fixture = Fixture::new("answered-late-row").await;
     let running = fixture.disc_id_candidate("Running");

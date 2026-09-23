@@ -431,7 +431,6 @@ async fn reset_setup_invalidates_prepared_metadata_and_refuses_claimed_candidate
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial_test::serial(musicbrainz)]
 async fn reset_setup_discards_selected_release_assets_and_identification() {
     let StoredCandidate {
         handle,
@@ -447,7 +446,7 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
         )
         .unwrap();
     let id = "70000107";
-    crate::discogs::client::seed_release_cache(
+    manager.providers().discogs().seed_release_cache(
         id,
         serde_json::json!({
             "id":70000107,"title":"Selected Album","year":1996,
@@ -460,8 +459,8 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
         })
         .to_string(),
     );
-    crate::musicbrainz::seed_discogs_url_lookup(id, None);
-    crate::discogs::client::seed_artist_image_response(id, None);
+    manager.providers().musicbrainz().seed_discogs_url_lookup(id, None);
+    manager.providers().discogs().seed_artist_image_response(id, None);
     handle
         .select_candidate_metadata_provenance(
             key.clone(),

@@ -6,7 +6,6 @@
 /// exercised for real: one match, not in the library, counts agreeing, totals
 /// agreeing.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_candidate_nobody_selected_acquires_a_verdict() {
     let fixture = Fixture::new("acquires-verdict").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -58,7 +57,6 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_planned_candidate_is_queued_before_its_driver_reports() {
     let fixture = Fixture::new("queued-before-driver").await;
     let dir = fixture.disc_id_candidate("Candidate");
@@ -94,7 +92,6 @@ async fn a_planned_candidate_is_queued_before_its_driver_reports() {
 /// they are waiting for is the answer this one stores, which covers them. So
 /// they stay queued until it does.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
     let fixture = Fixture::new("shared-job-status").await;
     let first = fixture.disc_id_candidate("First");
@@ -161,7 +158,6 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
 /// has a verdict is never handed to the pipeline again. Two passes over the same
 /// queue, and the provider sees requests only in the first.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_stored_verdict_is_not_re_fetched() {
     let fixture = Fixture::new("not-re-fetched").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -199,7 +195,6 @@ async fn a_stored_verdict_is_not_re_fetched() {
 // ── 3. A transport failure is stored until an explicit rerun ────────────────
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_transport_failure_is_stored_and_not_automatically_retried() {
     let fixture = Fixture::new("failure-stored").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -258,7 +253,6 @@ async fn a_transport_failure_is_stored_and_not_automatically_retried() {
 /// measurement with assertions that background work really was in flight, so a
 /// sweep that had died cannot make this pass by doing nothing.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn the_interactive_path_is_not_delayed_by_the_sweep() {
     let fixture = Fixture::new("interactive-not-delayed").await;
     fixture
@@ -304,15 +298,17 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
     );
 
     let started = std::time::Instant::now();
-    let typed = crate::import::search::search_mb(
-        crate::musicbrainz::ReleaseSearchParams {
-            artist: Some("Artist".to_string()),
-            album: Some("Album".to_string()),
-            ..Default::default()
-        },
-        CallPriority::Interactive,
-    )
-    .await
+    let typed = fixture
+        .manager
+        .search_musicbrainz(
+            crate::musicbrainz::ReleaseSearchParams {
+                artist: Some("Artist".to_string()),
+                album: Some("Album".to_string()),
+                ..Default::default()
+            },
+            CallPriority::Interactive,
+        )
+        .await
     .expect("the typed search succeeds");
     let waited = started.elapsed();
 
@@ -466,7 +462,6 @@ fn a_count_disagreement_is_named_as_one() {
 /// Skipped is a decision the user already made, so automatic identification
 /// excludes it until the user explicitly unskips it.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_skipped_candidate_is_not_swept() {
     let fixture = Fixture::new("skipped").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -502,7 +497,6 @@ async fn a_skipped_candidate_is_not_swept() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn unskipping_a_stored_candidate_mid_pass_does_not_identify_it_again() {
     let fixture = Fixture::new("unskip-mid-pass").await;
     fixture
@@ -585,7 +579,6 @@ async fn unskipping_a_stored_candidate_mid_pass_does_not_identify_it_again() {
 /// `cover.jpg` does not import bare because the record it was matched to had
 /// no image.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
     let fixture = Fixture::new("keeps-folder-cover").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -651,7 +644,6 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
 /// this way is offered rather than settled: its documents are not fetched and
 /// the draft is left as the folder's own.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_release_no_identifier_names_is_found_by_its_title() {
     let fixture = Fixture::new("found-by-title").await;
     fixture

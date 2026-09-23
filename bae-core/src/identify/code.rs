@@ -4,7 +4,7 @@
 //! chosen one up.
 
 use crate::discogs::client::DiscogsSearchParams;
-use crate::import::search::{import_error_to_lookup_failure, search_mb, SourceLookup};
+use crate::import::search::{import_error_to_lookup_failure, SourceLookup};
 use crate::import::Catalog;
 use crate::library::LibraryManager;
 use crate::musicbrainz::ReleaseSearchParams;
@@ -41,7 +41,8 @@ pub async fn lookup_code(
                     ..Default::default()
                 },
             };
-            search_mb(params, priority)
+            library_manager
+                .search_musicbrainz(params, priority)
                 .await
                 .map_err(|error| import_error_to_lookup_failure(&error))
         }

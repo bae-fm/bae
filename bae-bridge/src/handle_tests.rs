@@ -200,7 +200,10 @@ fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::Pa
         bae_core::diagnostics::Diagnostics::noop(),
         runtime.handle().clone(),
         None,
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(
+            bae_core::util::http::Http::for_test(),
+        ),
+        bae_core::providers::Providers::offline(),
     )
     .expect("open test library");
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -210,7 +210,9 @@ impl ImportServiceHandle {
             .split_first()
             .expect("a pick claims at least its primary");
         Ok(RemoteCoverGallery::Linked(
-            crate::import::payloads::pick_gallery_covers(primary, partners).await?,
+            self.library_manager
+                .pick_gallery_covers(primary, partners)
+                .await?,
         ))
     }
 
@@ -235,11 +237,9 @@ impl ImportServiceHandle {
                     release, album_key, ..
                 } => match release.catalog {
                     Catalog::MusicBrainz => {
-                        crate::import::cover_art::musicbrainz_gallery(
-                            &release.key,
-                            album_key.as_deref(),
-                        )
-                        .await?
+                        self.library_manager
+                            .musicbrainz_gallery(&release.key, album_key.as_deref())
+                            .await?
                     }
                     Catalog::Discogs => {
                         self.library_manager
@@ -250,7 +250,9 @@ impl ImportServiceHandle {
                 },
                 crate::import::ReleaseRecord::Album { album } => match album.catalog {
                     Catalog::MusicBrainz => {
-                        crate::import::cover_art::musicbrainz_group_gallery(&album.key).await?
+                        self.library_manager
+                            .musicbrainz_group_gallery(&album.key)
+                            .await?
                     }
                     Catalog::Discogs => {
                         self.library_manager

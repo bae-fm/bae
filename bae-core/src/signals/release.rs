@@ -239,7 +239,8 @@ mod tests {
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            crate::import::cover_art::RemoteImageCache::for_test(),
+            crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
+            crate::providers::Providers::offline(),
         );
 
         let album = DbAlbum {
@@ -381,7 +382,8 @@ mod tests {
             Arc::new(coven::UuidProvider),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            crate::import::cover_art::RemoteImageCache::for_test(),
+            crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
+            crate::providers::Providers::offline(),
         );
 
         let album = DbAlbum {

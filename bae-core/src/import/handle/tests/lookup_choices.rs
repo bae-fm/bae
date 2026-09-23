@@ -1,6 +1,5 @@
 use super::*;
 use crate::import::{ChoiceChange, LookupChoices};
-use serial_test::serial;
 
 /// The choices a person makes about what a run asks come back with the
 /// candidate: the pane reads them off its own value rather than out of a run
@@ -112,11 +111,10 @@ async fn a_struck_out_number_is_written_as_not_chosen() {
 /// agreement the person sees kept is the number, and keeping it chooses it —
 /// in the folder's own spelling, which is what the marks fold sightings by.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn picking_a_record_the_folder_prints_the_number_of_chooses_it() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
-    seed_mb_release_with_catalog("chosen-mb-rel-1", "NJ 8255");
+    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-1", "NJ 8255");
 
     pick(&handle, &key, "chosen-mb-rel-1").await;
 
@@ -128,11 +126,10 @@ async fn picking_a_record_the_folder_prints_the_number_of_chooses_it() {
 /// A number the folder does not print is nothing the person saw kept, so the
 /// pick chooses nothing.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn picking_a_record_whose_number_the_folder_does_not_print_chooses_nothing() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
-    seed_mb_release_with_catalog("chosen-mb-rel-2", "ZZ 9999");
+    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-2", "ZZ 9999");
 
     pick(&handle, &key, "chosen-mb-rel-2").await;
 
@@ -144,7 +141,6 @@ async fn picking_a_record_whose_number_the_folder_does_not_print_chooses_nothing
 /// A number the person struck out stays struck out through the pick: it was
 /// not kept, so it is not chosen.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn picking_a_record_whose_number_is_struck_out_chooses_nothing() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
@@ -158,7 +154,7 @@ async fn picking_a_record_whose_number_is_struck_out_chooses_nothing() {
         )
         .await
         .unwrap();
-    seed_mb_release_with_catalog("chosen-mb-rel-3", "NJ 8255");
+    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-3", "NJ 8255");
 
     pick(&handle, &key, "chosen-mb-rel-3").await;
 
@@ -171,12 +167,11 @@ async fn picking_a_record_whose_number_is_struck_out_chooses_nothing() {
 /// A second record with the same number confirms what is already chosen:
 /// the number is chosen once.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_second_pick_with_the_same_number_chooses_it_once() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
-    seed_mb_release_with_catalog("chosen-mb-rel-4", "NJ 8255");
-    seed_mb_release_with_catalog("chosen-mb-rel-5", "NJ-8255");
+    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-4", "NJ 8255");
+    seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-5", "NJ-8255");
 
     pick(&handle, &key, "chosen-mb-rel-4").await;
     pick(&handle, &key, "chosen-mb-rel-5").await;
@@ -253,7 +248,9 @@ async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &str) {
 /// A two-track MusicBrainz release carrying `catalog_number`, in no release
 /// group: a group would have the pick fetch its front cover from the archive,
 /// which no test serves.
-fn seed_mb_release_with_catalog(release_id: &str, catalog_number: &str) {
+fn seed_mb_release_with_catalog(
+    providers: &crate::providers::Providers,
+    release_id: &str, catalog_number: &str) {
     let response = crate::musicbrainz::MbReleaseResponse {
         id: release_id.to_string(),
         title: "Album Title".to_string(),
@@ -301,5 +298,5 @@ fn seed_mb_release_with_catalog(release_id: &str, catalog_number: &str) {
         },
     };
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    crate::musicbrainz::seed_release_cache(release_id, raw_json);
+    providers.musicbrainz().seed_release_cache(release_id, raw_json);
 }

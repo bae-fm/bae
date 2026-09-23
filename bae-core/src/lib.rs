@@ -45,6 +45,8 @@ pub mod migrations;
 pub mod musicbrainz;
 pub mod oauth;
 pub mod playback;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod providers;
 pub mod queue;
 pub mod renderer;
 pub mod retry;

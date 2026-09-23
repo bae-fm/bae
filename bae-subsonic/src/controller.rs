@@ -222,7 +222,10 @@ mod tests {
             Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::RemoteImageCache::for_test(),
+            bae_core::import::cover_art::RemoteImageCache::for_test(
+                bae_core::util::http::Http::for_test(),
+            ),
+            bae_core::providers::Providers::offline(),
         );
         let services = AppServices::for_test(manager).await.expect("app services");
         (services, temp)

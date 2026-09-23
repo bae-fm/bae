@@ -853,6 +853,15 @@ pub struct LibraryManager {
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
     remote_images: crate::import::cover_art::RemoteImageCache,
+    /// The services releases are looked up in, built once by the app.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    providers: crate::providers::Providers,
+    /// The Discogs client for the key this library stores, built on first use
+    /// and dropped when the key is set or cleared, so every Discogs call
+    /// shares one key read and one client. Held under one lock with the key's
+    /// own writes, so no client outlives the key it was built with.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    discogs_client: Arc<std::sync::Mutex<Option<Arc<crate::discogs::client::DiscogsClient>>>>,
     /// The one writer of import candidates' stored state.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     preparations: crate::import::CandidatePreparations,

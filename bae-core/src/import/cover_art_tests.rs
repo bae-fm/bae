@@ -8,9 +8,15 @@ fn test_png() -> Vec<u8> {
     bytes.into_inner()
 }
 
+/// A transport that sends each request where its URL says: these tests serve
+/// images from their own local servers and ask for them by those addresses.
+fn direct_http() -> Http {
+    Http::new().expect("the test HTTP client builds")
+}
+
 #[test]
 fn cover_art_archive_addresses_are_derived_from_the_entity_id() {
-    let base = ARCHIVE.get();
+    let base = ARCHIVE;
 
     let release = RemoteCover::musicbrainz_release("rel-1");
     assert_eq!(release.url, format!("{base}/release/rel-1/front"));
@@ -158,7 +164,7 @@ async fn start_declared_length_response(content_length: usize) -> String {
 async fn a_second_read_uses_the_stored_image() {
     let body = test_png();
     let (host, url) = start_counting_host(200, body.clone()).await;
-    let cache = RemoteImageCache::for_test();
+    let cache = RemoteImageCache::for_test(direct_http());
 
     let first = cache.fetch_required(&url).await.unwrap();
     let second = cache.fetch_required(&url).await.unwrap();
@@ -175,6 +181,7 @@ async fn a_downloaded_image_survives_a_new_cache_over_the_same_directory() {
     let directory = tempfile::TempDir::new().expect("a temp image-cache directory");
 
     let first_cache = RemoteImageCache::in_dir(
+        direct_http(),
         directory.path().to_path_buf(),
         u64::MAX,
         Duration::from_millis(1),
@@ -183,6 +190,7 @@ async fn a_downloaded_image_survives_a_new_cache_over_the_same_directory() {
     drop(first_cache);
 
     let second_cache = RemoteImageCache::in_dir(
+        direct_http(),
         directory.path().to_path_buf(),
         u64::MAX,
         Duration::from_millis(1),
@@ -237,7 +245,7 @@ fn disk_cache_evicts_the_oldest_entry_when_over_budget() {
 async fn concurrent_reads_of_one_url_share_the_download() {
     let body = test_png();
     let (host, url) = start_counting_host(200, body.clone()).await;
-    let cache = RemoteImageCache::for_test();
+    let cache = RemoteImageCache::for_test(direct_http());
 
     let (first, second) = tokio::join!(cache.fetch_required(&url), cache.fetch_required(&url));
 
@@ -249,7 +257,10 @@ async fn concurrent_reads_of_one_url_share_the_download() {
 #[tokio::test]
 async fn download_rejects_short_non_image_response() {
     let url = start_mock(vec![(200, vec![0u8; 50])]).await;
-    let error = RemoteImageCache::for_test().fetch(&url).await.unwrap_err();
+    let error = RemoteImageCache::for_test(direct_http())
+        .fetch(&url)
+        .await
+        .unwrap_err();
     assert!(
         matches!(&error, ImportError::CoverArt { detail } if detail.contains("valid image")),
         "got: {error}"
@@ -259,7 +270,10 @@ async fn download_rejects_short_non_image_response() {
 #[tokio::test]
 async fn download_rejects_bytes_that_are_not_an_image() {
     let url = start_mock(vec![(200, vec![b'x'; 256])]).await;
-    let error = RemoteImageCache::for_test().fetch(&url).await.unwrap_err();
+    let error = RemoteImageCache::for_test(direct_http())
+        .fetch(&url)
+        .await
+        .unwrap_err();
     assert!(
         matches!(&error, ImportError::CoverArt { detail } if detail.contains("valid image")),
         "got: {error}"
@@ -269,7 +283,7 @@ async fn download_rejects_bytes_that_are_not_an_image() {
 #[tokio::test]
 async fn download_rejects_declared_over_cap_response() {
     let url = start_declared_length_response(crate::util::http::MAX_IMAGE_BYTES + 1).await;
-    let cache = RemoteImageCache::for_test();
+    let cache = RemoteImageCache::for_test(direct_http());
     let result = tokio::time::timeout(
         std::time::Duration::from_secs(1),
         cache.fetch_required(&url),
@@ -287,7 +301,7 @@ async fn download_rejects_declared_over_cap_response() {
 async fn download_retries_transient_then_succeeds() {
     let body = test_png();
     let url = start_mock(vec![(503, vec![]), (200, body.clone())]).await;
-    let image = RemoteImageCache::for_test()
+    let image = RemoteImageCache::for_test(direct_http())
         .fetch_required(&url)
         .await
         .unwrap();
@@ -297,7 +311,7 @@ async fn download_retries_transient_then_succeeds() {
 #[tokio::test]
 async fn no_image_answer_is_stored() {
     let (host, url) = start_counting_host(404, Vec::new()).await;
-    let cache = RemoteImageCache::for_test();
+    let cache = RemoteImageCache::for_test(direct_http());
 
     assert!(cache.fetch(&url).await.unwrap().is_none());
     assert!(cache.fetch(&url).await.unwrap().is_none());
@@ -309,7 +323,7 @@ async fn no_image_answer_is_stored() {
 async fn artwork_http_failures_keep_provider_classification_after_retries() {
     for (status, attempts) in [(400, 1), (401, 1), (429, 4), (500, 4)] {
         let (host, url) = start_counting_host(status, Vec::new()).await;
-        let error = RemoteImageCache::for_test()
+        let error = RemoteImageCache::for_test(direct_http())
             .fetch_required(&url)
             .await
             .unwrap_err();
@@ -327,7 +341,7 @@ async fn artwork_http_failures_keep_provider_classification_after_retries() {
 #[tokio::test]
 async fn required_missing_artwork_keeps_not_found_classification() {
     let (host, url) = start_counting_host(404, Vec::new()).await;
-    let cache = RemoteImageCache::for_test();
+    let cache = RemoteImageCache::for_test(direct_http());
     assert!(cache.fetch(&url).await.unwrap().is_none());
     let error = cache.fetch_required(&url).await.unwrap_err();
     assert_eq!(host.hits(), 1);
@@ -364,7 +378,7 @@ pub(super) async fn truncated_body_url() -> String {
 #[tokio::test]
 async fn artwork_interrupted_body_is_a_network_failure() {
     let url = truncated_body_url().await;
-    let error = RemoteImageCache::for_test()
+    let error = RemoteImageCache::for_test(direct_http())
         .fetch_required(&url)
         .await
         .unwrap_err();
@@ -394,7 +408,7 @@ async fn artwork_stalled_body_keeps_timeout_classification() {
 
 #[tokio::test]
 async fn artwork_invalid_request_is_an_internal_failure() {
-    let error = RemoteImageCache::for_test()
+    let error = RemoteImageCache::for_test(direct_http())
         .fetch_required("not a URL")
         .await
         .unwrap_err();
@@ -428,7 +442,7 @@ async fn supported_cover_formats_keep_original_remote_bytes_and_type() {
         ),
     ] {
         let (host, url) = start_counting_host(200, bytes.to_vec()).await;
-        let cache = RemoteImageCache::for_test();
+        let cache = RemoteImageCache::for_test(direct_http());
         for _ in 0..2 {
             let image = cache.fetch_required(&url).await.unwrap();
             assert_eq!(image.bytes, bytes);
@@ -445,7 +459,7 @@ async fn remote_cover_dimensions_are_bounded() {
         .write_to(&mut bytes, image::ImageFormat::Png)
         .unwrap();
     let url = start_mock(vec![(200, bytes.into_inner())]).await;
-    let error = RemoteImageCache::for_test()
+    let error = RemoteImageCache::for_test(direct_http())
         .fetch_required(&url)
         .await
         .unwrap_err();
@@ -461,7 +475,7 @@ async fn remote_cover_decode_allocation_is_bounded() {
     bytes[6..8].copy_from_slice(&6000u16.to_le_bytes());
     bytes[8..10].copy_from_slice(&6000u16.to_le_bytes());
     let url = start_mock(vec![(200, bytes)]).await;
-    let error = RemoteImageCache::for_test()
+    let error = RemoteImageCache::for_test(direct_http())
         .fetch_required(&url)
         .await
         .unwrap_err();
@@ -480,7 +494,7 @@ async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
         let truncated = &bytes[..20];
         assert!(crate::util::cover::resize_cover(truncated).is_err());
         let url = start_mock(vec![(200, truncated.to_vec())]).await;
-        let error = RemoteImageCache::for_test()
+        let error = RemoteImageCache::for_test(direct_http())
             .fetch_required(&url)
             .await
             .unwrap_err();

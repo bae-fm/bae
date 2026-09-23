@@ -4,12 +4,12 @@ use crate::discogs::models::{
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use crate::retry::retry_with_backoff_if;
-use crate::util::http::{is_cacheable, CachedResponse};
+use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
-use crate::util::test_base_url::TestBaseUrl;
-use reqwest::{Client, Error as ReqwestError, StatusCode};
+use reqwest::{Error as ReqwestError, StatusCode};
 use serde::Deserialize;
+use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
 use tracing::{debug, warn};
@@ -17,72 +17,97 @@ use tracing::{debug, warn};
 const DISCOGS_REQUEST_INTERVAL: Duration = Duration::from_secs(1);
 const DISCOGS_RETRY_ATTEMPTS: u32 = 3;
 
-/// The response cache every Discogs content request is answered from, keyed by
-/// the full request URL — base address included, so two addresses for one path
-/// are two answers. A module-level static, so it survives across
-/// `DiscogsClient::new` calls: what a release, master or artist URL returns
-/// doesn't vary with the API token. What the token itself is worth does, which
-/// is why the token check does not read from here.
-static DISCOGS_RESPONSES: SessionCache<CachedResponse> =
-    SessionCache::new("Discogs response cache", PROVIDER_RESPONSE_CAPACITY);
+/// Where every Discogs request goes.
+const API_BASE_URL: &str = "https://api.discogs.com";
 
-static RATE_LIMITER: RateLimiter = RateLimiter::new(DISCOGS_REQUEST_INTERVAL);
-
-fn release_url(base_url: &str, id: &str) -> String {
-    format!("{base_url}/releases/{id}")
-}
-
-fn master_url(base_url: &str, master_id: &str) -> String {
-    format!("{base_url}/masters/{master_id}")
-}
-
-fn artist_url(base_url: &str, artist_id: &str) -> String {
-    format!("{base_url}/artists/{artist_id}")
-}
-
-/// Put `body` where a request built right now for `url` would look for it.
-#[cfg(any(test, feature = "test-utils"))]
-fn seed_response(url: &str, status: u16, body: String) {
-    DISCOGS_RESPONSES.put(
-        crate::util::http::response_key(url),
-        CachedResponse { status, body },
-    );
-}
-
-/// Pre-populate a release document, so a test can drive `prepare_release`
-/// without an HTTP call. `raw_json` is the endpoint's own answer: it is what
-/// gets archived, what a later projection replays from, and what the client
-/// parses here, so those three cannot disagree.
+/// Discogs as bae asks it, whatever key a request carries: the transport
+/// requests go out on, the one rate limit every request waits for, and the
+/// answers already had. The app builds one when it starts; each
+/// [`DiscogsClient`] carries a key and asks through it.
 ///
-/// Keyed under the base URL in force right now — point the client at the test
-/// endpoint before seeding, not after.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn seed_release_cache(id: &str, raw_json: String) {
-    seed_response(&release_url(&API_BASE_URL.get(), id), 200, raw_json);
+/// A release, master or artist document does not vary with the key that asked
+/// for it, so the answers are kept here rather than per client. What a key
+/// itself is worth does, which is why the key check does not read from here.
+pub struct Discogs {
+    http: Http,
+    limiter: RateLimiter,
+    /// Every stable answer kept, keyed by the full request URL.
+    responses: SessionCache<CachedResponse>,
 }
 
-/// Pre-populate a master document, for a synthetic `DiscogsRelease` that
-/// carries a `master_id` — the worker's cross-reference fetch then resolves
-/// through it.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn seed_master_cache(master_id: &str, raw_json: String) {
-    seed_response(&master_url(&API_BASE_URL.get(), master_id), 200, raw_json);
-}
-
-/// Pre-populate an artist document whose image list yields `image_url`. `None`
-/// is the 404 the endpoint gives for an artist it does not have, which the
-/// image lookup reads as "no image".
-#[cfg(any(test, feature = "test-utils"))]
-pub fn seed_artist_image_response(artist_id: &str, image_url: Option<String>) {
-    let url = artist_url(&API_BASE_URL.get(), artist_id);
-    match image_url {
-        Some(uri) => seed_response(
-            &url,
-            200,
-            serde_json::json!({ "images": [{ "type": "primary", "uri": uri }] }).to_string(),
-        ),
-        None => seed_response(&url, 404, String::new()),
+impl Discogs {
+    pub fn new(http: Http) -> Self {
+        Self::with_interval(http, DISCOGS_REQUEST_INTERVAL)
     }
+
+    /// One whose requests are not spaced: a test's fake service has no rate
+    /// to keep to.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn for_test(http: Http) -> Self {
+        Self::with_interval(http, Duration::ZERO)
+    }
+
+    fn with_interval(http: Http, interval: Duration) -> Self {
+        Self {
+            http,
+            limiter: RateLimiter::new(interval),
+            responses: SessionCache::new("Discogs response cache", PROVIDER_RESPONSE_CAPACITY),
+        }
+    }
+
+    /// Put `body` where a request for `url` would look for it.
+    #[cfg(any(test, feature = "test-utils"))]
+    fn seed_response(&self, url: &str, status: u16, body: String) {
+        self.responses.put(
+            crate::util::http::response_key(url),
+            CachedResponse { status, body },
+        );
+    }
+
+    /// Pre-populate a release document, so a test can drive `prepare_release`
+    /// without an HTTP call. `raw_json` is the endpoint's own answer: it is
+    /// what gets archived, what a later projection replays from, and what the
+    /// client parses here, so those three cannot disagree.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn seed_release_cache(&self, id: &str, raw_json: String) {
+        self.seed_response(&release_url(id), 200, raw_json);
+    }
+
+    /// Pre-populate a master document, for a synthetic `DiscogsRelease` that
+    /// carries a `master_id` — the worker's cross-reference fetch then resolves
+    /// through it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn seed_master_cache(&self, master_id: &str, raw_json: String) {
+        self.seed_response(&master_url(master_id), 200, raw_json);
+    }
+
+    /// Pre-populate an artist document whose image list yields `image_url`.
+    /// `None` is the 404 the endpoint gives for an artist it does not have,
+    /// which the image lookup reads as "no image".
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn seed_artist_image_response(&self, artist_id: &str, image_url: Option<String>) {
+        let url = artist_url(artist_id);
+        match image_url {
+            Some(uri) => self.seed_response(
+                &url,
+                200,
+                serde_json::json!({ "images": [{ "type": "primary", "uri": uri }] }).to_string(),
+            ),
+            None => self.seed_response(&url, 404, String::new()),
+        }
+    }
+}
+
+fn release_url(id: &str) -> String {
+    format!("{API_BASE_URL}/releases/{id}")
+}
+
+fn master_url(master_id: &str) -> String {
+    format!("{API_BASE_URL}/masters/{master_id}")
+}
+
+fn artist_url(artist_id: &str) -> String {
+    format!("{API_BASE_URL}/artists/{artist_id}")
 }
 
 #[derive(Error, Debug)]
@@ -493,45 +518,37 @@ pub enum DiscogsKeySignal {
 /// the library manager's Discogs operation session.
 pub type DiscogsValidationObserver = std::sync::Arc<dyn Fn(DiscogsKeySignal) + Send + Sync>;
 
-/// Where every Discogs request goes. Each operation session builds its client on
-/// demand, so a test redirect is read at construction.
-pub(crate) static API_BASE_URL: TestBaseUrl = TestBaseUrl::new("https://api.discogs.com");
-
-/// Point every Discogs client built after this call at `url` (`None` restores
-/// the live API), so a test outside this crate never reaches the real service —
-/// and never spends a fixture's fake key on a real auth check, which would come
-/// back 401 and mark the stored key rejected for everything after it.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn set_base_url_for_test(url: Option<String>) {
-    API_BASE_URL.set_for_test(url);
-}
-
+/// Discogs asked with one key.
 pub struct DiscogsClient {
-    client: Client,
+    discogs: Arc<Discogs>,
     api_key: String,
-    base_url: String,
     observer: Option<DiscogsValidationObserver>,
 }
 impl DiscogsClient {
     /// A client with no validation observer — for validating a candidate key
     /// before it's stored (the save path interprets that result directly).
-    pub fn new(api_key: String) -> Self {
-        Self::build(api_key, None)
+    pub fn new(discogs: Arc<Discogs>, api_key: String) -> Self {
+        Self::build(discogs, api_key, None)
     }
 
     /// A client that reports each call's outcome to `observer`, so a stored key
     /// re-validates as it's used.
-    pub fn with_observer(api_key: String, observer: DiscogsValidationObserver) -> Self {
-        Self::build(api_key, Some(observer))
+    pub fn with_observer(
+        discogs: Arc<Discogs>,
+        api_key: String,
+        observer: DiscogsValidationObserver,
+    ) -> Self {
+        Self::build(discogs, api_key, Some(observer))
     }
 
-    fn build(api_key: String, observer: Option<DiscogsValidationObserver>) -> Self {
+    fn build(
+        discogs: Arc<Discogs>,
+        api_key: String,
+        observer: Option<DiscogsValidationObserver>,
+    ) -> Self {
         Self {
-            client: crate::util::http::client_builder()
-                .build()
-                .expect("Failed to build HTTP client"),
+            discogs,
             api_key,
-            base_url: API_BASE_URL.get(),
             observer,
         }
     }
@@ -561,7 +578,8 @@ impl DiscogsClient {
     }
 
     fn get(&self, url: &str) -> reqwest::RequestBuilder {
-        self.client
+        self.discogs
+            .http
             .get(url)
             .header("Authorization", format!("Discogs token={}", self.api_key))
             .timeout(crate::util::http::API_TIMEOUT)
@@ -576,8 +594,8 @@ impl DiscogsClient {
         request: reqwest::Request,
         priority: CallPriority,
     ) -> Result<CachedResponse, DiscogsError> {
-        RATE_LIMITER.wait(priority).await;
-        let response = self.client.execute(request).await?;
+        self.discogs.limiter.wait(priority).await;
+        let response = self.discogs.http.execute(request).await?;
         let status = response.status().as_u16();
         let body = response.text().await?;
         Ok(CachedResponse { status, body })
@@ -595,21 +613,21 @@ impl DiscogsClient {
         let request = request.build()?;
         let key = request.url().to_string();
 
-        if let Some(cached) = DISCOGS_RESPONSES.get_cloned(&key) {
+        if let Some(cached) = self.discogs.responses.get_cloned(&key) {
             debug!("Discogs response cache hit for {}", key);
             return classify_discogs_response(cached);
         }
 
         let response = self.send(request, priority).await?;
         if is_cacheable(response.status) {
-            DISCOGS_RESPONSES.put(key, response.clone());
+            self.discogs.responses.put(key, response.clone());
         }
         classify_discogs_response(response)
     }
 
     /// Check the API token with a request cheap enough to throw away.
     pub async fn validate_token(&self, priority: CallPriority) -> Result<(), DiscogsError> {
-        let url = format!("{}/database/search", self.base_url);
+        let url = format!("{API_BASE_URL}/database/search");
         let query_params = [("per_page", "1")];
 
         retry_with_backoff_if(
@@ -641,7 +659,7 @@ impl DiscogsClient {
         priority: CallPriority,
     ) -> Result<Vec<DiscogsSearchResult>, DiscogsError> {
         use tracing::{debug, warn};
-        let url = format!("{}/database/search", self.base_url);
+        let url = format!("{API_BASE_URL}/database/search");
         let mut query_params: Vec<(&str, &str)> = vec![("type", "release")];
         if let Some(ref text) = params.text {
             query_params.push(("q", text));
@@ -720,7 +738,7 @@ impl DiscogsClient {
         id: &str,
         priority: CallPriority,
     ) -> Result<(DiscogsRelease, String), DiscogsError> {
-        let url = release_url(&self.base_url, id);
+        let url = release_url(id);
         retry_with_backoff_if(
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs release fetch",
@@ -750,7 +768,7 @@ impl DiscogsClient {
         master_id: &str,
         priority: CallPriority,
     ) -> Result<(DiscogsMaster, String), DiscogsError> {
-        let url = master_url(&self.base_url, master_id);
+        let url = master_url(master_id);
         retry_with_backoff_if(
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs master fetch",
@@ -779,7 +797,7 @@ impl DiscogsClient {
         artist_id: &str,
         priority: CallPriority,
     ) -> Result<Option<String>, DiscogsError> {
-        let url = artist_url(&self.base_url, artist_id);
+        let url = artist_url(artist_id);
         let Some(body) = retry_with_backoff_if(
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs artist fetch",

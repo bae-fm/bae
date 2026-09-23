@@ -60,6 +60,7 @@ fn mb_track_performing(position: i64, title: &str, work: MbWork) -> MbTrack {
 /// Seed a MusicBrainz release (no Discogs cross-link) whose recordings perform
 /// the given work graph. Returns the MB release id.
 fn seed_mb_release_with_works(
+    f: &ImportFixture,
     mb_release_id: &str,
     mb_group_id: &str,
     title: &str,
@@ -67,7 +68,7 @@ fn seed_mb_release_with_works(
 ) -> String {
     let mut response = support::mb_release(mb_release_id, mb_group_id, title);
     response.media[0].tracks = tracks;
-    support::seed_mb_release(response, mb_group_id)
+    support::seed_mb_release(f.library_manager.providers().musicbrainz(), response, mb_group_id)
 }
 
 /// Work-graph sibling of `remote_transition_failure_rolls_back_finalized_release`.
@@ -85,7 +86,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
     // A prior LOCAL MusicBrainz import that survives. Its recording performs
     // the shared work, so that work and its composer are referenced by a
     // release the failed remote import below must not touch.
-    let prior_mb = seed_mb_release_with_works(
+    let prior_mb = seed_mb_release_with_works(&f,
         "mb-rel-prior",
         "mb-group-prior",
         "Prior Symphony",
@@ -114,7 +115,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
     // The failing REMOTE import: one recording performs the shared work (also
     // performed by the prior release), the other an exclusive work that has its
     // own child part and its own composer.
-    let remote_mb = seed_mb_release_with_works(
+    let remote_mb = seed_mb_release_with_works(&f,
         "mb-rel-remote",
         "mb-group-remote",
         "Remote Symphony",
@@ -233,7 +234,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
     support::tracing_init();
     let f = ImportFixture::new().await;
 
-    let first_mb = seed_mb_release_with_works(
+    let first_mb = seed_mb_release_with_works(&f,
         "mb-rel-first",
         "mb-group-first",
         "First Release",
@@ -259,7 +260,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
     .await
     .expect("first local MB import succeeds");
 
-    let second_mb = seed_mb_release_with_works(
+    let second_mb = seed_mb_release_with_works(&f,
         "mb-rel-second",
         "mb-group-second",
         "Second Release",
@@ -334,9 +335,10 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
 async fn import_with_cover_art() {
     support::tracing_init();
 
-    let release = discogs_release("Cover Album", &["Track"]);
-    let release_id_key = seed_discogs_test_release(release);
     let f = ImportFixture::new().await;
+
+    let release = discogs_release("Cover Album", &["Track"]);
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -383,9 +385,10 @@ async fn import_with_cover_art() {
 async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     support::tracing_init();
 
-    let release = discogs_release("Oversized Cover Album", &["Track"]);
-    let release_id_key = seed_discogs_test_release(release);
     let f = ImportFixture::new().await;
+
+    let release = discogs_release("Oversized Cover Album", &["Track"]);
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -440,9 +443,10 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
 async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
     support::tracing_init();
 
-    let release = discogs_release("Browsable Album", &["Track"]);
-    let release_id_key = seed_discogs_test_release(release);
     let f = ImportFixture::new().await;
+
+    let release = discogs_release("Browsable Album", &["Track"]);
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
     // Make the home browsable BEFORE importing, so finalize computes readable keys.
     f.library_manager
         .set_home_storage(bae_core::config::HomeStorage::Browsable);
@@ -541,8 +545,9 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
         ),
     ] {
         let release = discogs_release("Cover Format Album", &["Track"]);
-        let release_id_key = seed_discogs_test_release(release);
         let f = ImportFixture::new().await;
+        let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
+
         let album_dir = f.temp_path().join("album");
         fs::create_dir_all(&album_dir).unwrap();
         generate_album_files(&album_dir, &["01 Track.flac"]);

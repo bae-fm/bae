@@ -15,7 +15,6 @@ pub fn test_config(
     library_dir: &coven::StoreDir,
 ) -> std::sync::Arc<bae_core::config::ConfigHandle> {
     bae_core::config::install_test_keyring();
-    crate::discogs::point_discogs_at_dead_port();
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
     let library_id = format!("test-{}", uuid::Uuid::new_v4());
@@ -61,6 +60,15 @@ pub async fn temp_test_db() -> (bae_core::db::Database, tempfile::TempDir) {
 pub async fn open_test_library(
     dir: &std::path::Path,
 ) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
+    open_test_library_with(dir, bae_core::providers::Providers::offline()).await
+}
+
+/// [`open_test_library`] asking `providers` — ones routed to a test's own
+/// fakes — rather than providers that reach nothing.
+pub async fn open_test_library_with(
+    dir: &std::path::Path,
+    providers: bae_core::providers::Providers,
+) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
     let database = open_test_db(dir).await;
     let config_handle = test_config(&coven::StoreDir::new(dir.to_path_buf()));
     let library_manager = bae_core::library::LibraryManager::new(
@@ -70,7 +78,8 @@ pub async fn open_test_library(
         std::sync::Arc::new(coven::UuidProvider),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(providers.http().clone()),
+        providers,
     );
     (library_manager, database)
 }
@@ -118,6 +127,7 @@ pub fn setup_fresh_library(
     )
     .expect("create fresh library");
     let config_handle = std::sync::Arc::new(bae_core::config::ConfigHandle::new(config));
+    let providers = bae_core::providers::Providers::offline();
     let lm = bae_core::library::LibraryManager::open(
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
@@ -125,7 +135,8 @@ pub fn setup_fresh_library(
         bae_core::diagnostics::Diagnostics::noop(),
         runtime.handle().clone(),
         None,
-        bae_core::import::cover_art::RemoteImageCache::for_test(),
+        bae_core::import::cover_art::RemoteImageCache::for_test(providers.http().clone()),
+        providers,
     )
     .expect("open library manager");
 

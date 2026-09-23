@@ -5,12 +5,12 @@
 //! editors link a Wikidata item far more often than they link each streaming
 //! service and review site separately.
 //!
-//! This fetches one item's entity document — rate-limited, timed out and
-//! retried the way the MusicBrainz and Discogs clients are — and reads the
-//! catalog pages out of its claims.
+//! [`Wikidata`] fetches one item's entity document — rate-limited, timed out
+//! and retried the way the MusicBrainz and Discogs clients are — and this
+//! module reads the catalog pages out of its claims. The app builds one
+//! [`Wikidata`] when it starts and hands it down.
 
 use std::collections::BTreeMap;
-use std::sync::OnceLock;
 use std::time::Duration;
 
 use serde::Deserialize;
@@ -18,41 +18,33 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::import::{Catalog, CatalogPage};
-use crate::util::http::{is_cacheable, CachedResponse};
+use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
-use crate::util::test_base_url::TestBaseUrl;
-
-/// Shared HTTP client for all Wikidata requests. Wikimedia's user-agent policy
-/// requires a request to identify what is making it, which
-/// [`crate::util::http::client_builder`] already does for every bae request.
-fn http_client() -> &'static reqwest::Client {
-    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    CLIENT.get_or_init(|| {
-        crate::util::http::client_builder()
-            .build()
-            .expect("Failed to create HTTP client")
-    })
-}
-
-/// Rate limiter ensuring at least 1 second between Wikidata requests.
-static RATE_LIMITER: RateLimiter = RateLimiter::new(Duration::from_secs(1));
 
 /// Where every Wikidata request goes.
-static BASE_URL: TestBaseUrl = TestBaseUrl::new("https://www.wikidata.org");
+const BASE_URL: &str = "https://www.wikidata.org";
+
+/// One request a second, the pace the MusicBrainz and Discogs clients keep.
+const REQUEST_INTERVAL: Duration = Duration::from_secs(1);
 
 /// Where one item's entity document is fetched from. Named once, because the
 /// response cache is keyed by URL: the request and anything putting an answer
 /// where the request will look for it have to agree on it.
 fn entity_url(item: &str) -> String {
-    format!("{}/wiki/Special:EntityData/{item}.json", BASE_URL.get())
+    format!("{BASE_URL}/wiki/Special:EntityData/{item}.json")
 }
 
-/// The response cache every Wikidata request is answered from, keyed by the
-/// full request URL — base address included, so two addresses for one path are
-/// two answers.
-static WIKIDATA_RESPONSES: SessionCache<CachedResponse> =
-    SessionCache::new("Wikidata response cache", PROVIDER_RESPONSE_CAPACITY);
+/// Wikidata as bae asks it: the transport requests go out on, the rate limit
+/// they wait for, and the answers already had. Wikimedia's user-agent policy
+/// requires a request to identify what is making it, which the transport's
+/// client already does for every bae request.
+pub struct Wikidata {
+    http: Http,
+    limiter: RateLimiter,
+    /// Every stable answer kept, keyed by the full request URL.
+    responses: SessionCache<CachedResponse>,
+}
 
 /// A Wikidata lookup failure, keeping the same wire-level distinctions the
 /// MusicBrainz client keeps: a transport failure that produced no HTTP
@@ -125,46 +117,6 @@ where
         .await
 }
 
-/// One Wikidata GET, answered from the cache when this URL already has an
-/// answer — without waiting for a rate-limit slot — and otherwise sent, kept
-/// when the answer is stable, and returned.
-async fn wikidata_get(
-    request: reqwest::RequestBuilder,
-    priority: CallPriority,
-) -> Result<String, WikidataError> {
-    let request = request
-        .header("Accept", "application/json")
-        .timeout(crate::util::http::API_TIMEOUT)
-        .build()
-        .map_err(WikidataError::from_reqwest)?;
-    let key = request.url().to_string();
-
-    if let Some(cached) = WIKIDATA_RESPONSES.get_cloned(&key) {
-        debug!("Wikidata response cache hit for {}", key);
-        return wikidata_body(cached);
-    }
-
-    RATE_LIMITER.wait(priority).await;
-    let response = http_client()
-        .execute(request)
-        .await
-        .map_err(WikidataError::from_reqwest)?;
-    let status = response.status().as_u16();
-    let body = response.text().await.map_err(WikidataError::from_reqwest)?;
-    let response = CachedResponse { status, body };
-
-    if !response.is_success() {
-        warn!(
-            "Wikidata error response ({} from {}): {}",
-            status, key, response.body
-        );
-    }
-    if is_cacheable(status) {
-        WIKIDATA_RESPONSES.put(key, response.clone());
-    }
-    wikidata_body(response)
-}
-
 fn wikidata_body(response: CachedResponse) -> Result<String, WikidataError> {
     if response.is_success() {
         Ok(response.body)
@@ -175,52 +127,121 @@ fn wikidata_body(response: CachedResponse) -> Result<String, WikidataError> {
     }
 }
 
-/// Pre-populate an item's answer, so a test can drive the archival path
-/// without an HTTP call. `raw_json` is the endpoint's own answer: it is what
-/// gets archived, what a later projection replays from, and what the client
-/// parses here, so those three cannot disagree. `None` is the 404 Wikidata
-/// gives for an item it does not have.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn seed_entity_cache(item: &str, raw_json: Option<String>) {
-    let url = entity_url(item);
-    let (status, body) = match raw_json {
-        Some(json) => (200, json),
-        None => (404, String::new()),
-    };
-    WIKIDATA_RESPONSES.put(
-        crate::util::http::response_key(&url),
-        CachedResponse { status, body },
-    );
-}
+impl Wikidata {
+    pub fn new(http: Http) -> Self {
+        Self::with_interval(http, REQUEST_INTERVAL)
+    }
 
-/// One item's entity document, as Wikidata returned it.
-///
-/// The document is what gets archived, and every later read of this item's
-/// identifiers replays from it — so it is parsed here before it is handed
-/// back. A body that is not an entity document fails this fetch rather than
-/// becoming a stored row that fails every read of it afterwards.
-pub async fn fetch_entity(item: &str, priority: CallPriority) -> Result<String, WikidataError> {
-    wikidata_retry("Wikidata entity fetch", || {
-        fetch_entity_once(item, priority)
-    })
-    .await
-}
+    /// One whose requests are not spaced: a test's fake service has no rate
+    /// to keep to.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn for_test(http: Http) -> Self {
+        Self::with_interval(http, Duration::ZERO)
+    }
 
-async fn fetch_entity_once(item: &str, priority: CallPriority) -> Result<String, WikidataError> {
-    let url = entity_url(item);
-    debug!("Wikidata API request: {}", url);
-
-    let raw_json = match wikidata_get(http_client().get(&url), priority).await {
-        Ok(body) => body,
-        Err(WikidataError::Provider { status: Some(404) }) => {
-            return Err(WikidataError::NotFound(item.to_string()));
+    fn with_interval(http: Http, interval: Duration) -> Self {
+        Self {
+            http,
+            limiter: RateLimiter::new(interval),
+            responses: SessionCache::new("Wikidata response cache", PROVIDER_RESPONSE_CAPACITY),
         }
-        Err(error) => return Err(error),
-    };
+    }
 
-    parse_entity(&raw_json)
-        .map_err(|e| WikidataError::Other(format!("Failed to parse JSON: {}", e)))?;
-    Ok(raw_json)
+    /// One Wikidata GET, answered from the cache when this URL already has an
+    /// answer — without waiting for a rate-limit slot — and otherwise sent,
+    /// kept when the answer is stable, and returned.
+    async fn get(&self, url: &str, priority: CallPriority) -> Result<String, WikidataError> {
+        let request = self
+            .http
+            .get(url)
+            .header("Accept", "application/json")
+            .timeout(crate::util::http::API_TIMEOUT)
+            .build()
+            .map_err(WikidataError::from_reqwest)?;
+        let key = request.url().to_string();
+
+        if let Some(cached) = self.responses.get_cloned(&key) {
+            debug!("Wikidata response cache hit for {}", key);
+            return wikidata_body(cached);
+        }
+
+        self.limiter.wait(priority).await;
+        let response = self
+            .http
+            .execute(request)
+            .await
+            .map_err(WikidataError::from_reqwest)?;
+        let status = response.status().as_u16();
+        let body = response.text().await.map_err(WikidataError::from_reqwest)?;
+        let response = CachedResponse { status, body };
+
+        if !response.is_success() {
+            warn!(
+                "Wikidata error response ({} from {}): {}",
+                status, key, response.body
+            );
+        }
+        if is_cacheable(status) {
+            self.responses.put(key, response.clone());
+        }
+        wikidata_body(response)
+    }
+
+    /// Pre-populate an item's answer, so a test can drive the archival path
+    /// without an HTTP call. `raw_json` is the endpoint's own answer: it is
+    /// what gets archived, what a later projection replays from, and what the
+    /// client parses here, so those three cannot disagree. `None` is the 404
+    /// Wikidata gives for an item it does not have.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn seed_entity_cache(&self, item: &str, raw_json: Option<String>) {
+        let url = entity_url(item);
+        let (status, body) = match raw_json {
+            Some(json) => (200, json),
+            None => (404, String::new()),
+        };
+        self.responses.put(
+            crate::util::http::response_key(&url),
+            CachedResponse { status, body },
+        );
+    }
+
+    /// One item's entity document, as Wikidata returned it.
+    ///
+    /// The document is what gets archived, and every later read of this item's
+    /// identifiers replays from it — so it is parsed here before it is handed
+    /// back. A body that is not an entity document fails this fetch rather than
+    /// becoming a stored row that fails every read of it afterwards.
+    pub async fn fetch_entity(
+        &self,
+        item: &str,
+        priority: CallPriority,
+    ) -> Result<String, WikidataError> {
+        wikidata_retry("Wikidata entity fetch", || {
+            self.fetch_entity_once(item, priority)
+        })
+        .await
+    }
+
+    async fn fetch_entity_once(
+        &self,
+        item: &str,
+        priority: CallPriority,
+    ) -> Result<String, WikidataError> {
+        let url = entity_url(item);
+        debug!("Wikidata API request: {}", url);
+
+        let raw_json = match self.get(&url, priority).await {
+            Ok(body) => body,
+            Err(WikidataError::Provider { status: Some(404) }) => {
+                return Err(WikidataError::NotFound(item.to_string()));
+            }
+            Err(error) => return Err(error),
+        };
+
+        parse_entity(&raw_json)
+            .map_err(|e| WikidataError::Other(format!("Failed to parse JSON: {}", e)))?;
+        Ok(raw_json)
+    }
 }
 
 /// The Wikidata properties whose values are another catalog's key for the same

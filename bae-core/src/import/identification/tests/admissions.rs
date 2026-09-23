@@ -8,7 +8,6 @@
 /// interactive priority — it does not open a fifth slot: the cap bounds local
 /// work whoever asked for it.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     let fixture = Fixture::new("request-upgrades-waiting").await;
     fixture
@@ -109,7 +108,6 @@ async fn await_run_priority(
 /// group waiting on the answer it will store, rather than dropping them: they
 /// are the same bytes, and one answer settles all of them.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
     let fixture = Fixture::new("request-keeps-group").await;
     let first = fixture.disc_id_candidate("First");
@@ -187,7 +185,6 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
 /// nothing back: what is on the queue — asked for or admitted on its own —
 /// runs to its answer. A preference is not a cancel.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn automatic_off_leaves_the_queue_to_finish() {
     let fixture = Fixture::new("automatic-off-keeps-queue").await;
     let requested = fixture.disc_id_candidate("Requested");
@@ -230,7 +227,6 @@ async fn automatic_off_leaves_the_queue_to_finish() {
 /// A run a person asked for is counted like any other: it opens a batch of its
 /// own, and the batch is over when its answer lands.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn a_requested_run_is_counted() {
     let fixture = Fixture::new("requested-is-counted").await;
     let dir = fixture.disc_id_candidate("Album");
@@ -281,7 +277,6 @@ async fn a_requested_run_is_counted() {
 /// while it is being identified is on the run rather than on the draft it
 /// started from.
 #[tokio::test(flavor = "multi_thread")]
-#[serial(musicbrainz)]
 async fn an_admitted_candidate_opens_on_find_online() {
     let fixture = Fixture::new("admitted-opens-on-find-online").await;
     let dir = fixture.disc_id_candidate("Candidate");

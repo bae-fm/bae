@@ -201,6 +201,14 @@ where
 
     let config_handle = Arc::new(ConfigHandle::new(config));
 
+    // The one transport every outbound request goes out on, and the providers
+    // that ask over it: each keeps its own rate limit and answers for as long
+    // as this library is open.
+    let http = crate::util::http::Http::new()
+        .map_err(|e| BootstrapError::Internal(format!("Failed to build the HTTP client: {e}")))?;
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    let providers = crate::providers::Providers::new(http.clone());
+
     let library_manager = timing
         .stage(&library_id, "open library manager", || {
             crate::library::LibraryManager::open(
@@ -212,7 +220,10 @@ where
                 cloudkit_ops,
                 crate::import::cover_art::RemoteImageCache::new(
                     config_handle.config().library_path(),
+                    http,
                 ),
+                #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                providers,
             )
         })
         .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
