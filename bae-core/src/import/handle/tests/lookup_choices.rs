@@ -18,6 +18,7 @@ async fn the_candidate_s_lookup_choices_read_back_on_its_pane() {
         disc_id_excluded: false,
         excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
         chosen_catalogs: vec!["WPCR-80001".to_string()],
+        search_words: None,
         discounted_catalogs: vec!["LBL-9".to_string()],
     };
     handle
@@ -51,6 +52,7 @@ async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
         disc_id_excluded: false,
         excluded_barcodes: vec!["0123456789012".to_string()],
         chosen_catalogs: vec!["WPCR-80001".to_string()],
+        search_words: None,
         discounted_catalogs: Vec::new(),
     };
     assert_eq!(

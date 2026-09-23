@@ -34,6 +34,8 @@ struct ImportSearchPane: View {
     let onToggleCatalogAgreement: (String) -> Void
     /// Re-ask only the lookups that failed, keeping what the others found.
     let onRetryFailed: () -> Void
+    /// Search by the words the person left in the title chip.
+    let onEditTitleSearch: (_ album: String, _ artist: String) -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (Pressing) -> Void
 
@@ -66,6 +68,8 @@ struct ImportSearchPane: View {
         onToggleCatalogAgreement: @escaping (String) -> Void,
         initialSection: FindOnlineSection,
         onRetryFailed: @escaping () -> Void,
+        onEditTitleSearch:
+            @escaping (_ album: String, _ artist: String) -> Void,
         onSelect: @escaping (Pressing) -> Void
     ) {
         self.state = state
@@ -78,6 +82,7 @@ struct ImportSearchPane: View {
         self.onToggleLookup = onToggleLookup
         self.onToggleCatalogAgreement = onToggleCatalogAgreement
         self.onRetryFailed = onRetryFailed
+        self.onEditTitleSearch = onEditTitleSearch
         self.onSelect = onSelect
         _openSection = State(initialValue: initialSection)
     }
@@ -113,6 +118,7 @@ struct ImportSearchPane: View {
                     onToggleLookup: onToggleLookup,
                     onToggleCatalogAgreement: onToggleCatalogAgreement,
                     onRetryFailed: onRetryFailed,
+                    onEditTitleSearch: onEditTitleSearch,
                     onSelect: onSelect,
                     onSearchManually: searchManually,
                     narrowedOutExpanded: $narrowedOutExpanded,
@@ -251,6 +257,7 @@ struct ImportSearchPane: View {
                 onToggleCatalogAgreement: { _ in },
                 initialSection: initialSection,
                 onRetryFailed: onRetryFailed,
+                onEditTitleSearch: { _, _ in },
                 onSelect: { _ in },
             )
         }

@@ -26,6 +26,10 @@ struct IdentifierBand: View {
     let onToggleCatalogAgreement: (String) -> Void
     /// Re-ask only the lookups that failed.
     let onRetryFailed: () -> Void
+    /// Search by these words instead of what the draft calls the release:
+    /// the album title and the artist name as the person left them in the
+    /// title chip. Both blank goes back to the draft's own.
+    let onEditTitleSearch: (_ album: String, _ artist: String) -> Void
 
     var body: some View {
         FlowLayout(spacing: 6) {
@@ -229,25 +233,27 @@ struct IdentifierBand: View {
     // MARK: - Title
 
     /// The words the run searched by once its identifiers had named nothing,
-    /// with every provider's answer about them. There is nothing to switch
-    /// here: the search runs when the identifiers leave it to, and it searches
-    /// what the draft says the release is called.
+    /// with every provider's answer about them. The words are the person's
+    /// to change: leaving the field with different words searches by them.
     ///
     /// A run whose identifiers answered draws no chip at all — the step was
     /// never part of what that run did.
     @ViewBuilder
     private var titleChip: some View {
-        let label = String(localized: "Title")
         switch run.search {
         case .notNeeded:
             EmptyView()
         case .noTitle:
-            IdentifierChip(label: label) { IdentifierDash() }
-                .help("No title to search by")
+            TitleSearchChip(album: "", artist: "", onCommit: onEditTitleSearch)
+            {
+                EmptyView()
+            }
+            .help("No title to search by")
         case .searched(let album, let artist, let cells):
-            IdentifierChip(
-                label: label,
-                value: artist.isEmpty ? album : "\(album) — \(artist)"
+            TitleSearchChip(
+                album: album,
+                artist: artist,
+                onCommit: onEditTitleSearch
             ) {
                 capsules(cells)
             }
@@ -287,6 +293,81 @@ struct IdentifierBand: View {
     }
 }
 
+/// The title chip: the album title and artist name the run searches by, each
+/// a field, with the providers' answers beside them. Leaving a field with
+/// its words changed commits both — the whole query goes back, since a
+/// title without its artist is a different search.
+private struct TitleSearchChip<Trailing: View>: View {
+    let album: String
+    let artist: String
+    let onCommit: (_ album: String, _ artist: String) -> Void
+    let trailing: Trailing
+
+    @State
+    private var albumText: String
+    @State
+    private var artistText: String
+    @FocusState
+    private var focused: Field?
+
+    private enum Field {
+        case album
+        case artist
+    }
+
+    init(
+        album: String,
+        artist: String,
+        onCommit: @escaping (_ album: String, _ artist: String) -> Void,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.album = album
+        self.artist = artist
+        self.onCommit = onCommit
+        self.trailing = trailing()
+        _albumText = State(initialValue: album)
+        _artistText = State(initialValue: artist)
+    }
+
+    var body: some View {
+        IdentifierChip(label: String(localized: "Title")) {
+            field("Album", text: $albumText, field: .album)
+            Text(verbatim: "—")
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundStyle(.quaternary)
+            field("Artist", text: $artistText, field: .artist)
+            trailing
+        }
+        // A new run's words replace what was typed: what the chip shows is
+        // what was searched.
+        .onChange(of: album) { _, now in albumText = now }
+        .onChange(of: artist) { _, now in artistText = now }
+        .onChange(of: focused) { was, now in
+            if was != nil, now == nil { commit() }
+        }
+    }
+
+    private func field(
+        _ placeholder: LocalizedStringKey,
+        text: Binding<String>,
+        field: Field
+    ) -> some View {
+        TextField(placeholder, text: text)
+            .textFieldStyle(.plain)
+            .font(.system(size: 10.5, design: .monospaced))
+            .foregroundStyle(.secondary)
+            .focused($focused, equals: field)
+            .onSubmit { focused = nil }
+            .frame(minWidth: 60, idealWidth: 140)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func commit() {
+        if albumText == album && artistText == artist { return }
+        onCommit(albumText, artistText)
+    }
+}
+
 #if DEBUG
     // MARK: - Previews
 
@@ -297,6 +378,7 @@ struct IdentifierBand: View {
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
+            onEditTitleSearch: { _, _ in },
         )
         .frame(width: 660)
         .environment(PreviewData.artImageStore())
@@ -313,6 +395,7 @@ struct IdentifierBand: View {
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
+            onEditTitleSearch: { _, _ in },
         )
         .frame(width: 660)
         .environment(PreviewData.artImageStore())
@@ -326,6 +409,7 @@ struct IdentifierBand: View {
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
+            onEditTitleSearch: { _, _ in },
         )
         .frame(width: 660)
         .environment(PreviewData.artImageStore())
@@ -339,6 +423,7 @@ struct IdentifierBand: View {
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
+            onEditTitleSearch: { _, _ in },
         )
         .frame(width: 660)
         .environment(PreviewData.artImageStore())
@@ -355,6 +440,7 @@ struct IdentifierBand: View {
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
+            onEditTitleSearch: { _, _ in },
         )
         .frame(width: 660)
         .environment(PreviewData.artImageStore())
@@ -372,6 +458,7 @@ struct IdentifierBand: View {
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
+                onEditTitleSearch: { _, _ in },
             )
             IdentifierBand(
                 run: PreviewData.identifyRunBothBarcodesAsked,
@@ -379,6 +466,7 @@ struct IdentifierBand: View {
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
+                onEditTitleSearch: { _, _ in },
             )
             IdentifierBand(
                 run: PreviewData.identifyRunBarcodeLeftOut,
@@ -386,6 +474,7 @@ struct IdentifierBand: View {
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
+                onEditTitleSearch: { _, _ in },
             )
         }
         .frame(width: 660)
@@ -400,6 +489,7 @@ struct IdentifierBand: View {
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
+            onEditTitleSearch: { _, _ in },
         )
         .frame(width: 660)
         .environment(PreviewData.artImageStore())

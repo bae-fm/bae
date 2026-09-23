@@ -1180,11 +1180,16 @@ CREATE TABLE IF NOT EXISTS import_candidate_text_line (
        AND (region_x IS NULL) = (region_height IS NULL))
 ) STRICT;
 
--- Which of the names read off a candidate the user let the lookups use.
+-- Which of the names read off a candidate the user let the lookups use, and
+-- the words the user typed for the title search in place of the draft's own
+-- (both absent when the draft's title is searched).
 CREATE TABLE IF NOT EXISTS import_candidate_lookup_choices (
     content_hash     TEXT PRIMARY KEY,
     disc_id_excluded INTEGER NOT NULL CHECK (disc_id_excluded IN (0, 1)),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+    search_album     TEXT,
+    search_artist    TEXT,
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK ((search_album IS NULL) = (search_artist IS NULL))
 ) STRICT;
 
 -- The catalog numbers the user chose to look up, in the order chosen.

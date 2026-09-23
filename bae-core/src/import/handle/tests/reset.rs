@@ -801,6 +801,7 @@ async fn reset_setup_clears_lookup_choices_while_reset_to_tags_keeps_them() {
         disc_id_excluded: true,
         excluded_barcodes: vec!["0123456789012".into()],
         chosen_catalogs: vec!["S1001".into()],
+        search_words: None,
         discounted_catalogs: vec!["OTHER-1".into()],
     };
     handle

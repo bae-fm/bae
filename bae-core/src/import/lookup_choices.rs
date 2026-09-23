@@ -12,13 +12,26 @@
 //! value until the person changes it. Changing what a run looks up is what
 //! starts the next one.
 
+/// The words a person typed for the title search, in place of what the draft
+/// calls the release. An album tag that carries the catalog number in
+/// brackets searches for nothing; the person takes it out here and the run
+/// searches by what is left.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SearchWords {
+    pub album: String,
+    /// Blank searches by the title alone.
+    pub artist: String,
+}
+
 /// The signals one candidate's identification leaves out, the catalog numbers
-/// it asks about, and the ones it is to read nothing into.
+/// it asks about, the words it searches by, and the ones it is to read
+/// nothing into.
 ///
 /// The default is what a candidate nobody has touched runs with: the disc ID
 /// and the barcodes are asked about, no catalog number is — one number can
 /// name thirty releases, so a number is looked up only once someone says it is
-/// this disc's — and everything the folder's text says counts.
+/// this disc's — the draft's own title is searched, and everything the
+/// folder's text says counts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LookupChoices {
     /// Whether the run leaves the candidate's disc ID out. One value, so one
@@ -35,6 +48,9 @@ pub struct LookupChoices {
     /// they were chosen — which is the order their lookups are dispatched and
     /// their results laid out.
     pub chosen_catalogs: Vec<String>,
+    /// What the title search asks for, where the person typed it. `None`
+    /// searches by what the draft calls the release.
+    pub search_words: Option<SearchWords>,
     /// The catalog numbers the folder's own text carries that the person
     /// struck out: a result whose catalog number is one of them agrees with
     /// the text about nothing, however plainly the text prints it.
@@ -48,6 +64,18 @@ pub struct LookupChoices {
     pub discounted_catalogs: Vec<String>,
 }
 
+impl SearchWords {
+    /// These words with their edges trimmed, or `None` for words that name
+    /// no title — which is no words at all, and the draft's title stands.
+    pub fn trimmed(self) -> Option<Self> {
+        let album = self.album.trim();
+        (!album.is_empty()).then(|| Self {
+            album: album.to_string(),
+            artist: self.artist.trim().to_string(),
+        })
+    }
+}
+
 impl LookupChoices {
     /// This value with its one rule enforced: a number the person struck out
     /// is not one the run looks up, and a number is chosen once however it is
@@ -56,6 +84,7 @@ impl LookupChoices {
     /// the chosen ones. The first spelling of a chosen number stands, in the
     /// order it was chosen.
     pub fn normalized(mut self) -> Self {
+        self.search_words = self.search_words.take().and_then(SearchWords::trimmed);
         let struck_out: Vec<String> = self
             .discounted_catalogs
             .iter()
@@ -81,6 +110,7 @@ impl LookupChoices {
         self.disc_id_excluded == other.disc_id_excluded
             && self.excluded_barcodes == other.excluded_barcodes
             && self.chosen_catalogs == other.chosen_catalogs
+            && self.search_words == other.search_words
     }
 }
 
@@ -100,7 +130,7 @@ pub enum ChoiceChange {
 
 #[cfg(test)]
 mod tests {
-    use super::LookupChoices;
+    use super::{LookupChoices, SearchWords};
 
     fn strings(values: &[&str]) -> Vec<String> {
         values.iter().map(|value| value.to_string()).collect()
@@ -115,6 +145,7 @@ mod tests {
             disc_id_excluded: false,
             excluded_barcodes: Vec::new(),
             chosen_catalogs: strings(&["WPCR-80001", "NJ 8255", "COCQ 84487"]),
+            search_words: None,
             discounted_catalogs: strings(&["nj-8255"]),
         }
         .normalized();
@@ -138,5 +169,50 @@ mod tests {
             normalized.chosen_catalogs,
             strings(&["NJ-8255", "WPCR-80001"])
         );
+    }
+
+    /// Typed words keep their letters and lose their edges; words naming no
+    /// title are no words, and the draft's title is searched.
+    #[test]
+    fn search_words_are_trimmed_and_blank_ones_are_none() {
+        let typed = LookupChoices {
+            search_words: Some(SearchWords {
+                album: "  Album Title  ".to_string(),
+                artist: " Artist ".to_string(),
+            }),
+            ..LookupChoices::default()
+        }
+        .normalized();
+        assert_eq!(
+            typed.search_words,
+            Some(SearchWords {
+                album: "Album Title".to_string(),
+                artist: "Artist".to_string(),
+            })
+        );
+        let blank = LookupChoices {
+            search_words: Some(SearchWords {
+                album: "   ".to_string(),
+                artist: "Artist".to_string(),
+            }),
+            ..LookupChoices::default()
+        }
+        .normalized();
+        assert_eq!(blank.search_words, None);
+    }
+
+    /// Different words are a different question for the providers.
+    #[test]
+    fn different_search_words_ask_something_else() {
+        let draft = LookupChoices::default();
+        let typed = LookupChoices {
+            search_words: Some(SearchWords {
+                album: "Album Title".to_string(),
+                artist: String::new(),
+            }),
+            ..LookupChoices::default()
+        };
+        assert!(!draft.asks_the_same_as(&typed));
+        assert!(typed.asks_the_same_as(&typed.clone()));
     }
 }

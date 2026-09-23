@@ -14,6 +14,7 @@ async fn lookup_choices_round_trip_with_their_catalog_order() {
         disc_id_excluded: true,
         excluded_barcodes: Vec::new(),
         chosen_catalogs: vec!["LBL 002".to_string(), "LBL 001".to_string()],
+        search_words: None,
         discounted_catalogs: Vec::new(),
     };
     db.save_import_candidate_lookup_choices(&hash, &choices)
@@ -44,6 +45,7 @@ async fn writing_lookup_choices_replaces_what_stood_before() {
             disc_id_excluded: true,
             excluded_barcodes: vec!["0123456789012".to_string()],
             chosen_catalogs: vec!["LBL 001".to_string(), "LBL 002".to_string()],
+            search_words: None,
             discounted_catalogs: Vec::new(),
         },
     )
@@ -53,6 +55,7 @@ async fn writing_lookup_choices_replaces_what_stood_before() {
         disc_id_excluded: false,
         excluded_barcodes: vec!["0123456789012".to_string()],
         chosen_catalogs: vec!["LBL 003".to_string()],
+        search_words: None,
         discounted_catalogs: Vec::new(),
     };
     db.save_import_candidate_lookup_choices(&hash, &replacement)
@@ -99,6 +102,7 @@ async fn choices_for_an_unknown_candidate_are_refused() {
                 disc_id_excluded: true,
                 excluded_barcodes: Vec::new(),
                 chosen_catalogs: Vec::new(),
+                search_words: None,
                 discounted_catalogs: Vec::new(),
             },
         )
@@ -124,6 +128,7 @@ async fn struck_out_catalog_numbers_round_trip_beside_the_chosen_ones() {
         disc_id_excluded: false,
         excluded_barcodes: Vec::new(),
         chosen_catalogs: vec!["LBL 002".to_string()],
+        search_words: None,
         discounted_catalogs: vec!["LBL 002".to_string(), "LBL 100".to_string()],
     };
     db.save_import_candidate_lookup_choices(&hash, &choices)
@@ -188,6 +193,7 @@ async fn left_out_barcodes_round_trip_as_a_set() {
         disc_id_excluded: false,
         excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
         chosen_catalogs: Vec::new(),
+        search_words: None,
         discounted_catalogs: Vec::new(),
     };
     db.save_import_candidate_lookup_choices(&hash, &choices)
@@ -236,5 +242,46 @@ async fn writing_the_choices_replaces_the_left_out_barcodes() {
             .expect("the candidate reads back")
             .lookup_choices,
         replacement
+    );
+}
+
+/// The words typed for the title search go down and come back with the
+/// rest, and a value naming none reads back naming none.
+#[tokio::test]
+async fn typed_search_words_round_trip() {
+    let (db, _tmp) = empty_db().await;
+    let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
+    let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
+
+    let typed = crate::import::LookupChoices {
+        search_words: Some(crate::import::SearchWords {
+            album: "Album Title".to_string(),
+            artist: String::new(),
+        }),
+        ..Default::default()
+    };
+    db.save_import_candidate_lookup_choices(&hash, &typed)
+        .await
+        .unwrap();
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    assert_eq!(
+        loaded
+            .get(&hash)
+            .expect("the candidate reads back")
+            .lookup_choices,
+        typed
+    );
+
+    db.save_import_candidate_lookup_choices(&hash, &crate::import::LookupChoices::default())
+        .await
+        .unwrap();
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    assert_eq!(
+        loaded
+            .get(&hash)
+            .expect("the candidate reads back")
+            .lookup_choices
+            .search_words,
+        None
     );
 }

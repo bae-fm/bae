@@ -217,6 +217,7 @@ public sealed class ImportMappingPaneTests
                 DiscIdExcluded: false,
                 ExcludedBarcodes: [],
                 ChosenCatalogs: [],
+                SearchWords: null,
                 DiscountedCatalogs: ["BST 84055"]));
         var (pane, _) = Show(
             detail,
@@ -244,6 +245,7 @@ public sealed class ImportMappingPaneTests
                 DiscIdExcluded: true,
                 ExcludedBarcodes: [],
                 ChosenCatalogs: ["BST 84055"],
+                SearchWords: null,
                 DiscountedCatalogs: []));
         var (pane, _) = Show(
             detail,
@@ -307,6 +309,7 @@ public sealed class ImportMappingPaneTests
                 DiscIdExcluded: false,
                 ExcludedBarcodes: ["0123456789012", "9999999999999"],
                 ChosenCatalogs: [],
+                SearchWords: null,
                 DiscountedCatalogs: []));
         var (pane, _) = Show(
             detail,

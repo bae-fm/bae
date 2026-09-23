@@ -83,5 +83,6 @@ internal static class LookupChoiceEdits
             DiscIdExcluded: false,
             ExcludedBarcodes: [],
             ChosenCatalogs: [],
+            SearchWords: null,
             DiscountedCatalogs: []);
 }

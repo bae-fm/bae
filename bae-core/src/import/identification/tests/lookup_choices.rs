@@ -18,12 +18,20 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
     fixture.provider.route(
         "/discid/",
         200,
-        discid_json("mb-choice-1", "rg-choice-1", &[probed / 2, probed - probed / 2]),
+        discid_json(
+            "mb-choice-1",
+            "rg-choice-1",
+            &[probed / 2, probed - probed / 2],
+        ),
     );
     fixture.provider.route(
         "/release/mb-choice-1?",
         200,
-        release_json("mb-choice-1", "rg-choice-1", &[probed / 2, probed - probed / 2]),
+        release_json(
+            "mb-choice-1",
+            "rg-choice-1",
+            &[probed / 2, probed - probed / 2],
+        ),
     );
     fixture.scan(1).await;
     fixture.use_discogs();
@@ -35,6 +43,7 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
                 disc_id_excluded: false,
                 excluded_barcodes: vec!["0123456789012".to_string()],
                 chosen_catalogs: Vec::new(),
+                search_words: None,
                 discounted_catalogs: Vec::new(),
             },
         )
@@ -58,8 +67,9 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
         "nothing asks about a barcode the candidate says to leave out: {requests:?}"
     );
     assert!(
-        !requests.iter().any(|target| target.contains("/database/search")),
+        !requests
+            .iter()
+            .any(|target| target.contains("/database/search")),
         "and Discogs is not asked about it either: {requests:?}"
     );
 }
-

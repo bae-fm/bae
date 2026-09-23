@@ -23,6 +23,8 @@ struct FindOnlineAutomaticSection: View {
     let onToggleCatalogAgreement: (String) -> Void
     /// Re-ask only the lookups that failed, keeping what the others found.
     let onRetryFailed: () -> Void
+    /// Search by the words the person left in the title chip.
+    let onEditTitleSearch: (_ album: String, _ artist: String) -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (Pressing) -> Void
     /// Hand the pane over to SEARCH with the cursor in its first field.
@@ -86,7 +88,8 @@ struct FindOnlineAutomaticSection: View {
                             onToggleLookup: onToggleLookup,
                             onToggleCatalogAgreement:
                                 onToggleCatalogAgreement,
-                            onRetryFailed: onRetryFailed
+                            onRetryFailed: onRetryFailed,
+                            onEditTitleSearch: onEditTitleSearch
                         )
                         Divider()
                             .padding(.horizontal, 14)

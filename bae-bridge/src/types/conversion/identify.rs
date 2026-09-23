@@ -703,6 +703,7 @@ mod tests {
             disc_id_excluded: true,
             excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
             chosen_catalogs: vec!["WPCR-80001".to_string()],
+            search_words: None,
             discounted_catalogs: vec!["LBL-9".to_string()],
         };
         let crossed = crate::types::BridgeLookupChoices::from_core(choices.clone());

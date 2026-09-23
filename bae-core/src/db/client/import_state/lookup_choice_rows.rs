@@ -8,7 +8,7 @@
 
 use super::super::query::QueryRows;
 use super::*;
-use crate::import::LookupChoices;
+use crate::import::{LookupChoices, SearchWords};
 
 /// The choices rows of every candidate, or of the one `only` names, read on
 /// whichever connection the caller holds — a read snapshot, or a candidate
@@ -17,7 +17,7 @@ pub(super) struct LookupChoiceRows {
     catalogs: Vec<(String, String)>,
     discounted: Vec<(String, String)>,
     left_out: Vec<(String, String)>,
-    rows: Vec<(String, bool)>,
+    rows: Vec<(String, bool, Option<SearchWords>)>,
 }
 
 pub(super) fn load_lookup_choice_rows_on(
@@ -46,11 +46,24 @@ pub(super) fn load_lookup_choice_rows_on(
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
     )?;
     let rows = sql.query(
-        "SELECT content_hash, disc_id_excluded \
+        "SELECT content_hash, disc_id_excluded, search_album, search_artist \
          FROM import_candidate_lookup_choices \
          WHERE :only IS NULL OR content_hash = :only",
         named_params! { ":only": only },
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)? != 0)),
+        |row| {
+            let search_words = match (
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+            ) {
+                (Some(album), Some(artist)) => Some(SearchWords { album, artist }),
+                _ => None,
+            };
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)? != 0,
+                search_words,
+            ))
+        },
     )?;
     Ok(LookupChoiceRows {
         catalogs,
@@ -83,7 +96,7 @@ impl LookupChoiceRows {
             barcodes.entry(content_hash).or_default().push(value);
         }
         let mut out = HashMap::with_capacity(rows.len());
-        for (content_hash, disc_id_excluded) in rows {
+        for (content_hash, disc_id_excluded, search_words) in rows {
             let chosen_catalogs = chosen.remove(&content_hash).unwrap_or_default();
             let discounted_catalogs = struck_out.remove(&content_hash).unwrap_or_default();
             let excluded_barcodes = barcodes.remove(&content_hash).unwrap_or_default();
@@ -93,6 +106,7 @@ impl LookupChoiceRows {
                     disc_id_excluded,
                     excluded_barcodes,
                     chosen_catalogs,
+                    search_words,
                     discounted_catalogs,
                 },
             );
@@ -126,14 +140,24 @@ pub(super) fn replace_lookup_choices_on(
 ) -> Result<(), DbError> {
     let affected = sql.execute(
         "INSERT INTO import_candidate_lookup_choices (\
-             content_hash, disc_id_excluded) \
-         SELECT ?, ? \
+             content_hash, disc_id_excluded, search_album, search_artist) \
+         SELECT ?, ?, ?, ? \
          WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = ?) \
          ON CONFLICT (content_hash) DO UPDATE SET \
-             disc_id_excluded = excluded.disc_id_excluded",
+             disc_id_excluded = excluded.disc_id_excluded, \
+             search_album = excluded.search_album, \
+             search_artist = excluded.search_artist",
         params![
             content_hash,
             i64::from(choices.disc_id_excluded),
+            choices
+                .search_words
+                .as_ref()
+                .map(|words| words.album.as_str()),
+            choices
+                .search_words
+                .as_ref()
+                .map(|words| words.artist.as_str()),
             content_hash,
         ],
     )?;

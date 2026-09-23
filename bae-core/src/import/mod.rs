@@ -201,7 +201,7 @@ desktop_only! {
     pub use search::{SearchQuery, SourceFailure, SourceLookup};
     pub use service::ImportService;
 }
-pub use lookup_choices::{ChoiceChange, LookupChoices};
+pub use lookup_choices::{ChoiceChange, LookupChoices, SearchWords};
 pub use session::{CandidateSession, MetadataPresentation, SearchForm, SearchTab};
 desktop_only! {
     pub use identification::IdentificationHandle;

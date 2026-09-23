@@ -28,11 +28,31 @@ pub struct BridgeLookupChoices {
     /// The catalog numbers the run looks up, each on its own, in the order
     /// they were chosen.
     pub chosen_catalogs: Vec<String>,
+    /// The words the title search asks for, where the person typed them.
+    /// `None` searches by what the draft calls the release.
+    pub search_words: Option<BridgeSearchWords>,
     /// The catalog numbers the candidate's own text carries that the person
     /// struck out, so a release carrying one earns no catalog agreement from
     /// the text. A set, each value once; a number can be looked up and struck
     /// out at once.
     pub discounted_catalogs: Vec<String>,
+}
+
+/// The words a person typed for the title search, in place of the draft's
+/// own. Mirrors `bae_core::import::SearchWords`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSearchWords {
+    pub album: String,
+    /// Blank searches by the title alone.
+    pub artist: String,
+}
+
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeSearchWords = bae_core::import::SearchWords,
+    from_core: pub(crate) fn,
+    into_core: pub fn,
+    fields: { album, artist },
 }
 
 mirror_struct! {
@@ -44,6 +64,7 @@ mirror_struct! {
         disc_id_excluded,
         excluded_barcodes,
         chosen_catalogs,
+        search_words: (opt BridgeSearchWords),
         discounted_catalogs,
     },
 }

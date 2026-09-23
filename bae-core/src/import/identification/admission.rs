@@ -50,9 +50,9 @@ pub(super) struct CandidateRunStart {
     pub(super) metadata_revision: u64,
     /// What the person decided this candidate's identification asks about.
     pub(super) choices: LookupChoices,
-    /// What the candidate's draft calls the release, for the run to search by
-    /// when its identifiers name nothing. `None` when the draft states no
-    /// title.
+    /// What the run searches by when its identifiers name nothing: the words
+    /// the person typed, else what the candidate's draft calls the release.
+    /// `None` when neither states a title.
     pub(super) title_search: Option<TitleSearch>,
 }
 
@@ -90,10 +90,15 @@ pub(super) async fn candidate_run_start(
         Some(crate::import::ArtistAssignment::New { seed }) => seed.name.as_str(),
         None => "",
     };
+    // Words the person typed stand in for the draft's own.
+    let title_search = match &state.lookup_choices.search_words {
+        Some(words) => TitleSearch::of(&words.album, &words.artist),
+        None => TitleSearch::of(&draft.album_title, artist),
+    };
     Ok(CandidateRunStart {
         metadata_revision: state.metadata_revision,
         choices: state.lookup_choices,
-        title_search: TitleSearch::of(&draft.album_title, artist),
+        title_search,
     })
 }
 

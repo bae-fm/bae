@@ -85,6 +85,17 @@ extension ImportSearchFlow {
             onRetryFailed: {
                 rerunIdentification(services: services, input: input)
             },
+            // The words go back as part of the whole value of what the
+            // candidate's identification asks about, and the run that reads
+            // them starts from there.
+            onEditTitleSearch: { album, artist in
+                editTitleSearch(
+                    album: album,
+                    artist: artist,
+                    services: services,
+                    input: input
+                )
+            },
             onSelect: onSelect,
         )
         // The draft saying identification wrote it leaves nothing here to do:
@@ -136,6 +147,31 @@ extension ImportSearchFlow {
                 String(
                     localized:
                         "Couldn't change what identification looks up: \(line)"
+                )
+            }
+        )
+    }
+
+    /// Search by the words the person left in the title chip, in place of
+    /// what the draft calls the release.
+    @MainActor
+    private static func editTitleSearch(
+        album: String,
+        artist: String,
+        services: ImportServices,
+        input: SearchPaneInput
+    ) {
+        writeLookupChoices(
+            input.candidate.lookupChoices.searching(
+                album: album,
+                artist: artist
+            ),
+            services: services,
+            input: input,
+            failure: { line in
+                String(
+                    localized:
+                        "Couldn't change what identification searches by: \(line)"
                 )
             }
         )

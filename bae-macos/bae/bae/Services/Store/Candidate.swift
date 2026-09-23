@@ -205,6 +205,7 @@ extension BridgeLookupChoices {
                 discIdExcluded: !discIdExcluded,
                 excludedBarcodes: excludedBarcodes,
                 chosenCatalogs: chosenCatalogs,
+                searchWords: searchWords,
                 discountedCatalogs: discountedCatalogs
             )
         case .barcode(let code):
@@ -217,6 +218,7 @@ extension BridgeLookupChoices {
                 discIdExcluded: discIdExcluded,
                 excludedBarcodes: leftOut.sorted(),
                 chosenCatalogs: chosenCatalogs,
+                searchWords: searchWords,
                 discountedCatalogs: discountedCatalogs
             )
         case .catalog(let number):
@@ -239,6 +241,25 @@ extension BridgeLookupChoices {
             discIdExcluded: discIdExcluded,
             excludedBarcodes: excludedBarcodes,
             chosenCatalogs: chosen,
+            searchWords: searchWords,
+            discountedCatalogs: discountedCatalogs
+        )
+    }
+
+    /// This value searching by `album` and `artist` where the person typed
+    /// them, or by the draft's own title when both are blank. Core trims the
+    /// words and takes a blank title as no words.
+    func searching(album: String, artist: String) -> BridgeLookupChoices {
+        let words: BridgeSearchWords? =
+            album.trimmingCharacters(in: .whitespaces).isEmpty
+                && artist.trimmingCharacters(in: .whitespaces).isEmpty
+            ? nil
+            : BridgeSearchWords(album: album, artist: artist)
+        return BridgeLookupChoices(
+            discIdExcluded: discIdExcluded,
+            excludedBarcodes: excludedBarcodes,
+            chosenCatalogs: chosenCatalogs,
+            searchWords: words,
             discountedCatalogs: discountedCatalogs
         )
     }
@@ -268,6 +289,7 @@ extension BridgeLookupChoices {
             discIdExcluded: discIdExcluded,
             excludedBarcodes: excludedBarcodes,
             chosenCatalogs: chosen,
+            searchWords: searchWords,
             discountedCatalogs: discounted.sorted()
         )
     }
@@ -320,6 +342,7 @@ struct Candidate: Equatable, Identifiable {
         discIdExcluded: false,
         excludedBarcodes: [],
         chosenCatalogs: [],
+        searchWords: nil,
         discountedCatalogs: []
     )
     /// The draft, or the Find online page, occupying the metadata slot.

@@ -14,6 +14,7 @@ public sealed class LookupChoiceEditsTests
         DiscIdExcluded: false,
         ExcludedBarcodes: ["9999999999999"],
         ChosenCatalogs: ["LBL 001"],
+        SearchWords: null,
         DiscountedCatalogs: ["LBL 100"]);
 
     // A struck-out number is not one the run looks up: striking it out takes

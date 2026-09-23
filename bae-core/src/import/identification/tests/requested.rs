@@ -596,6 +596,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
                 disc_id_excluded: false,
                 excluded_barcodes: vec!["0123456789012".to_string()],
                 chosen_catalogs: Vec::new(),
+                search_words: None,
                 discounted_catalogs: Vec::new(),
             },
         )

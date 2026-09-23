@@ -485,6 +485,7 @@
                         discIdExcluded: false,
                         excludedBarcodes: [],
                         chosenCatalogs: [],
+                        searchWords: nil,
                         discountedCatalogs: []
                     ),
                     failure: failure,
