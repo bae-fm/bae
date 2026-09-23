@@ -534,7 +534,6 @@ fn discogs_role_is_composer_matches_composing_roles() {
 /// A composer role artist with no credited_name falls back to its canonical
 /// name and logs the fallback rather than dropping the credit silently.
 #[test]
-#[serial_test::serial(discogs_mapper_fallback_log)]
 fn role_artist_without_credited_name_falls_back_to_canonical_name() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
     release.extraartists = Some(vec![DiscogsRoleArtist {
@@ -568,7 +567,6 @@ fn role_artist_without_credited_name_falls_back_to_canonical_name() {
 /// back to a name match when the credit has no id, and that match is
 /// unrestricted by whether the existing artist bears a source id.
 #[test]
-#[serial_test::serial(discogs_mapper_fallback_log)]
 fn id_less_role_credit_reuses_release_artist_by_name() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
     // Release artist: name "Artist Name A", discogs id "artist-1".

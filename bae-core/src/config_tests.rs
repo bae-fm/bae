@@ -1,5 +1,4 @@
 use super::*;
-use serial_test::serial;
 use std::sync::{Arc, Barrier};
 use std::time::Duration;
 use tempfile::TempDir;
@@ -406,7 +405,6 @@ fn cast_is_off_by_default_and_survives_yaml_roundtrip() {
 /// A config that is genuinely unreadable is SHOWN as broken, not skipped. The
 /// user must be able to see that the library is there and in trouble.
 #[test]
-#[serial]
 fn a_broken_library_is_listed_as_broken() {
     let tmp = TempDir::new().unwrap();
     let bae_dir = tmp.path();
@@ -427,7 +425,6 @@ fn a_broken_library_is_listed_as_broken() {
 /// A working library and a broken one coexist: the broken one sorts last but
 /// is still there.
 #[test]
-#[serial]
 fn a_broken_library_does_not_hide_a_working_one() {
     let tmp = TempDir::new().unwrap();
     let bae_dir = tmp.path();

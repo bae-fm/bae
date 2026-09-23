@@ -1,5 +1,4 @@
 use super::*;
-use serial_test::serial;
 
 #[test]
 fn creation_errors_preserve_their_user_facing_category_through_rollback() {
@@ -14,7 +13,6 @@ fn creation_errors_preserve_their_user_facing_category_through_rollback() {
 }
 
 #[test]
-#[serial]
 fn creating_a_library_establishes_its_identity_without_marking_it_active() {
     let temp = tempfile::TempDir::new().unwrap();
     crate::config::install_test_keyring();
@@ -40,7 +38,6 @@ fn creating_a_library_establishes_its_identity_without_marking_it_active() {
 }
 
 #[test]
-#[serial]
 fn failed_creation_removes_the_partial_library() {
     let temp = tempfile::TempDir::new().unwrap();
     crate::config::install_test_keyring();

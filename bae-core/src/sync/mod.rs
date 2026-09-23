@@ -228,7 +228,6 @@ mod tests {
     /// synced table left off the registration would silently never propagate.
     /// Either drift breaks this test.
     #[tokio::test]
-    #[serial_test::serial]
     async fn synced_tables_equal_the_lww_clock_set() {
         let directory = tempfile::tempdir().expect("temporary library");
         crate::config::install_test_keyring();

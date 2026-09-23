@@ -3,7 +3,6 @@ use crate::config::{
     discover_libraries_from_bae_dir, parse_config_yaml, registered_library_path, CloudProvider,
     Config, ConfigYaml,
 };
-use serial_test::serial;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -303,7 +302,6 @@ fn a_config_version_that_is_not_a_version_is_refused() {
 /// what its keys mean. The library is there, so the failure must not read as a
 /// library that is gone.
 #[test]
-#[serial]
 fn a_file_from_a_newer_bae_is_refused_by_version_and_listed_as_broken() {
     let tmp = TempDir::new().unwrap();
     let bae_dir = tmp.path();
@@ -338,7 +336,6 @@ fn a_file_from_a_newer_bae_is_refused_by_version_and_listed_as_broken() {
 /// Opening is what writes the upgraded file back, once, after the typed read
 /// succeeded — so the next open finds a file already at this shape.
 #[test]
-#[serial]
 fn opening_an_unversioned_library_writes_the_upgraded_file_back() {
     let tmp = TempDir::new().unwrap();
     let bae_dir = tmp.path();
@@ -367,7 +364,6 @@ fn opening_an_unversioned_library_writes_the_upgraded_file_back() {
 /// Listing reads through the same ladder, so an unversioned library shows its
 /// real name and provider — but a listing does not edit every library on disk.
 #[test]
-#[serial]
 fn listing_an_unversioned_library_leaves_its_file_alone() {
     let tmp = TempDir::new().unwrap();
     let bae_dir = tmp.path();
