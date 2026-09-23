@@ -181,7 +181,8 @@ struct FindOnlineSourceSwitchTests {
                     catalogAgreements: [],
                     onToggleLookup: { _ in },
                     onToggleCatalogAgreement: { _ in },
-                    onRetryFailed: {}
+                    onRetryFailed: {},
+                    onEditTitleSearch: { _, _ in }
                 ),
                 size: size
             )

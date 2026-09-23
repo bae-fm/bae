@@ -711,6 +711,7 @@ struct IdentifierBandTests {
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
+                onEditTitleSearch: { _, _ in },
             )
             .importPreviewEnvironment(),
             size: NSSize(width: 660, height: 260)
@@ -728,6 +729,7 @@ struct LookupToggleTests {
         discIdExcluded: false,
         excludedBarcodes: ["9999999999999"],
         chosenCatalogs: ["LBL 001"],
+        searchWords: nil,
         discountedCatalogs: ["LBL 100"]
     )
 

@@ -544,16 +544,17 @@ extension MappingFixtures {
         )
     }
 
-    /// A pane session with an empty form and no banner, on `presentation`.
     /// What a fixture candidate's identification asks about: everything, with
-    /// no catalog number singled out.
+    /// no catalog number singled out and no search words chosen.
     static let noLookupChoices = BridgeLookupChoices(
         discIdExcluded: false,
         excludedBarcodes: [],
         chosenCatalogs: [],
+        searchWords: nil,
         discountedCatalogs: []
     )
 
+    /// A pane session with an empty form and no banner, on `presentation`.
     static func session(
         presentation: BridgeMetadataPresentation = .draft
     ) -> BridgeCandidateSession {
